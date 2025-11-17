@@ -42,7 +42,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
         // Determine barcode code: use code if ≤10 chars, otherwise use short_code
         String barcodeCode = getBarcodeCode(device.getCode(), device.getShortCode());
         if (barcodeCode == null || barcodeCode.trim().isEmpty()) {
-            throw new IllegalArgumentException("Device code or short_code is required for label printing. If code > 10 chars, short_code must be set.");
+            throw new IllegalArgumentException(
+                    "Device code or short_code is required for label printing. If code > 10 chars, short_code must be set.");
         }
 
         // Build hierarchical path using codes (for barcode): RoomCode-DeviceCode
@@ -72,7 +73,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
         // Determine barcode code: use label if ≤10 chars, otherwise use short_code
         String barcodeCode = getBarcodeCode(shelf.getLabel(), shelf.getShortCode());
         if (barcodeCode == null || barcodeCode.trim().isEmpty()) {
-            throw new IllegalArgumentException("Shelf label or short_code is required for label printing. If label > 10 chars, short_code must be set.");
+            throw new IllegalArgumentException(
+                    "Shelf label or short_code is required for label printing. If label > 10 chars, short_code must be set.");
         }
 
         // Build hierarchical path using codes: RoomCode-DeviceCode-ShelfLabel
@@ -107,7 +109,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
         // Determine barcode code: use label if ≤10 chars, otherwise use short_code
         String barcodeCode = getBarcodeCode(rack.getLabel(), rack.getShortCode());
         if (barcodeCode == null || barcodeCode.trim().isEmpty()) {
-            throw new IllegalArgumentException("Rack label or short_code is required for label printing. If label > 10 chars, short_code must be set.");
+            throw new IllegalArgumentException(
+                    "Rack label or short_code is required for label printing. If label > 10 chars, short_code must be set.");
         }
 
         // Build hierarchical path using codes: RoomCode-DeviceCode-ShelfLabel-RackLabel
@@ -140,8 +143,9 @@ public class LabelManagementServiceImpl implements LabelManagementService {
 
     /**
      * Determine barcode code: use primaryCode if ≤10 chars, otherwise use shortCode
+     * 
      * @param primaryCode The primary code (device.code, shelf.label, rack.label)
-     * @param shortCode The short code (nullable)
+     * @param shortCode   The short code (nullable)
      * @return The code to use for barcode generation
      */
     private String getBarcodeCode(String primaryCode, String shortCode) {
@@ -167,7 +171,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
         try {
             switch (locationType.toLowerCase()) {
             case "device":
-                StorageDevice device = (StorageDevice) storageLocationService.get(Integer.parseInt(locationId), StorageDevice.class);
+                StorageDevice device = (StorageDevice) storageLocationService.get(Integer.parseInt(locationId),
+                        StorageDevice.class);
                 if (device == null) {
                     return false;
                 }
@@ -180,7 +185,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
                 return device.getCode().length() <= 10
                         || (device.getShortCode() != null && !device.getShortCode().trim().isEmpty());
             case "shelf":
-                StorageShelf shelf = (StorageShelf) storageLocationService.get(Integer.parseInt(locationId), StorageShelf.class);
+                StorageShelf shelf = (StorageShelf) storageLocationService.get(Integer.parseInt(locationId),
+                        StorageShelf.class);
                 if (shelf == null) {
                     return false;
                 }
@@ -188,7 +194,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
                 return shelf.getLabel() != null && shelf.getLabel().length() <= 10
                         || (shelf.getShortCode() != null && !shelf.getShortCode().trim().isEmpty());
             case "rack":
-                StorageRack rack = (StorageRack) storageLocationService.get(Integer.parseInt(locationId), StorageRack.class);
+                StorageRack rack = (StorageRack) storageLocationService.get(Integer.parseInt(locationId),
+                        StorageRack.class);
                 if (rack == null) {
                     return false;
                 }

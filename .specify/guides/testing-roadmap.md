@@ -1598,6 +1598,63 @@ test("testModal", async () => {
 });
 ```
 
+**Error Message Display Patterns**:
+
+```javascript
+// Error messages may be in title attribute (not text content)
+// Some components use title for accessibility (e.g., BarcodeVisualFeedback)
+
+test("testErrorDisplay", async () => {
+  renderWithIntl(
+    <ComponentName validationState="error" errorMessage="Invalid format" />
+  );
+
+  // Check if error element exists
+  const errorElement = screen.queryByTestId("barcode-feedback-error");
+  expect(errorElement).toBeInTheDocument();
+
+  // Check title attribute for error message
+  expect(errorElement).toHaveAttribute("title", "Invalid format");
+});
+```
+
+**Rationale**: Some components use `title` attribute for accessibility, so error
+messages may not be in text content.
+
+**Enter Key Event Compatibility**:
+
+```javascript
+// Carbon TextInput may pass Enter key as event.key, event.keyCode, or event.code
+// Component code should check all three for compatibility
+
+test("testEnterKeyHandling", () => {
+  renderWithIntl(<ComponentName />);
+  const input = screen.getByRole("textbox");
+  const barcode = "MAIN-FRZ01";
+
+  fireEvent.change(input, { target: { value: barcode } });
+
+  // Test event.key
+  fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+  expect(mockOnScan).toHaveBeenCalledWith(barcode);
+
+  // Test event.keyCode (legacy)
+  fireEvent.keyDown(input, { keyCode: 13 });
+  expect(mockOnScan).toHaveBeenCalledTimes(2);
+
+  // Test event.code
+  fireEvent.keyDown(input, { code: "Enter" });
+  expect(mockOnScan).toHaveBeenCalledTimes(3);
+});
+```
+
+**Pattern**: Component code should check
+`event.key === "Enter" || event.keyCode === 13 || event.code === "Enter"` for
+Carbon TextInput compatibility.
+
+**Rationale**: Carbon TextInput may pass Enter key in different formats
+depending on browser and event handling.
+
 #### Test Data Management
 
 **Mock Data Builders/Factories** (per Medium article - use generic cases):
@@ -1953,6 +2010,74 @@ cy.intercept("GET", "/rest/storage/rooms", { fixture: "rooms.json" }).as(
 cy.visit("/storage");
 cy.wait("@getRooms");
 ```
+
+**PDF/Blob Response Handling**:
+
+```javascript
+// Intercept POST endpoints that return PDFs
+cy.intercept("POST", "**/rest/storage/**/print-label").as("printLabel");
+
+// After action triggers request
+cy.wait("@printLabel").then((interception) => {
+  // Check content-type to distinguish PDF from JSON errors
+  const contentType = interception.response.headers["content-type"];
+  if (contentType && contentType.includes("application/pdf")) {
+    // PDF response - success
+    expect(interception.response.statusCode).to.equal(200);
+  } else {
+    // Error response - parse JSON
+    const errorData = interception.response.body;
+    console.log("Error:", errorData.error || errorData.message);
+  }
+});
+```
+
+#### Database Transaction Timing in E2E Tests
+
+**When cy.wait() is Acceptable**:
+
+```javascript
+// After database updates, wait for transaction to commit before subsequent operations
+cy.wait("@updateDevice");
+cy.wait(500); // Allow database transaction to commit
+
+// Then proceed with operation that depends on updated data
+cy.get('[data-testid="print-label-menu-item"]').click();
+```
+
+**Rationale**: Database transactions need time to commit before subsequent
+reads. This is acceptable when test updates data and immediately needs to use
+updated data (e.g., device update followed by label printing).
+
+**Example**: From `barcodeWorkflow.cy.js` - device update followed by label
+printing requires transaction commit delay.
+
+#### CSRF Token Handling
+
+**Pattern for Authenticated Requests**:
+
+```javascript
+// In component code (not test code)
+import config from "../../config.json";
+
+const endpoint = `${config.serverBaseUrl}/rest/storage/${type}/${id}/print-label`;
+
+const response = await fetch(endpoint, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-CSRF-Token": localStorage.getItem("CSRF"),
+  },
+  credentials: "include", // Required for cookie-based auth
+});
+```
+
+**When to Use**: POST/PUT/DELETE requests that modify data.
+
+**Why**: OpenELIS requires CSRF token for authenticated requests.
+
+**Example**: From `PrintLabelButton.jsx` - print label endpoint requires CSRF
+token and credentials.
 
 #### Test Simplification (Happy Path Focus)
 

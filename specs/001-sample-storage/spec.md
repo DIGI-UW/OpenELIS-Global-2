@@ -349,12 +349,26 @@ information displayed for context and sorting/grouping capabilities.
   identify issue.
 
 - Q: How should barcode printing/generation be addressed for new storage
-  locations? → A: [SUPERSEDED by Session 2025-11-15] When clicking the action button on devices, shelves, and racks, it should say "Print Label" (not "Label Management"). Short code is stored in location entities and edited via the Edit CRUD operation. Clicking "Print Label" shows a confirmation dialog: "Print label for [Location Name] ([Location Code])?" with Cancel and Print buttons. No modal required. Label type and size are inherited from system administration barcode configuration. See Session 2025-11-15 for simplification details.
+  locations? → A: [SUPERSEDED by Session 2025-11-15] When clicking the action
+  button on devices, shelves, and racks, it should say "Print Label" (not "Label
+  Management"). Short code is stored in location entities and edited via the
+  Edit CRUD operation. Clicking "Print Label" shows a confirmation dialog:
+  "Print label for [Location Name] ([Location Code])?" with Cancel and Print
+  buttons. No modal required. Label type and size are inherited from system
+  administration barcode configuration. See Session 2025-11-15 for
+  simplification details.
 
 ### Session 2025-11-06 (Barcode Implementation Details)
 
 - Q: When a user clicks "Label Management" on a device/shelf/rack, how should
-  the system handle the "Print Label" action? → A: [UPDATED by Session 2025-11-15] When a user clicks "Print Label" button (replaces "Label Management"), after confirmation dialog, send directly to the configured default barcode printer from system administration settings. If no default printer is configured, show printer selection dialog. Generate label using the barcode format and size specified in system admin settings. Show the preview of the PDF label in a new tab. See Session 2025-11-15 for simplification details.
+  the system handle the "Print Label" action? → A: [UPDATED by Session
+  2025-11-15] When a user clicks "Print Label" button (replaces "Label
+  Management"), after confirmation dialog, send directly to the configured
+  default barcode printer from system administration settings. If no default
+  printer is configured, show printer selection dialog. Generate label using the
+  barcode format and size specified in system admin settings. Show the preview
+  of the PDF label in a new tab. See Session 2025-11-15 for simplification
+  details.
 
 - Q: What should the short code format/validation be? → A: Maximum 10
   characters. Alphanumeric only (A-Z, 0-9, no special characters except hyphen
@@ -378,24 +392,52 @@ information displayed for context and sorting/grouping capabilities.
 
 ### Session 2025-11-15 (Barcode Scan Auto-Open Location Modal)
 
-- Q: What defines a "successful barcode scan" that triggers auto-open behavior? → A: Barcode scan is valid up to the point where it maps to valid locations in the system. The valid hierarchy portion should be pre-filled. If there's additional invalid information beyond the valid portion, show a warning. If the whole barcode is invalid, show an error message. New location information cannot be added just from a barcode scan - the scan validates up to existing locations only.
+- Q: What defines a "successful barcode scan" that triggers auto-open behavior?
+  → A: Barcode scan is valid up to the point where it maps to valid locations in
+  the system. The valid hierarchy portion should be pre-filled. If there's
+  additional invalid information beyond the valid portion, show a warning. If
+  the whole barcode is invalid, show an error message. New location information
+  cannot be added just from a barcode scan - the scan validates up to existing
+  locations only.
 
-- Q: Which modal should open when a barcode scan has valid locations but missing levels? → A: The barcode scan should always open the "+ Location" form in the select location modal (expanded Storage Location Selector modal), with any valid hierarchy pre-filled to the first missing level. This allows users to create missing location levels inline while preserving the scanned hierarchy context.
+- Q: Which modal should open when a barcode scan has valid locations but missing
+  levels? → A: The barcode scan should always open the "+ Location" form in the
+  select location modal (expanded Storage Location Selector modal), with any
+  valid hierarchy pre-filled to the first missing level. This allows users to
+  create missing location levels inline while preserving the scanned hierarchy
+  context.
 
-- Q: What should happen when the barcode scan is completely invalid (no valid hierarchy levels)? → A: Show error message, keep modal closed, allow manual open or rescan. This prevents opening a modal with no pre-filled data and provides clear feedback that the barcode format or location codes are invalid.
+- Q: What should happen when the barcode scan is completely invalid (no valid
+  hierarchy levels)? → A: Show error message, keep modal closed, allow manual
+  open or rescan. This prevents opening a modal with no pre-filled data and
+  provides clear feedback that the barcode format or location codes are invalid.
 
 ### Session 2025-11-15 (Label Management Simplification)
 
-- Q: Which location entities should have a `short_code` field stored in the database? → A: Device, Shelf, and Rack only (not Room or Position). This matches typical barcode labeling practices where labels are printed for physical storage equipment.
+- Q: Which location entities should have a `short_code` field stored in the
+  database? → A: Device, Shelf, and Rack only (not Room or Position). This
+  matches typical barcode labeling practices where labels are printed for
+  physical storage equipment.
 
-- Q: What should the confirmation dialog say when the user clicks "Print Label"? → A: "Print label for [Location Name] ([Location Code])?" with Cancel and Print buttons. This confirms the target location and uses standard confirmation dialog patterns.
+- Q: What should the confirmation dialog say when the user clicks "Print Label"?
+  → A: "Print label for [Location Name] ([Location Code])?" with Cancel and
+  Print buttons. This confirms the target location and uses standard
+  confirmation dialog patterns.
 
-- Q: What should happen if `short_code` is empty or missing when the user clicks "Print Label"? → A: Block printing with error: "Short code required. Please set short code in Edit form first." This ensures labels always have a short code for consistent barcode generation.
+- Q: What should happen if `short_code` is empty or missing when the user clicks
+  "Print Label"? → A: Block printing with error: "Short code required. Please
+  set short code in Edit form first." This ensures labels always have a short
+  code for consistent barcode generation.
 
-- Q: Should `short_code` be required or optional in the Edit form for Device, Shelf, and Rack? → A: Required field in Edit form (cannot save without short_code). This ensures all locations have short codes set before they can be used, preventing printing errors.
+- Q: Should `short_code` be required or optional in the Edit form for Device,
+  Shelf, and Rack? → A: Required field in Edit form (cannot save without
+  short_code). This ensures all locations have short codes set before they can
+  be used, preventing printing errors.
 
-- Q: Should print history tracking still be maintained (even though it won't be displayed in a modal)? → A: Yes, track print history in audit table (compliance), but don't display in UI. This preserves audit trails for compliance without adding UI complexity.
-  exists and is valid for that rack.
+- Q: Should print history tracking still be maintained (even though it won't be
+  displayed in a modal)? → A: Yes, track print history in audit table
+  (compliance), but don't display in UI. This preserves audit trails for
+  compliance without adding UI complexity. exists and is valid for that rack.
 
 - Q: What happens if a scanned barcode has ONLY 2 levels (e.g., "MAIN-FRZ01")
   instead of the expected 4? → A: Valid - accept 2-level barcodes since
@@ -459,23 +501,34 @@ information displayed for context and sorting/grouping capabilities.
   problematic component.
 
 - Q: Should "Label Management" be a separate menu item or integrated into the
-  existing "Edit" modal for devices/shelves/racks? → A: [SUPERSEDED by Session 2025-11-15] Label Management has been simplified to a "Print Label" button in the overflow menu. Short code is now stored in location entities and edited via the Edit CRUD operation. Menu items for devices/shelves/racks: Edit, Delete, Print Label. See Session 2025-11-15 for simplification details.
+  existing "Edit" modal for devices/shelves/racks? → A: [SUPERSEDED by Session
+  2025-11-15] Label Management has been simplified to a "Print Label" button in
+  the overflow menu. Short code is now stored in location entities and edited
+  via the Edit CRUD operation. Menu items for devices/shelves/racks: Edit,
+  Delete, Print Label. See Session 2025-11-15 for simplification details.
 
-- Q: After printing a label, should the system track print history? → A: [UPDATED by Session 2025-11-15] Yes - record basic print audit trail: who printed, when (timestamp), for which location entity. Store in audit/history table. Print history is tracked for compliance but NOT displayed in UI (see Session 2025-11-15 for simplification details). Useful for compliance and troubleshooting label issues.
+- Q: After printing a label, should the system track print history? → A:
+  [UPDATED by Session 2025-11-15] Yes - record basic print audit trail: who
+  printed, when (timestamp), for which location entity. Store in audit/history
+  table. Print history is tracked for compliance but NOT displayed in UI (see
+  Session 2025-11-15 for simplification details). Useful for compliance and
+  troubleshooting label issues.
 
 - Q: Can users print labels in bulk (e.g., select multiple racks and print all
   labels)? → A: Future enhancement - defer to post-POC. For POC, support
-  one-at-a-time printing only through "Print Label" button. Document
-  requirement for bulk printing in future phase: select multiple
-  devices/shelves/racks from dashboard table, right-click or bulk actions menu →
-  "Print Labels", generate PDF with all labels for batch printing (see Session 2025-11-15 for simplification details).
+  one-at-a-time printing only through "Print Label" button. Document requirement
+  for bulk printing in future phase: select multiple devices/shelves/racks from
+  dashboard table, right-click or bulk actions menu → "Print Labels", generate
+  PDF with all labels for batch printing (see Session 2025-11-15 for
+  simplification details).
 
 - Q: What specific settings are "inherited from the barcode setup in system
   administration"? → A: All of the above: (1) Label size/dimensions (e.g.,
   2"x1", 4"x2"), (2) Barcode format preference (Code 128, Code 39, QR Code -
   Code 128 default for locations), (3) Label template layout (barcode position,
   text size, margins). System admin defines these globally; Print Label
-  functionality inherits and applies them to generated labels (see Session 2025-11-15 for simplification details).
+  functionality inherits and applies them to generated labels (see Session
+  2025-11-15 for simplification details).
 
 - Q: Can users override inherited settings at print time, or are they fixed? →
   A: Fixed from system admin - no override at print time. This ensures
@@ -611,18 +664,18 @@ search/retrieval features exist.
    prevents assignment
 5. **Given** Maria scans a rack barcode "MAIN-FRZ01-SHA-RKR1" where all location
    levels exist in the system, **When** barcode scan completes, **Then** system
-   auto-populates Room="Main Laboratory", Device="Freezer Unit 1", Shelf="Shelf-A",
-   Rack="Rack R1" and focuses the Position field
+   auto-populates Room="Main Laboratory", Device="Freezer Unit 1",
+   Shelf="Shelf-A", Rack="Rack R1" and focuses the Position field
 6. **Given** Maria scans a barcode "MAIN-FRZ01-SHA-RKR1" where Room, Device, and
    Shelf exist but Rack "RKR1" does not exist, **When** barcode scan completes,
    **Then** system automatically opens the "+ Location" form in the select
    location modal with Room="Main Laboratory", Device="Freezer Unit 1",
-   Shelf="Shelf-A" pre-filled and focuses on the Rack field for creating the missing
-   rack level
-7. **Given** Maria scans a barcode "MAIN-FRZ01-SHA-RKR1" where no location levels
-   exist, **When** barcode scan completes, **Then** system displays error message
-   indicating no valid locations found, keeps modal closed, and allows manual open
-   or rescan
+   Shelf="Shelf-A" pre-filled and focuses on the Rack field for creating the
+   missing rack level
+7. **Given** Maria scans a barcode "MAIN-FRZ01-SHA-RKR1" where no location
+   levels exist, **When** barcode scan completes, **Then** system displays error
+   message indicating no valid locations found, keeps modal closed, and allows
+   manual open or rescan
 8. **Given** Maria has selected Room and Device (and optionally Shelf/Rack),
    **When** she leaves the Position field blank, **Then** system allows
    rack-level assignment (position optional for shelf/rack-level storage)
@@ -1255,9 +1308,34 @@ npm run cy:run
   accession number format (e.g., "S-2025-001"). System MUST parse barcode format
   and extract hierarchical components automatically (see FR-024a for validation
   process, Session 2025-11-06 for delimiter and level flexibility details).
-- **FR-024**: Scanning location barcode MUST validate barcode up to the point where it maps to valid locations in the system, then auto-open the "+ Location" form in the select location modal (expanded Storage Location Selector modal) with valid hierarchy pre-filled to the first missing level (see FR-024a for validation process, FR-024i for auto-open behavior, FR-024b for dual barcode support, FR-024c for debouncing, FR-024d for visual feedback)
-- **FR-024a**: System MUST implement progressive validation process when barcode is scanned (see Session 2025-11-06 and Session 2025-11-15 for validation details): (1) Parse barcode format and extract hierarchical components, (2) Validate barcode structure matches expected pattern (location or sample), (3) Lookup location/sample in database starting from Room level and progressing down hierarchy, (4) Identify the first level where location does not exist (if any), (5) Verify existing locations are active and accessible, (6) Check for conflicts (e.g., occupied position). System MUST validate barcode up to the point where it maps to valid locations - new location information cannot be added just from a barcode scan. Each step MUST provide specific error messages if validation fails.
-- **FR-024i**: System MUST automatically open the "+ Location" form in the select location modal when a barcode scan contains valid hierarchy levels (see Session 2025-11-15 for auto-open behavior): (1) If barcode has valid locations up to a certain level but missing levels exist, open "+ Location" form with valid hierarchy pre-filled and focus on first missing level field, (2) If barcode has additional invalid information beyond valid portion, show warning message indicating which levels are invalid while still opening modal with valid portion pre-filled, (3) If whole barcode is invalid (no valid hierarchy levels), show error message, keep modal closed, allow manual open or rescan. This enables users to create missing location levels inline while preserving scanned hierarchy context.
+- **FR-024**: Scanning location barcode MUST validate barcode up to the point
+  where it maps to valid locations in the system, then auto-open the "+
+  Location" form in the select location modal (expanded Storage Location
+  Selector modal) with valid hierarchy pre-filled to the first missing level
+  (see FR-024a for validation process, FR-024i for auto-open behavior, FR-024b
+  for dual barcode support, FR-024c for debouncing, FR-024d for visual feedback)
+- **FR-024a**: System MUST implement progressive validation process when barcode
+  is scanned (see Session 2025-11-06 and Session 2025-11-15 for validation
+  details): (1) Parse barcode format and extract hierarchical components, (2)
+  Validate barcode structure matches expected pattern (location or sample), (3)
+  Lookup location/sample in database starting from Room level and progressing
+  down hierarchy, (4) Identify the first level where location does not exist (if
+  any), (5) Verify existing locations are active and accessible, (6) Check for
+  conflicts (e.g., occupied position). System MUST validate barcode up to the
+  point where it maps to valid locations - new location information cannot be
+  added just from a barcode scan. Each step MUST provide specific error messages
+  if validation fails.
+- **FR-024i**: System MUST automatically open the "+ Location" form in the
+  select location modal when a barcode scan contains valid hierarchy levels (see
+  Session 2025-11-15 for auto-open behavior): (1) If barcode has valid locations
+  up to a certain level but missing levels exist, open "+ Location" form with
+  valid hierarchy pre-filled and focus on first missing level field, (2) If
+  barcode has additional invalid information beyond valid portion, show warning
+  message indicating which levels are invalid while still opening modal with
+  valid portion pre-filled, (3) If whole barcode is invalid (no valid hierarchy
+  levels), show error message, keep modal closed, allow manual open or rescan.
+  This enables users to create missing location levels inline while preserving
+  scanned hierarchy context.
 - **FR-024b**: System MUST support dual barcode types with auto-detection (see
   Session 2025-11-06 for auto-detection details): Sample barcodes (format:
   accession number like "S-2025-001") trigger sample lookup and load sample
@@ -1312,12 +1390,54 @@ npm run cy:run
 - **FR-026**: System MUST generate printable labels for Device, Shelf, Rack
   levels including human-readable text and barcode
 - **FR-027**: System MUST support printing individual or batch labels
-- **FR-027a**: System MUST provide "Print Label" button in overflow menu for Devices, Shelves, and Racks (see Session 2025-11-15 for simplification details). Button MUST replace the previous "Label Management" menu item. Clicking "Print Label" MUST display confirmation dialog: "Print label for [Location Name] ([Location Code])?" with Cancel and Print buttons. No modal required - simple confirmation dialog only.
-- **FR-027b**: Short Code field MUST be stored in location entity (Device, Shelf, Rack) as a database field and MUST be editable in the Edit CRUD operation (see Session 2025-11-15 for data model details). Short Code field is OPTIONAL: it is only required if the location's code/label exceeds 10 characters. If code/label ≤10 chars, the code/label itself is used for barcode labels (no separate short_code needed). If code/label > 10 chars, short_code MUST be set. Short Code MUST be unique within its context (e.g., one "shelf1" per device). System MUST validate uniqueness before allowing save. Short code format MUST be: maximum 10 characters, alphanumeric only (A-Z, 0-9, hyphen and underscore allowed), auto-uppercase all input for consistency, manual entry only (no auto-generate), must start with a letter or number (not hyphen/underscore). Short code is used in barcode generation and MUST follow same format constraints as location codes (see Session 2025-11-06 and Session 2025-11-15 for format details).
-- **FR-027c**: Print Label functionality MUST validate that a valid code exists for label printing before printing. The system uses the location's code/label if it is ≤10 characters, otherwise it uses the short_code. If code/label > 10 chars and short_code is empty or missing, block printing with error: "Code or short code is required for label printing. If code > 10 chars, short code must be set in Edit form." If a valid code exists (either code/label ≤10 chars OR short_code set), send directly to configured default barcode printer from system administration settings. If no default printer is configured, show printer selection dialog. Generate label using barcode format and size specified in system admin settings (inherited: label size/dimensions, barcode format preference with Code 128 default for locations, label template layout). Labels MUST include human-readable text and barcode encoding using the determined code (code/label if ≤10 chars, otherwise short_code). Show preview of PDF label in new tab. Settings are fixed from system admin - no override at print time (see Session 2025-11-06 and Session 2025-11-15 for inheritance and validation details).
-- **FR-027d**: [REMOVED - Short code changes now handled in Edit form, no separate confirmation dialog needed]
-- **FR-027e**: System MUST track print history: record basic print audit trail (who printed, when/timestamp, for which location entity) in audit/history table for compliance purposes. Print history is NOT displayed in UI (see Session 2025-11-15 for simplification details). Audit trail is maintained for compliance and troubleshooting but not exposed in user interface.
-- **FR-027f**: Bulk label printing MUST be deferred to post-POC. For POC, support one-at-a-time printing only through "Print Label" button. Future requirement: select multiple devices/shelves/racks from dashboard table, bulk actions menu → "Print Labels", generate PDF with all labels for batch printing (see Session 2025-11-06 for bulk printing details).
+- **FR-027a**: System MUST provide "Print Label" button in overflow menu for
+  Devices, Shelves, and Racks (see Session 2025-11-15 for simplification
+  details). Button MUST replace the previous "Label Management" menu item.
+  Clicking "Print Label" MUST display confirmation dialog: "Print label for
+  [Location Name] ([Location Code])?" with Cancel and Print buttons. No modal
+  required - simple confirmation dialog only.
+- **FR-027b**: Short Code field MUST be stored in location entity (Device,
+  Shelf, Rack) as a database field and MUST be editable in the Edit CRUD
+  operation (see Session 2025-11-15 for data model details). Short Code field is
+  OPTIONAL: it is only required if the location's code/label exceeds 10
+  characters. If code/label ≤10 chars, the code/label itself is used for barcode
+  labels (no separate short_code needed). If code/label > 10 chars, short_code
+  MUST be set. Short Code MUST be unique within its context (e.g., one "shelf1"
+  per device). System MUST validate uniqueness before allowing save. Short code
+  format MUST be: maximum 10 characters, alphanumeric only (A-Z, 0-9, hyphen and
+  underscore allowed), auto-uppercase all input for consistency, manual entry
+  only (no auto-generate), must start with a letter or number (not
+  hyphen/underscore). Short code is used in barcode generation and MUST follow
+  same format constraints as location codes (see Session 2025-11-06 and Session
+  2025-11-15 for format details).
+- **FR-027c**: Print Label functionality MUST validate that a valid code exists
+  for label printing before printing. The system uses the location's code/label
+  if it is ≤10 characters, otherwise it uses the short_code. If code/label > 10
+  chars and short_code is empty or missing, block printing with error: "Code or
+  short code is required for label printing. If code > 10 chars, short code must
+  be set in Edit form." If a valid code exists (either code/label ≤10 chars OR
+  short_code set), send directly to configured default barcode printer from
+  system administration settings. If no default printer is configured, show
+  printer selection dialog. Generate label using barcode format and size
+  specified in system admin settings (inherited: label size/dimensions, barcode
+  format preference with Code 128 default for locations, label template layout).
+  Labels MUST include human-readable text and barcode encoding using the
+  determined code (code/label if ≤10 chars, otherwise short_code). Show preview
+  of PDF label in new tab. Settings are fixed from system admin - no override at
+  print time (see Session 2025-11-06 and Session 2025-11-15 for inheritance and
+  validation details).
+- **FR-027d**: [REMOVED - Short code changes now handled in Edit form, no
+  separate confirmation dialog needed]
+- **FR-027e**: System MUST track print history: record basic print audit trail
+  (who printed, when/timestamp, for which location entity) in audit/history
+  table for compliance purposes. Print history is NOT displayed in UI (see
+  Session 2025-11-15 for simplification details). Audit trail is maintained for
+  compliance and troubleshooting but not exposed in user interface.
+- **FR-027f**: Bulk label printing MUST be deferred to post-POC. For POC,
+  support one-at-a-time printing only through "Print Label" button. Future
+  requirement: select multiple devices/shelves/racks from dashboard table, bulk
+  actions menu → "Print Labels", generate PDF with all labels for batch printing
+  (see Session 2025-11-06 for bulk printing details).
 
 #### Inline Location Creation (Widget-Based)
 

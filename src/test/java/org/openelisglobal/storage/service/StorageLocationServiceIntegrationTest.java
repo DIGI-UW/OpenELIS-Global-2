@@ -69,9 +69,12 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
             // IDs are stored as VARCHAR, so we compare as strings
             // Also clean up by short_code patterns used in tests (TEST- prefix)
             jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000 OR coordinate LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
         } catch (Exception e) {
             // Log but don't fail - cleanup is best effort
@@ -295,11 +298,12 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         }
     }
 
-    // ========== Service-Level Integration Tests for Short Code Functionality ==========
+    // ========== Service-Level Integration Tests for Short Code Functionality
+    // ==========
 
     /**
-     * Test creating a device with shortCode through service layer
-     * Expected: Device is persisted with shortCode, validation passes, auto-uppercase works
+     * Test creating a device with shortCode through service layer Expected: Device
+     * is persisted with shortCode, validation passes, auto-uppercase works
      */
     @Test
     public void testInsertDevice_WithShortCode_PersistsCorrectly() {
@@ -332,8 +336,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test creating a device without shortCode when code ≤10 chars - shortCode can be null
-     * Expected: Device is persisted with null shortCode (code will be used for labels)
+     * Test creating a device without shortCode when code ≤10 chars - shortCode can
+     * be null Expected: Device is persisted with null shortCode (code will be used
+     * for labels)
      */
     @Test
     public void testInsertDevice_WithoutShortCode_CodeLeq10Chars_ShortCodeCanBeNull() {
@@ -358,7 +363,8 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Device should be persisted with ID
         assertNotNull("Device ID should not be null", deviceId);
 
-        // Then: Retrieve device and verify shortCode is null (code will be used for labels)
+        // Then: Retrieve device and verify shortCode is null (code will be used for
+        // labels)
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
         assertNotNull("Retrieved device should not be null", retrieved);
         assertNull("Short code should be null when code ≤10 chars", retrieved.getShortCode());
@@ -366,8 +372,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test creating a device without shortCode when code > 10 chars - should throw exception
-     * Expected: Exception is thrown because shortCode is required when code > 10 chars
+     * Test creating a device without shortCode when code > 10 chars - should throw
+     * exception Expected: Exception is thrown because shortCode is required when
+     * code > 10 chars
      */
     @Test
     public void testInsertDevice_WithoutShortCode_CodeGt10Chars_ThrowsException() {
@@ -393,14 +400,16 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
             fail("Should have thrown exception when code > 10 chars and shortCode is missing");
         } catch (LIMSRuntimeException e) {
             // Expected: Service validation caught the missing shortCode
-            assertTrue("Exception message should mention short code", 
-                e.getMessage().contains("short") || e.getMessage().contains("code") || e.getMessage().contains("10"));
+            assertTrue("Exception message should mention short code", e.getMessage().contains("short")
+                    || e.getMessage().contains("code") || e.getMessage().contains("10"));
         }
     }
 
     /**
-     * Test creating a device with duplicate shortCode throws exception
-     * Expected: Exception is thrown when shortCode already exists (either LIMSRuntimeException from service validation or PersistenceException from database constraint)
+     * Test creating a device with duplicate shortCode throws exception Expected:
+     * Exception is thrown when shortCode already exists (either
+     * LIMSRuntimeException from service validation or PersistenceException from
+     * database constraint)
      */
     @Test
     public void testInsertDevice_WithDuplicateShortCode_ThrowsException() {
@@ -432,23 +441,25 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device2.setSysUserIdValue(1); // Required field
 
         // When: Insert second device with duplicate shortCode
-        // Then: Should throw exception (either LIMSRuntimeException from service validation or PersistenceException from database constraint)
+        // Then: Should throw exception (either LIMSRuntimeException from service
+        // validation or PersistenceException from database constraint)
         try {
             storageLocationService.insert(device2);
             fail("Should have thrown exception for duplicate shortCode");
         } catch (LIMSRuntimeException e) {
             // Expected: Service validation caught the duplicate
-            assertTrue("Exception message should mention short code", e.getMessage().contains("short") || e.getMessage().contains("code"));
+            assertTrue("Exception message should mention short code",
+                    e.getMessage().contains("short") || e.getMessage().contains("code"));
         } catch (jakarta.persistence.PersistenceException e) {
             // Also acceptable: Database constraint caught the duplicate
-            assertTrue("Exception should be related to constraint violation", 
-                e.getMessage().contains("duplicate") || e.getMessage().contains("unique") || e.getCause() != null);
+            assertTrue("Exception should be related to constraint violation",
+                    e.getMessage().contains("duplicate") || e.getMessage().contains("unique") || e.getCause() != null);
         }
     }
 
     /**
-     * Test updating device shortCode through service layer
-     * Expected: Device shortCode is updated, validation passes, auto-uppercase works
+     * Test updating device shortCode through service layer Expected: Device
+     * shortCode is updated, validation passes, auto-uppercase works
      */
     @Test
     public void testUpdateDevice_WithShortCode_UpdatesCorrectly() {
@@ -483,8 +494,8 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test creating a shelf with shortCode through service layer
-     * Expected: Shelf is persisted with shortCode, validation passes
+     * Test creating a shelf with shortCode through service layer Expected: Shelf is
+     * persisted with shortCode, validation passes
      */
     @Test
     public void testInsertShelf_WithShortCode_PersistsCorrectly() {
@@ -514,8 +525,8 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test creating a rack with shortCode through service layer
-     * Expected: Rack is persisted with shortCode, validation passes
+     * Test creating a rack with shortCode through service layer Expected: Rack is
+     * persisted with shortCode, validation passes
      */
     @Test
     public void testInsertRack_WithShortCode_PersistsCorrectly() {
@@ -547,8 +558,8 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test updating shelf shortCode through service layer
-     * Expected: Shelf shortCode is updated, validation passes
+     * Test updating shelf shortCode through service layer Expected: Shelf shortCode
+     * is updated, validation passes
      */
     @Test
     public void testUpdateShelf_WithShortCode_UpdatesCorrectly() {
@@ -581,8 +592,8 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test updating rack shortCode through service layer
-     * Expected: Rack shortCode is updated, validation passes
+     * Test updating rack shortCode through service layer Expected: Rack shortCode
+     * is updated, validation passes
      */
     @Test
     public void testUpdateRack_WithShortCode_UpdatesCorrectly() {

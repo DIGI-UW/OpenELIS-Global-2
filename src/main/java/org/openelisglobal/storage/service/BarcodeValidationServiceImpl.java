@@ -156,7 +156,8 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                     }
                 }
             } else {
-                // Room is missing, so device can't be validated - already tracked room as missing
+                // Room is missing, so device can't be validated - already tracked room as
+                // missing
             }
         }
 
@@ -206,7 +207,8 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                     }
                 }
             } else {
-                // Device is missing, so shelf can't be validated - already tracked device as missing
+                // Device is missing, so shelf can't be validated - already tracked device as
+                // missing
             }
         }
 
@@ -256,7 +258,8 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                     }
                 }
             } else {
-                // Shelf is missing, so rack can't be validated - already tracked shelf as missing
+                // Shelf is missing, so rack can't be validated - already tracked shelf as
+                // missing
             }
         }
 
@@ -298,7 +301,8 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                     // from its parent hierarchy
                 }
             } else {
-                // Rack is missing, so position can't be validated - already tracked rack as missing
+                // Rack is missing, so position can't be validated - already tracked rack as
+                // missing
             }
         }
 
@@ -317,7 +321,8 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
             response.setErrorMessage(formatErrorMessage(barcode, parsed, firstErrorMessage));
         }
 
-        // Set first missing level (only if we have valid components - indicates partial valid hierarchy)
+        // Set first missing level (only if we have valid components - indicates partial
+        // valid hierarchy)
         if (hasValidComponents && !isValid) {
             response.setFirstMissingLevel(firstMissingLevel);
             // Check if there are additional invalid levels beyond the first missing level
@@ -325,9 +330,11 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
             boolean hasAdditionalInvalid = false;
             if (firstMissingLevel != null) {
                 // Check if barcode has levels beyond the first missing one
-                if ("device".equals(firstMissingLevel) && (parsed.getShelfCode() != null || parsed.getRackCode() != null || parsed.getPositionCode() != null)) {
+                if ("device".equals(firstMissingLevel) && (parsed.getShelfCode() != null || parsed.getRackCode() != null
+                        || parsed.getPositionCode() != null)) {
                     hasAdditionalInvalid = true;
-                } else if ("shelf".equals(firstMissingLevel) && (parsed.getRackCode() != null || parsed.getPositionCode() != null)) {
+                } else if ("shelf".equals(firstMissingLevel)
+                        && (parsed.getRackCode() != null || parsed.getPositionCode() != null)) {
                     hasAdditionalInvalid = true;
                 } else if ("rack".equals(firstMissingLevel) && parsed.getPositionCode() != null) {
                     hasAdditionalInvalid = true;

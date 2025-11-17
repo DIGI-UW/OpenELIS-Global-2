@@ -34,11 +34,11 @@
             -- Update existing NULL values to unique temporary values based on ID
             -- This ensures no duplicates when we add the unique constraint
             -- Users must update these via Edit form to set proper short codes
-            UPDATE clinlims.storage_device 
+            UPDATE clinlims.storage_device
             SET short_code = 'TMP' || LPAD(id::text, 7, '0')
             WHERE short_code IS NULL;
         </sql>
-        <addUniqueConstraint tableName="storage_device" 
+        <addUniqueConstraint tableName="storage_device"
                               constraintName="uk_device_parent_short_code"
                               columnNames="parent_room_id, short_code"/>
         <addNotNullConstraint tableName="storage_device" columnName="short_code" columnDataType="VARCHAR(10)"/>
@@ -76,11 +76,11 @@
         <sql>
             -- Update existing NULL values to unique temporary values based on ID
             -- Users must update these via Edit form to set proper short codes
-            UPDATE clinlims.storage_shelf 
+            UPDATE clinlims.storage_shelf
             SET short_code = 'TMP' || LPAD(id::text, 7, '0')
             WHERE short_code IS NULL;
         </sql>
-        <addUniqueConstraint tableName="storage_shelf" 
+        <addUniqueConstraint tableName="storage_shelf"
                               constraintName="uk_shelf_parent_short_code"
                               columnNames="parent_device_id, short_code"/>
         <addNotNullConstraint tableName="storage_shelf" columnName="short_code" columnDataType="VARCHAR(10)"/>
@@ -118,11 +118,11 @@
         <sql>
             -- Update existing NULL values to unique temporary values based on ID
             -- Users must update these via Edit form to set proper short codes
-            UPDATE clinlims.storage_rack 
+            UPDATE clinlims.storage_rack
             SET short_code = 'TMP' || LPAD(id::text, 7, '0')
             WHERE short_code IS NULL;
         </sql>
-        <addUniqueConstraint tableName="storage_rack" 
+        <addUniqueConstraint tableName="storage_rack"
                               constraintName="uk_rack_parent_short_code"
                               columnNames="parent_shelf_id, short_code"/>
         <addNotNullConstraint tableName="storage_rack" columnName="short_code" columnDataType="VARCHAR(10)"/>
