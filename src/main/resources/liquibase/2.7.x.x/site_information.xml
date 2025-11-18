@@ -42,4 +42,116 @@
             <column name="description_key" value="Set new critical result message" />
         </insert>
     </changeSet>
+
+        <changeSet id="anonymous-location-reporting-config" author="derrick">
+
+            <!-- Ensure domain exists -->
+            <preConditions onFail="MARK_RAN">
+                <not>
+                    <sqlCheck expectedResult="1">
+                        SELECT COUNT(*) FROM clinlims.site_information_domain
+                        WHERE name = 'AnonymousLocationReporting'
+                    </sqlCheck>
+                </not>
+            </preConditions>
+
+            <insert schemaName="clinlims" tableName="site_information_domain">
+                <column name="id" valueSequenceNext="site_information_domain_seq"/>
+                <column name="name" value="AnonymousLocationReporting"/>
+                <column name="description" value="Configuration for anonymous location reporting"/>
+            </insert>
+
+            <!-- Anonymous location reporting opt-in flag -->
+            <insert schemaName="clinlims" tableName="site_information">
+                <column name="id" valueSequenceNext="site_information_seq"/>
+                <column name="name" value="locationReportingOptIn"/>
+                <column name="description" value="Enable Anonymous Location Reporting"/>
+                <column name="value" value="false"/>
+                <column name="value_type" value="boolean"/>
+                <column name="encrypted" value="false"/>
+                <column name="group" value="0"/>
+                <column name="lastupdated" valueComputed="${now}"/>
+                <column name="domain_id"
+                        valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'AnonymousLocationReporting')"/>
+            </insert>
+
+            <!-- Facility address information needed for FHIR Location resource -->
+            <insert schemaName="clinlims" tableName="site_information">
+                <column name="id" valueSequenceNext="site_information_seq"/>
+                <column name="name" value="facilityCity"/>
+                <column name="description" value="Facility City"/>
+                <column name="value" value=""/>
+                <column name="value_type" value="text"/>
+                <column name="encrypted" value="false"/>
+                <column name="group" value="0"/>
+                <column name="lastupdated" valueComputed="${now}"/>
+                <column name="domain_id"
+                        valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'AnonymousLocationReporting')"/>
+            </insert>
+
+            <insert schemaName="clinlims" tableName="site_information">
+                <column name="id" valueSequenceNext="site_information_seq"/>
+                <column name="name" value="facilityDistrict"/>
+                <column name="description" value="Facility District"/>
+                <column name="value" value=""/>
+                <column name="value_type" value="text"/>
+                <column name="encrypted" value="false"/>
+                <column name="group" value="0"/>
+                <column name="lastupdated" valueComputed="${now}"/>
+                <column name="domain_id"
+                        valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'AnonymousLocationReporting')"/>
+            </insert>
+
+            <insert schemaName="clinlims" tableName="site_information">
+                <column name="id" valueSequenceNext="site_information_seq"/>
+                <column name="name" value="facilityCountry"/>
+                <column name="description" value="Facility Country"/>
+                <column name="value" value=""/>
+                <column name="value_type" value="text"/>
+                <column name="encrypted" value="false"/>
+                <column name="group" value="0"/>
+                <column name="lastupdated" valueComputed="${now}"/>
+                <column name="domain_id"
+                        valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'AnonymousLocationReporting')"/>
+            </insert>
+
+            <insert schemaName="clinlims" tableName="site_information">
+                <column name="id" valueSequenceNext="site_information_seq"/>
+                <column name="name" value="facilityPhone"/>
+                <column name="description" value="Facility Phone Number"/>
+                <column name="value" value=""/>
+                <column name="value_type" value="text"/>
+                <column name="encrypted" value="false"/>
+                <column name="group" value="0"/>
+                <column name="lastupdated" valueComputed="${now}"/>
+                <column name="domain_id"
+                        valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'AnonymousLocationReporting')"/>
+            </insert>
+
+            <insert schemaName="clinlims" tableName="site_information">
+                <column name="id" valueSequenceNext="site_information_seq"/>
+                <column name="name" value="siteNumber"/>
+                <column name="description" value="Unique Site Number"/>
+                <column name="value" value=""/>
+                <column name="value_type" value="text"/>
+                <column name="encrypted" value="false"/>
+                <column name="group" value="0"/>
+                <column name="lastupdated" valueComputed="${now}"/>
+                <column name="domain_id"
+                        valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'AnonymousLocationReporting')"/>
+            </insert>
+
+            <insert schemaName="clinlims" tableName="site_information">
+                <column name="id" valueSequenceNext="site_information_seq"/>
+                <column name="name" value="SiteName"/>
+                <column name="description" value="Site Name"/>
+                <column name="value" value=""/>
+                <column name="value_type" value="text"/>
+                <column name="encrypted" value="false"/>
+                <column name="group" value="0"/>
+                <column name="lastupdated" valueComputed="${now}"/>
+                <column name="domain_id"
+                        valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'AnonymousLocationReporting')"/>
+            </insert>
+        </changeSet>
 </databaseChangeLog>

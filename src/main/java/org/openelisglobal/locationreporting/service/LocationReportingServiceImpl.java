@@ -87,6 +87,12 @@ public class LocationReportingServiceImpl implements LocationReportingService {
     }
 
     @Override
+    public boolean isOptInConfigured() {
+        SiteInformation optInInfo = siteInformationService.getSiteInformationByName(OPT_IN_SITE_INFO_NAME);
+        return optInInfo != null && !GenericValidator.isBlankOrNull(optInInfo.getValue());
+    }
+
+    @Override
     public void setOptIn(boolean optIn) {
         SiteInformation optInInfo = siteInformationService.getSiteInformationByName(OPT_IN_SITE_INFO_NAME);
         boolean isNew = (optInInfo == null);

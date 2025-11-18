@@ -6,6 +6,12 @@ public interface LocationReportingService {
 
     boolean isOptedIn();
 
+    /**
+     * Returns true if the opt-in setting has been explicitly persisted in site
+     * information.
+     */
+    boolean isOptInConfigured();
+
     void setOptIn(boolean optIn);
 
     void sendInitialLocationReport();

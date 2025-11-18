@@ -20,6 +20,7 @@ public class LocationReportingController {
     public LocationReportingForm getSettings() {
         LocationReportingForm form = new LocationReportingForm();
         form.setOptIn(locationReportingService.isOptedIn());
+        form.setConfigured(locationReportingService.isOptInConfigured());
         return form;
     }
 
