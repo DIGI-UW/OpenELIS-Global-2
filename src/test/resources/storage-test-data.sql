@@ -96,36 +96,36 @@ INSERT INTO storage_device (id, fhir_uuid, name, code, type, temperature_setting
 (12, gen_random_uuid(), 'Secondary Lab Cabinet Unit 1', 'SEC-CAB01', 'cabinet', NULL, NULL, true, 2, 1, CURRENT_TIMESTAMP),
 (14, gen_random_uuid(), 'Secondary Lab Freezer Unit 1', 'SEC-FRZ01', 'freezer', -20.0, 200, true, 2, 1, CURRENT_TIMESTAMP),
 -- Inactive Room device
-(13, gen_random_uuid(), 'Inactive Freezer', 'INACTIVE-FRZ', 'freezer', NULL, NULL, false, 3, 1, CURRENT_TIMESTAMP);
+(13, gen_random_uuid(), 'Inactive Freezer', 'INACT-FRZ', 'freezer', NULL, NULL, false, 3, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Shelves
 -- Each device has uniquely named shelves
-INSERT INTO storage_shelf (id, fhir_uuid, label, capacity_limit, active, parent_device_id, sys_user_id, last_updated) VALUES
+INSERT INTO storage_shelf (id, fhir_uuid, label, code, capacity_limit, active, parent_device_id, sys_user_id, last_updated) VALUES
 -- Main Lab Freezer Unit 1 shelves
-(20, gen_random_uuid(), 'Main Freezer Shelf-A', 50, true, 10, 1, CURRENT_TIMESTAMP),
-(21, gen_random_uuid(), 'Main Freezer Shelf-B', 50, true, 10, 1, CURRENT_TIMESTAMP),
+(20, gen_random_uuid(), 'Main Freezer Shelf-A', 'MFRZ-SH-A', 50, true, 10, 1, CURRENT_TIMESTAMP),
+(21, gen_random_uuid(), 'Main Freezer Shelf-B', 'MFRZ-SH-B', 50, true, 10, 1, CURRENT_TIMESTAMP),
 -- Main Lab Refrigerator Unit 1 shelves
-(22, gen_random_uuid(), 'Main Refrigerator Shelf-1', 30, true, 11, 1, CURRENT_TIMESTAMP),
-(24, gen_random_uuid(), 'Main Refrigerator Shelf-2', 30, true, 11, 1, CURRENT_TIMESTAMP),
+(22, gen_random_uuid(), 'Main Refrigerator Shelf-1', 'MREF-SH1', 30, true, 11, 1, CURRENT_TIMESTAMP),
+(24, gen_random_uuid(), 'Main Refrigerator Shelf-2', 'MREF-SH2', 30, true, 11, 1, CURRENT_TIMESTAMP),
 -- Secondary Lab Cabinet Unit 1 shelves
-(23, gen_random_uuid(), 'Secondary Cabinet Shelf-1', 40, true, 12, 1, CURRENT_TIMESTAMP),
+(23, gen_random_uuid(), 'Secondary Cabinet Shelf-1', 'SCAB-SH1', 40, true, 12, 1, CURRENT_TIMESTAMP),
 -- Secondary Lab Freezer Unit 1 shelves
-(25, gen_random_uuid(), 'Secondary Freezer Shelf-A', 25, true, 14, 1, CURRENT_TIMESTAMP);
+(25, gen_random_uuid(), 'Secondary Freezer Shelf-A', 'SFRZ-SH-A', 25, true, 14, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Racks
 -- Each shelf has uniquely named racks
-INSERT INTO storage_rack (id, fhir_uuid, label, rows, columns, position_schema_hint, active, parent_shelf_id, sys_user_id, last_updated) VALUES
+INSERT INTO storage_rack (id, fhir_uuid, label, code, rows, columns, position_schema_hint, active, parent_shelf_id, sys_user_id, last_updated) VALUES
 -- Main Freezer Shelf-A racks
-(30, gen_random_uuid(), 'Main Freezer Shelf-A Rack 1', 8, 12, 'A1', true, 20, 1, CURRENT_TIMESTAMP),
-(31, gen_random_uuid(), 'Main Freezer Shelf-A Rack 2', 10, 10, '1-1', true, 20, 1, CURRENT_TIMESTAMP),
+(30, gen_random_uuid(), 'Main Freezer Shelf-A Rack 1', 'MFRZ-RK1', 8, 12, 'A1', true, 20, 1, CURRENT_TIMESTAMP),
+(31, gen_random_uuid(), 'Main Freezer Shelf-A Rack 2', 'MFRZ-RK2', 10, 10, '1-1', true, 20, 1, CURRENT_TIMESTAMP),
 -- Main Freezer Shelf-B racks
-(32, gen_random_uuid(), 'Main Freezer Shelf-B Rack 1', 0, 0, NULL, true, 21, 1, CURRENT_TIMESTAMP),
+(32, gen_random_uuid(), 'Main Freezer Shelf-B Rack 1', 'MFRZ-RK3', 0, 0, NULL, true, 21, 1, CURRENT_TIMESTAMP),
 -- Main Refrigerator Shelf-1 racks
-(33, gen_random_uuid(), 'Main Refrigerator Shelf-1 Rack 1', 8, 12, NULL, true, 22, 1, CURRENT_TIMESTAMP),
+(33, gen_random_uuid(), 'Main Refrigerator Shelf-1 Rack 1', 'MREF-RK1', 8, 12, NULL, true, 22, 1, CURRENT_TIMESTAMP),
 -- Secondary Cabinet Shelf-1 racks
-(34, gen_random_uuid(), 'Secondary Cabinet Shelf-1 Rack 1', 8, 12, 'A1', true, 23, 1, CURRENT_TIMESTAMP),
+(34, gen_random_uuid(), 'Secondary Cabinet Shelf-1 Rack 1', 'SCAB-RK1', 8, 12, 'A1', true, 23, 1, CURRENT_TIMESTAMP),
 -- Secondary Freezer Shelf-A racks
-(35, gen_random_uuid(), 'Secondary Freezer Shelf-A Rack 1', 6, 8, 'A1', true, 25, 1, CURRENT_TIMESTAMP);
+(35, gen_random_uuid(), 'Secondary Freezer Shelf-A Rack 1', 'SFRZ-RK1', 6, 8, 'A1', true, 25, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Positions
 -- Each rack has unique positions
