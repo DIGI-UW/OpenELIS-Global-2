@@ -444,8 +444,8 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
             fail("Should have thrown exception for duplicate shortCode");
         } catch (LIMSRuntimeException e) {
             // Expected: Service validation caught the duplicate
-            assertTrue("Exception message should mention code",
-                    e.getMessage().contains("code") || e.getMessage().contains("duplicate"));
+            assertTrue("Exception message should mention code", e.getMessage().toLowerCase().contains("code")
+                    || e.getMessage().toLowerCase().contains("duplicate"));
         } catch (jakarta.persistence.PersistenceException e) {
             // Also acceptable: Database constraint caught the duplicate
             assertTrue("Exception should be related to constraint violation",

@@ -1396,8 +1396,11 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         String deviceId1 = createDeviceAndGetId("Device 1", "TEST-DUP-DEV-1", "freezer", roomId);
         String deviceId2 = createDeviceAndGetId("Device 2", "TEST-DUP-DEV-2", "freezer", roomId);
 
-        // Use test-specific code that will be cleaned up (unique for this test)
-        String testCode = "TEST-DUP01";
+        // Use test-specific code that will be cleaned up (unique for this test, max 10
+        // chars)
+        // Use timestamp to ensure uniqueness across test runs
+        long timestamp = System.currentTimeMillis() % 100;
+        String testCode = "DUP" + String.format("%02d", timestamp);
 
         // Given: Set code on first device
         StorageDeviceForm updateForm1 = new StorageDeviceForm();
