@@ -64,7 +64,7 @@ export default function GenericSampleOrder() {
 
     // Load available notebooks
     getFromOpenElisServer("/rest/notebook/list", (res) => {
-      setNotebooks(res || []);
+      setNotebooks(Array.isArray(res) ? res : []);
     });
 
     // Generate LabNo
