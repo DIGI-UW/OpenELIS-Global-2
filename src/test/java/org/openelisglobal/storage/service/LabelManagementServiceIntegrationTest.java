@@ -71,11 +71,10 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
                     "DELETE FROM storage_location_print_history WHERE location_id::integer >= 1000 OR location_id LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000 OR coordinate LIKE 'TEST-%'");
             jdbcTemplate.execute(
-                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
             jdbcTemplate.execute(
-                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
-            jdbcTemplate.execute(
-                    "DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
+            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
         } catch (Exception e) {
             // Log but don't fail - cleanup is best effort
@@ -90,13 +89,12 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         // Given: Get a room from fixtures to use as parent
         StorageRoom parentRoom = storageLocationService.getRooms().get(0);
 
-        // Given: Create device with shortCode (using test-specific prefix)
+        // Given: Create device with code (using test-specific prefix, ≤10 chars)
         StorageDevice device = new StorageDevice();
-        device.setCode("TEST-DEV-LBL01");
+        device.setCode("TEST-FRZ01"); // 9 chars
         device.setName("Test Device Label 01");
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
-        device.setCode("TEST-FRZ01");
         device.setActive(true);
         device.setSysUserIdValue(1); // Required field
 
@@ -109,24 +107,22 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Helper: Create a test device with code > 10 chars but without shortCode Note:
-     * Since shortCode is now optional (only required if code > 10 chars), we create
-     * a device with a long code (> 10 chars) and no shortCode to test the
-     * validation
+     * Helper: Create a test device without code (empty/null) to test validation
+     * Note: Since codes are now always required and ≤10 chars, we test with
+     * empty/null code
      */
     private StorageDevice createTestDeviceWithoutShortCode() {
         // Given: Get a room from fixtures to use as parent
         StorageRoom parentRoom = storageLocationService.getRooms().get(0);
 
-        // Given: Create device with code > 10 chars but no shortCode
+        // Given: Create device with empty code (to test validation)
         StorageDevice device = new StorageDevice();
-        device.setCode("TEST-DEVICE-LONG"); // > 10 chars
-        device.setName("Test Device Long Code");
+        device.setCode(""); // Empty code - should fail validation
+        device.setName("Test Device No Code");
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
         device.setSysUserIdValue(1); // Required field
-        // shortCode is null - this should fail validation since code > 10 chars
 
         // Note: We can't actually persist this, so we'll test the validation in the
         // generateLabel test
@@ -178,8 +174,9 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
 
         // Given: Retrieve device
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
-        assertNull("Device should not have shortCode", retrieved.getCode());
-        assertEquals("Device code should be ≤10 chars", "TEST-DEV01", retrieved.getCode());
+        assertNotNull("Device should have code", retrieved.getCode());
+        assertTrue("Device code should be ≤10 chars", retrieved.getCode().length() <= 10);
+        assertEquals("Device code should match", "TEST-DEV01", retrieved.getCode());
 
         // When: Generate label through service layer (should use code since ≤10 chars)
         ByteArrayOutputStream pdf = labelManagementService.generateLabel(retrieved);
@@ -190,20 +187,20 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test generating label for device with code > 10 chars and no shortCode throws
-     * exception Expected: IllegalArgumentException is thrown when code > 10 chars
-     * and shortCode is missing
+     * Test generating label for device with missing/empty code throws exception
+     * Expected: IllegalArgumentException is thrown when code is missing or empty
+     * Note: Since codes are now always ≤10 chars and required, we test with empty
+     * code
      */
     @Test(expected = IllegalArgumentException.class)
     public void testGenerateLabel_DeviceWithCodeGt10Chars_NoShortCode_ThrowsException() {
-        // Given: Device with code > 10 chars but no shortCode
+        // Given: Device with empty code (codes are now always required and ≤10 chars)
         StorageDevice device = createTestDeviceWithoutShortCode();
-        assertNull("Device should not have shortCode", device.getCode());
-        assertTrue("Device code should be > 10 chars", device.getCode().length() > 10);
+        // Verify device has empty code
+        assertTrue("Device should have empty code", device.getCode() != null && device.getCode().trim().isEmpty());
 
         // When: Generate label through service layer
-        // Then: Should throw IllegalArgumentException (code > 10 chars requires
-        // shortCode)
+        // Then: Should throw IllegalArgumentException (code is required)
         labelManagementService.generateLabel(device);
     }
 
@@ -276,8 +273,8 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test validateShortCodeExists returns true when shortCode exists Expected:
-     * Returns true for device with shortCode
+     * Test validateCodeExists returns true when shortCode exists Expected: Returns
+     * true for device with shortCode
      */
     @Test
     public void testValidateShortCodeExists_DeviceWithShortCode_ReturnsTrue() {
@@ -286,14 +283,14 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         String deviceId = String.valueOf(device.getId());
 
         // When: Validate shortCode exists
-        boolean exists = labelManagementService.validateShortCodeExists(deviceId, "device");
+        boolean exists = labelManagementService.validateCodeExists(deviceId, "device");
 
         // Then: Should return true
         assertTrue("Short code should exist", exists);
     }
 
     /**
-     * Test validateShortCodeExists returns true when code ≤10 chars (even without
+     * Test validateCodeExists returns true when code ≤10 chars (even without
      * shortCode) Expected: Returns true for device with code ≤10 chars (code can be
      * used for labels)
      */
@@ -317,17 +314,17 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         assertNotNull("Device should be created", deviceId);
 
         // When: Validate shortCode exists (should return true since code ≤10 chars)
-        boolean exists = labelManagementService.validateShortCodeExists(String.valueOf(deviceId), "device");
+        boolean exists = labelManagementService.validateCodeExists(String.valueOf(deviceId), "device");
 
         // Then: Should return true (code ≤10 chars can be used for labels)
         assertTrue("Should return true when code ≤10 chars (even without shortCode)", exists);
     }
 
     /**
-     * Test validateShortCodeExists returns false when device doesn't exist
-     * Expected: Returns false for non-existent device ID Note: Since database
-     * requires NOT NULL shortCode and service auto-generates it, we can't test a
-     * device without shortCode. Instead, we test with a non-existent device ID.
+     * Test validateCodeExists returns false when device doesn't exist Expected:
+     * Returns false for non-existent device ID Note: Since database requires NOT
+     * NULL shortCode and service auto-generates it, we can't test a device without
+     * shortCode. Instead, we test with a non-existent device ID.
      */
     @Test
     public void testValidateShortCodeExists_DeviceDoesNotExist_ReturnsFalse() {
@@ -335,7 +332,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         String nonExistentDeviceId = "999999";
 
         // When: Validate shortCode exists
-        boolean exists = labelManagementService.validateShortCodeExists(nonExistentDeviceId, "device");
+        boolean exists = labelManagementService.validateCodeExists(nonExistentDeviceId, "device");
 
         // Then: Should return false
         assertFalse("Short code should not exist for non-existent device", exists);
@@ -364,10 +361,10 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         assertTrue("Print history should be recorded", count > 0);
 
         // Verify the record details
-        String recordedShortCode = jdbcTemplate.queryForObject(
-                "SELECT short_code FROM storage_location_print_history WHERE location_id::integer = ? AND location_type = 'device' ORDER BY printed_date DESC LIMIT 1",
+        String recordedCode = jdbcTemplate.queryForObject(
+                "SELECT location_code FROM storage_location_print_history WHERE location_id::integer = ? AND location_type = 'device' ORDER BY printed_date DESC LIMIT 1",
                 String.class, Integer.parseInt(deviceId));
-        assertEquals("Short code should match", shortCode, recordedShortCode);
+        assertEquals("Code should match", shortCode, recordedCode);
     }
 
     /**

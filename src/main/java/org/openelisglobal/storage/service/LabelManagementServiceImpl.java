@@ -138,19 +138,9 @@ public class LabelManagementServiceImpl implements LabelManagementService {
         return generatePDF(label);
     }
 
-    /**
-     * Note: This method is deprecated - code field is now always ≤10 chars. Kept
-     * for backward compatibility but no longer used.
-     */
-    @Deprecated
-    private String getBarcodeCode(String primaryCode, String shortCode) {
-        // Code field is now always ≤10 chars, so just use primaryCode
-        return primaryCode;
-    }
-
     @Override
     @Transactional(readOnly = true)
-    public boolean validateShortCodeExists(String locationId, String locationType) {
+    public boolean validateCodeExists(String locationId, String locationType) {
         if (locationId == null || locationType == null) {
             return false;
         }
@@ -185,8 +175,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
                 return false;
             }
         } catch (Exception e) {
-            LogEvent.logError("LabelManagementServiceImpl", "validateShortCodeExists",
-                    "Error validating short_code: " + e.getMessage());
+            LogEvent.logError("LabelManagementServiceImpl", "validateCodeExists",
+                    "Error validating code: " + e.getMessage());
             return false;
         }
     }
@@ -229,12 +219,12 @@ public class LabelManagementServiceImpl implements LabelManagementService {
 
     @Override
     @Transactional
-    public void trackPrintHistory(String locationId, String locationType, String shortCode, String userId) {
+    public void trackPrintHistory(String locationId, String locationType, String code, String userId) {
         // Insert print history record into database
         getJdbcTemplate().update(
-                "INSERT INTO storage_location_print_history (id, location_type, location_id, short_code, printed_by, printed_date, print_count) "
+                "INSERT INTO storage_location_print_history (id, location_type, location_id, location_code, printed_by, printed_date, print_count) "
                         + "VALUES (gen_random_uuid(), ?, ?, ?, ?, CURRENT_TIMESTAMP, 1) "
                         + "ON CONFLICT (id) DO UPDATE SET print_count = storage_location_print_history.print_count + 1",
-                locationType, locationId, shortCode, userId);
+                locationType, locationId, code, userId);
     }
 }

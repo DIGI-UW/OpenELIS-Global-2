@@ -159,11 +159,16 @@ public int calculateCapacity(String deviceId) {
 ## Backend Testing
 
 **Reference**:
-[Spring Framework Official Documentation](https://docs.spring.io/spring-boot/reference/testing/spring-applications.html)
+[Spring Framework Official Documentation](https://docs.spring.io/spring-framework/reference/testing/index.html)
 for official patterns.
 
+**IMPORTANT**: This project uses **Spring Framework 6.2.2 (Traditional Spring
+MVC)**, NOT Spring Boot. Therefore, Spring Boot test annotations (`@WebMvcTest`,
+`@DataJpaTest`, `@SpringBootTest`) are **NOT available**. All tests extend
+`BaseWebContextSensitiveTest`.
+
 This section provides comprehensive technical guidance for implementing backend
-Java/Spring Boot tests. For quick reference, see
+Java/Spring Framework tests. For quick reference, see
 [Backend Testing Best Practices Guide](.specify/guides/backend-testing-best-practices.md).
 
 ### TDD Workflow Integration
@@ -225,63 +230,80 @@ workflow for complex logic.
 
 ### Test Slicing Strategy Decision Tree
 
-**CRITICAL**: Use focused test slices instead of full `@SpringBootTest` when
-possible. This improves test execution speed and focuses tests on specific
-layers.
+**CRITICAL**: This project uses **Spring Framework 6.2.2 (Traditional Spring
+MVC)**, NOT Spring Boot. All tests extend `BaseWebContextSensitiveTest` (full
+Spring context). Focus tests on specific layers through test organization and
+mocking strategies.
 
 **Decision Tree**:
 
-1. **Testing REST controller HTTP layer only?** → Use `@WebMvcTest` ✅
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, Spring Boot test annotations (`@WebMvcTest`,
+`@DataJpaTest`, `@SpringBootTest`) are **NOT available**. All tests extend
+`BaseWebContextSensitiveTest`.
 
-   - Fast execution (no full application context)
-   - Mock services with `@MockBean`
+1. **Testing REST controller HTTP layer only?** → Use
+   `BaseWebContextSensitiveTest` ✅
+
+   - Extends `BaseWebContextSensitiveTest` (provides MockMvc)
+   - Mock services with `@MockBean` or `@Mock` + `@InjectMocks`
    - Focus on request/response mapping, status codes, JSON serialization
 
-2. **Testing DAO/repository persistence layer only?** → Use `@DataJpaTest` ✅
+2. **Testing DAO/repository persistence layer only?** → Use
+   `BaseWebContextSensitiveTest` ✅
 
-   - Fast execution (no full application context)
-   - Use `TestEntityManager` for test data
+   - Extends `BaseWebContextSensitiveTest` (provides full Spring context)
+   - Use `JdbcTemplate` or DAO methods directly for test data
    - Focus on HQL queries, CRUD operations, relationships
+   - Manual cleanup in `@After` methods
 
 3. **Testing complete workflow with full application context?** → Use
-   `@SpringBootTest` ✅
+   `BaseWebContextSensitiveTest` ✅
 
-   - Full Spring context loaded
-   - Use `@Transactional` for automatic rollback
+   - Full Spring context loaded (via `BaseWebContextSensitiveTest`)
+   - Use `@Transactional` for automatic rollback (if supported)
    - Focus on end-to-end service workflows
 
-4. **Legacy integration tests with Testcontainers/DBUnit?** → Use
-   `BaseWebContextSensitiveTest` ⚠️
-   - Existing pattern in codebase
+4. **All integration tests** → Use `BaseWebContextSensitiveTest` ✅
+   - Standard pattern for this codebase
    - Uses Testcontainers with PostgreSQL
-   - Uses DBUnit for complex test data
+   - Uses DBUnit for complex test data (optional)
    - Manual cleanup in `@After` methods
 
 **When to Use Each**:
 
-| Test Type          | Annotation                    | Use Case               | Speed  | Context        |
-| ------------------ | ----------------------------- | ---------------------- | ------ | -------------- |
-| Controller         | `@WebMvcTest`                 | HTTP layer only        | Fast   | Web layer only |
-| DAO                | `@DataJpaTest`                | Persistence layer only | Fast   | JPA layer only |
-| Integration        | `@SpringBootTest`             | Full workflow          | Medium | Full context   |
-| Legacy Integration | `BaseWebContextSensitiveTest` | Testcontainers/DBUnit  | Slow   | Full context   |
+| Test Type   | Base Class/Pattern            | Use Case               | Speed  | Context      |
+| ----------- | ----------------------------- | ---------------------- | ------ | ------------ |
+| Controller  | `BaseWebContextSensitiveTest` | HTTP layer only        | Medium | Full context |
+| DAO         | `BaseWebContextSensitiveTest` | Persistence layer only | Medium | Full context |
+| Integration | `BaseWebContextSensitiveTest` | Full workflow          | Medium | Full context |
 
-#### @WebMvcTest (Controller Layer)
+**Why not Spring Boot test annotations?**
 
-**Use for**: Testing REST controllers in isolation with mocked services.
+- This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**, not
+  Spring Boot
+- No `spring-boot-starter-test` dependency
+- No `@SpringBootApplication` - uses `@EnableWebMvc` + `@Configuration` instead
+- WAR packaging (not JAR) - deployed to Tomcat
+
+#### BaseWebContextSensitiveTest (Controller Layer)
+
+**Use for**: Testing REST controllers with full Spring context.
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@WebMvcTest` is **NOT available**. All controller
+tests extend `BaseWebContextSensitiveTest`.
 
 **Benefits**:
 
-- Faster execution (no full application context)
-- Focused on HTTP layer (request/response mapping, status codes)
-- Services mocked with `@MockBean`
+- Full Spring context loaded (via `BaseWebContextSensitiveTest`)
+- Provides MockMvc for HTTP testing
+- Services mocked with `@MockBean` or `@Mock` + `@InjectMocks`
 
 **Pattern**:
 
 ```java
-@RunWith(SpringRunner.class)
-@WebMvcTest(StorageLocationRestController.class)
-public class StorageLocationRestControllerTest {
+public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -316,118 +338,159 @@ public class StorageLocationRestControllerTest {
 - Use JSONPath for response assertions
 - Mock service layer, test HTTP layer only
 
-#### @DataJpaTest (DAO/Repository Layer)
+#### BaseWebContextSensitiveTest (DAO/Repository Layer)
 
-**Use for**: Testing persistence layer in isolation.
+**Use for**: Testing persistence layer with real HQL query execution.
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@DataJpaTest` is **NOT available**. All DAO tests
+extend `BaseWebContextSensitiveTest`.
 
 **Benefits**:
 
-- Faster execution (no full application context)
-- Focused on database interactions
-- Automatic transaction rollback
-- `TestEntityManager` for test data setup
+- Full Spring context loaded (allows real HQL query execution)
+- Tests execute actual HQL queries (catches compilation errors)
+- Validates DAO methods compile and execute correctly
+- Uses Testcontainers with PostgreSQL
 
 **Pattern**:
 
 ```java
-@RunWith(SpringRunner.class)
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-public class StorageLocationDAOTest {
+public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
 
     @Autowired
-    private TestEntityManager entityManager;
+    private DataSource dataSource;
 
     @Autowired
     private StorageLocationDAO storageLocationDAO;
 
+    @Autowired
+    private StorageRoomDAO storageRoomDAO;
+
+    private JdbcTemplate jdbcTemplate;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        cleanTestData();
+
+        // Create test room using JdbcTemplate
+        jdbcTemplate.update(
+                "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                2000, "Test Room", "TEST-ROOM", true, 1);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        cleanTestData();
+    }
+
+    private void cleanTestData() {
+        try {
+            jdbcTemplate.execute("DELETE FROM storage_device WHERE id = 2001");
+            jdbcTemplate.execute("DELETE FROM storage_room WHERE id = 2000");
+        } catch (Exception e) {
+            // Ignore cleanup errors
+        }
+    }
+
     @Test
     public void testFindByParentId_WithValidParent_ReturnsChildLocations() {
-        // Arrange
-        StorageRoom room = StorageRoomBuilder.create()
-            .withId("ROOM-001")
-            .withName("Main Lab")
-            .build();
-        entityManager.persist(room);
+        // Arrange: Create device via JdbcTemplate
+        jdbcTemplate.update(
+                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                2001, "Test Device", "TEST-DEV", "freezer", 2000, true, 1);
 
-        StorageDevice device = StorageDeviceBuilder.create()
-            .withId("DEV-001")
-            .withName("Freezer 1")
-            .withParentRoom(room)
-            .build();
-        entityManager.persist(device);
-        entityManager.flush();
-
-        // Act
-        List<StorageDevice> devices = storageLocationDAO.findByParentId("ROOM-001");
+        // Act: Execute HQL query - this will fail if HQL references non-existent properties
+        List<StorageDevice> devices = storageLocationDAO.findByParentRoomId(2000);
 
         // Assert
         assertEquals("Should return one device", 1, devices.size());
-        assertEquals("Device ID should match", "DEV-001", devices.get(0).getId());
+        assertEquals("Device ID should match", Integer.valueOf(2001), devices.get(0).getId());
     }
 }
 ```
 
 **Key Points**:
 
-- Use `TestEntityManager` for test data setup (NOT JdbcTemplate)
-- Use `@AutoConfigureTestDatabase(replace = Replace.NONE)` to use configured
-  database
-- Automatic transaction rollback (no manual cleanup needed)
-- Test HQL queries, CRUD operations, relationships
+- Extends `BaseWebContextSensitiveTest` (provides full Spring context)
+- Use `JdbcTemplate` or DAO methods for test data setup
+- Manual cleanup in `@After` methods
+- Tests execute real HQL queries (catches property reference errors)
+- **CRITICAL**: These tests catch HQL compilation errors that mocked DAO tests
+  miss
 
 **CRUD Testing Pattern**:
 
 ```java
 @Test
 public void testInsert_WithValidData_PersistsToDatabase() {
-    // Arrange
-    StorageRoom room = StorageRoomBuilder.create()
-        .withName("Test Room")
-        .withCode("TEST-ROOM")
-        .build();
+    // Arrange: Create entity using JdbcTemplate
+    jdbcTemplate.update(
+            "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
+                    + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+            2000, "Test Room", "TEST-ROOM", true, 1);
 
-    // Act
-    String id = storageLocationDAO.insert(room);
-    entityManager.flush();
-    entityManager.clear();
+    // Act: Retrieve via DAO to validate HQL query
+    StorageRoom retrieved = storageRoomDAO.get(2000).orElse(null);
 
     // Assert
-    StorageRoom retrieved = entityManager.find(StorageRoom.class, id);
     assertNotNull("Room should be persisted", retrieved);
     assertEquals("Name should match", "Test Room", retrieved.getName());
+    assertEquals("Code should match", "TEST-ROOM", retrieved.getCode());
 }
 ```
 
-#### @SpringBootTest (Full Integration)
+#### BaseWebContextSensitiveTest (Full Integration)
 
 **Use for**: Testing complete workflows that require full application context.
 
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@SpringBootTest` is **NOT available**. All
+integration tests extend `BaseWebContextSensitiveTest`.
+
 **Benefits**:
 
-- Full Spring context loaded
+- Full Spring context loaded (via `BaseWebContextSensitiveTest`)
 - All beans available
-- Real database interactions
+- Real database interactions (Testcontainers with PostgreSQL)
 - End-to-end testing
 
 **Pattern**:
 
 ```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional
-public class StorageLocationServiceIntegrationTest {
+public class StorageLocationServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private StorageLocationService storageLocationService;
 
+    @Autowired
+    private DataSource dataSource;
+
+    private JdbcTemplate jdbcTemplate;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        cleanTestData();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        cleanTestData();
+    }
+
     @Test
     public void testCreateLocation_WithValidData_PersistsToDatabase() {
         // Arrange
-        StorageRoom room = StorageRoomBuilder.create()
-            .withName("Test Room")
-            .withCode("TEST-ROOM")
-            .build();
+        StorageRoom room = new StorageRoom();
+        room.setName("Test Room");
+        room.setCode("TEST-ROOM");
+        room.setActive(true);
 
         // Act
         String id = storageLocationService.insert(room);
@@ -442,8 +505,9 @@ public class StorageLocationServiceIntegrationTest {
 
 **Key Points**:
 
-- Use `@Transactional` for automatic rollback (preferred)
-- Use builders/factories for test data
+- Extends `BaseWebContextSensitiveTest` (provides full Spring context)
+- Manual cleanup in `@After` methods
+- Use builders/factories for test data (or create entities directly)
 - Test complete workflows (service → DAO → database)
 
 #### BaseWebContextSensitiveTest (Legacy Integration)
@@ -491,9 +555,9 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 - Uses `JdbcTemplate` for direct database operations
 - Uses DBUnit for complex test data (via `executeDataSetWithStateManagement()`)
 
-**Migration Note**: New tests should prefer `@SpringBootTest` with
-`@Transactional` for automatic rollback. Use `BaseWebContextSensitiveTest` only
-for legacy tests or when DBUnit is required.
+**Migration Note**: This project uses **Spring Framework 6.2.2 (Traditional
+Spring MVC)**, NOT Spring Boot. All tests extend `BaseWebContextSensitiveTest`.
+This is the standard pattern for this codebase.
 
 ### ORM Validation Tests (Constitution V.4)
 
@@ -539,8 +603,9 @@ database pollution.
 
 #### @Transactional (Automatic Rollback)
 
-**PREFERRED**: Use `@Transactional` for automatic rollback in `@SpringBootTest`
-and `@DataJpaTest`.
+**PREFERRED**: Use `@Transactional` for automatic rollback when supported by
+`BaseWebContextSensitiveTest`. Otherwise, use manual cleanup in `@After`
+methods.
 
 **Benefits**:
 
@@ -552,32 +617,46 @@ and `@DataJpaTest`.
 **Pattern**:
 
 ```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional
-public class StorageLocationServiceIntegrationTest {
+public class StorageLocationServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private StorageLocationService storageLocationService;
 
+    @Autowired
+    private DataSource dataSource;
+
+    private JdbcTemplate jdbcTemplate;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        cleanTestData();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        cleanTestData();
+    }
+
     @Test
     public void testCreateLocation_PersistsToDatabase() {
-        // Test creates data - automatically rolled back
+        // Test creates data - cleanup in @After
         StorageRoom room = StorageRoomBuilder.create()
             .withName("Test Room")
             .build();
         String id = storageLocationService.insert(room);
-        // No cleanup needed - @Transactional handles it
+        // Cleanup handled in tearDown()
     }
 }
 ```
 
 **Key Points**:
 
-- Use `@Transactional` at class level for all tests
-- Each test runs in its own transaction
-- Transaction rolls back after test completes
-- Use for `@SpringBootTest` and `@DataJpaTest`
+- Extends `BaseWebContextSensitiveTest` (provides full Spring context)
+- Manual cleanup in `@After` methods (or use `@Transactional` if supported)
+- Each test should clean up its data
+- Use with `BaseWebContextSensitiveTest` (standard pattern for this codebase)
 
 #### Manual Cleanup (When @Transactional Doesn't Work)
 
@@ -629,11 +708,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 **Pattern**:
 
 ```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional
-@Rollback(false) // Disable automatic rollback
-public class StorageLocationServiceIntegrationTest {
+public class StorageLocationServiceIntegrationTest extends BaseWebContextSensitiveTest {
+    // Manual cleanup required (no automatic rollback)
 
     @Test
     public void testCreateLocation_VerifiesDatabaseState() {
@@ -802,12 +878,10 @@ public void setUp() throws Exception {
 **Pattern**:
 
 ```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional
-public class StorageLocationServiceIntegrationTest {
+public class StorageLocationServiceIntegrationTest extends BaseWebContextSensitiveTest {
     // Testcontainers configured in BaseTestConfig
     // Uses PostgreSQL container for real database testing
+    // Full Spring context loaded via BaseWebContextSensitiveTest
 }
 ```
 
@@ -982,16 +1056,15 @@ proper test isolation.
 
 **When to Use**:
 
-- `@WebMvcTest` - Mock services in controller tests
-- `@SpringBootTest` - Mock beans in integration tests
-- Any test that uses `@Autowired`
+- `BaseWebContextSensitiveTest` - Mock beans in all tests (controller, DAO,
+  integration)
+- Any test that uses `@Autowired` (all tests extend
+  `BaseWebContextSensitiveTest`)
 
 **Pattern**:
 
 ```java
-@RunWith(SpringRunner.class)
-@WebMvcTest(StorageLocationRestController.class)
-public class StorageLocationRestControllerTest {
+public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
 
     @MockBean  // ✅ CORRECT: Spring context test
     private StorageLocationService storageLocationService;
@@ -1009,7 +1082,7 @@ public class StorageLocationRestControllerTest {
 
 - Replaces bean in Spring context
 - Works with `@Autowired` injection
-- Use in `@WebMvcTest`, `@SpringBootTest`
+- Use in `BaseWebContextSensitiveTest` (all tests)
 
 #### @Mock (Isolated Unit Tests)
 
@@ -1049,8 +1122,7 @@ public class StorageLocationServiceTest {
 
 **Decision Tree**:
 
-1. **Spring context test** (`@WebMvcTest`, `@SpringBootTest`) → Use `@MockBean`
-   ✅
+1. **Spring context test** (`BaseWebContextSensitiveTest`) → Use `@MockBean` ✅
 2. **Isolated unit test** (`@RunWith(MockitoJUnitRunner.class)`) → Use `@Mock`
    ✅
 
@@ -2383,10 +2455,8 @@ export const createMockStorageLocation = (overrides = {}) => {
 **Use for**: Integration tests with database.
 
 ```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional // Automatic rollback after each test
-public class StorageLocationServiceIntegrationTest {
+public class StorageLocationServiceIntegrationTest extends BaseWebContextSensitiveTest {
+    // Manual cleanup in @After methods (or @Transactional if supported)
 
     @Test
     public void testCreateLocation_PersistsToDatabase() {
@@ -2595,7 +2665,7 @@ npm test -- --coverage
 
 **Backend**:
 
-- ❌ Using `@SpringBootTest` for simple controller tests (use `@WebMvcTest`)
+- ❌ Not extending `BaseWebContextSensitiveTest` (all tests must extend this)
 - ❌ Hardcoded test data (use builders/factories)
 - ❌ Missing `@Transactional` in integration tests (causes data pollution)
 - ❌ Skipping ORM validation tests (catches mapping errors early)

@@ -10,8 +10,8 @@ import org.openelisglobal.internationalization.MessageUtil;
 
 /**
  * Label for storage locations (Device, Shelf, Rack) Displays location name,
- * code, hierarchical path, and barcode Uses short code or hierarchical path for
- * barcode value
+ * code, hierarchical path, and barcode Uses code (≤10 chars) or hierarchical
+ * path for barcode value
  */
 public class StorageLocationLabel extends Label {
 
@@ -19,13 +19,13 @@ public class StorageLocationLabel extends Label {
      * Create label for a storage location
      * 
      * @param locationName     The display name of the location
-     * @param locationCode     The code of the location
+     * @param locationCode     The code of the location (≤10 chars)
      * @param hierarchicalPath The full hierarchical path (e.g.,
      *                         "MAIN-FRZ01-SHA-RKR1")
-     * @param shortCode        Optional short code (if provided, used for barcode;
-     *                         otherwise uses hierarchical path)
+     * @param barcodeCode      The code to use for barcode (≤10 chars, typically
+     *                         same as locationCode)
      */
-    public StorageLocationLabel(String locationName, String locationCode, String hierarchicalPath, String shortCode) {
+    public StorageLocationLabel(String locationName, String locationCode, String hierarchicalPath, String barcodeCode) {
         // Set dimensions from configuration properties
         try {
             String widthStr = ConfigurationProperties.getInstance()
@@ -75,8 +75,9 @@ public class StorageLocationLabel extends Label {
         pathField.setDisplayFieldName(true);
         belowFields.add(pathField);
 
-        // Set barcode code: use short code if provided, otherwise use hierarchical path
-        String barcodeValue = (shortCode != null && !shortCode.trim().isEmpty()) ? shortCode.toUpperCase().trim()
+        // Set barcode code: use barcodeCode if provided, otherwise use hierarchical
+        // path
+        String barcodeValue = (barcodeCode != null && !barcodeCode.trim().isEmpty()) ? barcodeCode.toUpperCase().trim()
                 : (hierarchicalPath != null ? hierarchicalPath : locationCode);
         setCode(barcodeValue);
         setCodeLabel(barcodeValue);

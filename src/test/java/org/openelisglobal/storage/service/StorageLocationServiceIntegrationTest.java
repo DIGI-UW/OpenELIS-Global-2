@@ -67,14 +67,13 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
             // Delete test-created data (IDs >= 1000 or codes/names starting with TEST-)
             // This preserves fixture data loaded by Liquibase (IDs 1-999)
             // IDs are stored as VARCHAR, so we compare as strings
-            // Also clean up by short_code patterns used in tests (TEST- prefix)
+            // Also clean up by code patterns used in tests (TEST- prefix)
             jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000 OR coordinate LIKE 'TEST-%'");
             jdbcTemplate.execute(
-                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
             jdbcTemplate.execute(
-                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
-            jdbcTemplate.execute(
-                    "DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
+            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
         } catch (Exception e) {
             // Log but don't fail - cleanup is best effort

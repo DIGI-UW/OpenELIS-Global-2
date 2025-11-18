@@ -93,21 +93,25 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         Integer roomId = baseId;
 
         // Create device directly via JDBC
+        // Device code must be ≤10 chars: "TESTFRZ" + 3 digits = 9 chars max
+        String deviceCode = "TESTFRZ" + (timestamp % 1000);
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Test Freezer", "TEST-FREEZER-" + timestamp, "freezer", roomId, true, 1);
+                baseId, "Test Freezer", deviceCode, "freezer", roomId, true, 1);
         Integer deviceId = baseId;
 
-        // Create shelf directly via JDBC
+        // Create shelf directly via JDBC (code must be ≤10 chars and NOT NULL)
+        String shelfCode = "SHELF" + (timestamp % 1000);
         jdbcTemplate.update(
-                "INSERT INTO storage_shelf (id, label, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Test Shelf", deviceId, true, 1);
+                "INSERT INTO storage_shelf (id, label, code, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                baseId, "Test Shelf", shelfCode, deviceId, true, 1);
         Integer shelfId = baseId;
 
-        // Create rack directly via JDBC
+        // Create rack directly via JDBC (code must be ≤10 chars and NOT NULL)
+        String rackCode = "RACK" + (timestamp % 1000);
         jdbcTemplate.update(
-                "INSERT INTO storage_rack (id, label, rows, columns, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Test Rack", 4, 6, shelfId, true, 1);
+                "INSERT INTO storage_rack (id, label, code, rows, columns, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                baseId, "Test Rack", rackCode, 4, 6, shelfId, true, 1);
         Integer rackId = baseId;
 
         // Create position directly via JDBC

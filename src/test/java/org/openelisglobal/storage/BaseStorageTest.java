@@ -161,11 +161,10 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
             // This preserves fixture data loaded by fixtures (IDs 1-999, E2E-*)
             jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000 OR coordinate LIKE 'TEST-%'");
             jdbcTemplate.execute(
-                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
             jdbcTemplate.execute(
-                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
-            jdbcTemplate.execute(
-                    "DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
+            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
 
             // Clean up test-created samples (preserve E2E-* fixtures)

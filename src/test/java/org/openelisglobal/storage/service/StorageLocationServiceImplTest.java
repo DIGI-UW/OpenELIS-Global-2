@@ -2,7 +2,9 @@ package org.openelisglobal.storage.service;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +51,12 @@ public class StorageLocationServiceImplTest {
     @Mock
     private StoragePositionDAO storagePositionDAO;
 
+    @Mock
+    private CodeGenerationService codeGenerationService;
+
+    @Mock
+    private CodeValidationService codeValidationService;
+
     @InjectMocks
     private StorageLocationServiceImpl storageLocationService;
 
@@ -59,6 +67,24 @@ public class StorageLocationServiceImplTest {
 
     @Before
     public void setUp() {
+        // Mock code generation service leniently (not all tests use it)
+        lenient().when(codeGenerationService.generateCodeFromName(anyString(), anyString())).thenAnswer(invocation -> {
+            String name = invocation.getArgument(0);
+            // Simple mock: uppercase and truncate to 10 chars
+            return name.toUpperCase().replaceAll("[^A-Z0-9_-]", "").substring(0, Math.min(10, name.length()));
+        });
+
+        // Mock code validation service - return valid results for tests
+        CodeValidationResult validResult = new CodeValidationResult(true, null, null);
+        when(codeValidationService.validateFormat(anyString())).thenReturn(validResult);
+        when(codeValidationService.validateLength(anyString())).thenReturn(validResult);
+        when(codeValidationService.validateUniqueness(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(validResult);
+        when(codeValidationService.autoUppercase(anyString())).thenAnswer(invocation -> {
+            String code = invocation.getArgument(0);
+            return code != null ? code.toUpperCase() : null;
+        });
+
         // Create test hierarchy
         testRoom = new StorageRoom();
         testRoom.setId(1);
@@ -100,6 +126,15 @@ public class StorageLocationServiceImplTest {
         existingDevice.setCode("FRZ01");
         existingDevice.setParentRoom(testRoom);
 
+        // Mock validation service to return valid for format/length/uniqueness checks
+        CodeValidationResult validResult = new CodeValidationResult(true, "FRZ01", null);
+        when(codeValidationService.autoUppercase("FRZ01")).thenReturn("FRZ01");
+        when(codeValidationService.validateFormat("FRZ01")).thenReturn(validResult);
+        when(codeValidationService.validateLength("FRZ01")).thenReturn(validResult);
+        when(codeValidationService.validateUniqueness("FRZ01", "device", null, String.valueOf(testRoom.getId())))
+                .thenReturn(validResult);
+
+        // Mock DAO to return existing device (duplicate check)
         when(storageDeviceDAO.findByParentRoomIdAndCode(testRoom.getId(), "FRZ01")).thenReturn(existingDevice);
 
         // Given: New device with same code in same room
@@ -139,6 +174,14 @@ public class StorageLocationServiceImplTest {
         deviceRoom2.setName("Freezer in Room 2");
         deviceRoom2.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         deviceRoom2.setParentRoom(room2);
+
+        // Mock validation service to return valid for format/length/uniqueness checks
+        CodeValidationResult validResult = new CodeValidationResult(true, "FRZ01", null);
+        when(codeValidationService.autoUppercase("FRZ01")).thenReturn("FRZ01");
+        when(codeValidationService.validateFormat("FRZ01")).thenReturn(validResult);
+        when(codeValidationService.validateLength("FRZ01")).thenReturn(validResult);
+        when(codeValidationService.validateUniqueness("FRZ01", "device", null, String.valueOf(room2.getId())))
+                .thenReturn(validResult);
 
         // Mock: No device with this code exists in room2
         when(storageDeviceDAO.findByParentRoomIdAndCode(room2.getId(), "FRZ01")).thenReturn(null);

@@ -304,17 +304,17 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
      */
     @Test
     public void testGetLocationCounts_ExcludesInactiveLocations() throws Exception {
-        // Create an inactive room
+        // Create an inactive room (code must be ≤10 chars)
         Integer inactiveRoomId = testRoomId + 1000;
         jdbcTemplate.update(
                 "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                inactiveRoomId, "Inactive Test Room", "INACTIVE-ROOM", false, 1);
+                inactiveRoomId, "Inactive Test Room", "INACTROOM", false, 1); // 9 chars
 
-        // Create an inactive device in the inactive room
+        // Create an inactive device in the inactive room (code must be ≤10 chars)
         Integer inactiveDeviceId = testDeviceId + 1000;
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                inactiveDeviceId, "Inactive Device", "INACTIVE-DEV", "freezer", inactiveRoomId, false, 1);
+                inactiveDeviceId, "Inactive Device", "INACTDEV", "freezer", inactiveRoomId, false, 1); // 8 chars
 
         try {
             MvcResult result = mockMvc.perform(get("/rest/storage/dashboard/location-counts"))
@@ -390,24 +390,30 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
         testAssignmentId = baseId + 1000;
 
         // Create room (following existing integration test pattern)
+        // Room code must be ≤10 chars: "TESTINT" + 3 digits = 10 chars max
+        String roomCode = "TESTINT" + (timestamp % 1000);
         jdbcTemplate.update(
                 "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testRoomId, "Test Integration Room", "TEST-INT-ROOM-" + timestamp, true, 1);
+                testRoomId, "Test Integration Room", roomCode, true, 1);
 
         // Create device
+        // Device code must be ≤10 chars: "TESTFRZ" + 3 digits = 9 chars max
+        String deviceCode = "TESTFRZ" + (timestamp % 1000);
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testDeviceId, "Test Freezer", "TEST-FREEZER-" + timestamp, "freezer", testRoomId, true, 1);
+                testDeviceId, "Test Freezer", deviceCode, "freezer", testRoomId, true, 1);
 
-        // Create shelf
+        // Create shelf (code must be ≤10 chars and NOT NULL)
+        String shelfCode = "SHELF" + (timestamp % 1000);
         jdbcTemplate.update(
-                "INSERT INTO storage_shelf (id, label, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testShelfId, "Test Shelf", testDeviceId, true, 1);
+                "INSERT INTO storage_shelf (id, label, code, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                testShelfId, "Test Shelf", shelfCode, testDeviceId, true, 1);
 
-        // Create rack
+        // Create rack (code must be ≤10 chars and NOT NULL)
+        String rackCode = "RACK" + (timestamp % 1000);
         jdbcTemplate.update(
-                "INSERT INTO storage_rack (id, label, rows, columns, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testRackId, "Test Rack", 9, 9, testShelfId, true, 1);
+                "INSERT INTO storage_rack (id, label, code, rows, columns, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                testRackId, "Test Rack", rackCode, 9, 9, testShelfId, true, 1);
 
         // Create position (occupancy is now calculated dynamically from
         // SampleStorageAssignment)
