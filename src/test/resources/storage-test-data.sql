@@ -227,6 +227,61 @@ GROUP BY r.code, d.code, s.label, k.label
 ORDER BY r.code, d.code, s.label, k.label;
 
 -- ============================================================================
+-- E2E Test Fixtures: Referring Clinics (Organizations)
+-- ============================================================================
+-- Add referring clinic organizations for order entry tests
+-- These organizations appear in the siteName autocomplete dropdown
+
+-- Ensure "referring clinic" organization type exists
+INSERT INTO organization_type (id, short_name, description, name_display_key, lastupdated)
+VALUES (100, 'referring clinic', 'Referring Clinic Organization', 'referring clinic', CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+  short_name = EXCLUDED.short_name,
+  description = EXCLUDED.description,
+  name_display_key = EXCLUDED.name_display_key,
+  lastupdated = CURRENT_TIMESTAMP;
+
+-- Add CAMES MAN organization (used in dashboard E2E tests)
+-- Set short_name to NULL so it displays as just "CAMES MAN" (not " - CAMES MAN")
+INSERT INTO organization (id, name, short_name, is_active, lastupdated)
+VALUES (1000, 'CAMES MAN', NULL, 'Y', CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  short_name = NULL,
+  is_active = EXCLUDED.is_active,
+  lastupdated = CURRENT_TIMESTAMP;
+
+-- Link CAMES MAN to referring clinic type
+INSERT INTO organization_organization_type (org_id, org_type_id)
+VALUES (1000, 100)
+ON CONFLICT (org_id, org_type_id) DO NOTHING;
+
+-- Add Optimus provider (used for requester in dashboard E2E tests)
+-- Providers are loaded from the practitioner_persons list which requires:
+-- 1. A person record
+-- 2. A provider record linked to that person
+-- Format: "LastName, FirstName"
+
+-- Add Optimus person
+-- Note: person table doesn't have is_active field, that's only on provider
+INSERT INTO person (id, last_name, first_name, lastupdated)
+VALUES (2000, 'Optimus', 'Prime', CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+  last_name = EXCLUDED.last_name,
+  first_name = EXCLUDED.first_name,
+  lastupdated = CURRENT_TIMESTAMP;
+
+-- Add Optimus provider (linked to person)
+-- Note: active is a boolean field, not is_active
+INSERT INTO provider (id, person_id, provider_type, active, lastupdated)
+VALUES (2000, 2000, 'P', true, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+  person_id = EXCLUDED.person_id,
+  provider_type = EXCLUDED.provider_type,
+  active = EXCLUDED.active,
+  lastupdated = CURRENT_TIMESTAMP;
+
+-- ============================================================================
 -- E2E Test Fixtures: Patients, Samples, and Storage Assignments
 -- ============================================================================
 -- These fixtures enable full end-to-end testing including:

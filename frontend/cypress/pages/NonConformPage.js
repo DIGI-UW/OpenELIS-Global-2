@@ -65,7 +65,10 @@ class NonConform {
   }
 
   validateLabNoSearchResult(labNo) {
-    cy.get(this.selectors.searchResult).invoke("text").should("eq", labNo);
+    cy.get(this.selectors.searchResult, { timeout: 15000 })
+      .should("be.visible")
+      .invoke("text")
+      .should("eq", labNo);
   }
 
   validateNCESearchResult(NCENo) {
@@ -102,8 +105,11 @@ class NonConform {
     cy.get(this.selectors.correctiveActionText).type(correctiveAction);
   }
 
-  enterNceCategory(nceCategory) {
-    cy.get(this.selectors.nceCategory).select(nceCategory);
+  enterNceCategory(nceCategory, options = {}) {
+    cy.get(this.selectors.nceCategory, { timeout: options.timeout || 15000 })
+      .should("be.visible")
+      .should("not.be.disabled")
+      .select(nceCategory);
   }
 
   enterNceType(nceType) {
@@ -129,7 +135,10 @@ class NonConform {
   }
 
   enterDiscussionDate(date) {
-    cy.get(this.selectors.discussionDate).type(date);
+    cy.get(this.selectors.discussionDate, { timeout: 15000 })
+      .should("be.visible")
+      .should("not.be.disabled")
+      .type(date);
   }
 
   enterProposedCorrectiveAction(action) {
