@@ -56,6 +56,7 @@
             <column name="instructions" type="TEXT"/>
             <column name="content" type="TEXT"/>
             <column name="page_order" type="INTEGER"/>
+             <column name="completed" type="boolean" defaultValueBoolean="false"/>
             <column name="notebook_id" type="INTEGER">
                 <constraints nullable="false" foreignKeyName="fk_page_notebook"
                              referencedTableName="notebook" referencedColumnNames="id"/>

@@ -1172,7 +1172,7 @@ export function SearchResults(props) {
                 style={validationState[row.id]?.style}
                 onBlur={(e) => {
                   if (
-                    validationState[row.id].isInvalid &&
+                    validationState[row.id]?.isInvalid &&
                     configurationProperties.ALERT_FOR_INVALID_RESULTS
                   ) {
                     addNotification({
@@ -1193,7 +1193,7 @@ export function SearchResults(props) {
                 onChange={(e) => {
                   handleChange(e, row.id);
                   if (
-                    validationState[row.id].isInvalid &&
+                    validationState[row.id]?.isInvalid &&
                     configurationProperties.ALERT_FOR_INVALID_RESULTS
                   ) {
                     addNotification({
