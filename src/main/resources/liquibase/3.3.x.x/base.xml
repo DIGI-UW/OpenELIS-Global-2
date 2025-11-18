@@ -16,4 +16,7 @@
   <include relativeToChangelogFile="true" file="008-add-short-code-columns.xml"/>
   <include relativeToChangelogFile="true" file="009-create-print-history-table.xml"/>
 
+  <!-- ASTM Analyzer Field Mapping Feature (004-astm-analyzer-mapping) -->
+  <include file="liquibase/analyzer/base.xml"/>
+
 </databaseChangeLog>

@@ -10,7 +10,7 @@
 
 Implement comprehensive ASTM analyzer field mapping feature to enable laboratory administrators to configure field mappings between ASTM analyzer test codes, units, and qualitative values and OpenELIS tests, analytes, and result fields. The feature includes three main user workflows: (1) Configure field mappings for new analyzers (P1), (2) Maintain mappings as instruments change (P2), and (3) Resolve unmapped or failed analyzer messages (P3). The system provides a dual-panel mapping interface, analyzer management (CRUD operations), error dashboard for unmapped messages, and integration with existing ASTM message processing infrastructure.
 
-**Technical Approach**: Extend existing OpenELIS analyzer infrastructure (legacy `Analyzer` entity, `ASTMAnalyzerReader`, `AnalyzerImportController`) with new annotation-based JPA entities for analyzer field mapping. Create new REST API endpoints following 5-layer architecture pattern. Build Carbon Design System UI components for analyzer management, field mapping interface, and error dashboard. Integrate with existing ASTM message processing to apply mappings during message interpretation. Support query analyzer functionality to retrieve available fields from analyzers via ASTM protocol.
+**Technical Approach**: Extend existing OpenELIS analyzer infrastructure (legacy `Analyzer` entity, `ASTMAnalyzerReader`, `AnalyzerImportController`) with new annotation-based JPA entities for analyzer field mapping. Create new REST API endpoints following 5-layer architecture pattern. Build Carbon Design System UI components for analyzer management, field mapping interface, and error dashboard. Integrate with existing ASTM message processing to apply mappings during message interpretation. Support query analyzer functionality to retrieve available fields from analyzers via ASTM protocol. Integrate navigation with existing left-hand navigation bar using unified tab-navigation pattern (sub-nav items function as tabs, backend-driven via `/rest/menu` API, no separate Carbon Tabs components).
 
 ## Technical Context
 
@@ -59,7 +59,8 @@ Verify compliance with
   - Mapping validation rules configurable via properties files
 
 - [x] **Carbon Design System**: UI uses @carbon/react exclusively (NO Bootstrap/Tailwind)
-  - All UI components specified in FR-001 through FR-020 use Carbon components (DataTable, ComposedModal, Search, MultiSelect, Tag, etc.)
+  - All UI components specified in FR-001 through FR-020 use Carbon components (DataTable, ComposedModal, Search, MultiSelect, Tag, SideNavMenu, SideNavMenuItem, etc.)
+  - **Navigation**: Sub-navigation items function as tabs (NO Carbon Tabs/TabList components per FR-020 unified tab-navigation pattern)
   - Field type color coding uses Carbon design tokens ($blue-60, $purple-60, etc.)
   - Typography follows Carbon standards ($heading-04, $body-01, etc.)
 
@@ -260,6 +261,13 @@ frontend/cypress/e2e/
    - Research: Dual-panel layout patterns using Carbon Grid
    - Research: Visual connection lines between mapped fields (Carbon design tokens)
    - Research: OpenELIS Field Selector component patterns (searchable, categorized dropdown)
+   - Research: Navigation integration patterns (unified tab-navigation using sub-nav items)
+
+6. **Navigation Integration**
+   - Research: Backend-driven menu system (`/rest/menu` API) integration patterns
+   - Research: Unified tab-navigation pattern (sub-nav items as tabs, no separate tab components)
+   - Research: Active tab/page state tracking via route-based highlighting
+   - Research: Navigation visibility control (pages requiring nav to be visible/expanded)
 
 **Output**: `research.md` with all technical decisions documented
 

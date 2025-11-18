@@ -37,6 +37,15 @@
         <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
 
+        <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
+        <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

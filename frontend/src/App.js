@@ -7,6 +7,8 @@ import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
+import AnalyzersPage from "./pages/AnalyzersPage";
+import FieldMappingsPage from "./pages/FieldMappingsPage";
 import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
@@ -422,6 +424,18 @@ export default function App() {
                   path="/Storage/:tab"
                   component={() => <StorageDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/analyzers"
+                  exact
+                  component={() => <AnalyzersPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/:id/mappings"
+                  exact
+                  component={() => <FieldMappingsPage />}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/PatientHistory"

@@ -175,6 +175,10 @@ This document consolidates technical research and decisions for implementing the
   - Category filter: Carbon `MultiSelect` for 8 entity types
   - Field list: Carbon `ListBox` with grouped items
   - Type filtering: Disable incompatible options (Carbon `ComboBox` disabled prop)
+- **Navigation Components**: Carbon `SideNavMenu` and `SideNavMenuItem` for left-hand navigation
+  - **NO Carbon Tabs/TabList components** - sub-navigation items function as tabs
+  - Active sub-nav item highlighted using Carbon `SideNavMenuItem` active state
+  - Navigation visibility controlled via route metadata or page component props
 
 **Field Type Color Coding** (Carbon tokens):
 - Numeric: `$blue-60`
@@ -189,13 +193,63 @@ This document consolidates technical research and decisions for implementing the
   - **Rejected**: Mapping panel requires custom form fields, not tabular data
 - **Option B**: Use third-party dual-panel component library
   - **Rejected**: Violates Carbon Design System First principle (Constitution II)
+- **Option C**: Use Carbon `Tabs`/`TabList` components on analyzer pages
+  - **Rejected**: Creates duplicate navigation (left nav + tabs). Unified approach uses sub-nav items as tabs per FR-020 clarification.
 
 **References**:
 - Carbon Design System: https://carbondesignsystem.com/
 - OpenELIS Carbon Guide: https://uwdigi.atlassian.net/wiki/spaces/OG/pages/621346838
 - Specification FR-003, FR-008 (dual-panel interface requirements)
+- Specification FR-020 (unified tab-navigation pattern)
 
-## 6. Integration with Existing ASTM Message Processing
+## 6. Navigation Integration with Left-Hand Navigation Bar
+
+### Decision: Unified Tab-Navigation Pattern Using Sub-Navigation Items
+
+**Rationale**: OpenELIS uses a backend-driven menu system (`/rest/menu` API) for navigation. To avoid duplicate navigation options (left nav + separate tabs), sub-navigation items in the left-hand navigation bar function as tabs. This unified approach provides a single, consistent navigation pattern.
+
+**Implementation Approach**:
+- **Backend-Driven Menu**: Navigation items stored in database, exposed via `/rest/menu` API endpoint
+  - "Analyzers" parent menu item (expandable/collapsible)
+  - Sub-navigation items: "Analyzers List" (route `/analyzers`), "Error Dashboard" (route `/analyzers/errors`), "Field Mappings" (route `/analyzers/:id/mappings`)
+  - Role-based visibility handled server-side by menu API
+- **Unified Tab-Navigation**: Sub-navigation items act as tabs - NO separate Carbon `Tabs`/`TabList` components
+  - Clicking sub-nav item navigates to route and highlights that item using Carbon `SideNavMenuItem` active state
+  - Active tab/page tracked by highlighting corresponding sub-navigation item based on current route
+  - Pages can require left-hand navigation to be visible and expanded by default (via route metadata or page component props)
+- **State Preservation**: URL-based routing enables bookmarkable/shareable URLs
+  - Filters, search, pagination stored in URL query parameters
+  - Scroll position, form drafts stored in sessionStorage
+  - Active tab state derived from route (e.g., `/analyzers` highlights "Analyzers List")
+
+**Integration Points**:
+- **Menu API**: Extend `/rest/menu` endpoint to include analyzer navigation items
+- **Frontend Routing**: React Router DOM 5.2.0 for route handling
+- **Navigation Component**: Use existing `GlobalSideBar` component pattern with Carbon `SideNavMenu`/`SideNavMenuItem`
+- **Active State Tracking**: Route-based highlighting (compare `location.pathname` with menu item routes)
+
+**Alternatives Considered**:
+- **Option A**: Separate Carbon `Tabs`/`TabList` components on analyzer pages
+  - **Rejected**: Creates duplicate navigation (left nav + tabs), violates unified navigation pattern
+- **Option B**: Frontend-hardcoded navigation items
+  - **Rejected**: Inconsistent with existing OpenELIS pattern (backend-driven menu), cannot be configured dynamically
+- **Option C**: Hybrid approach (backend menu + frontend tabs)
+  - **Rejected**: Creates confusion, users don't know which navigation to use
+
+**Technical Details**:
+- Menu items stored in database (existing `menu` table structure)
+- Menu API filters items based on user roles (LAB_USER, LAB_SUPERVISOR, System Administrator)
+- Frontend renders menu items dynamically from API response
+- Active navigation item highlighted using Carbon `SideNavMenuItem` `isActive` prop
+- Route-to-menu-item mapping: `/analyzers` → "Analyzers List", `/analyzers/errors` → "Error Dashboard", `/analyzers/:id/mappings` → "Field Mappings"
+
+**References**:
+- `frontend/src/components/common/GlobalSideBar.js` - Existing navigation component
+- `frontend/src/components/layout/Header.js` - Menu API integration (`/rest/menu`)
+- `src/main/java/org/openelisglobal/menu/controller/MenuController.java` - Menu API endpoint
+- Specification FR-020 (unified tab-navigation pattern clarification)
+
+## 7. Integration with Existing ASTM Message Processing
 
 ### Decision: Intercept Message Processing to Apply Mappings
 
@@ -208,15 +262,22 @@ This document consolidates technical research and decisions for implementing the
   3. Queries `AnalyzerFieldMapping` to find mappings for analyzer
   4. Applies mappings: test code → OpenELIS test, unit → canonical unit (with conversion), qualitative value → OpenELIS code
   5. Returns transformed data structure for insertion
-- **Integration Point**: Extend `AnalyzerLineInserter` interface or create wrapper
-  - **Option A**: Modify existing plugins to use mapping service
-    - **Rejected**: Breaks backward compatibility with existing plugins
-  - **Option B**: Create mapping-aware inserter wrapper
-    - **Chosen**: Wrapper applies mappings before delegating to plugin inserter
+- **Integration Pattern**: Create `MappingAwareAnalyzerLineInserter` wrapper class implementing `AnalyzerLineInserter` interface
+  - **Wrapper Logic**:
+    1. Receive raw ASTM message segments from `ASTMAnalyzerReader`
+    2. Call `MappingApplicationService.applyMappings()` to transform segments using configured mappings
+    3. If mappings found and transformation successful: Delegate transformed data to original plugin inserter
+    4. If mappings not found or transformation fails: Create `AnalyzerError` record, return error (do not delegate to plugin inserter)
+  - **Integration Point**: `ASTMAnalyzerReader.processData()` wraps plugin inserter with `MappingAwareAnalyzerLineInserter` if analyzer has mappings configured (`AnalyzerConfiguration` has active mappings)
+  - **Conditional Wrapping**: Check if analyzer has mappings before wrapping:
+    - If analyzer has active mappings: Wrap plugin inserter with `MappingAwareAnalyzerLineInserter`
+    - If analyzer has no mappings: Use original plugin inserter directly (backward compatibility)
 - **Fallback Behavior**: If mapping not found:
-  - Create `AnalyzerError` record
+    - Create `AnalyzerError` record (type: mapping, severity: error)
   - Hold message in error queue (do not insert partial data)
   - Return error to `ASTMAnalyzerReader` for error handling
+  - **Alternative Considered**: Modify existing plugins to use mapping service
+    - **Rejected**: Breaks backward compatibility with existing plugins, requires changes to all plugin implementations
 
 **Error Handling**:
 - Mapping not found → `AnalyzerError` (type: mapping, severity: error)
@@ -243,6 +304,7 @@ This document consolidates technical research and decisions for implementing the
 | Field Mapping | Many-to-one with type compatibility validation | Supports real-world analyzer behavior, prevents unsafe conversions |
 | Error Queue | Database-backed `AnalyzerError` entity | Persistent, auditable, integrates with existing infrastructure |
 | Dual-Panel Layout | Carbon Grid (50/50 split) with custom CSS for connection lines | Follows Carbon Design System, responsive, accessible |
+| Navigation Integration | Unified tab-navigation using sub-nav items (NO Carbon Tabs components) | Avoids duplicate navigation, consistent with OpenELIS patterns, backend-driven menu |
 | Message Processing | Mapping-aware wrapper around existing plugin system | Maintains backward compatibility, applies mappings before insertion |
 
 ## Open Questions (Resolved)
