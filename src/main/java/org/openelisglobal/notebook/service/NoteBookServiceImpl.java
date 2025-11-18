@@ -97,6 +97,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Override
     @Transactional
+    public List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
+            Date fromDate, Date toDate) {
+        return baseObjectDAO.filterNoteBooks(statuses, types, tags, fromDate, toDate);
+    }
+
+    @Override
+    @Transactional
     public void updateWithStatus(Integer notebookId, NoteBookStatus status, String sysUserId) {
         Optional<NoteBook> optionalNoteBook = baseObjectDAO.get(notebookId);
         if (optionalNoteBook.isPresent()) {
@@ -197,7 +204,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getEntries());
             displayBean.setId(noteBook.getId());
             displayBean.setTitle(noteBook.getTitle());
-            displayBean.setType(Integer.valueOf(noteBook.getType()));
             displayBean.setTags(noteBook.getTags());
 
             // Handle type - it could be a dictionary ID (numeric) or a string value
@@ -211,15 +217,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 }
             }
 
-            // Only set patient fields if patient is not null
-            if (noteBook.getPatient() != null) {
-                Patient patient = patientService.getData(noteBook.getPatient().getId());
-                if (patient != null) {
-                    displayBean.setLastName(patientService.getLastName(patient));
-                    displayBean.setFirstName(patientService.getFirstName(patient));
-                    displayBean.setGender(patientService.getGender(patient));
-                }
-            }
             displayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             displayBean.setStatus(noteBook.getStatus());
             displayBean.setIsTemplate(noteBook.getIsTemplate());
@@ -431,6 +428,24 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 .map(this::convertSampleToDisplayBean).collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public List<SampleDisplayBean> searchSampleItems(String patientId, String accession) {
+
+        List<Sample> samples = new ArrayList<>();
+        
+        if (StringUtils.isNotBlank(accession)) {
+            Sample sample = sampleService.getSampleByAccessionNumber(accession);
+            if (sample != null) {
+                samples.add(sample);
+            }
+        }
+
+        return samples.stream().flatMap(sample -> sampleItemService.getSampleItemsBySampleId(sample.getId()).stream())
+                .map(this::convertSampleToDisplayBean).collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public List<NoteBook> getAllTemplateNoteBooks() {
         return baseObjectDAO.getAllMatching("isTemplate", true);
