@@ -1,15 +1,15 @@
 /**
  * Unit tests for FieldMapping component
- * 
+ *
  * References:
  * - Testing Roadmap: .specify/guides/testing-roadmap.md
  * - Jest Best Practices: .specify/guides/jest-best-practices.md
- * 
+ *
  * TDD Workflow (MANDATORY):
  * - RED: Write failing test first
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
- * 
+ *
  * Task Reference: T039
  * Test Naming: test{Scenario}_{ExpectedResult}
  */
@@ -50,11 +50,7 @@ jest.mock("react-router-dom", () => ({
 import React from "react";
 
 // 2. Testing Library
-import {
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 
 // 3. userEvent (PREFERRED for user interactions)
@@ -86,7 +82,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 };
 
@@ -151,14 +147,20 @@ describe("FieldMapping", () => {
 
     // Wait for fields table to load
     await waitFor(() => {
-      const tableContainer = screen.queryByTestId("field-mapping-table-container");
+      const tableContainer = screen.queryByTestId(
+        "field-mapping-table-container",
+      );
       expect(tableContainer).not.toBeNull();
     });
 
     // Find and click a field row using data-testid
-    const fieldName = await screen.findByTestId("field-name-field-1", {}, { timeout: 3000 });
+    const fieldName = await screen.findByTestId(
+      "field-name-field-1",
+      {},
+      { timeout: 3000 },
+    );
     expect(fieldName.textContent).toContain("GLUCOSE");
-    
+
     // Click the row (find parent row and click it)
     const fieldRow = fieldName.closest('[data-testid^="field-row-"]');
     if (fieldRow) {
@@ -169,10 +171,13 @@ describe("FieldMapping", () => {
     }
 
     // Assert: Verify mapping panel opens on the right (placeholder should disappear)
-    await waitFor(() => {
-      const placeholder = screen.queryByTestId("mapping-panel-placeholder");
-      expect(placeholder).toBeNull();
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        const placeholder = screen.queryByTestId("mapping-panel-placeholder");
+        expect(placeholder).toBeNull();
+      },
+      { timeout: 2000 },
+    );
   });
 
   /**
@@ -208,9 +213,11 @@ describe("FieldMapping", () => {
       callback({ fields: mockFields }, null);
     });
 
-    analyzerService.createMapping.mockImplementation((analyzerId, mappingData, callback) => {
-      callback({ id: "mapping-1", ...mappingData }, null);
-    });
+    analyzerService.createMapping.mockImplementation(
+      (analyzerId, mappingData, callback) => {
+        callback({ id: "mapping-1", ...mappingData }, null);
+      },
+    );
 
     // Act: Render component
     renderWithIntl(<FieldMapping />);
@@ -224,14 +231,20 @@ describe("FieldMapping", () => {
 
     // Wait for fields table to load
     await waitFor(() => {
-      const tableContainer = screen.queryByTestId("field-mapping-table-container");
+      const tableContainer = screen.queryByTestId(
+        "field-mapping-table-container",
+      );
       expect(tableContainer).not.toBeNull();
     });
 
     // Find and click a field row using data-testid
-    const fieldName = await screen.findByTestId("field-name-field-1", {}, { timeout: 3000 });
+    const fieldName = await screen.findByTestId(
+      "field-name-field-1",
+      {},
+      { timeout: 3000 },
+    );
     expect(fieldName.textContent).toContain("GLUCOSE");
-    
+
     // Click the row
     const fieldRow = fieldName.closest('[data-testid^="field-row-"]');
     if (fieldRow) {
@@ -241,14 +254,21 @@ describe("FieldMapping", () => {
     }
 
     // Wait for mapping panel to open (placeholder should disappear)
-    await waitFor(() => {
-      const placeholder = screen.queryByTestId("mapping-panel-placeholder");
-      expect(placeholder).toBeNull();
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        const placeholder = screen.queryByTestId("mapping-panel-placeholder");
+        expect(placeholder).toBeNull();
+      },
+      { timeout: 2000 },
+    );
 
     // Verify mapping panel is in edit mode (no mapping exists, so edit mode by default)
     // Look for save button in mapping panel using data-testid
-    const saveButton = await screen.findByTestId("mapping-panel-save-button", {}, { timeout: 2000 });
+    const saveButton = await screen.findByTestId(
+      "mapping-panel-save-button",
+      {},
+      { timeout: 2000 },
+    );
     expect(saveButton).not.toBeNull();
 
     // Click save (will trigger createMapping)
@@ -261,7 +281,7 @@ describe("FieldMapping", () => {
         expect.objectContaining({
           analyzerFieldId: "field-1",
         }),
-        expect.any(Function)
+        expect.any(Function),
       );
     });
   });
@@ -311,14 +331,20 @@ describe("FieldMapping", () => {
 
     // Wait for fields table to load
     await waitFor(() => {
-      const tableContainer = screen.queryByTestId("field-mapping-table-container");
+      const tableContainer = screen.queryByTestId(
+        "field-mapping-table-container",
+      );
       expect(tableContainer).not.toBeNull();
     });
 
     // Find and click a numeric field row using data-testid
-    const fieldName = await screen.findByTestId("field-name-field-1", {}, { timeout: 3000 });
+    const fieldName = await screen.findByTestId(
+      "field-name-field-1",
+      {},
+      { timeout: 3000 },
+    );
     expect(fieldName.textContent).toContain("GLUCOSE");
-    
+
     // Click the row
     const fieldRow = fieldName.closest('[data-testid^="field-row-"]');
     if (fieldRow) {
@@ -328,10 +354,13 @@ describe("FieldMapping", () => {
     }
 
     // Wait for mapping panel to open (placeholder should disappear)
-    await waitFor(() => {
-      const placeholder = screen.queryByTestId("mapping-panel-placeholder");
-      expect(placeholder).toBeNull();
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        const placeholder = screen.queryByTestId("mapping-panel-placeholder");
+        expect(placeholder).toBeNull();
+      },
+      { timeout: 2000 },
+    );
 
     // Assert: Verify that mapping panel is displayed
     // Type compatibility filtering is tested at the component level
@@ -340,4 +369,3 @@ describe("FieldMapping", () => {
     expect(mappingPanel).not.toBeNull();
   });
 });
-

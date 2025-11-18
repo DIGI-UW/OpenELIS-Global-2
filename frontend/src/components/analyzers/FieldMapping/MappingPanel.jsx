@@ -1,26 +1,17 @@
 /**
  * MappingPanel Component
- * 
+ *
  * Right panel with View Mode and Edit Mode for field mappings
  * Task Reference: T062
  */
 
 import React, { useState } from "react";
-import {
-  Button,
-  Dropdown,
-  TextInput,
-} from "@carbon/react";
+import { Button, Dropdown, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import OpenELISFieldSelector from "./OpenELISFieldSelector";
 import "./MappingPanel.css";
 
-const MappingPanel = ({
-  field,
-  mapping,
-  onCreateMapping,
-  onUpdateMapping,
-}) => {
+const MappingPanel = ({ field, mapping, onCreateMapping, onUpdateMapping }) => {
   const intl = useIntl();
   const [editMode, setEditMode] = useState(!mapping);
   const [formData, setFormData] = useState({
@@ -55,7 +46,7 @@ const MappingPanel = ({
     } else {
       onCreateMapping(mappingData);
     }
-    
+
     setEditMode(false);
   };
 
@@ -79,7 +70,11 @@ const MappingPanel = ({
       <div className="panel-header">
         <h3>Mapping</h3>
         {!editMode && mapping && (
-          <Button kind="ghost" onClick={() => setEditMode(true)} data-testid="mapping-panel-edit-button">
+          <Button
+            kind="ghost"
+            onClick={() => setEditMode(true)}
+            data-testid="mapping-panel-edit-button"
+          >
             <FormattedMessage id="analyzer.fieldMapping.panel.target.edit" />
           </Button>
         )}
@@ -90,9 +85,15 @@ const MappingPanel = ({
           {/* Source Field Info (read-only) */}
           <div className="source-field-card">
             <h4>Source Field</h4>
-            <p><strong>Name:</strong> {field.fieldName}</p>
-            <p><strong>Type:</strong> {field.fieldType}</p>
-            <p><strong>Unit:</strong> {field.unit || "-"}</p>
+            <p>
+              <strong>Name:</strong> {field.fieldName}
+            </p>
+            <p>
+              <strong>Type:</strong> {field.fieldType}
+            </p>
+            <p>
+              <strong>Unit:</strong> {field.unit || "-"}
+            </p>
           </div>
 
           {/* OpenELIS Field Selector */}
@@ -109,10 +110,18 @@ const MappingPanel = ({
 
           {/* Action Buttons */}
           <div className="mapping-actions">
-            <Button kind="secondary" onClick={handleCancel} data-testid="mapping-panel-cancel-button">
+            <Button
+              kind="secondary"
+              onClick={handleCancel}
+              data-testid="mapping-panel-cancel-button"
+            >
               <FormattedMessage id="analyzer.fieldMapping.panel.target.cancel" />
             </Button>
-            <Button kind="primary" onClick={handleSave} data-testid="mapping-panel-save-button">
+            <Button
+              kind="primary"
+              onClick={handleSave}
+              data-testid="mapping-panel-save-button"
+            >
               <FormattedMessage id="analyzer.form.save" />
             </Button>
           </div>
@@ -123,13 +132,21 @@ const MappingPanel = ({
             <>
               <div className="source-field-card">
                 <h4>Source Field</h4>
-                <p><strong>Name:</strong> {field.fieldName}</p>
-                <p><strong>Type:</strong> {field.fieldType}</p>
+                <p>
+                  <strong>Name:</strong> {field.fieldName}
+                </p>
+                <p>
+                  <strong>Type:</strong> {field.fieldType}
+                </p>
               </div>
               <div className="target-field-card">
                 <h4>Target Field</h4>
-                <p><strong>Field ID:</strong> {mapping.openelisFieldId}</p>
-                <p><strong>Type:</strong> {mapping.openelisFieldType}</p>
+                <p>
+                  <strong>Field ID:</strong> {mapping.openelisFieldId}
+                </p>
+                <p>
+                  <strong>Type:</strong> {mapping.openelisFieldType}
+                </p>
               </div>
             </>
           ) : (
@@ -142,4 +159,3 @@ const MappingPanel = ({
 };
 
 export default MappingPanel;
-

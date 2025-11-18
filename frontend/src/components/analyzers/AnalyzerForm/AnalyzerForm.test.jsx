@@ -1,9 +1,9 @@
 /**
  * AnalyzerForm Component Tests
- * 
+ *
  * Task Reference: T038
  * Testing Roadmap: .specify/guides/testing-roadmap.md
- * 
+ *
  * Test Strategy:
  * - Use data-testid for reliable element selection (PREFERRED)
  * - Use waitFor with queryBy* for async operations
@@ -21,17 +21,17 @@ jest.mock("../../../services/analyzerService", () => ({
 // ========== IMPORTS ==========
 
 import React from "react";
-import {
-  render,
-  screen,
-} from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import AnalyzerForm from "./AnalyzerForm";
-import { createAnalyzer, updateAnalyzer } from "../../../services/analyzerService";
+import {
+  createAnalyzer,
+  updateAnalyzer,
+} from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
 
 // ========== TEST SETUP ==========
@@ -42,7 +42,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 };
 
@@ -88,7 +88,7 @@ describe("AnalyzerForm", () => {
     await waitFor(() => {
       expect(createAnalyzer).not.toHaveBeenCalled();
     });
-    
+
     // Verify form has validation error for analyzerType
     const typeDropdown = screen.getByTestId("analyzer-form-type-dropdown");
     // Check that dropdown exists (validation will show error)
@@ -138,7 +138,9 @@ describe("AnalyzerForm", () => {
     await userEvent.type(portInput, "5000", { delay: 0 });
 
     // Click test connection button
-    const testButton = screen.getByTestId("analyzer-form-test-connection-button");
+    const testButton = screen.getByTestId(
+      "analyzer-form-test-connection-button",
+    );
     await userEvent.click(testButton);
 
     // Assert: Verify test connection modal opens

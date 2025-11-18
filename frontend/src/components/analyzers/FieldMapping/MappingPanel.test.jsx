@@ -1,15 +1,15 @@
 /**
  * Unit tests for MappingPanel component
- * 
+ *
  * References:
  * - Testing Roadmap: .specify/guides/testing-roadmap.md
  * - Jest Best Practices: .specify/guides/jest-best-practices.md
- * 
+ *
  * TDD Workflow (MANDATORY):
  * - RED: Write failing test first
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
- * 
+ *
  * Task Reference: T072
  * Test Naming: test{Scenario}_{ExpectedResult}
  */
@@ -18,7 +18,10 @@
 
 // Mock OpenELISFieldSelector component
 jest.mock("./OpenELISFieldSelector", () => {
-  return function MockOpenELISFieldSelector({ onFieldSelect, selectedFieldId }) {
+  return function MockOpenELISFieldSelector({
+    onFieldSelect,
+    selectedFieldId,
+  }) {
     return (
       <div data-testid="openelis-field-selector">
         <button
@@ -27,7 +30,9 @@ jest.mock("./OpenELISFieldSelector", () => {
         >
           Select Field
         </button>
-        {selectedFieldId && <span data-testid="selected-field-id">{selectedFieldId}</span>}
+        {selectedFieldId && (
+          <span data-testid="selected-field-id">{selectedFieldId}</span>
+        )}
       </div>
     );
   };
@@ -39,10 +44,7 @@ jest.mock("./OpenELISFieldSelector", () => {
 import React from "react";
 
 // 2. Testing Library
-import {
-  render,
-  screen,
-} from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 
 // 3. userEvent (PREFERRED for user interactions)
@@ -73,7 +75,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 };
 
@@ -111,7 +113,7 @@ describe("MappingPanel", () => {
   /**
    * Test: Update mapping shows confirmation modal for active analyzers
    * Task Reference: T072
-   * 
+   *
    * When updating an active mapping on an active analyzer, a confirmation modal
    * should be shown before applying the changes.
    */
@@ -127,7 +129,7 @@ describe("MappingPanel", () => {
         onCreateMapping={mockOnCreateMapping}
         onUpdateMapping={mockOnUpdateMapping}
         // Note: analyzerIsActive prop will be added in T078
-      />
+      />,
     );
 
     // Act: Click edit button to enter edit mode
@@ -135,7 +137,9 @@ describe("MappingPanel", () => {
     await userEvent.click(editButton);
 
     // Wait for edit mode to be visible
-    const saveButtonElement = await screen.findByTestId("mapping-panel-save-button");
+    const saveButtonElement = await screen.findByTestId(
+      "mapping-panel-save-button",
+    );
     expect(saveButtonElement).not.toBeNull();
 
     // Change the mapping (select different field)
@@ -155,7 +159,7 @@ describe("MappingPanel", () => {
       // const confirmationModal = screen.queryByTestId("mapping-activation-modal");
       // expect(confirmationModal).not.toBeNull();
       // expect(mockOnUpdateMapping).not.toHaveBeenCalled();
-      
+
       // For now, test that updateMapping is called (current behavior - no confirmation yet)
       expect(mockOnUpdateMapping).toHaveBeenCalledTimes(1);
     });
@@ -164,7 +168,7 @@ describe("MappingPanel", () => {
   /**
    * Test: Save draft mapping does not require confirmation
    * Task Reference: T072
-   * 
+   *
    * When saving a draft mapping (isActive=false), no confirmation modal should
    * be shown. The mapping should be saved directly.
    */
@@ -180,7 +184,7 @@ describe("MappingPanel", () => {
         onCreateMapping={mockOnCreateMapping}
         onUpdateMapping={mockOnUpdateMapping}
         // Note: analyzerIsActive prop will be added in T078
-      />
+      />,
     );
 
     // Act: Click edit button to enter edit mode
@@ -188,7 +192,9 @@ describe("MappingPanel", () => {
     await userEvent.click(editButton);
 
     // Wait for edit mode to be visible
-    const saveButtonElement = await screen.findByTestId("mapping-panel-save-button");
+    const saveButtonElement = await screen.findByTestId(
+      "mapping-panel-save-button",
+    );
     expect(saveButtonElement).not.toBeNull();
 
     // Change the mapping (select different field)
@@ -216,14 +222,14 @@ describe("MappingPanel", () => {
         openelisFieldId: "TEST-001",
         openelisFieldType: "TEST",
         isActive: false, // Still draft
-      })
+      }),
     );
   });
 
   /**
    * Test: Create new mapping does not require confirmation
    * Task Reference: T072
-   * 
+   *
    * When creating a new mapping (no existing mapping), no confirmation should
    * be required regardless of analyzer status.
    */
@@ -238,12 +244,14 @@ describe("MappingPanel", () => {
         onCreateMapping={mockOnCreateMapping}
         onUpdateMapping={mockOnUpdateMapping}
         // Note: analyzerIsActive prop will be added in T078
-      />
+      />,
     );
 
     // Act: Component starts in edit mode when no mapping exists
     // Wait for edit mode to be visible
-    const saveButtonElement = await screen.findByTestId("mapping-panel-save-button");
+    const saveButtonElement = await screen.findByTestId(
+      "mapping-panel-save-button",
+    );
     expect(saveButtonElement).not.toBeNull();
 
     // Select a field
@@ -268,8 +276,7 @@ describe("MappingPanel", () => {
         analyzerFieldId: field.id,
         openelisFieldId: "TEST-001",
         openelisFieldType: "TEST",
-      })
+      }),
     );
   });
 });
-

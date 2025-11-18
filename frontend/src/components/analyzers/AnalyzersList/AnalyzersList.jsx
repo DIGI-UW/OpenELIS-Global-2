@@ -27,7 +27,7 @@ const AnalyzersList = () => {
   const intl = useIntl();
   const history = useHistory();
   const searchTimeoutRef = useRef(null);
-  
+
   // State
   const [analyzers, setAnalyzers] = useState([]);
   const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
@@ -53,9 +53,11 @@ const AnalyzersList = () => {
       if (Array.isArray(data)) {
         setAnalyzers(data);
         setFilteredAnalyzers(data);
-        
+
         // Calculate statistics
-        const activeCount = data.filter((a) => a.active === true || a.active === "true").length;
+        const activeCount = data.filter(
+          (a) => a.active === true || a.active === "true",
+        ).length;
         const inactiveCount = data.length - activeCount;
         setStats({
           total: data.length,
@@ -79,12 +81,12 @@ const AnalyzersList = () => {
   // Search handler with debounce
   const handleSearch = (value) => {
     setSearchTerm(value);
-    
+
     // Clear existing timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     // Set new timeout for debounced search
     searchTimeoutRef.current = setTimeout(() => {
       const searchFilters = { ...filters };
@@ -104,31 +106,51 @@ const AnalyzersList = () => {
 
   // Table headers
   const headers = [
-    { key: "name", header: intl.formatMessage({ id: "analyzer.table.header.name" }) },
-    { key: "type", header: intl.formatMessage({ id: "analyzer.table.header.type" }) },
-    { key: "connection", header: intl.formatMessage({ id: "analyzer.table.header.connection" }) },
-    { key: "testUnits", header: intl.formatMessage({ id: "analyzer.table.header.testUnits" }) },
-    { key: "status", header: intl.formatMessage({ id: "analyzer.table.header.status" }) },
-    { key: "lastModified", header: intl.formatMessage({ id: "analyzer.table.header.lastModified" }) },
+    {
+      key: "name",
+      header: intl.formatMessage({ id: "analyzer.table.header.name" }),
+    },
+    {
+      key: "type",
+      header: intl.formatMessage({ id: "analyzer.table.header.type" }),
+    },
+    {
+      key: "connection",
+      header: intl.formatMessage({ id: "analyzer.table.header.connection" }),
+    },
+    {
+      key: "testUnits",
+      header: intl.formatMessage({ id: "analyzer.table.header.testUnits" }),
+    },
+    {
+      key: "status",
+      header: intl.formatMessage({ id: "analyzer.table.header.status" }),
+    },
+    {
+      key: "lastModified",
+      header: intl.formatMessage({ id: "analyzer.table.header.lastModified" }),
+    },
     { key: "actions", header: "" },
   ];
 
   // Format analyzer data for table rows (Carbon DataTable format)
   const rows = filteredAnalyzers.map((analyzer) => {
-    const connection = analyzer.ipAddress && analyzer.port
-      ? `${analyzer.ipAddress}:${analyzer.port}`
-      : "-";
-    
+    const connection =
+      analyzer.ipAddress && analyzer.port
+        ? `${analyzer.ipAddress}:${analyzer.port}`
+        : "-";
+
     const isActive = analyzer.active === true || analyzer.active === "true";
-    
+
     return {
       id: analyzer.id,
       name: analyzer.name || "-",
       type: analyzer.analyzerType || analyzer.type || "-",
       connection: connection,
-      testUnits: analyzer.testUnitIds && analyzer.testUnitIds.length > 0
-        ? `${analyzer.testUnitIds.length} unit(s)`
-        : "-",
+      testUnits:
+        analyzer.testUnitIds && analyzer.testUnitIds.length > 0
+          ? `${analyzer.testUnitIds.length} unit(s)`
+          : "-",
       status: isActive ? "Active" : "Inactive",
       lastModified: analyzer.lastModified
         ? new Date(analyzer.lastModified).toLocaleDateString()
@@ -140,7 +162,10 @@ const AnalyzersList = () => {
   return (
     <div className="analyzers-list" data-testid="analyzers-list">
       {/* Header */}
-      <div className="analyzers-list-header" data-testid="analyzers-list-header">
+      <div
+        className="analyzers-list-header"
+        data-testid="analyzers-list-header"
+      >
         <h1>{intl.formatMessage({ id: "analyzer.list.title" })}</h1>
         <Button
           data-testid="add-analyzer-button"
@@ -154,32 +179,46 @@ const AnalyzersList = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="analyzers-list-stats cds--css-grid" data-testid="analyzers-list-stats">
+      <div
+        className="analyzers-list-stats cds--css-grid"
+        data-testid="analyzers-list-stats"
+      >
         <Column lg={4} md={4} sm={4}>
           <Tile data-testid="stat-total">
-            <div className="stat-label">{intl.formatMessage({ id: "analyzer.stat.total" })}</div>
+            <div className="stat-label">
+              {intl.formatMessage({ id: "analyzer.stat.total" })}
+            </div>
             <div className="stat-value">{stats.total}</div>
           </Tile>
         </Column>
         <Column lg={4} md={4} sm={4}>
           <Tile data-testid="stat-active">
-            <div className="stat-label">{intl.formatMessage({ id: "analyzer.stat.active" })}</div>
+            <div className="stat-label">
+              {intl.formatMessage({ id: "analyzer.stat.active" })}
+            </div>
             <div className="stat-value">{stats.active}</div>
           </Tile>
         </Column>
         <Column lg={4} md={4} sm={4}>
           <Tile data-testid="stat-inactive">
-            <div className="stat-label">{intl.formatMessage({ id: "analyzer.stat.inactive" })}</div>
+            <div className="stat-label">
+              {intl.formatMessage({ id: "analyzer.stat.inactive" })}
+            </div>
             <div className="stat-value">{stats.inactive}</div>
           </Tile>
         </Column>
       </div>
 
       {/* Search and Filters */}
-      <div className="analyzers-list-filters" data-testid="analyzers-list-filters">
+      <div
+        className="analyzers-list-filters"
+        data-testid="analyzers-list-filters"
+      >
         <Search
           data-testid="analyzer-search-input"
-          placeholder={intl.formatMessage({ id: "analyzer.search.placeholder" })}
+          placeholder={intl.formatMessage({
+            id: "analyzer.search.placeholder",
+          })}
           labelText={intl.formatMessage({ id: "analyzer.search.label" })}
           value={searchTerm}
           onChange={(e) => handleSearch(e.target.value)}
@@ -190,17 +229,16 @@ const AnalyzersList = () => {
 
       {/* DataTable */}
       <TableContainer data-testid="analyzers-table-container">
-        <DataTable
-          rows={rows}
-          headers={headers}
-          isSortable
-        >
+        <DataTable rows={rows} headers={headers} isSortable>
           {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
             <Table {...getTableProps()} data-testid="analyzers-table">
               <TableHead>
                 <TableRow>
                   {headers.map((header) => (
-                    <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                    <TableHeader
+                      key={header.key}
+                      {...getHeaderProps({ header })}
+                    >
                       {header.header}
                     </TableHeader>
                   ))}
@@ -208,17 +246,24 @@ const AnalyzersList = () => {
               </TableHead>
               <TableBody>
                 {rows.map((row) => {
-                  const analyzer = row._analyzer || filteredAnalyzers.find((a) => a.id === row.id);
-                  const isActive = analyzer?.active === true || analyzer?.active === "true";
-                  
+                  const analyzer =
+                    row._analyzer ||
+                    filteredAnalyzers.find((a) => a.id === row.id);
+                  const isActive =
+                    analyzer?.active === true || analyzer?.active === "true";
+
                   return (
-                    <TableRow key={row.id} {...getRowProps({ row })} data-testid={`analyzer-row-${row.id}`}>
+                    <TableRow
+                      key={row.id}
+                      {...getRowProps({ row })}
+                      data-testid={`analyzer-row-${row.id}`}
+                    >
                       {row.cells.map((cell, index) => {
                         // Map cell headers to testids
                         const headerKey = cell.info.header;
                         let testId = null;
                         let cellContent = cell.value;
-                        
+
                         if (headerKey === "name") {
                           testId = `analyzer-name-${row.id}`;
                         } else if (headerKey === "type") {
@@ -241,12 +286,20 @@ const AnalyzersList = () => {
                           cellContent = analyzer ? (
                             <OverflowMenu>
                               <OverflowMenuItem
-                                itemText={intl.formatMessage({ id: "analyzer.action.fieldMappings" })}
-                                onClick={() => history.push(`/analyzers/${analyzer.id}/mappings`)}
+                                itemText={intl.formatMessage({
+                                  id: "analyzer.action.fieldMappings",
+                                })}
+                                onClick={() =>
+                                  history.push(
+                                    `/analyzers/${analyzer.id}/mappings`,
+                                  )
+                                }
                                 data-testid={`analyzer-action-mappings-${row.id}`}
                               />
                               <OverflowMenuItem
-                                itemText={intl.formatMessage({ id: "analyzer.action.edit" })}
+                                itemText={intl.formatMessage({
+                                  id: "analyzer.action.edit",
+                                })}
                                 onClick={() => {
                                   setSelectedAnalyzer(analyzer);
                                   setAnalyzerFormOpen(true);
@@ -254,7 +307,9 @@ const AnalyzersList = () => {
                                 data-testid={`analyzer-action-edit-${row.id}`}
                               />
                               <OverflowMenuItem
-                                itemText={intl.formatMessage({ id: "analyzer.action.delete" })}
+                                itemText={intl.formatMessage({
+                                  id: "analyzer.action.delete",
+                                })}
                                 isDelete
                                 onClick={() => {
                                   // TODO: Implement delete
@@ -264,7 +319,7 @@ const AnalyzersList = () => {
                             </OverflowMenu>
                           ) : null;
                         }
-                        
+
                         return (
                           <TableCell key={cell.id} data-testid={testId}>
                             {cellContent}

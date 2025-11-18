@@ -1,6 +1,6 @@
 /**
  * AnalyzersPage Route Component
- * 
+ *
  * Page component integrating AnalyzersList
  * Task Reference: T066
  */
@@ -13,4 +13,3 @@ const AnalyzersPage = () => {
 };
 
 export default AnalyzersPage;
-

@@ -1,6 +1,6 @@
 /**
  * QualitativeMappingModal Component
- * 
+ *
  * Modal for configuring qualitative value mappings (many-to-one)
  * Task Reference: T064
  */
@@ -54,7 +54,7 @@ const QualitativeMappingModal = ({
         const initialMappings = analyzerValues.map((value) => {
           // Check if mapping already exists for this value
           const existing = qualitativeMappings.find(
-            (m) => m.analyzerValue === value
+            (m) => m.analyzerValue === value,
           );
           return {
             analyzerValue: value,
@@ -70,7 +70,7 @@ const QualitativeMappingModal = ({
             analyzerValue: m.analyzerValue,
             openelisCode: m.openelisCode,
             isDefault: m.isDefault,
-          }))
+          })),
         );
       } else {
         // Default empty mappings
@@ -236,14 +236,14 @@ const QualitativeMappingModal = ({
                         items={openelisCodes}
                         selectedItem={
                           openelisCodes.find(
-                            (c) => c.id === mapping.openelisCode
+                            (c) => c.id === mapping.openelisCode,
                           ) || null
                         }
                         onChange={({ selectedItem }) => {
                           handleMappingChange(
                             index,
                             "openelisCode",
-                            selectedItem?.id || ""
+                            selectedItem?.id || "",
                           );
                         }}
                         invalid={!!errors[`mapping-${index}`]}
@@ -290,4 +290,3 @@ const QualitativeMappingModal = ({
 };
 
 export default QualitativeMappingModal;
-

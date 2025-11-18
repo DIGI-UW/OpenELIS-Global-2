@@ -1,9 +1,9 @@
 /**
  * FieldMapping Component
- * 
+ *
  * Dual-panel interface for mapping analyzer fields to OpenELIS fields
  * Task Reference: T059
- * 
+ *
  * Features:
  * - 50/50 split layout using Carbon Grid
  * - Left panel: Analyzer fields table
@@ -12,12 +12,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import {
-  Grid,
-  Column,
-  Button,
-  Search,
-} from "@carbon/react";
+import { Grid, Column, Button, Search } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams, useHistory } from "react-router-dom";
 import * as analyzerService from "../../../services/analyzerService";
@@ -29,7 +24,7 @@ const FieldMapping = () => {
   const intl = useIntl();
   const history = useHistory();
   const { id: analyzerId } = useParams();
-  
+
   // State
   const [analyzer, setAnalyzer] = useState(null);
   const [fields, setFields] = useState([]);
@@ -79,20 +74,24 @@ const FieldMapping = () => {
 
   // Handle mapping creation
   const handleCreateMapping = (mappingData) => {
-    analyzerService.createMapping(analyzerId, mappingData, (response, error) => {
-      if (error || (response && response.error)) {
-        // Handle error
-        console.error("Failed to create mapping:", error || response?.error);
-      } else {
-        // Reload mappings
-        analyzerService.getMappings(analyzerId, (mappingsData) => {
-          if (Array.isArray(mappingsData)) {
-            setMappings(mappingsData);
-          }
-        });
-        // Keep field selected to show the new mapping
-      }
-    });
+    analyzerService.createMapping(
+      analyzerId,
+      mappingData,
+      (response, error) => {
+        if (error || (response && response.error)) {
+          // Handle error
+          console.error("Failed to create mapping:", error || response?.error);
+        } else {
+          // Reload mappings
+          analyzerService.getMappings(analyzerId, (mappingsData) => {
+            if (Array.isArray(mappingsData)) {
+              setMappings(mappingsData);
+            }
+          });
+          // Keep field selected to show the new mapping
+        }
+      },
+    );
   };
 
   // Filter fields by search term
@@ -100,7 +99,8 @@ const FieldMapping = () => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
     return (
-      (field.fieldName && field.fieldName.toLowerCase().includes(searchLower)) ||
+      (field.fieldName &&
+        field.fieldName.toLowerCase().includes(searchLower)) ||
       (field.astmRef && field.astmRef.toLowerCase().includes(searchLower))
     );
   });
@@ -114,11 +114,17 @@ const FieldMapping = () => {
     <div className="field-mapping" data-testid="field-mapping">
       {/* Page Header */}
       <div className="field-mapping-header" data-testid="field-mapping-header">
-        <Button kind="ghost" onClick={() => history.push("/analyzers")} data-testid="field-mapping-back-button">
+        <Button
+          kind="ghost"
+          onClick={() => history.push("/analyzers")}
+          data-testid="field-mapping-back-button"
+        >
           <FormattedMessage id="analyzer.fieldMapping.back" />
         </Button>
         <h1 data-testid="field-mapping-title">
-          {analyzer ? analyzer.name : intl.formatMessage({ id: "analyzer.fieldMapping.page.title" })}
+          {analyzer
+            ? analyzer.name
+            : intl.formatMessage({ id: "analyzer.fieldMapping.page.title" })}
         </h1>
         <Button kind="primary" data-testid="field-mapping-save-button">
           <FormattedMessage id="analyzer.fieldMapping.save" />
@@ -147,23 +153,36 @@ const FieldMapping = () => {
               mapping={selectedFieldMapping}
               onCreateMapping={handleCreateMapping}
               onUpdateMapping={(mappingId, mappingData) => {
-                analyzerService.updateMapping(analyzerId, mappingId, mappingData, (response, error) => {
-                  if (!error && !response?.error) {
-                    analyzerService.getMappings(analyzerId, (mappingsData) => {
-                      if (Array.isArray(mappingsData)) {
-                        setMappings(mappingsData);
-                      }
-                    });
-                  }
-                });
+                analyzerService.updateMapping(
+                  analyzerId,
+                  mappingId,
+                  mappingData,
+                  (response, error) => {
+                    if (!error && !response?.error) {
+                      analyzerService.getMappings(
+                        analyzerId,
+                        (mappingsData) => {
+                          if (Array.isArray(mappingsData)) {
+                            setMappings(mappingsData);
+                          }
+                        },
+                      );
+                    }
+                  },
+                );
               }}
             />
           ) : (
-            <div className="mapping-panel-placeholder" data-testid="mapping-panel-placeholder">
+            <div
+              className="mapping-panel-placeholder"
+              data-testid="mapping-panel-placeholder"
+            >
               <p>
                 <FormattedMessage id="analyzer.fieldMapping.panel.target.summary" />
               </p>
-              <p>Select a field from the left panel to view or create mappings.</p>
+              <p>
+                Select a field from the left panel to view or create mappings.
+              </p>
             </div>
           )}
         </Column>
@@ -173,4 +192,3 @@ const FieldMapping = () => {
 };
 
 export default FieldMapping;
-

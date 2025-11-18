@@ -90,7 +90,9 @@ describe("Analyzer Configuration - User Story 1", function () {
     cy.intercept("GET", "**/rest/analyzer/analyzers**").as("getAnalyzers");
     cy.intercept("POST", "**/rest/analyzer/analyzers**").as("createAnalyzer");
     cy.intercept("PUT", "**/rest/analyzer/analyzers/**").as("updateAnalyzer");
-    cy.intercept("DELETE", "**/rest/analyzer/analyzers/**").as("deleteAnalyzer");
+    cy.intercept("DELETE", "**/rest/analyzer/analyzers/**").as(
+      "deleteAnalyzer",
+    );
     cy.intercept("POST", "**/rest/analyzer/analyzers/**/test-connection**").as(
       "testConnection",
     );
@@ -360,4 +362,3 @@ describe("Analyzer Configuration - User Story 1", function () {
  * 2. Screenshots: Review failure screenshots for UI state at failure point
  * 3. Test Output: Review Cypress command log for execution order and timeouts
  */
-

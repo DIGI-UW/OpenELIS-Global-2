@@ -1,6 +1,6 @@
 /**
  * FieldMappingPanel Component
- * 
+ *
  * Left panel displaying analyzer fields table
  * Task Reference: T060
  */
@@ -43,7 +43,7 @@ const FieldMappingPanel = ({
   // Format fields for table rows
   const rows = fields.map((field) => {
     const hasMapping = mappings.some((m) => m.analyzerFieldId === field.id);
-    
+
     return {
       id: field.id,
       fieldName: field.fieldName || "-",
@@ -73,11 +73,16 @@ const FieldMappingPanel = ({
     <div className="field-mapping-panel" data-testid="field-mapping-panel">
       <div className="panel-header">
         <h3>
-          <FormattedMessage id="analyzer.fieldMapping.panel.source.title" values={{ type: "All" }} />
+          <FormattedMessage
+            id="analyzer.fieldMapping.panel.source.title"
+            values={{ type: "All" }}
+          />
         </h3>
         <Search
           data-testid="field-mapping-search"
-          placeholder={intl.formatMessage({ id: "analyzer.fieldMapping.panel.source.search" })}
+          placeholder={intl.formatMessage({
+            id: "analyzer.fieldMapping.panel.source.search",
+          })}
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
           size="lg"
@@ -91,7 +96,10 @@ const FieldMappingPanel = ({
               <TableHead>
                 <TableRow>
                   {headers.map((header) => (
-                    <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                    <TableHeader
+                      key={header.key}
+                      {...getHeaderProps({ header })}
+                    >
                       {header.header}
                     </TableHeader>
                   ))}
@@ -99,9 +107,11 @@ const FieldMappingPanel = ({
               </TableHead>
               <TableBody>
                 {rows.map((row) => {
-                  const field = row._field || fields.find((f) => f.id === row.id);
-                  const isSelected = selectedField && selectedField.id === row.id;
-                  
+                  const field =
+                    row._field || fields.find((f) => f.id === row.id);
+                  const isSelected =
+                    selectedField && selectedField.id === row.id;
+
                   return (
                     <TableRow
                       key={row.id}
@@ -115,7 +125,7 @@ const FieldMappingPanel = ({
                         const headerKey = cell.info.header;
                         let testId = null;
                         let cellContent = cell.value;
-                        
+
                         if (headerKey === "fieldName") {
                           testId = `field-name-${row.id}`;
                         } else if (headerKey === "astmRef") {
@@ -131,13 +141,14 @@ const FieldMappingPanel = ({
                           testId = `field-unit-${row.id}`;
                         } else if (headerKey === "action") {
                           testId = `field-action-${row.id}`;
-                          cellContent = cell.value === "Mapped" ? (
-                            <Tag type="green">Mapped</Tag>
-                          ) : (
-                            <Tag type="gray">Unmapped</Tag>
-                          );
+                          cellContent =
+                            cell.value === "Mapped" ? (
+                              <Tag type="green">Mapped</Tag>
+                            ) : (
+                              <Tag type="gray">Unmapped</Tag>
+                            );
                         }
-                        
+
                         return (
                           <TableCell key={cell.id} data-testid={testId}>
                             {cellContent}
@@ -164,4 +175,3 @@ const FieldMappingPanel = ({
 };
 
 export default FieldMappingPanel;
-

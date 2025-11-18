@@ -1,6 +1,6 @@
 /**
  * FieldMappingsPage Route Component
- * 
+ *
  * Page component integrating FieldMapping with route parameter
  * Task Reference: T067
  */
@@ -13,4 +13,3 @@ const FieldMappingsPage = () => {
 };
 
 export default FieldMappingsPage;
-

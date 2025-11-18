@@ -1,9 +1,9 @@
 /**
  * AnalyzersList Component Tests
- * 
+ *
  * Task Reference: T037
  * Testing Roadmap: .specify/guides/testing-roadmap.md
- * 
+ *
  * Test Strategy:
  * - Use data-testid for reliable element selection (PREFERRED)
  * - Use waitFor with queryBy* for async operations
@@ -34,10 +34,7 @@ jest.mock("react-router-dom", () => ({
 import React from "react";
 
 // 2. Testing Library (all utilities in one import)
-import {
-  render,
-  screen,
-} from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 
@@ -68,7 +65,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 };
 
@@ -96,7 +93,7 @@ describe("AnalyzersList", () => {
   /**
    * Test: Renders AnalyzersList with data displays table
    * Task Reference: T037
-   * 
+   *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks with analyzer data
    * 2. Act: Render component
@@ -122,13 +119,23 @@ describe("AnalyzersList", () => {
     expect(getAnalyzers).toHaveBeenCalled();
 
     // Assert: Wait for table container to appear (using data-testid)
-    const tableContainer = await screen.findByTestId("analyzers-table-container");
+    const tableContainer = await screen.findByTestId(
+      "analyzers-table-container",
+    );
     expect(tableContainer).not.toBeNull();
 
     // Assert: Verify analyzer names are displayed using data-testid
     // Use findByTestId which waits automatically
-    const name1 = await screen.findByTestId("analyzer-name-1", {}, { timeout: 3000 });
-    const name2 = await screen.findByTestId("analyzer-name-2", {}, { timeout: 3000 });
+    const name1 = await screen.findByTestId(
+      "analyzer-name-1",
+      {},
+      { timeout: 3000 },
+    );
+    const name2 = await screen.findByTestId(
+      "analyzer-name-2",
+      {},
+      { timeout: 3000 },
+    );
     expect(name1).not.toBeNull();
     expect(name2).not.toBeNull();
     expect(name1.textContent).toContain("Hematology Analyzer 1");
@@ -138,7 +145,7 @@ describe("AnalyzersList", () => {
   /**
    * Test: Search analyzers with query filters results
    * Task Reference: T037
-   * 
+   *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks with analyzer data
    * 2. Act: Type search query
@@ -156,7 +163,7 @@ describe("AnalyzersList", () => {
       if (filters && filters.search) {
         // Filter by search query
         const filtered = allAnalyzers.filter((analyzer) =>
-          analyzer.name.toLowerCase().includes(filters.search.toLowerCase())
+          analyzer.name.toLowerCase().includes(filters.search.toLowerCase()),
         );
         callback(filtered);
       } else {
@@ -181,14 +188,14 @@ describe("AnalyzersList", () => {
         expect(screen.queryByTestId("analyzer-name-1")).not.toBeNull();
         expect(screen.queryByTestId("analyzer-name-2")).toBeNull();
       },
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
   });
 
   /**
    * Test: Open Add Analyzer modal shows form
    * Task Reference: T037
-   * 
+   *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks
    * 2. Act: Click "Add Analyzer" button
@@ -213,9 +220,12 @@ describe("AnalyzersList", () => {
     await userEvent.click(addButton);
 
     // Assert: Wait for modal to open (AnalyzerForm should have data-testid)
-    await waitFor(() => {
-      // AnalyzerForm should render with data-testid="analyzer-form"
-      expect(screen.queryByTestId("analyzer-form")).not.toBeNull();
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        // AnalyzerForm should render with data-testid="analyzer-form"
+        expect(screen.queryByTestId("analyzer-form")).not.toBeNull();
+      },
+      { timeout: 2000 },
+    );
   });
 });

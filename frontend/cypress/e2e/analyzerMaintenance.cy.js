@@ -78,8 +78,7 @@ before("Login and setup test analyzer with mappings", () => {
         failOnStatusCode: false,
       }).then((fieldResponse) => {
         if (fieldResponse.status === 201 || fieldResponse.status === 200) {
-          const fieldId =
-            fieldResponse.body.id || fieldResponse.body.data?.id;
+          const fieldId = fieldResponse.body.id || fieldResponse.body.data?.id;
 
           // Step 3: Create draft mapping
           cy.request({
@@ -100,8 +99,7 @@ before("Login and setup test analyzer with mappings", () => {
               mappingResponse.status === 200
             ) {
               testMappingId =
-                mappingResponse.body.id ||
-                mappingResponse.body.data?.id;
+                mappingResponse.body.id || mappingResponse.body.data?.id;
               cy.wrap(testMappingId).as("mappingId");
             }
           });
@@ -137,15 +135,19 @@ describe("Analyzer Maintenance - User Story 2", function () {
     cy.intercept("PUT", "**/rest/analyzer/analyzers/**/mappings/**").as(
       "updateMapping",
     );
-    cy.intercept("POST", "**/rest/analyzer/analyzers/**/mappings/**/activate**")
-      .as("activateMapping");
-    cy.intercept("PUT", "**/rest/analyzer/analyzers/**/mappings/**/disable**")
-      .as("disableMapping");
+    cy.intercept(
+      "POST",
+      "**/rest/analyzer/analyzers/**/mappings/**/activate**",
+    ).as("activateMapping");
+    cy.intercept(
+      "PUT",
+      "**/rest/analyzer/analyzers/**/mappings/**/disable**",
+    ).as("disableMapping");
   });
 
   /**
    * Test: Update existing mapping
-   * 
+   *
    * Scenario: User updates an existing mapping to change the OpenELIS field mapping.
    * For active analyzers, confirmation should be required. For inactive analyzers,
    * update should proceed without confirmation.
@@ -202,8 +204,10 @@ describe("Analyzer Maintenance - User Story 2", function () {
       });
 
     // Set up intercept for update before clicking save
-    cy.intercept("PUT", `**/rest/analyzer/analyzers/${testAnalyzerId}/mappings/**`)
-      .as("updateMappingRequest");
+    cy.intercept(
+      "PUT",
+      `**/rest/analyzer/analyzers/${testAnalyzerId}/mappings/**`,
+    ).as("updateMappingRequest");
 
     // Click save button
     cy.get('[data-testid="mapping-panel-save-button"]')
@@ -224,7 +228,7 @@ describe("Analyzer Maintenance - User Story 2", function () {
 
   /**
    * Test: Activate draft mapping with confirmation
-   * 
+   *
    * Scenario: User activates a draft mapping. For active analyzers, confirmation
    * modal should appear. For inactive analyzers, activation should proceed directly.
    */
@@ -270,8 +274,10 @@ describe("Analyzer Maintenance - User Story 2", function () {
     // Assert: For inactive analyzer, activation should proceed directly
     // For active analyzer, confirmation modal should appear
     // Note: Since analyzer is inactive, activation should proceed without confirmation
-    cy.intercept("POST", `**/rest/analyzer/analyzers/${testAnalyzerId}/mappings/**/activate**`)
-      .as("activateMappingRequest");
+    cy.intercept(
+      "POST",
+      `**/rest/analyzer/analyzers/${testAnalyzerId}/mappings/**/activate**`,
+    ).as("activateMappingRequest");
 
     // If confirmation modal appears (for active analyzers), confirm activation
     cy.get("body").then(($body) => {
@@ -281,8 +287,7 @@ describe("Analyzer Maintenance - User Story 2", function () {
           .should("be.visible")
           .within(() => {
             // Check confirmation checkbox
-            cy.get('[data-testid="activation-confirmation-checkbox"]')
-              .check();
+            cy.get('[data-testid="activation-confirmation-checkbox"]').check();
 
             // Click "Activate Changes" button
             cy.get('[data-testid="activation-confirm-button"]')
@@ -301,23 +306,22 @@ describe("Analyzer Maintenance - User Story 2", function () {
     );
 
     // Verify mapping is now active (draft badge should be gone, active badge should appear)
-    cy.get('[data-testid="field-mapping-panel"]')
-      .within(() => {
-        cy.contains("GLUCOSE")
-          .parents('[data-testid*="field-row"]')
-          .first()
-          .within(() => {
-            // Draft badge should not exist
-            cy.get('[data-testid*="draft-badge"]').should("not.exist");
-            // Active badge should exist (if implemented)
-            // cy.get('[data-testid*="active-badge"]').should("be.visible");
-          });
-      });
+    cy.get('[data-testid="field-mapping-panel"]').within(() => {
+      cy.contains("GLUCOSE")
+        .parents('[data-testid*="field-row"]')
+        .first()
+        .within(() => {
+          // Draft badge should not exist
+          cy.get('[data-testid*="draft-badge"]').should("not.exist");
+          // Active badge should exist (if implemented)
+          // cy.get('[data-testid*="active-badge"]').should("be.visible");
+        });
+    });
   });
 
   /**
    * Test: Deactivate mapping while preserving history
-   * 
+   *
    * Scenario: User deactivates a mapping. The mapping should be marked as inactive
    * but historical data should be preserved. Required mappings cannot be disabled.
    */
@@ -387,21 +391,19 @@ describe("Analyzer Maintenance - User Story 2", function () {
     );
 
     // Verify mapping is now disabled (retired badge should appear)
-    cy.get('[data-testid="field-mapping-panel"]')
-      .within(() => {
-        cy.contains("GLUCOSE")
-          .parents('[data-testid*="field-row"]')
-          .first()
-          .within(() => {
-            // Retired badge should exist (T173 implementation)
-            cy.get('[data-testid*="retired-badge"]', {
-              timeout: 5000,
-            }).should("be.visible");
-          });
-      });
+    cy.get('[data-testid="field-mapping-panel"]').within(() => {
+      cy.contains("GLUCOSE")
+        .parents('[data-testid*="field-row"]')
+        .first()
+        .within(() => {
+          // Retired badge should exist (T173 implementation)
+          cy.get('[data-testid*="retired-badge"]', {
+            timeout: 5000,
+          }).should("be.visible");
+        });
+    });
 
     // Verify mapping still exists in database (historical data preserved)
     // This is verified by the fact that the mapping row still appears with retired badge
   });
 });
-

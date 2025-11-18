@@ -1,9 +1,9 @@
 /**
  * Analyzer Service API Client
- * 
+ *
  * Provides methods for CRUD operations on analyzers and analyzer field mappings
  * Follows OpenELIS pattern using getFromOpenElisServer, postToOpenElisServerJsonResponse, and fetch for PUT/DELETE
- * 
+ *
  * Task Reference: T065
  * Pattern Reference: AGENTS.md Section 5 (Frontend Data Fetching Pattern)
  */
@@ -22,7 +22,7 @@ import config from "../config.json";
 export const getAnalyzers = (filters, callback) => {
   let endpoint = "/rest/analyzer/analyzers";
   const params = new URLSearchParams();
-  
+
   if (filters) {
     if (filters.status) {
       params.append("status", filters.status);
@@ -31,11 +31,11 @@ export const getAnalyzers = (filters, callback) => {
       params.append("search", filters.search);
     }
   }
-  
+
   if (params.toString()) {
     endpoint += "?" + params.toString();
   }
-  
+
   getFromOpenElisServer(endpoint, callback);
 };
 
@@ -71,7 +71,7 @@ export const createAnalyzer = (analyzerData, callback, extraParams) => {
 export const updateAnalyzer = (id, analyzerData, callback, extraParams) => {
   const endpoint = `/rest/analyzer/analyzers/${id}`;
   const payload = JSON.stringify(analyzerData);
-  
+
   // Use fetch directly to get JSON response (controllers return Map<String, Object>)
   fetch(config.serverBaseUrl + endpoint, {
     credentials: "include",
@@ -95,7 +95,7 @@ export const updateAnalyzer = (id, analyzerData, callback, extraParams) => {
             statusCode: response.status,
             statusText: response.statusText,
           },
-          extraParams
+          extraParams,
         );
         return;
       }
@@ -111,7 +111,7 @@ export const updateAnalyzer = (id, analyzerData, callback, extraParams) => {
           message: error.message || "Network error",
           status: 0,
         },
-        extraParams
+        extraParams,
       );
     });
 };
@@ -123,7 +123,7 @@ export const updateAnalyzer = (id, analyzerData, callback, extraParams) => {
  */
 export const deleteAnalyzer = (id, callback) => {
   const endpoint = `/rest/analyzer/analyzers/${id}`;
-  
+
   fetch(config.serverBaseUrl + endpoint, {
     credentials: "include",
     method: "DELETE",
@@ -157,7 +157,12 @@ export const deleteAnalyzer = (id, callback) => {
 export const testConnection = (id, callback, extraParams) => {
   const endpoint = `/rest/analyzer/analyzers/${id}/test-connection`;
   // POST with empty body
-  postToOpenElisServerJsonResponse(endpoint, JSON.stringify({}), callback, extraParams);
+  postToOpenElisServerJsonResponse(
+    endpoint,
+    JSON.stringify({}),
+    callback,
+    extraParams,
+  );
 };
 
 /**
@@ -171,7 +176,12 @@ export const queryAnalyzer = (id, callback, extraParams) => {
   // TODO: Implement when FR-002 is implemented
   // Endpoint will be: POST /rest/analyzer/analyzers/{id}/query
   const endpoint = `/rest/analyzer/analyzers/${id}/query`;
-  postToOpenElisServerJsonResponse(endpoint, JSON.stringify({}), callback, extraParams);
+  postToOpenElisServerJsonResponse(
+    endpoint,
+    JSON.stringify({}),
+    callback,
+    extraParams,
+  );
 };
 
 /**
@@ -191,7 +201,12 @@ export const getMappings = (analyzerId, callback) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const createMapping = (analyzerId, mappingData, callback, extraParams) => {
+export const createMapping = (
+  analyzerId,
+  mappingData,
+  callback,
+  extraParams,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings`;
   const payload = JSON.stringify(mappingData);
   postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
@@ -205,10 +220,16 @@ export const createMapping = (analyzerId, mappingData, callback, extraParams) =>
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const updateMapping = (analyzerId, mappingId, mappingData, callback, extraParams) => {
+export const updateMapping = (
+  analyzerId,
+  mappingId,
+  mappingData,
+  callback,
+  extraParams,
+) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings/${mappingId}`;
   const payload = JSON.stringify(mappingData);
-  
+
   // Use fetch directly to get JSON response (controllers return Map<String, Object>)
   fetch(config.serverBaseUrl + endpoint, {
     credentials: "include",
@@ -232,7 +253,7 @@ export const updateMapping = (analyzerId, mappingId, mappingData, callback, extr
             statusCode: response.status,
             statusText: response.statusText,
           },
-          extraParams
+          extraParams,
         );
         return;
       }
@@ -248,7 +269,7 @@ export const updateMapping = (analyzerId, mappingId, mappingData, callback, extr
           message: error.message || "Network error",
           status: 0,
         },
-        extraParams
+        extraParams,
       );
     });
 };
@@ -261,7 +282,7 @@ export const updateMapping = (analyzerId, mappingId, mappingData, callback, extr
  */
 export const deleteMapping = (analyzerId, mappingId, callback) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings/${mappingId}`;
-  
+
   fetch(config.serverBaseUrl + endpoint, {
     credentials: "include",
     method: "DELETE",
@@ -285,4 +306,3 @@ export const deleteMapping = (analyzerId, mappingId, callback) => {
       callback(false, { error: error.message || "Network error" });
     });
 };
-

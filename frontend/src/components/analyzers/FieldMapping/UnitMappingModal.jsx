@@ -1,6 +1,6 @@
 /**
  * UnitMappingModal Component
- * 
+ *
  * Modal for configuring unit mappings with conversion factors
  * Task Reference: T063
  */
@@ -21,13 +21,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import "./UnitMappingModal.css";
 
-const UnitMappingModal = ({
-  open,
-  onClose,
-  field,
-  unitMapping,
-  onSave,
-}) => {
+const UnitMappingModal = ({ open, onClose, field, unitMapping, onSave }) => {
   const intl = useIntl();
   const [formData, setFormData] = useState({
     analyzerUnit: "",
@@ -96,7 +90,10 @@ const UnitMappingModal = ({
       formData.analyzerUnit !== formData.openelisUnit &&
       !formData.rejectIfMismatch
     ) {
-      if (!formData.conversionFactor || formData.conversionFactor.trim() === "") {
+      if (
+        !formData.conversionFactor ||
+        formData.conversionFactor.trim() === ""
+      ) {
         newErrors.conversionFactor = intl.formatMessage({
           id: "analyzer.unitMapping.validation.conversionFactor.required",
         });
@@ -136,7 +133,9 @@ const UnitMappingModal = ({
     if (!validate()) {
       setNotification({
         kind: "error",
-        title: intl.formatMessage({ id: "analyzer.unitMapping.validation.error" }),
+        title: intl.formatMessage({
+          id: "analyzer.unitMapping.validation.error",
+        }),
         subtitle: intl.formatMessage({
           id: "analyzer.unitMapping.validation.error.subtitle",
         }),
@@ -246,7 +245,9 @@ const UnitMappingModal = ({
                 id: "analyzer.unitMapping.conversionFactor",
               })}
               value={formData.conversionFactor}
-              onChange={(e) => handleFieldChange("conversionFactor", e.target.value)}
+              onChange={(e) =>
+                handleFieldChange("conversionFactor", e.target.value)
+              }
               placeholder="0.0555"
               helperText={intl.formatMessage({
                 id: "analyzer.unitMapping.conversionFactor.helper",
@@ -270,7 +271,9 @@ const UnitMappingModal = ({
               id: "analyzer.unitMapping.rejectIfMismatch",
             })}
             toggled={formData.rejectIfMismatch}
-            onToggle={(checked) => handleFieldChange("rejectIfMismatch", checked)}
+            onToggle={(checked) =>
+              handleFieldChange("rejectIfMismatch", checked)
+            }
             helperText={intl.formatMessage({
               id: "analyzer.unitMapping.rejectIfMismatch.helper",
             })}
@@ -279,10 +282,18 @@ const UnitMappingModal = ({
         </FormGroup>
       </ModalBody>
       <ModalFooter>
-        <Button kind="secondary" onClick={handleClose} data-testid="unit-mapping-cancel">
+        <Button
+          kind="secondary"
+          onClick={handleClose}
+          data-testid="unit-mapping-cancel"
+        >
           <FormattedMessage id="analyzer.form.cancel" />
         </Button>
-        <Button kind="primary" onClick={handleSave} data-testid="unit-mapping-save">
+        <Button
+          kind="primary"
+          onClick={handleSave}
+          data-testid="unit-mapping-save"
+        >
           <FormattedMessage id="analyzer.form.save" />
         </Button>
       </ModalFooter>
@@ -291,4 +302,3 @@ const UnitMappingModal = ({
 };
 
 export default UnitMappingModal;
-

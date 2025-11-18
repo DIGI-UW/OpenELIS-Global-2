@@ -59,7 +59,10 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
         setStatus("error");
         setLogs((prev) => [
           ...prev,
-          { level: "error", message: response.error || response.message || "Connection failed" },
+          {
+            level: "error",
+            message: response.error || response.message || "Connection failed",
+          },
         ]);
       } else {
         setStatus("success");
@@ -84,15 +87,26 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
       <ModalBody>
         {analyzer && (
           <div data-testid="test-connection-analyzer-info">
-            <p><strong>Name:</strong> {analyzer.name}</p>
-            <p><strong>IP:</strong> {analyzer.ipAddress}</p>
-            <p><strong>Port:</strong> {analyzer.port}</p>
+            <p>
+              <strong>Name:</strong> {analyzer.name}
+            </p>
+            <p>
+              <strong>IP:</strong> {analyzer.ipAddress}
+            </p>
+            <p>
+              <strong>Port:</strong> {analyzer.port}
+            </p>
           </div>
         )}
 
         {status === "testing" && (
           <div data-testid="test-connection-progress">
-            <ProgressBar value={progress} label={intl.formatMessage({ id: "analyzer.testConnection.testing" })} />
+            <ProgressBar
+              value={progress}
+              label={intl.formatMessage({
+                id: "analyzer.testConnection.testing",
+              })}
+            />
           </div>
         )}
 
@@ -110,7 +124,9 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
 
         {logs.length > 0 && (
           <Accordion data-testid="test-connection-logs">
-            <AccordionItem title={intl.formatMessage({ id: "analyzer.testConnection.logs" })}>
+            <AccordionItem
+              title={intl.formatMessage({ id: "analyzer.testConnection.logs" })}
+            >
               <div>
                 {logs.map((log, index) => (
                   <div key={index} data-testid={`test-connection-log-${index}`}>
