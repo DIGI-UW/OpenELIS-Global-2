@@ -81,7 +81,9 @@ const ErrorDashboard = () => {
       params.append("search", searchFilters.search);
     }
 
-    const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint;
+    const url = params.toString()
+      ? `${endpoint}?${params.toString()}`
+      : endpoint;
 
     getFromOpenElisServer(url, (data) => {
       if (Array.isArray(data)) {
@@ -188,11 +190,15 @@ const ErrorDashboard = () => {
   const headers = [
     {
       key: "timestamp",
-      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.timestamp" }),
+      header: intl.formatMessage({
+        id: "analyzer.errorDashboard.table.timestamp",
+      }),
     },
     {
       key: "analyzer",
-      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.analyzer" }),
+      header: intl.formatMessage({
+        id: "analyzer.errorDashboard.table.analyzer",
+      }),
     },
     {
       key: "type",
@@ -200,15 +206,21 @@ const ErrorDashboard = () => {
     },
     {
       key: "severity",
-      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.severity" }),
+      header: intl.formatMessage({
+        id: "analyzer.errorDashboard.table.severity",
+      }),
     },
     {
       key: "message",
-      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.message" }),
+      header: intl.formatMessage({
+        id: "analyzer.errorDashboard.table.message",
+      }),
     },
     {
       key: "status",
-      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.status" }),
+      header: intl.formatMessage({
+        id: "analyzer.errorDashboard.table.status",
+      }),
     },
     { key: "actions", header: "" },
   ];
@@ -244,9 +256,7 @@ const ErrorDashboard = () => {
         className="error-dashboard-header"
         data-testid="error-dashboard-header"
       >
-        <h1>
-          {intl.formatMessage({ id: "analyzer.errorDashboard.title" })}
-        </h1>
+        <h1>{intl.formatMessage({ id: "analyzer.errorDashboard.title" })}</h1>
         <Button
           kind="primary"
           data-testid="acknowledge-all-button"
@@ -264,7 +274,9 @@ const ErrorDashboard = () => {
         <Column lg={3} md={4} sm={4}>
           <Tile data-testid="stat-total">
             <div className="stat-label">
-              {intl.formatMessage({ id: "analyzer.errorDashboard.stats.total" })}
+              {intl.formatMessage({
+                id: "analyzer.errorDashboard.stats.total",
+              })}
             </div>
             <div className="stat-value">{stats.total}</div>
           </Tile>
@@ -282,7 +294,9 @@ const ErrorDashboard = () => {
         <Column lg={3} md={4} sm={4}>
           <Tile data-testid="stat-critical">
             <div className="stat-label">
-              {intl.formatMessage({ id: "analyzer.errorDashboard.stats.critical" })}
+              {intl.formatMessage({
+                id: "analyzer.errorDashboard.stats.critical",
+              })}
             </div>
             <div className="stat-value">{stats.critical}</div>
           </Tile>
@@ -330,12 +344,18 @@ const ErrorDashboard = () => {
                 id: "analyzer.errorDashboard.filter.type.all",
               })}
               items={[
-                intl.formatMessage({ id: "analyzer.errorDashboard.filter.type.all" }),
-                intl.formatMessage({ id: "analyzer.errorDashboard.errorType.mapping" }),
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.filter.type.all",
+                }),
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.errorType.mapping",
+                }),
                 intl.formatMessage({
                   id: "analyzer.errorDashboard.errorType.validation",
                 }),
-                intl.formatMessage({ id: "analyzer.errorDashboard.errorType.timeout" }),
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.errorType.timeout",
+                }),
                 intl.formatMessage({
                   id: "analyzer.errorDashboard.errorType.protocol",
                 }),
@@ -345,7 +365,9 @@ const ErrorDashboard = () => {
               ]}
               selectedItem={
                 filters.errorType ||
-                intl.formatMessage({ id: "analyzer.errorDashboard.filter.type.all" })
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.filter.type.all",
+                })
               }
               onChange={({ selectedItem }) =>
                 handleFilterChange(
@@ -377,8 +399,12 @@ const ErrorDashboard = () => {
                 intl.formatMessage({
                   id: "analyzer.errorDashboard.severity.critical",
                 }),
-                intl.formatMessage({ id: "analyzer.errorDashboard.severity.error" }),
-                intl.formatMessage({ id: "analyzer.errorDashboard.severity.warning" }),
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.severity.error",
+                }),
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.severity.warning",
+                }),
               ]}
               selectedItem={
                 filters.severity ||
@@ -479,7 +505,9 @@ const ErrorDashboard = () => {
                           const statusKey = isAcknowledged
                             ? "analyzer.errorDashboard.status.acknowledged"
                             : "analyzer.errorDashboard.status.unacknowledged";
-                          const statusLabel = intl.formatMessage({ id: statusKey });
+                          const statusLabel = intl.formatMessage({
+                            id: statusKey,
+                          });
                           cellContent = (
                             <Tag
                               type={isAcknowledged ? "green" : "red"}
@@ -546,4 +574,3 @@ const ErrorDashboard = () => {
 };
 
 export default ErrorDashboard;
-

@@ -97,4 +97,3 @@ describe("Analyzer Pages Load", () => {
     // Review console logs in Cypress test output for errors/warnings
   });
 });
-

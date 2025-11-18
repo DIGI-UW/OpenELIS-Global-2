@@ -123,7 +123,9 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
           {isAcknowledged && (
             <Column lg={16}>
               <h3>
-                {intl.formatMessage({ id: "analyzer.errorDetails.acknowledged" })}
+                {intl.formatMessage({
+                  id: "analyzer.errorDetails.acknowledged",
+                })}
               </h3>
               <p>
                 {intl.formatMessage(
@@ -156,7 +158,9 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
                           [{log.timestamp || "-"}]
                         </span>
                         <span className="log-level">{log.level || "INFO"}</span>
-                        <span className="log-message">{log.message || "-"}</span>
+                        <span className="log-message">
+                          {log.message || "-"}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -187,7 +191,11 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
         </Grid>
       </ModalBody>
       <ModalFooter>
-        <Button kind="secondary" onClick={onClose} data-testid="error-details-close">
+        <Button
+          kind="secondary"
+          onClick={onClose}
+          data-testid="error-details-close"
+        >
           <FormattedMessage id="analyzer.errorDetails.close" />
         </Button>
         {!isAcknowledged && (
@@ -208,4 +216,3 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
 };
 
 export default ErrorDetailsModal;
-

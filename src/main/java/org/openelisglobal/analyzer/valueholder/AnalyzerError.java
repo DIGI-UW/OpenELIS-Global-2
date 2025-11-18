@@ -16,8 +16,8 @@ import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * AnalyzerError entity - Stores failed/unmapped analyzer messages for error dashboard
- * and reprocessing workflow.
+ * AnalyzerError entity - Stores failed/unmapped analyzer messages for error
+ * dashboard and reprocessing workflow.
  */
 @Entity
 @Table(name = "analyzer_error")
@@ -165,4 +165,3 @@ public class AnalyzerError extends BaseObject<String> {
         UNACKNOWLEDGED, ACKNOWLEDGED, RESOLVED
     }
 }
-

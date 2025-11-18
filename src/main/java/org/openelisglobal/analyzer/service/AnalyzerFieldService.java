@@ -7,10 +7,11 @@ import org.openelisglobal.common.service.BaseObjectService;
 /**
  * Service interface for AnalyzerField operations
  * 
- * Provides business logic for managing analyzer fields (test codes, units, qualitative values)
+ * Provides business logic for managing analyzer fields (test codes, units,
+ * qualitative values)
  */
 public interface AnalyzerFieldService extends BaseObjectService<AnalyzerField, String> {
-    
+
     /**
      * Get all fields for a specific analyzer
      * 
@@ -18,7 +19,7 @@ public interface AnalyzerFieldService extends BaseObjectService<AnalyzerField, S
      * @return List of analyzer fields
      */
     List<AnalyzerField> getFieldsByAnalyzerId(String analyzerId);
-    
+
     /**
      * Create a new analyzer field with validation
      * 
@@ -28,4 +29,3 @@ public interface AnalyzerFieldService extends BaseObjectService<AnalyzerField, S
      */
     String createField(AnalyzerField field);
 }
-

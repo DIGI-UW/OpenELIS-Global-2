@@ -62,4 +62,3 @@ public class AnalyzerConfigurationServiceImpl extends BaseObjectServiceImpl<Anal
         return analyzerConfigurationDAO.getAll();
     }
 }
-

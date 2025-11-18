@@ -13,9 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for QualitativeResultMapping operations
  * 
- * Provides business logic for managing qualitative result mappings with:
- * - Many-to-one mapping support
- * - Duplicate value validation
+ * Provides business logic for managing qualitative result mappings with: -
+ * Many-to-one mapping support - Duplicate value validation
  */
 @Service
 @Transactional
@@ -40,7 +39,7 @@ public class QualitativeResultMappingServiceImpl extends BaseObjectServiceImpl<Q
     public String createMapping(QualitativeResultMapping mapping) {
         // Validate no duplicate analyzer_value for same analyzer_field_id
         validateNoDuplicateValue(mapping);
-        
+
         return qualitativeResultMappingDAO.insert(mapping);
     }
 
@@ -51,7 +50,8 @@ public class QualitativeResultMappingServiceImpl extends BaseObjectServiceImpl<Q
     }
 
     /**
-     * Validate that no duplicate analyzer_value exists for the same analyzer_field_id
+     * Validate that no duplicate analyzer_value exists for the same
+     * analyzer_field_id
      * 
      * Unique constraint: (analyzer_field_id, analyzer_value)
      * 
@@ -62,27 +62,25 @@ public class QualitativeResultMappingServiceImpl extends BaseObjectServiceImpl<Q
         if (mapping.getAnalyzerField() == null || mapping.getAnalyzerField().getId() == null) {
             throw new LIMSRuntimeException("AnalyzerField must be set on mapping");
         }
-        
+
         if (mapping.getAnalyzerValue() == null || mapping.getAnalyzerValue().trim().isEmpty()) {
             throw new LIMSRuntimeException("AnalyzerValue is required");
         }
-        
+
         String analyzerFieldId = mapping.getAnalyzerField().getId();
         String analyzerValue = mapping.getAnalyzerValue().trim();
-        
+
         // Check for existing mappings with same analyzer_field_id and analyzer_value
         List<QualitativeResultMapping> existingMappings = qualitativeResultMappingDAO
                 .findByAnalyzerFieldId(analyzerFieldId);
-        
+
         boolean duplicateExists = existingMappings.stream()
                 .anyMatch(m -> analyzerValue.equalsIgnoreCase(m.getAnalyzerValue())
                         && (mapping.getId() == null || !mapping.getId().equals(m.getId())));
-        
+
         if (duplicateExists) {
-            throw new LIMSRuntimeException(
-                    "Duplicate analyzer value '" + analyzerValue + "' already exists for analyzer field: "
-                            + analyzerFieldId);
+            throw new LIMSRuntimeException("Duplicate analyzer value '" + analyzerValue
+                    + "' already exists for analyzer field: " + analyzerFieldId);
         }
     }
 }
-

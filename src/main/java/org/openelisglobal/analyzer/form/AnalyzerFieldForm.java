@@ -7,7 +7,8 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerField.FieldType;
 
 /**
  * Form object for AnalyzerField entity - used for REST API input validation
- * Following OpenELIS pattern: Form objects for transport, entities for persistence
+ * Following OpenELIS pattern: Form objects for transport, entities for
+ * persistence
  */
 public class AnalyzerFieldForm {
 
@@ -89,4 +90,3 @@ public class AnalyzerFieldForm {
         this.isActive = isActive;
     }
 }
-

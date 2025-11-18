@@ -5,11 +5,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.openelisglobal.analyzer.form.AnalyzerFieldMappingForm;
 import org.openelisglobal.analyzer.service.AnalyzerFieldMappingService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
-import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
@@ -28,8 +26,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST Controller for Analyzer Field Mapping management
- * Handles CRUD operations for field mappings between analyzer fields and OpenELIS fields
+ * REST Controller for Analyzer Field Mapping management Handles CRUD operations
+ * for field mappings between analyzer fields and OpenELIS fields
  */
 @RestController
 @RequestMapping("/rest/analyzer")
@@ -44,9 +42,9 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     private AnalyzerFieldService analyzerFieldService;
 
     /**
-     * GET /rest/analyzer/analyzers/{analyzerId}/mappings
-     * Retrieve all field mappings for an analyzer
-     * Service layer compiles all data - controller never accesses relationships
+     * GET /rest/analyzer/analyzers/{analyzerId}/mappings Retrieve all field
+     * mappings for an analyzer Service layer compiles all data - controller never
+     * accesses relationships
      */
     @GetMapping("/analyzers/{analyzerId}/mappings")
     public ResponseEntity<List<Map<String, Object>>> getMappings(@PathVariable String analyzerId) {
@@ -63,25 +61,20 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/analyzers/{analyzerId}/mappings
-     * Create a new field mapping
-     * Service layer handles all validation and data compilation - controller never accesses relationships
+     * POST /rest/analyzer/analyzers/{analyzerId}/mappings Create a new field
+     * mapping Service layer handles all validation and data compilation -
+     * controller never accesses relationships
      */
     @PostMapping("/analyzers/{analyzerId}/mappings")
     public ResponseEntity<Map<String, Object>> createMapping(@PathVariable String analyzerId,
             @Valid @RequestBody AnalyzerFieldMappingForm form) {
         try {
-            // Service layer verifies analyzer field belongs to analyzer, validates type compatibility,
+            // Service layer verifies analyzer field belongs to analyzer, validates type
+            // compatibility,
             // and returns complete compiled data - controller never accesses relationships
-            Map<String, Object> response = analyzerFieldMappingService.createMappingForAnalyzer(
-                    analyzerId,
-                    form.getAnalyzerFieldId(),
-                    form.getOpenelisFieldId(),
-                    form.getOpenelisFieldType(),
-                    form.getMappingType(),
-                    form.getIsRequired(),
-                    form.getIsActive(),
-                    form.getSpecimenTypeConstraint(),
+            Map<String, Object> response = analyzerFieldMappingService.createMappingForAnalyzer(analyzerId,
+                    form.getAnalyzerFieldId(), form.getOpenelisFieldId(), form.getOpenelisFieldType(),
+                    form.getMappingType(), form.getIsRequired(), form.getIsActive(), form.getSpecimenTypeConstraint(),
                     form.getPanelConstraint());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (LIMSRuntimeException e) {
@@ -98,15 +91,16 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     }
 
     /**
-     * PUT /rest/analyzer/analyzers/{analyzerId}/mappings/{mappingId}
-     * Update an existing field mapping
-     * Service layer verifies ownership and compiles data - controller never accesses relationships
+     * PUT /rest/analyzer/analyzers/{analyzerId}/mappings/{mappingId} Update an
+     * existing field mapping Service layer verifies ownership and compiles data -
+     * controller never accesses relationships
      */
     @PutMapping("/analyzers/{analyzerId}/mappings/{mappingId}")
     public ResponseEntity<Map<String, Object>> updateMapping(@PathVariable String analyzerId,
             @PathVariable String mappingId, @Valid @RequestBody AnalyzerFieldMappingForm form) {
         try {
-            // Verify mapping belongs to analyzer (service layer handles relationship access)
+            // Verify mapping belongs to analyzer (service layer handles relationship
+            // access)
             if (!analyzerFieldMappingService.verifyMappingBelongsToAnalyzer(mappingId, analyzerId)) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Mapping does not belong to analyzer: " + analyzerId);
@@ -148,7 +142,8 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
 
             analyzerFieldMappingService.update(mapping);
 
-            // Service layer compiles complete data - controller never accesses relationships
+            // Service layer compiles complete data - controller never accesses
+            // relationships
             Map<String, Object> response = analyzerFieldMappingService.getMappingWithCompleteData(mappingId);
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
@@ -165,14 +160,15 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     }
 
     /**
-     * DELETE /rest/analyzer/analyzers/{analyzerId}/mappings/{mappingId}
-     * Delete a field mapping
-     * Service layer verifies ownership - controller never accesses relationships
+     * DELETE /rest/analyzer/analyzers/{analyzerId}/mappings/{mappingId} Delete a
+     * field mapping Service layer verifies ownership - controller never accesses
+     * relationships
      */
     @DeleteMapping("/analyzers/{analyzerId}/mappings/{mappingId}")
     public ResponseEntity<Void> deleteMapping(@PathVariable String analyzerId, @PathVariable String mappingId) {
         try {
-            // Verify mapping belongs to analyzer (service layer handles relationship access)
+            // Verify mapping belongs to analyzer (service layer handles relationship
+            // access)
             if (!analyzerFieldMappingService.verifyMappingBelongsToAnalyzer(mappingId, analyzerId)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
@@ -194,4 +190,3 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
         }
     }
 }
-

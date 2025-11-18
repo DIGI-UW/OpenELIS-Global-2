@@ -17,11 +17,12 @@ import org.openelisglobal.common.valueholder.BaseObject;
 /**
  * QualitativeResultMapping entity - Represents mapping of instrument-specific
  * qualitative values (strings or codes) to canonical OpenELIS-coded results,
- * supporting many-to-one mapping (multiple analyzer values → single OpenELIS code).
+ * supporting many-to-one mapping (multiple analyzer values → single OpenELIS
+ * code).
  */
 @Entity
-@Table(name = "qualitative_result_mapping", uniqueConstraints = @UniqueConstraint(columnNames = {
-        "analyzer_field_id", "analyzer_value" }))
+@Table(name = "qualitative_result_mapping", uniqueConstraints = @UniqueConstraint(columnNames = { "analyzer_field_id",
+        "analyzer_value" }))
 public class QualitativeResultMapping extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
@@ -96,4 +97,3 @@ public class QualitativeResultMapping extends BaseObject<String> {
         this.isDefault = isDefault;
     }
 }
-

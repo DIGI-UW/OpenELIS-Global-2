@@ -7,12 +7,11 @@ import org.openelisglobal.common.service.BaseObjectService;
 /**
  * Service interface for UnitMapping operations
  * 
- * Provides business logic for managing unit mappings with:
- * - Conversion factor validation (required when units don't match)
- * - Unit mismatch handling
+ * Provides business logic for managing unit mappings with: - Conversion factor
+ * validation (required when units don't match) - Unit mismatch handling
  */
 public interface UnitMappingService extends BaseObjectService<UnitMapping, String> {
-    
+
     /**
      * Create a new unit mapping with validation
      * 
@@ -21,7 +20,7 @@ public interface UnitMappingService extends BaseObjectService<UnitMapping, Strin
      * @throws LIMSRuntimeException if unit mismatch without conversion factor
      */
     String createMapping(UnitMapping mapping);
-    
+
     /**
      * Get all mappings for a specific analyzer field
      * 
@@ -30,4 +29,3 @@ public interface UnitMappingService extends BaseObjectService<UnitMapping, Strin
      */
     List<UnitMapping> getMappingsByAnalyzerFieldId(String analyzerFieldId);
 }
-

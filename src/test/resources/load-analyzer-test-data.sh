@@ -33,11 +33,11 @@ docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims < "$SQL_FILE"
 
 if [ $? -eq 0 ]; then
   echo "✓ Analyzer test data loaded successfully"
-  
+
   # Verify data was loaded
   echo "Verifying data load..."
   docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -c "
-    SELECT 
+    SELECT
       (SELECT COUNT(*) FROM analyzer WHERE id IN (1000, 1001, 1002)) as analyzers,
       (SELECT COUNT(*) FROM analyzer_configuration WHERE id LIKE 'CONFIG-%') as configurations,
       (SELECT COUNT(*) FROM analyzer_field WHERE id LIKE 'FIELD-%') as fields,
@@ -48,4 +48,3 @@ else
   echo "✗ Error loading analyzer test data"
   exit 1
 fi
-

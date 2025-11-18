@@ -3,9 +3,9 @@ package org.openelisglobal.analyzer.dao;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
+import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,4 +32,3 @@ public class QualitativeResultMappingDAOImpl extends BaseDAOImpl<QualitativeResu
         }
     }
 }
-

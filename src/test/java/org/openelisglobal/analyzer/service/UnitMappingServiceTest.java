@@ -5,9 +5,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -22,8 +19,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for UnitMappingService implementation
  * 
- * Task Reference: T032
- * Test Coverage Goal: >80%
+ * Task Reference: T032 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class UnitMappingServiceTest {
@@ -65,8 +61,8 @@ public class UnitMappingServiceTest {
     }
 
     /**
-     * Test: Create mapping with conversion factor applies conversion
-     * Task Reference: T032
+     * Test: Create mapping with conversion factor applies conversion Task
+     * Reference: T032
      * 
      * Conversion factor: Used when analyzer unit differs from OpenELIS unit
      */
@@ -91,8 +87,8 @@ public class UnitMappingServiceTest {
     }
 
     /**
-     * Test: Create mapping with unit mismatch requires conversion factor
-     * Task Reference: T032
+     * Test: Create mapping with unit mismatch requires conversion factor Task
+     * Reference: T032
      * 
      * Validation: If units don't match, conversion factor is required
      */
@@ -134,4 +130,3 @@ public class UnitMappingServiceTest {
         assertEquals("ID should match", "UNIT-MAPPING-002", id);
     }
 }
-

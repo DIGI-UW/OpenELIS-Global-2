@@ -11,4 +11,3 @@ public interface CustomFieldTypeDAO extends BaseDAO<CustomFieldType, String> {
 
     CustomFieldType findByTypeName(String typeName);
 }
-

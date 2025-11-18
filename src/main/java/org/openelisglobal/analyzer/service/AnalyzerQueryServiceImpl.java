@@ -62,5 +62,3 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
         return analyzerId + "::" + jobId;
     }
 }
-
-

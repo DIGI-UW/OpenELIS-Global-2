@@ -2,16 +2,14 @@ package org.openelisglobal.analyzer.dao;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-import java.util.Optional;
 import jakarta.persistence.EntityManager;
+import java.util.Optional;
 import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -24,8 +22,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 /**
  * DAO tests for AnalyzerConfigurationDAO
  * 
- * Task Reference: T033 (DAO tests)
- * Test Coverage Goal: >80%
+ * Task Reference: T033 (DAO tests) Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerConfigurationDAOTest {
@@ -111,13 +108,13 @@ public class AnalyzerConfigurationDAOTest {
     }
 
     /**
-     * Test: Find by analyzer ID handles exceptions gracefully
-     * Task Reference: T033
+     * Test: Find by analyzer ID handles exceptions gracefully Task Reference: T033
      */
     @Test
     public void testFindByAnalyzerId_WithException_ReturnsEmpty() {
         // Arrange: Simulate NumberFormatException (invalid analyzer ID format)
-        // This tests the exception handling path without needing to mock query execution
+        // This tests the exception handling path without needing to mock query
+        // execution
         // Act
         Optional<AnalyzerConfiguration> result = analyzerConfigurationDAO.findByAnalyzerId("INVALID-ID-FORMAT");
 
@@ -126,4 +123,3 @@ public class AnalyzerConfigurationDAOTest {
         assertTrue("Result should be empty on error", result.isEmpty());
     }
 }
-

@@ -3,16 +3,15 @@ package org.openelisglobal.analyzer.dao;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
+import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import jakarta.persistence.EntityManager;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.junit.Before;
@@ -27,11 +26,9 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 /**
  * DAO tests for AnalyzerFieldDAO
  * 
- * References:
- * - Testing Roadmap: .specify/guides/testing-roadmap.md
+ * References: - Testing Roadmap: .specify/guides/testing-roadmap.md
  * 
- * Task Reference: T033
- * Test Coverage Goal: >80%
+ * Task Reference: T033 Test Coverage Goal: >80%
  * 
  * Note: Using Mockito pattern (matching existing codebase) since @DataJpaTest
  * dependencies not available. Tests HQL query logic and DAO methods.
@@ -127,10 +124,10 @@ public class AnalyzerFieldDAOTest {
     }
 
     /**
-     * Test: Insert with valid data persists to database
-     * Task Reference: T033
+     * Test: Insert with valid data persists to database Task Reference: T033
      * 
-     * Note: Testing DAO insert method. Actual persistence verified via service tests.
+     * Note: Testing DAO insert method. Actual persistence verified via service
+     * tests.
      */
     @Test
     public void testInsert_WithValidData_PersistsToDatabase() {

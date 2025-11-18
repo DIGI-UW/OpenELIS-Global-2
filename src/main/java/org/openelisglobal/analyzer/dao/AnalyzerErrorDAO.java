@@ -13,4 +13,3 @@ public interface AnalyzerErrorDAO extends BaseDAO<AnalyzerError, String> {
 
     List<AnalyzerError> findBySeverity(String severity);
 }
-

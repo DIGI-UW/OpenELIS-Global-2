@@ -7,9 +7,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.List;
-import jakarta.persistence.EntityManager;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.junit.Before;
@@ -25,8 +25,7 @@ import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 /**
  * DAO tests for QualitativeResultMappingDAO
  * 
- * Task Reference: T033b
- * Test Coverage Goal: >80%
+ * Task Reference: T033b Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class QualitativeResultMappingDAOTest {
@@ -76,8 +75,7 @@ public class QualitativeResultMappingDAOTest {
     }
 
     /**
-     * Test: Find by analyzer field ID returns mappings
-     * Task Reference: T033b
+     * Test: Find by analyzer field ID returns mappings Task Reference: T033b
      */
     @Test
     public void testFindByAnalyzerFieldId_ReturnsMappings() {
@@ -121,4 +119,3 @@ public class QualitativeResultMappingDAOTest {
         assertTrue("Should return empty list", actualMappings.isEmpty());
     }
 }
-

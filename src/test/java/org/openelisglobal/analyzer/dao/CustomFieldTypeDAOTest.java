@@ -8,9 +8,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.List;
-import jakarta.persistence.EntityManager;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.junit.Before;
@@ -24,8 +24,7 @@ import org.openelisglobal.analyzer.valueholder.CustomFieldType;
 /**
  * DAO tests for CustomFieldTypeDAO
  * 
- * Task Reference: T033d
- * Test Coverage Goal: >80%
+ * Task Reference: T033d Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class CustomFieldTypeDAOTest {
@@ -70,8 +69,7 @@ public class CustomFieldTypeDAOTest {
     }
 
     /**
-     * Test: Find all active returns only active types
-     * Task Reference: T033d
+     * Test: Find all active returns only active types Task Reference: T033d
      */
     @Test
     public void testFindAllActive_ReturnsOnlyActiveTypes() {
@@ -95,8 +93,7 @@ public class CustomFieldTypeDAOTest {
     }
 
     /**
-     * Test: Find by name returns matching type
-     * Task Reference: T033d
+     * Test: Find by name returns matching type Task Reference: T033d
      */
     @Test
     public void testFindByName_ReturnsMatchingType() {
@@ -140,8 +137,7 @@ public class CustomFieldTypeDAOTest {
     }
 
     /**
-     * Test: Find by type name returns matching type
-     * Task Reference: T033d
+     * Test: Find by type name returns matching type Task Reference: T033d
      */
     @Test
     public void testFindByTypeName_ReturnsMatchingType() {
@@ -184,4 +180,3 @@ public class CustomFieldTypeDAOTest {
         assertNull("Result should be null", result);
     }
 }
-

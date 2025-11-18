@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -21,8 +20,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for QualitativeResultMappingService implementation
  * 
- * Task Reference: T031
- * Test Coverage Goal: >80%
+ * Task Reference: T031 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class QualitativeResultMappingServiceTest {
@@ -38,8 +36,7 @@ public class QualitativeResultMappingServiceTest {
 
     @Before
     public void setUp() {
-        qualitativeResultMappingService = new QualitativeResultMappingServiceImpl(
-                qualitativeResultMappingDAO);
+        qualitativeResultMappingService = new QualitativeResultMappingServiceImpl(qualitativeResultMappingDAO);
 
         // Setup test analyzer
         testAnalyzer = new Analyzer();
@@ -63,8 +60,8 @@ public class QualitativeResultMappingServiceTest {
     }
 
     /**
-     * Test: Create mapping with many-to-one mapping persists multiple values
-     * Task Reference: T031
+     * Test: Create mapping with many-to-one mapping persists multiple values Task
+     * Reference: T031
      * 
      * Many-to-one: Multiple analyzer values can map to the same OpenELIS code
      */
@@ -98,14 +95,15 @@ public class QualitativeResultMappingServiceTest {
     }
 
     /**
-     * Test: Create mapping with duplicate value throws exception
-     * Task Reference: T031
+     * Test: Create mapping with duplicate value throws exception Task Reference:
+     * T031
      * 
      * Validation: Unique constraint on (analyzer_field_id, analyzer_value)
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testCreateMapping_WithDuplicateValue_ThrowsException() {
-        // Arrange: Check for existing mapping with same analyzer_field_id and analyzer_value
+        // Arrange: Check for existing mapping with same analyzer_field_id and
+        // analyzer_value
         List<QualitativeResultMapping> existingMappings = new ArrayList<>();
         QualitativeResultMapping existing = new QualitativeResultMapping();
         existing.setId("EXISTING-001");
@@ -114,10 +112,10 @@ public class QualitativeResultMappingServiceTest {
         existing.setOpenelisCode("POS");
         existingMappings.add(existing);
 
-        when(qualitativeResultMappingDAO.findByAnalyzerFieldId("FIELD-002"))
-                .thenReturn(existingMappings);
+        when(qualitativeResultMappingDAO.findByAnalyzerFieldId("FIELD-002")).thenReturn(existingMappings);
 
-        // Act: Try to create duplicate mapping (same analyzer_field_id + analyzer_value)
+        // Act: Try to create duplicate mapping (same analyzer_field_id +
+        // analyzer_value)
         QualitativeResultMapping duplicate = new QualitativeResultMapping();
         duplicate.setAnalyzerField(qualitativeField);
         duplicate.setAnalyzerValue("POSITIVE"); // Duplicate value
@@ -146,4 +144,3 @@ public class QualitativeResultMappingServiceTest {
         assertEquals("ID should match", "QUAL-MAPPING-001", id);
     }
 }
-

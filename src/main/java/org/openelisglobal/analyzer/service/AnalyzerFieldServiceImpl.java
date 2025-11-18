@@ -13,9 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for AnalyzerField operations
  * 
- * Provides business logic for managing analyzer fields with validation:
- * - NUMERIC fields must have unit
- * - QUALITATIVE/TEXT fields must not have unit
+ * Provides business logic for managing analyzer fields with validation: -
+ * NUMERIC fields must have unit - QUALITATIVE/TEXT fields must not have unit
  */
 @Service
 @Transactional
@@ -46,16 +45,15 @@ public class AnalyzerFieldServiceImpl extends BaseObjectServiceImpl<AnalyzerFiel
     public String createField(AnalyzerField field) {
         // Validate field type and unit compatibility
         validateFieldTypeAndUnit(field);
-        
+
         return analyzerFieldDAO.insert(field);
     }
 
     /**
      * Validate that field type and unit are compatible
      * 
-     * Rules:
-     * - NUMERIC fields MUST have unit
-     * - QUALITATIVE, TEXT, DATE_TIME, CONTROL_TEST, MELTING_POINT, CUSTOM fields MUST NOT have unit
+     * Rules: - NUMERIC fields MUST have unit - QUALITATIVE, TEXT, DATE_TIME,
+     * CONTROL_TEST, MELTING_POINT, CUSTOM fields MUST NOT have unit
      * 
      * @param field The field to validate
      * @throws LIMSRuntimeException if validation fails
@@ -66,16 +64,14 @@ public class AnalyzerFieldServiceImpl extends BaseObjectServiceImpl<AnalyzerFiel
 
         if (fieldType == AnalyzerField.FieldType.NUMERIC) {
             if (unit == null || unit.trim().isEmpty()) {
-                throw new LIMSRuntimeException(
-                        "NUMERIC field type requires a unit. Field: " + field.getFieldName());
+                throw new LIMSRuntimeException("NUMERIC field type requires a unit. Field: " + field.getFieldName());
             }
         } else {
             // QUALITATIVE, TEXT, DATE_TIME, CONTROL_TEST, MELTING_POINT, CUSTOM
             if (unit != null && !unit.trim().isEmpty()) {
-                throw new LIMSRuntimeException(
-                        "Non-NUMERIC field type (" + fieldType + ") must not have a unit. Field: " + field.getFieldName());
+                throw new LIMSRuntimeException("Non-NUMERIC field type (" + fieldType
+                        + ") must not have a unit. Field: " + field.getFieldName());
             }
         }
     }
 }
-

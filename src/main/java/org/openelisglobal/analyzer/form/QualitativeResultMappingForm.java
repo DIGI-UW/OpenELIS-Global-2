@@ -4,8 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Form object for QualitativeResultMapping entity - used for REST API input validation
- * Following OpenELIS pattern: Form objects for transport, entities for persistence
+ * Form object for QualitativeResultMapping entity - used for REST API input
+ * validation Following OpenELIS pattern: Form objects for transport, entities
+ * for persistence
  */
 public class QualitativeResultMappingForm {
 
@@ -66,4 +67,3 @@ public class QualitativeResultMappingForm {
         this.isDefault = isDefault;
     }
 }
-

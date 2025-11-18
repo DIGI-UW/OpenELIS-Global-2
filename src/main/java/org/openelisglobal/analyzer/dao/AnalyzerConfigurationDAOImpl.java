@@ -3,10 +3,10 @@ package org.openelisglobal.analyzer.dao;
 import java.util.Optional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
+import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,9 +26,8 @@ public class AnalyzerConfigurationDAOImpl extends BaseDAOImpl<AnalyzerConfigurat
             Integer analyzerIdInt = Integer.parseInt(analyzerId);
 
             // HQL path expression via relationship to legacy Analyzer entity
-            String hql = "SELECT ac FROM AnalyzerConfiguration ac " +
-                    "JOIN ac.analyzer a " +
-                    "WHERE a.id = :analyzerId";
+            String hql = "SELECT ac FROM AnalyzerConfiguration ac " + "JOIN ac.analyzer a "
+                    + "WHERE a.id = :analyzerId";
             Query<AnalyzerConfiguration> query = entityManager.unwrap(Session.class).createQuery(hql,
                     AnalyzerConfiguration.class);
             query.setParameter("analyzerId", analyzerIdInt);
@@ -50,4 +49,3 @@ public class AnalyzerConfigurationDAOImpl extends BaseDAOImpl<AnalyzerConfigurat
         }
     }
 }
-

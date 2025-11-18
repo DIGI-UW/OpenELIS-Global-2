@@ -2,31 +2,30 @@ package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.*;
 
+import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import javax.sql.DataSource;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Integration tests for AnalyzerFieldMappingService update workflow
  * 
- * Task Reference: T071
- * Test Coverage Goal: >80%
+ * Task Reference: T071 Test Coverage Goal: >80%
  * 
- * These tests verify:
- * - Mapping updates preserve historical data (existing results unchanged)
- * - Activation workflow applies changes to new messages only
+ * These tests verify: - Mapping updates preserve historical data (existing
+ * results unchanged) - Activation workflow applies changes to new messages only
  * - Draft/active state transitions work correctly with database
  * 
- * Uses BaseWebContextSensitiveTest for full Spring context and database integration.
+ * Uses BaseWebContextSensitiveTest for full Spring context and database
+ * integration.
  */
 public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -107,19 +106,25 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
      */
     private void cleanTestData() {
         try {
-            // Clean up any test data with our naming pattern (in correct order for foreign keys)
-            jdbcTemplate.update("DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN (SELECT id FROM analyzer_field WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER'))");
-            jdbcTemplate.update("DELETE FROM analyzer_field WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER')");
-            jdbcTemplate.update("DELETE FROM analyzer_configuration WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER')");
+            // Clean up any test data with our naming pattern (in correct order for foreign
+            // keys)
+            jdbcTemplate.update(
+                    "DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN (SELECT id FROM analyzer_field WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER'))");
+            jdbcTemplate.update(
+                    "DELETE FROM analyzer_field WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER')");
+            jdbcTemplate.update(
+                    "DELETE FROM analyzer_configuration WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER')");
             jdbcTemplate.update("DELETE FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER'");
-            
-            // Reset analyzer sequence to avoid ID conflicts (find max ID and set sequence to max+1)
-            // This ensures next analyzer creation uses an ID higher than any existing analyzer
+
+            // Reset analyzer sequence to avoid ID conflicts (find max ID and set sequence
+            // to max+1)
+            // This ensures next analyzer creation uses an ID higher than any existing
+            // analyzer
             Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
             if (maxId != null) {
                 jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
             }
-            
+
             // Also clean up by ID if we have references
             if (testMapping != null && testMapping.getId() != null) {
                 try {
@@ -138,7 +143,8 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
             if (testAnalyzer != null && testAnalyzer.getId() != null) {
                 try {
                     // Delete configuration first (foreign key constraint)
-                    jdbcTemplate.update("DELETE FROM analyzer_configuration WHERE analyzer_id = ?", Integer.parseInt(testAnalyzer.getId()));
+                    jdbcTemplate.update("DELETE FROM analyzer_configuration WHERE analyzer_id = ?",
+                            Integer.parseInt(testAnalyzer.getId()));
                     jdbcTemplate.update("DELETE FROM analyzer WHERE id = ?", Integer.parseInt(testAnalyzer.getId()));
                 } catch (Exception e) {
                     // Ignore - may already be deleted
@@ -150,11 +156,11 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
     }
 
     /**
-     * Test: Update mapping with existing results preserves historical data
-     * Task Reference: T071
+     * Test: Update mapping with existing results preserves historical data Task
+     * Reference: T071
      * 
-     * When a mapping is updated, existing results should remain unchanged.
-     * Only new messages should use the updated mapping.
+     * When a mapping is updated, existing results should remain unchanged. Only new
+     * messages should use the updated mapping.
      */
     @Test
     public void testUpdateMapping_WithExistingResults_PreservesHistoricalData() {
@@ -191,8 +197,8 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
     }
 
     /**
-     * Test: Activate mapping with confirmation applies to new messages
-     * Task Reference: T071
+     * Test: Activate mapping with confirmation applies to new messages Task
+     * Reference: T071
      * 
      * When a draft mapping is activated with confirmation, it should become active
      * and apply to new messages only (existing results unchanged).
@@ -219,12 +225,13 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
         // 1. Activation succeeds without modifying existing data
         // 2. Mapping state changes from draft to active
         // 3. New messages will use this active mapping
-        // Existing results remain unchanged (they reference the mapping as it was when created)
+        // Existing results remain unchanged (they reference the mapping as it was when
+        // created)
     }
 
     /**
-     * Test: Update active mapping on active analyzer requires confirmation
-     * Task Reference: T071
+     * Test: Update active mapping on active analyzer requires confirmation Task
+     * Reference: T071
      * 
      * When analyzer is active and mapping is active, updates require confirmation.
      */
@@ -253,4 +260,3 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
         analyzerFieldMappingService.updateMapping(updatedMapping, false); // No confirmation
     }
 }
-

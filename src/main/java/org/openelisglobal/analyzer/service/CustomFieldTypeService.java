@@ -13,4 +13,3 @@ public interface CustomFieldTypeService extends BaseObjectService<CustomFieldTyp
 
     List<CustomFieldType> getAllActiveTypes();
 }
-

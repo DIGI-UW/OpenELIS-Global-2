@@ -6,8 +6,9 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping.MappingType;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping.OpenELISFieldType;
 
 /**
- * Form object for AnalyzerFieldMapping entity - used for REST API input validation
- * Following OpenELIS pattern: Form objects for transport, entities for persistence
+ * Form object for AnalyzerFieldMapping entity - used for REST API input
+ * validation Following OpenELIS pattern: Form objects for transport, entities
+ * for persistence
  */
 public class AnalyzerFieldMappingForm {
 
@@ -109,4 +110,3 @@ public class AnalyzerFieldMappingForm {
         this.panelConstraint = panelConstraint;
     }
 }
-

@@ -95,7 +95,10 @@ const mockNotificationContext = {
   setNotificationVisible: jest.fn(),
 };
 
-const renderWithContext = (component, location = { pathname: "/analyzers" }) => {
+const renderWithContext = (
+  component,
+  location = { pathname: "/analyzers" },
+) => {
   // Update mock location
   mockHistory.location = location;
 
@@ -302,4 +305,3 @@ describe("Header Navigation Integration", () => {
     });
   });
 });
-

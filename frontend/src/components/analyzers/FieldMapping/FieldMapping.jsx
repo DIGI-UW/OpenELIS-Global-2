@@ -61,7 +61,11 @@ const FieldMapping = () => {
 
     // Optionally kick off an initial query (skeleton). If fields are returned immediately (tests/mocks), use them.
     analyzerService.queryAnalyzer(analyzerId, (response) => {
-      if (response && Array.isArray(response.fields) && response.fields.length > 0) {
+      if (
+        response &&
+        Array.isArray(response.fields) &&
+        response.fields.length > 0
+      ) {
         setFields(response.fields);
       }
       if (response && response.jobId) {

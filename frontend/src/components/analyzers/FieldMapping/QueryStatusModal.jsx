@@ -18,7 +18,11 @@ export default function QueryStatusModal({
   onCompleted,
 }) {
   const intl = useIntl();
-  const [status, setStatus] = useState({ state: "pending", progress: 0, logs: [] });
+  const [status, setStatus] = useState({
+    state: "pending",
+    progress: 0,
+    logs: [],
+  });
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -26,7 +30,12 @@ export default function QueryStatusModal({
     const poll = () => {
       analyzerService.getQueryStatus(analyzerId, jobId, (data) => {
         setStatus(data || { state: "pending", progress: 0, logs: [] });
-        if (data && (data.state === "completed" || data.state === "cancelled" || data.state === "not_found")) {
+        if (
+          data &&
+          (data.state === "completed" ||
+            data.state === "cancelled" ||
+            data.state === "not_found")
+        ) {
           if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
@@ -107,12 +116,14 @@ export default function QueryStatusModal({
         </div>
       </ModalBody>
       <ModalFooter>
-        <Button kind="secondary" onClick={handleClose} data-testid="query-status-close">
+        <Button
+          kind="secondary"
+          onClick={handleClose}
+          data-testid="query-status-close"
+        >
           <FormattedMessage id="button.close" defaultMessage="Close" />
         </Button>
       </ModalFooter>
     </ComposedModal>
   );
 }
-
-

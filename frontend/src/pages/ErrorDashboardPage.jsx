@@ -13,4 +13,3 @@ const ErrorDashboardPage = () => {
 };
 
 export default ErrorDashboardPage;
-

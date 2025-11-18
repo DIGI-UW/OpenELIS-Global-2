@@ -14,7 +14,7 @@
             <tableExists tableName="analyzer_error"/>
         </preConditions>
         <comment>Creating performance indexes for analyzer tables</comment>
-        
+
         <!-- Indexes for analyzer_field table -->
         <createIndex indexName="idx_analyzer_field_analyzer_id" tableName="analyzer_field">
             <column name="analyzer_id"/>
@@ -22,7 +22,7 @@
         <createIndex indexName="idx_analyzer_field_is_active" tableName="analyzer_field">
             <column name="is_active"/>
         </createIndex>
-        
+
         <!-- Indexes for analyzer_field_mapping table -->
         <createIndex indexName="idx_field_mapping_analyzer_field_id" tableName="analyzer_field_mapping">
             <column name="analyzer_field_id"/>
@@ -34,17 +34,17 @@
             <column name="openelis_field_id"/>
             <column name="openelis_field_type"/>
         </createIndex>
-        
+
         <!-- Indexes for qualitative_result_mapping table -->
         <createIndex indexName="idx_qualitative_mapping_analyzer_field_id" tableName="qualitative_result_mapping">
             <column name="analyzer_field_id"/>
         </createIndex>
-        
+
         <!-- Indexes for unit_mapping table -->
         <createIndex indexName="idx_unit_mapping_analyzer_field_id" tableName="unit_mapping">
             <column name="analyzer_field_id"/>
         </createIndex>
-        
+
         <!-- Indexes for analyzer_error table (error dashboard queries) -->
         <createIndex indexName="idx_analyzer_error_analyzer_id" tableName="analyzer_error">
             <column name="analyzer_id"/>
@@ -61,7 +61,7 @@
         <createIndex indexName="idx_analyzer_error_severity" tableName="analyzer_error">
             <column name="severity"/>
         </createIndex>
-        
+
         <rollback>
             <dropIndex indexName="idx_analyzer_field_analyzer_id" tableName="analyzer_field"/>
             <dropIndex indexName="idx_analyzer_field_is_active" tableName="analyzer_field"/>
@@ -79,4 +79,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

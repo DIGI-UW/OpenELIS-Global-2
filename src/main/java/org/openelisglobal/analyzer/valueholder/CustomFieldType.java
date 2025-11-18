@@ -12,8 +12,8 @@ import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * CustomFieldType entity - Allows system administrators to add custom field types
- * with validation rules, extending beyond the standard field types.
+ * CustomFieldType entity - Allows system administrators to add custom field
+ * types with validation rules, extending beyond the standard field types.
  * 
  * Per FR-018: Custom field types MUST include validation rules (e.g., format
  * patterns, value ranges, allowed characters) and MUST be available for use in
@@ -127,4 +127,3 @@ public class CustomFieldType extends BaseObject<String> {
         this.isActive = isActive;
     }
 }
-

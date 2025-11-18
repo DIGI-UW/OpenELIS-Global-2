@@ -3,7 +3,8 @@
 **Feature**: 004-astm-analyzer-mapping  
 **Date**: 2025-11-14
 
-This guide provides step-by-step instructions for developers to set up and start implementing the ASTM analyzer field mapping feature.
+This guide provides step-by-step instructions for developers to set up and start
+implementing the ASTM analyzer field mapping feature.
 
 ## Prerequisites
 
@@ -28,6 +29,7 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 ```
 
 **New Tables Created**:
+
 - `analyzer_configuration` - Analyzer connection settings
 - `analyzer_field` - Analyzer fields/codes
 - `analyzer_field_mapping` - Field mappings
@@ -63,6 +65,7 @@ Create JPA entities in `src/main/java/org/openelisglobal/analyzer/valueholder/`:
 6. **AnalyzerError.java** - Error queue
 
 **Example Entity Structure**:
+
 ```java
 @Entity
 @Table(name = "analyzer_field")
@@ -85,30 +88,33 @@ See [data-model.md](./data-model.md) for complete entity definitions.
 
 ### 2.2 Create DAO Layer
 
-Create DAO interfaces and implementations in `src/main/java/org/openelisglobal/analyzer/dao/`:
+Create DAO interfaces and implementations in
+`src/main/java/org/openelisglobal/analyzer/dao/`:
 
 - `AnalyzerFieldDAO.java` / `AnalyzerFieldDAOImpl.java`
 - `AnalyzerFieldMappingDAO.java` / `AnalyzerFieldMappingDAOImpl.java`
 - etc.
 
 **DAO Pattern**:
+
 ```java
 @Component
 @Transactional
-public class AnalyzerFieldDAOImpl extends BaseDAOImpl<AnalyzerField, String> 
+public class AnalyzerFieldDAOImpl extends BaseDAOImpl<AnalyzerField, String>
     implements AnalyzerFieldDAO {
-    
+
     public AnalyzerFieldDAOImpl() {
         super(AnalyzerField.class);
     }
-    
+
     // Custom query methods using HQL
 }
 ```
 
 ### 2.3 Create Service Layer
 
-Create service interfaces and implementations in `src/main/java/org/openelisglobal/analyzer/service/`:
+Create service interfaces and implementations in
+`src/main/java/org/openelisglobal/analyzer/service/`:
 
 - `AnalyzerFieldService.java` / `AnalyzerFieldServiceImpl.java`
 - `AnalyzerFieldMappingService.java` / `AnalyzerFieldMappingServiceImpl.java`
@@ -116,14 +122,15 @@ Create service interfaces and implementations in `src/main/java/org/openelisglob
 - etc.
 
 **Service Pattern**:
+
 ```java
 @Service
 @Transactional
 public class AnalyzerFieldMappingServiceImpl implements AnalyzerFieldMappingService {
-    
+
     @Autowired
     private AnalyzerFieldMappingDAO mappingDAO;
-    
+
     @Override
     @Transactional
     public AnalyzerFieldMapping saveMapping(AnalyzerFieldMapping mapping) {
@@ -135,25 +142,28 @@ public class AnalyzerFieldMappingServiceImpl implements AnalyzerFieldMappingServ
 }
 ```
 
-**Important**: Services MUST eagerly fetch ALL data needed for responses using JOIN FETCH (prevents LazyInitializationException).
+**Important**: Services MUST eagerly fetch ALL data needed for responses using
+JOIN FETCH (prevents LazyInitializationException).
 
 ### 2.4 Create Controller Layer
 
-Create REST controllers in `src/main/java/org/openelisglobal/analyzer/controller/`:
+Create REST controllers in
+`src/main/java/org/openelisglobal/analyzer/controller/`:
 
 - `AnalyzerRestController.java` - Analyzer CRUD operations
 - `AnalyzerFieldMappingRestController.java` - Mapping operations
 - `AnalyzerErrorRestController.java` - Error dashboard operations
 
 **Controller Pattern**:
+
 ```java
 @RestController
 @RequestMapping("/rest/analyzer")
 public class AnalyzerRestController extends BaseRestController {
-    
+
     @Autowired
     private AnalyzerService analyzerService;
-    
+
     @GetMapping
     public ResponseEntity<?> listAnalyzers(
             @RequestParam(defaultValue = "0") int page,
@@ -164,7 +174,8 @@ public class AnalyzerRestController extends BaseRestController {
 }
 ```
 
-**Important**: Controllers MUST NOT have `@Transactional` annotations (belongs in service layer).
+**Important**: Controllers MUST NOT have `@Transactional` annotations (belongs
+in service layer).
 
 ### 2.5 Create Form/DTO Classes
 
@@ -191,7 +202,13 @@ Create components in `frontend/src/components/analyzers/`:
 All UI components MUST use Carbon Design System:
 
 ```jsx
-import { DataTable, Button, ComposedModal, Search, MultiSelect } from "@carbon/react";
+import {
+  DataTable,
+  Button,
+  ComposedModal,
+  Search,
+  MultiSelect,
+} from "@carbon/react";
 
 function AnalyzersList() {
   return (
@@ -217,12 +234,8 @@ import { useIntl } from "react-intl";
 
 function AnalyzerForm() {
   const intl = useIntl();
-  
-  return (
-    <Button>
-      {intl.formatMessage({ id: "button.save" })}
-    </Button>
-  );
+
+  return <Button>{intl.formatMessage({ id: "button.save" })}</Button>;
 }
 ```
 
@@ -244,7 +257,9 @@ await postToOpenElisServer("/rest/analyzer", analyzerData);
 
 ### 3.5 Configure Navigation Menu (Backend-Driven)
 
-The left-hand navigation is populated from the `clinlims.menu` table via `/rest/menu`. Insert/update the following records so the UI mirrors the clarified hierarchy (An analyzers parent with ASTM + QC routes):
+The left-hand navigation is populated from the `clinlims.menu` table via
+`/rest/menu`. Insert/update the following records so the UI mirrors the
+clarified hierarchy (An analyzers parent with ASTM + QC routes):
 
 ```sql
 -- Parent "Analyzers" node (presentation_order = 26 if not already present)
@@ -263,7 +278,12 @@ WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_analyzers
 -- 6. Corrective Actions (/analyzers/qc/corrective-actions)
 ```
 
-Each child row should set `parent_id` to the ID of `menu_analyzers`, include the appropriate `display_key` (add translations to `frontend/src/languages/{locale}.json)` and restrict visibility via the existing role mapping table so QC entries only appear for QC-enabled roles. The frontend will automatically render whatever `/rest/menu` returns, so no hardcoded navigation updates are required.
+Each child row should set `parent_id` to the ID of `menu_analyzers`, include the
+appropriate `display_key` (add translations to
+`frontend/src/languages/{locale}.json)` and restrict visibility via the existing
+role mapping table so QC entries only appear for QC-enabled roles. The frontend
+will automatically render whatever `/rest/menu` returns, so no hardcoded
+navigation updates are required.
 
 ## Step 4: Testing
 
@@ -276,10 +296,10 @@ Create unit tests in `src/test/java/org/openelisglobal/analyzer/service/`:
 public class AnalyzerFieldMappingServiceTest {
     @Mock
     private AnalyzerFieldMappingDAO mappingDAO;
-    
+
     @InjectMocks
     private AnalyzerFieldMappingServiceImpl mappingService;
-    
+
     @Test
     public void testSaveMapping_ValidMapping_SavesSuccessfully() {
         // Test implementation
@@ -291,7 +311,8 @@ public class AnalyzerFieldMappingServiceTest {
 
 ### 4.2 ORM Validation Tests
 
-Create ORM validation test in `src/test/java/org/openelisglobal/analyzer/valueholder/`:
+Create ORM validation test in
+`src/test/java/org/openelisglobal/analyzer/valueholder/`:
 
 ```java
 @Test
@@ -301,7 +322,7 @@ public void testHibernateMappingsLoadSuccessfully() {
     config.addAnnotatedClass(AnalyzerFieldMapping.class);
     // ... add all entities
     config.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-    
+
     SessionFactory sf = config.buildSessionFactory();
     assertNotNull("All mappings should load", sf);
     sf.close();
@@ -310,7 +331,8 @@ public void testHibernateMappingsLoadSuccessfully() {
 
 ### 4.3 Integration Tests
 
-Create integration tests in `src/test/java/org/openelisglobal/analyzer/controller/`:
+Create integration tests in
+`src/test/java/org/openelisglobal/analyzer/controller/`:
 
 ```java
 @RunWith(SpringRunner.class)
@@ -318,7 +340,7 @@ Create integration tests in `src/test/java/org/openelisglobal/analyzer/controlle
 public class AnalyzerRestControllerIntegrationTest {
     @Autowired
     private AnalyzerService analyzerService;
-    
+
     @Test
     public void testListAnalyzers_ReturnsPaginatedResults() {
         // Test implementation
@@ -408,7 +430,8 @@ import org.junit.Assert.*;  // NOT org.junit.jupiter.api.Assertions.*
 ## Next Steps
 
 1. Review [data-model.md](./data-model.md) for entity definitions
-2. Review [contracts/api-contracts.md](./contracts/api-contracts.md) for API specifications
+2. Review [contracts/api-contracts.md](./contracts/api-contracts.md) for API
+   specifications
 3. Review [research.md](./research.md) for technical decisions
 4. Follow TDD workflow: Write tests first, then implement
 
@@ -418,4 +441,3 @@ import org.junit.Assert.*;  // NOT org.junit.jupiter.api.Assertions.*
 - [AGENTS.md](../../AGENTS.md) - Project context
 - [plan.md](./plan.md) - Implementation plan
 - [spec.md](./spec.md) - Feature specification
-

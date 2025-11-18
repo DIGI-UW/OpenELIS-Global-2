@@ -1,7 +1,6 @@
 package org.openelisglobal.analyzer.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,8 +8,8 @@ import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
-import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerQueryService;
+import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -24,8 +23,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST Controller for Analyzer management
- * Handles CRUD operations for analyzers and analyzer configurations
+ * REST Controller for Analyzer management Handles CRUD operations for analyzers
+ * and analyzer configurations
  */
 @RestController
 @RequestMapping("/rest/analyzer")
@@ -45,12 +44,10 @@ public class AnalyzerRestController extends BaseRestController {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * GET /rest/analyzer/analyzers
-     * Retrieve all analyzers with their configurations
+     * GET /rest/analyzer/analyzers Retrieve all analyzers with their configurations
      */
     @GetMapping("/analyzers")
-    public ResponseEntity<List<Map<String, Object>>> getAnalyzers(
-            @RequestParam(required = false) String status,
+    public ResponseEntity<List<Map<String, Object>>> getAnalyzers(@RequestParam(required = false) String status,
             @RequestParam(required = false) String search) {
         try {
             List<Analyzer> analyzers = analyzerService.getAll();
@@ -68,8 +65,8 @@ public class AnalyzerRestController extends BaseRestController {
 
                 if (search != null && !search.isEmpty()) {
                     String searchLower = search.toLowerCase();
-                    if (!analyzer.getName().toLowerCase().contains(searchLower)
-                            && (analyzer.getType() == null || !analyzer.getType().toLowerCase().contains(searchLower))) {
+                    if (!analyzer.getName().toLowerCase().contains(searchLower) && (analyzer.getType() == null
+                            || !analyzer.getType().toLowerCase().contains(searchLower))) {
                         continue;
                     }
                 }
@@ -88,8 +85,8 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/analyzers/{id}/query
-     * Start asynchronous query job to retrieve available analyzer fields
+     * POST /rest/analyzer/analyzers/{id}/query Start asynchronous query job to
+     * retrieve available analyzer fields
      */
     @PostMapping(value = "/analyzers/{id}/query", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> startQuery(@PathVariable String id) {
@@ -107,8 +104,8 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/analyzers/{id}/query/{jobId}/status
-     * Get status for analyzer query job
+     * GET /rest/analyzer/analyzers/{id}/query/{jobId}/status Get status for
+     * analyzer query job
      */
     @GetMapping(value = "/analyzers/{id}/query/{jobId}/status", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getQueryStatus(@PathVariable String id, @PathVariable String jobId) {
@@ -124,8 +121,7 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/analyzers
-     * Create new analyzer with configuration
+     * POST /rest/analyzer/analyzers Create new analyzer with configuration
      */
     @PostMapping("/analyzers")
     public ResponseEntity<Map<String, Object>> createAnalyzer(@RequestBody AnalyzerForm form) {
@@ -177,14 +173,14 @@ public class AnalyzerRestController extends BaseRestController {
             }
 
             // Create AnalyzerConfiguration if IP/Port provided
-            // Note: This happens in a separate transaction to ensure analyzer is fully persisted
+            // Note: This happens in a separate transaction to ensure analyzer is fully
+            // persisted
             if (form.getIpAddress() != null && form.getPort() != null) {
                 try {
-                    List<String> testUnitIds = form.getTestUnitIds() != null
-                            ? form.getTestUnitIds()
+                    List<String> testUnitIds = form.getTestUnitIds() != null ? form.getTestUnitIds()
                             : new ArrayList<>();
-                    analyzerConfigurationService.createConfiguration(createdAnalyzer, form.getIpAddress(), form.getPort(),
-                            testUnitIds);
+                    analyzerConfigurationService.createConfiguration(createdAnalyzer, form.getIpAddress(),
+                            form.getPort(), testUnitIds);
                 } catch (LIMSRuntimeException e) {
                     // If configuration creation fails, log but don't fail the analyzer creation
                     logger.warn("Failed to create analyzer configuration: " + e.getMessage());
@@ -208,8 +204,8 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/analyzers/{id}/test-connection
-     * Test TCP connection to analyzer
+     * POST /rest/analyzer/analyzers/{id}/test-connection Test TCP connection to
+     * analyzer
      */
     @PostMapping("/analyzers/{id}/test-connection")
     public ResponseEntity<Map<String, Object>> testConnection(@PathVariable String id) {
@@ -222,8 +218,7 @@ public class AnalyzerRestController extends BaseRestController {
             }
             Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(id);
 
-            if (!configOpt.isPresent() || configOpt.get().getIpAddress() == null
-                    || configOpt.get().getPort() == null) {
+            if (!configOpt.isPresent() || configOpt.get().getIpAddress() == null || configOpt.get().getPort() == null) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Analyzer configuration not found or incomplete");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -251,8 +246,7 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/analyzers/{id}
-     * Retrieve analyzer by ID
+     * GET /rest/analyzer/analyzers/{id} Retrieve analyzer by ID
      */
     @GetMapping("/analyzers/{id}")
     public ResponseEntity<Map<String, Object>> getAnalyzer(@PathVariable String id) {
@@ -273,12 +267,10 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * PUT /rest/analyzer/analyzers/{id}
-     * Update analyzer
+     * PUT /rest/analyzer/analyzers/{id} Update analyzer
      */
     @PutMapping("/analyzers/{id}")
-    public ResponseEntity<Map<String, Object>> updateAnalyzer(@PathVariable String id,
-            @RequestBody AnalyzerForm form) {
+    public ResponseEntity<Map<String, Object>> updateAnalyzer(@PathVariable String id, @RequestBody AnalyzerForm form) {
         try {
             Analyzer analyzer = analyzerService.get(id);
             if (analyzer == null) {
@@ -328,7 +320,8 @@ public class AnalyzerRestController extends BaseRestController {
                     analyzerConfigurationService.update(config);
                 } else {
                     // Create new configuration if doesn't exist
-                    List<String> testUnitIds = form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>();
+                    List<String> testUnitIds = form.getTestUnitIds() != null ? form.getTestUnitIds()
+                            : new ArrayList<>();
                     analyzerConfigurationService.createConfiguration(analyzer, form.getIpAddress(), form.getPort(),
                             testUnitIds);
                 }
@@ -352,8 +345,8 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * DELETE /rest/analyzer/analyzers/{id}
-     * Delete analyzer (soft delete - sets active=false)
+     * DELETE /rest/analyzer/analyzers/{id} Delete analyzer (soft delete - sets
+     * active=false)
      */
     @DeleteMapping("/analyzers/{id}")
     public ResponseEntity<Void> deleteAnalyzer(@PathVariable String id) {
@@ -395,10 +388,10 @@ public class AnalyzerRestController extends BaseRestController {
             }
         } catch (Exception e) {
             // Configuration not found or error - just don't include it in response
-            logger.debug("Could not load analyzer configuration for analyzer " + analyzer.getId() + ": " + e.getMessage());
+            logger.debug(
+                    "Could not load analyzer configuration for analyzer " + analyzer.getId() + ": " + e.getMessage());
         }
 
         return map;
     }
 }
-

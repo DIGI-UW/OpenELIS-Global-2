@@ -28,9 +28,11 @@ import org.openelisglobal.analyzer.valueholder.UnitMapping;
  * Executes in <5 seconds, preventing ORM errors that would otherwise only
  * appear at application startup.
  * 
- * Reference: [Testing Roadmap - ORM Validation Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
+ * Reference: [Testing Roadmap - ORM Validation
+ * Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
  * 
- * Constitution V.4 Requirement: MUST execute in <5 seconds, MUST NOT require database connection
+ * Constitution V.4 Requirement: MUST execute in <5 seconds, MUST NOT require
+ * database connection
  */
 public class HibernateMappingValidationTest {
 
@@ -54,7 +56,8 @@ public class HibernateMappingValidationTest {
 
         // Configure minimal properties (no actual DB connection)
         configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-        // Skip foreign key validation for this test - we're only validating mapping structure
+        // Skip foreign key validation for this test - we're only validating mapping
+        // structure
         configuration.setProperty("hibernate.hbm2ddl.auto", "none");
 
         // Build SessionFactory - this will FAIL if any mapping is invalid
@@ -70,8 +73,8 @@ public class HibernateMappingValidationTest {
     }
 
     /**
-     * Test that all analyzer entity Hibernate mappings load successfully
-     * Catches: Property name mismatches, missing getters/setters, invalid relationships
+     * Test that all analyzer entity Hibernate mappings load successfully Catches:
+     * Property name mismatches, missing getters/setters, invalid relationships
      */
     @Test
     public void testAllAnalyzerHibernateMappingsLoadSuccessfully() {
@@ -80,23 +83,20 @@ public class HibernateMappingValidationTest {
         // Verify each entity is registered in Hibernate metamodel
         assertNotNull("AnalyzerConfiguration should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerConfiguration.class));
-        assertNotNull("AnalyzerField should be registered",
-                sessionFactory.getMetamodel().entity(AnalyzerField.class));
+        assertNotNull("AnalyzerField should be registered", sessionFactory.getMetamodel().entity(AnalyzerField.class));
         assertNotNull("AnalyzerFieldMapping should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerFieldMapping.class));
         assertNotNull("QualitativeResultMapping should be registered",
                 sessionFactory.getMetamodel().entity(QualitativeResultMapping.class));
-        assertNotNull("UnitMapping should be registered",
-                sessionFactory.getMetamodel().entity(UnitMapping.class));
-        assertNotNull("AnalyzerError should be registered",
-                sessionFactory.getMetamodel().entity(AnalyzerError.class));
+        assertNotNull("UnitMapping should be registered", sessionFactory.getMetamodel().entity(UnitMapping.class));
+        assertNotNull("AnalyzerError should be registered", sessionFactory.getMetamodel().entity(AnalyzerError.class));
         assertNotNull("CustomFieldType should be registered",
                 sessionFactory.getMetamodel().entity(CustomFieldType.class));
     }
 
     /**
-     * Test that analyzer entities follow JavaBean conventions
-     * Catches: Conflicting getters (getActive() vs isActive())
+     * Test that analyzer entities follow JavaBean conventions Catches: Conflicting
+     * getters (getActive() vs isActive())
      */
     @Test
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
@@ -109,8 +109,8 @@ public class HibernateMappingValidationTest {
     }
 
     /**
-     * Validate that an entity doesn't have conflicting getters
-     * E.g., both getActive() returning Boolean AND isActive() returning boolean
+     * Validate that an entity doesn't have conflicting getters E.g., both
+     * getActive() returning Boolean AND isActive() returning boolean
      */
     private void validateNoGetterConflicts(Class<?> clazz) {
         Map<String, Method> getGetters = new HashMap<>();
@@ -158,14 +158,14 @@ public class HibernateMappingValidationTest {
     }
 
     /**
-     * Test that entity property types match Hibernate mapping expectations
-     * Catches: Wrong return types, primitive vs wrapper mismatches
+     * Test that entity property types match Hibernate mapping expectations Catches:
+     * Wrong return types, primitive vs wrapper mismatches
      */
     @Test
     public void testEntityPropertyTypesValid() {
         // If SessionFactory built, property types are compatible
-        // This is implicit validation - SessionFactory won't build if types incompatible
+        // This is implicit validation - SessionFactory won't build if types
+        // incompatible
         assertNotNull("SessionFactory validates property types", sessionFactory);
     }
 }
-

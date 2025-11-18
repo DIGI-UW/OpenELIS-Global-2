@@ -28,7 +28,9 @@ including:
 ./src/test/resources/load-test-fixtures.sh --no-verify
 ```
 
-**Note**: The unified loader (`load-test-fixtures.sh`) replaces the old `load-e2e-fixtures.sh` script. It provides dependency checks, verification, and reset capabilities.
+**Note**: The unified loader (`load-test-fixtures.sh`) replaces the old
+`load-e2e-fixtures.sh` script. It provides dependency checks, verification, and
+reset capabilities.
 
 ### Method 2: Direct SQL (Not Recommended)
 
@@ -36,12 +38,14 @@ including:
 docker exec -i openelisglobal-database psql -U clinlims -d clinlims < src/test/resources/storage-test-data.sql
 ```
 
-**Note**: Direct SQL execution bypasses dependency checks and verification. Use the unified loader script instead.
+**Note**: Direct SQL execution bypasses dependency checks and verification. Use
+the unified loader script instead.
 
 ### Method 3: Cypress (Automatic)
 
 Cypress tests automatically load fixtures via `cy.loadStorageFixtures()` in the
-`before()` hook. See [Test Data Strategy Guide](test-data-strategy.md) for details.
+`before()` hook. See [Test Data Strategy Guide](test-data-strategy.md) for
+details.
 
 ## Test Data Available
 

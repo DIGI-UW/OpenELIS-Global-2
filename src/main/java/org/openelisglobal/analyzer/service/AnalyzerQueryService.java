@@ -18,5 +18,3 @@ public interface AnalyzerQueryService {
      */
     void cancel(String analyzerId, String jobId);
 }
-
-

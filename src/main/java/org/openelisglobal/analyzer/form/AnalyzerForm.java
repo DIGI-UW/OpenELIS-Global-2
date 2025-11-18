@@ -1,15 +1,13 @@
 package org.openelisglobal.analyzer.form;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
  * Form object for Analyzer entity - used for REST API input validation
- * Following OpenELIS pattern: Form objects for transport, entities for persistence
+ * Following OpenELIS pattern: Form objects for transport, entities for
+ * persistence
  */
 public class AnalyzerForm {
 
@@ -98,4 +96,3 @@ public class AnalyzerForm {
         this.active = active;
     }
 }
-

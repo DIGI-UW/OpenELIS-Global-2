@@ -302,4 +302,3 @@ describe("ErrorDetailsModal", () => {
     expect(modal).toBeNull();
   });
 });
-

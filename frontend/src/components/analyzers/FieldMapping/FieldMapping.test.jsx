@@ -147,18 +147,24 @@ describe("FieldMapping", () => {
     });
 
     // Wait for fields table to load and fields to be rendered
-    await waitFor(() => {
-      const tableContainer = screen.queryByTestId(
-        "field-mapping-table-container",
-      );
-      expect(tableContainer).not.toBeNull();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const tableContainer = screen.queryByTestId(
+          "field-mapping-table-container",
+        );
+        expect(tableContainer).not.toBeNull();
+      },
+      { timeout: 5000 },
+    );
 
     // Wait for field rows to actually render (not just the table container)
-    await waitFor(() => {
-      const fieldName = screen.queryByTestId("field-name-field-1");
-      expect(fieldName).not.toBeNull();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const fieldName = screen.queryByTestId("field-name-field-1");
+        expect(fieldName).not.toBeNull();
+      },
+      { timeout: 5000 },
+    );
 
     // Find and click a field row using data-testid
     const fieldName = await screen.findByTestId(
@@ -237,18 +243,24 @@ describe("FieldMapping", () => {
     });
 
     // Wait for fields table to load and fields to be rendered
-    await waitFor(() => {
-      const tableContainer = screen.queryByTestId(
-        "field-mapping-table-container",
-      );
-      expect(tableContainer).not.toBeNull();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const tableContainer = screen.queryByTestId(
+          "field-mapping-table-container",
+        );
+        expect(tableContainer).not.toBeNull();
+      },
+      { timeout: 5000 },
+    );
 
     // Wait for field rows to actually render (not just the table container)
-    await waitFor(() => {
-      const fieldName = screen.queryByTestId("field-name-field-1");
-      expect(fieldName).not.toBeNull();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const fieldName = screen.queryByTestId("field-name-field-1");
+        expect(fieldName).not.toBeNull();
+      },
+      { timeout: 5000 },
+    );
 
     // Find and click a field row using data-testid
     const fieldName = await screen.findByTestId(

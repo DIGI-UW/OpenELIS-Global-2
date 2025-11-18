@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldMappingDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
@@ -16,15 +16,13 @@ import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.Optional;
 
 /**
  * Service implementation for AnalyzerFieldMapping operations
  * 
- * Provides business logic for managing field mappings with:
- * - Type compatibility validation
- * - Required mapping validation
- * - Draft/active workflow
+ * Provides business logic for managing field mappings with: - Type
+ * compatibility validation - Required mapping validation - Draft/active
+ * workflow
  */
 @Service
 @Transactional
@@ -33,7 +31,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
 
     private final AnalyzerFieldMappingDAO analyzerFieldMappingDAO;
     private final AnalyzerFieldDAO analyzerFieldDAO;
-    
+
     @Autowired(required = false)
     private AnalyzerConfigurationService analyzerConfigurationService;
 
@@ -55,7 +53,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     public String createMapping(AnalyzerFieldMapping mapping) {
         // Validate type compatibility
         validateTypeCompatibility(mapping);
-        
+
         return analyzerFieldMappingDAO.insert(mapping);
     }
 
@@ -63,10 +61,9 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Transactional(readOnly = true)
     public void validateRequiredMappings(String analyzerId) {
         List<AnalyzerFieldMapping> mappings = analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId(analyzerId);
-        
+
         // Check if there are any required mappings
-        boolean hasRequiredMappings = mappings.stream()
-                .anyMatch(m -> m.getIsRequired() != null && m.getIsRequired());
+        boolean hasRequiredMappings = mappings.stream().anyMatch(m -> m.getIsRequired() != null && m.getIsRequired());
 
         if (!hasRequiredMappings) {
             throw new LIMSRuntimeException(
@@ -81,33 +78,35 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         if (mapping == null) {
             throw new LIMSRuntimeException("Mapping not found: " + mappingId);
         }
-        
+
         // Get analyzer ID from mapping
-        AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(mapping.getAnalyzerField().getId())
-                .orElse(null);
+        AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(mapping.getAnalyzerField().getId()).orElse(null);
         if (field == null || field.getAnalyzer() == null) {
             throw new LIMSRuntimeException("Analyzer field or analyzer not found for mapping: " + mappingId);
         }
         String analyzerId = field.getAnalyzer().getId();
-        
-        // Note: Required mappings validation (T074 requirement) should be performed at analyzer
-        // activation time, not individual mapping activation time. This allows mappings to be
-        // activated independently while still ensuring analyzer configuration completeness before
+
+        // Note: Required mappings validation (T074 requirement) should be performed at
+        // analyzer
+        // activation time, not individual mapping activation time. This allows mappings
+        // to be
+        // activated independently while still ensuring analyzer configuration
+        // completeness before
         // the analyzer is activated for production use.
-        // The validateRequiredMappings() method can be called from analyzer activation workflow.
-        
+        // The validateRequiredMappings() method can be called from analyzer activation
+        // workflow.
+
         // Check if analyzer is active - requires confirmation for active analyzers
         boolean analyzerIsActive = isAnalyzerActive(mapping);
         if (analyzerIsActive && !confirmed) {
-            throw new LIMSRuntimeException(
-                    "Confirmation required to activate mapping for active analyzer");
+            throw new LIMSRuntimeException("Confirmation required to activate mapping for active analyzer");
         }
-        
+
         // Activate mapping
         mapping.setIsActive(true);
         // Set audit fields (T075: who, when)
         mapping.setLastupdatedFields();
-        
+
         return analyzerFieldMappingDAO.update(mapping);
     }
 
@@ -120,9 +119,10 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getMappingsForAnalyzer(String analyzerId) {
-        // Get mappings with analyzerField eagerly loaded (uses native SQL for analyzer_id foreign key)
+        // Get mappings with analyzerField eagerly loaded (uses native SQL for
+        // analyzer_id foreign key)
         List<AnalyzerFieldMapping> mappings = analyzerFieldMappingDAO.findByAnalyzerIdWithFields(analyzerId);
-        
+
         // Compile complete data - eagerly fetch analyzer relationship for each field
         List<Map<String, Object>> result = new ArrayList<>();
         for (AnalyzerFieldMapping mapping : mappings) {
@@ -133,7 +133,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             if (field == null) {
                 continue; // Skip if field not found
             }
-            
+
             // All relationships are eagerly loaded, safe to access within transaction
             Map<String, Object> map = new HashMap<>();
             map.put("id", mapping.getId());
@@ -158,17 +158,18 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             String openelisFieldId, AnalyzerFieldMapping.OpenELISFieldType openelisFieldType,
             AnalyzerFieldMapping.MappingType mappingType, Boolean isRequired, Boolean isActive,
             String specimenTypeConstraint, String panelConstraint) {
-        
+
         // Get analyzer field with analyzer eagerly fetched (within transaction)
         // Use JOIN FETCH to ensure Analyzer relationship is loaded
         AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(analyzerFieldId)
                 .orElseThrow(() -> new LIMSRuntimeException("AnalyzerField not found: " + analyzerFieldId));
-        
-        // Verify field belongs to analyzer (relationship eagerly loaded, safe to access)
+
+        // Verify field belongs to analyzer (relationship eagerly loaded, safe to
+        // access)
         if (!field.getAnalyzer().getId().equals(analyzerId)) {
             throw new LIMSRuntimeException("Analyzer field does not belong to analyzer: " + analyzerId);
         }
-        
+
         // Create mapping entity
         AnalyzerFieldMapping mapping = new AnalyzerFieldMapping();
         mapping.setAnalyzerField(field);
@@ -180,10 +181,10 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         mapping.setSpecimenTypeConstraint(specimenTypeConstraint);
         mapping.setPanelConstraint(panelConstraint);
         mapping.setSysUserId("1"); // Default system user (should come from security context)
-        
+
         // Validate and create
         String mappingId = createMapping(mapping);
-        
+
         // Return complete data
         return getMappingWithCompleteData(mappingId);
     }
@@ -196,11 +197,11 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         if (mapping == null) {
             throw new LIMSRuntimeException("Mapping not found: " + mappingId);
         }
-        
+
         // Eagerly fetch analyzerField with analyzer relationship
-        AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(mapping.getAnalyzerField().getId())
-                .orElseThrow(() -> new LIMSRuntimeException("AnalyzerField not found: " + mapping.getAnalyzerField().getId()));
-        
+        AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(mapping.getAnalyzerField().getId()).orElseThrow(
+                () -> new LIMSRuntimeException("AnalyzerField not found: " + mapping.getAnalyzerField().getId()));
+
         // All relationships are eagerly loaded, safe to access within transaction
         Map<String, Object> map = new HashMap<>();
         map.put("id", mapping.getId());
@@ -225,14 +226,13 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         if (mapping == null) {
             return false;
         }
-        
+
         // Eagerly fetch analyzerField with analyzer relationship
-        AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(mapping.getAnalyzerField().getId())
-                .orElse(null);
+        AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(mapping.getAnalyzerField().getId()).orElse(null);
         if (field == null) {
             return false;
         }
-        
+
         // All relationships are eagerly loaded, safe to access within transaction
         return field.getAnalyzer().getId().equals(analyzerId);
     }
@@ -240,10 +240,10 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     /**
      * Validate that analyzer field type is compatible with OpenELIS field type
      * 
-     * Rules:
-     * - NUMERIC analyzer field → NUMERIC OpenELIS field (TEST, RESULT with numeric type)
-     * - QUALITATIVE analyzer field → QUALITATIVE OpenELIS field (RESULT with coded values)
-     * - TEXT analyzer field → TEXT OpenELIS field (METADATA, ORDER)
+     * Rules: - NUMERIC analyzer field → NUMERIC OpenELIS field (TEST, RESULT with
+     * numeric type) - QUALITATIVE analyzer field → QUALITATIVE OpenELIS field
+     * (RESULT with coded values) - TEXT analyzer field → TEXT OpenELIS field
+     * (METADATA, ORDER)
      * 
      * @param mapping The mapping to validate
      * @throws LIMSRuntimeException if types are incompatible
@@ -253,40 +253,38 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         if (analyzerField == null || analyzerField.getId() == null) {
             throw new LIMSRuntimeException("AnalyzerField must be set on mapping");
         }
-        
+
         // Fetch analyzer field to get field type
         AnalyzerField field = analyzerFieldDAO.get(analyzerField.getId())
                 .orElseThrow(() -> new LIMSRuntimeException("AnalyzerField not found: " + analyzerField.getId()));
-        
+
         AnalyzerField.FieldType analyzerFieldType = field.getFieldType();
         AnalyzerFieldMapping.OpenELISFieldType openelisFieldType = mapping.getOpenelisFieldType();
-        
+
         // Type compatibility rules
         if (analyzerFieldType == AnalyzerField.FieldType.NUMERIC) {
             // NUMERIC can map to TEST or RESULT (both can be numeric)
             if (openelisFieldType != AnalyzerFieldMapping.OpenELISFieldType.TEST
                     && openelisFieldType != AnalyzerFieldMapping.OpenELISFieldType.RESULT) {
-                throw new LIMSRuntimeException(
-                        "NUMERIC analyzer field can only map to TEST or RESULT OpenELIS fields. "
-                                + "Attempted: " + openelisFieldType);
+                throw new LIMSRuntimeException("NUMERIC analyzer field can only map to TEST or RESULT OpenELIS fields. "
+                        + "Attempted: " + openelisFieldType);
             }
         } else if (analyzerFieldType == AnalyzerField.FieldType.QUALITATIVE) {
             // QUALITATIVE can map to RESULT (coded values)
             if (openelisFieldType != AnalyzerFieldMapping.OpenELISFieldType.RESULT) {
-                throw new LIMSRuntimeException(
-                        "QUALITATIVE analyzer field can only map to RESULT OpenELIS fields. "
-                                + "Attempted: " + openelisFieldType);
+                throw new LIMSRuntimeException("QUALITATIVE analyzer field can only map to RESULT OpenELIS fields. "
+                        + "Attempted: " + openelisFieldType);
             }
         } else if (analyzerFieldType == AnalyzerField.FieldType.TEXT) {
             // TEXT can map to METADATA or ORDER
             if (openelisFieldType != AnalyzerFieldMapping.OpenELISFieldType.METADATA
                     && openelisFieldType != AnalyzerFieldMapping.OpenELISFieldType.ORDER) {
-                throw new LIMSRuntimeException(
-                        "TEXT analyzer field can only map to METADATA or ORDER OpenELIS fields. "
-                                + "Attempted: " + openelisFieldType);
+                throw new LIMSRuntimeException("TEXT analyzer field can only map to METADATA or ORDER OpenELIS fields. "
+                        + "Attempted: " + openelisFieldType);
             }
         }
-        // Other types (CONTROL_TEST, MELTING_POINT, DATE_TIME, CUSTOM) have flexible mapping
+        // Other types (CONTROL_TEST, MELTING_POINT, DATE_TIME, CUSTOM) have flexible
+        // mapping
     }
 
     @Override
@@ -297,19 +295,18 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         if (existingMapping == null) {
             throw new LIMSRuntimeException("Mapping not found: " + mapping.getId());
         }
-        
+
         // Validate type compatibility
         validateTypeCompatibility(mapping);
-        
+
         // Check if analyzer is active and mapping is active - requires confirmation
         boolean analyzerIsActive = isAnalyzerActive(existingMapping);
         boolean mappingIsActive = existingMapping.getIsActive() != null && existingMapping.getIsActive();
-        
+
         if (analyzerIsActive && mappingIsActive && !confirmed) {
-            throw new LIMSRuntimeException(
-                    "Confirmation required to update active mapping for active analyzer");
+            throw new LIMSRuntimeException("Confirmation required to update active mapping for active analyzer");
         }
-        
+
         // Update mapping fields
         existingMapping.setOpenelisFieldId(mapping.getOpenelisFieldId());
         existingMapping.setOpenelisFieldType(mapping.getOpenelisFieldType());
@@ -318,19 +315,22 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         existingMapping.setIsActive(mapping.getIsActive());
         existingMapping.setSpecimenTypeConstraint(mapping.getSpecimenTypeConstraint());
         existingMapping.setPanelConstraint(mapping.getPanelConstraint());
-        
+
         // Set audit fields (T075: who, when)
         if (mapping.getSysUserId() != null) {
             existingMapping.setSysUserId(mapping.getSysUserId());
         }
         existingMapping.setLastupdatedFields();
-        
-        // Note: Detailed audit trail (previous vs new values) can be added via AuditTrailService
-        // if needed. BaseObject audit fields (sys_user_id, last_updated) provide basic audit trail.
+
+        // Note: Detailed audit trail (previous vs new values) can be added via
+        // AuditTrailService
+        // if needed. BaseObject audit fields (sys_user_id, last_updated) provide basic
+        // audit trail.
         // To enable detailed audit trail, inject AuditTrailService and call:
-        // auditTrailService.saveHistory(mapping, existingMapping, mapping.getSysUserId(),
-        //     IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
-        
+        // auditTrailService.saveHistory(mapping, existingMapping,
+        // mapping.getSysUserId(),
+        // IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
+
         return analyzerFieldMappingDAO.update(existingMapping);
     }
 
@@ -342,25 +342,29 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         if (mapping == null) {
             throw new LIMSRuntimeException("Mapping not found: " + mappingId);
         }
-        
+
         // Cannot disable required mappings
         if (mapping.getIsRequired() != null && mapping.getIsRequired()) {
             throw new LIMSRuntimeException(
                     "Cannot disable required mapping. Required mappings (Sample ID, Test Code, Result Value) must remain active.");
         }
-        
+
         // Set inactive
         mapping.setIsActive(false);
         // Set audit fields (T075: who, when)
         mapping.setLastupdatedFields();
-        
-        // Note: Retirement reason and detailed audit trail (previous vs new values) can be added
-        // via AuditTrailService if needed. BaseObject audit fields (sys_user_id, last_updated)
-        // provide basic audit trail for who and when. To enable detailed audit trail, inject
+
+        // Note: Retirement reason and detailed audit trail (previous vs new values) can
+        // be added
+        // via AuditTrailService if needed. BaseObject audit fields (sys_user_id,
+        // last_updated)
+        // provide basic audit trail for who and when. To enable detailed audit trail,
+        // inject
         // AuditTrailService and call:
-        // auditTrailService.saveHistory(mapping, existingMapping, mapping.getSysUserId(),
-        //     IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
-        
+        // auditTrailService.saveHistory(mapping, existingMapping,
+        // mapping.getSysUserId(),
+        // IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
+
         return analyzerFieldMappingDAO.update(mapping);
     }
 
@@ -375,25 +379,23 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             // If service not available, assume analyzer is not active (safe default)
             return false;
         }
-        
+
         // Get analyzer field with analyzer relationship
-        AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(mapping.getAnalyzerField().getId())
-                .orElse(null);
+        AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(mapping.getAnalyzerField().getId()).orElse(null);
         if (field == null || field.getAnalyzer() == null) {
             return false;
         }
-        
+
         String analyzerId = field.getAnalyzer().getId();
         Optional<AnalyzerConfiguration> configOpt = analyzerConfigurationService.getByAnalyzerId(analyzerId);
-        
+
         if (configOpt.isPresent()) {
             AnalyzerConfiguration config = configOpt.get();
             // Check if analyzer is active (via Analyzer.active field)
             // Note: Analyzer.active is a boolean field in the legacy Analyzer entity
             return config.getAnalyzer() != null && config.getAnalyzer().isActive();
         }
-        
+
         return false;
     }
 }
-

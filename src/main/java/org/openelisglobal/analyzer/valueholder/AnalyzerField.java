@@ -16,9 +16,9 @@ import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * AnalyzerField entity - Represents a specific field or code emitted by an analyzer
- * (e.g., test code, measurement ID, qualifier field) that can be mapped to OpenELIS
- * concepts.
+ * AnalyzerField entity - Represents a specific field or code emitted by an
+ * analyzer (e.g., test code, measurement ID, qualifier field) that can be
+ * mapped to OpenELIS concepts.
  */
 @Entity
 @Table(name = "analyzer_field")
@@ -122,4 +122,3 @@ public class AnalyzerField extends BaseObject<String> {
         NUMERIC, QUALITATIVE, CONTROL_TEST, MELTING_POINT, DATE_TIME, TEXT, CUSTOM
     }
 }
-

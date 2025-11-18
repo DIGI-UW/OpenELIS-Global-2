@@ -88,7 +88,10 @@ const AnalyzersList = () => {
       analyzerType: initialAnalyzerType,
     };
     setFilters(initialFilters);
-    loadAnalyzers({ ...initialFilters, ...(initialSearch ? { search: initialSearch } : {}) });
+    loadAnalyzers({
+      ...initialFilters,
+      ...(initialSearch ? { search: initialSearch } : {}),
+    });
 
     // Restore scroll position (session)
     const storedScrollY = sessionStorage.getItem("analyzers.scrollY");

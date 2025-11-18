@@ -16,12 +16,13 @@ import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * UnitMapping entity - Represents mapping of analyzer-reported units to OpenELIS
- * canonical units, including optional conversion factors for unit mismatches.
+ * UnitMapping entity - Represents mapping of analyzer-reported units to
+ * OpenELIS canonical units, including optional conversion factors for unit
+ * mismatches.
  */
 @Entity
-@Table(name = "unit_mapping", uniqueConstraints = @UniqueConstraint(columnNames = {
-        "analyzer_field_id", "analyzer_unit" }))
+@Table(name = "unit_mapping", uniqueConstraints = @UniqueConstraint(columnNames = { "analyzer_field_id",
+        "analyzer_unit" }))
 public class UnitMapping extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
@@ -107,4 +108,3 @@ public class UnitMapping extends BaseObject<String> {
         this.rejectIfMismatch = rejectIfMismatch;
     }
 }
-

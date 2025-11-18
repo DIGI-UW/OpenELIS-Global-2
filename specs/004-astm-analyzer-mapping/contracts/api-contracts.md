@@ -4,15 +4,19 @@
 **Date**: 2025-11-14  
 **Status**: Draft
 
-This document defines REST API contracts for the ASTM analyzer field mapping feature.
+This document defines REST API contracts for the ASTM analyzer field mapping
+feature.
 
 ## Base URL
 
-All endpoints are prefixed with `/rest/analyzer` (or `/rest/analyzer-mapping` if namespace separation needed).
+All endpoints are prefixed with `/rest/analyzer` (or `/rest/analyzer-mapping` if
+namespace separation needed).
 
 ## Authentication
 
-All endpoints require authentication via Spring Security session management. User must have appropriate role:
+All endpoints require authentication via Spring Security session management.
+User must have appropriate role:
+
 - `LAB_USER`: View-only access
 - `LAB_SUPERVISOR`: View + acknowledge errors
 - `SYSTEM_ADMINISTRATOR`: Full CRUD access
@@ -20,6 +24,7 @@ All endpoints require authentication via Spring Security session management. Use
 ## Common Response Formats
 
 ### Success Response
+
 ```json
 {
   "data": { ... },
@@ -28,6 +33,7 @@ All endpoints require authentication via Spring Security session management. Use
 ```
 
 ### Error Response
+
 ```json
 {
   "error": "Error message",
@@ -41,9 +47,11 @@ All endpoints require authentication via Spring Security session management. Use
 ### 1. Analyzer Management
 
 #### GET /rest/analyzer
+
 List all analyzers with pagination and filtering.
 
 **Query Parameters**:
+
 - `page` (integer, default: 0): Page number
 - `size` (integer, default: 25): Page size (25, 50, 100)
 - `search` (string): Search term (name, type)
@@ -52,6 +60,7 @@ List all analyzers with pagination and filtering.
 - `sort` (string, default: "lastModified,desc"): Sort field and direction
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -83,9 +92,11 @@ List all analyzers with pagination and filtering.
 ```
 
 #### POST /rest/analyzer
+
 Create new analyzer.
 
 **Request Body**:
+
 ```json
 {
   "name": "Hematology Analyzer 1",
@@ -101,6 +112,7 @@ Create new analyzer.
 **Response**: 201 Created with analyzer object
 
 #### PUT /rest/analyzer/{id}
+
 Update analyzer.
 
 **Request Body**: Same as POST
@@ -108,14 +120,17 @@ Update analyzer.
 **Response**: 200 OK with updated analyzer object
 
 #### DELETE /rest/analyzer/{id}
+
 Delete analyzer (soft delete if recent results exist).
 
 **Response**: 204 No Content
 
 #### GET /rest/analyzer/{id}/test-connection
+
 Test TCP connection to analyzer.
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -137,12 +152,15 @@ Test TCP connection to analyzer.
 ### 2. Analyzer Field Management
 
 #### GET /rest/analyzer/{analyzerId}/fields
+
 List analyzer fields with pagination.
 
 **Query Parameters**:
+
 - `page`, `size`, `search`, `fieldType`, `sort`
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -164,9 +182,11 @@ List analyzer fields with pagination.
 ```
 
 #### POST /rest/analyzer/{analyzerId}/query
+
 Query analyzer to retrieve available fields.
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -188,9 +208,11 @@ Query analyzer to retrieve available fields.
 ### 3. Field Mapping Management
 
 #### GET /rest/analyzer/{analyzerId}/mappings
+
 List field mappings for analyzer.
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -224,9 +246,11 @@ List field mappings for analyzer.
 ```
 
 #### POST /rest/analyzer/{analyzerId}/mappings
+
 Create field mapping.
 
 **Request Body**:
+
 ```json
 {
   "analyzerFieldId": "uuid",
@@ -241,6 +265,7 @@ Create field mapping.
 **Response**: 201 Created with mapping object
 
 #### PUT /rest/analyzer/mappings/{mappingId}
+
 Update field mapping.
 
 **Request Body**: Same as POST
@@ -248,6 +273,7 @@ Update field mapping.
 **Response**: 200 OK with updated mapping object
 
 #### DELETE /rest/analyzer/mappings/{mappingId}
+
 Delete field mapping.
 
 **Response**: 204 No Content
@@ -255,9 +281,11 @@ Delete field mapping.
 ### 4. Qualitative Result Mapping
 
 #### GET /rest/analyzer/fields/{fieldId}/qualitative-mappings
+
 List qualitative value mappings for field.
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -275,9 +303,11 @@ List qualitative value mappings for field.
 ```
 
 #### POST /rest/analyzer/fields/{fieldId}/qualitative-mappings
+
 Create qualitative value mapping.
 
 **Request Body**:
+
 ```json
 {
   "analyzerValue": "POS",
@@ -289,9 +319,11 @@ Create qualitative value mapping.
 ### 5. Unit Mapping
 
 #### GET /rest/analyzer/fields/{fieldId}/unit-mapping
+
 Get unit mapping for field.
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -306,9 +338,11 @@ Get unit mapping for field.
 ```
 
 #### POST /rest/analyzer/fields/{fieldId}/unit-mapping
+
 Create or update unit mapping.
 
 **Request Body**:
+
 ```json
 {
   "analyzerUnit": "mg/dL",
@@ -321,12 +355,16 @@ Create or update unit mapping.
 ### 6. Error Dashboard
 
 #### GET /rest/analyzer/errors
+
 List analyzer errors with filtering.
 
 **Query Parameters**:
-- `page`, `size`, `search`, `errorType`, `severity`, `status`, `analyzerId`, `startDate`, `endDate`, `sort`
+
+- `page`, `size`, `search`, `errorType`, `severity`, `status`, `analyzerId`,
+  `startDate`, `endDate`, `sort`
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -357,14 +395,17 @@ List analyzer errors with filtering.
 ```
 
 #### POST /rest/analyzer/errors/{errorId}/acknowledge
+
 Acknowledge error.
 
 **Response**: 200 OK
 
 #### POST /rest/analyzer/errors/{errorId}/reprocess
+
 Reprocess error message after mapping created.
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -378,9 +419,11 @@ Reprocess error message after mapping created.
 ### 7. Copy Mappings
 
 #### POST /rest/analyzer/{sourceId}/copy-mappings/{targetId}
+
 Copy all mappings from source analyzer to target analyzer.
 
 **Request Body**:
+
 ```json
 {
   "overwriteExisting": true
@@ -400,4 +443,3 @@ Copy all mappings from source analyzer to target analyzer.
 - `CONNECTION_FAILED`: TCP connection to analyzer failed
 - `QUERY_TIMEOUT`: Analyzer query timed out
 - `VALIDATION_ERROR`: Request validation failed
-

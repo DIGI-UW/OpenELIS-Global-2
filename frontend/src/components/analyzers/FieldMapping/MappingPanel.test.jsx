@@ -152,7 +152,9 @@ describe("MappingPanel", () => {
 
     // Assert: Confirmation modal should be shown (open, not hidden)
     await waitFor(() => {
-      const confirmationModal = screen.queryByTestId("mapping-activation-modal");
+      const confirmationModal = screen.queryByTestId(
+        "mapping-activation-modal",
+      );
       expect(confirmationModal).not.toBeNull();
       // Modal should be open (aria-hidden should be null or "false")
       const ariaHidden = confirmationModal.getAttribute("aria-hidden");

@@ -3,9 +3,9 @@ package org.openelisglobal.analyzer.dao;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
+import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,9 +36,8 @@ public class AnalyzerFieldMappingDAOImpl extends BaseDAOImpl<AnalyzerFieldMappin
     @Transactional(readOnly = true)
     public List<AnalyzerFieldMapping> findActiveMappingsByAnalyzerId(String analyzerId) {
         try {
-            String hql = "FROM AnalyzerFieldMapping afm " +
-                    "WHERE afm.analyzerField.analyzer.id = :analyzerId " +
-                    "AND afm.isActive = true";
+            String hql = "FROM AnalyzerFieldMapping afm " + "WHERE afm.analyzerField.analyzer.id = :analyzerId "
+                    + "AND afm.isActive = true";
             Query<AnalyzerFieldMapping> query = entityManager.unwrap(Session.class).createQuery(hql,
                     AnalyzerFieldMapping.class);
             query.setParameter("analyzerId", analyzerId);
@@ -60,10 +59,8 @@ public class AnalyzerFieldMappingDAOImpl extends BaseDAOImpl<AnalyzerFieldMappin
             }
 
             // HQL join via relationship path; eagerly load analyzerField
-            String hql = "SELECT DISTINCT afm FROM AnalyzerFieldMapping afm " +
-                    "LEFT JOIN FETCH afm.analyzerField af " +
-                    "JOIN af.analyzer a " +
-                    "WHERE a.id = :analyzerId";
+            String hql = "SELECT DISTINCT afm FROM AnalyzerFieldMapping afm " + "LEFT JOIN FETCH afm.analyzerField af "
+                    + "JOIN af.analyzer a " + "WHERE a.id = :analyzerId";
             Query<AnalyzerFieldMapping> query = entityManager.unwrap(Session.class).createQuery(hql,
                     AnalyzerFieldMapping.class);
             query.setParameter("analyzerId", analyzerIdInt);
@@ -78,11 +75,12 @@ public class AnalyzerFieldMappingDAOImpl extends BaseDAOImpl<AnalyzerFieldMappin
     public AnalyzerFieldMapping findByIdWithField(String mappingId) {
         try {
             // Use JOIN FETCH to eagerly load analyzerField relationship within transaction
-            // Note: Cannot JOIN FETCH analyzer (uses XML mappings), but analyzerField is enough
-            // The analyzer relationship can be accessed via analyzerField.getAnalyzer() if needed
-            String hql = "SELECT afm FROM AnalyzerFieldMapping afm " +
-                    "LEFT JOIN FETCH afm.analyzerField af " +
-                    "WHERE afm.id = :mappingId";
+            // Note: Cannot JOIN FETCH analyzer (uses XML mappings), but analyzerField is
+            // enough
+            // The analyzer relationship can be accessed via analyzerField.getAnalyzer() if
+            // needed
+            String hql = "SELECT afm FROM AnalyzerFieldMapping afm " + "LEFT JOIN FETCH afm.analyzerField af "
+                    + "WHERE afm.id = :mappingId";
             Query<AnalyzerFieldMapping> query = entityManager.unwrap(Session.class).createQuery(hql,
                     AnalyzerFieldMapping.class);
             query.setParameter("mappingId", mappingId);
@@ -92,4 +90,3 @@ public class AnalyzerFieldMappingDAOImpl extends BaseDAOImpl<AnalyzerFieldMappin
         }
     }
 }
-

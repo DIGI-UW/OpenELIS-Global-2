@@ -137,9 +137,7 @@ describe("ErrorDashboard", () => {
     getFromOpenElisServer.mockImplementation((url, callback) => {
       // Simulate filtering on backend
       if (url.includes("errorType=MAPPING")) {
-        callback(
-          allErrors.filter((e) => e.errorType === "MAPPING"),
-        );
+        callback(allErrors.filter((e) => e.errorType === "MAPPING"));
       } else {
         callback(allErrors);
       }
@@ -273,4 +271,3 @@ describe("ErrorDashboard", () => {
     consoleSpy.mockRestore();
   });
 });
-

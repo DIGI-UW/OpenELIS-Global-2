@@ -1,22 +1,32 @@
 # Figma Design Analysis: Analyzer Field Mapping Feature
 
 **Date**: 2025-11-14  
-**Sources**: 
-- Figma Make - [Analyzer Field Mapping Feature](https://www.figma.com/make/QseQZxQyOWsqciEpLjwkxb/Analyzer-Field-Mapping-Feature?node-id=0-4&t=obsy3bJKKnPocoSp-1)
-- Figma Design - [OGC-49](https://www.figma.com/design/i63dxlyfZE8tvdoAibH55M/OGC-49) (11 design pages analyzed)
-**Status**: Design Reference Analysis (Complete)
+**Sources**:
+
+- Figma Make -
+  [Analyzer Field Mapping Feature](https://www.figma.com/make/QseQZxQyOWsqciEpLjwkxb/Analyzer-Field-Mapping-Feature?node-id=0-4&t=obsy3bJKKnPocoSp-1)
+- Figma Design -
+  [OGC-49](https://www.figma.com/design/i63dxlyfZE8tvdoAibH55M/OGC-49) (11
+  design pages analyzed) **Status**: Design Reference Analysis (Complete)
 
 ## Executive Summary
 
-This document summarizes findings from analyzing the Figma Make prototype for the Analyzer Field Mapping feature. The Make file contains a functional React/TypeScript prototype that demonstrates UI behavior, component structure, and user workflows. However, as a Make file (code prototype), it emphasizes implementation details rather than visual design metadata.
+This document summarizes findings from analyzing the Figma Make prototype for
+the Analyzer Field Mapping feature. The Make file contains a functional
+React/TypeScript prototype that demonstrates UI behavior, component structure,
+and user workflows. However, as a Make file (code prototype), it emphasizes
+implementation details rather than visual design metadata.
 
-**Key Finding**: The prototype uses shadcn/ui components (Tailwind-based), which will need to be converted to Carbon Design System components per OpenELIS constitution requirements.
+**Key Finding**: The prototype uses shadcn/ui components (Tailwind-based), which
+will need to be converted to Carbon Design System components per OpenELIS
+constitution requirements.
 
 ## Design Artifacts Retrieved
 
 ### Code Files Retrieved
+
 - **Main Application**: `App.tsx` - Routing and navigation structure
-- **Pages**: 
+- **Pages**:
   - `AnalyzersPage.tsx` - Analyzer list and management
   - `FieldMappingPage.tsx` - Dual-panel mapping interface
   - `ErrorDashboardPage.tsx` - Error monitoring
@@ -26,7 +36,9 @@ This document summarizes findings from analyzing the Figma Make prototype for th
 - **Mock Data**: `data/mockData.ts` and `data/openELISFieldsData.ts`
 
 ### Image Assets Retrieved
+
 11 PNG screenshots documented in `screenshots/README.md`:
+
 - `01-analyzers-page.png` - Main Analyzers list page
 - `02-analyzers-with-overflow-menu.png` - Analyzers page showing overflow menu
 - `03-test-connection-modal.png` - Test Connection modal (initial state)
@@ -39,7 +51,9 @@ This document summarizes findings from analyzing the Figma Make prototype for th
 - `10-error-dashboard.png` - Error Dashboard page
 - `11-error-details-modal.png` - Error Details modal
 
-**Note**: Screenshots were captured from Figma Design file nodes. Metadata analysis from design pages provides structural details that complement the visual screenshots.
+**Note**: Screenshots were captured from Figma Design file nodes. Metadata
+analysis from design pages provides structural details that complement the
+visual screenshots.
 
 ## Application Hierarchy & Structure
 
@@ -213,7 +227,7 @@ Feature Components
 │   │   └── Protocol: {protocol version}
 │   ├── Connection Status Section (conditional)
 │   │   ├── Initial State: "Test Connection" button
-│   │   ├── Progress State: 
+│   │   ├── Progress State:
 │   │   │   ├── Loading icon with "Testing connection..." text
 │   │   │   ├── Progress bar with percentage (e.g., "50% complete")
 │   │   │   └── Connection Logs section (collapsible)
@@ -480,28 +494,36 @@ Data Flow
 ### 1. Analyzers List Page (`AnalyzersPage.tsx`)
 
 **Layout Structure**:
+
 - Header section with title "Analyzers" and "Add Analyzer" primary button
 - Statistics cards (3-column grid): Total Analyzers, Active, Inactive
 - Filter bar: Search input + Status dropdown + Type dropdown
-- Data table with columns: Name, Type, Connection (IP:Port), Test Units, Status, Last Modified, Actions
-- Row actions via dropdown menu: Field Mappings, Test Connection, Copy Mappings, Edit, Delete
+- Data table with columns: Name, Type, Connection (IP:Port), Test Units, Status,
+  Last Modified, Actions
+- Row actions via dropdown menu: Field Mappings, Test Connection, Copy Mappings,
+  Edit, Delete
 
 **Key Behaviors**:
+
 - Search debounced across Name, Type, IP fields
 - Status filter: All, Active, Inactive
 - Type filter: Dynamic list from analyzer types
 - Inline status badges (Active/Inactive)
 - Test units displayed as badge chips
-- Modals: AnalyzerModal, DeleteConfirmationModal, TestConnectionModal, CopyMappingsModal
+- Modals: AnalyzerModal, DeleteConfirmationModal, TestConnectionModal,
+  CopyMappingsModal
 
-**Component Pattern**: Card-based layout with DataTable, filter controls, and modal dialogs
+**Component Pattern**: Card-based layout with DataTable, filter controls, and
+modal dialogs
 
 ### 2. Field Mapping Page (`FieldMappingPage.tsx`)
 
 **Layout Structure**:
+
 - Header with back button, analyzer name/title, "Save Mappings" button
 - Validation warning card (yellow) if required mappings missing
-- Statistics cards (3-column): Total Mappings, Required Mappings, Unmapped Fields
+- Statistics cards (3-column): Total Mappings, Required Mappings, Unmapped
+  Fields
 - **Dual-panel interface** (50/50 grid, stacks on mobile):
   - **Left Panel**: Analyzer Fields (Source)
     - Searchable field list in table format
@@ -513,19 +535,22 @@ Data Flow
     - Shows detailed mapping panel when field selected
 
 **Key Behaviors**:
+
 - Click analyzer field → opens mapping panel on right
 - Visual indicators for mapped vs unmapped fields
 - Required mappings validation (Sample ID, Test Code, Result Value)
 - Mapping stats update dynamically
 - Field search filters analyzer fields in real-time
 
-**Component Pattern**: Two-column responsive grid with interactive field selection and contextual mapping panel
+**Component Pattern**: Two-column responsive grid with interactive field
+selection and contextual mapping panel
 
 ### 3. Mapping Panel Component (`MappingPanel.tsx`)
 
 **Two States**:
 
 **State 1: View Existing Mapping**
+
 - Header with mapping title and Edit/Remove buttons
 - Source and Target field cards (side-by-side)
 - Unit conversion display (if numeric)
@@ -533,6 +558,7 @@ Data Flow
 - Required/Optional indicator
 
 **State 2: Create/Edit Mapping**
+
 - Source field info card (read-only, blue background)
 - OpenELIS Field Selector (searchable, categorized dropdown)
 - Unit Mapping section (if numeric):
@@ -545,17 +571,20 @@ Data Flow
 - Action buttons: Create/Update Mapping, Cancel
 
 **Key Behaviors**:
+
 - Field type filtering (only compatible types shown)
 - Unit dropdown populated from target field's accepted units
 - Qualitative mappings initialized from analyzer field values
 - Conversion factor defaults to 1.0
 - Validation: Target field required before save
 
-**Component Pattern**: Card-based form with conditional sections based on field types
+**Component Pattern**: Card-based form with conditional sections based on field
+types
 
 ### 4. OpenELIS Field Selector (`OpenELISFieldSelector.tsx`)
 
 **Complex Component Features**:
+
 - Searchable dropdown with category filtering
 - 8 categories: Tests, Panels, Results, Order, Sample, QC, Metadata, Units
 - Category filter popover with checkboxes (Select All/None)
@@ -565,19 +594,22 @@ Data Flow
 - Active filter pills display when categories filtered
 
 **Key Behaviors**:
+
 - Search across name, entity, LOINC code, description
 - Category filtering persists during search
 - Type filtering enforced (numeric→numeric, qualitative→qualitative)
 - Visual grouping by category in dropdown
 - Field count per category displayed
 
-**Component Pattern**: Advanced combobox with multi-level filtering and categorization
+**Component Pattern**: Advanced combobox with multi-level filtering and
+categorization
 
 ## Data Model (From TypeScript Types)
 
 ### Core Entities
 
 **Analyzer**:
+
 ```typescript
 {
   id: string;
@@ -595,6 +627,7 @@ Data Flow
 ```
 
 **AnalyzerField** (Source):
+
 ```typescript
 {
   id: string;
@@ -613,6 +646,7 @@ Data Flow
 ```
 
 **OpenELISField** (Target):
+
 ```typescript
 {
   id: string;
@@ -628,6 +662,7 @@ Data Flow
 ```
 
 **FieldMapping**:
+
 ```typescript
 {
   id: string;
@@ -651,6 +686,7 @@ Data Flow
 ```
 
 **AnalyzerError**:
+
 ```typescript
 {
   id: string;
@@ -670,6 +706,7 @@ Data Flow
 ## User Workflows Identified
 
 ### Workflow 1: Register and Configure New Analyzer
+
 1. Navigate to Analyzers page
 2. Click "Add Analyzer"
 3. Fill form: Name, Type, IP, Port, Test Units
@@ -684,6 +721,7 @@ Data Flow
 12. Validate required mappings present
 
 ### Workflow 2: Copy Mappings from Similar Analyzer
+
 1. Open analyzer in list
 2. Click "Copy Mappings" from actions menu
 3. Select source analyzer from searchable list
@@ -693,6 +731,7 @@ Data Flow
 7. Adjust as needed
 
 ### Workflow 3: Resolve Unmapped Field Error
+
 1. Navigate to Error Dashboard
 2. View unmapped field error
 3. Click error to open details
@@ -703,6 +742,7 @@ Data Flow
 8. Trigger reprocessing of affected messages
 
 ### Workflow 4: Edit Existing Mapping
+
 1. Navigate to analyzer's Field Mapping page
 2. Click mapped field in source panel
 3. Mapping panel shows existing mapping
@@ -714,25 +754,31 @@ Data Flow
 ## Design Patterns & UI Behaviors
 
 ### Visual Indicators
-- **Field Type Colors**: Color-coded badges for field types (though specific colors not defined in Make file)
+
+- **Field Type Colors**: Color-coded badges for field types (though specific
+  colors not defined in Make file)
 - **Mapping Status**: Visual distinction between mapped/unmapped fields
 - **Required Mappings**: Warning card when required mappings missing
 - **Status Badges**: Active (green), Inactive (gray), Required (checkmark icon)
 
 ### Interaction Patterns
+
 - **Click-to-Map**: Click source field → mapping panel opens on right
 - **Search & Filter**: Real-time filtering with debounced search
-- **Modal Workflows**: Multi-step workflows in modals (Analyzer, Test Connection, Copy Mappings)
+- **Modal Workflows**: Multi-step workflows in modals (Analyzer, Test
+  Connection, Copy Mappings)
 - **Inline Editing**: Edit mappings without leaving page
 - **Contextual Actions**: Actions menu per row, contextual buttons in panels
 
 ### Responsive Behavior
+
 - Two-column grid stacks vertically on mobile (<1024px)
 - Table scrolls horizontally on small screens
 - Modals adapt to viewport size
 - Filter pills wrap on narrow screens
 
 ### Validation & Feedback
+
 - Required field validation before save
 - Type compatibility checking (numeric→numeric, etc.)
 - Unit mismatch warnings
@@ -742,27 +788,32 @@ Data Flow
 ## Limitations of Figma Make Files
 
 ### What Make Files Provide
+
 ✅ Functional code structure  
 ✅ Component relationships  
 ✅ Data model definitions  
 ✅ User workflow logic  
 ✅ Interaction patterns  
-✅ Mock data examples  
+✅ Mock data examples
 
 ### What Make Files Don't Provide
+
 ❌ Visual design tokens (colors, spacing, typography values)  
 ❌ Layout metadata (exact positions, sizes)  
 ❌ Design system variables  
 ❌ Visual hierarchy information  
 ❌ Animation/transition specifications  
 ❌ Accessibility annotations  
-❌ Responsive breakpoint details  
+❌ Responsive breakpoint details
 
-**Note**: The `get_metadata` and `get_screenshot` tools do not work with Make files—they only work with traditional Figma Design files. The screenshots retrieved are static image assets, not interactive design metadata.
+**Note**: The `get_metadata` and `get_screenshot` tools do not work with Make
+files—they only work with traditional Figma Design files. The screenshots
+retrieved are static image assets, not interactive design metadata.
 
 ## Alignment with OGC-49 Specification
 
 ### Matches Specification
+
 ✅ Dual-panel mapping interface (50/50 grid)  
 ✅ Analyzer list with search/filter  
 ✅ Field type detection and categorization  
@@ -771,33 +822,42 @@ Data Flow
 ✅ Copy mappings functionality  
 ✅ Error dashboard structure  
 ✅ Required mappings validation  
-✅ Test connection capability  
+✅ Test connection capability
 
 ### Deviations from Specification
-⚠️ **Design System**: Uses shadcn/ui (Tailwind) instead of Carbon Design System  
-⚠️ **Component Library**: Uses shadcn/ui components instead of Carbon components  
+
+⚠️ **Design System**: Uses shadcn/ui (Tailwind) instead of Carbon Design
+System  
+⚠️ **Component Library**: Uses shadcn/ui components instead of Carbon
+components  
 ⚠️ **Styling Approach**: Tailwind utility classes instead of Carbon tokens  
-⚠️ **Internationalization**: Hardcoded English strings (needs React Intl)  
+⚠️ **Internationalization**: Hardcoded English strings (needs React Intl)
 
 ### Missing from Prototype (Per Spec)
+
 - Pagination controls (mentioned in spec, not visible in code)
 - Audit trail UI (data model exists, UI not shown)
 - Test mapping/preview capability (FR-007)
 - Custom field type creation UI (FR-018)
 - Inline OpenELIS field creation (FR-019)
 - Message reprocessing UI
-- Date range filter in Error Dashboard (filter bar shows "All" but no date picker visible)
+- Date range filter in Error Dashboard (filter bar shows "All" but no date
+  picker visible)
 
 ### Additional Details from Figma Design Pages
 
 #### Test Connection Modal States
-- **Initial State**: Shows analyzer information (name, type, connection, protocol) with "Test Connection" button
-- **Progress State**: 
+
+- **Initial State**: Shows analyzer information (name, type, connection,
+  protocol) with "Test Connection" button
+- **Progress State**:
   - Loading indicator with "Testing connection..." text
   - Progress bar showing percentage completion (e.g., "50% complete")
-  - Collapsible connection logs section with detailed step-by-step connection process
+  - Collapsible connection logs section with detailed step-by-step connection
+    process
   - Log entries include timestamps in [HH:MM:SS.mmm] format
-  - Log levels visually distinguished: info (ℹ), debug (◆), warning (⚠), error (✗)
+  - Log levels visually distinguished: info (ℹ), debug (◆), warning (⚠), error
+    (✗)
 - **Success State**:
   - Success icon with "Connection Successful" heading
   - Descriptive success message
@@ -811,17 +871,25 @@ Data Flow
   - Footer buttons: "Close" and "Test Again"
 
 #### Error Dashboard Enhancements
-- **Statistics Cards**: Four cards in grid layout (Total Errors, Unacknowledged, Critical, Last 24 Hours)
-- **Filter Bar**: Three filter dropdowns (Error Type, Severity, Analyzer) plus search input
-- **Error Table Columns**: Timestamp (formatted as "MM/DD/YYYY, HH:MM:SS AM/PM"), Analyzer, Type (badge), Severity (badge), Message (truncated), Status (badge with icon), Actions
-- **Status Badges**: 
+
+- **Statistics Cards**: Four cards in grid layout (Total Errors, Unacknowledged,
+  Critical, Last 24 Hours)
+- **Filter Bar**: Three filter dropdowns (Error Type, Severity, Analyzer) plus
+  search input
+- **Error Table Columns**: Timestamp (formatted as "MM/DD/YYYY, HH:MM:SS
+  AM/PM"), Analyzer, Type (badge), Severity (badge), Message (truncated), Status
+  (badge with icon), Actions
+- **Status Badges**:
   - Unacknowledged: Badge with warning icon
   - Acknowledged: Badge with checkmark icon
 - **Bulk Action**: "Acknowledge All" button in page header
 
 #### Error Details Modal Enhancements
-- **Error Metadata Grid**: Two-column layout showing Error ID, Timestamp, Analyzer, Analyzer ID, Error Type (badge), Severity (badge)
-- **Acknowledgment Display**: Shows acknowledgment status with user name and timestamp when acknowledged
+
+- **Error Metadata Grid**: Two-column layout showing Error ID, Timestamp,
+  Analyzer, Analyzer ID, Error Type (badge), Severity (badge)
+- **Acknowledgment Display**: Shows acknowledgment status with user name and
+  timestamp when acknowledged
 - **Analyzer Logs**:
   - Collapsible section with entry count in header
   - Copy and Download action buttons
@@ -829,12 +897,15 @@ Data Flow
   - Log levels: info, debug, warning, error (with visual icons)
   - Timestamps in [HH:MM:SS.mmm] format
   - Detailed messages showing connection state, retry attempts, errors
-- **Recommended Actions**: Bulleted list with icon indicators providing troubleshooting guidance
+- **Recommended Actions**: Bulleted list with icon indicators providing
+  troubleshooting guidance
 
 ## Key Observations for Implementation
 
 ### 1. Component Conversion Required
+
 The prototype uses shadcn/ui components that must be converted to Carbon:
+
 - `Button` → Carbon `Button`
 - `Card` → Carbon `Tile` or `StructuredList`
 - `Table` → Carbon `DataTable`
@@ -846,6 +917,7 @@ The prototype uses shadcn/ui components that must be converted to Carbon:
 - `Dropdown` → Carbon `Dropdown` or `OverflowMenu`
 
 ### 2. Layout Patterns to Preserve
+
 - Two-column responsive grid for mapping interface
 - Card-based statistics display
 - Search + filter bar pattern
@@ -853,21 +925,27 @@ The prototype uses shadcn/ui components that must be converted to Carbon:
 - Inline editing pattern
 
 ### 3. Data Model Alignment
+
 The TypeScript types align well with the OGC-49 specification entities:
+
 - `Analyzer` matches spec requirements
 - `FieldMapping` includes unit and qualitative mappings
 - `AnalyzerError` supports error dashboard
 - Field types match spec definitions
 
 ### 4. Workflow Completeness
+
 The prototype demonstrates core workflows but may need:
+
 - Audit trail UI components
 - Message reprocessing interface
 - Test mapping/preview capability
 - Bulk operations UI
 
 ### 5. Internationalization Gap
+
 All user-facing strings are hardcoded in English. Implementation must:
+
 - Extract all strings to React Intl message files
 - Support at least English and French (per constitution)
 - Use `intl.formatMessage()` for all labels, messages, tooltips
@@ -875,18 +953,28 @@ All user-facing strings are hardcoded in English. Implementation must:
 ## Recommendations
 
 ### Immediate Actions
-1. **Review Screenshots**: Examine the 10 downloaded screenshots to understand visual design intent
-2. **Carbon Component Mapping**: Create mapping document from shadcn/ui → Carbon components
-3. **Design Token Extraction**: Work with design team to extract visual tokens if traditional Figma Design file available
-4. **Workflow Validation**: Validate that prototype workflows match OGC-49 specification requirements
+
+1. **Review Screenshots**: Examine the 10 downloaded screenshots to understand
+   visual design intent
+2. **Carbon Component Mapping**: Create mapping document from shadcn/ui → Carbon
+   components
+3. **Design Token Extraction**: Work with design team to extract visual tokens
+   if traditional Figma Design file available
+4. **Workflow Validation**: Validate that prototype workflows match OGC-49
+   specification requirements
 
 ### Implementation Considerations
-1. **Progressive Enhancement**: Start with core mapping interface, add advanced features incrementally
-2. **Component Library**: Build Carbon-based component library before full implementation
-3. **Data Layer**: Backend entities should align with TypeScript types (with Java naming conventions)
+
+1. **Progressive Enhancement**: Start with core mapping interface, add advanced
+   features incrementally
+2. **Component Library**: Build Carbon-based component library before full
+   implementation
+3. **Data Layer**: Backend entities should align with TypeScript types (with
+   Java naming conventions)
 4. **Testing Strategy**: Use prototype workflows as basis for E2E test scenarios
 
 ### Design System Integration
+
 1. **Carbon Theme**: Apply OpenELIS Carbon theme tokens
 2. **Spacing**: Use Carbon spacing scale ($spacing-05, $spacing-07)
 3. **Typography**: Use Carbon typography tokens ($heading-04, $body-01, etc.)
@@ -895,16 +983,20 @@ All user-facing strings are hardcoded in English. Implementation must:
 
 ## Next Steps
 
-1. **Design Review**: Review screenshots with design team to clarify visual intent
-2. **Component Planning**: Create detailed component breakdown using Carbon equivalents
-3. **Spec Alignment**: Cross-reference prototype with OGC-49 spec to identify gaps
-4. **Implementation Planning**: Use this analysis to inform implementation plan and tasks
+1. **Design Review**: Review screenshots with design team to clarify visual
+   intent
+2. **Component Planning**: Create detailed component breakdown using Carbon
+   equivalents
+3. **Spec Alignment**: Cross-reference prototype with OGC-49 spec to identify
+   gaps
+4. **Implementation Planning**: Use this analysis to inform implementation plan
+   and tasks
 
 ## References
 
-- **Figma Make**: [Analyzer Field Mapping Feature](https://www.figma.com/make/QseQZxQyOWsqciEpLjwkxb/Analyzer-Field-Mapping-Feature?node-id=0-4&t=obsy3bJKKnPocoSp-1)
+- **Figma Make**:
+  [Analyzer Field Mapping Feature](https://www.figma.com/make/QseQZxQyOWsqciEpLjwkxb/Analyzer-Field-Mapping-Feature?node-id=0-4&t=obsy3bJKKnPocoSp-1)
 - **OGC-49 Specification**: `.dev-docs/OGC-49/docs.md`
 - **Feature Spec**: `specs/004-astm-analyzer-mapping/spec.md`
 - **Screenshots**: `figma-screenshots/` directory (10 PNG files)
 - **OpenELIS Constitution**: `.specify/memory/constitution.md` (v1.7.0)
-

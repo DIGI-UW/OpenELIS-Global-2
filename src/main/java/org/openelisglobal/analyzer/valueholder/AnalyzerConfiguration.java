@@ -18,9 +18,9 @@ import org.openelisglobal.common.hibernateConverter.StringListConverter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * AnalyzerConfiguration entity - Extends existing Analyzer entity with connection
- * configuration (IP address, port, protocol version) without modifying legacy XML
- * mappings.
+ * AnalyzerConfiguration entity - Extends existing Analyzer entity with
+ * connection configuration (IP address, port, protocol version) without
+ * modifying legacy XML mappings.
  * 
  * One-to-one relationship with legacy Analyzer entity.
  */
@@ -111,4 +111,3 @@ public class AnalyzerConfiguration extends BaseObject<String> {
         this.testUnitIds = testUnitIds != null ? testUnitIds : new ArrayList<>();
     }
 }
-

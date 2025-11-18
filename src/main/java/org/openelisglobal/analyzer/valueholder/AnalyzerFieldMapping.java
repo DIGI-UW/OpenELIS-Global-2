@@ -16,8 +16,8 @@ import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
  * AnalyzerFieldMapping entity - Represents the mapping configuration between an
- * AnalyzerField and one or more OpenELIS field entries, including mapping type and
- * activation state.
+ * AnalyzerField and one or more OpenELIS field entries, including mapping type
+ * and activation state.
  */
 @Entity
 @Table(name = "analyzer_field_mapping")
@@ -148,4 +148,3 @@ public class AnalyzerFieldMapping extends BaseObject<String> {
         TEST_LEVEL, RESULT_LEVEL, METADATA
     }
 }
-

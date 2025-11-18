@@ -2,7 +2,6 @@ package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -20,17 +19,14 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for AnalyzerFieldService implementation
  * 
- * References:
- * - Testing Roadmap: .specify/guides/testing-roadmap.md
- * - Template: JUnit 4 Service Test
+ * References: - Testing Roadmap: .specify/guides/testing-roadmap.md - Template:
+ * JUnit 4 Service Test
  * 
- * TDD Workflow (MANDATORY for complex logic):
- * - RED: Write failing test first (defines expected behavior)
- * - GREEN: Write minimal code to make test pass
- * - REFACTOR: Improve code quality while keeping tests green
+ * TDD Workflow (MANDATORY for complex logic): - RED: Write failing test first
+ * (defines expected behavior) - GREEN: Write minimal code to make test pass -
+ * REFACTOR: Improve code quality while keeping tests green
  * 
- * Task Reference: T029
- * Test Coverage Goal: >80% (measured via JaCoCo)
+ * Task Reference: T029 Test Coverage Goal: >80% (measured via JaCoCo)
  * 
  * Test Naming: test{MethodName}_{Scenario}_{ExpectedResult}
  */
@@ -48,7 +44,7 @@ public class AnalyzerFieldServiceTest {
     @Before
     public void setUp() {
         analyzerFieldService = new AnalyzerFieldServiceImpl(analyzerFieldDAO);
-        
+
         // Setup test analyzer
         testAnalyzer = new Analyzer();
         testAnalyzer.setId("1");
@@ -65,15 +61,14 @@ public class AnalyzerFieldServiceTest {
     }
 
     /**
-     * Test: Get fields by analyzer ID returns list of fields
-     * Task Reference: T029
+     * Test: Get fields by analyzer ID returns list of fields Task Reference: T029
      */
     @Test
     public void testGetFieldsByAnalyzerId_ReturnsFields() {
         // Arrange
         List<AnalyzerField> expectedFields = new ArrayList<>();
         expectedFields.add(testField);
-        
+
         AnalyzerField field2 = new AnalyzerField();
         field2.setId("FIELD-002");
         field2.setAnalyzer(testAnalyzer);
@@ -96,8 +91,7 @@ public class AnalyzerFieldServiceTest {
     }
 
     /**
-     * Test: Create field with valid data persists field
-     * Task Reference: T029
+     * Test: Create field with valid data persists field Task Reference: T029
      */
     @Test
     public void testCreateField_WithValidData_PersistsField() {
@@ -120,10 +114,11 @@ public class AnalyzerFieldServiceTest {
     }
 
     /**
-     * Test: Create field with invalid field type throws exception
-     * Task Reference: T029
+     * Test: Create field with invalid field type throws exception Task Reference:
+     * T029
      * 
-     * Validation: NUMERIC fields must have unit, non-NUMERIC fields must not have unit
+     * Validation: NUMERIC fields must have unit, non-NUMERIC fields must not have
+     * unit
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testCreateField_WithInvalidFieldType_ThrowsException() {
@@ -140,8 +135,8 @@ public class AnalyzerFieldServiceTest {
     }
 
     /**
-     * Test: Create field with QUALITATIVE type and unit throws exception
-     * Task Reference: T029
+     * Test: Create field with QUALITATIVE type and unit throws exception Task
+     * Reference: T029
      * 
      * Validation: QUALITATIVE fields must not have unit
      */
@@ -175,4 +170,3 @@ public class AnalyzerFieldServiceTest {
         assertEquals("Should return empty list", 0, result.size());
     }
 }
-

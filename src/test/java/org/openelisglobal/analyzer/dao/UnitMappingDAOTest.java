@@ -7,10 +7,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import jakarta.persistence.EntityManager;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.junit.Before;
@@ -26,8 +26,7 @@ import org.openelisglobal.analyzer.valueholder.UnitMapping;
 /**
  * DAO tests for UnitMappingDAO
  * 
- * Task Reference: T033c
- * Test Coverage Goal: >80%
+ * Task Reference: T033c Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class UnitMappingDAOTest {
@@ -79,8 +78,7 @@ public class UnitMappingDAOTest {
     }
 
     /**
-     * Test: Find by analyzer field ID returns mappings
-     * Task Reference: T033c
+     * Test: Find by analyzer field ID returns mappings Task Reference: T033c
      */
     @Test
     public void testFindByAnalyzerFieldId_ReturnsMappings() {
@@ -124,4 +122,3 @@ public class UnitMappingDAOTest {
         assertTrue("Should return empty list", actualMappings.isEmpty());
     }
 }
-
