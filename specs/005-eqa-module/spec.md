@@ -14,6 +14,12 @@
 - Q: Should the system capture which external organization (e.g., WHO, CAP, National Reference Lab) sent the EQA sample? → A: Yes - Add EQA Provider field to track the sending organization
 - Q: Should the system capture the laboratory's participant ID assigned by the EQA provider? → A: Yes - Add as optional field for result submission traceability
 - Q: How should supervisors be notified when critical alerts escalate after 4 hours? → A: Dashboard badge + in-app notification using Carbon ToastNotification
+- Q: The Figma Make mockup uses Shadcn/ui + Tailwind CSS. Should it be treated as production code or UX reference only? → A: UX reference only - Use workflows/layouts as design guidance, rebuild all components using Carbon Design System from scratch
+- Q: The Figma Make mockup has no statistical analysis UI implementation. Where should the statistical analysis be displayed? → A: Dedicated page - Create new "EQA Statistical Analysis" page accessible from EQA Management menu with full DataTable, charts, and export functionality
+- Q: How should STAT order target times be configured for 50%/75%/100% alert thresholds (FR-042)? → A: Per-test configuration - Each test in the catalog has a configurable STAT turnaround time target (default: 4 hours), allowing lab-specific customization
+- Q: What level of integration is required with the 002-shipment-support feature for EQA distributions? → A: Create-only integration - EQA distribution workflow creates draft shipments using existing shipment API, then hands off to standard shipment tracking (no EQA-specific shipment modifications)
+- Q: How should EQA performance reports be generated (FR-029, UI-011)? → A: Existing report infrastructure
+- Q: Should EQA result entry use a custom interface or integrate with existing Results interface? → A: Reuse existing "Results - By Order Number" interface with EQA badge/icon visible on result; EQA context (provider, program) shown when expanding result details
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -178,7 +184,7 @@ A laboratory administrator needs to create and manage EQA programs, defining pro
 - **FR-002**: System MUST automatically disable patient demographic fields and populate them with "N/A" placeholders when "EQA sample" is selected
 - **FR-003**: System MUST provide EQA-specific fields on the Program tab including EQA provider organization (mandatory), EQA program selection (mandatory), sample ID (identifier from EQA provider), participant ID (optional - laboratory's ID in the EQA program), testing deadline, and priority level (Standard/Urgent/Critical)
 - **FR-004**: System MUST prevent EQA sample registration from completing without selecting an EQA program
-- **FR-005**: System MUST display EQA badge/icon on all samples marked as EQA in work queues, sample listings, and result entry screens
+- **FR-005**: System MUST display EQA badge/icon on all samples marked as EQA in work queues, sample listings, and result entry screens; in Results interface, EQA context (provider organization, program name) must be accessible when expanding result details
 - **FR-006**: System MUST support filtering work queues to show/hide EQA samples independently from patient samples
 - **FR-007**: System MUST prevent modification of EQA sample results after the submission deadline has passed without supervisor approval
 
@@ -199,19 +205,19 @@ A laboratory administrator needs to create and manage EQA programs, defining pro
 - **FR-017**: System MUST enforce identical test panel assignments for all samples within a single EQA distribution
 - **FR-018**: System MUST prevent distribution finalization with fewer than 2 participating organizations
 - **FR-019**: System MUST generate unique barcodes for each distribution sample following existing labeling standards
-- **FR-020**: System MUST integrate distribution samples with existing draft shipment/box functionality for physical distribution preparation
+- **FR-020**: System MUST integrate distribution samples with existing draft shipment/box functionality for physical distribution preparation by creating shipment records via existing shipment API without modifying shipment entities or tracking logic
 - **FR-021**: System MUST track master sample to distribution sample relationships using standard aliquoting processes
 
 #### EQA Results Collection and Analysis
 
 - **FR-022**: System MUST accept EQA result submissions via FHIR API integration for OpenELIS-to-OpenELIS communication
-- **FR-023**: System MUST provide manual result entry screen for non-electronic participant submissions
+- **FR-023**: System MUST provide manual result entry for non-electronic participant submissions by integrating with existing "Results - By Order Number" interface, displaying EQA badge/icon on the result entry, with EQA context (provider, program) accessible in expanded result details
 - **FR-024**: System MUST support CSV and Excel file upload for batch result import with validation and error reporting
 - **FR-025**: System MUST calculate Z-scores using formula: Z = (participant result - target value) / standard deviation
 - **FR-026**: System MUST classify performance as Acceptable (|Z-score| ≤ 2.0), Questionable (2.0 < |Z-score| ≤ 3.0), or Unacceptable (|Z-score| > 3.0)
 - **FR-027**: System MUST require minimum 5 participants for valid statistical analysis and display warning when insufficient data
 - **FR-028**: System MUST display statistical analysis (Z-scores, means, standard deviations) in the EQA Management menu for each distribution
-- **FR-029**: System MUST generate downloadable performance reports with comparative analysis across participants and individual performance breakdowns
+- **FR-029**: System MUST generate downloadable performance reports with comparative analysis across participants and individual performance breakdowns using existing OpenELIS report infrastructure
 - **FR-030**: System MUST log submission method (FHIR/Manual/File Upload), submission timestamp, and submitting user ID for all EQA results
 
 #### EQA Result Submission
@@ -230,7 +236,7 @@ A laboratory administrator needs to create and manage EQA programs, defining pro
 - **FR-039**: System MUST support filtering by Alert Type (EQA Deadlines, STAT Orders, Critical Results, Sample Expiration), Severity (Critical, High, Medium, Low), and Lab Section
 - **FR-040**: System MUST apply severity-based color coding: Red=Critical, Orange=High, Yellow=Medium, Blue=Low
 - **FR-041**: System MUST generate sample expiration alerts at 7 days (info/blue), 2 days (warning/orange), and 1 day (critical/red) before expiration
-- **FR-042**: System MUST generate STAT order alerts at 50% of target time (info/blue), 75% (warning/orange), and 100% (critical/red)
+- **FR-042**: System MUST generate STAT order alerts at 50% of target time (info/blue), 75% (warning/orange), and 100% (critical/red). Target times are configurable per-test in the test catalog (default: 4 hours STAT turnaround)
 - **FR-043**: System MUST require resolution comments for critical alert acknowledgment
 - **FR-044**: System MUST log acknowledgment with user ID and timestamp in audit trail
 - **FR-045**: System MUST escalate unacknowledged critical alerts to supervisor level after 4 hours by incrementing notification badge on alerts menu icon and displaying Carbon ToastNotification when supervisor next accesses the system
@@ -248,7 +254,7 @@ A laboratory administrator needs to create and manage EQA programs, defining pro
 
 ### Constitution Compliance Requirements (OpenELIS Global 3.0)
 
-- **CR-001**: UI components MUST use Carbon Design System (@carbon/react) - NO custom CSS frameworks. EQA interfaces must use: Carbon Checkbox for EQA sample selection, Carbon FormGroup for disabled patient demographics, Carbon Select for EQA program and priority selection, Carbon DatePicker for deadlines, Carbon Tag for EQA badges, Carbon DataTable for work queues and alerts, Carbon Modal for result entry, Carbon FileUploader for batch imports, Carbon Tile for alert summary cards, Carbon ToastNotification for urgent alerts
+- **CR-001**: UI components MUST use Carbon Design System (@carbon/react) - NO custom CSS frameworks. The Figma Make mockup (Shadcn/ui + Tailwind) serves as UX reference only for workflows and layouts; all components must be rebuilt using Carbon from scratch. EQA interfaces must use: Carbon Checkbox for EQA sample selection, Carbon FormGroup for disabled patient demographics, Carbon Select for EQA program and priority selection, Carbon DatePicker for deadlines, Carbon Tag for EQA badges, Carbon DataTable for work queues and alerts, Carbon Modal for result entry, Carbon FileUploader for batch imports, Carbon Tile for alert summary cards, Carbon ToastNotification for urgent alerts
 - **CR-002**: All UI strings MUST be internationalized via React Intl (no hardcoded text) - includes all EQA-specific labels, alert messages, button text, form field labels, and error messages
 - **CR-003**: Backend MUST follow 5-layer architecture (Valueholder→DAO→Service→Controller→Form):
   - Valueholders: `EQAProgram`, `EQADistribution`, `EQAResult`, `Alert`, `EQAProgramTest` entities with JPA/Hibernate annotations
@@ -279,6 +285,7 @@ A laboratory administrator needs to create and manage EQA programs, defining pro
 - **UI-010**: Statistical analysis display must use Carbon StructuredList with clear labels for Z-score, mean, standard deviation, and performance classification
 - **UI-011**: Performance reports must be downloadable in PDF format with laboratory branding
 - **UI-012**: Alert acknowledgment action must use Carbon Modal with required text input for resolution comments
+- **UI-013**: Statistical analysis must be displayed on a dedicated "EQA Statistical Analysis" page accessible from EQA Management menu, using Carbon DataTable for participant results comparison, @carbon/charts-react for histogram and scatter plot visualizations, and Carbon StructuredList for summary statistics
 
 ### Key Entities
 
