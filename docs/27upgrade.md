@@ -63,7 +63,7 @@ structure.
     these commands can be run in the background while normal use of the
     application(s) goes ahead
 
-    1.  `sudo docker-compose up -d`
+    1.  `sudo docker compose up -d`
 
 1.  Create files to submit to the updated FHIR store to trigger a reindex of the
     various data types from BLOBs to regular column data. Resource types that
@@ -260,7 +260,7 @@ is VERY slow when restoring BLOBs
 
     1.  `sudo docker exec openelisglobal-database pg_restore -j 8 -d clinlims -U postgres -v -Fc -c /backups/95db.backup`
 
-    1.  `sudo docker-compose up -d`
+    1.  `sudo docker compose up -d`
 
 1.  confirm that OpenELIS is working and that the data is there by accessing the
     front end
@@ -293,7 +293,7 @@ is VERY slow when restoring BLOBs
 
     1.  `sudo docker exec openelisglobal-database pg_restore -d clinlims -U postgres -v -Fc -c /backups/95db.backup`
 
-    1.  `sudo docker-compose up -d`
+    1.  `sudo docker compose up -d`
 
 1.  confirm that OpenELIS is working and that the data is there by accessing the
     front end

@@ -13,7 +13,10 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
+import org.openelisglobal.audittrail.form.AuditTrailViewForm;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.historyservices.NoteBookHistoryService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.notebook.bean.NoteBookDashboardMetrics;
@@ -139,7 +142,7 @@ public class NoteBookRestController extends BaseRestController {
     @ResponseBody
     public void updateNoteBookStatus(@PathVariable("noteBookId") Integer noteBookId,
             @RequestParam(required = false) NoteBookStatus status, HttpServletRequest request) {
-        noteBookService.updateWithStatus(noteBookId, status);
+        noteBookService.updateWithStatus(noteBookId, status, this.getSysUserId(request));
     }
 
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -156,6 +159,32 @@ public class NoteBookRestController extends BaseRestController {
     public ResponseEntity<List<SampleDisplayBean>> searchSamples(@RequestParam(required = false) String accession) {
         List<SampleDisplayBean> results = noteBookService.searchSampleItems(accession);
         return ResponseEntity.ok(results);
+    }
+
+    @GetMapping(value = "/auditTrail", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<AuditTrailViewForm> getNoteBookAuditTrail(@RequestParam Integer notebookId) {
+        AuditTrailViewForm response = new AuditTrailViewForm();
+
+        if (notebookId == null) {
+            return ResponseEntity.ok(response);
+        }
+
+        NoteBook noteBook = noteBookService.get(notebookId);
+        if (noteBook == null) {
+            return ResponseEntity.ok(response);
+        }
+
+        NoteBookHistoryService historyService = new NoteBookHistoryService(noteBook);
+        List<AuditTrailItem> items = historyService.getAuditTrailItems();
+
+        if (items.size() == 0) {
+            return ResponseEntity.ok(response);
+        }
+
+        // Populate the response object with status-only audit trail
+        response.setLog(items);
+        return ResponseEntity.ok(response);
     }
 
 }

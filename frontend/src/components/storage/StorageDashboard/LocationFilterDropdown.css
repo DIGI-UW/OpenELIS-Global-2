@@ -1,0 +1,44 @@
+.location-filter-dropdown {
+  width: 100%;
+  position: relative;
+}
+
+.location-filter-label {
+  display: block;
+  font-weight: 400;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: var(--cds-text-secondary);
+}
+
+.location-filter-search-input {
+  width: 100%;
+}
+
+.location-filter-dropdown-content {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background-color: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 0.25rem;
+}
+
+.location-filter-autocomplete-container,
+.location-filter-tree-container {
+  padding: 0.5rem;
+}
+
+.selected-location-display {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--cds-layer);
+  border-radius: 4px;
+  font-size: 0.875rem;
+}

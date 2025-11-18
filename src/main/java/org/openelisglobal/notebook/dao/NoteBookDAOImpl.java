@@ -20,7 +20,6 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
             Date fromDate, Date toDate, List<Integer> entryIds) {
 
@@ -104,5 +103,10 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
         Long count = query.uniqueResult();
         return count;
+    }
+
+    @Override
+    public String getTableName() {
+        return "notebook";
     }
 }

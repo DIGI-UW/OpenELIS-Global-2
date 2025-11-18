@@ -70,6 +70,12 @@ jobs:
         run: npx prettier ./ --check
         working-directory: frontend  
 
+      - name: Run Frontend Unit Tests (Jest)
+        run: npm test -- --watchAll=false --coverage=false
+        working-directory: frontend
+        env:
+          CI: true
+
       - name: Build OpenELIS Images and Run containers
         run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
 
