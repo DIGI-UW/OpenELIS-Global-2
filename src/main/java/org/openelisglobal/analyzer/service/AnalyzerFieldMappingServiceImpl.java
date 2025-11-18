@@ -105,6 +105,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         
         // Activate mapping
         mapping.setIsActive(true);
+        // Set audit fields (T075: who, when)
         mapping.setLastupdatedFields();
         
         return analyzerFieldMappingDAO.update(mapping);
@@ -318,11 +319,17 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         existingMapping.setSpecimenTypeConstraint(mapping.getSpecimenTypeConstraint());
         existingMapping.setPanelConstraint(mapping.getPanelConstraint());
         
-        // Set audit fields
+        // Set audit fields (T075: who, when)
         if (mapping.getSysUserId() != null) {
             existingMapping.setSysUserId(mapping.getSysUserId());
         }
         existingMapping.setLastupdatedFields();
+        
+        // Note: Detailed audit trail (previous vs new values) can be added via AuditTrailService
+        // if needed. BaseObject audit fields (sys_user_id, last_updated) provide basic audit trail.
+        // To enable detailed audit trail, inject AuditTrailService and call:
+        // auditTrailService.saveHistory(mapping, existingMapping, mapping.getSysUserId(),
+        //     IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
         
         return analyzerFieldMappingDAO.update(existingMapping);
     }
@@ -344,11 +351,15 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         
         // Set inactive
         mapping.setIsActive(false);
+        // Set audit fields (T075: who, when)
         mapping.setLastupdatedFields();
         
-        // Note: Retirement reason would be logged to audit trail
-        // Audit trail is handled by BaseObject audit fields (sys_user_id, last_updated)
-        // Additional audit logging can be added via AuditTrailService if needed
+        // Note: Retirement reason and detailed audit trail (previous vs new values) can be added
+        // via AuditTrailService if needed. BaseObject audit fields (sys_user_id, last_updated)
+        // provide basic audit trail for who and when. To enable detailed audit trail, inject
+        // AuditTrailService and call:
+        // auditTrailService.saveHistory(mapping, existingMapping, mapping.getSysUserId(),
+        //     IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
         
         return analyzerFieldMappingDAO.update(mapping);
     }

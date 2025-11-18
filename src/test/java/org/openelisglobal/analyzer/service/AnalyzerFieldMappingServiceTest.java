@@ -163,8 +163,12 @@ public class AnalyzerFieldMappingServiceTest {
     public void testActivateMapping_WithActiveAnalyzer_RequiresConfirmation() {
         // Arrange: Analyzer is active, mapping is draft
         testMapping.setIsActive(false);
+        numericField.setAnalyzer(testAnalyzer); // Ensure field has analyzer relationship
+        
         when(analyzerFieldMappingDAO.get("MAPPING-001")).thenReturn(Optional.of(testMapping));
-        when(analyzerFieldMappingDAO.update(testMapping)).thenReturn(testMapping);
+        when(analyzerFieldDAO.findByIdWithAnalyzer("FIELD-001")).thenReturn(Optional.of(numericField));
+        when(analyzerFieldMappingDAO.update(org.mockito.ArgumentMatchers.any(AnalyzerFieldMapping.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act: Activate mapping (should succeed with confirmation flag)
         AnalyzerFieldMapping activated = analyzerFieldMappingService.activateMapping("MAPPING-001", true);
