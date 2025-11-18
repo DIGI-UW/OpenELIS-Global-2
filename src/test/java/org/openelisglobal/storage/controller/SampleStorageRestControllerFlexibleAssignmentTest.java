@@ -195,7 +195,10 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         // Setup
         String sampleItemId = createSampleItemAndGetId();
         String roomId = createRoomAndGetId("Main Lab", "MAIN" + (System.currentTimeMillis() % 100));
-        String deviceId = createDeviceAndGetId("Freezer 1", "FRZ1-" + System.currentTimeMillis(), "freezer", roomId);
+        // Ensure unique code ≤10 chars: "FRZ1" + 2 digits = 6 chars max
+        long timestamp = System.currentTimeMillis() % 100;
+        String deviceId = createDeviceAndGetId("Freezer 1", "FRZ1" + String.format("%02d", timestamp), "freezer",
+                roomId);
 
         SampleAssignmentForm form = new SampleAssignmentForm();
         form.setSampleItemId(sampleItemId);
@@ -425,7 +428,10 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         // Setup
         String sampleItemId = createSampleItemAndGetId();
         String roomId = createRoomAndGetId("Main Lab", "MAIN" + (System.currentTimeMillis() % 100));
-        String deviceId = createDeviceAndGetId("Freezer 1", "FRZ1-" + System.currentTimeMillis(), "freezer", roomId);
+        // Ensure unique code ≤10 chars: "FRZ1" + 2 digits = 6 chars max
+        long timestamp = System.currentTimeMillis() % 100;
+        String deviceId = createDeviceAndGetId("Freezer 1", "FRZ1" + String.format("%02d", timestamp), "freezer",
+                roomId);
         String shelfId = createShelfAndGetId("Shelf-A", deviceId);
         String rackId = createRackAndGetId("Rack-1", 8, 12, shelfId);
 

@@ -117,19 +117,4 @@ public class StorageDeviceDAOImpl extends BaseDAOImpl<StorageDevice, Integer> im
         }
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public StorageDevice findByShortCode(String shortCode) {
-        try {
-            String hql = "FROM StorageDevice d WHERE d.shortCode = :shortCode";
-            Query<StorageDevice> query = entityManager.unwrap(Session.class).createQuery(hql, StorageDevice.class);
-            query.setParameter("shortCode", shortCode);
-            query.setMaxResults(1);
-            List<StorageDevice> results = query.list();
-            return results.isEmpty() ? null : results.get(0);
-        } catch (Exception e) {
-            logger.error("Error finding StorageDevice by short code", e);
-            throw new LIMSRuntimeException("Error finding StorageDevice by short code", e);
-        }
-    }
 }

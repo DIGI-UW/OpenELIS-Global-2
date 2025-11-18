@@ -19,5 +19,6 @@
   <include relativeToChangelogFile="true" file="011-make-short-code-optional.xml"/>
   <include relativeToChangelogFile="true" file="012-update-code-column-length.xml"/>
   <include relativeToChangelogFile="true" file="013-remove-short-code-columns.xml"/>
+  <include relativeToChangelogFile="true" file="014-rename-print-history-short-code-to-location-code.xml"/>
 
 </databaseChangeLog>

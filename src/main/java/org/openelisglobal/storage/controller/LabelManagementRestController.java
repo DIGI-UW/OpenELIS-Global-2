@@ -1,19 +1,15 @@
 package org.openelisglobal.storage.controller;
 
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
-import org.openelisglobal.storage.form.ShortCodeUpdateForm;
 import org.openelisglobal.storage.service.LabelManagementService;
-import org.openelisglobal.storage.service.ShortCodeValidationService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -39,9 +35,6 @@ public class LabelManagementRestController extends BaseRestController {
     private LabelManagementService labelManagementService;
 
     @Autowired
-    private ShortCodeValidationService shortCodeValidationService;
-
-    @Autowired
     private StorageDeviceDAO storageDeviceDAO;
 
     @Autowired
@@ -51,86 +44,8 @@ public class LabelManagementRestController extends BaseRestController {
     private StorageRackDAO storageRackDAO;
 
     /**
-     * Update short code for a storage location PUT
-     * /rest/storage/{type}/{id}/short-code Body: { "shortCode": "FRZ01" }
-     */
-    @PutMapping("/{type}/{id}/short-code")
-    public ResponseEntity<Map<String, Object>> updateShortCode(@PathVariable String type, @PathVariable String id,
-            @Valid @RequestBody ShortCodeUpdateForm form) {
-        try {
-            // Validate type
-            if (!"device".equals(type) && !"shelf".equals(type) && !"rack".equals(type)) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Invalid location type. Must be 'device', 'shelf', or 'rack'");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-            }
-
-            // Get existing location
-            Object location = getLocationById(type, id);
-            if (location == null) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Location not found");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-            }
-
-            // Get current short code (will be null if field doesn't exist yet)
-            String currentShortCode = getCurrentShortCode(location);
-
-            // Validate format
-            if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
-                var formatResult = shortCodeValidationService.validateFormat(form.getCode());
-                if (!formatResult.isValid()) {
-                    Map<String, Object> error = new HashMap<>();
-                    error.put("error", formatResult.getErrorMessage());
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-                }
-
-                // Validate uniqueness
-                var uniquenessResult = shortCodeValidationService.validateUniqueness(formatResult.getNormalizedCode(),
-                        type, id);
-                if (!uniquenessResult.isValid()) {
-                    Map<String, Object> error = new HashMap<>();
-                    error.put("error", uniquenessResult.getErrorMessage());
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-                }
-
-                // Check for warning on change
-                String warning = shortCodeValidationService.checkShortCodeChangeWarning(currentShortCode,
-                        formatResult.getNormalizedCode(), id);
-                if (warning != null) {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("warning", warning);
-                    response.put("shortCode", formatResult.getNormalizedCode());
-                    // Update short code in database
-                    updateShortCodeInDatabase(location, formatResult.getNormalizedCode());
-                    return ResponseEntity.ok(response);
-                }
-
-                // Update short code in database
-                updateShortCodeInDatabase(location, formatResult.getNormalizedCode());
-                Map<String, Object> response = new HashMap<>();
-                response.put("shortCode", formatResult.getNormalizedCode());
-                response.put("message", "Short code updated successfully");
-                return ResponseEntity.ok(response);
-            } else {
-                // Clear short code
-                updateShortCodeInDatabase(location, null);
-                Map<String, Object> response = new HashMap<>();
-                response.put("shortCode", null);
-                response.put("message", "Short code cleared successfully");
-                return ResponseEntity.ok(response);
-            }
-        } catch (Exception e) {
-            logger.error("Error updating short code", e);
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
-    /**
      * Generate and return PDF label POST /rest/storage/{type}/{id}/print-label
-     * Validates short_code exists before printing, returns error if missing
+     * Validates code exists before printing, returns error if missing
      */
     @PostMapping(value = "/{type}/{id}/print-label", produces = MediaType.APPLICATION_PDF_VALUE)
     public void printLabel(@PathVariable String type, @PathVariable String id, HttpServletResponse response)
@@ -155,16 +70,16 @@ public class LabelManagementRestController extends BaseRestController {
             }
 
             // Validate that location has a valid code for label printing
-            // (code ≤10 chars OR short_code exists)
-            if (!labelManagementService.validateShortCodeExists(id, type)) {
+            // Code must exist and be ≤10 chars
+            if (!labelManagementService.validateCodeExists(id, type)) {
                 response.setStatus(HttpStatus.BAD_REQUEST.value());
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                response.getWriter().write(
-                        "{\"error\":\"Code or short code is required for label printing. If code > 10 chars, short code must be set in Edit form.\"}");
+                response.getWriter()
+                        .write("{\"error\":\"Code is required for label printing and must be ≤10 characters.\"}");
                 return;
             }
 
-            // Generate label (uses short_code from entity)
+            // Generate label (uses code from entity)
             ByteArrayOutputStream pdfStream;
             String userId = getCurrentUserId(); // Get from security context
 
@@ -181,9 +96,9 @@ public class LabelManagementRestController extends BaseRestController {
                 return;
             }
 
-            // Track print history
-            String currentShortCode = getCurrentShortCode(location);
-            labelManagementService.trackPrintHistory(id, type, currentShortCode, userId);
+            // Track print history (use code from location)
+            String locationCode = getLocationCode(location);
+            labelManagementService.trackPrintHistory(id, type, locationCode, userId);
 
             // Return PDF
             if (pdfStream == null || pdfStream.size() == 0) {
@@ -203,7 +118,7 @@ public class LabelManagementRestController extends BaseRestController {
             response.getOutputStream().flush();
             response.getOutputStream().close();
         } catch (IllegalArgumentException e) {
-            // Handle short_code validation errors
+            // Handle code validation errors
             logger.error("Label printing validation error: " + e.getMessage(), e);
             response.setStatus(HttpStatus.BAD_REQUEST.value());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -269,9 +184,9 @@ public class LabelManagementRestController extends BaseRestController {
     }
 
     /**
-     * Helper method to get current short code from location
+     * Helper method to get code from location
      */
-    private String getCurrentShortCode(Object location) {
+    private String getLocationCode(Object location) {
         if (location instanceof StorageDevice) {
             return ((StorageDevice) location).getCode();
         } else if (location instanceof StorageShelf) {
@@ -280,25 +195,6 @@ public class LabelManagementRestController extends BaseRestController {
             return ((StorageRack) location).getCode();
         }
         return null;
-    }
-
-    /**
-     * Update short code in database
-     */
-    private void updateShortCodeInDatabase(Object location, String shortCode) {
-        if (location instanceof StorageDevice) {
-            StorageDevice device = (StorageDevice) location;
-            device.setCode(shortCode);
-            storageDeviceDAO.update(device);
-        } else if (location instanceof StorageShelf) {
-            StorageShelf shelf = (StorageShelf) location;
-            shelf.setCode(shortCode);
-            storageShelfDAO.update(shelf);
-        } else if (location instanceof StorageRack) {
-            StorageRack rack = (StorageRack) location;
-            rack.setCode(shortCode);
-            storageRackDAO.update(rack);
-        }
     }
 
     /**
