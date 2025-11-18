@@ -72,9 +72,10 @@ const MappingActivationModal = ({
         label={intl.formatMessage(
           {
             id: "analyzer.fieldMapping.activationModal.subtitle",
-            defaultMessage: "Confirm activation of mapping changes for analyzer '{name}'",
+            defaultMessage:
+              "Confirm activation of mapping changes for analyzer '{name}'",
           },
-          { name: analyzerName || "" }
+          { name: analyzerName || "" },
         )}
         data-testid="mapping-activation-modal-header"
       />

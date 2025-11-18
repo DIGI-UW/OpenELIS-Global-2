@@ -171,6 +171,8 @@ const FieldMapping = () => {
                   },
                 );
               }}
+              analyzerName={analyzer?.name || ""}
+              analyzerIsActive={analyzer?.active || false}
             />
           ) : (
             <div

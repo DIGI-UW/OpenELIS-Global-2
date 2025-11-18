@@ -2,24 +2,38 @@
  * MappingPanel Component
  *
  * Right panel with View Mode and Edit Mode for field mappings
- * Task Reference: T062
+ * Task Reference: T062, T078
+ *
+ * Supports draft/active workflow per FR-010:
+ * - "Save as Draft" button (saves with isActive=false)
+ * - "Save and Activate" button (saves with isActive=true, requires confirmation for active analyzers)
  */
 
 import React, { useState } from "react";
 import { Button, Dropdown, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import OpenELISFieldSelector from "./OpenELISFieldSelector";
+import MappingActivationModal from "./MappingActivationModal";
 import "./MappingPanel.css";
 
-const MappingPanel = ({ field, mapping, onCreateMapping, onUpdateMapping }) => {
+const MappingPanel = ({
+  field,
+  mapping,
+  onCreateMapping,
+  onUpdateMapping,
+  analyzerName,
+  analyzerIsActive = false,
+}) => {
   const intl = useIntl();
   const [editMode, setEditMode] = useState(!mapping);
+  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [pendingMappingData, setPendingMappingData] = useState(null);
   const [formData, setFormData] = useState({
     openelisFieldId: mapping?.openelisFieldId || "",
     openelisFieldType: mapping?.openelisFieldType || "",
     mappingType: mapping?.mappingType || "DIRECT",
     isRequired: mapping?.isRequired || false,
-    isActive: mapping?.isActive !== undefined ? mapping.isActive : true,
+    isActive: mapping?.isActive !== undefined ? mapping.isActive : false, // Default to draft
   });
 
   // Handle form field changes
@@ -30,15 +44,15 @@ const MappingPanel = ({ field, mapping, onCreateMapping, onUpdateMapping }) => {
     }));
   };
 
-  // Handle save
-  const handleSave = () => {
+  // Handle save as draft
+  const handleSaveAsDraft = () => {
     const mappingData = {
       analyzerFieldId: field.id,
       openelisFieldId: formData.openelisFieldId,
       openelisFieldType: formData.openelisFieldType,
       mappingType: formData.mappingType,
       isRequired: formData.isRequired,
-      isActive: formData.isActive,
+      isActive: false, // Save as draft
     };
 
     if (mapping) {
@@ -48,6 +62,54 @@ const MappingPanel = ({ field, mapping, onCreateMapping, onUpdateMapping }) => {
     }
 
     setEditMode(false);
+  };
+
+  // Handle save and activate
+  const handleSaveAndActivate = () => {
+    const mappingData = {
+      analyzerFieldId: field.id,
+      openelisFieldId: formData.openelisFieldId,
+      openelisFieldType: formData.openelisFieldType,
+      mappingType: formData.mappingType,
+      isRequired: formData.isRequired,
+      isActive: true, // Activate
+    };
+
+    // Check if confirmation is required (active analyzer with active mapping)
+    const isUpdatingActiveMapping = mapping && mapping.isActive;
+    if (analyzerIsActive && isUpdatingActiveMapping) {
+      // Show confirmation modal
+      setPendingMappingData(mappingData);
+      setShowActivationModal(true);
+    } else {
+      // No confirmation needed, save directly
+      if (mapping) {
+        onUpdateMapping(mapping.id, mappingData);
+      } else {
+        onCreateMapping(mappingData);
+      }
+      setEditMode(false);
+    }
+  };
+
+  // Handle activation confirmation
+  const handleActivationConfirm = () => {
+    if (pendingMappingData) {
+      if (mapping) {
+        onUpdateMapping(mapping.id, pendingMappingData);
+      } else {
+        onCreateMapping(pendingMappingData);
+      }
+      setEditMode(false);
+    }
+    setShowActivationModal(false);
+    setPendingMappingData(null);
+  };
+
+  // Handle activation modal close
+  const handleActivationModalClose = () => {
+    setShowActivationModal(false);
+    setPendingMappingData(null);
   };
 
   // Handle cancel
@@ -118,11 +180,18 @@ const MappingPanel = ({ field, mapping, onCreateMapping, onUpdateMapping }) => {
               <FormattedMessage id="analyzer.fieldMapping.panel.target.cancel" />
             </Button>
             <Button
-              kind="primary"
-              onClick={handleSave}
-              data-testid="mapping-panel-save-button"
+              kind="secondary"
+              onClick={handleSaveAsDraft}
+              data-testid="mapping-panel-save-draft-button"
             >
-              <FormattedMessage id="analyzer.form.save" />
+              <FormattedMessage id="analyzer.fieldMapping.panel.target.saveDraft" />
+            </Button>
+            <Button
+              kind="primary"
+              onClick={handleSaveAndActivate}
+              data-testid="mapping-panel-save-and-activate-button"
+            >
+              <FormattedMessage id="analyzer.fieldMapping.panel.target.saveActivate" />
             </Button>
           </div>
         </div>
@@ -154,6 +223,15 @@ const MappingPanel = ({ field, mapping, onCreateMapping, onUpdateMapping }) => {
           )}
         </div>
       )}
+
+      {/* Activation Confirmation Modal */}
+      <MappingActivationModal
+        open={showActivationModal}
+        onClose={handleActivationModalClose}
+        analyzerName={analyzerName || ""}
+        analyzerIsActive={analyzerIsActive}
+        onConfirm={handleActivationConfirm}
+      />
     </div>
   );
 };

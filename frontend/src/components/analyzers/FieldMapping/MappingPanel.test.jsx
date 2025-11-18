@@ -112,10 +112,10 @@ describe("MappingPanel", () => {
 
   /**
    * Test: Update mapping shows confirmation modal for active analyzers
-   * Task Reference: T072
+   * Task Reference: T072, T078
    *
-   * When updating an active mapping on an active analyzer, a confirmation modal
-   * should be shown before applying the changes.
+   * When updating an active mapping on an active analyzer using "Save and Activate",
+   * a confirmation modal should be shown before applying the changes.
    */
   test("testUpdateMapping_ShowsConfirmationModal", async () => {
     // Arrange: Active mapping on active analyzer
@@ -128,7 +128,8 @@ describe("MappingPanel", () => {
         mapping={mapping}
         onCreateMapping={mockOnCreateMapping}
         onUpdateMapping={mockOnUpdateMapping}
-        // Note: analyzerIsActive prop will be added in T078
+        analyzerName="Test Analyzer"
+        analyzerIsActive={true}
       />,
     );
 
@@ -137,40 +138,36 @@ describe("MappingPanel", () => {
     await userEvent.click(editButton);
 
     // Wait for edit mode to be visible
-    const saveButtonElement = await screen.findByTestId(
-      "mapping-panel-save-button",
+    const saveAndActivateButton = await screen.findByTestId(
+      "mapping-panel-save-and-activate-button",
     );
-    expect(saveButtonElement).not.toBeNull();
+    expect(saveAndActivateButton).not.toBeNull();
 
     // Change the mapping (select different field)
     const selectFieldButton = screen.getByTestId("select-field-button");
     await userEvent.click(selectFieldButton);
 
-    // Click save button
-    const saveButton = screen.getByTestId("mapping-panel-save-button");
-    await userEvent.click(saveButton);
+    // Click "Save and Activate" button (should show modal for active analyzer with active mapping)
+    await userEvent.click(saveAndActivateButton);
 
-    // Assert: Confirmation modal should be shown
-    // Note: This test will fail until MappingActivationModal is implemented (T078, T164)
-    // For now, the test verifies the expected behavior - updateMapping should NOT be called
-    // until confirmation is provided. Once T078 is implemented, the modal will appear.
+    // Assert: Confirmation modal should be shown (open, not hidden)
     await waitFor(() => {
-      // TODO: When MappingActivationModal is implemented (T078, T164), verify modal appears
-      // const confirmationModal = screen.queryByTestId("mapping-activation-modal");
-      // expect(confirmationModal).not.toBeNull();
-      // expect(mockOnUpdateMapping).not.toHaveBeenCalled();
-
-      // For now, test that updateMapping is called (current behavior - no confirmation yet)
-      expect(mockOnUpdateMapping).toHaveBeenCalledTimes(1);
+      const confirmationModal = screen.queryByTestId("mapping-activation-modal");
+      expect(confirmationModal).not.toBeNull();
+      // Modal should be open (aria-hidden should be null or "false")
+      const ariaHidden = confirmationModal.getAttribute("aria-hidden");
+      expect(ariaHidden).not.toBe("true");
+      // updateMapping should NOT be called until confirmation is provided
+      expect(mockOnUpdateMapping).not.toHaveBeenCalled();
     });
   });
 
   /**
    * Test: Save draft mapping does not require confirmation
-   * Task Reference: T072
+   * Task Reference: T072, T078
    *
-   * When saving a draft mapping (isActive=false), no confirmation modal should
-   * be shown. The mapping should be saved directly.
+   * When saving a draft mapping using "Save as Draft" button, no confirmation modal
+   * should be shown. The mapping should be saved directly with isActive=false.
    */
   test("testSaveDraftMapping_DoesNotRequireConfirmation", async () => {
     // Arrange: Draft mapping (not active)
@@ -183,7 +180,8 @@ describe("MappingPanel", () => {
         mapping={mapping}
         onCreateMapping={mockOnCreateMapping}
         onUpdateMapping={mockOnUpdateMapping}
-        // Note: analyzerIsActive prop will be added in T078
+        analyzerName="Test Analyzer"
+        analyzerIsActive={false}
       />,
     );
 
@@ -192,18 +190,17 @@ describe("MappingPanel", () => {
     await userEvent.click(editButton);
 
     // Wait for edit mode to be visible
-    const saveButtonElement = await screen.findByTestId(
-      "mapping-panel-save-button",
+    const saveDraftButton = await screen.findByTestId(
+      "mapping-panel-save-draft-button",
     );
-    expect(saveButtonElement).not.toBeNull();
+    expect(saveDraftButton).not.toBeNull();
 
     // Change the mapping (select different field)
     const selectFieldButton = screen.getByTestId("select-field-button");
     await userEvent.click(selectFieldButton);
 
-    // Click save button
-    const saveButton = screen.getByTestId("mapping-panel-save-button");
-    await userEvent.click(saveButton);
+    // Click "Save as Draft" button
+    await userEvent.click(saveDraftButton);
 
     // Assert: No confirmation modal should be shown, updateMapping should be called directly
     await waitFor(() => {
@@ -211,27 +208,32 @@ describe("MappingPanel", () => {
     });
 
     // Verify confirmation modal is NOT shown
+    // Modal exists in DOM but should be closed (aria-hidden=true)
     const confirmationModal = screen.queryByTestId("mapping-activation-modal");
-    expect(confirmationModal).toBeNull();
+    if (confirmationModal) {
+      // If modal exists, it should be hidden (closed)
+      expect(confirmationModal.getAttribute("aria-hidden")).toBe("true");
+    }
 
-    // Verify updateMapping was called with correct data
+    // Verify updateMapping was called with correct data (isActive=false for draft)
     expect(mockOnUpdateMapping).toHaveBeenCalledWith(
       mapping.id,
       expect.objectContaining({
         analyzerFieldId: field.id,
         openelisFieldId: "TEST-001",
         openelisFieldType: "TEST",
-        isActive: false, // Still draft
+        isActive: false, // Saved as draft
       }),
     );
   });
 
   /**
    * Test: Create new mapping does not require confirmation
-   * Task Reference: T072
+   * Task Reference: T072, T078
    *
    * When creating a new mapping (no existing mapping), no confirmation should
-   * be required regardless of analyzer status.
+   * be required regardless of analyzer status. "Save and Activate" should work
+   * directly for new mappings.
    */
   test("testCreateMapping_DoesNotRequireConfirmation", async () => {
     // Arrange: No existing mapping
@@ -243,39 +245,45 @@ describe("MappingPanel", () => {
         mapping={null}
         onCreateMapping={mockOnCreateMapping}
         onUpdateMapping={mockOnUpdateMapping}
-        // Note: analyzerIsActive prop will be added in T078
+        analyzerName="Test Analyzer"
+        analyzerIsActive={true}
       />,
     );
 
     // Act: Component starts in edit mode when no mapping exists
     // Wait for edit mode to be visible
-    const saveButtonElement = await screen.findByTestId(
-      "mapping-panel-save-button",
+    const saveAndActivateButton = await screen.findByTestId(
+      "mapping-panel-save-and-activate-button",
     );
-    expect(saveButtonElement).not.toBeNull();
+    expect(saveAndActivateButton).not.toBeNull();
 
     // Select a field
     const selectFieldButton = screen.getByTestId("select-field-button");
     await userEvent.click(selectFieldButton);
 
-    // Click save button
-    await userEvent.click(saveButtonElement);
+    // Click "Save and Activate" button (new mappings don't require confirmation)
+    await userEvent.click(saveAndActivateButton);
 
     // Assert: No confirmation modal, createMapping should be called directly
     await waitFor(() => {
       expect(mockOnCreateMapping).toHaveBeenCalledTimes(1);
     });
 
-    // Verify confirmation modal is NOT shown
+    // Verify confirmation modal is NOT shown (new mappings don't require confirmation)
+    // Modal exists in DOM but should be closed (aria-hidden=true)
     const confirmationModal = screen.queryByTestId("mapping-activation-modal");
-    expect(confirmationModal).toBeNull();
+    if (confirmationModal) {
+      // If modal exists, it should be hidden (closed)
+      expect(confirmationModal.getAttribute("aria-hidden")).toBe("true");
+    }
 
-    // Verify createMapping was called with correct data
+    // Verify createMapping was called with correct data (isActive=true for activate)
     expect(mockOnCreateMapping).toHaveBeenCalledWith(
       expect.objectContaining({
         analyzerFieldId: field.id,
         openelisFieldId: "TEST-001",
         openelisFieldType: "TEST",
+        isActive: true, // Activated
       }),
     );
   });
