@@ -60,7 +60,12 @@ class Result {
   }
 
   expandSampleDetails() {
-    return cy.get(this.selectors.expanderButton).should("be.visible").click();
+    // Wait for table to have rows before trying to expand
+    cy.get("tbody tr", { timeout: 15000 }).should("have.length.greaterThan", 0);
+    return cy
+      .get(this.selectors.expanderButton, { timeout: 15000 })
+      .should("be.visible")
+      .click();
   }
 
   selectTestMethod(method) {
@@ -124,7 +129,9 @@ class Result {
   }
 
   selectAllButtonEnabled() {
-    cy.get(this.selectors.selectAllButton)
+    // Wait for table/data to load first, then check if button is enabled
+    cy.get("tbody tr", { timeout: 15000 }).should("have.length.greaterThan", 0);
+    cy.get(this.selectors.selectAllButton, { timeout: 15000 })
       .should("be.visible")
       .and("be.enabled");
   }
@@ -134,7 +141,9 @@ class Result {
   }
 
   printReportsButtonEnabled() {
-    cy.get(this.selectors.printReportButton)
+    // Wait for table/data to load first, then check if button is enabled
+    cy.get("tbody tr", { timeout: 15000 }).should("have.length.greaterThan", 0);
+    cy.get(this.selectors.printReportButton, { timeout: 15000 })
       .should("be.visible")
       .and("be.enabled");
   }
