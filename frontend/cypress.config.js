@@ -305,9 +305,8 @@ module.exports = defineConfig({
     },
     baseUrl: "https://localhost",
     testIsolation: false,
-    // DISABLED: Exclude storage tests (001-sample-storage feature)
-    // Remove "**/storage*.cy.js" from this array to re-enable storage tests
-    excludeSpecPattern: ["**/storage*.cy.js"],
+    // Storage tests re-enabled for debugging and validation
+    // excludeSpecPattern: ["**/storage*.cy.js"],
     env: {
       STARTUP_WAIT_MILLISECONDS: 300000,
     },
