@@ -2299,6 +2299,50 @@ break existing tests):
 - Full suite: `npm run cy:run`
 - Run only in pipeline or pre-merge validation
 
+#### Recommended Debugging Setup (Electron with Console Logging)
+
+**PREFERRED for Local Debugging**: Use Electron browser with
+`ELECTRON_ENABLE_LOGGING=1` to capture browser console logs for debugging.
+
+**Commands**:
+
+- **Full suite with logging**: `ELECTRON_ENABLE_LOGGING=1 npm run cy:quick`
+- **Single spec with logging**:
+  `ELECTRON_ENABLE_LOGGING=1 npm run cy:single -- "cypress/e2e/{spec}.cy.js"`
+- **Using debug script**: `npm run cy:debug` (includes logging automatically)
+- **Redirect to log file**:
+  `ELECTRON_ENABLE_LOGGING=1 npm run cy:quick 2>&1 | tee /tmp/cypress-e2e-full.log`
+
+**When to Use**:
+
+- **Electron + logging**: Local debugging, investigating console errors, React
+  warnings, API failures
+- **Chrome**: CI/CD pipelines (as configured in
+  `.github/workflows/frontend-qa.yml`)
+
+**Benefits**:
+
+- Captures browser console logs (INFO:CONSOLE messages via Electron)
+- Helps identify React warnings, API errors, and JavaScript exceptions
+- Useful for debugging test failures and application issues
+- Console logs show up in terminal output:
+  `[PID:INFO:CONSOLE(lineno)] "message"`
+
+**Example Output**:
+
+```
+[735527:1118/180507.732074:INFO:CONSOLE(4385)] "TypeError: Cannot read properties of undefined (reading 'org.openelisglobal.help.manual.url')", source: https://localhost/static/js/bundle.js (4385)
+```
+
+**Known Non-Critical Console Errors** (don't break tests):
+
+- `TypeError: Cannot read properties of undefined (reading 'org.openelisglobal.help.manual.url')` -
+  Missing help menu configuration (non-critical)
+- `TypeError: Failed to fetch` for subscription status - Subscription API not
+  available in test environment (expected)
+- React memory leak warnings in HelpMenu component - Should be fixed but doesn't
+  break tests
+
 #### Configuration Requirements
 
 ```javascript

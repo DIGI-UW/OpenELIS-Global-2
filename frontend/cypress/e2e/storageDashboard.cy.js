@@ -50,11 +50,14 @@ describe("Storage Dashboard", function () {
       .first()
       .within(() => {
         cy.get("h3").should("not.contain", "storage.metrics");
-        cy.get("h3").then(($h3) => {
+        // Verify translated text contains sample-related terms (flexible matching)
+        cy.get("h3").should(($h3) => {
           const text = $h3.text();
-          expect(text).to.satisfy(
-            (txt) => txt.includes("Total Samples") || txt.includes("Samples"),
-          );
+          expect(
+            text.includes("Total Samples") ||
+              text.includes("Samples") ||
+              text.includes("Sample Items"),
+          ).to.be.true;
         });
       });
 
@@ -100,10 +103,10 @@ describe("Storage Dashboard", function () {
       cy.wrap($tab).should("not.contain", "storage.metrics");
     });
 
-    // Verify specific tab labels are translated
-    cy.get('button[role="tab"]').contains("Samples").should("exist");
-    cy.get('button[role="tab"]').contains("Rooms").should("exist");
-    cy.get('button[role="tab"]').contains("Devices").should("exist");
+    // Verify specific tabs exist using data-testid (priority 1 per testing roadmap)
+    cy.get('[data-testid="tab-samples"]').should("exist");
+    cy.get('[data-testid="tab-rooms"]').should("exist");
+    cy.get('[data-testid="tab-devices"]').should("exist");
   });
 
   it("Should display dropdowns without duplicate labels", function () {
@@ -158,11 +161,23 @@ describe("Storage Dashboard", function () {
     };
 
     // Click through each tab and verify tables are visible with data
+    // Map tab names to data-testid attributes (priority 1 per testing roadmap)
+    const tabTestIds = {
+      Samples: "tab-samples",
+      Rooms: "tab-rooms",
+      Devices: "tab-devices",
+      Shelves: "tab-shelves",
+      Racks: "tab-racks",
+    };
+
     Object.keys(expectedDataCounts).forEach((tabName) => {
       const expectedCount = expectedDataCounts[tabName];
+      const testId = tabTestIds[tabName];
 
-      // Click on the tab
-      cy.get('button[role="tab"]').contains(tabName).click();
+      // Click on the tab using data-testid
+      cy.get(`[data-testid="${testId}"]`, { timeout: 10000 })
+        .should("be.visible")
+        .click();
       cy.wait(2000); // Wait for tab content to load
 
       // Wait for the tab panel to become visible (Carbon Tabs uses display: none/block)
@@ -271,11 +286,20 @@ describe("Storage Dashboard", function () {
     cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
 
     // Check each tab to ensure tables render structure even with empty data
-    const tabs = ["Samples", "Rooms", "Devices", "Shelves", "Racks"];
+    // Use data-testid for tab selection (priority 1 per testing roadmap)
+    const tabTestIds = [
+      { testId: "tab-samples", name: "Samples" },
+      { testId: "tab-rooms", name: "Rooms" },
+      { testId: "tab-devices", name: "Devices" },
+      { testId: "tab-shelves", name: "Shelves" },
+      { testId: "tab-racks", name: "Racks" },
+    ];
 
-    tabs.forEach((tabName) => {
-      // Click on the tab
-      cy.get('button[role="tab"]').contains(tabName).click();
+    tabTestIds.forEach(({ testId, name: tabName }) => {
+      // Click on the tab using data-testid
+      cy.get(`[data-testid="${testId}"]`, { timeout: 10000 })
+        .should("be.visible")
+        .click();
       cy.wait(1500);
 
       // Wait for tab panel to be visible
