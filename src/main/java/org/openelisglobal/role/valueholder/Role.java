@@ -25,9 +25,11 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemusermodule.valueholder.PermissionAgent;
+import org.hibernate.annotations.DynamicUpdate;
 
 @Entity
 @Table(name = "system_role")
+@DynamicUpdate
 public class Role extends BaseObject<String> implements PermissionAgent {
 
     private static final long serialVersionUID = 1L;
