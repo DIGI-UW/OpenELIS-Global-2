@@ -1,0 +1,30 @@
+.error-dashboard {
+  padding: 1rem;
+}
+
+.error-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.error-dashboard-stats {
+  margin-bottom: 1rem;
+}
+
+.error-dashboard-filters {
+  margin-bottom: 1rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+

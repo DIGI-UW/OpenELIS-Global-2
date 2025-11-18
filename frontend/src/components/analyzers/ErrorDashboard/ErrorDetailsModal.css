@@ -1,0 +1,28 @@
+.analyzer-logs {
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.log-entry {
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.log-timestamp {
+  color: var(--cds-text-secondary);
+  min-width: 120px;
+}
+
+.log-level {
+  font-weight: 600;
+  min-width: 80px;
+}
+
+.log-message {
+  flex: 1;
+}
+

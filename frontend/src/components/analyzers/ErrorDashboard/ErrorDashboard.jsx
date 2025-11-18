@@ -1,0 +1,549 @@
+/**
+ * ErrorDashboard Component
+ *
+ * Displays all unmapped or failed analyzer messages
+ * Task Reference: T096
+ * Specification: FR-016
+ *
+ * Features:
+ * - Statistics cards (Total Errors, Unacknowledged, Critical, Last 24 Hours)
+ * - Filter bar (search, error type, severity, analyzer)
+ * - Data table with error details
+ * - Error Details modal
+ */
+
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  DataTable,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
+  Search,
+  Grid,
+  Column,
+  Tile,
+  Button,
+  Tag,
+  OverflowMenu,
+  OverflowMenuItem,
+  Dropdown,
+} from "@carbon/react";
+import { useIntl } from "react-intl";
+import { getFromOpenElisServer } from "../../../components/utils/Utils";
+import ErrorDetailsModal from "./ErrorDetailsModal";
+import "./ErrorDashboard.css";
+
+const ErrorDashboard = () => {
+  const intl = useIntl();
+  const searchTimeoutRef = useRef(null);
+
+  // State
+  const [errors, setErrors] = useState([]);
+  const [filteredErrors, setFilteredErrors] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState({
+    errorType: "",
+    severity: "",
+    analyzer: "",
+  });
+  const [stats, setStats] = useState({
+    total: 0,
+    unacknowledged: 0,
+    critical: 0,
+    last24Hours: 0,
+  });
+  const [selectedError, setSelectedError] = useState(null);
+  const [errorDetailsOpen, setErrorDetailsOpen] = useState(false);
+
+  // Load errors from API
+  const loadErrors = useCallback((searchFilters = {}) => {
+    setLoading(true);
+    // TODO: Replace with actual API endpoint when AnalyzerErrorRestController is implemented (T095)
+    // Endpoint will be: GET /rest/analyzer/errors?errorType=...&severity=...&analyzer=...
+    const endpoint = "/rest/analyzer/errors";
+    const params = new URLSearchParams();
+
+    if (searchFilters.errorType) {
+      params.append("errorType", searchFilters.errorType);
+    }
+    if (searchFilters.severity) {
+      params.append("severity", searchFilters.severity);
+    }
+    if (searchFilters.analyzer) {
+      params.append("analyzer", searchFilters.analyzer);
+    }
+    if (searchFilters.search) {
+      params.append("search", searchFilters.search);
+    }
+
+    const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint;
+
+    getFromOpenElisServer(url, (data) => {
+      if (Array.isArray(data)) {
+        setErrors(data);
+        setFilteredErrors(data);
+
+        // Calculate statistics
+        const now = new Date();
+        const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const unacknowledgedCount = data.filter(
+          (e) => e.status === "UNACKNOWLEDGED" || e.status === "unacknowledged",
+        ).length;
+        const criticalCount = data.filter(
+          (e) => e.severity === "CRITICAL" || e.severity === "critical",
+        ).length;
+        const last24HoursCount = data.filter((e) => {
+          const errorDate = new Date(e.timestamp || e.createdDate);
+          return errorDate >= last24Hours;
+        }).length;
+
+        setStats({
+          total: data.length,
+          unacknowledged: unacknowledgedCount,
+          critical: criticalCount,
+          last24Hours: last24HoursCount,
+        });
+      } else {
+        setErrors([]);
+        setFilteredErrors([]);
+        setStats({ total: 0, unacknowledged: 0, critical: 0, last24Hours: 0 });
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadErrors();
+  }, [loadErrors]);
+
+  // Search handler with debounce
+  const handleSearch = (value) => {
+    setSearchTerm(value);
+
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout for debounced search
+    searchTimeoutRef.current = setTimeout(() => {
+      const searchFilters = { ...filters };
+      if (value.trim()) {
+        searchFilters.search = value.trim();
+      }
+      loadErrors(searchFilters);
+    }, 300);
+  };
+
+  // Filter handlers
+  const handleFilterChange = (filterName, value) => {
+    const newFilters = { ...filters, [filterName]: value };
+    setFilters(newFilters);
+    loadErrors(newFilters);
+  };
+
+  // Handle acknowledge all
+  const handleAcknowledgeAll = () => {
+    // TODO: Implement when AnalyzerErrorRestController is implemented (T095)
+    // Endpoint will be: POST /rest/analyzer/errors/batch-acknowledge
+    console.log("Acknowledge all errors - not yet implemented");
+  };
+
+  // Handle view error details
+  const handleViewDetails = (error) => {
+    setSelectedError(error);
+    setErrorDetailsOpen(true);
+  };
+
+  // Handle acknowledge error
+  const handleAcknowledge = (errorId) => {
+    // TODO: Implement when AnalyzerErrorRestController is implemented (T095)
+    // Endpoint will be: POST /rest/analyzer/errors/{id}/acknowledge
+    console.log("Acknowledge error:", errorId);
+    // Reload errors after acknowledgment
+    loadErrors(filters);
+  };
+
+  // Format timestamp
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return "-";
+    const date = new Date(timestamp);
+    return intl.formatDate(date, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  // Table headers
+  const headers = [
+    {
+      key: "timestamp",
+      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.timestamp" }),
+    },
+    {
+      key: "analyzer",
+      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.analyzer" }),
+    },
+    {
+      key: "type",
+      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.type" }),
+    },
+    {
+      key: "severity",
+      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.severity" }),
+    },
+    {
+      key: "message",
+      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.message" }),
+    },
+    {
+      key: "status",
+      header: intl.formatMessage({ id: "analyzer.errorDashboard.table.status" }),
+    },
+    { key: "actions", header: "" },
+  ];
+
+  // Format error data for table rows
+  const rows = filteredErrors.map((error) => {
+    const isAcknowledged =
+      error.status === "ACKNOWLEDGED" || error.status === "acknowledged";
+    const severity = error.severity || "ERROR";
+    const errorType = error.errorType || "MAPPING";
+
+    // Truncate message
+    const message = error.errorMessage || error.message || "-";
+    const truncatedMessage =
+      message.length > 50 ? `${message.substring(0, 50)}...` : message;
+
+    return {
+      id: error.id,
+      timestamp: formatTimestamp(error.timestamp || error.createdDate),
+      analyzer: error.analyzerName || error.analyzer?.name || "-",
+      type: errorType,
+      severity: severity,
+      message: truncatedMessage,
+      status: isAcknowledged ? "Acknowledged" : "Unacknowledged",
+      _error: error, // Store full error object for actions
+    };
+  });
+
+  return (
+    <div className="error-dashboard" data-testid="error-dashboard">
+      {/* Header */}
+      <div
+        className="error-dashboard-header"
+        data-testid="error-dashboard-header"
+      >
+        <h1>
+          {intl.formatMessage({ id: "analyzer.errorDashboard.title" })}
+        </h1>
+        <Button
+          kind="primary"
+          data-testid="acknowledge-all-button"
+          onClick={handleAcknowledgeAll}
+        >
+          {intl.formatMessage({ id: "analyzer.errorDashboard.acknowledgeAll" })}
+        </Button>
+      </div>
+
+      {/* Statistics Cards */}
+      <Grid
+        className="error-dashboard-stats"
+        data-testid="error-dashboard-stats"
+      >
+        <Column lg={3} md={4} sm={4}>
+          <Tile data-testid="stat-total">
+            <div className="stat-label">
+              {intl.formatMessage({ id: "analyzer.errorDashboard.stats.total" })}
+            </div>
+            <div className="stat-value">{stats.total}</div>
+          </Tile>
+        </Column>
+        <Column lg={3} md={4} sm={4}>
+          <Tile data-testid="stat-unacknowledged">
+            <div className="stat-label">
+              {intl.formatMessage({
+                id: "analyzer.errorDashboard.stats.unacknowledged",
+              })}
+            </div>
+            <div className="stat-value">{stats.unacknowledged}</div>
+          </Tile>
+        </Column>
+        <Column lg={3} md={4} sm={4}>
+          <Tile data-testid="stat-critical">
+            <div className="stat-label">
+              {intl.formatMessage({ id: "analyzer.errorDashboard.stats.critical" })}
+            </div>
+            <div className="stat-value">{stats.critical}</div>
+          </Tile>
+        </Column>
+        <Column lg={3} md={4} sm={4}>
+          <Tile data-testid="stat-last24hours">
+            <div className="stat-label">
+              {intl.formatMessage({
+                id: "analyzer.errorDashboard.stats.last24Hours",
+              })}
+            </div>
+            <div className="stat-value">{stats.last24Hours}</div>
+          </Tile>
+        </Column>
+      </Grid>
+
+      {/* Filter Bar */}
+      <div
+        className="error-dashboard-filters"
+        data-testid="error-dashboard-filters"
+      >
+        <Grid>
+          <Column lg={4} md={4} sm={4}>
+            <Search
+              data-testid="error-search-input"
+              placeholder={intl.formatMessage({
+                id: "analyzer.errorDashboard.filter.search",
+              })}
+              labelText={intl.formatMessage({
+                id: "analyzer.errorDashboard.filter.search",
+              })}
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
+              size="lg"
+            />
+          </Column>
+          <Column lg={4} md={4} sm={4}>
+            <Dropdown
+              id="error-type-filter"
+              data-testid="error-type-filter"
+              titleText={intl.formatMessage({
+                id: "analyzer.errorDashboard.filter.type",
+              })}
+              label={intl.formatMessage({
+                id: "analyzer.errorDashboard.filter.type.all",
+              })}
+              items={[
+                intl.formatMessage({ id: "analyzer.errorDashboard.filter.type.all" }),
+                intl.formatMessage({ id: "analyzer.errorDashboard.errorType.mapping" }),
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.errorType.validation",
+                }),
+                intl.formatMessage({ id: "analyzer.errorDashboard.errorType.timeout" }),
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.errorType.protocol",
+                }),
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.errorType.connection",
+                }),
+              ]}
+              selectedItem={
+                filters.errorType ||
+                intl.formatMessage({ id: "analyzer.errorDashboard.filter.type.all" })
+              }
+              onChange={({ selectedItem }) =>
+                handleFilterChange(
+                  "errorType",
+                  selectedItem ===
+                    intl.formatMessage({
+                      id: "analyzer.errorDashboard.filter.type.all",
+                    })
+                    ? ""
+                    : selectedItem,
+                )
+              }
+            />
+          </Column>
+          <Column lg={4} md={4} sm={4}>
+            <Dropdown
+              id="severity-filter"
+              data-testid="severity-filter"
+              titleText={intl.formatMessage({
+                id: "analyzer.errorDashboard.filter.severity",
+              })}
+              label={intl.formatMessage({
+                id: "analyzer.errorDashboard.filter.severity.all",
+              })}
+              items={[
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.filter.severity.all",
+                }),
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.severity.critical",
+                }),
+                intl.formatMessage({ id: "analyzer.errorDashboard.severity.error" }),
+                intl.formatMessage({ id: "analyzer.errorDashboard.severity.warning" }),
+              ]}
+              selectedItem={
+                filters.severity ||
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.filter.severity.all",
+                })
+              }
+              onChange={({ selectedItem }) =>
+                handleFilterChange(
+                  "severity",
+                  selectedItem ===
+                    intl.formatMessage({
+                      id: "analyzer.errorDashboard.filter.severity.all",
+                    })
+                    ? ""
+                    : selectedItem,
+                )
+              }
+            />
+          </Column>
+        </Grid>
+      </div>
+
+      {/* DataTable */}
+      <TableContainer data-testid="error-table-container">
+        <DataTable rows={rows} headers={headers} isSortable>
+          {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
+            <Table {...getTableProps()} data-testid="error-table">
+              <TableHead>
+                <TableRow>
+                  {headers.map((header) => (
+                    <TableHeader
+                      key={header.key}
+                      {...getHeaderProps({ header })}
+                    >
+                      {header.header}
+                    </TableHeader>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((row) => {
+                  const error =
+                    row._error || filteredErrors.find((e) => e.id === row.id);
+                  const isAcknowledged =
+                    error?.status === "ACKNOWLEDGED" ||
+                    error?.status === "acknowledged";
+                  const severity = error?.severity || "ERROR";
+                  const errorType = error?.errorType || "MAPPING";
+
+                  // Get severity color
+                  const severityColor =
+                    severity === "CRITICAL" || severity === "critical"
+                      ? "red"
+                      : severity === "ERROR" || severity === "error"
+                        ? "magenta"
+                        : "blue";
+
+                  // Get error type label
+                  const errorTypeKey = `analyzer.errorDashboard.errorType.${errorType.toLowerCase()}`;
+                  const errorTypeLabel = intl.formatMessage(
+                    { id: errorTypeKey },
+                    errorType,
+                  );
+
+                  return (
+                    <TableRow
+                      key={row.id}
+                      {...getRowProps({ row })}
+                      data-testid={`error-row-${row.id}`}
+                    >
+                      {row.cells.map((cell) => {
+                        const headerKey = cell.info.header;
+                        let cellContent = cell.value;
+                        let testId = null;
+
+                        if (headerKey === "type") {
+                          testId = `error-type-${row.id}`;
+                          cellContent = (
+                            <Tag type="blue" data-testid={testId}>
+                              {errorTypeLabel}
+                            </Tag>
+                          );
+                        } else if (headerKey === "severity") {
+                          testId = `error-severity-${row.id}`;
+                          const severityKey = `analyzer.errorDashboard.severity.${severity.toLowerCase()}`;
+                          const severityLabel = intl.formatMessage(
+                            { id: severityKey },
+                            severity,
+                          );
+                          cellContent = (
+                            <Tag type={severityColor} data-testid={testId}>
+                              {severityLabel}
+                            </Tag>
+                          );
+                        } else if (headerKey === "status") {
+                          testId = `error-status-${row.id}`;
+                          const statusKey = isAcknowledged
+                            ? "analyzer.errorDashboard.status.acknowledged"
+                            : "analyzer.errorDashboard.status.unacknowledged";
+                          const statusLabel = intl.formatMessage({ id: statusKey });
+                          cellContent = (
+                            <Tag
+                              type={isAcknowledged ? "green" : "red"}
+                              data-testid={testId}
+                            >
+                              {statusLabel}
+                            </Tag>
+                          );
+                        } else if (headerKey === "actions") {
+                          testId = `error-actions-${row.id}`;
+                          cellContent = error ? (
+                            <OverflowMenu>
+                              <OverflowMenuItem
+                                itemText={intl.formatMessage({
+                                  id: "analyzer.errorDashboard.action.viewDetails",
+                                })}
+                                onClick={() => handleViewDetails(error)}
+                                data-testid={`error-action-view-${row.id}`}
+                              />
+                              {!isAcknowledged && (
+                                <OverflowMenuItem
+                                  itemText={intl.formatMessage({
+                                    id: "analyzer.errorDashboard.action.acknowledge",
+                                  })}
+                                  onClick={() => handleAcknowledge(error.id)}
+                                  data-testid={`error-action-acknowledge-${row.id}`}
+                                />
+                              )}
+                            </OverflowMenu>
+                          ) : null;
+                        } else {
+                          testId = `error-${headerKey}-${row.id}`;
+                        }
+
+                        return (
+                          <TableCell key={cell.id} data-testid={testId}>
+                            {cellContent}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </DataTable>
+      </TableContainer>
+
+      {/* Error Details Modal */}
+      {errorDetailsOpen && selectedError && (
+        <ErrorDetailsModal
+          error={selectedError}
+          open={errorDetailsOpen}
+          onClose={() => {
+            setErrorDetailsOpen(false);
+            setSelectedError(null);
+          }}
+          onAcknowledge={handleAcknowledge}
+        />
+      )}
+    </div>
+  );
+};
+
+export default ErrorDashboard;
+

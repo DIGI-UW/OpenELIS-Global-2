@@ -9,6 +9,7 @@ import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import AnalyzersPage from "./pages/AnalyzersPage";
 import FieldMappingsPage from "./pages/FieldMappingsPage";
+import ErrorDashboardPage from "./pages/ErrorDashboardPage";
 import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
@@ -436,6 +437,12 @@ export default function App() {
                   exact
                   component={() => <FieldMappingsPage />}
                   role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/errors"
+                  exact
+                  component={() => <ErrorDashboardPage />}
+                  role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
                   path="/PatientHistory"

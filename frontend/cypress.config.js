@@ -27,6 +27,10 @@ module.exports = defineConfig({
     // Set CYPRESS_FORCE_FIXTURES=true to always reload
     // Default: false (check existence first)
     FORCE_FIXTURES: process.env.CYPRESS_FORCE_FIXTURES === "true",
+
+    // Enable Electron console logging (automatically captures console logs in Electron browser)
+    // ELECTRON_ENABLE_LOGGING=1 enables automatic console log capture in Electron
+    ELECTRON_ENABLE_LOGGING: "1",
   },
   e2e: {
     setupNodeEvents(on, config) {
@@ -137,6 +141,57 @@ module.exports = defineConfig({
         },
       });
 
+      // Task to load analyzer test data
+      on("task", {
+        loadAnalyzerTestData() {
+          const { execSync } = require("child_process");
+          const loaderScript = path.join(
+            PROJECT_ROOT,
+            "src/test/resources/load-analyzer-test-data.sh",
+          );
+          if (!fs.existsSync(loaderScript)) {
+            throw new Error(
+              `Analyzer test data loader script not found: ${loaderScript}`,
+            );
+          }
+          try {
+            execSync(`bash "${loaderScript}"`, {
+              stdio: "inherit",
+              cwd: PROJECT_ROOT,
+              shell: "/bin/bash",
+            });
+            return null;
+          } catch (error) {
+            console.error("Error loading analyzer test data:", error);
+            return null;
+          }
+        },
+        cleanAnalyzerTestData() {
+          const { execSync } = require("child_process");
+          const sql = `
+            DELETE FROM analyzer_error WHERE id LIKE 'ERROR-%';
+            DELETE FROM analyzer_field_mapping WHERE id LIKE 'MAPPING-%';
+            DELETE FROM analyzer_field WHERE id LIKE 'FIELD-%';
+            DELETE FROM analyzer_configuration WHERE id LIKE 'CONFIG-%';
+            DELETE FROM analyzer WHERE id IN (1000, 1001, 1002);
+          `;
+          try {
+            execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -c "${sql}"`,
+              {
+                stdio: "inherit",
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+              },
+            );
+            return null;
+          } catch (error) {
+            console.error("Error cleaning analyzer test data:", error);
+            return null;
+          }
+        },
+      });
+
       try {
         const e2eFolder = path.join(__dirname, "cypress/e2e");
 
@@ -192,6 +247,8 @@ module.exports = defineConfig({
     excludeSpecPattern: ["**/storage*.cy.js"],
     env: {
       STARTUP_WAIT_MILLISECONDS: 300000,
+      // Enable Electron console logging (automatically captures console logs in Electron browser)
+      ELECTRON_ENABLE_LOGGING: "1",
     },
   },
 });

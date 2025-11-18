@@ -54,6 +54,7 @@ function OEHeader(props) {
   const [isOpen, setIsOpen] = useState(false);
 
   const intl = useIntl();
+  const currentPath = props.location?.pathname || "";
 
   const [switchCollapsed, setSwitchCollapsed] = useState(true);
   const [menus, setMenus] = useState({
@@ -184,6 +185,14 @@ function OEHeader(props) {
     );
   };
   const generateMenuItems = (menuItem, index, level, path) => {
+    // Contextual visibility: Hide "Field Mappings" sub-nav unless on /analyzers/:id/mappings route
+    if (
+      menuItem.menu.elementId === "menu_analyzers_field_mappings" &&
+      !currentPath.match(/^\/analyzers\/[^/]+\/mappings$/)
+    ) {
+      return <React.Fragment key={path}></React.Fragment>;
+    }
+
     if (menuItem.menu.isActive) {
       if (level === 0 && menuItem.childMenus.length > 0) {
         return (
@@ -610,7 +619,10 @@ function OEHeader(props) {
                       <SideNav
                         aria-label="Side navigation"
                         expanded={isSideNavExpanded}
-                        isPersistent={false}
+                        isPersistent={
+                          props.location?.pathname?.startsWith("/analyzers") ||
+                          false
+                        }
                       >
                         <SideNavItems>
                           {menus["menu"].map((childMenuItem, index) => {
