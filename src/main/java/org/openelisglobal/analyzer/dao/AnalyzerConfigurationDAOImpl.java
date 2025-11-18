@@ -23,23 +23,14 @@ public class AnalyzerConfigurationDAOImpl extends BaseDAOImpl<AnalyzerConfigurat
     @Transactional(readOnly = true)
     public Optional<AnalyzerConfiguration> findByAnalyzerId(String analyzerId) {
         try {
-            // NOTE: Uses native SQL instead of HQL because Analyzer entity uses XML mappings (legacy),
-            // and Hibernate cannot resolve relationships between annotation-based entities
-            // (AnalyzerConfiguration) and XML-mapped entities (Analyzer).
-            // 
-            // Attempted HQL: "FROM AnalyzerConfiguration WHERE analyzer.id = :analyzerId"
-            // Error: "missing FROM-clause entry for table 'analyzer'"
-            // 
-            // This is a temporary workaround until Analyzer is migrated to JPA annotations.
-            // See: specs/004-astm-analyzer-mapping/ANALYZER_XML_MAPPING_ANALYSIS.md
-            //
-            // analyzer_id is NUMERIC(10,0) in database, analyzerId is String in Java
-            String sql = "SELECT * FROM analyzer_configuration WHERE analyzer_id = :analyzerId";
-            @SuppressWarnings("unchecked")
-            org.hibernate.query.NativeQuery<AnalyzerConfiguration> query = entityManager.unwrap(Session.class)
-                    .createNativeQuery(sql, AnalyzerConfiguration.class);
-            // Convert String ID to Integer for legacy Analyzer entity (NUMERIC in DB)
             Integer analyzerIdInt = Integer.parseInt(analyzerId);
+
+            // HQL path expression via relationship to legacy Analyzer entity
+            String hql = "SELECT ac FROM AnalyzerConfiguration ac " +
+                    "JOIN ac.analyzer a " +
+                    "WHERE a.id = :analyzerId";
+            Query<AnalyzerConfiguration> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    AnalyzerConfiguration.class);
             query.setParameter("analyzerId", analyzerIdInt);
             AnalyzerConfiguration result = query.uniqueResult();
             return Optional.ofNullable(result);

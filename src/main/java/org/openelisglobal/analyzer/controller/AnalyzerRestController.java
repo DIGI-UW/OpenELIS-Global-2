@@ -10,6 +10,7 @@ import java.util.Optional;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.service.AnalyzerQueryService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -37,6 +38,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerConfigurationService analyzerConfigurationService;
+
+    @Autowired
+    private AnalyzerQueryService analyzerQueryService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -80,6 +84,42 @@ public class AnalyzerRestController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
+        }
+    }
+
+    /**
+     * POST /rest/analyzer/analyzers/{id}/query
+     * Start asynchronous query job to retrieve available analyzer fields
+     */
+    @PostMapping(value = "/analyzers/{id}/query", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> startQuery(@PathVariable String id) {
+        try {
+            String jobId = analyzerQueryService.startQuery(id);
+            Map<String, Object> response = new HashMap<>();
+            response.put("jobId", jobId);
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        } catch (Exception e) {
+            logger.error("Error starting analyzer query", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * GET /rest/analyzer/analyzers/{id}/query/{jobId}/status
+     * Get status for analyzer query job
+     */
+    @GetMapping(value = "/analyzers/{id}/query/{jobId}/status", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getQueryStatus(@PathVariable String id, @PathVariable String jobId) {
+        try {
+            Map<String, Object> status = analyzerQueryService.getStatus(id, jobId);
+            return ResponseEntity.ok(status);
+        } catch (Exception e) {
+            logger.error("Error fetching analyzer query status", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 

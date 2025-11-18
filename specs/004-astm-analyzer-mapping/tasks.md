@@ -139,7 +139,7 @@
 - [X] T053 [P] [US1] Create UnitMappingForm DTO in `src/main/java/org/openelisglobal/analyzer/form/UnitMappingForm.java`
 - [X] T054 [US1] Create AnalyzerRestController in `src/main/java/org/openelisglobal/analyzer/controller/AnalyzerRestController.java` extending BaseRestController with @RestController and @RequestMapping("/rest/analyzer") - Endpoints: GET /analyzers ✓, POST /analyzers ✓, GET /analyzers/{id} ✓, PUT /analyzers/{id} ✓, DELETE /analyzers/{id} ✓, POST /analyzers/{id}/test-connection ✓ per FR-001
 - [X] T055 [US1] Create AnalyzerFieldMappingRestController in `src/main/java/org/openelisglobal/analyzer/controller/AnalyzerFieldMappingRestController.java` extending BaseRestController - Endpoints: GET /analyzers/{analyzerId}/mappings ✓, POST /analyzers/{analyzerId}/mappings ✓, PUT /analyzers/{analyzerId}/mappings/{mappingId} ✓, DELETE /analyzers/{analyzerId}/mappings/{mappingId} ✓ per FR-003
-- [X] T056 [US1] Create AnalyzersList component in `frontend/src/components/analyzers/AnalyzersList/AnalyzersList.jsx` using Carbon DataTable with search, filters, pagination per FR-001 - Test Unit filter: Multi-select dropdown showing test unit names (loaded from existing test unit configuration), filters by test unit IDs using PostgreSQL array overlap operator (`WHERE analyzer.test_unit_ids && ARRAY[selected_unit_ids]`) per FR-001 specification - UI displays test unit names for user selection, but filtering logic uses IDs for database queries - Basic implementation complete: DataTable, search with debounce, Add Analyzer button, statistics cards, overflow menu actions
+- [X] T056 [US1] Create AnalyzersDashboard component (formerly `AnalyzersList`) in `frontend/src/components/analyzers/AnalyzersList/AnalyzersList.jsx` using Carbon DataTable plus overview cards to match the `/analyzers` route per FR-001 and Figma nav hierarchy - Includes statistics grid, search with debounce, filter dropdowns (status, analyzer type, test units), lifecycle badges, and overflow row actions; Test Unit filter operates on IDs (array overlap) while displaying user-friendly names
 - [X] T057 [US1] Create AnalyzerForm component in `frontend/src/components/analyzers/AnalyzerForm/AnalyzerForm.jsx` using Carbon ComposedModal with form fields (name, type, IP, port, protocol, test units, active status) per FR-001 - Basic implementation complete: form fields, IP validation, Test Connection button, form submission
 - [X] T058 [US1] Create TestConnectionModal component in `frontend/src/components/analyzers/TestConnectionModal/TestConnectionModal.jsx` using Carbon ComposedModal with three states (initial, progress, success) per FR-001 - Basic implementation complete: three states, progress bar, connection logs, test connection API integration
 - [X] T059 [US1] Create FieldMapping component in `frontend/src/components/analyzers/FieldMapping/FieldMapping.jsx` with dual-panel layout (50/50 split) using Carbon Grid per FR-008 - Basic implementation complete: dual-panel layout, field selection, mapping creation
@@ -235,8 +235,8 @@
 - [ ] T083 [P] [US3] Integration test for error queue workflow in `src/test/java/org/openelisglobal/analyzer/service/AnalyzerErrorServiceIntegrationTest.java` using @SpringBootTest - Test methods: `testHoldUnmappedMessage_InErrorQueue`, `testReprocessAfterMapping_CreatesOrder`
 - [ ] T084 [P] [US3] DAO test for AnalyzerErrorDAO in `src/test/java/org/openelisglobal/analyzer/dao/AnalyzerErrorDAOTest.java` - Test methods: `testFindByStatus_ReturnsUnacknowledgedErrors`, `testFindByAnalyzerId_ReturnsErrorsForAnalyzer`
 - [ ] T085 [P] [US3] Controller test for AnalyzerErrorRestController in `src/test/java/org/openelisglobal/analyzer/controller/AnalyzerErrorRestControllerTest.java` - **Test Slicing**: Use `@WebMvcTest` - Test methods: `testGetErrors_WithFilters_ReturnsFilteredList`, `testAcknowledgeError_WithValidId_UpdatesStatus`, `testReprocessError_WithValidId_ProcessesMessage`
-- [ ] T086 [P] [US3] Frontend unit test for ErrorDashboard component in `frontend/src/components/analyzers/ErrorDashboard/ErrorDashboard.test.jsx` - Test methods: `testRendersErrorDashboard_WithErrors_DisplaysTable`, `testFilterErrors_ByType_FiltersResults`, `testOpenErrorDetails_ShowsModal`
-- [ ] T087 [P] [US3] Frontend unit test for ErrorDetailsModal component in `frontend/src/components/analyzers/ErrorDashboard/ErrorDetailsModal.test.jsx` - Test methods: `testDisplayErrorDetails_ShowsFullContext`, `testOpenMappingInterface_FromError_ShowsMappingModal`
+- [X] T086 [P] [US3] Frontend unit test for ErrorDashboard component in `frontend/src/components/analyzers/ErrorDashboard/ErrorDashboard.test.jsx` - Test methods: `testRendersErrorDashboard_WithErrors_DisplaysTable`, `testFilterErrors_ByType_FiltersResults`, `testOpenErrorDetails_ShowsModal`
+- [X] T087 [P] [US3] Frontend unit test for ErrorDetailsModal component in `frontend/src/components/analyzers/ErrorDashboard/ErrorDetailsModal.test.jsx` - Test methods: `testDisplayErrorDetails_ShowsFullContext`, `testOpenMappingInterface_FromError_ShowsMappingModal`
 - [ ] T088 [P] [US3] Cypress E2E test in `frontend/cypress/e2e/errorResolution.cy.js` - Test scenarios: "should display unmapped messages in error dashboard", "should create mapping from error context", "should reprocess error after mapping creation", "should acknowledge multiple errors in batch"
 
 ### Implementation for User Story 3
@@ -293,15 +293,17 @@
 ### Tests for Navigation Integration
 
 - [ ] T110 [P] Integration test for menu API in `src/test/java/org/openelisglobal/menu/controller/MenuControllerTest.java` - Test methods: `testGetMenu_WithAnalyzersItems_ReturnsItems`, `testGetMenu_WithRoleFilter_HidesUnauthorizedItems`
-- [ ] T111 [P] Frontend unit test for navigation integration in `frontend/src/components/common/GlobalSideBar.test.js` - Test methods: `testRendersAnalyzersMenu_WithSubItems_DisplaysExpandable`, `testHighlightActiveSubNav_WithRoute_ShowsActiveState`
+- [X] T111 [P] Frontend unit test for navigation integration in `frontend/src/components/layout/Header.test.js` - Test methods: `testRendersAnalyzersMenu_WithSubItems_DisplaysExpandable`, `testHighlightActiveSubNav_WithRoute_ShowsActiveState`, `testSidebar_PersistentOnAnalyzerPages`, `testFieldMappingsMenu_OnlyVisibleOnMappingsRoute`
 
 ### Implementation for Navigation Integration
 
-- [ ] T112 Extend MenuController to include analyzer menu items in `/rest/menu` API response - Filter by role (LAB_USER, LAB_SUPERVISOR) per FR-020 - Hide parent "Analyzers" item if user lacks permission for all sub-items
-- [ ] T113 Update GlobalSideBar component to render analyzer menu items dynamically from API - Use Carbon SideNavMenu and SideNavMenuItem - Highlight active sub-nav item based on current route per FR-020
-- [ ] T114 Add route metadata or page component props to require left-hand navigation visible and expanded by default for analyzer pages per FR-020
-- [ ] T115 Implement state preservation using URL query parameters for filters, pagination, selected analyzer ID per FR-020 - Use URLSearchParams pattern consistent with SearchResultForm.js
-- [ ] T116 Implement state preservation using sessionStorage for scroll position, form drafts per FR-020 - Clear on tab close, preserve across browser navigation
+- [ ] T112 Extend `MenuController` (`src/main/java/org/openelisglobal/menu/controller/MenuController.java`) to return the full analyzer nav tree (Analyzers Dashboard, Error Dashboard, contextual Field Mappings, QC dashboard, QC Alerts & Violations, Corrective Actions) via `/rest/menu` with role-based filtering so QC routes only appear for QC-enabled roles per FR-020 clarification
+- [ ] T113 Update `frontend/src/components/layout/Header.js` / `GlobalSideBar` to render the expanded analyzer hierarchy from the menu API, ensure sub-nav items act as tabs, and always highlight the active route (including QC placeholders) using Carbon `SideNavMenuItem`
+- [ ] T210 [P] Add new placeholder QC pages in `frontend/src/pages/analyzers/` (`QCDashboardPlaceholder.jsx`, `QCAlertsPlaceholder.jsx`, `CorrectiveActionsPlaceholder.jsx`) that display “Quality Control coming soon” messaging and link to feature `003-westgard-qc` resources until the full functionality ships
+- [ ] T211 [P] Wire the placeholder QC pages into React Router (`frontend/src/App.js`) with routes `/analyzers/qc`, `/analyzers/qc/alerts`, `/analyzers/qc/corrective-actions`, secure them with the appropriate roles, and ensure navigation entries open these pages
+- [ ] T212 Add route metadata or page component props to force the left-hand navigation visible/expanded for all analyzer routes (dashboard, error, mappings, QC placeholders) per FR-020
+- [ ] T213 Implement state preservation using URL query parameters for filters, pagination, selected analyzer ID per FR-020 - Use URLSearchParams pattern consistent with `SearchResultForm.js`
+- [ ] T214 Implement state preservation using sessionStorage for scroll position, form drafts per FR-020 - Clear on tab close, preserve across browser navigation
 
 ---
 
@@ -373,41 +375,54 @@ cd frontend && npm test -- --coverage  # Jest coverage
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: No dependencies - can start immediately
-- **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
-- **User Stories (Phase 3+)**: All depend on Foundational phase completion
-  - User stories can then proceed in parallel (if staffed)
-  - Or sequentially in priority order (P1 → P2 → P3)
-- **Query Analyzer (Phase 6)**: Can proceed in parallel with User Stories (depends on Foundational)
-- **Navigation Integration (Phase 7)**: Depends on User Story 1 completion (needs routes)
-- **Polish (Phase 8)**: Depends on all desired user stories being complete
-- **Constitution Compliance (Phase 9)**: Depends on all implementation phases
+- **Phase 1: Setup** – No dependencies; can start immediately.
+- **Phase 2: Foundational** – Depends on Phase 1; BLOCKS all user stories.
+- **Phase 3: US1 (Configure Mappings, P1)** – Depends on Phase 2; provides minimal routes/components leveraged by navigation.
+- **Phase 4: US2 (Maintain Mappings, P2)** – Depends on Phase 2; can progress in parallel with US1 once entities/DAOs exist.
+- **Phase 5: US3 (Error Resolution, P3)** – Depends on Phase 2; uses error queue infra from foundational.
+- **Phase 6: Query Analyzer (FR-002)** – Depends on Phase 2; may run in parallel with US1/US2/US3.
+- **Phase 7: Navigation Integration (FR-020, clarified with QC placeholders)** – Depends on Phase 3 minimal routes.
+  - Inside Phase 7:
+    - T112 (extend `/rest/menu`) → T113 (render sidebar from API).
+    - T210–T211 (QC placeholder pages + routes) can proceed once T113 wiring is present. Pages may be stubbed earlier, but menu surfacing requires T112.
+    - T212 (force analyzer nav visible/expanded) depends on router scaffolding from Phase 3 and T113.
+    - T213–T214 (URL/session state preservation) depend on base pages/routes; can run in parallel after routes exist.
+- **Phase 8: Polish** – Depends on desired user stories being complete.
+- **Phase 9: Constitution Compliance** – Depends on all implementation phases.
 
 ### User Story Dependencies
 
-- **User Story 1 (P1)**: Can start after Foundational (Phase 2) - No dependencies on other stories
-- **User Story 2 (P2)**: Can start after Foundational (Phase 2) - May integrate with US1 but should be independently testable
-- **User Story 3 (P3)**: Can start after Foundational (Phase 2) - Depends on error queue infrastructure (AnalyzerError entity) from Foundational
+- **US1 (P1)** – Starts after Phase 2; no dependency on other stories.
+- **US2 (P2)** – Starts after Phase 2; optional UI integration with US1 but independently testable (service/controller-first).
+- **US3 (P3)** – Starts after Phase 2; depends on error queue infra (`AnalyzerError`) from foundational.
+- **Navigation (Phase 7)** – Surfaces US1, US3, and QC placeholders under Analyzers parent; follow Phase 3 minimal routes.
 
 ### Within Each User Story
 
-- Tests (MANDATORY) MUST be written and FAIL before implementation
-- Entities before DAOs
-- DAOs before Services
-- Services before Controllers
-- Controllers before Frontend components
-- Core implementation before integration
-- Story complete before moving to next priority
+- Tests (MANDATORY) must be written and FAIL before implementation (per Testing Roadmap).
+- Order: Entities → DAOs → Services → Controllers → Frontend components → Integration.
+- Complete the story slice independently before moving to the next priority.
 
-### Parallel Opportunities
+### Parallel Execution Examples
 
-- All Setup tasks marked [P] can run in parallel
-- All Foundational tasks marked [P] can run in parallel (within Phase 2)
-- Once Foundational phase completes, all user stories can start in parallel (if team capacity allows)
-- All tests for a user story marked [P] can run in parallel
-- Entities within a story marked [P] can run in parallel
-- Different user stories can be worked on in parallel by different team members
-- Query Analyzer functionality (Phase 6) can proceed in parallel with User Stories
+- **US1 (P1)**
+  - [P] DAO tests (e.g., T033–T033d) parallel with service tests (T029–T032).
+  - [P] Frontend unit tests (T037–T039) parallel with controller tests (T035–T036).
+  - [P] UI components (T056–T063) once DTOs/controllers exist (T049–T055).
+- **US2 (P2)**
+  - [P] Modal work (T164, T169–T173, T170) parallel with service/controller disablement (T171–T172).
+  - [P] Copy mappings UI (T076) in parallel with endpoint (T077).
+  - [P] Test Mapping modal (T080) after minimal service hooks are stubbed.
+- **US3 (P3)**
+  - [P] Error services (T089–T092) parallel with dashboard UI (T096–T099).
+  - [P] Wrapper pattern (T177–T181) parallel with controller tests (T085).
+- **Query Analyzer (Phase 6)**
+  - [P] Service unit/integration tests (T102–T103) parallel with UI polling/modal (T107–T108).
+- **Navigation Integration (Phase 7)**
+  - T112 → T113; then:
+    - [P] T210–T211 (QC placeholder pages/routes).
+    - [P] T212 (force nav visible/expanded) after routing present.
+    - [P] T213–T214 (URL/session state persistence).
 
 ---
 

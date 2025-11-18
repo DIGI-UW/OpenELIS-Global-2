@@ -64,16 +64,16 @@ public class AnalyzerConfigurationDAOTest {
     /**
      * Test: Find by analyzer ID returns configuration
      * Task Reference: T033
-     * Note: Uses native SQL (not HQL) due to Analyzer XML mapping limitation
+     * Note: Uses HQL with JOIN to legacy Analyzer entity
      */
     @Test
     public void testFindByAnalyzerId_WithValidId_ReturnsConfiguration() {
-        // Arrange: Mock native SQL query (actual implementation uses native SQL)
+        // Arrange: Mock HQL query (actual implementation uses HQL)
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         @SuppressWarnings("unchecked")
-        org.hibernate.query.NativeQuery<AnalyzerConfiguration> query = 
-            org.mockito.Mockito.mock(org.hibernate.query.NativeQuery.class);
-        when(session.createNativeQuery(anyString(), eq(AnalyzerConfiguration.class))).thenReturn(query);
+        org.hibernate.query.Query<AnalyzerConfiguration> query = 
+            org.mockito.Mockito.mock(org.hibernate.query.Query.class);
+        when(session.createQuery(anyString(), eq(AnalyzerConfiguration.class))).thenReturn(query);
         when(query.setParameter(eq("analyzerId"), eq(1))).thenReturn(query); // Integer, not String
         when(query.uniqueResult()).thenReturn(testConfig);
 
@@ -93,12 +93,12 @@ public class AnalyzerConfigurationDAOTest {
      */
     @Test
     public void testFindByAnalyzerId_WithNoConfiguration_ReturnsEmpty() {
-        // Arrange: Mock native SQL query
+        // Arrange: Mock HQL query to return null (no configuration found)
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         @SuppressWarnings("unchecked")
-        org.hibernate.query.NativeQuery<AnalyzerConfiguration> query = 
-            org.mockito.Mockito.mock(org.hibernate.query.NativeQuery.class);
-        when(session.createNativeQuery(anyString(), eq(AnalyzerConfiguration.class))).thenReturn(query);
+        org.hibernate.query.Query<AnalyzerConfiguration> query = 
+            org.mockito.Mockito.mock(org.hibernate.query.Query.class);
+        when(session.createQuery(anyString(), eq(AnalyzerConfiguration.class))).thenReturn(query);
         when(query.setParameter(eq("analyzerId"), eq(999))).thenReturn(query); // Integer, not String
         when(query.uniqueResult()).thenReturn(null);
 

@@ -52,40 +52,21 @@ public class AnalyzerFieldMappingDAOImpl extends BaseDAOImpl<AnalyzerFieldMappin
     @Transactional(readOnly = true)
     public List<AnalyzerFieldMapping> findByAnalyzerIdWithFields(String analyzerId) {
         try {
-            // Step 1: Use native SQL to get analyzer_field_ids for this analyzer
-            // (Analyzer uses XML mappings, so we query by foreign key column directly)
             Integer analyzerIdInt;
             try {
                 analyzerIdInt = Integer.parseInt(analyzerId);
             } catch (NumberFormatException e) {
                 throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
             }
-            
-            String sql = "SELECT id FROM analyzer_field WHERE analyzer_id = :analyzerId";
-            @SuppressWarnings("unchecked")
-            List<Object> rawResults = entityManager.createNativeQuery(sql)
-                    .setParameter("analyzerId", analyzerIdInt)
-                    .getResultList();
-            
-            List<String> fieldIds = new java.util.ArrayList<>();
-            for (Object result : rawResults) {
-                if (result != null) {
-                    fieldIds.add(result.toString());
-                }
-            }
-            
-            if (fieldIds.isEmpty()) {
-                return new java.util.ArrayList<>();
-            }
-            
-            // Step 2: Fetch mappings for these fields with JOIN FETCH to eagerly load analyzerField
-            // (No need to JOIN FETCH analyzer - we'll access it separately if needed)
+
+            // HQL join via relationship path; eagerly load analyzerField
             String hql = "SELECT DISTINCT afm FROM AnalyzerFieldMapping afm " +
                     "LEFT JOIN FETCH afm.analyzerField af " +
-                    "WHERE af.id IN :fieldIds";
+                    "JOIN af.analyzer a " +
+                    "WHERE a.id = :analyzerId";
             Query<AnalyzerFieldMapping> query = entityManager.unwrap(Session.class).createQuery(hql,
                     AnalyzerFieldMapping.class);
-            query.setParameterList("fieldIds", fieldIds);
+            query.setParameter("analyzerId", analyzerIdInt);
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding AnalyzerFieldMapping by analyzer ID with fields", e);

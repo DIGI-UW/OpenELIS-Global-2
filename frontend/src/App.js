@@ -10,6 +10,9 @@ import LandingPage from "./components/home/LandingPage";
 import AnalyzersPage from "./pages/AnalyzersPage";
 import FieldMappingsPage from "./pages/FieldMappingsPage";
 import ErrorDashboardPage from "./pages/ErrorDashboardPage";
+import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
+import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
+import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
 import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
@@ -442,6 +445,24 @@ export default function App() {
                   path="/analyzers/errors"
                   exact
                   component={() => <ErrorDashboardPage />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc"
+                  exact
+                  component={() => <QCDashboardPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/alerts"
+                  exact
+                  component={() => <QCAlertsPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/corrective-actions"
+                  exact
+                  component={() => <CorrectiveActionsPlaceholder />}
                   role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute

@@ -185,6 +185,17 @@ export const queryAnalyzer = (id, callback, extraParams) => {
 };
 
 /**
+ * Get query job status
+ * @param {String} analyzerId
+ * @param {String} jobId
+ * @param {Function} callback - Callback (data) => void
+ */
+export const getQueryStatus = (analyzerId, jobId, callback) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/query/${jobId}/status`;
+  getFromOpenElisServer(endpoint, callback);
+};
+
+/**
  * Get all field mappings for an analyzer
  * @param {String} analyzerId - Analyzer ID
  * @param {Function} callback - Callback function (data) => void

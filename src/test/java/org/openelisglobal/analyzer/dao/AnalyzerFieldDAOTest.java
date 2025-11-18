@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.dao;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -85,14 +86,14 @@ public class AnalyzerFieldDAOTest {
      */
     @Test
     public void testFindByAnalyzerId_WithValidId_ReturnsFields() {
-        // Arrange
+        // Arrange: Mock HQL query (single query with JOIN to legacy Analyzer)
+        when(entityManager.unwrap(Session.class)).thenReturn(session);
+        when(session.createQuery(anyString(), eq(AnalyzerField.class))).thenReturn(query);
+        when(query.setParameter(eq("analyzerId"), eq(1))).thenReturn(query);
+        
         List<AnalyzerField> expectedResults = new ArrayList<>();
         expectedResults.add(testField1);
         expectedResults.add(testField2);
-
-        when(entityManager.unwrap(Session.class)).thenReturn(session);
-        when(session.createQuery(anyString(), eq(AnalyzerField.class))).thenReturn(query);
-        when(query.setParameter(eq("analyzerId"), eq("1"))).thenReturn(query);
         when(query.list()).thenReturn(expectedResults);
 
         // Act
@@ -111,15 +112,13 @@ public class AnalyzerFieldDAOTest {
      */
     @Test
     public void testFindByAnalyzerId_WithInvalidId_ReturnsEmptyList() {
-        // Arrange
-        List<AnalyzerField> emptyResults = new ArrayList<>();
-
+        // Arrange: Mock HQL query to return empty list
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         when(session.createQuery(anyString(), eq(AnalyzerField.class))).thenReturn(query);
-        when(query.setParameter(eq("analyzerId"), eq("999"))).thenReturn(query);
-        when(query.list()).thenReturn(emptyResults);
+        when(query.setParameter(eq("analyzerId"), eq(999))).thenReturn(query);
+        when(query.list()).thenReturn(new ArrayList<>());
 
-        // Act
+        // Act: When no fields are found, method should return empty list
         List<AnalyzerField> results = analyzerFieldDAO.findByAnalyzerId("999");
 
         // Assert

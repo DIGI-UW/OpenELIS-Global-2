@@ -618,7 +618,11 @@ function OEHeader(props) {
                     <>
                       <SideNav
                         aria-label="Side navigation"
-                        expanded={isSideNavExpanded}
+                        expanded={
+                          isSideNavExpanded ||
+                          (props.location?.pathname?.startsWith("/analyzers") ??
+                            false)
+                        }
                         isPersistent={
                           props.location?.pathname?.startsWith("/analyzers") ||
                           false

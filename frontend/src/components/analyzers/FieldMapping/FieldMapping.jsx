@@ -18,6 +18,7 @@ import { useParams, useHistory } from "react-router-dom";
 import * as analyzerService from "../../../services/analyzerService";
 import FieldMappingPanel from "./FieldMappingPanel";
 import MappingPanel from "./MappingPanel";
+import QueryStatusModal from "./QueryStatusModal";
 import "./FieldMapping.css";
 
 const FieldMapping = () => {
@@ -32,6 +33,8 @@ const FieldMapping = () => {
   const [selectedField, setSelectedField] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [queryModalOpen, setQueryModalOpen] = useState(false);
+  const [queryJobId, setQueryJobId] = useState(null);
 
   // Load analyzer data
   useEffect(() => {
@@ -56,13 +59,13 @@ const FieldMapping = () => {
       setLoading(false);
     });
 
-    // Query analyzer for fields (if available)
+    // Optionally kick off an initial query (skeleton). If fields are returned immediately (tests/mocks), use them.
     analyzerService.queryAnalyzer(analyzerId, (response) => {
-      if (response && response.fields && Array.isArray(response.fields)) {
+      if (response && Array.isArray(response.fields) && response.fields.length > 0) {
         setFields(response.fields);
-      } else {
-        // Fallback: use empty array if query not available
-        setFields([]);
+      }
+      if (response && response.jobId) {
+        setQueryJobId(response.jobId);
       }
     });
   }, [analyzerId]);
@@ -126,6 +129,23 @@ const FieldMapping = () => {
             ? analyzer.name
             : intl.formatMessage({ id: "analyzer.fieldMapping.page.title" })}
         </h1>
+        <Button
+          kind="ghost"
+          data-testid="field-mapping-query-button"
+          onClick={() => {
+            analyzerService.queryAnalyzer(analyzerId, (resp) => {
+              if (resp && resp.jobId) {
+                setQueryJobId(resp.jobId);
+                setQueryModalOpen(true);
+              } else {
+                setQueryModalOpen(true);
+              }
+            });
+          }}
+          style={{ marginRight: "0.5rem" }}
+        >
+          <FormattedMessage id="analyzer.fieldMapping.queryAnalyzer" />
+        </Button>
         <Button kind="primary" data-testid="field-mapping-save-button">
           <FormattedMessage id="analyzer.fieldMapping.save" />
         </Button>
@@ -189,6 +209,17 @@ const FieldMapping = () => {
           )}
         </Column>
       </Grid>
+      <QueryStatusModal
+        open={queryModalOpen}
+        onClose={() => setQueryModalOpen(false)}
+        analyzerId={analyzerId}
+        jobId={queryJobId}
+        onCompleted={(data) => {
+          if (data && Array.isArray(data.fields)) {
+            setFields(data.fields);
+          }
+        }}
+      />
     </div>
   );
 };

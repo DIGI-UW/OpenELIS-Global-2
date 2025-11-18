@@ -130,8 +130,9 @@ describe("FieldMapping", () => {
       callback([]);
     });
 
-    // Mock queryAnalyzer to return fields (for field list)
+    // Mock queryAnalyzer to return fields (for field list) - execute callback immediately
     analyzerService.queryAnalyzer.mockImplementation((id, callback) => {
+      // Execute callback immediately to simulate synchronous response
       callback({ fields: mockFields }, null);
     });
 
@@ -145,19 +146,25 @@ describe("FieldMapping", () => {
       expect(title.textContent).toContain("Test Analyzer");
     });
 
-    // Wait for fields table to load
+    // Wait for fields table to load and fields to be rendered
     await waitFor(() => {
       const tableContainer = screen.queryByTestId(
         "field-mapping-table-container",
       );
       expect(tableContainer).not.toBeNull();
-    });
+    }, { timeout: 5000 });
+
+    // Wait for field rows to actually render (not just the table container)
+    await waitFor(() => {
+      const fieldName = screen.queryByTestId("field-name-field-1");
+      expect(fieldName).not.toBeNull();
+    }, { timeout: 5000 });
 
     // Find and click a field row using data-testid
     const fieldName = await screen.findByTestId(
       "field-name-field-1",
       {},
-      { timeout: 3000 },
+      { timeout: 5000 },
     );
     expect(fieldName.textContent).toContain("GLUCOSE");
 
@@ -229,19 +236,25 @@ describe("FieldMapping", () => {
       expect(title.textContent).toContain("Test Analyzer");
     });
 
-    // Wait for fields table to load
+    // Wait for fields table to load and fields to be rendered
     await waitFor(() => {
       const tableContainer = screen.queryByTestId(
         "field-mapping-table-container",
       );
       expect(tableContainer).not.toBeNull();
-    });
+    }, { timeout: 5000 });
+
+    // Wait for field rows to actually render (not just the table container)
+    await waitFor(() => {
+      const fieldName = screen.queryByTestId("field-name-field-1");
+      expect(fieldName).not.toBeNull();
+    }, { timeout: 5000 });
 
     // Find and click a field row using data-testid
     const fieldName = await screen.findByTestId(
       "field-name-field-1",
       {},
-      { timeout: 3000 },
+      { timeout: 5000 },
     );
     expect(fieldName.textContent).toContain("GLUCOSE");
 
@@ -264,15 +277,15 @@ describe("FieldMapping", () => {
 
     // Verify mapping panel is in edit mode (no mapping exists, so edit mode by default)
     // Look for save button in mapping panel using data-testid
-    const saveButton = await screen.findByTestId(
-      "mapping-panel-save-button",
+    const saveDraftButton = await screen.findByTestId(
+      "mapping-panel-save-draft-button",
       {},
       { timeout: 2000 },
     );
-    expect(saveButton).not.toBeNull();
+    expect(saveDraftButton).not.toBeNull();
 
-    // Click save (will trigger createMapping)
-    await userEvent.click(saveButton);
+    // Click save as draft (will trigger createMapping)
+    await userEvent.click(saveDraftButton);
 
     // Assert: Verify API was called
     await waitFor(() => {

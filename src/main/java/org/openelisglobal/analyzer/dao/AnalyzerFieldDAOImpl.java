@@ -21,38 +21,19 @@ public class AnalyzerFieldDAOImpl extends BaseDAOImpl<AnalyzerField, String> imp
     @Transactional(readOnly = true)
     public List<AnalyzerField> findByAnalyzerId(String analyzerId) {
         try {
-            // Analyzer entity uses XML mappings with NUMERIC id, so we use native SQL
-            // to query by the analyzer_id foreign key column directly
             Integer analyzerIdInt;
             try {
                 analyzerIdInt = Integer.parseInt(analyzerId);
             } catch (NumberFormatException e) {
                 throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
             }
-            
-            // Use native SQL to get analyzer field IDs, then fetch entities with HQL
-            String sql = "SELECT id FROM analyzer_field WHERE analyzer_id = :analyzerId";
-            @SuppressWarnings("unchecked")
-            List<Object> rawResults = entityManager.createNativeQuery(sql)
-                    .setParameter("analyzerId", analyzerIdInt)
-                    .getResultList();
-            
-            // Convert Object results to String IDs
-            List<String> fieldIds = new java.util.ArrayList<>();
-            for (Object result : rawResults) {
-                if (result != null) {
-                    fieldIds.add(result.toString());
-                }
-            }
-            
-            if (fieldIds.isEmpty()) {
-                return new java.util.ArrayList<>();
-            }
-            
-            // Fetch entities by IDs using HQL (works with annotation-based entities)
-            String hql = "FROM AnalyzerField WHERE id IN :fieldIds";
+
+            // HQL join on legacy Analyzer (XML-mapped) via relationship path
+            String hql = "SELECT af FROM AnalyzerField af " +
+                    "JOIN af.analyzer a " +
+                    "WHERE a.id = :analyzerId";
             Query<AnalyzerField> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerField.class);
-            query.setParameterList("fieldIds", fieldIds);
+            query.setParameter("analyzerId", analyzerIdInt);
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding AnalyzerField by analyzer ID", e);

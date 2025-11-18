@@ -2,15 +2,18 @@ package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.*;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import javax.sql.DataSource;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Integration tests for AnalyzerFieldMappingService update workflow
@@ -39,6 +42,10 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
     @Autowired
     private AnalyzerService analyzerService;
 
+    @Autowired
+    private DataSource dataSource;
+
+    private JdbcTemplate jdbcTemplate;
     private Analyzer testAnalyzer;
     private AnalyzerField testField;
     private AnalyzerFieldMapping testMapping;
@@ -46,6 +53,9 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        // Clean up any leftover test data first
+        cleanTestData();
         // Create test analyzer
         testAnalyzer = new Analyzer();
         testAnalyzer.setName("TEST-INTEGRATION-ANALYZER");
@@ -84,6 +94,59 @@ public class AnalyzerFieldMappingServiceIntegrationTest extends BaseWebContextSe
         testMapping.setSysUserId("1");
         String mappingId = analyzerFieldMappingService.createMapping(testMapping);
         testMapping.setId(mappingId);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        // Clean up test data after each test
+        cleanTestData();
+    }
+
+    /**
+     * Clean up test data to avoid constraint violations in subsequent test runs
+     */
+    private void cleanTestData() {
+        try {
+            // Clean up any test data with our naming pattern (in correct order for foreign keys)
+            jdbcTemplate.update("DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN (SELECT id FROM analyzer_field WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER'))");
+            jdbcTemplate.update("DELETE FROM analyzer_field WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER')");
+            jdbcTemplate.update("DELETE FROM analyzer_configuration WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER')");
+            jdbcTemplate.update("DELETE FROM analyzer WHERE name = 'TEST-INTEGRATION-ANALYZER'");
+            
+            // Reset analyzer sequence to avoid ID conflicts (find max ID and set sequence to max+1)
+            // This ensures next analyzer creation uses an ID higher than any existing analyzer
+            Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
+            if (maxId != null) {
+                jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
+            }
+            
+            // Also clean up by ID if we have references
+            if (testMapping != null && testMapping.getId() != null) {
+                try {
+                    jdbcTemplate.update("DELETE FROM analyzer_field_mapping WHERE id = ?", testMapping.getId());
+                } catch (Exception e) {
+                    // Ignore - may already be deleted
+                }
+            }
+            if (testField != null && testField.getId() != null) {
+                try {
+                    jdbcTemplate.update("DELETE FROM analyzer_field WHERE id = ?", testField.getId());
+                } catch (Exception e) {
+                    // Ignore - may already be deleted
+                }
+            }
+            if (testAnalyzer != null && testAnalyzer.getId() != null) {
+                try {
+                    // Delete configuration first (foreign key constraint)
+                    jdbcTemplate.update("DELETE FROM analyzer_configuration WHERE analyzer_id = ?", Integer.parseInt(testAnalyzer.getId()));
+                    jdbcTemplate.update("DELETE FROM analyzer WHERE id = ?", Integer.parseInt(testAnalyzer.getId()));
+                } catch (Exception e) {
+                    // Ignore - may already be deleted
+                }
+            }
+        } catch (Exception e) {
+            // Ignore cleanup errors - data may not exist
+        }
     }
 
     /**

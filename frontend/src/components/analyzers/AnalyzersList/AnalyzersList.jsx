@@ -73,9 +73,42 @@ const AnalyzersList = () => {
     });
   }, []);
 
-  // Initial load
+  // Initial load + restore state from URL/sessionStorage
   useEffect(() => {
-    loadAnalyzers();
+    const params = new URLSearchParams(window.location.search);
+    const initialSearch = params.get("search") || "";
+    const initialStatus = params.get("status") || "";
+    const initialTestUnit = params.get("testUnit") || "";
+    const initialAnalyzerType = params.get("analyzerType") || "";
+
+    setSearchTerm(initialSearch);
+    const initialFilters = {
+      status: initialStatus,
+      testUnit: initialTestUnit,
+      analyzerType: initialAnalyzerType,
+    };
+    setFilters(initialFilters);
+    loadAnalyzers({ ...initialFilters, ...(initialSearch ? { search: initialSearch } : {}) });
+
+    // Restore scroll position (session)
+    const storedScrollY = sessionStorage.getItem("analyzers.scrollY");
+    if (storedScrollY) {
+      try {
+        window.scrollTo(0, parseInt(storedScrollY, 10));
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    // Persist scroll position on unload
+    const onBeforeUnload = () => {
+      sessionStorage.setItem("analyzers.scrollY", String(window.scrollY));
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      sessionStorage.setItem("analyzers.scrollY", String(window.scrollY));
+    };
   }, [loadAnalyzers]);
 
   // Search handler with debounce
@@ -94,6 +127,14 @@ const AnalyzersList = () => {
         searchFilters.search = value.trim();
       }
       loadAnalyzers(searchFilters);
+      // Update URL
+      const params = new URLSearchParams(window.location.search);
+      if (value.trim()) {
+        params.set("search", value.trim());
+      } else {
+        params.delete("search");
+      }
+      history.replace({ search: params.toString() });
     }, 300);
   };
 
@@ -102,6 +143,14 @@ const AnalyzersList = () => {
     const newFilters = { ...filters, [filterName]: value };
     setFilters(newFilters);
     loadAnalyzers(newFilters);
+    // Update URL
+    const params = new URLSearchParams(window.location.search);
+    if (value) {
+      params.set(filterName, value);
+    } else {
+      params.delete(filterName);
+    }
+    history.replace({ search: params.toString() });
   };
 
   // Table headers

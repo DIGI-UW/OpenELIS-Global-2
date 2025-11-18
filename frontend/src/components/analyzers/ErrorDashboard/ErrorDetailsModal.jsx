@@ -139,7 +139,7 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
 
           {/* Analyzer Logs */}
           <Column lg={16}>
-            <Accordion>
+            <Accordion data-testid="analyzer-logs-accordion">
               <AccordionItem
                 title={intl.formatMessage(
                   { id: "analyzer.errorDetails.logs" },

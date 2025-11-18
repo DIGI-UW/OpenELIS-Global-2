@@ -8,9 +8,9 @@
 
 ## Summary
 
-Implement comprehensive ASTM analyzer field mapping feature to enable laboratory administrators to configure field mappings between ASTM analyzer test codes, units, and qualitative values and OpenELIS tests, analytes, and result fields. The feature includes three main user workflows: (1) Configure field mappings for new analyzers (P1), (2) Maintain mappings as instruments change (P2), and (3) Resolve unmapped or failed analyzer messages (P3). The system provides a dual-panel mapping interface, analyzer management (CRUD operations), error dashboard for unmapped messages, and integration with existing ASTM message processing infrastructure.
+Implement comprehensive ASTM analyzer field mapping feature to enable laboratory administrators to configure field mappings between ASTM analyzer test codes, units, and qualitative values and OpenELIS tests, analytes, and result fields. The feature includes three main user workflows: (1) Configure field mappings for new analyzers (P1), (2) Maintain mappings as instruments change (P2), and (3) Resolve unmapped or failed analyzer messages (P3). The system provides a dual-panel mapping interface, analyzer management (CRUD operations), error dashboard for unmapped messages, and integration with existing ASTM message processing infrastructure. The left-hand navigation must mirror the latest Figma hierarchy: a single “Analyzers” parent node that expands to Analyzers Dashboard, Error Dashboard, Field Mappings (contextual), plus Quality Control placeholders (main QC dashboard, “QC Alerts & Violations”, “Corrective Actions”) that link into feature `003-westgard-qc`.
 
-**Technical Approach**: Extend existing OpenELIS analyzer infrastructure (legacy `Analyzer` entity, `ASTMAnalyzerReader`, `AnalyzerImportController`) with new annotation-based JPA entities for analyzer field mapping. Create new REST API endpoints following 5-layer architecture pattern. Build Carbon Design System UI components for analyzer management, field mapping interface, and error dashboard. Integrate with existing ASTM message processing to apply mappings during message interpretation. Support query analyzer functionality to retrieve available fields from analyzers via ASTM protocol. Integrate navigation with existing left-hand navigation bar using unified tab-navigation pattern (sub-nav items function as tabs, backend-driven via `/rest/menu` API, no separate Carbon Tabs components).
+**Technical Approach**: Extend existing OpenELIS analyzer infrastructure (legacy `Analyzer` entity, `ASTMAnalyzerReader`, `AnalyzerImportController`) with new annotation-based JPA entities for analyzer field mapping. Create new REST API endpoints following 5-layer architecture pattern. Build Carbon Design System UI components for analyzer management, field mapping interface, and error dashboard. Integrate with existing ASTM message processing to apply mappings during message interpretation. Support query analyzer functionality to retrieve available fields from analyzers via ASTM protocol. Integrate navigation with existing left-hand navigation bar using unified tab-navigation pattern (sub-nav items function as tabs, backend-driven via `/rest/menu` API, no separate Carbon Tabs components) while surfacing the future QC routes noted above.
 
 ## Technical Context
 
@@ -40,6 +40,7 @@ Implement comprehensive ASTM analyzer field mapping feature to enable laboratory
 - MUST internationalize all UI strings via React Intl
 - MUST use Liquibase for all schema changes
 - MUST maintain backward compatibility with existing analyzer plugin system
+- MUST keep all analyzer-related navigation under a single “Analyzers” parent node (per Figma), exposing QC placeholder routes alongside the ASTM-specific pages so the hierarchy remains consistent with feature `003-westgard-qc`
 
 **Scale/Scope**:
 - Entities: Analyzer, AnalyzerField, AnalyzerFieldMapping, QualitativeResultMapping, UnitMapping, AnalyzerError

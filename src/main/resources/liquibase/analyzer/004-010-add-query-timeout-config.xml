@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Default SystemConfiguration for analyzer query timeout (minutes) -->
+  <changeSet author="astm-analyzer-mapping-feature" id="analyzer-010-add-query-timeout-config">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="system_configuration" schemaName="clinlims"/>
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.system_configuration WHERE name = 'analyzer.query.timeout.minutes'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="system_configuration" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_configuration_seq"/>
+      <column name="name" value="analyzer.query.timeout.minutes"/>
+      <column name="value" value="5"/>
+      <column name="description" value="Query timeout in minutes for analyzer field queries (default: 5 minutes, configurable per deployment)"/>
+      <column name="active" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>
+
+

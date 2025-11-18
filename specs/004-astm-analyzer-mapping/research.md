@@ -210,9 +210,10 @@ This document consolidates technical research and decisions for implementing the
 
 **Implementation Approach**:
 - **Backend-Driven Menu**: Navigation items stored in database, exposed via `/rest/menu` API endpoint
-  - "Analyzers" parent menu item (expandable/collapsible)
-  - Sub-navigation items: "Analyzers List" (route `/analyzers`), "Error Dashboard" (route `/analyzers/errors`), "Field Mappings" (route `/analyzers/:id/mappings`)
-  - Role-based visibility handled server-side by menu API
+  - "Analyzers" parent menu item (expandable/collapsible) that always anchors every analyzer-related page
+  - Sub-navigation items (initial delivery): "Analyzers Dashboard" (route `/analyzers`), "Error Dashboard" (route `/analyzers/errors`), contextual "Field Mappings" (route `/analyzers/:id/mappings`)
+  - Quality Control placeholder entries (linking to feature `003-westgard-qc`): main QC dashboard (`/analyzers/qc`), "QC Alerts & Violations" (`/analyzers/qc/alerts`), and "Corrective Actions" (`/analyzers/qc/corrective-actions`) so the hierarchy matches the Figma navigation even before QC code lands in this branch
+  - Role-based visibility handled server-side by menu API (QC routes only for users with QC permissions)
 - **Unified Tab-Navigation**: Sub-navigation items act as tabs - NO separate Carbon `Tabs`/`TabList` components
   - Clicking sub-nav item navigates to route and highlights that item using Carbon `SideNavMenuItem` active state
   - Active tab/page tracked by highlighting corresponding sub-navigation item based on current route
@@ -223,10 +224,10 @@ This document consolidates technical research and decisions for implementing the
   - Active tab state derived from route (e.g., `/analyzers` highlights "Analyzers List")
 
 **Integration Points**:
-- **Menu API**: Extend `/rest/menu` endpoint to include analyzer navigation items
-- **Frontend Routing**: React Router DOM 5.2.0 for route handling
-- **Navigation Component**: Use existing `GlobalSideBar` component pattern with Carbon `SideNavMenu`/`SideNavMenuItem`
-- **Active State Tracking**: Route-based highlighting (compare `location.pathname` with menu item routes)
+- **Menu API**: Extend `/rest/menu` endpoint to include analyzer navigation items plus QC placeholders, filtered per user roles
+- **Frontend Routing**: React Router DOM 5.2.0 for `/analyzers`, `/analyzers/errors`, `/analyzers/:id/mappings`, `/analyzers/qc`, `/analyzers/qc/alerts`, `/analyzers/qc/corrective-actions`
+- **Navigation Component**: Use existing `GlobalSideBar` pattern with Carbon `SideNavMenu`/`SideNavMenuItem`
+- **Active State Tracking**: Route-based highlighting (compare `location.pathname` with menu item routes, including QC links)
 
 **Alternatives Considered**:
 - **Option A**: Separate Carbon `Tabs`/`TabList` components on analyzer pages
@@ -237,11 +238,11 @@ This document consolidates technical research and decisions for implementing the
   - **Rejected**: Creates confusion, users don't know which navigation to use
 
 **Technical Details**:
-- Menu items stored in database (existing `menu` table structure)
-- Menu API filters items based on user roles (LAB_USER, LAB_SUPERVISOR, System Administrator)
-- Frontend renders menu items dynamically from API response
+- Menu items stored in database (existing `menu` table structure) with new entries for QC dashboard + sub-pages
+- Menu API filters items based on user roles (LAB_USER, LAB_SUPERVISOR, System Administrator, QC roles)
+- Frontend renders menu items dynamically from API response; QC entries can display “coming soon” content until feature 003 ships
 - Active navigation item highlighted using Carbon `SideNavMenuItem` `isActive` prop
-- Route-to-menu-item mapping: `/analyzers` → "Analyzers List", `/analyzers/errors` → "Error Dashboard", `/analyzers/:id/mappings` → "Field Mappings"
+- Route-to-menu-item mapping: `/analyzers` → "Analyzers Dashboard", `/analyzers/errors` → "Error Dashboard", `/analyzers/:id/mappings` → "Field Mappings", `/analyzers/qc` → "Quality Control", `/analyzers/qc/alerts` → "QC Alerts & Violations", `/analyzers/qc/corrective-actions` → "Corrective Actions"
 
 **References**:
 - `frontend/src/components/common/GlobalSideBar.js` - Existing navigation component
