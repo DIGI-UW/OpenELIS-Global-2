@@ -257,19 +257,12 @@ public class AnalyzerFieldMappingServiceTest {
      */
     @Test
     public void testDeactivateMapping_WithActiveAnalyzer_LogsAuditTrail() {
-        // Arrange: Mapping is active, analyzer is active
+        // Arrange: Mapping is active, not required (can be disabled)
         testMapping.setIsActive(true);
         testMapping.setIsRequired(false); // Not a required mapping (can be disabled)
         testMapping.setSysUserId("USER-001");
-        numericField.setAnalyzer(testAnalyzer); // Ensure field has analyzer relationship
-        
-        AnalyzerConfiguration config = new AnalyzerConfiguration();
-        config.setAnalyzer(testAnalyzer);
         
         when(analyzerFieldMappingDAO.get("MAPPING-001")).thenReturn(Optional.of(testMapping));
-        when(analyzerFieldDAO.findByIdWithAnalyzer("FIELD-001")).thenReturn(Optional.of(numericField));
-        when(analyzerConfigurationService.getByAnalyzerId("1"))
-            .thenReturn(Optional.of(config));
         
         // Mock update to return the existing mapping (which will be updated by the implementation)
         when(analyzerFieldMappingDAO.update(org.mockito.ArgumentMatchers.any(AnalyzerFieldMapping.class)))
