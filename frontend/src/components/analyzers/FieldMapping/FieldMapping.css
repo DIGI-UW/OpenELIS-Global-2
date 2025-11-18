@@ -1,0 +1,34 @@
+/**
+ * FieldMapping Component Styles
+ * Task Reference: T059
+ */
+
+.field-mapping {
+  padding: 1rem;
+}
+
+.field-mapping-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.field-mapping-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 400;
+  flex: 1;
+  text-align: center;
+}
+
+.field-mapping-grid {
+  margin-top: 2rem;
+}
+
+.mapping-panel-placeholder {
+  padding: 2rem;
+  text-align: center;
+  color: #525252;
+}
+

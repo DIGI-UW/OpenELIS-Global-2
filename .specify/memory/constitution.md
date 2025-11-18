@@ -542,20 +542,17 @@ mixes with HTTP handling and business rules.
 
 ### V. Test-Driven Development
 
-**MANDATE**: New features MUST include automated tests. TDD workflow ENCOURAGED
-for complex logic.
+**MANDATE**: New features MUST include automated tests. All testing practices
+MUST adhere to the standards and procedures outlined in the authoritative
+**OpenELIS Testing Roadmap** (`.specify/guides/testing-roadmap.md`).
 
-**Requirements**:
+**Core Requirements**:
 
-- **Backend**: JUnit 4 (4.13.1) + Mockito 2.21.0 for unit tests, integration
-  tests for API endpoints
-  - ⚠️ Use `org.junit.Test` NOT `org.junit.jupiter.api.Test` (JUnit 5)
-  - Use `org.junit.Assert.*` NOT `org.junit.jupiter.api.Assertions.*`
-  - Assertion order: `assertEquals(expected, actual)` for JUnit 4
-- **Frontend**: Jest + React Testing Library for unit tests, Cypress 12.17.3 for
-  E2E tests
-- **FHIR**: Validate generated FHIR resources against R4 profiles
-- **Coverage Goal**: >70% for new code (measured via JaCoCo)
+- **TDD Workflow**: Red-Green-Refactor cycle is mandatory for complex logic
+- **Test Coverage Goals**: >80% backend (JaCoCo), >70% frontend (Jest)
+- **Checkpoint Validations**: Tests must pass at each SDD phase checkpoint (per
+  Spec-Driven Development workflow)
+- **Test Data Management**: Use builders/factories, NOT hardcoded values
 
 **Test Organization**:
 
@@ -574,8 +571,10 @@ for complex logic.
 testing catches regressions, enforces contract compliance, and enables confident
 refactoring.
 
-**Reference**:
-[README.md Testing Section](https://github.com/DIGI-UW/OpenELIS-Global-2#to-ensure-your-code-passes-the-same-checks-as-the-ci-pipeline)
+**Reference**: For detailed testing patterns, strategies, and best practices,
+see [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md). This roadmap
+provides comprehensive guidance for both AI agents and human developers on test
+creation, execution, and maintenance.
 
 #### Section V.4: ORM Validation Tests (ADDED 2025-10-31)
 
@@ -660,6 +659,16 @@ implementation details.
   - **Rationale**: Running tests individually provides faster feedback, easier
     debugging, and prevents cascading failures from masking root causes.
 
+**Command Examples**:
+
+```bash
+# Development (CORRECT - run individual test)
+npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+
+# CI/CD only (NOT during development)
+npm run cy:run
+```
+
 **Configuration Requirements**:
 
 - **Video Recording**: MUST be disabled by default
@@ -719,10 +728,6 @@ implementation details.
   - Target: Individual test <30 seconds, full suite <5 minutes
   - If tests exceed targets, refactor to reduce setup/teardown overhead
 
-**Note**: Technical implementation details (code examples, configuration syntax)
-belong in plan.md and research.md, not in the constitution. This section focuses
-on functional requirements and principles.
-
 **Rationale**: During implementation of feature 001-sample-storage, Cypress E2E
 tests grew to 65+ test cases with video recording enabled, causing slow
 execution (>15 minutes) and disk space issues. By disabling video recording,
@@ -749,6 +754,36 @@ debugging information without performance overhead.
 - ❌ **Per-test setup/teardown** - Use shared setup hooks for efficiency
 - ❌ **No console log review** - Always review browser console logs after test
   execution
+- ❌ **Not using data-testid selectors** - Use data-testid as primary selector
+  strategy (most stable, survives CSS changes and refactoring)
+- ❌ **Ineffective DOM queries** - Use scoped queries, viewport management,
+  table filtering (see Testing Roadmap for patterns)
+- ❌ **Recreating test data via UI** - Use API-based setup for test data (10x
+  faster than UI interactions)
+- ❌ **Starting new sessions unnecessarily** - Use cy.session() with
+  cacheAcrossSpecs to preserve login state (10-20x faster)
+
+**Reference to Testing Roadmap**:
+
+All Cypress testing practices MUST adhere to the standards and procedures
+outlined in the authoritative **OpenELIS Testing Roadmap**
+(`.specify/guides/testing-roadmap.md`).
+
+The Testing Roadmap provides comprehensive technical guidance on:
+
+- Selector strategy (data-testid priority, ARIA roles, semantic selectors)
+- Session management (cy.session() patterns with OpenELIS adaptation)
+- Test data management (API-first approach, fixture patterns)
+- DOM query effectiveness (scoped queries, viewport, table filtering)
+- Test simplification (happy path focus, user workflow validation)
+- Carbon component patterns (ComboBox, DataTable, Modal, OverflowMenu)
+- cy.intercept() patterns (official Cypress pattern with aliases)
+- Debugging techniques (Chrome DevTools integration)
+- Migration strategy (how to migrate existing tests)
+
+**Note**: Technical implementation details (code examples, configuration syntax)
+belong in the Testing Roadmap and plan.md, not in the constitution. This section
+focuses on functional requirements and principles.
 
 ---
 

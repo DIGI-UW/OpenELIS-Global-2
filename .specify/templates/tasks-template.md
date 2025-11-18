@@ -8,8 +8,9 @@ description: "Task list template for feature implementation"
 plan.md (required), spec.md (required for user stories), research.md,
 data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only
-include them if explicitly requested in the feature specification.
+**Tests**: The examples below include test tasks. Tests are MANDATORY for all
+user stories (per Constitution V and Testing Roadmap). Test tasks MUST appear
+BEFORE implementation tasks to enforce TDD workflow.
 
 **Organization**: Tasks are grouped by user story to enable independent
 implementation and testing of each story.
@@ -83,23 +84,102 @@ parallel
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 1 (MANDATORY - TDD Enforcement)
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> **CRITICAL: Write these tests FIRST, ensure they FAIL before implementation**
+>
+> Reference: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
+> Templates: `.specify/templates/testing/`
 
-- [ ] T010 [P] [US1] Unit test for [service/component] in
-      tests/unit/test\_[name].py
-- [ ] T010a [P] [US1] ORM validation test (if using Hibernate/JPA/Entity
-      Framework - per Constitution V.4): Build SessionFactory/DbContext using
-      `config.addAnnotatedClass()`, validate annotations, <5s execution
-- [ ] T011 [P] [US1] Integration test for [user journey] in
-      tests/integration/test\_[name].py
-- [ ] T011b [P] [US1] Cypress E2E test for [user story] in
-      frontend/cypress/e2e/[feature].cy.js (per Constitution V.5): _ Run
-      individually during development _ Review console logs and screenshots
-      post-run
+- [ ] T010 [P] [US1] Unit test for [ServiceName] in
+      src/test/java/org/openelisglobal/{module}/service/[ServiceName]Test.java
+      (Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`) -
+      Reference:
+      [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
+      for detailed patterns - Reference:
+      [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
+      for quick reference - **TDD Workflow**: Write test FIRST (RED), then
+      implement (GREEN), then refactor - **Test Slicing**: Use
+      `@RunWith(MockitoJUnitRunner.class)` for isolated unit tests (NOT
+      `@SpringBootTest`) - **Mocking**: Use `@Mock` (NOT `@MockBean`) for
+      isolated unit tests - **Test Data**: Use builders/factories (NOT hardcoded
+      values) - **Coverage Goal**: >80% (measured via JaCoCo) - **SDD
+      Checkpoint**: Must pass after Phase 2 (Services)
+- [ ] T010a [P] [US1] ORM validation test in
+      src/test/java/org/openelisglobal/{module}/HibernateMappingValidationTest.java -
+      Reference:
+      [Testing Roadmap - ORM Validation Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
+      for detailed patterns - Build SessionFactory using
+      `config.addAnnotatedClass()` - Validate all entity mappings load without
+      errors - MUST execute in <5 seconds (per Constitution V.4) - MUST NOT
+      require database connection - **SDD Checkpoint**: Must pass after Phase 1
+      (Entities)
+- [ ] T010b [P] [US1] DAO test for [DAO] in
+      src/test/java/org/openelisglobal/{module}/dao/[DAO]Test.java (Template:
+      `.specify/templates/testing/DataJpaTestDao.java.template`) - Reference:
+      [Testing Roadmap - @DataJpaTest (DAO/Repository Layer)](.specify/guides/testing-roadmap.md#datajpatest-daorepository-layer)
+      for detailed patterns - Reference:
+      [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
+      for quick reference - **Test Slicing**: Use `@DataJpaTest` for DAO testing
+      (NOT `@SpringBootTest` - faster execution) - **Test Data**: Use
+      `TestEntityManager` (NOT JdbcTemplate) for test data setup - **Transaction
+      Management**: Automatic rollback (no manual cleanup needed) - **Test HQL
+      queries**: CRUD operations, findBy\* methods, relationship queries -
+      **Coverage Goal**: >80% (measured via JaCoCo)
+- [ ] T011 [P] [US1] Controller test for REST endpoint in
+      src/test/java/org/openelisglobal/{module}/controller/[ControllerName]Test.java
+      (Template:
+      `.specify/templates/testing/WebMvcTestController.java.template`) -
+      Reference:
+      [Testing Roadmap - @WebMvcTest (Controller Layer)](.specify/guides/testing-roadmap.md#webmvctest-controller-layer)
+      for detailed patterns - Reference:
+      [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
+      for quick reference - **Test Slicing**: Use `@WebMvcTest` for controller
+      testing (NOT `@SpringBootTest` - faster execution) - **Mocking**: Use
+      `@MockBean` (NOT `@Mock`) for Spring context mocking - **HTTP Testing**:
+      Use `MockMvc` for HTTP request/response testing - **Test Data**: Use
+      builders/factories for test data - **Coverage Goal**: >80% (measured via
+      JaCoCo) - **SDD Checkpoint**: Must pass after Phase 3 (Controllers)
+- [ ] T011a [P] [US1] Frontend unit test for [ComponentName] in
+      frontend/src/components/{feature}/[ComponentName].test.jsx (Template:
+      `.specify/templates/testing/JestComponent.test.jsx.template`) - Reference:
+      [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
+      for detailed patterns - Reference:
+      [Jest Best Practices](.specify/guides/jest-best-practices.md) for quick
+      reference - **TDD Workflow**: Write test FIRST (RED), then implement
+      (GREEN), then refactor - **Import Order**: React → Testing Library →
+      userEvent → jest-dom → Intl → Router → Component → Utils → Messages -
+      **Mocks BEFORE imports**: Jest hoisting requires mocks before imports -
+      **userEvent PREFERRED**: Use `userEvent.click()`, `userEvent.type()` for
+      user interactions (NOT `fireEvent`) - **Async Testing**: Use `waitFor`
+      with `queryBy*` (NOT `getBy*`) or `findBy*` for async elements - **DON'T
+      use setTimeout**: Use `waitFor` instead (has retry logic) - **Carbon
+      Components**: Use `userEvent`, `waitFor` for portals, `within()` for
+      scoped queries - **Test Behavior**: Test user-visible behavior, NOT
+      implementation details - **Edge Cases**: Test null, empty, boundary
+      values - **Coverage Goal**: >70% (measured via Jest) - **SDD Checkpoint**:
+      Must pass after Phase 4 (Frontend)
+- [ ] T011b [P] [US1] Cypress E2E test in frontend/cypress/e2e/[feature].cy.js
+      (Template: `.specify/templates/testing/CypressE2E.cy.js.template`) -
+      Reference:
+      [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
+      for functional requirements - Reference:
+      [Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
+      for detailed patterns - Reference:
+      [Cypress Best Practices](.specify/guides/cypress-best-practices.md) for
+      quick reference - Use data-testid selectors (PREFERRED) - Use cy.session()
+      for login state (10-20x faster) - Use API-based test data setup (10x
+      faster than UI) - Set viewport before visit - Set up intercepts BEFORE
+      actions - Use .should() for retry-ability (no arbitrary cy.wait()) - Focus
+      on happy path user workflows (not implementation details) - Run
+      individually during development:
+      `npm run cy:run -- --spec "cypress/e2e/[feature].cy.js"` - Post-run review
+      (MANDATORY): Review console logs, screenshots, test output
 
 ### Implementation for User Story 1
+
+> **CRITICAL: Implementation tasks depend on test tasks. Tests must pass
+> before** > **proceeding to next phase checkpoint.**
 
 - [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
 - [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
@@ -109,8 +189,9 @@ parallel
 - [ ] T016 [US1] Add validation and error handling
 - [ ] T017 [US1] Add logging for user story 1 operations
 
-**Checkpoint**: At this point, User Story 1 should be fully functional and
-testable independently
+**Checkpoint Validation**: At this point, User Story 1 should be fully
+functional and testable independently. ALL tests from T010-T011b MUST pass
+before proceeding to next phase.
 
 ---
 
@@ -120,12 +201,32 @@ testable independently
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 2 (MANDATORY - TDD Enforcement)
 
-- [ ] T018 [P] [US2] Contract test for [endpoint] in
-      tests/contract/test\_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in
-      tests/integration/test\_[name].py
+> **CRITICAL: Write these tests FIRST, ensure they FAIL before implementation**
+>
+> Reference: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
+> Templates: `.specify/templates/testing/`
+
+- [ ] T018 [P] [US2] Unit test for [ServiceName] in
+      src/test/java/org/openelisglobal/{module}/service/[ServiceName]Test.java
+      (Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`) -
+      Reference:
+      [Testing Roadmap - Unit Tests](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
+      and
+      [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md) -
+      **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` (NOT
+      `@SpringBootTest`) - **Mocking**: Use `@Mock` (NOT `@MockBean`)
+- [ ] T019 [P] [US2] Controller test for REST endpoint in
+      src/test/java/org/openelisglobal/{module}/controller/[ControllerName]Test.java
+      (Template:
+      `.specify/templates/testing/WebMvcTestController.java.template`) -
+      Reference:
+      [Testing Roadmap - @WebMvcTest](.specify/guides/testing-roadmap.md#webmvctest-controller-layer)
+      and
+      [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md) -
+      **Test Slicing**: Use `@WebMvcTest` (NOT `@SpringBootTest`) - **Mocking**:
+      Use `@MockBean` (NOT `@Mock`)
 
 ### Implementation for User Story 2
 
@@ -145,7 +246,12 @@ independently
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 3 (MANDATORY - TDD Enforcement)
+
+> **CRITICAL: Write these tests FIRST, ensure they FAIL before implementation**
+>
+> Reference: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
+> Templates: `.specify/templates/testing/`
 
 - [ ] T024 [P] [US3] Contract test for [endpoint] in
       tests/contract/test\_[name].py

@@ -1,0 +1,29 @@
+.analyzers-list {
+  padding: 1rem;
+}
+
+.analyzers-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.analyzers-list-stats {
+  margin-bottom: 1rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.analyzers-list-filters {
+  margin-bottom: 1rem;
+}
