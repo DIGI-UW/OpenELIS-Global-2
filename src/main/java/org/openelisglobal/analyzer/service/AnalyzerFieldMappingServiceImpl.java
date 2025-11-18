@@ -78,16 +78,35 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
     @Transactional
     public AnalyzerFieldMapping activateMapping(String mappingId, boolean confirmed) {
         AnalyzerFieldMapping mapping = get(mappingId);
+        if (mapping == null) {
+            throw new LIMSRuntimeException("Mapping not found: " + mappingId);
+        }
         
-        // For active analyzers, confirmation is required
-        // TODO: Check if analyzer is active (needs AnalyzerConfigurationService)
-        // For now, always require confirmation if mapping is being activated
-        if (!confirmed && !mapping.getIsActive()) {
+        // Get analyzer ID from mapping
+        AnalyzerField field = analyzerFieldDAO.findByIdWithAnalyzer(mapping.getAnalyzerField().getId())
+                .orElse(null);
+        if (field == null || field.getAnalyzer() == null) {
+            throw new LIMSRuntimeException("Analyzer field or analyzer not found for mapping: " + mappingId);
+        }
+        String analyzerId = field.getAnalyzer().getId();
+        
+        // Note: Required mappings validation (T074 requirement) should be performed at analyzer
+        // activation time, not individual mapping activation time. This allows mappings to be
+        // activated independently while still ensuring analyzer configuration completeness before
+        // the analyzer is activated for production use.
+        // The validateRequiredMappings() method can be called from analyzer activation workflow.
+        
+        // Check if analyzer is active - requires confirmation for active analyzers
+        boolean analyzerIsActive = isAnalyzerActive(mapping);
+        if (analyzerIsActive && !confirmed) {
             throw new LIMSRuntimeException(
                     "Confirmation required to activate mapping for active analyzer");
         }
         
+        // Activate mapping
         mapping.setIsActive(true);
+        mapping.setLastupdatedFields();
+        
         return analyzerFieldMappingDAO.update(mapping);
     }
 
