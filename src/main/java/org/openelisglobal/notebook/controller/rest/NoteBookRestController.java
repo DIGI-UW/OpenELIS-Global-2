@@ -186,7 +186,7 @@ public class NoteBookRestController extends BaseRestController {
         response.setLog(items);
         return ResponseEntity.ok(response);
     }
-    
+
     @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<List<NoteBookDisplayBean>> getAvailableNotebooks() {

@@ -281,7 +281,7 @@ public class NoteBook extends BaseObject<Integer> {
     public void setIsTemplate(Boolean isTemplate) {
         this.isTemplate = isTemplate;
     }
-    
+
     public UUID getQuestionnaireFhirUuid() {
         return questionnaireFhirUuid;
     }

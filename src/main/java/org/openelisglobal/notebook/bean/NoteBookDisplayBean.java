@@ -87,6 +87,7 @@ public class NoteBookDisplayBean {
     public void setEntriesCount(Integer entriesCount) {
         this.entriesCount = entriesCount;
     }
+
     public UUID getQuestionnaireFhirUuid() {
         return questionnaireFhirUuid;
     }

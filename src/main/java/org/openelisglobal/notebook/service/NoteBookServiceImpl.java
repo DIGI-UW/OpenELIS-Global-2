@@ -444,7 +444,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
         return new ArrayList<>();
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public List<NoteBook> getAllActiveNotebooks() {

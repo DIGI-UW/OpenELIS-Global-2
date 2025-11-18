@@ -19,7 +19,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
         super(NoteBook.class);
     }
 
-        @Override
+    @Override
     @SuppressWarnings("unchecked")
     public List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
             Date fromDate, Date toDate) {
@@ -71,7 +71,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
 
         return query.list();
     }
-    
+
     @Override
     public List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
             Date fromDate, Date toDate, List<Integer> entryIds) {
