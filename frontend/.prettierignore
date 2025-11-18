@@ -1,0 +1,11 @@
+# Ignore generated and vendor content
+node_modules/
+dist/
+build/
+public/
+coverage/
+reports/
+**/*.min.js
+*.log
+
+

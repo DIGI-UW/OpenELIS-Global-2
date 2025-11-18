@@ -1,0 +1,20 @@
+# Docker build context exclusions
+.git
+.gitignore
+.specify/
+.cursor/
+node_modules/
+frontend/node_modules/
+target/
+**/target/
+*.log
+*.tmp
+Dockerfile.dev
+Dockerfile.prod
+Dockerfile.certs
+volume/
+dev/
+docs/
+specs/
+
+

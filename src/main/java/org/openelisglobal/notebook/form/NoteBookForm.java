@@ -28,6 +28,7 @@ public class NoteBookForm {
     private List<String> tags;
     private List<NoteBookPage> pages;
     private List<NoteBookFileForm> files;
+    private List<NoteBookCommentForm> comments;
     private List<Integer> analyzerIds;
     private Integer templateId;
     private Boolean isTemplate;
@@ -168,6 +169,14 @@ public class NoteBookForm {
         this.isTemplate = isTemplate;
     }
 
+    public List<NoteBookCommentForm> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<NoteBookCommentForm> comments) {
+        this.comments = comments;
+    }
+
     public static class NoteBookFileForm extends NoteBookFile {
 
         private static final long serialVersionUID = 3142138533368581327L;
@@ -186,6 +195,28 @@ public class NoteBookForm {
 
             setFileType(imageInfo[0]);
             setFileData(Base64.getDecoder().decode(imageInfo[1]));
+        }
+    }
+
+    public static class NoteBookCommentForm {
+        private Integer id;
+        @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+        private String text;
+
+        public Integer getId() {
+            return id;
+        }
+
+        public void setId(Integer id) {
+            this.id = id;
+        }
+
+        public String getText() {
+            return text;
+        }
+
+        public void setText(String text) {
+            this.text = text;
         }
     }
 

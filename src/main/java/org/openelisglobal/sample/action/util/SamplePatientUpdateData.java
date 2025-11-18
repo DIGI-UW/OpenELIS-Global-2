@@ -559,6 +559,9 @@ public class SamplePatientUpdateData {
         createObservation(sampleOrder.getReferringPatientNumber(),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.REFERRERS_PATIENT_ID),
                 ValueType.LITERAL);
+        createObservation(sampleOrder.getProvisionalClinicalDiagnosis(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.PROVISIONAL_CLINICAL_DIAGNOSIS),
+                ValueType.LITERAL);
         if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.USE_BILLING_REFERENCE_NUMBER, "true")) {
             createObservation(sampleOrder.getBillingReferenceNumber(),
                     observationHistoryService.getObservationTypeIdForType(ObservationType.BILLING_REFERENCE_NUMBER),

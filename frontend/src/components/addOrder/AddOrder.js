@@ -118,6 +118,17 @@ const AddOrder = (props) => {
     });
   }
 
+  function handleProvisionalClinicalDiagnosisChange(e) {
+    setOrderFormValues({
+      ...orderFormValues,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        provisionalClinicalDiagnosis: e.target.value,
+      },
+    });
+    setNotificationVisible(false);
+  }
+
   function handleRequesterWorkPhone(e) {
     setOrderFormValues({
       ...orderFormValues,
@@ -694,6 +705,22 @@ const AddOrder = (props) => {
                 }
                 suggestions={providers.length > 0 ? providers : []}
                 required
+              />
+            </Column>
+            <Column lg={8} md={4} sm={4}>
+              <TextInput
+                name="provisionalDiagnosis"
+                placeholder={intl.formatMessage({
+                  id: "input.placeholder.provisionalClinicalDiagnosis",
+                })}
+                onChange={handleProvisionalClinicalDiagnosisChange}
+                value={
+                  orderFormValues.sampleOrderItems.provisionalClinicalDiagnosis
+                }
+                labelText={intl.formatMessage({
+                  id: "order.requester.provisionalDiagnosis.label",
+                })}
+                id="provisionalDiagnosisId"
               />
             </Column>
             {/* <Column lg={8} md={4} sm={4}>

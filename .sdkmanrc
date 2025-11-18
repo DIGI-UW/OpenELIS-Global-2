@@ -1,0 +1,7 @@
+# SDKMAN configuration for OpenELIS Global 3.0
+# Automatically sets Java version when entering this directory
+# Usage: Enable with `sdk env` or set `sdkman_auto_env=true` in ~/.sdkman/etc/config
+
+# Java 21 LTS (required per OpenELIS Global 3.0 Constitution)
+java=21.0.5-tem
+
