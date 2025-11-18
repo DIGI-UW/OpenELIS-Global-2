@@ -119,7 +119,7 @@ const MappingActivationModal = ({
                 "I understand these changes will apply to new messages only",
             })}
             checked={confirmed}
-            onChange={(checked) => setConfirmed(checked)}
+            onChange={(_, { checked }) => setConfirmed(checked)}
             data-testid="activation-confirmation-checkbox"
           />
         </div>
