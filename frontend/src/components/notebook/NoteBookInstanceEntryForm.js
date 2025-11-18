@@ -59,6 +59,8 @@ import { Add } from "@carbon/icons-react";
 import AddSample from "../addOrder/AddSample";
 import { sampleObject } from "../addOrder/Index";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
+import { SearchResults } from "../resultPage/SearchResultForm";
+import CustomLabNumberInput from "../common/CustomLabNumberInput";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -108,6 +110,9 @@ const NoteBookInstanceEntryForm = () => {
   const [auditTrailLoading, setAuditTrailLoading] = useState(false);
   const [auditTrailPage, setAuditTrailPage] = useState(1);
   const [auditTrailPageSize, setAuditTrailPageSize] = useState(10);
+  const [resultsAccession, setResultsAccession] = useState("");
+  const [results, setResults] = useState({ testResult: [] });
+  const [resultsLoading, setResultsLoading] = useState(false);
 
   const handleSubmit = (status) => {
     if (isSubmitting) {
@@ -329,6 +334,7 @@ const NoteBookInstanceEntryForm = () => {
 
   const [showPageModal, setShowPageModal] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
+  const [editingPageIndex, setEditingPageIndex] = useState(null);
   const [newPage, setNewPage] = useState({
     order: null,
     title: "",
@@ -340,7 +346,7 @@ const NoteBookInstanceEntryForm = () => {
   const [pageError, setPageError] = useState("");
   const [tagError, setTagError] = useState("");
 
-  // Open modal
+  // Open modal for adding new page
   const openPageModal = () => {
     // Calculate next order number (consecutively starting with 1)
     const nextOrder =
@@ -355,6 +361,23 @@ const NoteBookInstanceEntryForm = () => {
       instructions: "",
       tests: [],
     });
+    setEditingPageIndex(null);
+    setPageError("");
+    setShowPageModal(true);
+  };
+
+  // Open modal for editing existing page
+  const openEditPageModal = (index) => {
+    const page = noteBookData.pages[index];
+    setNewPage({
+      order: page.order,
+      title: page.title || "",
+      content: page.content || "",
+      instructions: page.instructions || "",
+      tests: page.tests || [],
+      completed: page.completed || false,
+    });
+    setEditingPageIndex(index);
     setPageError("");
     setShowPageModal(true);
   };
@@ -380,7 +403,7 @@ const NoteBookInstanceEntryForm = () => {
     setNewTag(value);
   };
 
-  // Add new page to noteBookData.pages
+  // Add or update page in noteBookData.pages
   const handleAddPage = () => {
     if (!newPage.title.trim() || !newPage.content.trim()) {
       setPageError(
@@ -388,11 +411,25 @@ const NoteBookInstanceEntryForm = () => {
       );
       return;
     }
-    setNoteBookData((prev) => ({
-      ...prev,
-      pages: [...prev.pages, newPage],
-    }));
+    if (editingPageIndex !== null) {
+      // Update existing page
+      setNoteBookData((prev) => {
+        const updatedPages = [...prev.pages];
+        updatedPages[editingPageIndex] = { ...newPage };
+        return {
+          ...prev,
+          pages: updatedPages,
+        };
+      });
+    } else {
+      // Add new page
+      setNoteBookData((prev) => ({
+        ...prev,
+        pages: [...prev.pages, newPage],
+      }));
+    }
     setShowPageModal(false);
+    setEditingPageIndex(null);
   };
 
   const handleAddTag = () => {
@@ -409,13 +446,11 @@ const NoteBookInstanceEntryForm = () => {
     setShowTagModal(false);
   };
 
-  // Remove page by index
-  const handleRemovePage = (index) => {
+  // Mark page as complete
+  const handleMarkPageComplete = (index) => {
     setNoteBookData((prev) => {
-      const updatedPages = prev.pages
-        .filter((_, i) => i !== index)
-        .map((page, i) => ({ ...page, order: i + 1 })); // reassign order
-
+      const updatedPages = [...prev.pages];
+      updatedPages[index] = { ...updatedPages[index], completed: true };
       return {
         ...prev,
         pages: updatedPages,
@@ -481,9 +516,8 @@ const NoteBookInstanceEntryForm = () => {
     setNewComment("");
   };
 
-  const handleAccesionChange = (e) => {
-    const { name, value } = e.target;
-    setAccesiion(value);
+  const handleAccesionChange = (e, rawValue) => {
+    setAccesiion(rawValue ? rawValue : e?.target?.value);
   };
 
   const handleAccesionSearch = () => {
@@ -613,6 +647,45 @@ const NoteBookInstanceEntryForm = () => {
     setAuditTrailPageSize(pageInfo.pageSize);
   };
 
+  const handleResultsAccessionChange = (e, rawValue) => {
+    setResultsAccession(rawValue ? rawValue : e?.target?.value);
+  };
+
+  const handleResultsSearch = () => {
+    if (!resultsAccession.trim()) {
+      return;
+    }
+    setResultsLoading(true);
+    setResults({ testResult: [] });
+    // Extract lab number from accession (format: LAB-NUMBER or just LAB-NUMBER)
+    const labNumber = resultsAccession.split("-")[0];
+    const searchEndPoint =
+      "/rest/LogbookResults?" +
+      "labNumber=" +
+      labNumber +
+      "&doRange=" +
+      false +
+      "&finished=" +
+      false +
+      "&patientPK=" +
+      "&collectionDate=" +
+      "&recievedDate=" +
+      "&selectedTest=" +
+      "&selectedSampleStatus=" +
+      "&selectedAnalysisStatus=";
+    getFromOpenElisServer(searchEndPoint, (data) => {
+      if (data && data.testResult) {
+        // Add IDs to results for SearchResults component
+        var i = 0;
+        data.testResult.forEach((item) => (item.id = "" + i++));
+        setResults(data);
+      } else {
+        setResults({ testResult: [] });
+      }
+      setResultsLoading(false);
+    });
+  };
+
   const statusMap = [
     { id: "DRAFT", value: "Save Draft" },
     { id: "SUBMITTED", value: "Submit for Review" },
@@ -637,6 +710,25 @@ const NoteBookInstanceEntryForm = () => {
     return statusMap.find((s) => s.id === nextStatus);
   }
 
+  const statusColors = {
+    DRAFT: "gray",
+    SUBMITTED: "cyan",
+    FINALIZED: "green",
+    LOCKED: "purple",
+    ARCHIVED: "gray",
+    NEW: "gray",
+  };
+
+  const getExperimentTypeName = () => {
+    if (!noteBookData.type) return "";
+    const typeObj = types.find((t) => t.id == noteBookData.type);
+    return typeObj ? typeObj.value : "";
+  };
+
+  const getStatusColor = (status) => {
+    return statusColors[status] || "gray";
+  };
+
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -645,7 +737,8 @@ const NoteBookInstanceEntryForm = () => {
           <Section>
             <Section>
               <Heading>
-                <FormattedMessage id="notebook.label.formEntry" />
+                <FormattedMessage id="notebook.page.modal.title.label" /> :
+                {noteBookData.title}
               </Heading>
             </Section>
           </Section>
@@ -654,24 +747,144 @@ const NoteBookInstanceEntryForm = () => {
       {notificationVisible === true ? <AlertDialog /> : ""}
       {loading && <Loading></Loading>}
       <Grid fullWidth={true} className="orderLegendBody">
+        {/* Status & Metadata Section */}
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1rem",
+              }}
+            >
+              <Heading style={{ margin: 0 }}>
+                <FormattedMessage id="notebook.status.metadata.title" />
+              </Heading>
+              {noteBookData.status && (
+                <Tag type={getStatusColor(noteBookData.status)} size="sm">
+                  {statuses.find((s) => s.id === noteBookData.status)?.value ||
+                    noteBookData.status}
+                </Tag>
+              )}
+            </div>
+            <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={8} md={8} sm={4}>
+                <p style={{ margin: 0 }}>
+                  <strong>
+                    {intl.formatMessage({
+                      id: "notebook.label.experimentType",
+                    })}
+                    :{" "}
+                  </strong>
+                  {getExperimentTypeName() ||
+                    intl.formatMessage({ id: "not.available" })}
+                </p>
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <p style={{ margin: 0 }}>
+                  <strong>
+                    {intl.formatMessage({ id: "notebook.label.project" })}:{" "}
+                  </strong>
+                  {noteBookData.project ||
+                    intl.formatMessage({ id: "not.available" })}
+                </p>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <p style={{ margin: 0 }}>
+                  <strong>
+                    <FormattedMessage id="notebook.tags.title" />:{" "}
+                  </strong>
+                  {noteBookData.tags && noteBookData.tags.length > 0 ? (
+                    <span>
+                      {noteBookData.tags.map((tag, index) => (
+                        <Tag
+                          key={index}
+                          type="blue"
+                          size="sm"
+                          style={{
+                            marginRight: "0.5rem",
+                            marginBottom: "0.5rem",
+                          }}
+                        >
+                          {tag}
+                        </Tag>
+                      ))}
+                    </span>
+                  ) : (
+                    <span style={{ color: "#525252" }}>
+                      {intl.formatMessage({ id: "not.available" })}
+                    </span>
+                  )}
+                </p>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
+              {/* Right side: Date Created, Author */}
+              <Column lg={16} md={8} sm={4}>
+                <Grid fullWidth={true}>
+                  <Column lg={12} md={8} sm={4}></Column>
+                  <Column lg={4} md={8} sm={4} style={{ textAlign: "right" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.5rem",
+                        alignItems: "flex-end",
+                      }}
+                    >
+                      {noteBookData.dateCreated && (
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.875rem",
+                            color: "#525252",
+                          }}
+                        >
+                          {intl.formatMessage({ id: "date.created" })}:{" "}
+                          {noteBookData.dateCreated}
+                        </p>
+                      )}
+                      {noteBookData.technicianName && (
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.875rem",
+                            color: "#525252",
+                          }}
+                        >
+                          {intl.formatMessage({ id: "notebook.label.author" })}:{" "}
+                          {noteBookData.technicianName}
+                        </p>
+                      )}
+                    </div>
+                  </Column>
+                </Grid>
+              </Column>
+            </Grid>
+          </Section>
+        </Column>
+        <Column lg={16} md={8} sm={4}>
+          <br />
+        </Column>
         <Column lg={16} md={8} sm={4}>
           <ContentSwitcher
             selectedIndex={selectedTab}
             onChange={({ index }) => setSelectedTab(index)}
           >
-            <Switch
-              text={intl.formatMessage({ id: "notebook.tab.entryDetails" })}
-            />
-            <Switch
-              text={intl.formatMessage({ id: "notebook.tab.metadata" })}
-            />
-            <Switch text={intl.formatMessage({ id: "notebook.tab.samples" })} />
+            <Switch text={intl.formatMessage({ id: "notebook.tab.content" })} />
             <Switch
               text={intl.formatMessage({ id: "notebook.tab.attachments" })}
             />
+            <Switch text={intl.formatMessage({ id: "notebook.tab.samples" })} />
             <Switch
               text={intl.formatMessage({ id: "notebook.tab.workflow" })}
             />
+            <Switch text={intl.formatMessage({ id: "notebook.tab.results" })} />
             <Switch
               text={intl.formatMessage({ id: "notebook.tab.comments" })}
             />
@@ -687,149 +900,53 @@ const NoteBookInstanceEntryForm = () => {
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
-                <TextInput
-                  id="entryTitle"
-                  readOnly
-                  labelText={
-                    <>
-                      {intl.formatMessage({
-                        id: "notebook.label.title",
-                      })}
-                      <span className="requiredlabel">*</span>
-                    </>
-                  }
-                  placeholder={intl.formatMessage({
-                    id: "notebook.label.title",
-                  })}
-                  value={noteBookData.title}
-                  type="text"
-                  onChange={(e) => {
-                    setNoteBookData({ ...noteBookData, title: e.target.value });
-                  }}
-                />
+                <h5>
+                  {intl.formatMessage({ id: "notebook.label.objective" })}
+                </h5>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <Tile style={{ padding: "1.5rem", marginBottom: "1rem" }}>
+                  <p
+                    style={{
+                      whiteSpace: "pre-wrap",
+                      margin: 0,
+                      lineHeight: "1.5",
+                    }}
+                  >
+                    {noteBookData.objective ||
+                      intl.formatMessage({ id: "not.available" })}
+                  </p>
+                </Tile>
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <br />
               </Column>
               <Column lg={16} md={8} sm={4}>
-                <TextArea
-                  id="content"
-                  readOnly
-                  labelText={
-                    <>
-                      {intl.formatMessage({
-                        id: "notebook.label.content",
-                      })}
-                    </>
-                  }
-                  placeholder={intl.formatMessage({
-                    id: "notebook.label.content",
-                  })}
-                  value={noteBookData.content}
-                  type="text"
-                  onChange={(e) => {
-                    setNoteBookData({
-                      ...noteBookData,
-                      content: e.target.value,
-                    });
-                  }}
-                />
+                <h5>{intl.formatMessage({ id: "notebook.label.content" })}</h5>
               </Column>
-            </Grid>
-          </Column>
-        )}
-        {selectedTab === 1 && (
-          <Column lg={16} md={8} sm={4}>
-            <Grid fullWidth={true} className="gridBoundary">
-              <Column lg={8} md={2} sm={2}>
-                <Select
-                  id="experimenttype"
-                  name="experimenttype"
-                  labelText={
-                    <>
-                      {intl.formatMessage({
-                        id: "notebook.label.experimentType",
-                      })}
-                      <span className="requiredlabel">*</span>
-                    </>
-                  }
-                  value={noteBookData.type || ""}
-                  onChange={(event) => {
-                    setNoteBookData({
-                      ...noteBookData,
-                      type: event.target.value,
-                    });
-                  }}
-                >
-                  {types.map((type, index) => {
-                    return (
-                      <SelectItem
-                        disabled={true}
-                        key={index}
-                        text={type.value}
-                        value={type.id}
-                      />
-                    );
-                  })}
-                </Select>
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <TextInput
-                  id="entryProject"
-                  readOnly
-                  labelText={
-                    <>
-                      {intl.formatMessage({
-                        id: "notebook.label.project",
-                      })}
-                      <span className="requiredlabel">*</span>
-                    </>
-                  }
-                  placeholder={intl.formatMessage({
-                    id: "notebook.label.project",
-                  })}
-                  value={noteBookData.project}
-                  type="text"
-                  onChange={(e) => {
-                    setNoteBookData({
-                      ...noteBookData,
-                      project: e.target.value,
-                    });
-                  }}
-                />
+              <Column lg={16} md={8} sm={4}>
+                <Tile style={{ padding: "1.5rem" }}>
+                  <p
+                    style={{
+                      whiteSpace: "pre-wrap",
+                      margin: 0,
+                      lineHeight: "1.5",
+                    }}
+                  >
+                    {noteBookData.content ||
+                      intl.formatMessage({ id: "not.available" })}
+                  </p>
+                </Tile>
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <br />
               </Column>
               <Column lg={16} md={8} sm={4}>
-                <TextArea
-                  id="objective"
-                  readOnly
-                  labelText={
-                    <>
-                      {intl.formatMessage({
-                        id: "notebook.label.objective",
-                      })}
-                      <span className="requiredlabel">*</span>
-                    </>
-                  }
-                  placeholder={intl.formatMessage({
-                    id: "notebook.label.objective",
-                  })}
-                  value={noteBookData.objective}
-                  type="text"
-                  onChange={(e) => {
-                    setNoteBookData({
-                      ...noteBookData,
-                      objective: e.target.value,
-                    });
-                  }}
-                />
+                <h5>
+                  <FormattedMessage id="notebook.instruments.title" />
+                </h5>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                <br />
-              </Column>
-              <Column lg={4} md={8} sm={4}>
                 {(initialMount || mode === MODES.CREATE) && (
                   <FilterableMultiSelect
                     id="instruments"
@@ -868,9 +985,8 @@ const NoteBookInstanceEntryForm = () => {
               <Column lg={16} md={8} sm={4}>
                 <br />
               </Column>
-              <Column lg={1} md={8} sm={4}>
+              <Column lg={2} md={4} sm={4}>
                 <h5>
-                  {" "}
                   <FormattedMessage id="notebook.tags.title" />
                 </h5>
               </Column>
@@ -881,7 +997,7 @@ const NoteBookInstanceEntryForm = () => {
                 </Button>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                <br></br>
+                <br />
               </Column>
               <Column lg={16} md={8} sm={4}>
                 {noteBookData.tags.map((tag, index) => (
@@ -913,9 +1029,9 @@ const NoteBookInstanceEntryForm = () => {
               </Column>
 
               <Column lg={8} md={8} sm={4}>
-                <TextInput
-                  id="aceesion"
-                  name="acession"
+                <CustomLabNumberInput
+                  id="accession"
+                  name="accession"
                   value={accession}
                   placeholder={intl.formatMessage({
                     id: "notebook.search.byAccession",
@@ -1096,7 +1212,69 @@ const NoteBookInstanceEntryForm = () => {
                               </h6>
                             </Column>
                             <Column lg={14} md={8} sm={4}>
-                              {sample.results.length}
+                              {sample.results &&
+                              Array.isArray(sample.results) &&
+                              sample.results.length > 0 ? (
+                                <div>
+                                  {sample.results.map((result, resultIndex) => (
+                                    <Tile
+                                      key={resultIndex}
+                                      style={{
+                                        marginBottom: "0.5rem",
+                                        padding: "0.75rem",
+                                      }}
+                                    >
+                                      <div style={{ marginBottom: "0.25rem" }}>
+                                        <strong>
+                                          {result.test ||
+                                            intl.formatMessage({
+                                              id: "not.available",
+                                            })}
+                                        </strong>
+                                      </div>
+                                      <div
+                                        style={{
+                                          marginBottom: "0.25rem",
+                                          color: "#525252",
+                                        }}
+                                      >
+                                        {intl.formatMessage({
+                                          id: "column.name.result",
+                                        })}
+                                        :{" "}
+                                        {result.result ||
+                                          intl.formatMessage({
+                                            id: "not.available",
+                                          })}
+                                      </div>
+                                      <div
+                                        style={{
+                                          fontSize: "0.875rem",
+                                          color: "#525252",
+                                        }}
+                                      >
+                                        {intl.formatMessage({
+                                          id: "notebook.sample.result.dateCreated",
+                                        })}
+                                        :{" "}
+                                        {result.dateCreated
+                                          ? new Date(
+                                              result.dateCreated,
+                                            ).toLocaleString()
+                                          : intl.formatMessage({
+                                              id: "not.available",
+                                            })}
+                                      </div>
+                                    </Tile>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span>
+                                  {intl.formatMessage({
+                                    id: "notebook.samples.none.title",
+                                  })}
+                                </span>
+                              )}
                             </Column>
                             {sample.voided && (
                               <>
@@ -1134,7 +1312,7 @@ const NoteBookInstanceEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 3 && (
+        {selectedTab === 1 && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -1195,7 +1373,7 @@ const NoteBookInstanceEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 4 && (
+        {selectedTab === 3 && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={2} md={2} sm={4}>
@@ -1246,6 +1424,11 @@ const NoteBookInstanceEntryForm = () => {
                             <h5 style={{ margin: 0, display: "inline" }}>
                               {page.title}
                             </h5>
+                            {page.completed && (
+                              <Tag type="green" size="sm">
+                                <FormattedMessage id="notebook.page.completed" />
+                              </Tag>
+                            )}
                           </span>
                         }
                       >
@@ -1306,12 +1489,32 @@ const NoteBookInstanceEntryForm = () => {
                           <Column lg={16} md={8} sm={4}>
                             <br />
                             <Button
-                              kind="danger--tertiary"
+                              kind="primary"
                               size="sm"
-                              onClick={() => handleRemovePage(index)}
+                              onClick={() => openEditPageModal(index)}
+                              style={{ marginRight: "0.5rem" }}
+                              disabled={page.completed}
                             >
-                              <FormattedMessage id="label.button.remove" />
+                              <FormattedMessage id="label.button.edit" />
                             </Button>
+                            {!page.completed ? (
+                              <Button
+                                kind="primary"
+                                size="sm"
+                                onClick={() => handleMarkPageComplete(index)}
+                                style={{ marginRight: "0.5rem" }}
+                              >
+                                <FormattedMessage id="notebook.page.markComplete" />
+                              </Button>
+                            ) : (
+                              <Tag
+                                type="green"
+                                size="sm"
+                                style={{ marginRight: "0.5rem" }}
+                              >
+                                <FormattedMessage id="notebook.page.completed" />
+                              </Tag>
+                            )}
                           </Column>
                         </Grid>
                       </AccordionItem>
@@ -1333,10 +1536,10 @@ const NoteBookInstanceEntryForm = () => {
               <Column lg={16} md={8} sm={4}>
                 <br />
               </Column>
-              <Column lg={16} md={8} sm={4}>
+              <Column lg={12} md={8} sm={4}>
                 <TextArea
                   id="newComment"
-                  labelText={intl.formatMessage({
+                  placeholder={intl.formatMessage({
                     id: "notebook.comments.add.label",
                   })}
                   value={newComment}
@@ -1344,7 +1547,7 @@ const NoteBookInstanceEntryForm = () => {
                   rows={3}
                 />
               </Column>
-              <Column lg={16} md={8} sm={4}>
+              <Column lg={4} md={8} sm={4}>
                 <Button onClick={handleAddComment} kind="primary" size="sm">
                   <FormattedMessage id="notebook.comments.add.button" />
                 </Button>
@@ -1520,14 +1723,91 @@ const NoteBookInstanceEntryForm = () => {
             </Grid>
           </Column>
         )}
+        {selectedTab === 4 && (
+          <Column lg={16} md={8} sm={4}>
+            <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={16} md={8} sm={4}>
+                <h5>
+                  <FormattedMessage id="notebook.results.title" />
+                </h5>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <CustomLabNumberInput
+                  id="resultsAccession"
+                  name="resultsAccession"
+                  value={resultsAccession}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.search.byAccession",
+                  })}
+                  onChange={handleResultsAccessionChange}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleResultsSearch();
+                    }
+                  }}
+                />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <Button
+                  size="md"
+                  onClick={handleResultsSearch}
+                  disabled={resultsLoading || !resultsAccession.trim()}
+                >
+                  <FormattedMessage id="label.button.search" />
+                </Button>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
+              {resultsLoading && (
+                <Column lg={16} md={8} sm={4}>
+                  <Loading />
+                </Column>
+              )}
+              {!resultsLoading && results.testResult.length > 0 && (
+                <Column lg={16} md={8} sm={4}>
+                  <SearchResults
+                    results={results}
+                    setResultForm={setResults}
+                    refreshOnSubmit={false}
+                  />
+                </Column>
+              )}
+              {!resultsLoading &&
+                results.testResult.length === 0 &&
+                resultsAccession && (
+                  <Column lg={16} md={8} sm={4}>
+                    <InlineNotification
+                      kind="info"
+                      title={intl.formatMessage({
+                        id: "notebook.results.none.title",
+                      })}
+                      subtitle={intl.formatMessage({
+                        id: "notebook.results.none.subtitle",
+                      })}
+                    />
+                  </Column>
+                )}
+            </Grid>
+          </Column>
+        )}
       </Grid>
       <Modal
         open={showPageModal}
         modalHeading={intl.formatMessage({
-          id: "notebook.page.modal.add.title",
+          id:
+            editingPageIndex !== null
+              ? "notebook.page.modal.edit.title"
+              : "notebook.page.modal.add.title",
         })}
         primaryButtonText={intl.formatMessage({
-          id: "notebook.label.addpage",
+          id:
+            editingPageIndex !== null
+              ? "label.button.save"
+              : "notebook.label.addpage",
         })}
         secondaryButtonText={intl.formatMessage({
           id: "label.button.cancel",
@@ -1560,7 +1840,11 @@ const NoteBookInstanceEntryForm = () => {
           })}
           items={allTests}
           itemToString={(item) => (item ? item.value : "")}
-          initialSelectedItems={[]}
+          initialSelectedItems={
+            editingPageIndex !== null
+              ? allTests.filter((test) => newPage.tests.includes(test.id))
+              : []
+          }
           onChange={(changes) => {
             setNewPage({
               ...newPage,

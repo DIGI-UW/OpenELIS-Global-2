@@ -217,6 +217,7 @@ const NoteBookEntryForm = () => {
 
   const [showPageModal, setShowPageModal] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
+  const [editingPageIndex, setEditingPageIndex] = useState(null);
   const [newPage, setNewPage] = useState({
     order: null,
     title: "",
@@ -228,7 +229,7 @@ const NoteBookEntryForm = () => {
   const [pageError, setPageError] = useState("");
   const [tagError, setTagError] = useState("");
 
-  // Open modal
+  // Open modal for adding new page
   const openPageModal = () => {
     // Calculate next order number (consecutively starting with 1)
     const nextOrder =
@@ -243,6 +244,22 @@ const NoteBookEntryForm = () => {
       instructions: "",
       tests: [],
     });
+    setEditingPageIndex(null);
+    setPageError("");
+    setShowPageModal(true);
+  };
+
+  // Open modal for editing existing page
+  const openEditPageModal = (index) => {
+    const page = noteBookData.pages[index];
+    setNewPage({
+      order: page.order,
+      title: page.title || "",
+      content: page.content || "",
+      instructions: page.instructions || "",
+      tests: page.tests || [],
+    });
+    setEditingPageIndex(index);
     setPageError("");
     setShowPageModal(true);
   };
@@ -268,7 +285,7 @@ const NoteBookEntryForm = () => {
     setNewTag(value);
   };
 
-  // Add new page to noteBookData.pages
+  // Add or update page in noteBookData.pages
   const handleAddPage = () => {
     if (!newPage.title.trim() || !newPage.content.trim()) {
       setPageError(
@@ -276,11 +293,25 @@ const NoteBookEntryForm = () => {
       );
       return;
     }
-    setNoteBookData((prev) => ({
-      ...prev,
-      pages: [...prev.pages, newPage],
-    }));
+    if (editingPageIndex !== null) {
+      // Update existing page
+      setNoteBookData((prev) => {
+        const updatedPages = [...prev.pages];
+        updatedPages[editingPageIndex] = { ...newPage };
+        return {
+          ...prev,
+          pages: updatedPages,
+        };
+      });
+    } else {
+      // Add new page
+      setNoteBookData((prev) => ({
+        ...prev,
+        pages: [...prev.pages, newPage],
+      }));
+    }
     setShowPageModal(false);
+    setEditingPageIndex(null);
   };
 
   const handleAddTag = () => {
@@ -914,6 +945,14 @@ const NoteBookEntryForm = () => {
                           <Column lg={16} md={8} sm={4}>
                             <br />
                             <Button
+                              kind="primary"
+                              size="sm"
+                              onClick={() => openEditPageModal(index)}
+                              style={{ marginRight: "0.5rem" }}
+                            >
+                              <FormattedMessage id="label.button.edit" />
+                            </Button>
+                            <Button
                               kind="danger--tertiary"
                               size="sm"
                               onClick={() => handleRemovePage(index)}
@@ -941,10 +980,10 @@ const NoteBookEntryForm = () => {
               <Column lg={16} md={8} sm={4}>
                 <br />
               </Column>
-              <Column lg={16} md={8} sm={4}>
+              <Column lg={12} md={8} sm={4}>
                 <TextArea
                   id="newComment"
-                  labelText={intl.formatMessage({
+                  placeholder={intl.formatMessage({
                     id: "notebook.comments.add.label",
                   })}
                   value={newComment}
@@ -952,7 +991,7 @@ const NoteBookEntryForm = () => {
                   rows={3}
                 />
               </Column>
-              <Column lg={16} md={8} sm={4}>
+              <Column lg={4} md={8} sm={4}>
                 <Button onClick={handleAddComment} kind="primary" size="sm">
                   <FormattedMessage id="notebook.comments.add.button" />
                 </Button>
@@ -1133,10 +1172,16 @@ const NoteBookEntryForm = () => {
       <Modal
         open={showPageModal}
         modalHeading={intl.formatMessage({
-          id: "notebook.page.modal.add.title",
+          id:
+            editingPageIndex !== null
+              ? "notebook.page.modal.edit.title"
+              : "notebook.page.modal.add.title",
         })}
         primaryButtonText={intl.formatMessage({
-          id: "notebook.label.addpage",
+          id:
+            editingPageIndex !== null
+              ? "label.button.save"
+              : "notebook.label.addpage",
         })}
         secondaryButtonText={intl.formatMessage({
           id: "label.button.cancel",
@@ -1169,7 +1214,11 @@ const NoteBookEntryForm = () => {
           })}
           items={allTests}
           itemToString={(item) => (item ? item.value : "")}
-          initialSelectedItems={[]}
+          initialSelectedItems={
+            editingPageIndex !== null
+              ? allTests.filter((test) => newPage.tests.includes(test.id))
+              : []
+          }
           onChange={(changes) => {
             setNewPage({
               ...newPage,
