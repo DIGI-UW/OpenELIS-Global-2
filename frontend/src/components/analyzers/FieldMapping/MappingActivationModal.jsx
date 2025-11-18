@@ -69,10 +69,13 @@ const MappingActivationModal = ({
           id: "analyzer.fieldMapping.activationModal.title",
           defaultMessage: "Activate Mapping Changes",
         })}
-        label={intl.formatMessage({
-          id: "analyzer.fieldMapping.activationModal.subtitle",
-          defaultMessage: `Confirm activation of mapping changes for analyzer '${analyzerName || ""}'`,
-        })}
+        label={intl.formatMessage(
+          {
+            id: "analyzer.fieldMapping.activationModal.subtitle",
+            defaultMessage: "Confirm activation of mapping changes for analyzer '{name}'",
+          },
+          { name: analyzerName || "" }
+        )}
         data-testid="mapping-activation-modal-header"
       />
       <ModalBody data-testid="mapping-activation-modal-body">
@@ -84,13 +87,8 @@ const MappingActivationModal = ({
             <InlineNotification
               kind="warning"
               title={intl.formatMessage({
-                id: "analyzer.fieldMapping.activationModal.warning.title",
-                defaultMessage: "Warning: Activating mapping changes",
-              })}
-              subtitle={intl.formatMessage({
-                id: "analyzer.fieldMapping.activationModal.warning.message",
-                defaultMessage:
-                  "Activating these mapping changes will apply them to all new messages received from this analyzer. Existing results will not be affected.",
+                id: "analyzer.fieldMapping.activationModal.warning",
+                defaultMessage: `You are about to activate mapping changes for analyzer '${analyzerName || ""}'. These changes will apply to all new messages received after activation. Existing results will not be affected.`,
               })}
               hideCloseButton
               lowContrast
@@ -100,13 +98,9 @@ const MappingActivationModal = ({
               <InlineNotification
                 kind="warning"
                 title={intl.formatMessage({
-                  id: "analyzer.fieldMapping.activationModal.activeWarning.title",
-                  defaultMessage: "Active Analyzer",
-                })}
-                subtitle={intl.formatMessage({
-                  id: "analyzer.fieldMapping.activationModal.activeWarning.message",
+                  id: "analyzer.fieldMapping.activationModal.warningActive",
                   defaultMessage:
-                    "This analyzer is currently active and processing messages. Changes will take effect immediately for new messages.",
+                    "This analyzer is currently active. Activating changes may affect incoming results.",
                 })}
                 hideCloseButton
                 lowContrast
@@ -120,9 +114,9 @@ const MappingActivationModal = ({
           <Checkbox
             id="activation-confirmation-checkbox"
             labelText={intl.formatMessage({
-              id: "analyzer.fieldMapping.activationModal.confirmation.label",
+              id: "analyzer.fieldMapping.activationModal.confirmCheckbox",
               defaultMessage:
-                "I understand that these changes will apply to new messages and confirm I want to activate these mapping changes.",
+                "I understand these changes will apply to new messages only",
             })}
             checked={confirmed}
             onChange={(checked) => setConfirmed(checked)}
@@ -136,7 +130,10 @@ const MappingActivationModal = ({
           onClick={handleClose}
           data-testid="mapping-activation-cancel-button"
         >
-          <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
+          <FormattedMessage
+            id="analyzer.fieldMapping.activationModal.cancel"
+            defaultMessage="Cancel"
+          />
         </Button>
         <Button
           kind="danger"
@@ -145,7 +142,7 @@ const MappingActivationModal = ({
           data-testid="activation-confirm-button"
         >
           <FormattedMessage
-            id="analyzer.fieldMapping.activationModal.activateButton"
+            id="analyzer.fieldMapping.activationModal.activate"
             defaultMessage="Activate Changes"
           />
         </Button>
