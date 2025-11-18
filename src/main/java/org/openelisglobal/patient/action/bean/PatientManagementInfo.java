@@ -193,9 +193,8 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String otherNationality;
 
-
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
-    SamplePatientEntryBatch.class })
+            SamplePatientEntryBatch.class })
     private String photo;
 
     @Valid
@@ -549,15 +548,13 @@ public class PatientManagementInfo implements Serializable {
         this.patientContact = patientContact;
     }
 
-
-     public String getPhoto() {
+    public String getPhoto() {
         return photo;
     }
 
     public void setPhotoData(String photo) {
         this.photo = photo;
     }
-
 
     // public UUID getFhirUuid() {
     // return fhirUuid;

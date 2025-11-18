@@ -13,7 +13,7 @@
         </preConditions>
         <comment>create patient photo table</comment>
         <createSequence incrementBy="1" schemaName="clinlims" sequenceName="patient_photo_seq" startValue="1" />
-        
+
         <createTable tableName="patient_photo">
             <column name="id" type="INTEGER" valueSequenceNext="patient_photo_seq">
                 <constraints primaryKey="true" nullable="false"/>

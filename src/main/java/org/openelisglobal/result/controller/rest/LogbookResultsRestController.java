@@ -398,7 +398,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         addFlashMsgsToRequest(request);
 
         for (TestResultItem resultItem : filteredTests) {
-             AddPatientIdToResult(patient, resultItem);
+            AddPatientIdToResult(patient, resultItem);
             if (patientName != "")
                 resultItem.setPatientName(patientName);
             if (patientInfo != "")

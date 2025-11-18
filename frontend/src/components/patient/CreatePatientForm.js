@@ -75,7 +75,6 @@ function CreatePatientForm(props) {
     contactPhone: { body: "", status: true },
   });
 
-
   const handlePhotoChange = (photo) => {
     setPatientDetails({
       ...patientDetails,

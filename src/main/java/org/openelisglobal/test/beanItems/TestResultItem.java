@@ -981,9 +981,11 @@ public class TestResultItem implements ResultItem, Serializable {
     public void setReferralItem(ReferralItem referralItem) {
         this.referralItem = referralItem;
     }
+
     public String getPatientId() {
         return patientId;
     }
+
     public void setPatientId(String patientId) {
         this.patientId = patientId;
     }

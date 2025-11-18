@@ -5,7 +5,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Map;
-
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.StaleObjectStateException;
@@ -59,8 +58,7 @@ public class PatientManagementRestController extends BaseRestController {
     @ResponseBody
     public void savepatient(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody PatientManagementInfo patientInfo,
-            BindingResult bindingResult)
-            throws Exception {
+            BindingResult bindingResult) throws Exception {
 
         if (StringUtils.isNotBlank(patientInfo.getPatientPK())) {
             patientInfo.setPatientUpdateStatus(PatientUpdateStatus.UPDATE);
@@ -82,7 +80,7 @@ public class PatientManagementRestController extends BaseRestController {
                 patientService.persistPatientData(patientInfo, patient, getSysUserId(request));
                 fhirTransformService.transformPersistPatient(patientInfo,
                         (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
-             photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+                photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
             } catch (LIMSRuntimeException e) {
 
                 if (e.getCause() instanceof StaleObjectStateException) {
@@ -98,10 +96,9 @@ public class PatientManagementRestController extends BaseRestController {
         }
     }
 
-
-
     @GetMapping("patient-photos/{id}/{isThumbnail}")
-     public ResponseEntity<Map<String, String>> getPhoto(@PathVariable String id, @PathVariable boolean isThumbnail) throws LIMSRuntimeException  {
+    public ResponseEntity<Map<String, String>> getPhoto(@PathVariable String id, @PathVariable boolean isThumbnail)
+            throws LIMSRuntimeException {
         String photo = photoService.getPhotoByPatientId(id, isThumbnail);
         return ResponseEntity.ok(Map.of("data", photo));
     }

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 import {
   Modal,
   Tabs,
@@ -7,18 +7,23 @@ import {
   TabPanels,
   TabPanel,
   Button,
-} from '@carbon/react';
-import { Camera, CloudUpload } from '@carbon/icons-react';
-import './ImagePreviewModal.css';
+} from "@carbon/react";
+import { Camera, CloudUpload } from "@carbon/icons-react";
+import "./ImagePreviewModal.css";
 import { useIntl } from "react-intl";
 
-const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }) => {
+const ImagePreviewModal = ({
+  open,
+  onClose,
+  onImageSelect,
+  currentImage = null,
+}) => {
   const intl = useIntl();
-  
+
   const [selectedTab, setSelectedTab] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(currentImage);
   const [isCameraActive, setIsCameraActive] = useState(false);
-  
+
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -32,7 +37,7 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
   React.useEffect(() => {
     return () => {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
@@ -42,7 +47,7 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result);
@@ -65,9 +70,9 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
   const handleDrop = (event) => {
     event.preventDefault();
     setIsDragging(false);
-    
+
     const file = event.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result);
@@ -76,7 +81,6 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
     }
   };
 
-  
   const handleClickUpload = () => {
     fileInputRef.current?.click();
   };
@@ -85,33 +89,33 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'user',
+        video: {
+          facingMode: "user",
           width: { ideal: 1280 },
-          height: { ideal: 720 }
+          height: { ideal: 720 },
         },
         audio: false,
       });
-      
+
       streamRef.current = stream;
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         // Attendre que la vidéo soit prête
         await videoRef.current.play();
       }
-      
+
       setIsCameraActive(true);
     } catch (error) {
-      console.error('Erreur d\'accès à la caméra:', error);
-      alert('permission denied');
+      console.error("Erreur d'accès à la caméra:", error);
+      alert("permission denied");
     }
   };
 
   // Stop  caméra
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       setIsCameraActive(false);
     }
@@ -122,14 +126,14 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
     if (canvasRef.current && videoRef.current) {
       const canvas = canvasRef.current;
       const video = videoRef.current;
-      
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      
-      const context = canvas.getContext('2d');
+
+      const context = canvas.getContext("2d");
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+      const imageData = canvas.toDataURL("image/jpeg", 0.8);
       setPreviewUrl(imageData);
       stopCamera();
     }
@@ -167,10 +171,17 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
       size="lg"
       preventCloseOnClickOutside
     >
-      <Tabs selectedIndex={selectedTab} onChange={({ selectedIndex }) => handleTabChange(selectedIndex)}>
+      <Tabs
+        selectedIndex={selectedTab}
+        onChange={({ selectedIndex }) => handleTabChange(selectedIndex)}
+      >
         <TabList aria-label="Options de sélection d'image">
-          <Tab renderIcon={CloudUpload}>{intl.formatMessage({ id: "patient.photo.import" })}</Tab>
-          <Tab renderIcon={Camera}>{intl.formatMessage({ id: "patient.photo.take" })}</Tab>
+          <Tab renderIcon={CloudUpload}>
+            {intl.formatMessage({ id: "patient.photo.import" })}
+          </Tab>
+          <Tab renderIcon={Camera}>
+            {intl.formatMessage({ id: "patient.photo.take" })}
+          </Tab>
         </TabList>
 
         <TabPanels>
@@ -182,35 +193,41 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
                 type="file"
                 accept="image/jpeg,image/png,image/jpg"
                 onChange={handleFileChange}
-                style={{ display: 'none' }}
+                style={{ display: "none" }}
               />
-              
+
               {!previewUrl ? (
                 <div
-                  className={`dropzone ${isDragging ? 'dropzone-active' : ''}`}
+                  className={`dropzone ${isDragging ? "dropzone-active" : ""}`}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onClick={handleClickUpload}
                 >
                   <CloudUpload size={64} className="dropzone-icon" />
-                  <p className="dropzone-title">{intl.formatMessage({ id: "patient.photo.dragndrop" })}</p>
-                  <p className="dropzone-subtitle">{intl.formatMessage({ id: "patient.photo.browse" })}</p>
-                  <p className="dropzone-formats">Formats : JPG, PNG (max 1MB)</p>
+                  <p className="dropzone-title">
+                    {intl.formatMessage({ id: "patient.photo.dragndrop" })}
+                  </p>
+                  <p className="dropzone-subtitle">
+                    {intl.formatMessage({ id: "patient.photo.browse" })}
+                  </p>
+                  <p className="dropzone-formats">
+                    Formats : JPG, PNG (max 1MB)
+                  </p>
                 </div>
               ) : (
                 <div className="image-preview-container">
                   <p className="preview-label">Aperçu:</p>
-                  <img 
-                    src={previewUrl} 
-                    alt="Aperçu de l'image patient" 
+                  <img
+                    src={previewUrl}
+                    alt="Aperçu de l'image patient"
                     className="image-preview"
                   />
                   <Button
                     kind="tertiary"
                     size="sm"
                     onClick={() => setPreviewUrl(null)}
-                    style={{ marginTop: '1rem' }}
+                    style={{ marginTop: "1rem" }}
                   >
                     Changer l'image
                   </Button>
@@ -226,22 +243,27 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
                 <div className="camera-start-container">
                   <div className="camera-placeholder">
                     <Camera size={64} />
-                    <p>{intl.formatMessage({ id: "patient.photo.active.camera" })}</p>
+                    <p>
+                      {intl.formatMessage({
+                        id: "patient.photo.active.camera",
+                      })}
+                    </p>
                   </div>
-                  <Button 
+                  <Button
                     onClick={startCamera}
                     renderIcon={Camera}
                     className="camera-button"
-                  >{intl.formatMessage({ id: "patient.photo.start.camera" })}
+                  >
+                    {intl.formatMessage({ id: "patient.photo.start.camera" })}
                   </Button>
                 </div>
               ) : !isCameraActive && previewUrl ? (
                 <div className="camera-preview-container">
                   <div className="image-preview-container">
                     <p className="preview-label">Photo capturée:</p>
-                    <img 
-                      src={previewUrl} 
-                      alt="Photo capturée du patient" 
+                    <img
+                      src={previewUrl}
+                      alt="Photo capturée du patient"
                       className="image-preview"
                     />
                   </div>
@@ -249,9 +271,9 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
                     kind="primary"
                     onClick={startCamera}
                     renderIcon={Camera}
-                    style={{ marginTop: '1rem' }}
+                    style={{ marginTop: "1rem" }}
                   >
-                  {intl.formatMessage({ id: "patient.photo.retake" })}
+                    {intl.formatMessage({ id: "patient.photo.retake" })}
                   </Button>
                 </div>
               ) : (
@@ -264,7 +286,7 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
                       className="camera-video"
                     />
                     <div className="capture-button-overlay">
-                      <button 
+                      <button
                         className="capture-circle-button"
                         onClick={capturePhoto}
                         aria-label="Capturer la photo"
@@ -273,7 +295,7 @@ const ImagePreviewModal = ({ open, onClose, onImageSelect, currentImage = null }
                       </button>
                     </div>
                   </div>
-                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+                  <canvas ref={canvasRef} style={{ display: "none" }} />
                 </div>
               )}
             </div>
