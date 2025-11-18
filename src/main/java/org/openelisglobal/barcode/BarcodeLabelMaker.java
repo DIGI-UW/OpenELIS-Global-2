@@ -95,13 +95,73 @@ public class BarcodeLabelMaker {
     // for audit trail when incrementing num printed
     private String sysUserId;
 
-    private BarcodeLabelInfoService barcodeLabelService = SpringContext.getBean(BarcodeLabelInfoService.class);
+    private BarcodeLabelInfoService barcodeLabelService;
+
+    /**
+     * Lazy initialization of barcodeLabelService. Initializes on first use to
+     * ensure SpringContext is ready.
+     * 
+     * @return BarcodeLabelInfoService instance
+     */
+    private BarcodeLabelInfoService getBarcodeLabelService() {
+        if (barcodeLabelService == null) {
+            try {
+                barcodeLabelService = SpringContext.getBean(BarcodeLabelInfoService.class);
+            } catch (Exception e) {
+                LogEvent.logError("BarcodeLabelMaker", "getBarcodeLabelService",
+                        "Failed to get BarcodeLabelInfoService from SpringContext: " + e.getMessage());
+                throw new RuntimeException("BarcodeLabelInfoService not available", e);
+            }
+        }
+        return barcodeLabelService;
+    }
 
     private static final Set<Integer> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
+    private static volatile boolean initialized = false;
 
-    static {
-        ENTERED_STATUS_SAMPLE_LIST
-                .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered)));
+    /**
+     * Lazy initialization of ENTERED_STATUS_SAMPLE_LIST. Initializes on first use
+     * to ensure SpringContext is ready. Thread-safe using double-checked locking
+     * pattern.
+     * 
+     * @return Set containing the status ID for SampleStatus.Entered, or empty set
+     *         if initialization fails
+     */
+    private static Set<Integer> getEnteredStatusSampleList() {
+        if (!initialized) {
+            synchronized (ENTERED_STATUS_SAMPLE_LIST) {
+                if (!initialized) {
+                    try {
+                        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+                        if (statusService != null) {
+                            String statusId = statusService.getStatusID(SampleStatus.Entered);
+
+                            if (statusId != null && !statusId.equals("-1") && !statusId.trim().isEmpty()) {
+                                ENTERED_STATUS_SAMPLE_LIST.add(Integer.parseInt(statusId));
+                            } else {
+                                LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
+                                        "SampleStatus.Entered not found in database. Status ID: " + statusId);
+                            }
+                        } else {
+                            LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
+                                    "IStatusService bean not available from SpringContext");
+                        }
+                    } catch (NumberFormatException e) {
+                        LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
+                                "Failed to parse status ID: " + e.getMessage());
+                    } catch (Exception e) {
+                        LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
+                                "Failed to initialize ENTERED_STATUS_SAMPLE_LIST: " + e.getMessage());
+                    } finally {
+                        // Mark as initialized to prevent repeated attempts, even if initialization
+                        // failed
+                        // This prevents performance issues from repeated synchronization attempts
+                        initialized = true;
+                    }
+                }
+            }
+        }
+        return ENTERED_STATUS_SAMPLE_LIST;
     }
 
     public BarcodeLabelMaker() {
@@ -113,10 +173,16 @@ public class BarcodeLabelMaker {
     public BarcodeLabelMaker(Label label) {
         labels = new ArrayList<>();
         labels.add(label);
+        // Initialize barcodeType from configuration (same as no-arg constructor)
+        this.barcodeType = BarcodeType
+                .fromString(ConfigurationProperties.getInstance().getPropertyValue(Property.BAR_CODE_TYPE));
     }
 
     public BarcodeLabelMaker(ArrayList<Label> labels) {
         this.labels = labels;
+        // Initialize barcodeType from configuration (same as no-arg constructor)
+        this.barcodeType = BarcodeType
+                .fromString(ConfigurationProperties.getInstance().getPropertyValue(Property.BAR_CODE_TYPE));
     }
 
     public void generateGenericBarcodeLabel(String code, String type) {
@@ -208,7 +274,7 @@ public class BarcodeLabelMaker {
 
             // 1 specimen label per sampleitem
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    ENTERED_STATUS_SAMPLE_LIST);
+                    getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                         labNo);
@@ -239,7 +305,7 @@ public class BarcodeLabelMaker {
             labNo = labNo.substring(0, labNo.lastIndexOf("."));
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    ENTERED_STATUS_SAMPLE_LIST);
+                    getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 // get only the sample item matching the specimen number
                 if (sampleItem.getSortOrder().equals(specimenNumber)) {
@@ -275,12 +341,14 @@ public class BarcodeLabelMaker {
     public ByteArrayOutputStream createLabelsAsStream() {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         if (labels.isEmpty()) {
+            LogEvent.logError("BarcodeLabelMaker", "createLabelsAsStream", "Labels list is empty!");
             return stream;
         }
         try {
             Document document = new Document();
             PdfWriter writer = PdfWriter.getInstance(document, stream);
             document.open();
+
             for (Label label : labels) {
                 for (int i = 0; i < label.getNumLabels(); ++i) {
                     // a ratio is used with set width so that font size
@@ -327,7 +395,7 @@ public class BarcodeLabelMaker {
                         label.incrementNumPrinted();
                     }
                 }
-                barcodeLabelService.save(label.getLabelInfo());
+                getBarcodeLabelService().save(label.getLabelInfo());
             }
             document.close();
             writer.close();
@@ -420,7 +488,11 @@ public class BarcodeLabelMaker {
             boldFont.setSize(15); // Larger font size
             boldFont.setStyle(com.lowagie.text.Font.BOLD);
 
-            Paragraph codeText = new Paragraph(label.getCode(), boldFont);
+            String codeForText = label.getCode();
+            if (codeForText == null) {
+                codeForText = "";
+            }
+            Paragraph codeText = new Paragraph(codeForText, boldFont);
             codeText.setAlignment(Paragraph.ALIGN_CENTER);
             PdfPCell codeCell = new PdfPCell(codeText);
             codeCell.setBorder(Rectangle.NO_BORDER);
@@ -449,7 +521,6 @@ public class BarcodeLabelMaker {
             mainTable.addCell(fieldsCell);
 
             document.add(scaleCentreTableAsImage(label, writer, mainTable));
-
         }
     }
 
@@ -488,8 +559,16 @@ public class BarcodeLabelMaker {
 
         Barcode128 barcode = new Barcode128();
         barcode.setCodeType(Barcode.CODE128);
-        barcode.setCode(label.getCode());
-        barcode.setAltText(label.getCodeLabel());
+        String code = label.getCode();
+        if (code == null || code.trim().isEmpty()) {
+            code = ""; // Use empty string if code is null
+        }
+        barcode.setCode(code);
+        String codeLabel = label.getCodeLabel();
+        if (codeLabel == null) {
+            codeLabel = code;
+        }
+        barcode.setAltText(codeLabel);
         // shrink bar code height inversely with number of text rows
         barcode.setBarHeight((10 - (label.getNumTextRowsBefore() + label.getNumTextRowsAfter())) * 30 / 10);
         PdfPCell cell = new PdfPCell(barcode.createImageWithBarcode(writer.getDirectContent(), null, null), true);
@@ -515,7 +594,11 @@ public class BarcodeLabelMaker {
             throws DocumentException, IOException {
         Barcode128 barcode = new Barcode128();
         barcode.setCodeType(Barcode.CODE128);
-        barcode.setCode(label.getCode());
+        String code = label.getCode();
+        if (code == null || code.trim().isEmpty()) {
+            code = ""; // Use empty string if code is null
+        }
+        barcode.setCode(code);
         barcode.setFont(null);
         // shrink bar code height inversely with number of text rows
         barcode.setBarHeight((10 - (label.getNumTextRowsBefore() + label.getNumTextRowsAfter())) * 30 / 10);
@@ -598,8 +681,13 @@ public class BarcodeLabelMaker {
             // Increased base size for QR code
             int qrSize = 1000; // Further increased for higher quality
 
+            String code = label.getCode();
+            if (code == null || code.trim().isEmpty()) {
+                code = ""; // Use empty string if code is null
+            }
+
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
-            BitMatrix bitMatrix = qrCodeWriter.encode(label.getCode(), BarcodeFormat.QR_CODE, qrSize, qrSize);
+            BitMatrix bitMatrix = qrCodeWriter.encode(code, BarcodeFormat.QR_CODE, qrSize, qrSize);
 
             BufferedImage qrImage = new BufferedImage(qrSize, qrSize, BufferedImage.TYPE_INT_RGB);
             Graphics2D graphics = qrImage.createGraphics();

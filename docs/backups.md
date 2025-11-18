@@ -20,7 +20,7 @@ data is not lost.
 1. replace file name
    `sudo docker cp ./rollback/<backup-name.sql> openelisglobal-database:backup.sql`
 1. `sudo docker exec openelisglobal-database psql -U admin -d postgres -f backup.sql`
-1. `sudo docker-compose up -d`
+1. `sudo docker compose up -d`
 
 ## Physical backups
 

@@ -32,7 +32,7 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
         TB_DIAGNOSTIC_REASON("TbDiagnosticReason"), TB_FOLLOWUP_REASON("TbFollowupReason"),
         TB_FOLLOWUP_PERIOD_LINE1("TbFollowupReasonPeriodLine1"),
         TB_FOLLOWUP_PERIOD_LINE2("TbFollowupReasonPeriodLine2"), TB_ANALYSIS_METHOD("TbAnalysisMethod"),
-        TB_SAMPLE_ASPECT("TbSampleAspects");
+        TB_SAMPLE_ASPECT("TbSampleAspects"), PROVISIONAL_CLINICAL_DIAGNOSIS("provisionalClinicalDiagnosis");
 
         private String dbName;
 

@@ -105,6 +105,9 @@ public class NoteBook extends BaseObject<Integer> {
     @OneToMany(mappedBy = "notebook", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<NoteBookFile> files;
 
+    @OneToMany(mappedBy = "notebook", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<NoteBookComment> comments;
+
     @OneToMany
     @JoinTable(name = "notebook_entries", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "entry_id"))
     private List<NoteBook> entries;
@@ -236,6 +239,17 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setFiles(List<NoteBookFile> files) {
         this.files = files;
+    }
+
+    public List<NoteBookComment> getComments() {
+        if (comments == null) {
+            comments = new ArrayList<>();
+        }
+        return comments;
+    }
+
+    public void setComments(List<NoteBookComment> comments) {
+        this.comments = comments;
     }
 
     public NoteBookStatus getStatus() {

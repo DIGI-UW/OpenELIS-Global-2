@@ -1,0 +1,10 @@
+/* DeleteLocationModal styling */
+.delete-location-confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.delete-location-confirmation p {
+  margin: 0;
+}
