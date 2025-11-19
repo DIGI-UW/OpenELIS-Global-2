@@ -15,6 +15,14 @@
 - Q: Should the system capture the laboratory's participant ID assigned by the EQA provider? → A: Yes - Add as optional field for result submission traceability
 - Q: How should supervisors be notified when critical alerts escalate after 4 hours? → A: Dashboard badge + in-app notification using Carbon ToastNotification
 
+### Session 2025-11-18
+
+- Q: How should Levey-Jennings charts be generated for internal control reports? → A: Generate LJ charts automatically with configurable control limits (2SD and 3SD) and display them in QC reports
+- Q: Which Westgard rules should be implemented for quality control pass/fail determination? → A: Implement core Westgard rules (1-2s, 1-3s, 2-2s, R-4s, 4-1s, 10-x) with configurable enable/disable per test type
+- Q: How should electronic signature work for QC report review? → A: Basic electronic signature with optional comment and audit trail (user ID, timestamp, IP address) without password re-entry
+- Q: How should the QC comments functionality work? → A: Result-level comments attached to specific IC measurements with optional entry, hover display on LJ charts, and searchable history
+- Q: How should IC frequency and type configuration work? → A: Instrument-level configuration where QC frequency is set per analyzer/instrument, with all tests on the same instrument following the same QC schedule (e.g., "Daily startup", "Every N samples", "Every N hours")
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Register and Process Incoming EQA Samples (Priority: P1)
@@ -212,6 +220,24 @@ A laboratory administrator needs to create and manage EQA programs, defining pro
 - **FR-027**: System MUST require minimum 5 participants for valid statistical analysis and display warning when insufficient data
 - **FR-028**: System MUST display statistical analysis (Z-scores, means, standard deviations) in the EQA Management menu for each distribution
 - **FR-029**: System MUST generate downloadable performance reports with comparative analysis across participants and individual performance breakdowns
+- **FR-029a**: System MUST generate Levey-Jennings (LJ) charts automatically for quantitative parameters with configurable control limits at 2 standard deviations (2SD) and 3 standard deviations (3SD) from the mean
+- **FR-029b**: System MUST display LJ charts in internal control (IC) reports showing trend visualization over time with control limit lines and data points
+- **FR-029c**: System MUST implement core Westgard rules for quality control evaluation including: 1-2s (warning), 1-3s (rejection), 2-2s (systematic error), R-4s (random error), 4-1s (shift), and 10-x (trend)
+- **FR-029d**: System MUST allow configuration of which Westgard rules are enabled/disabled on a per-test-type basis
+- **FR-029e**: System MUST generate alerts when Westgard rule violations are detected with rule name, control level, and recommended action
+- **FR-029f**: System MUST provide electronic signature capability for QC report review without requiring password re-entry
+- **FR-029g**: System MUST capture audit trail for electronic signatures including user ID, timestamp, and IP address
+- **FR-029h**: System MUST provide optional comment field for reviewers during electronic signature
+- **FR-029i**: System MUST display signature records on QC reports showing reviewer name, signature timestamp, and any associated comments
+- **FR-029j**: System MUST provide optional comment box on IC result entry screen for result-level QC comments
+- **FR-029k**: System MUST store QC comments with the individual IC measurement record including user ID and timestamp
+- **FR-029l**: System MUST display QC comments when hovering over data points on Levey-Jennings charts
+- **FR-029m**: System MUST provide searchable comment history for each control material across all measurements
+- **FR-029n**: System MUST provide instrument-level configuration interface for QC frequency settings accessible through instrument management
+- **FR-029o**: System MUST support IC frequency types including: "Daily startup", "Per shift", "Every N samples", "Every N hours", and "Manual trigger only"
+- **FR-029p**: System MUST apply configured QC frequency rules to all tests performed on the same instrument/analyzer
+- **FR-029q**: System MUST generate alerts when QC frequency requirements are not met (e.g., no QC run in 24 hours when daily QC required)
+- **FR-029r**: System MUST track QC compliance metrics per instrument showing percentage of required QC runs completed on schedule
 - **FR-030**: System MUST log submission method (FHIR/Manual/File Upload), submission timestamp, and submitting user ID for all EQA results
 
 #### EQA Result Submission
