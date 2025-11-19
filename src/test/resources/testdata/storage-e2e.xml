@@ -271,152 +271,155 @@
         lastupdated="2025-01-01 12:00:00" />
 
     <!-- E2E Test Fixtures: Storage Assignments -->
+    <!-- Note: Using IDs 5000-5013 to avoid conflicts with test-created data
+        (1000+) -->
     <!-- Assignment 1: SampleItem 10001 to Rack 30, position A1 -->
-    <sample_storage_assignment id="1000"
+    <sample_storage_assignment id="5000"
         sample_item_id="10001" location_id="30" location_type="rack"
         position_coordinate="A1" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test assignment - blood tube"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 1b: SampleItem 10002 to Rack 33, position X1 -->
-    <sample_storage_assignment id="1001"
+    <sample_storage_assignment id="5001"
         sample_item_id="10002" location_id="33" location_type="rack"
         position_coordinate="X1" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test assignment - serum aliquot"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 2: SampleItem 10011 to Rack 30, position A2 -->
-    <sample_storage_assignment id="1002"
+    <sample_storage_assignment id="5002"
         sample_item_id="10011" location_id="30" location_type="rack"
         position_coordinate="A2" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test assignment"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 3: SampleItem 10021 to Rack 30, position A4 -->
-    <sample_storage_assignment id="1003"
+    <sample_storage_assignment id="5003"
         sample_item_id="10021" location_id="30" location_type="rack"
         position_coordinate="A4" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test assignment - urine sample"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 3b: SampleItem 10022 to Rack 30, position A3 -->
-    <sample_storage_assignment id="1004"
+    <sample_storage_assignment id="5004"
         sample_item_id="10022" location_id="30" location_type="rack"
         position_coordinate="A3" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test assignment - urine aliquot 1"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 4: SampleItem 10041 to Rack 30, position A5 -->
-    <sample_storage_assignment id="1005"
+    <sample_storage_assignment id="5005"
         sample_item_id="10041" location_id="30" location_type="rack"
         position_coordinate="A5" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test assignment - blood tube 1"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 4b: SampleItem 10042 to Rack 30, position A7 -->
-    <sample_storage_assignment id="1006"
+    <sample_storage_assignment id="5006"
         sample_item_id="10042" location_id="30" location_type="rack"
         position_coordinate="A7" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test assignment - blood tube 2"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 6: SampleItem 10061 to Rack 34, position A2 -->
-    <sample_storage_assignment id="1009"
+    <sample_storage_assignment id="5009"
         sample_item_id="10061" location_id="34" location_type="rack"
         position_coordinate="A2" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test - Secondary Lab"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 7: SampleItem 10071 to Rack 30, position A6 -->
-    <sample_storage_assignment id="1010"
+    <sample_storage_assignment id="5010"
         sample_item_id="10071" location_id="30" location_type="rack"
         position_coordinate="A6" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test - Disposed sample"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 8: SampleItem 10081 to Rack 34, position A3 -->
-    <sample_storage_assignment id="1011"
+    <sample_storage_assignment id="5011"
         sample_item_id="10081" location_id="34" location_type="rack"
         position_coordinate="A3" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test - Disposed in Secondary"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 9: SampleItem 10091 to Rack 33, position A1 -->
-    <sample_storage_assignment id="1012"
+    <sample_storage_assignment id="5012"
         sample_item_id="10091" location_id="33" location_type="rack"
         position_coordinate="A1" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test - Refrigerator - tube 1"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- Assignment 9b: SampleItem 10092 to Rack 33, position X1 -->
-    <sample_storage_assignment id="1013"
+    <sample_storage_assignment id="5013"
         sample_item_id="10092" location_id="33" location_type="rack"
         position_coordinate="X1" assigned_date="2025-01-01 12:00:00"
         assigned_by_user_id="1" notes="E2E test - Refrigerator - tube 2"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- E2E Test Fixtures: Storage Movements -->
-    <sample_storage_movement id="1000"
+    <!-- Note: Using IDs 5000-5013 to match assignments and avoid conflicts -->
+    <sample_storage_movement id="5000"
         sample_item_id="10001" new_location_id="30" new_location_type="rack"
         new_position_coordinate="A1" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment - blood tube"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1001"
+    <sample_storage_movement id="5001"
         sample_item_id="10002" new_location_id="33" new_location_type="rack"
         new_position_coordinate="X1" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment - serum aliquot"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1002"
+    <sample_storage_movement id="5002"
         sample_item_id="10011" new_location_id="30" new_location_type="rack"
         new_position_coordinate="A2" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1003"
+    <sample_storage_movement id="5003"
         sample_item_id="10021" new_location_id="30" new_location_type="rack"
         new_position_coordinate="A4" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment - urine sample"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1004"
+    <sample_storage_movement id="5004"
         sample_item_id="10022" new_location_id="30" new_location_type="rack"
         new_position_coordinate="A3" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment - urine aliquot 1"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1005"
+    <sample_storage_movement id="5005"
         sample_item_id="10041" new_location_id="30" new_location_type="rack"
         new_position_coordinate="A5" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment - blood tube 1"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1006"
+    <sample_storage_movement id="5006"
         sample_item_id="10042" new_location_id="30" new_location_type="rack"
         new_position_coordinate="A7" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment - blood tube 2"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1009"
+    <sample_storage_movement id="5009"
         sample_item_id="10061" new_location_id="34" new_location_type="rack"
         new_position_coordinate="A2" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1010"
+    <sample_storage_movement id="5010"
         sample_item_id="10071" new_location_id="30" new_location_type="rack"
         new_position_coordinate="A6" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1011"
+    <sample_storage_movement id="5011"
         sample_item_id="10081" new_location_id="34" new_location_type="rack"
         new_position_coordinate="A3" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1012"
+    <sample_storage_movement id="5012"
         sample_item_id="10091" new_location_id="33" new_location_type="rack"
         new_position_coordinate="A1" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment - tube 1"

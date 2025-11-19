@@ -120,11 +120,14 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
      * foundation data) - Samples: E2E-* accession numbers (DBUnit fixtures) -
      * Patients: E2E-PAT-* external IDs (DBUnit fixtures) - Sample items: IDs
      * 10000-20000 (DBUnit fixtures) - Analyses: IDs 20000-30000 (DBUnit fixtures) -
-     * Results: IDs 30000-40000 (DBUnit fixtures)
+     * Results: IDs 30000-40000 (DBUnit fixtures) - Assignments: IDs 5000-5013
+     * (DBUnit fixtures) - Movements: IDs 5000-5013 (DBUnit fixtures)
      * 
      * Test-created data (deleted): - Storage: IDs >= 1000, codes/names starting
      * with TEST- - Samples: TEST-* accession numbers (if created by tests) - Sample
-     * items: IDs >= 20000 (test-created, not DBUnit fixtures)
+     * items: IDs >= 20000 (test-created, not DBUnit fixtures) - Assignments: IDs
+     * 1000-4999 and >= 5014 (test-created, not DBUnit fixtures) - Movements: IDs
+     * 1000-4999 and >= 5014 (test-created, not DBUnit fixtures)
      */
     protected void cleanStorageTestData() {
         try {

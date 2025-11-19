@@ -42,6 +42,8 @@ Test data is organized into a **layered architecture**:
 ### Fixture Data (Preserved during cleanup)
 
 - **Storage**: IDs 1-999 (from Liquibase foundation data)
+- **Assignments**: IDs 5000-5013 (DBUnit E2E fixtures)
+- **Movements**: IDs 5000-5013 (DBUnit E2E fixtures)
 - **Samples**: E2E-\* accession numbers (DBUnit fixtures)
 - **Patients**: E2E-PAT-\* external IDs (DBUnit fixtures)
 - **Sample items**: IDs 10000-20000 (DBUnit fixtures)

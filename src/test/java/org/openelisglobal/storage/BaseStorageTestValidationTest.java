@@ -66,9 +66,11 @@ public class BaseStorageTestValidationTest extends BaseStorageTest {
         // Verify storage assignments (from DBUnit XML) exist
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 
-        Integer assignmentCount = jdbcTemplate
-                .queryForObject("SELECT COUNT(*) FROM sample_storage_assignment WHERE id >= 1000", Integer.class);
+        // Check for E2E fixture assignments (IDs 5000-5013) to avoid conflicts with
+        // test-created data (1000+)
+        Integer assignmentCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM sample_storage_assignment WHERE id BETWEEN 5000 AND 5013", Integer.class);
         assertNotNull("Storage assignments should exist", assignmentCount);
-        assertTrue("Should have at least 10 storage assignments", assignmentCount >= 10);
+        assertTrue("Should have 12 E2E storage assignments, found " + assignmentCount, assignmentCount == 12);
     }
 }
