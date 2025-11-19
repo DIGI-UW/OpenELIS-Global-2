@@ -75,46 +75,48 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert analyzer field mappings (mix of active and draft for comprehensive testing)
+-- Note: mapping_type must be one of: 'TEST_LEVEL', 'RESULT_LEVEL', 'METADATA' (per constraint chk_mapping_type)
+-- Note: openelis_field_type must be one of: 'TEST', 'PANEL', 'RESULT', 'ORDER', 'SAMPLE', 'QC', 'METADATA', 'UNIT' (per constraint chk_openelis_field_type)
 INSERT INTO analyzer_field_mapping (id, analyzer_field_id, openelis_field_id, openelis_field_type, mapping_type, is_required, is_active, sys_user_id, last_updated)
 VALUES
   -- Analyzer 1 (Hematology) mappings - mix of active and draft
-  ('MAPPING-001', 'FIELD-001', 'sample.accession_number', 'SAMPLE', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-002', 'FIELD-002', 'patient.id', 'PATIENT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-003', 'FIELD-003', 'test.code', 'TEST', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-004', 'FIELD-004', 'result.wbc_count', 'RESULT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-005', 'FIELD-005', 'result.rbc_count', 'RESULT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-006', 'FIELD-006', 'result.hemoglobin', 'RESULT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-007', 'FIELD-007', 'result.hematocrit', 'RESULT', 'DIRECT', true, false, '1', NOW()), -- Draft
-  ('MAPPING-008', 'FIELD-008', 'result.platelet_count', 'RESULT', 'DIRECT', true, false, '1', NOW()), -- Draft
-  ('MAPPING-009', 'FIELD-009', 'result.mcv', 'RESULT', 'DIRECT', false, true, '1', NOW()),
-  ('MAPPING-010', 'FIELD-010', 'result.mch', 'RESULT', 'DIRECT', false, false, '1', NOW()), -- Draft
+  ('MAPPING-001', 'FIELD-001', 'sample.accession_number', 'SAMPLE', 'METADATA', true, true, '1', NOW()),
+  ('MAPPING-002', 'FIELD-002', 'patient.id', 'METADATA', 'METADATA', true, true, '1', NOW()),
+  ('MAPPING-003', 'FIELD-003', 'test.code', 'TEST', 'TEST_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-004', 'FIELD-004', 'result.wbc_count', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-005', 'FIELD-005', 'result.rbc_count', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-006', 'FIELD-006', 'result.hemoglobin', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-007', 'FIELD-007', 'result.hematocrit', 'RESULT', 'RESULT_LEVEL', true, false, '1', NOW()), -- Draft
+  ('MAPPING-008', 'FIELD-008', 'result.platelet_count', 'RESULT', 'RESULT_LEVEL', true, false, '1', NOW()), -- Draft
+  ('MAPPING-009', 'FIELD-009', 'result.mcv', 'RESULT', 'RESULT_LEVEL', false, true, '1', NOW()),
+  ('MAPPING-010', 'FIELD-010', 'result.mch', 'RESULT', 'RESULT_LEVEL', false, false, '1', NOW()), -- Draft
   -- Analyzer 2 (Chemistry) mappings
-  ('MAPPING-011', 'FIELD-011', 'sample.accession_number', 'SAMPLE', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-012', 'FIELD-012', 'patient.id', 'PATIENT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-013', 'FIELD-013', 'test.code', 'TEST', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-014', 'FIELD-014', 'result.glucose', 'RESULT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-015', 'FIELD-015', 'result.creatinine', 'RESULT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-016', 'FIELD-016', 'result.urea', 'RESULT', 'DIRECT', true, false, '1', NOW()), -- Draft
-  ('MAPPING-017', 'FIELD-017', 'result.cholesterol', 'RESULT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-018', 'FIELD-018', 'result.triglycerides', 'RESULT', 'DIRECT', false, true, '1', NOW()),
-  ('MAPPING-019', 'FIELD-019', 'result.alt', 'RESULT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-020', 'FIELD-020', 'result.ast', 'RESULT', 'DIRECT', true, false, '1', NOW()), -- Draft
+  ('MAPPING-011', 'FIELD-011', 'sample.accession_number', 'SAMPLE', 'METADATA', true, true, '1', NOW()),
+  ('MAPPING-012', 'FIELD-012', 'patient.id', 'METADATA', 'METADATA', true, true, '1', NOW()),
+  ('MAPPING-013', 'FIELD-013', 'test.code', 'TEST', 'TEST_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-014', 'FIELD-014', 'result.glucose', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-015', 'FIELD-015', 'result.creatinine', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-016', 'FIELD-016', 'result.urea', 'RESULT', 'RESULT_LEVEL', true, false, '1', NOW()), -- Draft
+  ('MAPPING-017', 'FIELD-017', 'result.cholesterol', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-018', 'FIELD-018', 'result.triglycerides', 'RESULT', 'RESULT_LEVEL', false, true, '1', NOW()),
+  ('MAPPING-019', 'FIELD-019', 'result.alt', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-020', 'FIELD-020', 'result.ast', 'RESULT', 'RESULT_LEVEL', true, false, '1', NOW()), -- Draft
   -- Analyzer 3 (Immunology) mappings
-  ('MAPPING-021', 'FIELD-021', 'sample.accession_number', 'SAMPLE', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-022', 'FIELD-022', 'patient.id', 'PATIENT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-023', 'FIELD-023', 'test.code', 'TEST', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-024', 'FIELD-024', 'result.hiv_antibody', 'QUALITATIVE', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-025', 'FIELD-025', 'result.hbsag', 'QUALITATIVE', 'DIRECT', true, false, '1', NOW()), -- Draft
-  ('MAPPING-026', 'FIELD-026', 'result.hcv_antibody', 'QUALITATIVE', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-027', 'FIELD-027', 'result.syphilis_rpr', 'QUALITATIVE', 'DIRECT', false, true, '1', NOW()),
-  ('MAPPING-028', 'FIELD-028', 'result.cd4_count', 'RESULT', 'DIRECT', true, true, '1', NOW()),
+  ('MAPPING-021', 'FIELD-021', 'sample.accession_number', 'SAMPLE', 'METADATA', true, true, '1', NOW()),
+  ('MAPPING-022', 'FIELD-022', 'patient.id', 'METADATA', 'METADATA', true, true, '1', NOW()),
+  ('MAPPING-023', 'FIELD-023', 'test.code', 'TEST', 'TEST_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-024', 'FIELD-024', 'result.hiv_antibody', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-025', 'FIELD-025', 'result.hbsag', 'RESULT', 'RESULT_LEVEL', true, false, '1', NOW()), -- Draft
+  ('MAPPING-026', 'FIELD-026', 'result.hcv_antibody', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-027', 'FIELD-027', 'result.syphilis_rpr', 'RESULT', 'RESULT_LEVEL', false, true, '1', NOW()),
+  ('MAPPING-028', 'FIELD-028', 'result.cd4_count', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW()),
   -- Analyzer 4 (Microbiology) mappings
-  ('MAPPING-029', 'FIELD-029', 'sample.accession_number', 'SAMPLE', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-030', 'FIELD-030', 'patient.id', 'PATIENT', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-031', 'FIELD-031', 'test.code', 'TEST', 'DIRECT', true, true, '1', NOW()),
-  ('MAPPING-032', 'FIELD-032', 'result.culture_result', 'TEXT', 'DIRECT', true, false, '1', NOW()), -- Draft
-  ('MAPPING-033', 'FIELD-033', 'result.antibiotic_sensitivity', 'TEXT', 'DIRECT', false, true, '1', NOW()),
-  ('MAPPING-034', 'FIELD-034', 'result.organism_id', 'TEXT', 'DIRECT', true, true, '1', NOW())
+  ('MAPPING-029', 'FIELD-029', 'sample.accession_number', 'SAMPLE', 'METADATA', true, true, '1', NOW()),
+  ('MAPPING-030', 'FIELD-030', 'patient.id', 'METADATA', 'METADATA', true, true, '1', NOW()),
+  ('MAPPING-031', 'FIELD-031', 'test.code', 'TEST', 'TEST_LEVEL', true, true, '1', NOW()),
+  ('MAPPING-032', 'FIELD-032', 'result.culture_result', 'RESULT', 'RESULT_LEVEL', true, false, '1', NOW()), -- Draft
+  ('MAPPING-033', 'FIELD-033', 'result.antibiotic_sensitivity', 'RESULT', 'RESULT_LEVEL', false, true, '1', NOW()),
+  ('MAPPING-034', 'FIELD-034', 'result.organism_id', 'RESULT', 'RESULT_LEVEL', true, true, '1', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert analyzer errors (for error dashboard testing - expanded with more variety)
