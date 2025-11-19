@@ -155,12 +155,15 @@ describe("Modify Order search by accession Number", function () {
   });
 
   it("Searche with accession number and submit", () => {
-    cy.wait(200);
     cy.fixture("Patient").then((patient) => {
       modifyOrderPage.enterAccessionNo(patient.labNo);
       modifyOrderPage.clickSubmitAccessionButton();
+      // Wait for form to load with patient data (indicated by form fields being populated)
+      cy.get("input, select", { timeout: 15000 })
+        .should("be.visible")
+        .first()
+        .should("not.be.empty");
     });
-    cy.wait(10000);
   });
 
   it("Validate program dropdown button not visible and click next", function () {

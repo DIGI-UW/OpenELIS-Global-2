@@ -88,6 +88,10 @@ describe("Order Entity", function () {
   });
   it("should click submit order button", function () {
     orderEntityPage.clickSubmitOrderButton();
-    cy.wait(8000);
+    // Wait for success page or confirmation message to appear
+    cy.get(
+      '[data-testid="success-message"], .success-message, button:contains("Print Barcode")',
+      { timeout: 15000 },
+    ).should("be.visible");
   });
 });

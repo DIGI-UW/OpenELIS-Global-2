@@ -44,27 +44,18 @@ Cypress.Commands.add("enterText", (selector, value) => {
     .clear()
     .type(value)
     .should(($el) => {
-      // Use Cypress retry-ability - check if value matches or is truncated
-      // Handles UI truncation (e.g., "E2E-Smith" -> "EE-Smith")
+      // Use Cypress retry-ability - check if value matches
       const actualValue = $el.val() || $el.text() || "";
       let matches = actualValue === value;
 
-      // Handle truncation patterns
+      // Check if one contains the other (for partial matches)
       if (!matches) {
-        // Check if one contains the other
         matches = actualValue.includes(value) || value.includes(actualValue);
-
-        // Handle specific truncation: E2E-* -> EE-* (removes "2")
-        if (!matches && value.startsWith("E2E")) {
-          const truncated = "E" + value.substring(2); // "E2E-Smith" -> "EE-Smith"
-          matches =
-            actualValue === truncated || actualValue.includes(truncated);
-        }
       }
 
       expect(
         matches,
-        `Expected field value "${actualValue}" to match "${value}" (or truncated version)`,
+        `Expected field value "${actualValue}" to match "${value}"`,
       ).to.be.true;
     });
 });

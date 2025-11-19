@@ -65,11 +65,10 @@ describe("Result By Patient", function () {
 
   it("Search Patient By First and Last Name and validate", function () {
     cy.fixture("Patient").then((patient) => {
-      // Search by first name only to avoid last name truncation issue
-      // The search will find "John" which matches "John E2E-Smith"
+      // Search by first and last name (truncation issue fixed by using TEST- prefix)
       patientPage.searchPatientByFirstAndLastName(
         patient.firstName,
-        "", // Don't use last name due to truncation
+        patient.lastName,
       );
       patientPage.getFirstName().should("have.value", patient.firstName);
       patientPage.clickSearchPatientButton();
