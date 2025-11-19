@@ -439,10 +439,8 @@ button {
   align-items: center;
   background-color: transparent; /* No default background */
   color: var(--cds-text-secondary, #ffffff);
-  padding: 0.75rem 1rem !important; /* Match nav item padding */
   font-size: 0.875rem !important; /* Standardize font size */
   line-height: 1.25rem !important; /* Standardize line height */
-  font-weight: 400 !important; /* Standardize font weight */
   transition:
     color 110ms,
     background-color 110ms,
@@ -467,21 +465,18 @@ button {
   background-color: var(--cds-background, #295785);
 }
 
-/* Standardize nav item styling - consistent padding and font across all levels */
+/* Standardize nav item styling - consistent font across all levels */
 .reduced-padding-nav-menu-item > a.cds--side-nav__link,
 .top-level-menu-item > a,
 .cds--side-nav__menu-item > a.cds--side-nav__link {
-  padding: 0.75rem 1rem !important; /* Slightly more padding than default, but not excessive */
   display: flex !important;
   align-items: center !important;
   font-size: 0.875rem !important; /* Standardize font size - Carbon default is 0.875rem */
   line-height: 1.25rem !important; /* Standardize line height */
-  font-weight: 400 !important; /* Standardize font weight */
 }
 
 /* Ensure sub-menu items (2nd level) match parent styling */
 .analyzer-persistent-sidebar .cds--side-nav__menu-item > a.cds--side-nav__link {
-  padding: 0.75rem 1rem 0.75rem 2rem !important; /* Add left indent for sub-items */
   font-size: 0.875rem !important;
   line-height: 1.25rem !important;
   font-weight: 400 !important;
@@ -492,7 +487,6 @@ button {
   font-size: 0.875rem !important;
   line-height: 1.25rem !important;
   font-weight: 400 !important;
-  padding: 0.75rem 1rem !important;
 }
 
 .top-level-menu-item > a {
