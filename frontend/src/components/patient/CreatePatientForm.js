@@ -75,11 +75,10 @@ function CreatePatientForm(props) {
     contactPhone: { body: "", status: true },
   });
 
-  const handlePhotoChange = (photo) => {
-    setPatientDetails({
-      ...patientDetails,
-      photo: photo,
-    });
+  const handlePhotoChange = (photo, setFieldValue) => {
+    if (setFieldValue) {
+      setFieldValue("photo", photo);
+    }
   };
 
   const handleNationalIdChange = (event) => {
@@ -308,30 +307,39 @@ function CreatePatientForm(props) {
         //nextState.healthDistricts = [];
         setHealthDistricts([]);
       }
-      let patient = props.selectedPatient;
-      patient.patientUpdateStatus = "UPDATE";
       //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
       const patientContactPerson = {
         ...patientDetails?.patientContact?.person,
-        ...patient?.patientContact?.person,
+        ...props.selectedPatient?.patientContact?.person,
       };
       const patientContact = {
         ...patientDetails?.patientContact,
-        ...patient?.patientContact,
+        ...props.selectedPatient?.patientContact,
         person: patientContactPerson,
       };
-      patient = {
+      const patient = {
         ...patientDetails,
-        ...patient,
+        ...props.selectedPatient,
+        patientUpdateStatus: "UPDATE",
         patientContact: patientContact,
       };
-      setPatientDetails({
-        ...patientDetails,
-        ...patient,
-        patientContact: patientContact,
-      });
+      // Set patient details immediately
+      setPatientDetails(patient);
       getYearsMonthsDaysFromDOB(patient.birthDateForDisplay);
       setFormAction("UPDATE");
+      // Fetch patient photo if patient exists
+      getFromOpenElisServer(
+        `/rest/patient-photos/${patient.patientPK}/${false}`,
+        (response) => {
+          if (response && response.data) {
+            // Update patient details with photo
+            setPatientDetails((prevDetails) => ({
+              ...prevDetails,
+              photo: response.data,
+            }));
+          }
+        },
+      );
     }
   }, [props.selectedPatient]);
 
@@ -488,6 +496,7 @@ function CreatePatientForm(props) {
           handleChange,
           handleBlur,
           handleSubmit,
+          setFieldValue,
         }) => (
           <Form
             onSubmit={handleSubmit}
@@ -522,7 +531,7 @@ function CreatePatientForm(props) {
               <Column lg={16} md={8} sm={4}>
                 <PatientImageSelector
                   value={values.photo}
-                  onChange={handlePhotoChange}
+                  onChange={(photo) => handlePhotoChange(photo, setFieldValue)}
                   required={false}
                 />
               </Column>
