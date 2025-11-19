@@ -9,7 +9,195 @@
 
 ### Session 2025-11-19
 
-(No clarifications yet - awaiting review)
+**Clarification Analysis**: Based on analysis of the Figma Make prototype (file: MhvQpxldgwlluftt3zo4oi/components/MergePatient.tsx) and the specification, the following clarifications have been resolved.
+
+#### Question 1: Patient Search and Selection Workflow
+
+The spec states "System MUST open the existing patient search modal when 'Select Patient' button is clicked" (FR-006), but doesn't specify constraints on which patients can be selected.
+
+**Options:**
+
+**A) Allow selection of any patient including inactive or EQA samples**
+- The search modal shows all patients in the system regardless of status
+- Validation only prevents selecting the same patient twice
+- Edge case handling for EQA/inactive patients happens during merge validation
+- Pro: Maximum flexibility, simpler initial selection
+- Con: May allow meaningless merges (e.g., merging EQA samples)
+
+**B) Filter patient search to exclude EQA samples and already-merged patients**
+- The search modal applies filters to only show mergeable patients
+- Prevents selection of patients with `is_merged = TRUE` or `is_eqa_sample = TRUE`
+- Cleaner UX by preventing invalid selections upfront
+- Pro: Better UX, prevents confusion
+- Con: Requires search modal modification, may hide patients user expects to see
+
+**C) Show all patients but display visual indicators for non-mergeable ones**
+- Search modal shows all patients with badges/icons for EQA, merged, or inactive status
+- Allows selection but provides clear warning during validation step
+- Pro: Transparency, user can see why a patient isn't mergeable
+- Con: More complex UI, validation still needed
+
+Which approach should the patient selection workflow use?
+
+---
+
+#### Question 2: Conflicting Demographic Data Resolution
+
+The spec states "Primary patient demographics will be used" for conflicts, but doesn't specify what happens to the non-primary patient's conflicting data.
+
+**Options:**
+
+**A) Discard non-primary demographics completely**
+- Only primary patient's phone, email, address are retained
+- Non-primary patient's contact information is lost (not stored anywhere)
+- Simple, clean data model
+- Pro: No data duplication, clear single source of truth
+- Con: Potential data loss if wrong patient selected as primary
+
+**B) Store non-primary demographics in audit/history table**
+- Create a `patient_merge_history` table storing the non-primary patient's demographics at time of merge
+- Allows recovery if wrong patient was chosen as primary
+- Viewable by Global Administrators in patient detail view
+- Pro: No data loss, supports error correction
+- Con: Additional table, more complex queries
+
+**C) Store conflicting demographics as alternate contact methods**
+- Add non-primary phone as "Alternate Phone" with note "From merged patient PAT-XXXXX"
+- Add non-primary email as alternate email
+- Add non-primary address as previous address
+- Pro: Preserves all contact information, may be useful clinically
+- Con: Creates duplicate contact records, unclear which is current
+
+Which approach should be used for handling conflicting demographic data?
+
+---
+
+#### Question 3: Inactive Patient Access and Display
+
+The spec states merged patients become inactive, but doesn't fully specify the user experience when accessing them directly.
+
+**Options:**
+
+**A) Redirect immediately to primary patient**
+- When a user navigates to a merged patient URL, automatically redirect to primary patient
+- Display brief toast notification "This patient was merged into PAT-XXXXX"
+- No ability to view the old merged patient record
+- Pro: Simplest UX, prevents confusion
+- Con: User might not understand why they were redirected
+
+**B) Show interstitial page explaining the merge**
+- Display a full page with: "This patient record (PAT-XXXXX) was merged into PAT-YYYYY on [DATE] by [USER]"
+- Show merge reason if provided
+- Provide "View Current Patient Record" button
+- Pro: Clear communication, educational for users
+- Con: Extra click required, slower workflow
+
+**C) Show read-only view of merged patient with prominent banner**
+- Display the merged patient's data as it was at time of merge (read-only)
+- Large banner at top: "This patient was merged. View current record: PAT-YYYYY"
+- Useful for understanding what data came from which original patient
+- Pro: Transparency, helps with troubleshooting
+- Con: May confuse users, requires additional view implementation
+
+Which approach should be used for displaying inactive merged patients?
+
+---
+
+#### Question 4: Real-Time Notification Mechanism
+
+The spec requires real-time notifications via WebSocket (FR-054) but doesn't specify fallback behavior.
+
+**Options:**
+
+**A) WebSocket only - no fallback**
+- Implement WebSocket notification system
+- If WebSocket connection fails, user gets no notification
+- User discovers merge only when they try to save/submit data
+- Pro: Simpler implementation, single code path
+- Con: Unreliable in poor network conditions
+
+**B) WebSocket with polling fallback**
+- Primary: WebSocket notifications (instant)
+- Fallback: If WebSocket unavailable, poll every 30 seconds for patient changes
+- Display same notification banner when polling detects change
+- Pro: Reliable in all network conditions
+- Con: More complex implementation, additional server load
+
+**C) WebSocket with page-level validation on actions**
+- WebSocket for instant notifications when available
+- Before any save/submit action, validate patient hasn't been merged
+- Show modal if merge detected: "This patient was merged while you were working. Please reload."
+- Pro: Guaranteed detection at critical moments
+- Con: Notification might come late (when user tries to save)
+
+Which notification mechanism should be implemented?
+
+---
+
+#### Question 5: Merge Operation Transaction and Rollback
+
+The spec requires transaction-based merging with rollback on failure, but doesn't specify granularity of error handling.
+
+**Options:**
+
+**A) All-or-nothing atomic transaction**
+- Entire merge (database + FHIR) in one transaction
+- If FHIR sync fails, entire database transaction rolls back
+- System remains in consistent state but merge fails completely
+- Pro: Perfect data consistency, no partial merges
+- Con: FHIR failures prevent database merge even if DB operation succeeded
+
+**B) Two-phase commit: Database first, then FHIR**
+- Phase 1: Complete database merge in transaction (commit)
+- Phase 2: Attempt FHIR sync as separate operation
+- If FHIR fails, database merge remains, alert created for manual FHIR reconciliation
+- Pro: Database merge succeeds even with FHIR issues
+- Con: Temporary inconsistency between database and FHIR
+
+**C) Best-effort FHIR with async retry**
+- Complete database merge in transaction (commit)
+- Attempt FHIR sync synchronously
+- If FHIR sync fails, create async job to retry periodically
+- Log warning but don't block user, show "Merge complete, FHIR sync pending"
+- Pro: Best UX, automatic recovery
+- Con: Most complex, requires job queue infrastructure
+
+Which transaction and error handling approach should be used?
+
+---
+
+### Resolved Clarifications
+
+- **Q1: Patient Search Workflow** → **A: Inline search forms with no upfront filtering (Modified Option A)**
+  - **Finding**: Figma Make shows inline search forms on the page (not modals) with fields for Patient ID, First Name, Last Name, Gender, and DOB
+  - **Finding**: Search results display in tables below each form with radio button selection
+  - **Finding**: No filtering for EQA/merged patients - validation only prevents selecting same patient twice
+  - **Decision**: Use inline search forms instead of modal popup. Allow selection of any patient with validation at merge time. This matches the Figma design and provides maximum flexibility.
+  - **Impact**: Update FR-006 to specify inline search forms; remove references to "existing patient search modal"
+
+- **Q2: Conflicting Demographic Data Resolution** → **A: Store non-primary demographics in audit/history table (Option B)**
+  - **Finding**: Figma Make displays conflicts to user during confirmation step but doesn't show where non-primary data goes
+  - **Finding**: Clinical systems require audit trail and potential recovery of all patient data
+  - **Decision**: Create `patient_merge_history` table storing complete snapshot of non-primary patient's demographics at time of merge. Viewable by Global Administrators for audit and error correction.
+  - **Impact**: Add new database table and query requirements; update data model section
+
+- **Q3: Inactive Patient Access and Display** → **A: Show interstitial page explaining the merge (Option B)**
+  - **Finding**: Figma Make consistently uses clear warnings and explanations throughout workflow
+  - **Finding**: User education about merge status is important for understanding redirect
+  - **Decision**: Display full interstitial page showing: "This patient record (PAT-XXXXX) was merged into PAT-YYYYY on [DATE] by [USER]", merge reason, and "View Current Patient Record" button
+  - **Impact**: Add new view/page for merged patient display; clearer than immediate redirect
+
+- **Q4: Real-Time Notification Mechanism** → **A: WebSocket with page-level validation on actions (Option C)**
+  - **Finding**: Figma Make is static prototype and doesn't show notification mechanism
+  - **Finding**: Clinical environments may have unreliable WebSocket support
+  - **Decision**: Implement WebSocket notifications when available, but also validate patient hasn't been merged before any save/submit action. Shows modal if merge detected: "This patient was merged while you were working. Please reload."
+  - **Impact**: Dual-layer notification system; guaranteed detection at critical moments
+
+- **Q5: Merge Operation Transaction and Rollback** → **A: Two-phase commit: Database first, then FHIR (Option B)**
+  - **Finding**: Figma Make cannot demonstrate backend transaction behavior
+  - **Finding**: FHIR sync failures should not block critical database merge operation
+  - **Decision**: Phase 1 - Complete database merge in transaction (commit); Phase 2 - Attempt FHIR sync as separate operation. If FHIR fails, database merge remains successful, alert created for manual FHIR reconciliation by technical staff.
+  - **Impact**: Separate transaction boundaries; add alert/queue system for failed FHIR sync
 
 ## User Scenarios & Testing _(mandatory)_
 
