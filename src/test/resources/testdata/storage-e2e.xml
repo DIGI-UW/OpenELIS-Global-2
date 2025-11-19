@@ -65,24 +65,25 @@
         active="true" lastupdated="2025-01-01 12:00:00" />
 
     <!-- E2E Test Fixtures: Patients -->
-    <!-- E2E patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams) -->
-    <person id="1000" last_name="E2E-Smith" first_name="John"
+    <!-- E2E patients (John TEST-Smith, Jane TEST-Jones, Bob TEST-Williams) -->
+    <!-- Using TEST- prefix instead of E2E- to avoid UI truncation issues -->
+    <person id="1000" last_name="TEST-Smith" first_name="John"
         middle_name="Test" city="Test City" state="Test State"
         zip_code="12345" country="USA" work_phone="555-0101"
         home_phone="555-0102" cell_phone="555-0103" primary_phone="555-0101"
-        email="john.e2e@test.com" lastupdated="2025-01-01 12:00:00" />
+        email="john.test@test.com" lastupdated="2025-01-01 12:00:00" />
 
-    <person id="1001" last_name="E2E-Jones" first_name="Jane"
+    <person id="1001" last_name="TEST-Jones" first_name="Jane"
         middle_name="Test" city="Test City" state="Test State"
         zip_code="12345" country="USA" work_phone="555-0201"
         home_phone="555-0202" cell_phone="555-0203" primary_phone="555-0201"
-        email="jane.e2e@test.com" lastupdated="2025-01-01 12:00:00" />
+        email="jane.test@test.com" lastupdated="2025-01-01 12:00:00" />
 
-    <person id="1002" last_name="E2E-Williams" first_name="Bob"
+    <person id="1002" last_name="TEST-Williams" first_name="Bob"
         middle_name="Test" city="Test City" state="Test State"
         zip_code="12345" country="USA" work_phone="555-0301"
         home_phone="555-0302" cell_phone="555-0303" primary_phone="555-0301"
-        email="bob.e2e@test.com" lastupdated="2025-01-01 12:00:00" />
+        email="bob.test@test.com" lastupdated="2025-01-01 12:00:00" />
 
     <patient id="1000" person_id="1000" race="black" gender="M"
         birth_date="1990-01-15 00:00:00" birth_time="1990-01-15 10:00:00"
