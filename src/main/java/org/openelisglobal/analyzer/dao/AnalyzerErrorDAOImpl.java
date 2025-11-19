@@ -95,4 +95,19 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
             throw new LIMSRuntimeException("Error finding all AnalyzerError", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<AnalyzerError> getWithAnalyzer(String errorId) {
+        try {
+            // Eagerly fetch analyzer to avoid LazyInitializationException
+            String hql = "SELECT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE ae.id = :errorId";
+            Query<AnalyzerError> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerError.class);
+            query.setParameter("errorId", errorId);
+            AnalyzerError result = query.uniqueResult();
+            return java.util.Optional.ofNullable(result);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error finding AnalyzerError by ID with analyzer", e);
+        }
+    }
 }

@@ -87,7 +87,9 @@ public class AnalyzerErrorServiceImpl implements AnalyzerErrorService {
     @Override
     @Transactional(readOnly = true)
     public AnalyzerError getErrorById(String errorId) {
-        return analyzerErrorDAO.get(errorId).orElse(null);
+        // Use getWithAnalyzer to eagerly fetch analyzer relationship
+        // This prevents LazyInitializationException when controller accesses analyzer.name
+        return analyzerErrorDAO.getWithAnalyzer(errorId).orElse(null);
     }
 
     @Override

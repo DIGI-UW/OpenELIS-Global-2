@@ -14,4 +14,12 @@ public interface AnalyzerErrorDAO extends BaseDAO<AnalyzerError, String> {
     List<AnalyzerError> findBySeverity(String severity);
 
     List<AnalyzerError> findAll();
+
+    /**
+     * Get AnalyzerError by ID with analyzer eagerly fetched
+     * 
+     * @param errorId Error ID
+     * @return AnalyzerError with analyzer relationship loaded, or null if not found
+     */
+    java.util.Optional<AnalyzerError> getWithAnalyzer(String errorId);
 }
