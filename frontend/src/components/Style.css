@@ -535,58 +535,47 @@ button {
 }
 
 /* styling for footer */
-.quick-footer {
+.oe-quick-footer {
   position: fixed;
   bottom: 0;
+  left: 0;
   width: 100%;
-  background: #ffffff;
-  border-top: 1px solid white;
-  display: flex;
-  justify-content: space-around;
-  padding: 4px 0;
-  z-index: 20;
+  background: white;
+  padding: 8px 0;
+  border-top: 1px solid #ddd;
+  z-index: 9999;
 }
 
-.footer-btn {
+.footer-nav-container {
+  display: flex;
+  justify-content: space-evenly;   /* evenly spaced */
+  align-items: center;
+  width: 100%;
+}
+
+.footer-nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  color: #0f62fe;
   font-size: 12px;
-  color: #6b6b6b;
   cursor: pointer;
-  transition:
-    color 0.25s ease,
-    transform 0.2s ease;
+  padding: 6px;
 }
 
-.footer-btn svg {
-  font-size: 18px;
-  margin-bottom: 2px;
-  transition:
-    color 0.25s ease,
-    transform 0.2s ease;
-}
-.main-footer {
-  display: flex;
-  flex-direction: column;
+.footer-nav-item:hover,
+.footer-nav-item:focus {
+  color: #0043ce;
+  outline: none;
 }
 
-/* ✅ Hover Style */
-.footer-btn:hover {
-  color: #072655;
+.footer-nav-item:focus {
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px #0f62fe;
 }
 
-.footer-btn:hover svg {
-  color: #072655;
-  transform: scale(1.15);
+.footer-nav-item span {
+  margin-top: 4px;
 }
 
-.footer-btn.active {
-  color: #072655;
-  font-weight: 600;
-}
-
-.footer-btn.active svg {
-  color: #072655;
-  transform: scale(1.2);
-}

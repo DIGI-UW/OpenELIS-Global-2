@@ -1,0 +1,88 @@
+[
+  {
+    "labelKey": "nav.home",
+    "icon": "Home",
+    "route": "/Dashboard",
+    "roles": ["Reception", "Results", "Reports", "Validation", "Global Administrator", "Pathologist", "Cytopathologist"]
+  },
+
+  {
+    "labelKey": "nav.register",
+    "icon": "User",
+    "route": "/SamplePatientEntry",
+    "roles": ["Reception"]
+  },
+  {
+    "labelKey": "nav.modifyOrder",
+    "icon": "Document",
+    "route": "/ModifyOrder",
+    "roles": ["Reception"]
+  },
+  {
+    "labelKey": "nav.printBarcode",
+    "icon": "Barcode",
+    "route": "/PrintBarcode",
+    "roles": ["Reception"]
+  },
+  {
+    "labelKey": "nav.patientHistory",
+    "icon": "UserProfile",
+    "route": "/PatientHistory",
+    "roles": ["Reception"]
+  },
+
+  {
+    "labelKey": "nav.workplan",
+    "icon": "List",
+    "route": "/WorkPlanByTestSection",
+    "roles": ["Results"]
+  },
+  {
+    "labelKey": "nav.results",
+    "icon": "DocumentTasks",
+    "route": "/result",
+    "roles": ["Results"]
+  },
+
+  {
+    "labelKey": "nav.reports",
+    "icon": "ReportData",
+    "route": "/RoutineReports",
+    "roles": ["Reports"]
+  },
+
+  {
+    "labelKey": "nav.validation",
+    "icon": "Checkmark",
+    "route": "/validation",
+    "roles": ["Validation"]
+  },
+
+  {
+    "labelKey": "nav.admin",
+    "icon": "Settings",
+    "route": "/admin",
+    "roles": ["Global Administrator"]
+  },
+
+  {
+    "labelKey": "nav.analyzerResults",
+    "icon": "Machine",
+    "route": "/AnalyzerResults",
+    "roles": ["Analyser Import"]
+  },
+
+  {
+    "labelKey": "nav.pathology",
+    "icon": "Chemistry",
+    "route": "/PathologyDashboard",
+    "roles": ["Pathologist"]
+  },
+
+  {
+    "labelKey": "nav.cytology",
+    "icon": "Microscope",
+    "route": "/CytologyDashboard",
+    "roles": ["Cytopathologist"]
+  }
+]

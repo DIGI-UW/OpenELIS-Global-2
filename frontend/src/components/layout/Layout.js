@@ -4,6 +4,7 @@ import Footer from "./Footer";
 import { Content, Theme } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../utils/Utils";
+import QuickNavigationFooter from "../common/QuickNavigationFooter";
 
 export const ConfigurationContext = createContext(null);
 export const NotificationContext = createContext(null);
@@ -68,6 +69,7 @@ export default function Layout(props) {
           <Theme theme="white">
             <Content>{children}</Content>
           </Theme>
+          <QuickNavigationFooter/>
           <Footer />
         </div>
       </NotificationContext.Provider>
