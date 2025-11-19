@@ -26,6 +26,7 @@ import * as analyzerService from "../../../services/analyzerService";
 import FieldMappingPanel from "./FieldMappingPanel";
 import MappingPanel from "./MappingPanel";
 import QueryStatusModal from "./QueryStatusModal";
+import TestMappingModal from "./TestMappingModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./FieldMapping.css";
 
@@ -55,6 +56,7 @@ const FieldMapping = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [queryModalOpen, setQueryModalOpen] = useState(false);
   const [queryJobId, setQueryJobId] = useState(null);
+  const [testMappingModalOpen, setTestMappingModalOpen] = useState(false);
 
   // Restore state from URL query parameters and sessionStorage
   useEffect(() => {
@@ -295,6 +297,13 @@ const FieldMapping = () => {
         >
           <FormattedMessage id="analyzer.fieldMapping.queryAnalyzer" />
         </Button>
+        <Button
+          kind="ghost"
+          data-testid="field-mapping-test-button"
+          onClick={() => setTestMappingModalOpen(true)}
+        >
+          <FormattedMessage id="analyzer.fieldMapping.testMapping" />
+        </Button>
         <Button kind="primary" data-testid="field-mapping-save-button">
           <FormattedMessage id="analyzer.fieldMapping.save" />
         </Button>
@@ -381,6 +390,14 @@ const FieldMapping = () => {
             setFields(data.fields);
           }
         }}
+      />
+      <TestMappingModal
+        open={testMappingModalOpen}
+        onClose={() => setTestMappingModalOpen(false)}
+        analyzerId={analyzerId}
+        analyzerName={analyzer?.name}
+        analyzerType={analyzer?.analyzerType}
+        activeMappingsCount={mappings.filter((m) => m.isActive).length}
       />
     </div>
   );

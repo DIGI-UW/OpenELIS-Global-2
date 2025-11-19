@@ -53,4 +53,27 @@ public class AnalyzerFieldDAOImpl extends BaseDAOImpl<AnalyzerField, String> imp
             throw new LIMSRuntimeException("Error finding AnalyzerField by ID with analyzer", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<AnalyzerField> findByAnalyzerIdAndFieldName(String analyzerId, String fieldName) {
+        try {
+            Integer analyzerIdInt;
+            try {
+                analyzerIdInt = Integer.parseInt(analyzerId);
+            } catch (NumberFormatException e) {
+                throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
+            }
+
+            String hql = "SELECT af FROM AnalyzerField af " + "JOIN af.analyzer a "
+                    + "WHERE a.id = :analyzerId AND af.fieldName = :fieldName";
+            Query<AnalyzerField> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerField.class);
+            query.setParameter("analyzerId", analyzerIdInt);
+            query.setParameter("fieldName", fieldName);
+            AnalyzerField result = query.uniqueResult();
+            return java.util.Optional.ofNullable(result);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error finding AnalyzerField by analyzer ID and field name", e);
+        }
+    }
 }

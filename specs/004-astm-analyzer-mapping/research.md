@@ -435,6 +435,119 @@ data insertion. Integration point is in
   (interface)
 - Specification FR-001, FR-011 (mapping application and error handling)
 
+## 9. Lifecycle Stage Management
+
+### Decision: Spring @Scheduled for Automatic Lifecycle Transitions
+
+**Rationale**: OpenELIS uses Spring Framework's built-in scheduling capabilities
+for background jobs. Using `@Scheduled` annotation provides simple, reliable,
+and maintainable solution for automatic lifecycle transitions without introducing
+additional dependencies.
+
+**Implementation Approach**:
+
+- **Scheduled Job Class**: `AnalyzerLifecycleScheduler.java` with `@Component`
+  and `@EnableScheduling`
+- **Execution Frequency**: Daily at 2 AM (`@Scheduled(cron = "0 0 2 * * ?")`)
+- **Transition Logic**: Query analyzers in GO_LIVE stage with
+  `last_activated_date < NOW() - INTERVAL '7 days'`, batch update to MAINTENANCE
+  stage
+- **Failure Handling**: Individual analyzer failures logged but don't block batch
+  - each analyzer transition wrapped in try-catch
+- **Audit Trail**: All transitions logged with user ID "SYSTEM", timestamp,
+  previous/new stage
+- **Monitoring**: JMX metrics for transition counts, failure counts, execution
+  time
+
+**Alternative Considered**: Quartz Scheduler - Rejected due to unnecessary
+complexity for simple daily batch job. Spring's `@Scheduled` is sufficient and
+already part of Spring Boot starter dependencies.
+
+**Manual Override**: Admin API endpoint `POST
+/rest/analyzer/analyzers/{id}/lifecycle-stage` allows manual stage changes with
+reason and approval workflow.
+
+## 10. Test Mapping Preview Architecture
+
+### Decision: Reuse ASTMAnalyzerReader for Parsing, Stateless Preview Service
+
+**Rationale**: Existing `ASTMAnalyzerReader` already handles ASTM message parsing.
+Creating separate parser would duplicate code. Preview service should be stateless
+(no persistence) for fast, safe testing.
+
+**Implementation Approach**:
+
+- **Service**: `AnalyzerMappingPreviewService` (stateless, NO @Transactional)
+- **ASTM Parsing**: Delegate to `ASTMAnalyzerReader.parse(message)` for field
+  extraction
+- **Mapping Application**: Iterate parsed fields, match to configured mappings,
+  generate preview data
+- **Entity Construction**: Build Test/Result/Sample entities in memory (NO
+  persistence)
+- **Validation**: Identify unmapped fields, type mismatches, missing required
+  mappings, unit conversion issues
+
+**Response Structure**:
+
+```json
+{
+  "parsedFields": [
+    { "fieldName": "GLU", "astmRef": "R|1|^^^GLU", "rawValue": "105", "dataType": "NUMERIC" }
+  ],
+  "appliedMappings": [
+    { "mappingId": "M-001", "analyzerField": "GLU", "openelisField": "Glucose", "confidence": "HIGH" }
+  ],
+  "entityPreview": {
+    "test": { "testCode": "GLU", "testName": "Glucose" },
+    "result": { "value": "105", "unit": "mg/dL" }
+  },
+  "warnings": [
+    { "type": "UNIT_MISMATCH", "message": "Unit conversion applied: mg/dL → mmol/L" }
+  ],
+  "errors": [
+    { "type": "UNMAPPED_FIELD", "message": "Field 'HbA1c' has no mapping" }
+  ]
+}
+```
+
+**Performance**: Target <2 seconds response time (synchronous operation). No
+caching (always use current mappings for accuracy).
+
+**Security**: No persistence (preview only), user must have analyzer view
+permissions, ASTM message content NOT logged (may contain PHI).
+
+## 11. Terminology Standards
+
+### Decision: Standardize Human-Readable vs Code Naming Conventions
+
+**Rationale**: Consistent terminology across specification, code, API responses,
+and UI prevents confusion and improves maintainability.
+
+**Standards**:
+
+| Context                  | Convention              | Example                       | Rationale                                    |
+| ------------------------ | ----------------------- | ----------------------------- | -------------------------------------------- |
+| UI Labels (spec.md, i18n)| Title Case with Spaces  | "Test Unit", "Analyzer"       | Human-readable, professional, accessible     |
+| Code (Java variables)    | camelCase               | `testUnits`, `analyzerId`     | Java naming standards                        |
+| API (JSON keys)          | camelCase               | `"testUnits": [...]`          | JavaScript/JSON convention                   |
+| Database (column names)  | snake_case              | `test_unit_ids`, `analyzer_id`| PostgreSQL convention                        |
+| Enums (Java)             | UPPERCASE_UNDERSCORE    | `FIELD_TYPE.NUMERIC`          | Java enum convention                         |
+| Enums (UI display)       | Title Case              | "Numeric", "Qualitative"      | User-facing display                          |
+| Page Titles              | Title Case, Plural      | "Analyzers", "Field Mappings" | Navigation consistency                       |
+| Entity Names (singular)  | PascalCase              | `Analyzer`, `AnalyzerField`   | Java class naming                            |
+
+**Specific Standardizations**:
+
+- **"Test Unit" vs "testUnits"**: Use "Test Unit" in UI/spec, `testUnits` in
+  code/API
+- **"Analyzer" capitalization**: Always capitalize in page titles ("Analyzers"),
+  lowercase in descriptive text ("the analyzer sends...")
+- **Field Type Display**: UPPERCASE for enum values (`NUMERIC`, `QUALITATIVE`),
+  Title Case for UI labels ("Numeric", "Qualitative")
+
+**Consistency Check**: All new specifications should follow these conventions.
+Code review should flag terminology drift.
+
 ## Summary of Technical Decisions
 
 | Decision Area          | Chosen Approach                                                             | Rationale                                                                           |
@@ -446,6 +559,9 @@ data insertion. Integration point is in
 | Dual-Panel Layout      | Carbon Grid (50/50 split) with custom CSS for connection lines              | Follows Carbon Design System, responsive, accessible                                |
 | Navigation Integration | Unified tab-navigation using sub-nav items (NO Carbon Tabs components)      | Avoids duplicate navigation, consistent with OpenELIS patterns, backend-driven menu |
 | Message Processing     | Mapping-aware wrapper around existing plugin system                         | Maintains backward compatibility, applies mappings before insertion                 |
+| Lifecycle Management   | Spring @Scheduled for automatic transitions                                 | Simple, reliable, no additional dependencies                                        |
+| Test Mapping Preview   | Stateless service reusing ASTMAnalyzerReader                                | No code duplication, fast, safe (no persistence)                                    |
+| Terminology            | Standardized naming conventions per context                                 | Consistency, maintainability, reduces confusion                                     |
 
 ## Open Questions (Resolved)
 

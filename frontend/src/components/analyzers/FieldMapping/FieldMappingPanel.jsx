@@ -5,7 +5,7 @@
  * Task Reference: T060
  */
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   DataTable,
   TableContainer,
@@ -17,7 +17,9 @@ import {
   TableCell,
   Search,
   Tag,
+  Dropdown,
 } from "@carbon/react";
+import { WarningAltFilled } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./FieldMappingPanel.css";
 
@@ -30,6 +32,7 @@ const FieldMappingPanel = ({
   mappings,
 }) => {
   const intl = useIntl();
+  const [statusFilter, setStatusFilter] = useState("all"); // "all", "mapped", "unmapped"
 
   // Table headers
   const headers = [
@@ -40,8 +43,33 @@ const FieldMappingPanel = ({
     { key: "action", header: "Action" },
   ];
 
+  // Calculate mapped/unmapped counts
+  const { mappedCount, unmappedCount } = useMemo(() => {
+    const mapped = fields.filter((field) =>
+      mappings.some((m) => m.analyzerFieldId === field.id)
+    ).length;
+    const unmapped = fields.length - mapped;
+    return { mappedCount: mapped, unmappedCount: unmapped };
+  }, [fields, mappings]);
+
+  // Filter fields by status
+  const filteredFields = useMemo(() => {
+    if (statusFilter === "all") return fields;
+    if (statusFilter === "mapped") {
+      return fields.filter((field) =>
+        mappings.some((m) => m.analyzerFieldId === field.id)
+      );
+    }
+    if (statusFilter === "unmapped") {
+      return fields.filter(
+        (field) => !mappings.some((m) => m.analyzerFieldId === field.id)
+      );
+    }
+    return fields;
+  }, [fields, mappings, statusFilter]);
+
   // Format fields for table rows
-  const rows = fields.map((field) => {
+  const rows = filteredFields.map((field) => {
     const hasMapping = mappings.some((m) => m.analyzerFieldId === field.id);
 
     return {
@@ -78,18 +106,60 @@ const FieldMappingPanel = ({
             values={{ type: "All" }}
           />
         </h3>
-        <Search
-          data-testid="field-mapping-search"
-          labelText={intl.formatMessage({
-            id: "analyzer.fieldMapping.panel.source.search",
-          })}
-          placeholder={intl.formatMessage({
-            id: "analyzer.fieldMapping.panel.source.search",
-          })}
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          size="lg"
-        />
+        <div className="panel-header-controls">
+          <Search
+            data-testid="field-mapping-search"
+            labelText={intl.formatMessage({
+              id: "analyzer.fieldMapping.panel.source.search",
+            })}
+            placeholder={intl.formatMessage({
+              id: "analyzer.fieldMapping.panel.source.search",
+            })}
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+            size="lg"
+          />
+          <Dropdown
+            id="status-filter"
+            data-testid="field-mapping-status-filter"
+            label={intl.formatMessage({
+              id: "analyzer.fieldMapping.panel.statusFilter.label",
+            })}
+            items={[
+              {
+                id: "all",
+                text: intl.formatMessage({
+                  id: "analyzer.fieldMapping.panel.statusFilter.all",
+                }),
+              },
+              {
+                id: "mapped",
+                text: intl.formatMessage({
+                  id: "analyzer.fieldMapping.panel.statusFilter.mapped",
+                }),
+              },
+              {
+                id: "unmapped",
+                text: intl.formatMessage({
+                  id: "analyzer.fieldMapping.panel.statusFilter.unmapped",
+                }),
+              },
+            ]}
+            selectedItem={
+              statusFilter === "all"
+                ? { id: "all", text: intl.formatMessage({ id: "analyzer.fieldMapping.panel.statusFilter.all" }) }
+                : statusFilter === "mapped"
+                  ? { id: "mapped", text: intl.formatMessage({ id: "analyzer.fieldMapping.panel.statusFilter.mapped" }) }
+                  : { id: "unmapped", text: intl.formatMessage({ id: "analyzer.fieldMapping.panel.statusFilter.unmapped" }) }
+            }
+            onChange={({ selectedItem }) => {
+              if (selectedItem) {
+                setStatusFilter(selectedItem.id);
+              }
+            }}
+            size="lg"
+          />
+        </div>
       </div>
 
       <TableContainer data-testid="field-mapping-table-container">
@@ -131,6 +201,22 @@ const FieldMappingPanel = ({
 
                         if (headerKey === "fieldName") {
                           testId = `field-name-${row.id}`;
+                          // Add warning icon for unmapped fields
+                          const isUnmapped = !row.hasMapping;
+                          cellContent = (
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              {isUnmapped && (
+                                <WarningAltFilled
+                                  className="unmapped-field-icon"
+                                  title={intl.formatMessage({
+                                    id: "analyzer.fieldMapping.panel.unmappedField.tooltip",
+                                  })}
+                                  data-testid={`unmapped-icon-${row.id}`}
+                                />
+                              )}
+                              <span>{cell.value}</span>
+                            </div>
+                          );
                         } else if (headerKey === "astmRef") {
                           testId = `field-astm-ref-${row.id}`;
                         } else if (headerKey === "type") {
@@ -144,12 +230,20 @@ const FieldMappingPanel = ({
                           testId = `field-unit-${row.id}`;
                         } else if (headerKey === "action") {
                           testId = `field-action-${row.id}`;
-                          cellContent =
-                            cell.value === "Mapped" ? (
-                              <Tag type="green">Mapped</Tag>
-                            ) : (
-                              <Tag type="gray">Unmapped</Tag>
-                            );
+                          const isMapped = row.hasMapping;
+                          cellContent = isMapped ? (
+                            <Tag type="green" data-testid={`mapped-badge-${row.id}`}>
+                              {intl.formatMessage({
+                                id: "analyzer.fieldMapping.panel.status.mapped",
+                              })}
+                            </Tag>
+                          ) : (
+                            <Tag type="red" data-testid={`unmapped-badge-${row.id}`}>
+                              {intl.formatMessage({
+                                id: "analyzer.fieldMapping.panel.status.unmapped",
+                              })}
+                            </Tag>
+                          );
                         }
 
                         return (
@@ -170,8 +264,16 @@ const FieldMappingPanel = ({
       <div className="panel-footer">
         <FormattedMessage
           id="analyzer.fieldMapping.panel.source.fieldsAvailable"
-          values={{ count: fields.length }}
+          values={{ count: filteredFields.length }}
         />
+        {" • "}
+        <FormattedMessage
+          id="analyzer.fieldMapping.panel.status.mapped"
+        />: {mappedCount}
+        {" • "}
+        <FormattedMessage
+          id="analyzer.fieldMapping.panel.status.unmapped"
+        />: {unmappedCount}
       </div>
     </div>
   );

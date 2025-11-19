@@ -3,9 +3,12 @@
 }
 
 /* Ensure consistent content width - all Grid content should align with title */
+.error-dashboard .cds--css-grid,
 .error-dashboard .cds--grid {
+  max-width: none; /* Remove Carbon's default max-width */
+  padding-right: 0; /* Remove Carbon's default side padding */
+  padding-left: 0; /* Remove Carbon's default side padding */
   margin: 0;
-  padding: 0; /* Remove Carbon's default side padding */
 }
 
 .error-dashboard .cds--col {

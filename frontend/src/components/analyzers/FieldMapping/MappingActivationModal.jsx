@@ -22,8 +22,9 @@ import {
   Button,
   Checkbox,
   InlineNotification,
+  Link,
 } from "@carbon/react";
-import { WarningAlt } from "@carbon/icons-react";
+import { WarningAlt, Error } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./MappingActivationModal.css";
 
@@ -33,6 +34,11 @@ const MappingActivationModal = ({
   analyzerName,
   analyzerIsActive = false,
   onConfirm,
+  pendingMessagesCount = 0,
+  missingRequired = [],
+  concurrentEdit = false,
+  onViewPendingMessages,
+  onReloadPage,
 }) => {
   const intl = useIntl();
   const [confirmed, setConfirmed] = useState(false);
@@ -108,6 +114,72 @@ const MappingActivationModal = ({
                 data-testid="mapping-activation-active-warning"
               />
             )}
+            {pendingMessagesCount > 0 && (
+              <InlineNotification
+                kind="warning"
+                title={intl.formatMessage(
+                  {
+                    id: "analyzer.fieldMapping.activationModal.warningPendingMessages",
+                    defaultMessage:
+                      "This analyzer has {count} pending messages in the error queue. Activating mapping changes may affect how these messages are reprocessed. Consider resolving errors first.",
+                  },
+                  { count: pendingMessagesCount },
+                )}
+                hideCloseButton
+                lowContrast
+                data-testid="mapping-activation-pending-messages-warning"
+                actionButtonLabel={
+                  onViewPendingMessages
+                    ? intl.formatMessage({
+                        id: "analyzer.fieldMapping.activationModal.viewPendingMessages",
+                        defaultMessage: "View Pending Messages",
+                      })
+                    : undefined
+                }
+                onActionButtonClick={onViewPendingMessages}
+              />
+            )}
+            {concurrentEdit && (
+              <InlineNotification
+                kind="error"
+                title={intl.formatMessage({
+                  id: "analyzer.fieldMapping.activationModal.errorConcurrentEdit",
+                  defaultMessage:
+                    "Mapping changes detected. Another user has modified mappings for this analyzer. Please reload the page to see latest changes.",
+                })}
+                hideCloseButton
+                lowContrast
+                data-testid="mapping-activation-concurrent-edit-error"
+                actionButtonLabel={
+                  onReloadPage
+                    ? intl.formatMessage({
+                        id: "analyzer.fieldMapping.activationModal.reloadPage",
+                        defaultMessage: "Reload Page",
+                      })
+                    : undefined
+                }
+                onActionButtonClick={onReloadPage}
+              />
+            )}
+            {missingRequired.length > 0 && (
+              <InlineNotification
+                kind="error"
+                title={intl.formatMessage({
+                  id: "analyzer.fieldMapping.activationModal.errorMissingRequired",
+                  defaultMessage: "Cannot activate: Required mappings missing",
+                })}
+                subtitle={intl.formatMessage(
+                  {
+                    id: "analyzer.fieldMapping.activationModal.errorMissingRequired.detail",
+                    defaultMessage: "Missing required fields: {fields}",
+                  },
+                  { fields: missingRequired.join(", ") },
+                )}
+                hideCloseButton
+                lowContrast
+                data-testid="mapping-activation-missing-required-error"
+              />
+            )}
           </div>
         </div>
 
@@ -139,7 +211,7 @@ const MappingActivationModal = ({
         <Button
           kind="danger"
           onClick={handleConfirm}
-          disabled={!confirmed}
+          disabled={!confirmed || missingRequired.length > 0 || concurrentEdit}
           data-testid="activation-confirm-button"
         >
           <FormattedMessage

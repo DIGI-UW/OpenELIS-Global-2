@@ -46,10 +46,12 @@ The feature introduces 5 new entities and extends 1 existing entity:
 | `analyzer_id`      | VARCHAR(36) | FK, NOT NULL, UNIQUE             | References `analyzer.id`                  |
 | `ip_address`       | VARCHAR(15) | NULL                             | IPv4 address (e.g., "192.168.1.10")       |
 | `port`             | INTEGER     | NULL                             | Port number (1-65535)                     |
-| `protocol_version` | VARCHAR(20) | NOT NULL, DEFAULT 'ASTM LIS2-A2' | Protocol version                          |
-| `test_unit_ids`    | TEXT[]      | NULL                             | Array of test unit IDs (PostgreSQL array) |
-| `last_updated`     | TIMESTAMP   | NOT NULL                         | Audit timestamp (from BaseObject)         |
-| `sys_user_id`      | VARCHAR(36) | NULL                             | Audit user ID (from BaseObject)           |
+| `protocol_version`   | VARCHAR(20) | NOT NULL, DEFAULT 'ASTM LIS2-A2' | Protocol version                          |
+| `test_unit_ids`      | TEXT[]      | NULL                             | Array of test unit IDs (PostgreSQL array) |
+| `lifecycle_stage`    | VARCHAR(20) | NOT NULL, DEFAULT 'SETUP'        | Analyzer lifecycle stage (enum)           |
+| `last_activated_date`| TIMESTAMP   | NULL                             | Date when analyzer was last activated     |
+| `last_updated`       | TIMESTAMP   | NOT NULL                         | Audit timestamp (from BaseObject)         |
+| `sys_user_id`        | VARCHAR(36) | NULL                             | Audit user ID (from BaseObject)           |
 
 **Validation Rules**:
 
@@ -58,8 +60,22 @@ The feature introduces 5 new entities and extends 1 existing entity:
 - `port`: Must be in range 1-65535 if provided
 - `ip_address` and `port` must both be provided or both be NULL (connection
   configuration is all-or-nothing)
+- `lifecycle_stage`: Must be one of: SETUP, VALIDATION, GO_LIVE, MAINTENANCE
+- `last_activated_date`: Auto-populated when lifecycle_stage transitions to GO_LIVE
 
-**State Transitions**: N/A (static configuration)
+**Lifecycle Stage Transitions**:
+
+- **SETUP → VALIDATION**: Automatic when first field mappings are created
+- **VALIDATION → GO_LIVE**: Manual activation by user (requires confirmation)
+- **GO_LIVE → MAINTENANCE**: Automatic after 7 days (triggered by scheduled job at 2 AM daily)
+- **MAINTENANCE → SETUP**: Manual reset by administrator (rare, used for major reconfiguration)
+
+**Lifecycle Stage Enum Values**:
+
+- `SETUP`: Analyzer registered, connection tested, initial mappings being created (inactive)
+- `VALIDATION`: Draft mappings created, testing with sample messages, validating accuracy (inactive)
+- `GO_LIVE`: Mappings activated, analyzer receiving orders, monitoring enabled (active)
+- `MAINTENANCE`: Operational analyzer with ongoing mapping updates and error resolution (active)
 
 **JPA Entity**:
 
@@ -90,6 +106,24 @@ public class AnalyzerConfiguration extends BaseObject<String> {
 
     @Column(name = "test_unit_ids", columnDefinition = "TEXT[]")
     private String[] testUnitIds;
+
+    @Column(name = "lifecycle_stage", length = 20, nullable = false)
+    @Enumerated(EnumType.STRING)
+    private LifecycleStage lifecycleStage = LifecycleStage.SETUP;
+
+    @Column(name = "last_activated_date")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date lastActivatedDate;
+}
+
+/**
+ * Enum for analyzer lifecycle stages
+ */
+public enum LifecycleStage {
+    SETUP,         // Initial configuration
+    VALIDATION,    // Testing and validation
+    GO_LIVE,       // Active and operational
+    MAINTENANCE    // Ongoing maintenance
 }
 ```
 
@@ -507,6 +541,148 @@ public class AnalyzerError extends BaseObject<String> {
 
     public enum ErrorStatus {
         UNACKNOWLEDGED, ACKNOWLEDGED, RESOLVED
+    }
+}
+```
+
+### 7. CustomFieldType
+
+**Purpose**: Represents administrator-defined custom field types that extend
+beyond standard field types (NUMERIC, QUALITATIVE, etc.) with custom validation
+rules.
+
+**Table**: `custom_field_type`
+
+**Relationships**:
+
+- One-to-Many with `ValidationRuleConfiguration`
+- Referenced by `AnalyzerField` (when `field_type='CUSTOM'`,
+  `custom_field_type_id` references this table)
+
+**Fields**:
+
+| Field          | Type         | Constraints      | Description                         |
+| -------------- | ------------ | ---------------- | ----------------------------------- |
+| `id`           | VARCHAR(36)  | PK, NOT NULL     | Primary key (UUID)                  |
+| `type_name`    | VARCHAR(100) | NOT NULL, UNIQUE | Display name (e.g., "pH Level")     |
+| `description`  | TEXT         | NULL             | Description of field type usage     |
+| `is_active`    | BOOLEAN      | NOT NULL         | Whether type is available for use   |
+| `last_updated` | TIMESTAMP    | NOT NULL         | Audit timestamp (from BaseObject)   |
+| `sys_user_id`  | VARCHAR(36)  | NULL             | Audit user ID (from BaseObject)     |
+
+**Validation Rules**:
+
+- `type_name`: Must be unique, 1-100 characters
+- Cannot delete custom field type if referenced by active analyzer fields
+
+**JPA Entity**:
+
+```java
+@Entity
+@Table(name = "custom_field_type")
+public class CustomFieldType extends BaseObject<String> {
+    @Id
+    @GeneratedValue(generator = "uuid")
+    @GenericGenerator(name = "uuid", strategy = "uuid2")
+    private String id;
+
+    @Column(name = "type_name", length = 100, nullable = false, unique = true)
+    @NotNull
+    private String typeName;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    @OneToMany(mappedBy = "customFieldType", cascade = CascadeType.ALL)
+    private List<ValidationRuleConfiguration> validationRules;
+}
+```
+
+### 8. ValidationRuleConfiguration
+
+**Purpose**: Defines validation rules for custom field types, supporting regex
+patterns, value ranges, enumerated values, and length constraints.
+
+**Table**: `validation_rule_configuration`
+
+**Relationships**:
+
+- Many-to-One with `CustomFieldType`
+
+**Fields**:
+
+| Field                 | Type         | Constraints        | Description                                |
+| --------------------- | ------------ | ------------------ | ------------------------------------------ |
+| `id`                  | VARCHAR(36)  | PK, NOT NULL       | Primary key (UUID)                         |
+| `custom_field_type_id`| VARCHAR(36)  | FK, NOT NULL       | References `custom_field_type.id`          |
+| `rule_name`           | VARCHAR(100) | NOT NULL           | Display name (e.g., "pH Range Validator")  |
+| `rule_type`           | VARCHAR(20)  | NOT NULL           | Rule type enum (REGEX, RANGE, ENUM, LENGTH)|
+| `rule_expression`     | TEXT         | NOT NULL           | JSON or pattern string                     |
+| `error_message`       | VARCHAR(500) | NOT NULL           | Custom error message template              |
+| `is_active`           | BOOLEAN      | NOT NULL           | Whether rule is enforced                   |
+| `last_updated`        | TIMESTAMP    | NOT NULL           | Audit timestamp (from BaseObject)          |
+| `sys_user_id`         | VARCHAR(36)  | NULL               | Audit user ID (from BaseObject)            |
+
+**Rule Expression Formats**:
+
+- **REGEX**: Pattern string (e.g., `"^[0-9]{3}-[A-Z]{2}$"`)
+- **RANGE**: JSON `{"min": 0.0, "max": 14.0}` for numeric ranges
+- **ENUM**: JSON array `["value1", "value2", "value3"]` for allowed values
+- **LENGTH**: JSON `{"minLength": 5, "maxLength": 50}` for string length
+
+**Validation Rules**:
+
+- `rule_type`: Must be one of REGEX, RANGE, ENUM, LENGTH
+- `rule_expression`: Must be valid JSON or regex pattern depending on rule_type
+- REGEX patterns must compile without errors
+- RANGE min must be < max
+- ENUM must have at least one value
+- LENGTH minLength must be <= maxLength
+
+**JPA Entity**:
+
+```java
+@Entity
+@Table(name = "validation_rule_configuration")
+public class ValidationRuleConfiguration extends BaseObject<String> {
+    @Id
+    @GeneratedValue(generator = "uuid")
+    @GenericGenerator(name = "uuid", strategy = "uuid2")
+    private String id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "custom_field_type_id", nullable = false)
+    @NotNull
+    private CustomFieldType customFieldType;
+
+    @Column(name = "rule_name", length = 100, nullable = false)
+    @NotNull
+    private String ruleName;
+
+    @Column(name = "rule_type", length = 20, nullable = false)
+    @Enumerated(EnumType.STRING)
+    @NotNull
+    private RuleType ruleType;
+
+    @Column(name = "rule_expression", columnDefinition = "TEXT", nullable = false)
+    @NotNull
+    private String ruleExpression;
+
+    @Column(name = "error_message", length = 500, nullable = false)
+    @NotNull
+    private String errorMessage;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    public enum RuleType {
+        REGEX,    // Regular expression pattern
+        RANGE,    // Numeric min/max range
+        ENUM,     // Enumerated allowed values
+        LENGTH    // String length constraints
     }
 }
 ```

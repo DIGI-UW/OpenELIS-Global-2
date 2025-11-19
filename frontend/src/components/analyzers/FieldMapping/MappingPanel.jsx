@@ -10,10 +10,11 @@
  */
 
 import React, { useState } from "react";
-import { Button, Dropdown, TextInput } from "@carbon/react";
+import { Button, Dropdown, TextInput, Tag, Tooltip } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import OpenELISFieldSelector from "./OpenELISFieldSelector";
 import MappingActivationModal from "./MappingActivationModal";
+import MappingRetirementModal from "./MappingRetirementModal";
 import "./MappingPanel.css";
 
 const MappingPanel = ({
@@ -21,12 +22,15 @@ const MappingPanel = ({
   mapping,
   onCreateMapping,
   onUpdateMapping,
+  onRetireMapping,
   analyzerName,
   analyzerIsActive = false,
+  pendingMessagesCount = 0,
 }) => {
   const intl = useIntl();
   const [editMode, setEditMode] = useState(!mapping);
   const [showActivationModal, setShowActivationModal] = useState(false);
+  const [showRetirementModal, setShowRetirementModal] = useState(false);
   const [pendingMappingData, setPendingMappingData] = useState(null);
   const [formData, setFormData] = useState({
     openelisFieldId: mapping?.openelisFieldId || "",
@@ -127,18 +131,93 @@ const MappingPanel = ({
     }
   };
 
+  // Handle retire mapping
+  const handleRetireClick = () => {
+    setShowRetirementModal(true);
+  };
+
+  const handleRetirementConfirm = (retirementReason) => {
+    if (onRetireMapping && mapping) {
+      onRetireMapping(mapping.id, retirementReason);
+    }
+    setShowRetirementModal(false);
+  };
+
+  const handleRetirementModalClose = () => {
+    setShowRetirementModal(false);
+  };
+
+  // Check if retire button should be disabled
+  const canRetire = mapping && (!mapping.isRequired || mapping.isRequired === false) && pendingMessagesCount === 0;
+
   return (
     <div className="mapping-panel" data-testid="mapping-panel">
       <div className="panel-header">
-        <h3>Mapping</h3>
+        <h3>
+          Mapping
+          {mapping && !mapping.isActive && (
+            <Tag type="gray" className="mapping-status-badge" data-testid="mapping-retired-badge">
+              <FormattedMessage
+                id="analyzer.fieldMapping.panel.mapping.retired"
+                defaultMessage="Retired"
+              />
+            </Tag>
+          )}
+          {mapping && mapping.isActive && (
+            <Tag type="green" className="mapping-status-badge" data-testid="mapping-active-badge">
+              <FormattedMessage
+                id="analyzer.fieldMapping.panel.mapping.active"
+                defaultMessage="Active"
+              />
+            </Tag>
+          )}
+        </h3>
         {!editMode && mapping && (
-          <Button
-            kind="ghost"
-            onClick={() => setEditMode(true)}
-            data-testid="mapping-panel-edit-button"
-          >
-            <FormattedMessage id="analyzer.fieldMapping.panel.target.edit" />
-          </Button>
+          <div className="panel-header-actions">
+            <Button
+              kind="ghost"
+              onClick={() => setEditMode(true)}
+              data-testid="mapping-panel-edit-button"
+            >
+              <FormattedMessage id="analyzer.fieldMapping.panel.target.edit" />
+            </Button>
+            {mapping.isActive && (
+              <Tooltip
+                align="bottom"
+                label={
+                  !canRetire
+                    ? intl.formatMessage(
+                        {
+                          id: "analyzer.fieldMapping.panel.retire.disabled.tooltip",
+                          defaultMessage:
+                            "Cannot retire: {reason}",
+                        },
+                        {
+                          reason:
+                            mapping.isRequired
+                              ? "Required mapping"
+                              : pendingMessagesCount > 0
+                                ? `${pendingMessagesCount} pending messages`
+                                : "Unknown reason",
+                        },
+                      )
+                    : ""
+                }
+              >
+                <Button
+                  kind="ghost"
+                  onClick={handleRetireClick}
+                  disabled={!canRetire}
+                  data-testid="mapping-panel-retire-button"
+                >
+                  <FormattedMessage
+                    id="analyzer.fieldMapping.panel.retire"
+                    defaultMessage="Retire Mapping"
+                  />
+                </Button>
+              </Tooltip>
+            )}
+          </div>
         )}
       </div>
 
@@ -231,6 +310,15 @@ const MappingPanel = ({
         analyzerName={analyzerName || ""}
         analyzerIsActive={analyzerIsActive}
         onConfirm={handleActivationConfirm}
+      />
+
+      {/* Retirement Confirmation Modal */}
+      <MappingRetirementModal
+        open={showRetirementModal}
+        onClose={handleRetirementModalClose}
+        mappingName={field?.fieldName || ""}
+        pendingMessagesCount={pendingMessagesCount}
+        onConfirm={handleRetirementConfirm}
       />
     </div>
   );

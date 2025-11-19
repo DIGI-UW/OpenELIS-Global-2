@@ -130,11 +130,18 @@ impacted messages can be reprocessed successfully.
 
 ## Requirements _(mandatory)_
 
+### UI Component Patterns
+
+The following UI patterns MUST be used consistently across all analyzer-related pages:
+
+**Statistics Cards Pattern**: Statistics cards MUST use Carbon Grid with full-width layout, equal-width columns (3-4 columns depending on metric count), aligned with table/content edges for visual consistency. Each card MUST use color-coding via Carbon design tokens (e.g., `$blue-60`, `$green-60`, `$red-60`, `$gray-60`) and thematic icons from `@carbon/icons-react` (e.g., Analytics, CheckmarkFilled, ErrorFilled, WarningAltFilled, Time). Cards MUST span the same width as the data table below using single-row layout. This pattern is referenced in FR-001 (Analyzers List statistics) and FR-016 (Error Dashboard statistics).
+
 ### Functional Requirements
 
 - **FR-001**: System MUST provide an Analyzers List page with a searchable,
-  filterable data table displaying all analyzers. The page MUST include: a page
-  header with "Analyzers" title and "Add Analyzer" primary action button, a
+  filterable data table displaying all analyzers (navigation integration specified
+  in FR-020). The page MUST include: a page header with "Analyzers" title and
+  "Add Analyzer" primary action button, a
    statistics section with 3-column grid displaying cards for Total Analyzers,
    Active Analyzers, and Inactive Analyzers. The statistics cards MUST span the
    same width as the table/content below, using a single-row layout with
@@ -255,31 +262,90 @@ impacted messages can be reprocessed successfully.
   values to map to the same OpenELIS code (many-to-one mapping) and MUST allow
   users to specify a default OpenELIS code for unmapped qualitative values.
 - **FR-006**: System MUST provide a Copy Mappings modal (ComposedModal, small
-  size ~400-480px) that
-  allows users to copy all field mappings from a source analyzer to the current
-  analyzer. The modal MUST include: dialog header with title "Copy Field
-  Mappings" and subtitle "Copy field mappings from {source analyzer} to {target
-  analyzer}", source analyzer section (read-only display showing analyzer name
-  and type), target analyzer section with label "Target Analyzer \*" (required)
-  and dropdown selector with placeholder "Select target analyzer", warning note
-  section displaying "This will copy all field mappings including unit
-  conversions and qualitative value mappings. Existing mappings will be
-  overwritten.", and dialog footer with Cancel button and "Copy Mappings" button
-  (with icon). The modal MUST display a searchable list of analyzers with active
-  mappings, show a confirmation dialog before overwriting existing mappings,
-  generate warnings for type incompatibilities, and allow users to review and
-  adjust differences after copying.
+  size ~400-480px) that allows users to copy all field mappings from a source
+  analyzer to a target analyzer. The modal MUST include: dialog header with title
+  "Copy Field Mappings" and subtitle "Copy field mappings from {source analyzer}
+  to {target analyzer}", source analyzer section (read-only display showing
+  analyzer name and type), target analyzer section with label "Target Analyzer *"
+  (required) and dropdown selector with placeholder "Select target analyzer"
+  (searchable, filters to analyzers with active mappings only), mapping summary
+  section displaying "X mappings will be copied" with breakdown by type (field
+  mappings, unit conversions, qualitative mappings), warning note section
+  displaying "This will copy all field mappings including unit conversions and
+  qualitative value mappings. Existing mappings will be overwritten.", and dialog
+  footer with Cancel button and "Copy Mappings" button (with Copy icon from
+  @carbon/icons-react). **Copy Operation Workflow**: (1) User selects source
+  analyzer from dropdown (auto-populated based on context or user selection), (2)
+  System validates source analyzer has active mappings (displays error if none
+  exist: "Source analyzer has no active mappings to copy"), (3) User selects
+  target analyzer from filtered dropdown (excludes source analyzer and analyzers
+  with incompatible types), (4) System displays mapping count summary showing
+  total mappings to be copied, (5) User clicks "Copy Mappings" button, (6) System
+  displays confirmation dialog "Are you sure you want to copy X mappings? Existing
+  mappings will be overwritten." with Confirm/Cancel buttons, (7) User confirms
+  action, (8) System performs copy operation with conflict resolution (see below),
+  (9) System displays success notification "Successfully copied X mappings" or
+  error notification with details. **Conflict Resolution Rules**: (1) **Existing
+  mapping overwrite**: If target analyzer has existing mapping with same
+  analyzerFieldId (e.g., both analyzers have "GLU" test code), the source mapping
+  overwrites the target mapping completely (including unit conversions and
+  qualitative mappings), (2) **Type incompatibility handling**: If source field
+  type is incompatible with target field type (e.g., NUMERIC source → QUALITATIVE
+  target), system generates warning "Mapping skipped for field '{fieldName}' due
+  to type incompatibility" and user can choose: Skip (exclude from copy), Force
+  (copy anyway with warning badge on resulting mapping), Cancel (abort entire
+  operation), (3) **Qualitative value merging**: For qualitative mappings, if
+  target already has qualitative value mappings for the same OpenELIS field,
+  system merges values (does not replace) - source values added to existing
+  target values, duplicate values deduplicated, (4) **Partial failure rollback**:
+  If any error occurs during copy (database constraint violation, validation
+  failure), entire operation rolls back - no partial state left in database.
+  **Success/Error States**: Success state displays notification "Successfully
+  copied X field mappings, Y unit conversions, Z qualitative mappings" with option
+  to "View Target Analyzer" (navigates to target analyzer field mapping page);
+  Error state displays notification with specific error details and "View Error
+  Log" button (opens modal with detailed error information and affected
+  mappings).
 - **FR-007**: System MUST provide an inline "test mapping" capability accessible
   from the mapping interface that lets users submit sample ASTM messages or
   example field/value combinations and see a preview of how they would be
-  interpreted into OpenELIS entities before going live. The test results MUST
-  show which mappings would be applied, any warnings or errors, and the
-  resulting OpenELIS data structure. **UI Location**: The "Test Mapping" button
-  MUST be located in the FieldMapping page header, positioned between the "Back"
-  button and the "Save Mappings" button. The button MUST use ghost style
-  (secondary action) to distinguish it from the primary "Save Mappings" action.
-  Clicking the button opens the TestMappingModal (ComposedModal) for submitting
-  sample messages and viewing preview results.
+  interpreted into OpenELIS entities before going live. **UI Location**: The
+  "Test Mapping" button MUST be located in the FieldMapping page header,
+  positioned between the "Back" button (left) and the "Save Mappings" button
+  (right). The button MUST use ghost style (secondary action) to distinguish it
+  from the primary "Save Mappings" action. Clicking the button opens the
+  TestMappingModal (ComposedModal, medium size ~600-700px) with the following
+  structure: (1) **Dialog header** with title "Test Field Mappings" and subtitle
+  "Preview how sample ASTM messages will be interpreted with current mappings",
+  (2) **Analyzer information section** displaying read-only analyzer name,
+  analyzer type, and active mappings count (e.g., "15 active mappings"), (3)
+  **Sample message input section** with TextArea labeled "Sample ASTM Message
+  *" (required), placeholder showing example ASTM message format (e.g., "H|\^&|||
+  PSM^Micro^2.0|..."), character counter showing "0 / 10,240 characters" with
+  visual warning at 90% capacity, and validation indicators (format validation,
+  checksum verification, message structure), (4) **Preview options section** with
+  checkboxes "Show detailed parsing steps" (displays intermediate parsing state)
+  and "Validate all mappings" (runs full validation including type compatibility,
+  required fields, unit conversions), (5) **Result display section** (appears
+  after preview button clicked) containing Parsed Fields table with columns
+  (Field Name, ASTM Ref, Raw Value, Mapped To, Interpretation Status), Applied
+  Mappings section showing which mappings were used with mapping IDs and
+  confidence indicators, OpenELIS Entity Preview displaying structured JSON or
+  formatted display of resulting Test/Result/Sample entities with syntax
+  highlighting, and Warnings/Errors section listing mapping warnings (type
+  mismatches, missing conversions, ambiguous values), validation errors (required
+  fields missing, invalid formats), and unmapped fields with suggested actions,
+  (6) **Action buttons** in footer: "Close" button (secondary), "Test Another
+  Message" button (ghost, clears form and results), and "Save as Test Case"
+  button (optional, stores message for regression testing). The modal MUST
+  validate ASTM message format (header/patient/order/result/terminator record
+  structure), enforce 10KB message size limit, verify checksums if present, and
+  display validation errors inline with specific line/field references. The
+  preview operation MUST execute synchronously with <2s response time target and
+  MUST NOT persist any data (stateless preview only). **Figma Reference**: Test
+  mapping modal design available at
+  https://www.figma.com/design/LKzqNAGc3MMQlJTF4JaPBC/004?node-id=1-3200
+  (placeholder - update with actual Figma node when wireframe is created).
 - **FR-008**: Mapping UI MUST provide a dual-panel interface with equal-width
   panels (50/50) using CSS Grid, stacking vertically on mobile devices
   (<1024px). The page header MUST include a back button (navigates to Analyzers
@@ -344,7 +410,31 @@ impacted messages can be reprocessed successfully.
   provide two save action buttons: "Save as Draft" button (always available,
   secondary style) saves mapping with `is_active=false`, and "Save and Activate"
   button (primary style) saves mapping with `is_active=true` but requires
-  confirmation modal for active analyzers (as specified above).
+  confirmation modal for active analyzers (as specified above). **Edge Cases and
+  Validation**: (1) **Analyzer with pending messages in queue**: If analyzer has
+  unprocessed messages in the error queue (status = UNACKNOWLEDGED or
+  PENDING_RETRY), activation modal MUST display additional warning "This analyzer
+  has {count} pending messages in the error queue. Activating mapping changes may
+  affect how these messages are reprocessed. Consider resolving errors first." with
+  option to "View Pending Messages" (opens Error Dashboard filtered to this
+  analyzer), (2) **Required mappings missing**: If Sample ID, Test Code, or Result
+  Value mappings are missing, activation MUST be blocked - modal displays error
+  notification "Cannot activate: Required mappings missing" with list of missing
+  required fields and "Close" button only (Activate button disabled), (3)
+  **Concurrent edits (optimistic locking)**: If another user has modified mappings
+  since current user loaded the page, activation MUST fail with error modal
+  "Mapping changes detected. Another user has modified mappings for this analyzer.
+  Please reload the page to see latest changes." with "Reload Page" button
+  (refreshes field mapping page) and "Cancel" button, (4) **State transition
+  diagram**: Draft state → Pending Activation (when user clicks Save and Activate)
+  → Active (after confirmation), with rollback path: Pending Activation → Draft
+  (if user cancels confirmation or validation fails). **Activation Validation
+  Checks**: Before displaying activation modal, system MUST perform validation:
+  Check required mappings present (Sample ID, Test Code, Result Value), Check for
+  pending messages in error queue, Check for concurrent edits (compare mapping
+  lastUpdated timestamps), Validate all active mappings have compatible types,
+  Verify analyzer connection is operational (optional warning if last connection
+  test failed).
 - **FR-011**: On receipt of ASTM messages that reference unmapped test codes,
   fields, units, or qualitative values, the system MUST hold such messages in an
   error queue and surface them in an error dashboard interface. The error
@@ -453,8 +543,66 @@ impacted messages can be reprocessed successfully.
   from the mapping interface without navigating away to a separate configuration
   page. When a required OpenELIS field does not exist, users MUST be able to
   create it inline (e.g., via a "Create New Field" action in the OpenELIS Field
-  Selector), with appropriate validation and confirmation before the new field
-  becomes available for mapping.
+  Selector modal), with appropriate validation and confirmation before the new
+  field becomes available for mapping. The inline field creation modal
+  (InlineFieldCreationModal, ComposedModal, medium size ~500-600px) MUST include:
+  (1) **Dialog header** with title "Create New OpenELIS Field" and subtitle
+  "Add a new field for mapping to analyzer data", (2) **Entity type selection**
+  (Dropdown, required) with 8 options: TEST, PANEL, RESULT, ORDER, SAMPLE, QC,
+  METADATA, UNIT, (3) **Entity-specific form fields** that adapt based on
+  selected entity type (see validation matrix below), (4) **Field type
+  compatibility display** showing which analyzer field types can map to this
+  field, (5) **Action buttons**: Cancel (secondary) and "Create Field" (primary,
+  disabled until validation passes). The system MUST validate fields according to
+  entity type and MUST check uniqueness constraints before creation.
+  **Entity-Specific Validation Rules**: (1) **TEST** - Required: Test Name (1-200
+  chars, unique), Test Code (1-50 chars, unique, alphanumeric + hyphens/underscores
+  only), Sample Type (dropdown from existing sample types); Optional: LOINC Code
+  (valid LOINC format), Description (max 500 chars), Result Type (dropdown:
+  Numeric, Qualitative, Text); Validation: Test code must be unique across all
+  tests, Sample type must exist in system, LOINC code must match format
+  \d{4,5}-\d if provided. (2) **PANEL** - Required: Panel Name (1-200 chars,
+  unique), Panel Code (1-50 chars, unique); Optional: LOINC Code, Description,
+  Member Tests (multi-select from existing tests); Validation: Panel code unique,
+  Member tests must exist and be active. (3) **RESULT** - Required: Result Name
+  (1-100 chars), Analyte Reference (dropdown from existing analytes, required);
+  Optional: Result Group (dropdown), Reporting Sequence (integer 1-999); 
+  Validation: Analyte reference must be valid and active, Reporting sequence must
+  be unique within test/panel if specified. (4) **ORDER** - Required: Order Type
+  (dropdown: ROUTINE, URGENT, STAT, PRIORITY), Priority (integer 1-10); Optional:
+  Requesting Provider (reference); Validation: Order type from enum, Priority
+  between 1-10. (5) **SAMPLE** - Required: Sample Type Code (1-50 chars, unique,
+  uppercase), Sample Type Name (1-100 chars); Optional: Container Type (dropdown),
+  Collection Method; Validation: Code unique, uppercase letters/numbers/hyphens
+  only. (6) **QC** - Required: Control Name (1-100 chars), Lot Number (1-50
+  chars, unique for this control); Optional: Expiration Date (future date), Target
+  Range (min/max values, if quantitative); Validation: Lot number unique for
+  control name, Expiration date must be future if provided. (7) **METADATA** -
+  Required: Field Name (1-100 chars, unique), Data Type (dropdown: STRING, NUMBER,
+  DATE, BOOLEAN); Optional: Format Pattern (regex for STRING, date format for
+  DATE); Validation: Field name unique across metadata, Format pattern valid
+  regex/date format if provided. (8) **UNIT** - Required: Unit Code (1-20 chars,
+  unique, uppercase), Unit Name (1-50 chars); Optional: SI Equivalent (reference
+  to SI unit), Conversion Factor (decimal, default 1.0); Validation: Unit code
+  unique, Conversion factor > 0 if provided. **Field Type Compatibility Matrix**:
+  Analyzer field types that can map to each OpenELIS field type - NUMERIC analyzer
+  fields → TEST (if result type = Numeric), RESULT (if data type = Numeric), QC
+  (quantitative controls), METADATA (if data type = NUMBER), UNIT; QUALITATIVE
+  analyzer fields → TEST (if result type = Qualitative), RESULT (if data type =
+  Qualitative/Text), QC (qualitative controls), METADATA (if data type = STRING);
+  TEXT analyzer fields → All entity types (with warnings for type mismatches);
+  CUSTOM analyzer fields → Compatible based on custom field type definition.
+  **Error Messaging**: The system MUST display specific validation errors for
+  each entity type: "Test code '{code}' already exists" (TEST uniqueness), "Panel
+  '{code}' must have at least one member test" (PANEL validation), "Analyte '{id}'
+  is inactive and cannot be used" (RESULT validation), "Sample type code must be
+  uppercase letters, numbers, or hyphens only" (SAMPLE format), "Control lot
+  number '{lot}' already exists for '{control}'" (QC uniqueness), "Field name
+  '{name}' already exists in metadata" (METADATA uniqueness), "Unit code '{code}'
+  already exists" (UNIT uniqueness). After successful field creation, the system
+  MUST refresh the OpenELIS Field Selector list, auto-select the newly created
+  field for immediate mapping, and display success notification "Field '{name}'
+  created successfully and ready for mapping".
 - **FR-020**: System MUST integrate the analyzer mapping feature into the
   OpenELIS left-hand navigation bar using Carbon SideNavMenu and SideNavMenuItem
   components. Navigation menu items MUST be backend-driven via the existing
@@ -479,12 +627,13 @@ impacted messages can be reprocessed successfully.
   when the user is on `/analyzers/:id/mappings`. The other entries (Analyzers
   Dashboard, Error Dashboard, Quality Control + its two sub-pages) MUST remain
   visible whenever the parent node is expanded (again respecting role-based
-  filtering). **Unified Tab-Navigation Pattern**: Sub-navigation items MUST act
-  as the sole “tab” affordance—no Carbon Tabs/TabList should duplicate the
-  choices within the page. Clicking a sub-nav item navigates to its route and
-  highlights that SideNavMenuItem. Active highlighting MUST work for all routes
-  listed above (e.g., `/analyzers/qc/alerts` highlights “QC Alerts &
-  Violations”). **State Preservation**: The system MUST maintain filters,
+  filtering).   **Unified Tab-Navigation Pattern**: Sub-navigation items MUST act
+  as the sole "tab" affordance—the system MUST NOT use Carbon Tabs/TabList/TabPanels
+  components on analyzer pages (explicit anti-pattern). Navigation is handled
+  entirely through SideNavMenuItem components. Clicking a sub-nav item navigates
+  to its route and highlights that SideNavMenuItem. Active highlighting MUST work
+  for all routes listed above (e.g., `/analyzers/qc/alerts` highlights "QC Alerts
+  & Violations"). **State Preservation**: The system MUST maintain filters,
   pagination, selected analyzer, and other UI state through URL query
   parameters/path segments; scroll positions and unsaved form drafts MUST use
   sessionStorage so state persists when navigating among these sub-pages.

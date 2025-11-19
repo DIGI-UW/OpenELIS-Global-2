@@ -33,3 +33,21 @@
 .selected-row {
   background-color: #e8f4f8;
 }
+
+.panel-header-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-top: 1rem;
+}
+
+.panel-header-controls > * {
+  flex: 1;
+}
+
+.unmapped-field-icon {
+  color: #da1e28;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}

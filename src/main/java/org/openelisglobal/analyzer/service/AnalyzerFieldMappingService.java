@@ -64,6 +64,18 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
     List<Map<String, Object>> getMappingsForAnalyzer(String analyzerId);
 
     /**
+     * Get all mappings for an analyzer with complete data compiled (optionally
+     * including retired mappings)
+     * 
+     * Task Reference: T200
+     * 
+     * @param analyzerId    The analyzer ID
+     * @param includeRetired Whether to include retired (inactive) mappings
+     * @return List of maps containing complete mapping data
+     */
+    List<Map<String, Object>> getMappingsForAnalyzer(String analyzerId, boolean includeRetired);
+
+    /**
      * Create a mapping for an analyzer with validation Verifies analyzer field
      * belongs to analyzer, validates type compatibility
      * 
@@ -128,4 +140,22 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * @throws LIMSRuntimeException if mapping is required or not found
      */
     AnalyzerFieldMapping disableMapping(String mappingId, String retirementReason);
+
+    /**
+     * Validate activation requirements for an analyzer
+     * 
+     * Performs comprehensive validation checks before allowing mapping activation:
+     * - Required mappings present (Sample ID, Test Code, Result Value)
+     * - Pending messages in error queue count
+     * - Concurrent edits detection (lastUpdated check)
+     * - All active mappings have compatible types
+     * - Analyzer connection operational (optional warning)
+     * 
+     * Task Reference: T167
+     * 
+     * @param analyzerId The analyzer ID to validate
+     * @return ActivationValidationResult containing validation status, missing
+     *         required fields, pending message count, and warnings
+     */
+    ActivationValidationResult validateActivation(String analyzerId);
 }

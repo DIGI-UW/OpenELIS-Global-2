@@ -24,6 +24,7 @@ import { getAnalyzers } from "../../../services/analyzerService";
 import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
+import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./AnalyzersList.css";
 
@@ -54,6 +55,10 @@ const AnalyzersList = () => {
     analyzer: null,
   });
   const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    analyzer: null,
+  });
+  const [copyMappingsModal, setCopyMappingsModal] = useState({
     open: false,
     analyzer: null,
   });
@@ -391,6 +396,18 @@ const AnalyzersList = () => {
                               />
                               <OverflowMenuItem
                                 itemText={intl.formatMessage({
+                                  id: "analyzer.action.copyMappings",
+                                })}
+                                onClick={() => {
+                                  setCopyMappingsModal({
+                                    open: true,
+                                    analyzer: analyzer,
+                                  });
+                                }}
+                                data-testid={`analyzer-action-copy-mappings-${row.id}`}
+                              />
+                              <OverflowMenuItem
+                                itemText={intl.formatMessage({
                                   id: "analyzer.action.edit",
                                 })}
                                 onClick={() => {
@@ -468,6 +485,23 @@ const AnalyzersList = () => {
           onConfirm={(deletedId) => {
             // Reload analyzers list after successful delete
             loadAnalyzers();
+          }}
+        />
+      )}
+
+      {/* Copy Mappings Modal */}
+      {copyMappingsModal.open && copyMappingsModal.analyzer && (
+        <CopyMappingsModal
+          open={copyMappingsModal.open}
+          sourceAnalyzerId={copyMappingsModal.analyzer.id}
+          sourceAnalyzerName={copyMappingsModal.analyzer.name}
+          sourceAnalyzerType={copyMappingsModal.analyzer.analyzerType || copyMappingsModal.analyzer.type}
+          onClose={() => {
+            setCopyMappingsModal({ open: false, analyzer: null });
+          }}
+          onSuccess={(result, targetAnalyzerId) => {
+            // Optionally reload analyzers list or show success notification
+            // The modal will handle navigation to target analyzer
           }}
         />
       )}

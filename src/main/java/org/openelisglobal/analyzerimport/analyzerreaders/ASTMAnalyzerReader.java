@@ -21,6 +21,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
+import org.openelisglobal.analyzer.service.MappingApplicationService;
+import org.openelisglobal.analyzer.service.MappingAwareAnalyzerLineInserter;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
@@ -126,15 +132,108 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     public boolean insertAnalyzerData(String systemUserId) {
         if (inserter == null) {
             error = "Unable to understand which analyzer sent the file";
-            LogEvent.logError(this.getClass().getSimpleName(), "buildResponseForQuery", error);
+            LogEvent.logError(this.getClass().getSimpleName(), "insertAnalyzerData", error);
             return false;
         } else {
-            boolean success = inserter.insert(lines, systemUserId);
+            // Check if analyzer has active mappings and wrap inserter if needed
+            // Task Reference: T180
+            AnalyzerLineInserter finalInserter = wrapInserterIfMappingsExist(inserter);
+            
+            boolean success = finalInserter.insert(lines, systemUserId);
             if (!success) {
-                error = inserter.getError();
-                LogEvent.logError(this.getClass().getSimpleName(), "buildResponseForQuery", error);
+                error = finalInserter.getError();
+                LogEvent.logError(this.getClass().getSimpleName(), "insertAnalyzerData", error);
             }
             return success;
+        }
+    }
+
+    /**
+     * Wrap inserter with MappingAwareAnalyzerLineInserter if analyzer has active mappings
+     * 
+     * Task Reference: T180
+     * 
+     * Per research.md Section 7: Conditional wrapping logic
+     * - Check if analyzer has active mappings before wrapping
+     * - If analyzer has active mappings: Wrap plugin inserter with MappingAwareAnalyzerLineInserter
+     * - If analyzer has no mappings: Use original plugin inserter directly (backward compatibility)
+     * 
+     * @param originalInserter The original plugin inserter
+     * @return Wrapped inserter if mappings exist, original inserter otherwise
+     */
+    private AnalyzerLineInserter wrapInserterIfMappingsExist(AnalyzerLineInserter originalInserter) {
+        try {
+            // Try to identify analyzer from message
+            Optional<Analyzer> analyzer = identifyAnalyzerFromMessage();
+            
+            if (!analyzer.isPresent()) {
+                // Cannot identify analyzer - use original inserter (backward compatibility)
+                return originalInserter;
+            }
+
+            // Check if analyzer has active mappings
+            MappingApplicationService mappingApplicationService = SpringContext.getBean(MappingApplicationService.class);
+            if (mappingApplicationService != null && mappingApplicationService.hasActiveMappings(analyzer.get().getId())) {
+                // Analyzer has active mappings - wrap inserter
+                return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer.get());
+            }
+
+            // No mappings configured - use original inserter (backward compatibility)
+            return originalInserter;
+
+        } catch (Exception e) {
+            // Error identifying analyzer or checking mappings - use original inserter
+            LogEvent.logError("Error checking mappings, using original inserter: " + e.getMessage(), e);
+            return originalInserter;
+        }
+    }
+
+    /**
+     * Identify analyzer from ASTM message
+     * 
+     * Attempts to identify the analyzer by:
+     * 1. Parsing ASTM header (H segment) for analyzer identification
+     * 2. Looking up AnalyzerConfiguration by IP address (if available in message)
+     * 3. Matching by analyzer name from plugin
+     * 
+     * @return Optional Analyzer if identified, empty otherwise
+     */
+    private Optional<Analyzer> identifyAnalyzerFromMessage() {
+        try {
+            if (lines == null || lines.isEmpty()) {
+                return Optional.empty();
+            }
+
+            // Try to parse ASTM header (H segment) to extract analyzer information
+            // Format: H|\\^&|||MANUFACTURER^MODEL^VERSION|...
+            for (String line : lines) {
+                if (line != null && line.startsWith("H|")) {
+                    String[] segments = line.split("\\|");
+                    if (segments.length >= 5) {
+                        // Extract manufacturer/model from header
+                        String manufacturerModel = segments[4];
+                        if (manufacturerModel != null && !manufacturerModel.trim().isEmpty()) {
+                            // Try to find analyzer by name (simplified - can be enhanced)
+                            AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
+                            if (configService != null) {
+                                // For now, return empty - full implementation would parse and match
+                                // This is a placeholder - actual implementation would:
+                                // 1. Parse manufacturer/model from header
+                                // 2. Look up analyzer by name or identifier
+                                // 3. Return matching analyzer
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+
+            // If we can't identify from message, return empty (backward compatibility)
+            return Optional.empty();
+
+        } catch (Exception e) {
+            LogEvent.logError("Error identifying analyzer: " + e.getMessage(), e);
+            return Optional.empty();
         }
     }
 

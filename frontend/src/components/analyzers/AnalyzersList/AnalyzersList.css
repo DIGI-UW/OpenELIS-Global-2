@@ -3,9 +3,12 @@
 }
 
 /* Ensure consistent content width - all Grid content should align with title */
+.analyzers-list .cds--css-grid,
 .analyzers-list .cds--grid {
+  max-width: none; /* Remove Carbon's default max-width */
+  padding-right: 0; /* Remove Carbon's default side padding */
+  padding-left: 0; /* Remove Carbon's default side padding */
   margin: 0;
-  padding: 0; /* Remove Carbon's default side padding */
 }
 
 .analyzers-list .cds--col {

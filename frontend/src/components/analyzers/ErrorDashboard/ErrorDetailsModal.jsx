@@ -20,10 +20,12 @@ import {
   AccordionItem,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useHistory } from "react-router-dom";
 import "./ErrorDetailsModal.css";
 
 const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
   const intl = useIntl();
+  const history = useHistory();
   const [logsExpanded, setLogsExpanded] = useState(false);
 
   if (!error) return null;
@@ -188,13 +190,28 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
               })}
             </h3>
             <ul>
+              {errorType === "MAPPING" && (
+                <li>
+                  {intl.formatMessage({
+                    id: "analyzer.errorDetails.recommendedActions.createMapping",
+                  })}
+                </li>
+              )}
               <li>
-                Verify analyzer is powered on and network cable is connected
+                {intl.formatMessage({
+                  id: "analyzer.errorDetails.recommendedActions.verifyConnection",
+                })}
               </li>
               <li>
-                Check IP address and port configuration in analyzer settings
+                {intl.formatMessage({
+                  id: "analyzer.errorDetails.recommendedActions.checkConfiguration",
+                })}
               </li>
-              <li>Test connection using the 'Test Connection' feature</li>
+              <li>
+                {intl.formatMessage({
+                  id: "analyzer.errorDetails.recommendedActions.testConnection",
+                })}
+              </li>
             </ul>
           </Column>
         </Grid>
@@ -207,6 +224,23 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
         >
           <FormattedMessage id="analyzer.errorDetails.close" />
         </Button>
+        {errorType === "MAPPING" && error.analyzerId && (
+          <Button
+            kind="tertiary"
+            onClick={() => {
+              // Navigate to FieldMapping page with analyzer ID
+              // Pre-select the unmapped field if available from error context
+              const analyzerId = error.analyzerId || error.analyzer?.id;
+              if (analyzerId) {
+                handleClose();
+                history.push(`/analyzers/${analyzerId}/mappings`);
+              }
+            }}
+            data-testid="error-details-create-mapping"
+          >
+            <FormattedMessage id="analyzer.errorDetails.createMapping" />
+          </Button>
+        )}
         {!isAcknowledged && (
           <Button
             kind="primary"

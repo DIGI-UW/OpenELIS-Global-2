@@ -15,6 +15,42 @@ import {
 import config from "../config.json";
 
 /**
+ * Preview mapping for analyzer
+ * @param {String} analyzerId - Analyzer ID
+ * @param {Object} previewData - Preview data { astmMessage, includeDetailedParsing, validateAllMappings }
+ * @param {Function} callback - Callback function (response, extraParams) => void
+ * @param {*} extraParams - Optional extra parameters passed to callback
+ */
+export const previewMapping = (
+  analyzerId,
+  previewData,
+  callback,
+  extraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/preview-mapping`;
+  const payload = JSON.stringify(previewData);
+  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
+};
+
+/**
+ * Copy mappings from source analyzer to target analyzer
+ * @param {String} targetAnalyzerId - Target analyzer ID
+ * @param {Object} copyData - Copy data { sourceAnalyzerId, overwriteExisting, skipIncompatible }
+ * @param {Function} callback - Callback function (response, extraParams) => void
+ * @param {*} extraParams - Optional extra parameters passed to callback
+ */
+export const copyMappings = (
+  targetAnalyzerId,
+  copyData,
+  callback,
+  extraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${targetAnalyzerId}/copy-mappings`;
+  const payload = JSON.stringify(copyData);
+  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
+};
+
+/**
  * Get all analyzers with optional filters
  * @param {Object} filters - Optional filters { status, search }
  * @param {Function} callback - Callback function (data) => void

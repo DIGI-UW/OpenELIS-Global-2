@@ -277,4 +277,106 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
         mockMvc.perform(delete("/rest/analyzer/analyzers/" + analyzerId + "/mappings/" + mappingId)
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNoContent());
     }
+
+    /**
+     * Helper method to create a test analyzer with a field and mapping
+     */
+    private String[] createTestAnalyzerWithMapping() throws Exception {
+        // Create source analyzer
+        String[] ids = createTestAnalyzerAndField();
+        String analyzerId = ids[0];
+        String fieldId = ids[1];
+
+        // Create mapping
+        String requestBody = "{\"analyzerFieldId\":\"" + fieldId + "\",\"openelisFieldId\":\"test-field-123\","
+                + "\"openelisFieldType\":\"TEST\"," + "\"mappingType\":\"TEST_LEVEL\","
+                + "\"isRequired\":false,\"isActive\":true}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers/" + analyzerId + "/mappings")
+                        .contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isCreated()).andReturn();
+
+        String responseBody = createResult.getResponse().getContentAsString();
+        String mappingId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
+        mappingId = mappingId.substring(0, mappingId.indexOf("\""));
+
+        return new String[] { analyzerId, fieldId, mappingId };
+    }
+
+    /**
+     * Test: POST /rest/analyzer/analyzers/{targetId}/copy-mappings with valid request
+     * returns copy results
+     * Task Reference: T195
+     */
+    @Test
+    public void testCopyMappings_WithValidRequest_ReturnsCopyResults() throws Exception {
+        // Arrange: Create source analyzer with mapping
+        String[] sourceIds = createTestAnalyzerWithMapping();
+        String sourceAnalyzerId = sourceIds[0];
+
+        // Create target analyzer with field (no mappings yet)
+        String[] targetIds = createTestAnalyzerAndField();
+        String targetAnalyzerId = targetIds[0];
+
+        // Create request body
+        String requestBody = "{\"sourceAnalyzerId\":\"" + sourceAnalyzerId + "\","
+                + "\"overwriteExisting\":true,\"skipIncompatible\":true}";
+
+        // Act & Assert: POST endpoint should copy mappings
+        mockMvc.perform(post("/rest/analyzer/analyzers/" + targetAnalyzerId + "/copy-mappings")
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.copiedCount").exists())
+                .andExpect(jsonPath("$.skippedCount").exists())
+                .andExpect(jsonPath("$.warnings").isArray())
+                .andExpect(jsonPath("$.conflicts").isArray())
+                .andExpect(jsonPath("$.copiedCount").exists());
+    }
+
+    /**
+     * Test: POST /rest/analyzer/analyzers/{targetId}/copy-mappings with no source
+     * mappings returns bad request
+     * Task Reference: T195
+     */
+    @Test
+    public void testCopyMappings_WithNoSourceMappings_ReturnsBadRequest() throws Exception {
+        // Arrange: Create source analyzer with NO mappings
+        String[] sourceIds = createTestAnalyzerAndField();
+        String sourceAnalyzerId = sourceIds[0];
+
+        // Create target analyzer
+        String[] targetIds = createTestAnalyzerAndField();
+        String targetAnalyzerId = targetIds[0];
+
+        // Create request body
+        String requestBody = "{\"sourceAnalyzerId\":\"" + sourceAnalyzerId + "\"}";
+
+        // Act & Assert: POST endpoint should return bad request (source has no mappings)
+        mockMvc.perform(post("/rest/analyzer/analyzers/" + targetAnalyzerId + "/copy-mappings")
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    /**
+     * Test: POST /rest/analyzer/analyzers/{targetId}/copy-mappings with missing
+     * sourceAnalyzerId returns bad request
+     * Task Reference: T195
+     */
+    @Test
+    public void testCopyMappings_WithMissingSourceAnalyzerId_ReturnsBadRequest() throws Exception {
+        // Arrange: Create target analyzer
+        String[] targetIds = createTestAnalyzerAndField();
+        String targetAnalyzerId = targetIds[0];
+
+        // Create request body without sourceAnalyzerId
+        String requestBody = "{\"overwriteExisting\":true}";
+
+        // Act & Assert: POST endpoint should return bad request
+        mockMvc.perform(post("/rest/analyzer/analyzers/" + targetAnalyzerId + "/copy-mappings")
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("sourceAnalyzerId is required"));
+    }
 }
