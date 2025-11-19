@@ -65,7 +65,7 @@ Given that feature description, do this:
    - Pass `--number N+1` and `--short-name "your-short-name"` along with the
      feature description
    - Bash example:
-     `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS" --json --number 5 --short-name "user-auth" "Add user authentication"`
+     `.specify/scripts/bash/create-new-feature.sh --json --number 5 --short-name "user-auth" "$ARGUMENTS"`
    - PowerShell example:
      `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS" -Json -Number 5 -ShortName "user-auth" "Add user authentication"`
 
