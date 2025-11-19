@@ -1,0 +1,10 @@
+# Ignore build artifacts and dependencies
+node_modules/
+dist/
+build/
+coverage/
+public/
+**/*.min.js
+scripts/
+
+
