@@ -14,6 +14,34 @@
     (Technical Acceptance ANALYSIS status) - canceled_status_id: References status_of_sample
     (Test Canceled ANALYSIS status) -->
 <dataset>
+    <!-- Reference Data: Localization entries for type_of_sample names -->
+    <localization id="1"
+        description="Serum Sample Localization" english="Serum" french="Sérum"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="2"
+        description="Urine Sample Localization" english="Urine" french="Urine"
+        lastupdated="2025-01-01 12:00:00" />
+    <localization id="3"
+        description="Blood Sample Localization" english="Blood" french="Sang"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Reference Data: Status of Sample (Entered status) -->
+    <status_of_sample id="1" description="Entered"
+        code="1" status_type="SAMPLE" lastupdated="2025-01-01 12:00:00"
+        name="Entered" display_key="status.entered" is_active="Y" />
+
+    <!-- Reference Data: Type of Sample entries (required by sample_item foreign
+        keys) -->
+    <type_of_sample id="1" description="Serum" domain="H"
+        name_localization_id="1" lastupdated="2025-01-01 12:00:00"
+        is_active="true" />
+    <type_of_sample id="2" description="Urine" domain="H"
+        name_localization_id="2" lastupdated="2025-01-01 12:00:00"
+        is_active="true" />
+    <type_of_sample id="3" description="Blood" domain="H"
+        name_localization_id="3" lastupdated="2025-01-01 12:00:00"
+        is_active="true" />
+
     <!-- E2E Test Fixtures: Organizations and Providers -->
     <!-- Referring clinic organization type -->
     <organization_type id="100"
@@ -152,101 +180,119 @@
     <sample_item id="10001" samp_id="1000" sort_order="1"
         external_id="E2E001-TUBE-1" typeosamp_id="1"
         collection_date="2025-04-30 10:00:00" collector="Tech-001"
-        quantity="5.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="5.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <sample_item id="10002" samp_id="1000" sort_order="2"
         sampitem_id="10001" external_id="E2E001-ALIQUOT-1" typeosamp_id="1"
         collection_date="2025-04-30 10:00:00" collector="Tech-001"
-        quantity="2.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="2.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- Sample 2 SampleItems: Single blood tube -->
     <sample_item id="10011" samp_id="1001" sort_order="1"
         external_id="E2E002-TUBE-1" typeosamp_id="3"
         collection_date="2025-04-30 10:00:00" collector="Tech-002"
-        quantity="10.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- Sample 3 SampleItems: Urine sample with multiple aliquots -->
     <sample_item id="10021" samp_id="1002" sort_order="1"
         external_id="E2E003-URINE-1" typeosamp_id="2"
         collection_date="2025-04-30 10:00:00" collector="Tech-003"
-        quantity="50.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="50.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <sample_item id="10022" samp_id="1002" sort_order="2"
         sampitem_id="10021" external_id="E2E003-ALIQUOT-1" typeosamp_id="2"
         collection_date="2025-04-30 10:00:00" collector="Tech-003"
-        quantity="10.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <sample_item id="10023" samp_id="1002" sort_order="3"
         sampitem_id="10021" external_id="E2E003-ALIQUOT-2" typeosamp_id="2"
         collection_date="2025-04-30 10:00:00" collector="Tech-003"
-        quantity="10.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- Sample 4 SampleItems: Single item, not yet assigned -->
     <sample_item id="10031" samp_id="1003" sort_order="1"
         external_id="E2E004-TUBE-1" typeosamp_id="1"
         collection_date="2025-04-30 10:00:00" collector="Tech-004"
-        quantity="5.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="5.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- Sample 5 SampleItems: Blood sample with multiple tubes -->
     <sample_item id="10041" samp_id="1004" sort_order="1"
         external_id="E2E005-TUBE-1" typeosamp_id="3"
         collection_date="2025-04-30 10:00:00" collector="Tech-005"
-        quantity="10.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <sample_item id="10042" samp_id="1004" sort_order="2"
         sampitem_id="10041" external_id="E2E005-TUBE-2" typeosamp_id="3"
         collection_date="2025-04-30 10:00:00" collector="Tech-005"
-        quantity="10.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- Sample 6 SampleItems: Single serum sample -->
     <sample_item id="10051" samp_id="1005" sort_order="1"
         external_id="E2E-TUBE-1" typeosamp_id="1"
         collection_date="2025-04-30 10:00:00" collector="Tech-006"
-        quantity="5.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="5.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- Sample 7 SampleItems: Single blood tube -->
     <sample_item id="10061" samp_id="1006" sort_order="1"
         external_id="E2E007-TUBE-1" typeosamp_id="3"
         collection_date="2025-04-30 10:00:00" collector="Tech-007"
-        quantity="10.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- Sample 8 SampleItems: Urine sample with multiple aliquots -->
     <sample_item id="10071" samp_id="1007" sort_order="1"
         external_id="E2E008-URINE-1" typeosamp_id="2"
         collection_date="2025-04-30 10:00:00" collector="Tech-008"
-        quantity="50.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="50.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <sample_item id="10072" samp_id="1007" sort_order="2"
         sampitem_id="10071" external_id="E2E008-ALIQUOT-1" typeosamp_id="2"
         collection_date="2025-04-30 10:00:00" collector="Tech-008"
-        quantity="10.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- Sample 9 SampleItems: Serum sample with multiple aliquots -->
     <sample_item id="10081" samp_id="1008" sort_order="1"
         external_id="E2E009-SERUM-1" typeosamp_id="1"
         collection_date="2025-04-30 10:00:00" collector="Tech-009"
-        quantity="5.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="5.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <sample_item id="10082" samp_id="1008" sort_order="2"
         sampitem_id="10081" external_id="E2E009-ALIQUOT-1" typeosamp_id="1"
         collection_date="2025-04-30 10:00:00" collector="Tech-009"
-        quantity="2.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="2.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- Sample 10 SampleItems: Blood sample with multiple tubes -->
     <sample_item id="10091" samp_id="1009" sort_order="1"
         external_id="E2E010-TUBE-1" typeosamp_id="3"
         collection_date="2025-04-30 10:00:00" collector="Tech-010"
-        quantity="10.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <sample_item id="10092" samp_id="1009" sort_order="2"
         sampitem_id="10091" external_id="E2E010-TUBE-2" typeosamp_id="3"
         collection_date="2025-04-30 10:00:00" collector="Tech-010"
-        quantity="10.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <sample_item id="10093" samp_id="1009" sort_order="3"
         sampitem_id="10091" external_id="E2E010-TUBE-3" typeosamp_id="3"
         collection_date="2025-04-30 10:00:00" collector="Tech-010"
-        quantity="10.0" status_id="1" lastupdated="2025-01-01 12:00:00" />
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- E2E Test Fixtures: Sample-Human Links -->
     <sample_human id="1000" samp_id="1000" patient_id="1000"
@@ -425,7 +471,7 @@
         moved_by_user_id="1" reason="Initial assignment - tube 1"
         last_updated="2025-01-01 12:00:00" />
 
-    <sample_storage_movement id="1013"
+    <sample_storage_movement id="5013"
         sample_item_id="10092" new_location_id="33" new_location_type="rack"
         new_position_coordinate="X1" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment - tube 2"
