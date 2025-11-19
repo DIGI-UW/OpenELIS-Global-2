@@ -587,6 +587,14 @@ function SearchPatientForm(props) {
                     const dataSourceName = row.cells.find(
                       (cell) => cell.info.header === "dataSourceName",
                     )?.value;
+                    const firstName =
+                      row.cells.find((cell) => cell.info.header === "firstName")
+                        ?.value || "";
+                    const lastName =
+                      row.cells.find((cell) => cell.info.header === "lastName")
+                        ?.value || "";
+                    const patientName =
+                      `${firstName} ${lastName}`.trim() || "Patient";
 
                     return (
                       <TableRow key={row.id}>
@@ -602,7 +610,11 @@ function SearchPatientForm(props) {
                                 labelText=""
                                 id={row.id}
                               />
-                              <AsyncAvatar patientId={row.id} hasPhoto={true} />
+                              <AsyncAvatar
+                                patientId={row.id}
+                                hasPhoto={true}
+                                patientName={patientName}
+                              />
                             </div>
                           ) : (
                             <span></span>

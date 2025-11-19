@@ -1037,7 +1037,11 @@ export function SearchResults(props) {
               <br></br>
             </div>
             <div>
-              <AsyncAvatar patientId={row.patientId} hasPhoto={true} />
+              <AsyncAvatar
+                patientId={row.patientId}
+                hasPhoto={true}
+                patientName={row.patientName || ""}
+              />
             </div>
             {row.nonconforming && (
               <picture>

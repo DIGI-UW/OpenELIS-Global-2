@@ -308,23 +308,29 @@ function CreatePatientForm(props) {
         setHealthDistricts([]);
       }
       //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
+      let patient = props.selectedPatient;
+      patient.patientUpdateStatus = "UPDATE";
+      patient.photo = "";
+      //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
       const patientContactPerson = {
         ...patientDetails?.patientContact?.person,
-        ...props.selectedPatient?.patientContact?.person,
+        ...patient?.patientContact?.person,
       };
       const patientContact = {
         ...patientDetails?.patientContact,
-        ...props.selectedPatient?.patientContact,
+        ...patient?.patientContact,
         person: patientContactPerson,
       };
-      const patient = {
+      patient = {
         ...patientDetails,
-        ...props.selectedPatient,
-        patientUpdateStatus: "UPDATE",
+        ...patient,
         patientContact: patientContact,
       };
-      // Set patient details immediately
-      setPatientDetails(patient);
+      setPatientDetails({
+        ...patientDetails,
+        ...patient,
+        patientContact: patientContact,
+      });
       getYearsMonthsDaysFromDOB(patient.birthDateForDisplay);
       setFormAction("UPDATE");
       // Fetch patient photo if patient exists

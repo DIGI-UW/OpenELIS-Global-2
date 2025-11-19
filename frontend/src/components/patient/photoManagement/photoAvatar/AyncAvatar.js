@@ -41,7 +41,7 @@ const AsyncAvatar = ({
     getFromOpenElisServer(
       `/rest/patient-photos/${patientId}/${true}`,
       (response) => {
-        if (response && response.data) {
+        if (response && response.data && response.data.trim() !== "") {
           setThumbnail(response.data);
           setError(false);
         } else {
@@ -117,22 +117,54 @@ const AsyncAvatar = ({
     );
   }
 
+  // Construct image src - thumbnail is base64 string, add data URI prefix if needed
+  const imageSrc =
+    thumbnail && thumbnail.trim() !== ""
+      ? thumbnail.startsWith("data:")
+        ? thumbnail
+        : `data:image/jpeg;base64,${thumbnail}`
+      : null;
+
+  // If we have a valid image src, try to display it
+  if (imageSrc && !imageLoadError) {
+    return (
+      <div
+        className="async-avatar-container"
+        style={{ width: size, height: size, position: "relative" }}
+      >
+        <img
+          src={imageSrc}
+          alt={patientName}
+          className="async-avatar-image"
+          style={{
+            width: size,
+            height: size,
+            borderRadius: "50%",
+            objectFit: "cover",
+          }}
+          onError={() => {
+            // If image fails to load, show generated avatar with initials
+            setImageLoadError(true);
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Fallback to generated avatar with initials if image fails or is invalid
   return (
-    <div
-      className="async-avatar-container"
-      style={{ width: size, height: size }}
-    >
-      <img
-        src={"data:image/jpeg;base64," + thumbnail}
-        alt={patientName}
-        className="async-avatar-image"
-        style={{ width: size, height: size, borderRadius: "50%" }}
-        onError={() => {
-          // If image fails to load, show generated avatar with initials
-          setImageLoadError(true);
-        }}
-      />
-    </div>
+    <Avatar
+      alt="Patient avatar"
+      color="rgba(0,0,0,0)"
+      name={patientName}
+      src=""
+      size={String(size)}
+      textSizeRatio={1}
+      style={{
+        backgroundImage: `url('/images/patient-background.svg')`,
+        backgroundRepeat: "round",
+      }}
+    />
   );
 };
 
