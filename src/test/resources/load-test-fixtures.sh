@@ -63,7 +63,7 @@ if [ "$RESET" = true ]; then
     echo ""
 fi
 
-# Dependency check function
+# Dependency check function with retry logic
 check_dependencies() {
     local USE_DOCKER=$1
     local DB_USER=$2
@@ -71,22 +71,47 @@ check_dependencies() {
     local DB_HOST=$4
     local DB_PORT=$5
 
+    local MAX_RETRIES=10
+    local RETRY_DELAY=3
+    local RETRY_COUNT=0
+
     echo "Checking dependencies..."
 
-    if [ "$USE_DOCKER" = true ]; then
-        TYPE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
-        # Check for required statuses: Entered (any type), Not Tested (ANALYSIS), Finalized (ANALYSIS)
-        # Note: Entered may be EXTERNAL_ORDER or SAMPLE depending on database initialization
-        STATUS_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
-        # Check storage hierarchy exists (from Liquibase)
-        ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
-    else
-        TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
-        STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
-        # Check storage hierarchy exists (from Liquibase)
-        ROOM_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
-    fi
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        if [ "$USE_DOCKER" = true ]; then
+            TYPE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            # Check for required statuses: Entered (any type), Not Tested (ANALYSIS), Finalized (ANALYSIS)
+            # Note: Entered may be EXTERNAL_ORDER or SAMPLE depending on database initialization
+            STATUS_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            # Check storage hierarchy exists (from Liquibase)
+            ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
+        else
+            TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            # Check storage hierarchy exists (from Liquibase)
+            ROOM_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
+        fi
 
+        # Check if all dependencies are met
+        if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 3 ] && [ "$ROOM_COUNT" -ge 3 ]; then
+            echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, storage hierarchy: $ROOM_COUNT rooms from Liquibase)"
+            echo ""
+            return 0
+        fi
+
+        # If not all dependencies met, retry
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+            echo "⚠️  Dependencies not ready (attempt $RETRY_COUNT/$MAX_RETRIES):"
+            echo "   type_of_sample: $TYPE_COUNT rows (need 3+)"
+            echo "   status_of_sample: $STATUS_COUNT matching rows (need 3+)"
+            echo "   storage hierarchy: $ROOM_COUNT rooms (need 3+)"
+            echo "   Waiting ${RETRY_DELAY}s for Liquibase to complete..."
+            sleep $RETRY_DELAY
+        fi
+    done
+
+    # Final check - report specific errors
     if [ "$TYPE_COUNT" -lt 3 ]; then
         echo "ERROR: type_of_sample table has fewer than 3 rows ($TYPE_COUNT). Required for test fixtures."
         echo "Please ensure database is properly initialized with sample types."
@@ -101,14 +126,16 @@ check_dependencies() {
     fi
 
     if [ "$ROOM_COUNT" -lt 3 ]; then
-        echo "ERROR: Storage hierarchy not found. Expected 3 test rooms (MAIN, SEC, INACTIVE) from Liquibase. Found: $ROOM_COUNT"
+        echo "ERROR: Storage hierarchy not found after $MAX_RETRIES attempts. Expected 3 test rooms (MAIN, SEC, INACTIVE) from Liquibase. Found: $ROOM_COUNT"
         echo "Please ensure Liquibase has run with context=\"test\" to load foundation data."
         echo "Storage hierarchy is loaded by: src/main/resources/liquibase/3.3.x.x/004-insert-test-storage-data.xml"
+        echo ""
+        echo "Troubleshooting:"
+        echo "1. Verify SPRING_LIQUIBASE_CONTEXTS=test is set in application environment"
+        echo "2. Check application logs for Liquibase execution"
+        echo "3. Verify database connection is working"
         exit 1
     fi
-
-    echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, storage hierarchy: $ROOM_COUNT rooms from Liquibase)"
-    echo ""
 }
 
 # Verification function
