@@ -315,16 +315,26 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                             upperRangeAccessionNumber, doRange, finished);
                 } else {
                     resultsLoadUtility.setLockCurrentResults(modifyResultsRoleBased() && userNotInRole(request));
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                            "Searching for sample with labNumber: " + labNumber);
                     Sample sample = sampleService.getSampleByAccessionNumber(labNumber);
                     if (sample != null) {
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults", "Found sample: id="
+                                + sample.getId() + ", accessionNumber=" + sample.getAccessionNumber());
                         if (!GenericValidator.isBlankOrNull(sample.getId())) {
                             patient = getPatient(sample);
 
                             tests = resultsLoadUtility.getGroupedTestsForSample(sample, patient);
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                                    "getGroupedTestsForSample returned " + tests.size() + " tests for sample "
+                                            + sample.getId());
                             patientName = patientService.getLastFirstName(patient);
                             patientInfo = patient.getNationalId() + ", " + patient.getGender() + ", "
                                     + patient.getBirthDateForDisplay();
                         }
+                    } else {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "getLogbookResults",
+                                "No sample found for labNumber: " + labNumber);
                     }
                 }
 
@@ -349,6 +359,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                        "After filterResultsByLabUnitRoles: tests.size()=" + tests.size() + ", filteredTests.size()="
+                                + filteredTests.size());
 
                 int count = resultsLoadUtility.getTotalCountAnalysisByAccessionAndStatus(form.getAccessionNumber());
 
@@ -375,6 +388,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             }
 
             paging.setDatabaseResults(request, form, filteredTests);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                    "After setDatabaseResults: form.getTestResult() size="
+                            + (form.getTestResult() != null ? form.getTestResult().size() : 0));
 
         } else {
             int requestedPageNumber = Integer.parseInt(requestedPage);

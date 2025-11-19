@@ -63,7 +63,7 @@ class BatchOrderEntry {
     cy.get("#siteName").should("be.visible").clear().type(siteName, {
       delay: 0,
     });
-    cy.get('[data-cy="auto-suggestion"]', { timeout: 15000 })
+    cy.get('[data-cy="auto-suggestion"]')
       .should("exist")
       .first()
       .click({ force: true });
@@ -123,15 +123,11 @@ class BatchOrderEntry {
   }
 
   clickNewPatientButton() {
-    cy.get('[data-cy="newPatientTabButton"]', { timeout: 15000 })
-      .should("be.visible")
-      .click();
+    cy.get('[data-cy="newPatientTabButton"]').should("be.visible").click();
   }
 
   clickSearchPatientButton() {
-    cy.get('[data-cy="searchPatientTabButton"]', { timeout: 15000 })
-      .should("be.visible")
-      .click();
+    cy.get('[data-cy="searchPatientTabButton"]').should("be.visible").click();
   }
 
   localSearchButton() {

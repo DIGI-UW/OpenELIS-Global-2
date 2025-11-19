@@ -1044,10 +1044,21 @@ public class ResultsLoadUtility {
     }
 
     public List<TestResultItem> getUnfinishedTestResultItemsByAccession(String accessionNumber) {
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getUnfinishedTestResultItemsByAccession",
+                "Searching for unfinished tests with accessionNumber: " + accessionNumber + ", "
+                        + "analysisStatusList size: " + (analysisStatusList != null ? analysisStatusList.size() : 0)
+                        + ", " + "sampleStatusList size: " + (sampleStatusList != null ? sampleStatusList.size() : 0));
         List<Analysis> analysisList = analysisService.getPageAnalysisByStatusFromAccession(analysisStatusList,
                 sampleStatusList, accessionNumber);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getUnfinishedTestResultItemsByAccession",
+                "Found " + (analysisList != null ? analysisList.size() : 0) + " analyses for accessionNumber: "
+                        + accessionNumber);
 
-        return getGroupedTestsForAnalysisList(analysisList, SORT_FORWARD);
+        List<TestResultItem> result = getGroupedTestsForAnalysisList(analysisList, SORT_FORWARD);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getUnfinishedTestResultItemsByAccession",
+                "getGroupedTestsForAnalysisList returned " + (result != null ? result.size() : 0)
+                        + " test result items");
+        return result;
     }
 
     public List<TestResultItem> getUnfinishedTestResultItemsByAccession(String accessionNumber,
