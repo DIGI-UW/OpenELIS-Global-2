@@ -9,22 +9,20 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
  * 
  * Task Reference: T089
  * 
- * Provides methods for:
- * - Creating error records for unmapped/failed analyzer messages
- * - Acknowledging errors
- * - Reprocessing errors after mappings are created
- * - Querying errors with filters
+ * Provides methods for: - Creating error records for unmapped/failed analyzer
+ * messages - Acknowledging errors - Reprocessing errors after mappings are
+ * created - Querying errors with filters
  */
 public interface AnalyzerErrorService {
 
     /**
      * Create a new analyzer error record
      * 
-     * @param analyzer The analyzer that generated the error
-     * @param errorType The type of error (MAPPING, VALIDATION, etc.)
-     * @param severity The severity level (CRITICAL, ERROR, WARNING)
+     * @param analyzer     The analyzer that generated the error
+     * @param errorType    The type of error (MAPPING, VALIDATION, etc.)
+     * @param severity     The severity level (CRITICAL, ERROR, WARNING)
      * @param errorMessage Human-readable error message
-     * @param rawMessage Raw ASTM message (for reprocessing)
+     * @param rawMessage   Raw ASTM message (for reprocessing)
      * @return The ID of the created error record
      */
     String createError(Analyzer analyzer, AnalyzerError.ErrorType errorType, AnalyzerError.Severity severity,
@@ -34,7 +32,7 @@ public interface AnalyzerErrorService {
      * Acknowledge an error (mark as acknowledged by user)
      * 
      * @param errorId The ID of the error to acknowledge
-     * @param userId The ID of the user acknowledging the error
+     * @param userId  The ID of the user acknowledging the error
      */
     void acknowledgeError(String errorId, String userId);
 
@@ -58,15 +56,14 @@ public interface AnalyzerErrorService {
      * Get errors filtered by various criteria
      * 
      * @param analyzerId Optional analyzer ID filter
-     * @param errorType Optional error type filter
-     * @param severity Optional severity filter
-     * @param status Optional status filter
-     * @param startDate Optional start date filter
-     * @param endDate Optional end date filter
+     * @param errorType  Optional error type filter
+     * @param severity   Optional severity filter
+     * @param status     Optional status filter
+     * @param startDate  Optional start date filter
+     * @param endDate    Optional end date filter
      * @return List of matching errors
      */
     List<AnalyzerError> getErrorsByFilters(String analyzerId, AnalyzerError.ErrorType errorType,
             AnalyzerError.Severity severity, AnalyzerError.ErrorStatus status, java.util.Date startDate,
             java.util.Date endDate);
 }
-

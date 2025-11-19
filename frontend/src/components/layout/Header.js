@@ -56,7 +56,7 @@ function OEHeader(props) {
 
   const intl = useIntl();
   const currentPath = props.location?.pathname || "";
-  
+
   // Helper function to check if a menu item is active based on current path
   // ONLY exact match - no prefix matching to avoid highlighting all analyzer routes
   const isMenuItemActive = (actionURL) => {
@@ -78,14 +78,16 @@ function OEHeader(props) {
   const [readNotifications, setReadNotifications] = useState([]);
   const [searchBar, setSearchBar] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  
+
   // Check if we're on an analyzer route (for isPersistent and defaultExpanded)
-  const isAnalyzerRoute = props.location?.pathname?.startsWith("/analyzers") ?? false;
-  
+  const isAnalyzerRoute =
+    props.location?.pathname?.startsWith("/analyzers") ?? false;
+
   // Track if we've initialized analyzer sidebar to expanded
-  const [analyzerSidebarInitialized, setAnalyzerSidebarInitialized] = useState(false);
+  const [analyzerSidebarInitialized, setAnalyzerSidebarInitialized] =
+    useState(false);
   const [lastRouteType, setLastRouteType] = useState(null); // Track if last route was analyzer or not
-  
+
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
@@ -213,12 +215,15 @@ function OEHeader(props) {
       if (level === 0 && menuItem.childMenus.length > 0) {
         // Check if this is the Analyzers parent menu and we're on an analyzer route
         const isAnalyzersParent = menuItem.menu.elementId === "menu_analyzers";
-        const hasActiveAnalyzerChild = currentPath.startsWith("/analyzers") && 
-          menuItem.childMenus.some(child => 
-            child.menu.actionURL && isMenuItemActive(child.menu.actionURL)
+        const hasActiveAnalyzerChild =
+          currentPath.startsWith("/analyzers") &&
+          menuItem.childMenus.some(
+            (child) =>
+              child.menu.actionURL && isMenuItemActive(child.menu.actionURL),
           );
-        const isParentActive = isAnalyzersParent && currentPath.startsWith("/analyzers");
-        
+        const isParentActive =
+          isAnalyzersParent && currentPath.startsWith("/analyzers");
+
         return (
           <span id={menuItem.menu.elementId} key={path}>
             <span
@@ -226,8 +231,14 @@ function OEHeader(props) {
               onClick={(e) => {
                 setMenuItemExpanded(e, menuItem, path);
                 // For Analyzers parent menu, also navigate to first child when expanding
-                if (isAnalyzersParent && !menuItem.expanded && menuItem.childMenus.length > 0) {
-                  const firstChild = menuItem.childMenus.find(child => child.menu.isActive && child.menu.actionURL);
+                if (
+                  isAnalyzersParent &&
+                  !menuItem.expanded &&
+                  menuItem.childMenus.length > 0
+                ) {
+                  const firstChild = menuItem.childMenus.find(
+                    (child) => child.menu.isActive && child.menu.actionURL,
+                  );
                   if (firstChild) {
                     history.push(firstChild.menu.actionURL);
                   }
@@ -276,7 +287,10 @@ function OEHeader(props) {
               isActive={isActive}
               onClick={(e) => {
                 // Prevent default href navigation for internal routes
-                if (!menuItem.menu.openInNewWindow && menuItem.menu.actionURL?.startsWith("/")) {
+                if (
+                  !menuItem.menu.openInNewWindow &&
+                  menuItem.menu.actionURL?.startsWith("/")
+                ) {
                   e.preventDefault();
                   history.push(menuItem.menu.actionURL);
                 }
@@ -303,7 +317,10 @@ function OEHeader(props) {
               isActive={isActive}
               onClick={(e) => {
                 // Prevent default href navigation for internal routes
-                if (!menuItem.menu.openInNewWindow && menuItem.menu.actionURL?.startsWith("/")) {
+                if (
+                  !menuItem.menu.openInNewWindow &&
+                  menuItem.menu.actionURL?.startsWith("/")
+                ) {
                   e.preventDefault();
                   history.push(menuItem.menu.actionURL);
                 }
@@ -505,19 +522,30 @@ function OEHeader(props) {
                 // On non-analyzer routes, ensure it's collapsed
                 useEffect(() => {
                   // Reset initialization state when route type changes
-                  if (lastRouteType !== null && lastRouteType !== isAnalyzerRoute) {
+                  if (
+                    lastRouteType !== null &&
+                    lastRouteType !== isAnalyzerRoute
+                  ) {
                     setAnalyzerSidebarInitialized(false);
                   }
-                  
-                  if (isAnalyzerRoute && !analyzerSidebarInitialized && !isSideNavExpanded) {
-                    console.log("[AnalyzerNav] Initializing analyzer sidebar to expanded");
+
+                  if (
+                    isAnalyzerRoute &&
+                    !analyzerSidebarInitialized &&
+                    !isSideNavExpanded
+                  ) {
+                    console.log(
+                      "[AnalyzerNav] Initializing analyzer sidebar to expanded",
+                    );
                     onClickSideNavExpand();
                     setAnalyzerSidebarInitialized(true);
                     setLastRouteType(true);
                   } else if (!isAnalyzerRoute && !analyzerSidebarInitialized) {
                     // Collapse sidebar on non-analyzer routes if it's expanded
                     if (isSideNavExpanded) {
-                      console.log("[AnalyzerNav] Collapsing sidebar on non-analyzer route");
+                      console.log(
+                        "[AnalyzerNav] Collapsing sidebar on non-analyzer route",
+                      );
                       onClickSideNavExpand();
                     }
                     setAnalyzerSidebarInitialized(true);
@@ -526,8 +554,13 @@ function OEHeader(props) {
                     // Initial load - set route type
                     setLastRouteType(isAnalyzerRoute);
                   }
-                }, [isAnalyzerRoute, isSideNavExpanded, analyzerSidebarInitialized, lastRouteType]);
-                
+                }, [
+                  isAnalyzerRoute,
+                  isSideNavExpanded,
+                  analyzerSidebarInitialized,
+                  lastRouteType,
+                ]);
+
                 console.log("[AnalyzerNav] Render", {
                   isAnalyzerRoute,
                   isSideNavExpanded,
@@ -544,217 +577,219 @@ function OEHeader(props) {
                   onClickSideNavExpand();
                   // Use setTimeout to log state after Carbon updates it
                   setTimeout(() => {
-                    const sideNav = document.querySelector('.cds--side-nav');
+                    const sideNav = document.querySelector(".cds--side-nav");
                     console.log("[AnalyzerNav] Toggle clicked AFTER", {
                       isSideNavExpanded,
                       sideNavClasses: sideNav?.className,
-                      ariaExpanded: sideNav?.getAttribute('aria-expanded'),
-                      isExpanded: sideNav?.classList.contains('cds--side-nav--expanded'),
+                      ariaExpanded: sideNav?.getAttribute("aria-expanded"),
+                      isExpanded: sideNav?.classList.contains(
+                        "cds--side-nav--expanded",
+                      ),
                       computedDisplay: window.getComputedStyle(sideNav).display,
-                      computedVisibility: window.getComputedStyle(sideNav).visibility,
-                      computedTransform: window.getComputedStyle(sideNav).transform,
+                      computedVisibility:
+                        window.getComputedStyle(sideNav).visibility,
+                      computedTransform:
+                        window.getComputedStyle(sideNav).transform,
                     });
                   }, 100);
                 };
 
                 return (
-                <Header id="mainHeader" className="mainHeader" aria-label="">
-                  {userSessionDetails.authenticated && (
-                    <HeaderMenuButton
-                      data-cy="menuButton"
-                      aria-label={
-                        isSideNavExpanded ? "Close menu" : "Open menu"
-                      }
-                      onClick={handleToggle}
-                      isActive={isSideNavExpanded}
-                      isCollapsible={true}
-                    />
-                  )}
-                  <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
-                    <span id="header-logo">{logo()}</span>
-                    <div className="banner">
-                      <h5>{configurationProperties?.BANNER_TEXT}</h5>
-                      <p>
-                        <FormattedMessage id="header.label.version" /> &nbsp;{" "}
-                        {configurationProperties?.releaseNumber}
-                      </p>
-                    </div>
-                  </HeaderName>
-                  <HeaderGlobalBar>
+                  <Header id="mainHeader" className="mainHeader" aria-label="">
                     {userSessionDetails.authenticated && (
-                      <>
-                        {searchBar && <SearchBar />}
-                        <HeaderGlobalAction
-                          id="search-Icon"
-                          aria-label="Search"
-                          onClick={() =>
-                            handlePanelToggle(searchBar ? "" : "search")
-                          }
-                        >
-                          {!searchBar ? (
-                            <Search size={20} />
-                          ) : (
-                            <Close size={20} />
-                          )}
-                        </HeaderGlobalAction>
-                        <HeaderGlobalAction
-                          id="notification-Icon"
-                          aria-label="Notifications"
-                          onClick={() =>
-                            handlePanelToggle(
-                              notificationsOpen ? "" : "notifications",
-                            )
-                          }
-                        >
-                          <div
-                            style={{
-                              position: "relative",
-                              display: "inline-block",
-                            }}
+                      <HeaderMenuButton
+                        data-cy="menuButton"
+                        aria-label={
+                          isSideNavExpanded ? "Close menu" : "Open menu"
+                        }
+                        onClick={handleToggle}
+                        isActive={isSideNavExpanded}
+                        isCollapsible={true}
+                      />
+                    )}
+                    <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
+                      <span id="header-logo">{logo()}</span>
+                      <div className="banner">
+                        <h5>{configurationProperties?.BANNER_TEXT}</h5>
+                        <p>
+                          <FormattedMessage id="header.label.version" /> &nbsp;{" "}
+                          {configurationProperties?.releaseNumber}
+                        </p>
+                      </div>
+                    </HeaderName>
+                    <HeaderGlobalBar>
+                      {userSessionDetails.authenticated && (
+                        <>
+                          {searchBar && <SearchBar />}
+                          <HeaderGlobalAction
+                            id="search-Icon"
+                            aria-label="Search"
+                            onClick={() =>
+                              handlePanelToggle(searchBar ? "" : "search")
+                            }
                           >
-                            {!notificationsOpen ? (
-                              <Notification size={20} />
+                            {!searchBar ? (
+                              <Search size={20} />
                             ) : (
                               <Close size={20} />
                             )}
-                            {unReadNotifications?.length > 0 && (
-                              <span
-                                style={{
-                                  position: "absolute",
-                                  top: "-5px",
-                                  right: "-5px",
-                                  backgroundColor: "red",
-                                  color: "white",
-                                  borderRadius: "50%",
-                                  width: "22px",
-                                  height: "22px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: "12px",
-                                  animation: "pulse 5s infinite",
-                                  opacity: 1,
-                                  transition:
-                                    "background-color 0.3s ease-in-out",
-                                }}
-                              >
-                                {unReadNotifications.length}
-                              </span>
-                            )}
-                          </div>
-                        </HeaderGlobalAction>
-                      </>
-                    )}
-                    <HeaderGlobalAction
-                      id="user-Icon"
-                      aria-label={panelSwitchLabel()}
-                      onClick={() =>
-                        handlePanelToggle(switchCollapsed ? "user" : "")
-                      }
-                      ref={userSwitchRef}
+                          </HeaderGlobalAction>
+                          <HeaderGlobalAction
+                            id="notification-Icon"
+                            aria-label="Notifications"
+                            onClick={() =>
+                              handlePanelToggle(
+                                notificationsOpen ? "" : "notifications",
+                              )
+                            }
+                          >
+                            <div
+                              style={{
+                                position: "relative",
+                                display: "inline-block",
+                              }}
+                            >
+                              {!notificationsOpen ? (
+                                <Notification size={20} />
+                              ) : (
+                                <Close size={20} />
+                              )}
+                              {unReadNotifications?.length > 0 && (
+                                <span
+                                  style={{
+                                    position: "absolute",
+                                    top: "-5px",
+                                    right: "-5px",
+                                    backgroundColor: "red",
+                                    color: "white",
+                                    borderRadius: "50%",
+                                    width: "22px",
+                                    height: "22px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: "12px",
+                                    animation: "pulse 5s infinite",
+                                    opacity: 1,
+                                    transition:
+                                      "background-color 0.3s ease-in-out",
+                                  }}
+                                >
+                                  {unReadNotifications.length}
+                                </span>
+                              )}
+                            </div>
+                          </HeaderGlobalAction>
+                        </>
+                      )}
+                      <HeaderGlobalAction
+                        id="user-Icon"
+                        aria-label={panelSwitchLabel()}
+                        onClick={() =>
+                          handlePanelToggle(switchCollapsed ? "user" : "")
+                        }
+                        ref={userSwitchRef}
+                      >
+                        {panelSwitchIcon()}
+                      </HeaderGlobalAction>
+                      <HelpMenu
+                        helpOpen={helpOpen}
+                        handlePanelToggle={handlePanelToggle}
+                      />
+                    </HeaderGlobalBar>
+                    <HeaderPanel
+                      aria-label="Header Panel"
+                      expanded={!switchCollapsed}
+                      className="headerPanel"
+                      ref={headerPanelRef}
                     >
-                      {panelSwitchIcon()}
-                    </HeaderGlobalAction>
-                    <HelpMenu
-                      helpOpen={helpOpen}
-                      handlePanelToggle={handlePanelToggle}
-                    />
-                  </HeaderGlobalBar>
-                  <HeaderPanel
-                    aria-label="Header Panel"
-                    expanded={!switchCollapsed}
-                    className="headerPanel"
-                    ref={headerPanelRef}
-                  >
-                    <ul>
-                      {userSessionDetails.authenticated && (
-                        <>
-                          <li className="userDetails">
-                            <UserAvatarFilledAlt
-                              size={18}
-                              style={{ marginRight: "4px" }}
-                            />
-                            {userSessionDetails.firstName}{" "}
-                            {userSessionDetails.lastName}
-                          </li>
-                          {userSessionDetails.loginLabUnit && (
+                      <ul>
+                        {userSessionDetails.authenticated && (
+                          <>
                             <li className="userDetails">
-                              <LocationFilled
+                              <UserAvatarFilledAlt
                                 size={18}
                                 style={{ marginRight: "4px" }}
                               />
-                              {userSessionDetails.loginLabUnit}{" "}
+                              {userSessionDetails.firstName}{" "}
+                              {userSessionDetails.lastName}
                             </li>
-                          )}
-                          <li
-                            data-cy="logOut"
-                            className="userDetails clickableUserDetails"
-                            onClick={logout}
+                            {userSessionDetails.loginLabUnit && (
+                              <li className="userDetails">
+                                <LocationFilled
+                                  size={18}
+                                  style={{ marginRight: "4px" }}
+                                />
+                                {userSessionDetails.loginLabUnit}{" "}
+                              </li>
+                            )}
+                            <li
+                              data-cy="logOut"
+                              className="userDetails clickableUserDetails"
+                              onClick={logout}
+                            >
+                              <Logout style={{ marginRight: "3px" }} />
+                              <FormattedMessage id="header.label.logout" />
+                            </li>
+                          </>
+                        )}
+                        <li className="userDetails">
+                          <Select
+                            id="selector"
+                            name="selectLocale"
+                            className="selectLocale"
+                            invalidText="A valid locale value is required"
+                            labelText={
+                              <FormattedMessage id="header.label.selectlocale" />
+                            }
+                            onChange={(event) => {
+                              props.onChangeLanguage(event.target.value);
+                            }}
+                            value={props.intl.locale}
                           >
-                            <Logout style={{ marginRight: "3px" }} />
-                            <FormattedMessage id="header.label.logout" />
-                          </li>
-                        </>
-                      )}
-                      <li className="userDetails">
-                        <Select
-                          id="selector"
-                          name="selectLocale"
-                          className="selectLocale"
-                          invalidText="A valid locale value is required"
-                          labelText={
-                            <FormattedMessage id="header.label.selectlocale" />
+                            {Object.entries(languages).map(
+                              ([code, { label }]) => (
+                                <SelectItem
+                                  key={code}
+                                  text={label}
+                                  value={code}
+                                />
+                              ),
+                            )}
+                          </Select>
+                        </li>
+                        <li className="userDetails">
+                          <label className="cds--label">
+                            {" "}
+                            <FormattedMessage id="header.label.version" />:{" "}
+                            {configurationProperties?.releaseNumber}
+                          </label>
+                        </li>
+                      </ul>
+                    </HeaderPanel>
+                    {userSessionDetails.authenticated && (
+                      <>
+                        <SideNav
+                          aria-label="Side navigation"
+                          expanded={isSideNavExpanded}
+                          className={
+                            isAnalyzerRoute ? "analyzer-persistent-sidebar" : ""
                           }
-                          onChange={(event) => {
-                            props.onChangeLanguage(event.target.value);
-                          }}
-                          value={props.intl.locale}
                         >
-                          {Object.entries(languages).map(
-                            ([code, { label }]) => (
-                              <SelectItem
-                                key={code}
-                                text={label}
-                                value={code}
-                              />
-                            ),
-                          )}
-                        </Select>
-                      </li>
-                      <li className="userDetails">
-                        <label className="cds--label">
-                          {" "}
-                          <FormattedMessage id="header.label.version" />:{" "}
-                          {configurationProperties?.releaseNumber}
-                        </label>
-                      </li>
-                    </ul>
-                  </HeaderPanel>
-                  {userSessionDetails.authenticated && (
-                    <>
-                      <SideNav
-                        aria-label="Side navigation"
-                        expanded={isSideNavExpanded}
-                        className={
-                          isAnalyzerRoute
-                            ? "analyzer-persistent-sidebar"
-                            : ""
-                        }
-                      >
-                        <SideNavItems>
-                          {menus["menu"].map((childMenuItem, index) => {
-                            return generateMenuItems(
-                              childMenuItem,
-                              index,
-                              0,
-                              "$.menu[" + index + "]",
-                            );
-                          })}
-                        </SideNavItems>
-                      </SideNav>
-                    </>
-                  )}
-                </Header>
+                          <SideNavItems>
+                            {menus["menu"].map((childMenuItem, index) => {
+                              return generateMenuItems(
+                                childMenuItem,
+                                index,
+                                0,
+                                "$.menu[" + index + "]",
+                              );
+                            })}
+                          </SideNavItems>
+                        </SideNav>
+                      </>
+                    )}
+                  </Header>
                 );
               }}
             />
@@ -786,4 +821,3 @@ function OEHeader(props) {
 }
 
 export default withRouter(injectIntl(OEHeader));
-

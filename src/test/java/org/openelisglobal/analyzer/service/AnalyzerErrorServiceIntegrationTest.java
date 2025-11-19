@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,16 +15,13 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import javax.sql.DataSource;
-
 /**
  * Integration tests for AnalyzerErrorService error queue workflow
  * 
  * Task Reference: T083
  * 
- * Tests the complete error queue workflow:
- * - Holding unmapped messages in error queue
- * - Reprocessing errors after mappings are created
+ * Tests the complete error queue workflow: - Holding unmapped messages in error
+ * queue - Reprocessing errors after mappings are created
  * 
  * Uses @SpringBootTest via BaseWebContextSensitiveTest for full integration.
  */
@@ -45,13 +43,14 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
     public void setUp() throws Exception {
         super.setUp();
         jdbcTemplate = new JdbcTemplate(dataSource);
-        
+
         // Clean up any leftover test data first
         cleanTestData();
-        
+
         // Create test analyzer
         // Note: Analyzer uses String IDs in Java (e.g., "1"), but INTEGER in database
-        // Reference: ID_TYPE_ANALYSIS.md - Legacy Analyzer uses LIMSStringNumberUserType
+        // Reference: ID_TYPE_ANALYSIS.md - Legacy Analyzer uses
+        // LIMSStringNumberUserType
         testAnalyzer = new Analyzer();
         testAnalyzer.setName("TEST-ERROR-ANALYZER");
         testAnalyzer.setActive(false); // Start inactive
@@ -72,15 +71,14 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
     private void cleanTestData() {
         try {
             // Delete analyzer errors for test analyzer
-            jdbcTemplate.execute("DELETE FROM analyzer_error WHERE analyzer_id IN " +
-                    "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')");
-            
+            jdbcTemplate.execute("DELETE FROM analyzer_error WHERE analyzer_id IN "
+                    + "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')");
+
             // Delete test analyzer (if exists)
             jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%'");
-            
+
             // Reset analyzer sequence
-            Integer maxId = jdbcTemplate.queryForObject(
-                    "SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
+            Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
             jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
         } catch (Exception e) {
             // Log but don't fail - cleanup is best effort
@@ -89,11 +87,10 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
     }
 
     /**
-     * Test: Hold unmapped message in error queue
-     * Task Reference: T083
+     * Test: Hold unmapped message in error queue Task Reference: T083
      * 
-     * Verifies that when a mapping is not found, an AnalyzerError record is
-     * created and the message is held in the error queue.
+     * Verifies that when a mapping is not found, an AnalyzerError record is created
+     * and the message is held in the error queue.
      */
     @Test
     public void testHoldUnmappedMessage_InErrorQueue() {
@@ -102,16 +99,12 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
         String errorMessage = "No mapping found for test code: UNMAPPED_TEST";
 
         // Act: Create error record
-        String errorId = analyzerErrorService.createError(
-                testAnalyzer,
-                AnalyzerError.ErrorType.MAPPING,
-                AnalyzerError.Severity.ERROR,
-                errorMessage,
-                rawMessage);
+        String errorId = analyzerErrorService.createError(testAnalyzer, AnalyzerError.ErrorType.MAPPING,
+                AnalyzerError.Severity.ERROR, errorMessage, rawMessage);
 
         // Assert: Error was created and stored
         assertNotNull("Error ID should not be null", errorId);
-        
+
         AnalyzerError error = analyzerErrorService.getErrorById(errorId);
         assertNotNull("Error should be retrievable", error);
         assertEquals("Error type should be MAPPING", AnalyzerError.ErrorType.MAPPING, error.getErrorType());
@@ -124,30 +117,26 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
     }
 
     /**
-     * Test: Reprocess error after mapping created
-     * Task Reference: T083
+     * Test: Reprocess error after mapping created Task Reference: T083
      * 
-     * Verifies that after a mapping is created, the error can be reprocessed.
-     * Note: This test verifies the reprocessing service is called, but actual
+     * Verifies that after a mapping is created, the error can be reprocessed. Note:
+     * This test verifies the reprocessing service is called, but actual
      * reprocessing success depends on mappings existing (tested in T181).
      */
     @Test
     public void testReprocessAfterMapping_CreatesOrder() {
         // Arrange: Create error for unmapped field
         String rawMessage = "H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^REPROCESS_TEST|123|mg/dL|N";
-        String errorId = analyzerErrorService.createError(
-                testAnalyzer,
-                AnalyzerError.ErrorType.MAPPING,
-                AnalyzerError.Severity.ERROR,
-                "No mapping found for test code: REPROCESS_TEST",
-                rawMessage);
+        String errorId = analyzerErrorService.createError(testAnalyzer, AnalyzerError.ErrorType.MAPPING,
+                AnalyzerError.Severity.ERROR, "No mapping found for test code: REPROCESS_TEST", rawMessage);
 
         // Verify error exists
         AnalyzerError error = analyzerErrorService.getErrorById(errorId);
         assertNotNull("Error should exist", error);
         assertEquals("Status should be UNACKNOWLEDGED", AnalyzerError.ErrorStatus.UNACKNOWLEDGED, error.getStatus());
 
-        // Act: Attempt to reprocess (will fail if mappings don't exist, but service should handle it)
+        // Act: Attempt to reprocess (will fail if mappings don't exist, but service
+        // should handle it)
         boolean reprocessSuccess = analyzerErrorService.reprocessError(errorId);
 
         // Assert: Reprocessing was attempted
@@ -158,25 +147,21 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
     }
 
     /**
-     * Test: Acknowledge error updates status
-     * Task Reference: T083
+     * Test: Acknowledge error updates status Task Reference: T083
      * 
      * Verifies that acknowledging an error updates its status to ACKNOWLEDGED.
      */
     @Test
     public void testAcknowledgeError_UpdatesStatus() {
         // Arrange: Create error
-        String errorId = analyzerErrorService.createError(
-                testAnalyzer,
-                AnalyzerError.ErrorType.MAPPING,
-                AnalyzerError.Severity.ERROR,
-                "Test error message",
+        String errorId = analyzerErrorService.createError(testAnalyzer, AnalyzerError.ErrorType.MAPPING,
+                AnalyzerError.Severity.ERROR, "Test error message",
                 "H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^TEST|123|mg/dL|N");
 
         // Verify initial status
         AnalyzerError error = analyzerErrorService.getErrorById(errorId);
-        assertEquals("Initial status should be UNACKNOWLEDGED", 
-                AnalyzerError.ErrorStatus.UNACKNOWLEDGED, error.getStatus());
+        assertEquals("Initial status should be UNACKNOWLEDGED", AnalyzerError.ErrorStatus.UNACKNOWLEDGED,
+                error.getStatus());
 
         // Act: Acknowledge error
         String userId = "TEST-USER-001";
@@ -184,48 +169,39 @@ public class AnalyzerErrorServiceIntegrationTest extends BaseWebContextSensitive
 
         // Assert: Status updated
         error = analyzerErrorService.getErrorById(errorId);
-        assertEquals("Status should be ACKNOWLEDGED", 
-                AnalyzerError.ErrorStatus.ACKNOWLEDGED, error.getStatus());
+        assertEquals("Status should be ACKNOWLEDGED", AnalyzerError.ErrorStatus.ACKNOWLEDGED, error.getStatus());
         assertEquals("Acknowledged by should be set", userId, error.getAcknowledgedBy());
         assertNotNull("Acknowledged at should be set", error.getAcknowledgedAt());
     }
 
     /**
-     * Test: Get errors by filters
-     * Task Reference: T083
+     * Test: Get errors by filters Task Reference: T083
      * 
      * Verifies that filtering errors by status, type, and severity works correctly.
      */
     @Test
     public void testGetErrorsByFilters_ReturnsFilteredResults() {
         // Arrange: Create multiple errors with different attributes
-        String error1Id = analyzerErrorService.createError(
-                testAnalyzer,
-                AnalyzerError.ErrorType.MAPPING,
-                AnalyzerError.Severity.ERROR,
-                "Mapping error 1",
+        String error1Id = analyzerErrorService.createError(testAnalyzer, AnalyzerError.ErrorType.MAPPING,
+                AnalyzerError.Severity.ERROR, "Mapping error 1",
                 "H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^TEST1|123|mg/dL|N");
 
-        String error2Id = analyzerErrorService.createError(
-                testAnalyzer,
-                AnalyzerError.ErrorType.VALIDATION,
-                AnalyzerError.Severity.WARNING,
-                "Validation error 1",
+        String error2Id = analyzerErrorService.createError(testAnalyzer, AnalyzerError.ErrorType.VALIDATION,
+                AnalyzerError.Severity.WARNING, "Validation error 1",
                 "H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^TEST2|123|mg/dL|N");
 
         // Acknowledge first error
         analyzerErrorService.acknowledgeError(error1Id, "TEST-USER");
 
         // Act: Filter by status
-        List<AnalyzerError> unacknowledged = analyzerErrorService.getErrorsByFilters(
-                null, null, null, AnalyzerError.ErrorStatus.UNACKNOWLEDGED, null, null);
+        List<AnalyzerError> unacknowledged = analyzerErrorService.getErrorsByFilters(null, null, null,
+                AnalyzerError.ErrorStatus.UNACKNOWLEDGED, null, null);
 
         // Assert: Only unacknowledged errors returned
         assertTrue("Should return at least one unacknowledged error", unacknowledged.size() >= 1);
         for (AnalyzerError error : unacknowledged) {
-            assertEquals("All errors should be UNACKNOWLEDGED", 
-                    AnalyzerError.ErrorStatus.UNACKNOWLEDGED, error.getStatus());
+            assertEquals("All errors should be UNACKNOWLEDGED", AnalyzerError.ErrorStatus.UNACKNOWLEDGED,
+                    error.getStatus());
         }
     }
 }
-

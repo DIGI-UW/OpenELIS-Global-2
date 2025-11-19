@@ -34,7 +34,7 @@ describe("Analyzer Pages Load", () => {
         login.enterUsername(user.username);
         login.enterPassword(user.password);
         login.signIn();
-        
+
         // Wait for login to complete
         cy.url({ timeout: 10000 }).should("not.include", "/login");
         cy.get("#mainHeader", { timeout: 10000 }).should("be.visible");
@@ -109,7 +109,9 @@ describe("Analyzer Pages Load", () => {
     cy.visit("/analyzers");
 
     // Verify sidebar is visible (no arbitrary wait - use should() for retry-ability)
-    cy.get('nav[aria-label="Side navigation"]', { timeout: 10000 }).should("be.visible");
+    cy.get('nav[aria-label="Side navigation"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Console logs are automatically captured via ELECTRON_ENABLE_LOGGING=1
     // Review console logs in Cypress test output for errors/warnings

@@ -2,12 +2,10 @@ package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -25,13 +23,11 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for AnalyzerErrorService implementation
  * 
- * Task Reference: T081
- * Test Coverage Goal: >80%
+ * Task Reference: T081 Test Coverage Goal: >80%
  * 
- * TDD Workflow (MANDATORY for complex logic):
- * - RED: Write failing test first (defines expected behavior)
- * - GREEN: Write minimal code to make test pass
- * - REFACTOR: Improve code quality while keeping tests green
+ * TDD Workflow (MANDATORY for complex logic): - RED: Write failing test first
+ * (defines expected behavior) - GREEN: Write minimal code to make test pass -
+ * REFACTOR: Improve code quality while keeping tests green
  * 
  * SDD Checkpoint: Unit tests MUST pass after Phase 2 (Services)
  * 
@@ -71,8 +67,7 @@ public class AnalyzerErrorServiceTest {
     }
 
     /**
-     * Test: Create error record with unmapped field
-     * Task Reference: T081
+     * Test: Create error record with unmapped field Task Reference: T081
      * 
      * Verifies that createError() creates a new AnalyzerError record with correct
      * fields and persists it via DAO.
@@ -91,12 +86,8 @@ public class AnalyzerErrorServiceTest {
         when(analyzerErrorDAO.insert(any(AnalyzerError.class))).thenReturn("ERROR-001");
 
         // Act
-        String errorId = analyzerErrorService.createError(
-                testAnalyzer,
-                AnalyzerError.ErrorType.MAPPING,
-                AnalyzerError.Severity.ERROR,
-                "No mapping found for test code: GLUCOSE",
-                "H|\\^&|||...");
+        String errorId = analyzerErrorService.createError(testAnalyzer, AnalyzerError.ErrorType.MAPPING,
+                AnalyzerError.Severity.ERROR, "No mapping found for test code: GLUCOSE", "H|\\^&|||...");
 
         // Assert
         assertNotNull("Error ID should not be null", errorId);
@@ -105,8 +96,7 @@ public class AnalyzerErrorServiceTest {
     }
 
     /**
-     * Test: Acknowledge error with valid user
-     * Task Reference: T081
+     * Test: Acknowledge error with valid user Task Reference: T081
      * 
      * Verifies that acknowledgeError() updates error status to ACKNOWLEDGED and
      * sets acknowledged_by and acknowledged_at fields.
@@ -151,8 +141,7 @@ public class AnalyzerErrorServiceTest {
     }
 
     /**
-     * Test: Get errors by filters
-     * Task Reference: T081
+     * Test: Get errors by filters Task Reference: T081
      * 
      * Verifies that getErrorsByFilters() returns filtered list of errors.
      */
@@ -165,11 +154,8 @@ public class AnalyzerErrorServiceTest {
         when(analyzerErrorDAO.findByStatus("UNACKNOWLEDGED")).thenReturn(filteredErrors);
 
         // Act
-        List<AnalyzerError> result = analyzerErrorService.getErrorsByFilters(
-                null, // analyzerId
-                AnalyzerError.ErrorType.MAPPING,
-                AnalyzerError.Severity.ERROR,
-                AnalyzerError.ErrorStatus.UNACKNOWLEDGED,
+        List<AnalyzerError> result = analyzerErrorService.getErrorsByFilters(null, // analyzerId
+                AnalyzerError.ErrorType.MAPPING, AnalyzerError.Severity.ERROR, AnalyzerError.ErrorStatus.UNACKNOWLEDGED,
                 null, // startDate
                 null); // endDate
 
@@ -196,4 +182,3 @@ public class AnalyzerErrorServiceTest {
         // Assert: Exception should be thrown (handled by @Test(expected))
     }
 }
-

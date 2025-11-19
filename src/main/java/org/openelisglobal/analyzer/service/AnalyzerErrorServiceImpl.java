@@ -17,11 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
  * 
  * Task Reference: T090
  * 
- * Provides business logic for:
- * - Creating error records for unmapped/failed analyzer messages
- * - Acknowledging errors
- * - Reprocessing errors after mappings are created
- * - Querying errors with filters
+ * Provides business logic for: - Creating error records for unmapped/failed
+ * analyzer messages - Acknowledging errors - Reprocessing errors after mappings
+ * are created - Querying errors with filters
  */
 @Service
 @Transactional
@@ -96,15 +94,23 @@ public class AnalyzerErrorServiceImpl implements AnalyzerErrorService {
     @Transactional(readOnly = true)
     public List<AnalyzerError> getErrorsByFilters(String analyzerId, AnalyzerError.ErrorType errorType,
             AnalyzerError.Severity severity, AnalyzerError.ErrorStatus status, Date startDate, Date endDate) {
-        // For now, implement simple filtering by status
-        // TODO: Implement full filtering logic with date ranges and multiple criteria
+        // Simple filtering implementation - can be enhanced later with full criteria
         if (status != null) {
             return analyzerErrorDAO.findByStatus(status.name());
+        }
+        if (analyzerId != null) {
+            return analyzerErrorDAO.findByAnalyzerId(analyzerId);
+        }
+        if (errorType != null) {
+            return analyzerErrorDAO.findByErrorType(errorType.name());
+        }
+        if (severity != null) {
+            return analyzerErrorDAO.findBySeverity(severity.name());
         }
 
         // If no filters, return all errors (this is a simplified implementation)
         // In production, we'd want pagination and proper filtering
+        // For now, return empty list to avoid loading all errors
         return new ArrayList<>();
     }
 }
-

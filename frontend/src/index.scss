@@ -37,7 +37,8 @@ body:has(.analyzer-persistent-sidebar.cds--side-nav--expanded) .cds--content {
 }
 
 /* When analyzer sidebar is collapsed (does NOT have --expanded class), no margin */
-body:has(.analyzer-persistent-sidebar:not(.cds--side-nav--expanded)) .cds--content {
+body:has(.analyzer-persistent-sidebar:not(.cds--side-nav--expanded))
+  .cds--content {
   margin-left: 0 !important;
 }
 

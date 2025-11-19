@@ -14,8 +14,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 /**
  * Unit tests for AnalyzerQueryService implementation
  * 
- * Task Reference: T102
- * Test Coverage Goal: >80%
+ * Task Reference: T102 Test Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerQueryServiceTest {
@@ -118,6 +117,3 @@ public class AnalyzerQueryServiceTest {
         analyzerQueryService.cancel(analyzerId, invalidJobId);
     }
 }
-
-
-

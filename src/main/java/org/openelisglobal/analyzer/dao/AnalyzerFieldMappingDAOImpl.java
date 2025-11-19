@@ -36,11 +36,21 @@ public class AnalyzerFieldMappingDAOImpl extends BaseDAOImpl<AnalyzerFieldMappin
     @Transactional(readOnly = true)
     public List<AnalyzerFieldMapping> findActiveMappingsByAnalyzerId(String analyzerId) {
         try {
+            // Convert String analyzerId to Integer for HQL parameter binding
+            // Legacy Analyzer entity uses LIMSStringNumberUserType: Java String, DB INTEGER
+            // Reference: ID_TYPE_ANALYSIS.md
+            Integer analyzerIdInt;
+            try {
+                analyzerIdInt = Integer.parseInt(analyzerId);
+            } catch (NumberFormatException e) {
+                throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
+            }
+
             String hql = "FROM AnalyzerFieldMapping afm " + "WHERE afm.analyzerField.analyzer.id = :analyzerId "
                     + "AND afm.isActive = true";
             Query<AnalyzerFieldMapping> query = entityManager.unwrap(Session.class).createQuery(hql,
                     AnalyzerFieldMapping.class);
-            query.setParameter("analyzerId", analyzerId);
+            query.setParameter("analyzerId", analyzerIdInt); // Pass Integer, not String
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding active AnalyzerFieldMapping by analyzer ID", e);

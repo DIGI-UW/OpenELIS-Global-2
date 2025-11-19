@@ -30,11 +30,11 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
             } catch (NumberFormatException e) {
                 throw new LIMSRuntimeException("Invalid analyzer ID format: " + analyzerId, e);
             }
-            
-            // Use alias for ORDER BY to ensure proper column mapping
-            String hql = "SELECT ae FROM AnalyzerError ae WHERE ae.analyzer.id = :analyzerId ORDER BY ae.lastupdated DESC";
+
+            // Eagerly fetch analyzer to avoid LazyInitializationException
+            String hql = "SELECT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE ae.analyzer.id = :analyzerId ORDER BY ae.lastupdated DESC";
             Query<AnalyzerError> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerError.class);
-            query.setParameter("analyzerId", analyzerIdInt);  // Pass Integer, not String
+            query.setParameter("analyzerId", analyzerIdInt); // Pass Integer, not String
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding AnalyzerError by analyzer ID", e);
@@ -45,7 +45,8 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
     @Transactional(readOnly = true)
     public List<AnalyzerError> findByStatus(String status) {
         try {
-            String hql = "SELECT ae FROM AnalyzerError ae WHERE ae.status = :status ORDER BY ae.lastupdated DESC";
+            // Eagerly fetch analyzer to avoid LazyInitializationException
+            String hql = "SELECT DISTINCT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE ae.status = :status ORDER BY ae.lastupdated DESC";
             Query<AnalyzerError> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerError.class);
             query.setParameter("status", status);
             return query.list();
@@ -58,7 +59,8 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
     @Transactional(readOnly = true)
     public List<AnalyzerError> findByErrorType(String errorType) {
         try {
-            String hql = "SELECT ae FROM AnalyzerError ae WHERE ae.errorType = :errorType ORDER BY ae.lastupdated DESC";
+            // Eagerly fetch analyzer to avoid LazyInitializationException
+            String hql = "SELECT DISTINCT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE ae.errorType = :errorType ORDER BY ae.lastupdated DESC";
             Query<AnalyzerError> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerError.class);
             query.setParameter("errorType", errorType);
             return query.list();
@@ -71,7 +73,8 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
     @Transactional(readOnly = true)
     public List<AnalyzerError> findBySeverity(String severity) {
         try {
-            String hql = "SELECT ae FROM AnalyzerError ae WHERE ae.severity = :severity ORDER BY ae.lastupdated DESC";
+            // Eagerly fetch analyzer to avoid LazyInitializationException
+            String hql = "SELECT DISTINCT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer WHERE ae.severity = :severity ORDER BY ae.lastupdated DESC";
             Query<AnalyzerError> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerError.class);
             query.setParameter("severity", severity);
             return query.list();

@@ -17,7 +17,7 @@ export default function Layout(props) {
   const [configurationProperties, setConfigurationProperties] = useState({});
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  
+
   // No custom sidebar tracking needed - Carbon handles it all
 
   const addNotification = (notificationBody) => {
@@ -70,9 +70,7 @@ export default function Layout(props) {
         <div className="d-flex flex-column min-vh-100">
           <Header onChangeLanguage={props.onChangeLanguage} />
           <Theme theme="white">
-            <Content>
-              {children}
-            </Content>
+            <Content>{children}</Content>
           </Theme>
           <Footer />
         </div>

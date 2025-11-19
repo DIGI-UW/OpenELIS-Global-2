@@ -42,9 +42,11 @@ public class AnalyzerReprocessingServiceImpl implements AnalyzerReprocessingServ
         }
 
         // Check if analyzer has active mappings
+        // Note: Analyzer uses String IDs in Java, but findActiveMappingsByAnalyzerId
+        // accepts String and handles conversion internally
+        // Reference: ID_TYPE_ANALYSIS.md
         String analyzerId = error.getAnalyzer().getId();
-        List<AnalyzerFieldMapping> activeMappings = analyzerFieldMappingDAO
-                .findActiveMappingsByAnalyzerId(analyzerId);
+        List<AnalyzerFieldMapping> activeMappings = analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId(analyzerId);
 
         if (activeMappings == null || activeMappings.isEmpty()) {
             LogEvent.logError(this.getClass().getSimpleName(), "reprocessMessage",
@@ -53,8 +55,7 @@ public class AnalyzerReprocessingServiceImpl implements AnalyzerReprocessingServ
         }
 
         // Convert raw message string to InputStream
-        InputStream messageStream = new ByteArrayInputStream(
-                error.getRawMessage().getBytes(StandardCharsets.UTF_8));
+        InputStream messageStream = new ByteArrayInputStream(error.getRawMessage().getBytes(StandardCharsets.UTF_8));
 
         // Create ASTMAnalyzerReader and process message
         try {
@@ -93,4 +94,3 @@ public class AnalyzerReprocessingServiceImpl implements AnalyzerReprocessingServ
         }
     }
 }
-

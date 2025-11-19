@@ -15,13 +15,11 @@ import org.springframework.test.context.junit4.SpringRunner;
 /**
  * Integration tests for AnalyzerQueryService query workflow
  * 
- * Task Reference: T103
- * Test Coverage Goal: >80%
+ * Task Reference: T103 Test Coverage Goal: >80%
  * 
- * These tests verify:
- * - Query analyzer workflow with full Spring context
- * - Timeout handling for long-running queries
- * - ASTM response parsing and field extraction
+ * These tests verify: - Query analyzer workflow with full Spring context -
+ * Timeout handling for long-running queries - ASTM response parsing and field
+ * extraction
  * 
  * Uses BaseWebContextSensitiveTest for full Spring context and database
  * integration.
@@ -109,6 +107,3 @@ public class AnalyzerQueryServiceIntegrationTest extends BaseWebContextSensitive
         assertNotNull("Status should still be retrievable", finalStatus);
     }
 }
-
-
-

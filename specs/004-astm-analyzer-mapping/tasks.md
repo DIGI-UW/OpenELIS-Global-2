@@ -550,8 +550,10 @@ additional Phase 4 tasks
   complete (T070-T075, T078, T164-T165), Copy Mappings/Test Mapping/Retirement
   pending
 - Phase 5 (User Story 3): 0/28 tasks complete (0%) - Not started
-- Phase 6 (Query Analyzer): 9/9 tasks complete (100%) - All tests and integration complete
-- Phase 7 (Navigation Integration): 7/7 tasks complete (100%) - All navigation integration and state preservation complete
+- Phase 6 (Query Analyzer): 9/9 tasks complete (100%) - All tests and
+  integration complete
+- Phase 7 (Navigation Integration): 7/7 tasks complete (100%) - All navigation
+  integration and state preservation complete
 - Phase 8 (Polish): 0/11 tasks complete (0%) - Not started
 - Phase 8.5 (System Administration): 0/2 tasks complete (0%) - Not started
 - Phase 9 (Constitution Compliance): 0/9 tasks complete (0%) - Not started
@@ -738,20 +740,28 @@ impacted messages can be reprocessed successfully.
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerErrorServiceTest.java` -
       Test methods: `testCreateError_WithUnmappedField_CreatesErrorRecord`,
       `testAcknowledgeError_WithValidUser_UpdatesStatus`,
-      `testReprocessError_WithNewMapping_ProcessesMessage` - All 5 tests passing: createError, acknowledgeError, reprocessError, getErrorsByFilters, exception handling
+      `testReprocessError_WithNewMapping_ProcessesMessage` - All 5 tests
+      passing: createError, acknowledgeError, reprocessError,
+      getErrorsByFilters, exception handling
 - [x] T082 [P] [US3] Unit test for AnalyzerReprocessingService in
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerReprocessingServiceTest.java` -
       Test methods: `testReprocessMessage_WithValidMapping_ReturnsSuccess`,
-      `testReprocessMessage_WithStillUnmapped_ReturnsError` - All 4 tests passing: valid mapping, still unmapped, null raw message, empty raw message
-- [ ] T083 [P] [US3] Integration test for error queue workflow in
+      `testReprocessMessage_WithStillUnmapped_ReturnsError` - All 4 tests
+      passing: valid mapping, still unmapped, null raw message, empty raw
+      message
+- [x] T083 [P] [US3] Integration test for error queue workflow in
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerErrorServiceIntegrationTest.java`
       using @SpringBootTest - Test methods:
       `testHoldUnmappedMessage_InErrorQueue`,
-      `testReprocessAfterMapping_CreatesOrder`
+      `testReprocessAfterMapping_CreatesOrder` - All 4 tests passing: hold
+      unmapped message, reprocess after mapping, acknowledge error, get errors
+      by filters
 - [x] T084 [P] [US3] DAO test for AnalyzerErrorDAO in
       `src/test/java/org/openelisglobal/analyzer/dao/AnalyzerErrorDAOTest.java` -
       Test methods: `testFindByStatus_ReturnsUnacknowledgedErrors`,
-      `testFindByAnalyzerId_ReturnsErrorsForAnalyzer` - All 6 tests passing: findByStatus, findByAnalyzerId, findByErrorType, findBySeverity, get with valid ID, get with invalid ID
+      `testFindByAnalyzerId_ReturnsErrorsForAnalyzer` - All 6 tests passing:
+      findByStatus, findByAnalyzerId, findByErrorType, findBySeverity, get with
+      valid ID, get with invalid ID
 - [ ] T085 [P] [US3] Controller test for AnalyzerErrorRestController in
       `src/test/java/org/openelisglobal/analyzer/controller/AnalyzerErrorRestControllerTest.java` -
       **Test Slicing**: Use `@WebMvcTest` - Test methods:
@@ -776,30 +786,38 @@ impacted messages can be reprocessed successfully.
 ### Implementation for User Story 3
 
 - [x] T089 [P] [US3] Create AnalyzerErrorService interface in
-      `src/main/java/org/openelisglobal/analyzer/service/AnalyzerErrorService.java` - Interface created with methods: createError, acknowledgeError, reprocessError, getErrorsByFilters
+      `src/main/java/org/openelisglobal/analyzer/service/AnalyzerErrorService.java` -
+      Interface created with methods: createError, acknowledgeError,
+      reprocessError, getErrorsByFilters
 - [x] T090 [US3] Create AnalyzerErrorServiceImpl in
       `src/main/java/org/openelisglobal/analyzer/service/AnalyzerErrorServiceImpl.java`
       with @Service and @Transactional annotations - Methods: createError,
-      acknowledgeError, getErrorsByFilters per FR-016 - Implementation complete with audit trail logging (setLastupdatedFields, setSysUserId), all unit tests passing
+      acknowledgeError, getErrorsByFilters per FR-016 - Implementation complete
+      with audit trail logging (setLastupdatedFields, setSysUserId), all unit
+      tests passing
 - [x] T091 [P] [US3] Create AnalyzerReprocessingService interface in
-      `src/main/java/org/openelisglobal/analyzer/service/AnalyzerReprocessingService.java` - Interface created with reprocessMessage method
+      `src/main/java/org/openelisglobal/analyzer/service/AnalyzerReprocessingService.java` -
+      Interface created with reprocessMessage method
 - [x] T092 [US3] Create AnalyzerReprocessingServiceImpl in
       `src/main/java/org/openelisglobal/analyzer/service/AnalyzerReprocessingServiceImpl.java`
       with @Service and @Transactional annotations - Reprocess raw message from
       AnalyzerError.rawMessage through ASTMAnalyzerReader with new mappings per
-      FR-017 - Implementation complete: validates raw message, checks for active mappings, converts to InputStream, processes through ASTMAnalyzerReader, all unit tests passing
+      FR-017 - Implementation complete: validates raw message, checks for active
+      mappings, converts to InputStream, processes through ASTMAnalyzerReader,
+      all unit tests passing
 - [ ] T093 [US3] Integrate error creation into
       ASTMAnalyzerReader.processData() - When mapping not found: Create
       AnalyzerError record, hold message in error queue per FR-011 - When
       validation fails: Create AnalyzerError record with validation details
 - [ ] T094 [P] [US3] Create AnalyzerErrorForm DTO in
       `src/main/java/org/openelisglobal/analyzer/form/AnalyzerErrorForm.java`
-- [ ] T095 [US3] Create AnalyzerErrorRestController in
+- [x] T095 [US3] Create AnalyzerErrorRestController in
       `src/main/java/org/openelisglobal/analyzer/controller/AnalyzerErrorRestController.java`
       extending BaseRestController - Endpoints: GET /analyzers/errors, GET
       /analyzers/errors/{id}, POST /analyzers/errors/{id}/acknowledge, POST
       /analyzers/errors/{id}/reprocess, POST /analyzers/errors/batch-acknowledge
-      per FR-016, FR-017
+      per FR-016, FR-017 - Implementation complete with all endpoints, error
+      handling, and statistics calculation
 - [ ] T096 [US3] Create ErrorDashboard component in
       `frontend/src/components/analyzers/ErrorDashboard/ErrorDashboard.jsx`
       using Carbon DataTable with statistics cards, filters, pagination per

@@ -231,10 +231,7 @@ const AnalyzersList = () => {
       </div>
 
       {/* Statistics Cards */}
-      <Grid
-        className="analyzers-list-stats"
-        data-testid="analyzers-list-stats"
-      >
+      <Grid className="analyzers-list-stats" data-testid="analyzers-list-stats">
         <Column lg={4} md={4} sm={4}>
           <Tile data-testid="stat-total">
             <div className="stat-label">

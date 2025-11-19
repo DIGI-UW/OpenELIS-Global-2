@@ -2,7 +2,6 @@ package org.openelisglobal.analyzer.dao;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -56,9 +55,10 @@ public class AnalyzerErrorDAOTest {
     public void setUp() {
         // Setup test analyzer
         // Note: Analyzer uses String IDs in Java (e.g., "1"), but INTEGER in database
-        // Reference: ID_TYPE_ANALYSIS.md - Legacy Analyzer uses LIMSStringNumberUserType
+        // Reference: ID_TYPE_ANALYSIS.md - Legacy Analyzer uses
+        // LIMSStringNumberUserType
         testAnalyzer = new Analyzer();
-        testAnalyzer.setId("1");  // String ID (matches Java type)
+        testAnalyzer.setId("1"); // String ID (matches Java type)
         testAnalyzer.setName("Test Analyzer");
 
         // Setup test error 1 (UNACKNOWLEDGED, MAPPING, ERROR)
@@ -237,4 +237,3 @@ public class AnalyzerErrorDAOTest {
         assertTrue("Result should be empty", result.isEmpty());
     }
 }
-

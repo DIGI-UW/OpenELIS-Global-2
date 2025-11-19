@@ -1,9 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -21,19 +18,15 @@ import org.openelisglobal.analyzer.dao.AnalyzerFieldMappingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
-import org.openelisglobal.analyzerimport.analyzerreaders.ASTMAnalyzerReader;
-import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReaderFactory;
 
 /**
  * Unit tests for AnalyzerReprocessingService implementation
  * 
- * Task Reference: T082
- * Test Coverage Goal: >80%
+ * Task Reference: T082 Test Coverage Goal: >80%
  * 
- * TDD Workflow (MANDATORY for complex logic):
- * - RED: Write failing test first (defines expected behavior)
- * - GREEN: Write minimal code to make test pass
- * - REFACTOR: Improve code quality while keeping tests green
+ * TDD Workflow (MANDATORY for complex logic): - RED: Write failing test first
+ * (defines expected behavior) - GREEN: Write minimal code to make test pass -
+ * REFACTOR: Improve code quality while keeping tests green
  * 
  * SDD Checkpoint: Unit tests MUST pass after Phase 2 (Services)
  * 
@@ -80,8 +73,7 @@ public class AnalyzerReprocessingServiceTest {
     }
 
     /**
-     * Test: Reprocess message with valid mapping
-     * Task Reference: T082
+     * Test: Reprocess message with valid mapping Task Reference: T082
      * 
      * Verifies that reprocessMessage() successfully processes the message when
      * mappings are available.
@@ -96,8 +88,7 @@ public class AnalyzerReprocessingServiceTest {
         List<AnalyzerFieldMapping> mappings = new ArrayList<>();
         mappings.add(mapping);
 
-        when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("ANALYZER-001"))
-                .thenReturn(mappings);
+        when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("ANALYZER-001")).thenReturn(mappings);
 
         // Mock ASTMAnalyzerReader to return success
         // Note: This is a simplified test - actual implementation will need to
@@ -135,8 +126,7 @@ public class AnalyzerReprocessingServiceTest {
     }
 
     /**
-     * Test: Reprocess message with null raw message
-     * Task Reference: T082
+     * Test: Reprocess message with null raw message Task Reference: T082
      * 
      * Verifies that reprocessMessage() handles null raw message gracefully.
      */
@@ -154,8 +144,7 @@ public class AnalyzerReprocessingServiceTest {
     }
 
     /**
-     * Test: Reprocess message with empty raw message
-     * Task Reference: T082
+     * Test: Reprocess message with empty raw message Task Reference: T082
      * 
      * Verifies that reprocessMessage() handles empty raw message gracefully.
      */
@@ -172,4 +161,3 @@ public class AnalyzerReprocessingServiceTest {
         verify(analyzerFieldMappingDAO, never()).findActiveMappingsByAnalyzerId(anyString());
     }
 }
-
