@@ -188,4 +188,86 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
         mockMvc.perform(get("/rest/analyzer/errors/INVALID-ID").contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
     }
+
+    /**
+     * Test: GET /rest/analyzer/errors with NO filters returns all errors
+     * 
+     * This test would have caught the bug where getErrorsByFilters returned empty
+     * list when no filters were provided.
+     * 
+     * Task Reference: T085
+     */
+    @Test
+    public void testGetErrors_WithNoFilters_ReturnsAllErrors() throws Exception {
+        // Arrange: Create multiple test errors in database
+        String errorId1 = analyzerErrorService.createError(testAnalyzer, AnalyzerError.ErrorType.MAPPING,
+                AnalyzerError.Severity.ERROR, "No mapping found for test code: GLUCOSE",
+                "H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^GLUCOSE|123|mg/dL|N");
+        String errorId2 = analyzerErrorService.createError(testAnalyzer, AnalyzerError.ErrorType.VALIDATION,
+                AnalyzerError.Severity.WARNING, "Unit mismatch: expected mg/dL, received mmol/L",
+                "H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^GLUCOSE|123|mmol/L|N");
+
+        // Act & Assert: Call endpoint with NO filters
+        mockMvc.perform(get("/rest/analyzer/errors").contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").exists())
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content.length()").value(2)) // Should return both errors
+                .andExpect(jsonPath("$.data.content[0].id").exists())
+                .andExpect(jsonPath("$.data.content[0].errorType").exists())
+                .andExpect(jsonPath("$.data.content[0].severity").exists())
+                .andExpect(jsonPath("$.data.content[0].errorMessage").exists())
+                .andExpect(jsonPath("$.data.content[0].status").exists())
+                .andExpect(jsonPath("$.data.content[0].analyzer").exists())
+                .andExpect(jsonPath("$.data.content[0].analyzer.id").exists())
+                .andExpect(jsonPath("$.data.content[0].analyzer.name").exists())
+                .andExpect(jsonPath("$.data.statistics").exists())
+                .andExpect(jsonPath("$.data.statistics.totalErrors").value(2))
+                .andExpect(jsonPath("$.status").value("success"));
+    }
+
+    /**
+     * Test: GET /rest/analyzer/errors response format matches frontend expectations
+     * 
+     * This test verifies that errors are properly converted to maps (not returned as
+     * entity objects) and that the response structure matches what the frontend
+     * expects: { data: { content: [...], statistics: {...} }, status: "success" }
+     * 
+     * Task Reference: T085
+     */
+    @Test
+    public void testGetErrors_ResponseFormat_MatchesFrontendExpectations() throws Exception {
+        // Arrange: Create test error
+        String errorId = analyzerErrorService.createError(testAnalyzer, AnalyzerError.ErrorType.MAPPING,
+                AnalyzerError.Severity.ERROR, "No mapping found for test code: GLUCOSE",
+                "H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^GLUCOSE|123|mg/dL|N");
+
+        // Act & Assert: Verify response structure matches frontend expectations
+        mockMvc.perform(get("/rest/analyzer/errors").contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                // Verify top-level structure
+                .andExpect(jsonPath("$.data").exists())
+                .andExpect(jsonPath("$.status").value("success"))
+                // Verify data.content is an array (not object)
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content[0]").exists())
+                // Verify error object structure (should be map, not entity)
+                .andExpect(jsonPath("$.data.content[0].id").value(errorId))
+                .andExpect(jsonPath("$.data.content[0].errorType").value("MAPPING"))
+                .andExpect(jsonPath("$.data.content[0].severity").value("ERROR"))
+                .andExpect(jsonPath("$.data.content[0].errorMessage").value("No mapping found for test code: GLUCOSE"))
+                .andExpect(jsonPath("$.data.content[0].status").value("UNACKNOWLEDGED"))
+                .andExpect(jsonPath("$.data.content[0].timestamp").exists())
+                .andExpect(jsonPath("$.data.content[0].rawMessage").value("H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^GLUCOSE|123|mg/dL|N"))
+                // Verify analyzer nested object (should be map, not entity)
+                .andExpect(jsonPath("$.data.content[0].analyzer").exists())
+                .andExpect(jsonPath("$.data.content[0].analyzer.id").exists())
+                .andExpect(jsonPath("$.data.content[0].analyzer.name").value("TEST-CONTROLLER-ANALYZER"))
+                // Verify statistics structure
+                .andExpect(jsonPath("$.data.statistics").exists())
+                .andExpect(jsonPath("$.data.statistics.totalErrors").exists())
+                .andExpect(jsonPath("$.data.statistics.unacknowledged").exists())
+                .andExpect(jsonPath("$.data.statistics.critical").exists())
+                .andExpect(jsonPath("$.data.statistics.last24Hours").exists());
+    }
 }

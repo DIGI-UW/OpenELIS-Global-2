@@ -278,7 +278,10 @@ OpenELIS orders/results without manual intervention.
       `testCreateMapping_WithValidData_ReturnsCreated`,
       `testCreateMapping_WithTypeIncompatibility_ReturnsBadRequest`,
       `testUpdateMapping_WithValidData_ReturnsUpdated`,
-      `testDeleteMapping_WithValidId_ReturnsNoContent` - All 5 tests passing ✓
+      `testDeleteMapping_WithValidId_ReturnsNoContent`,
+      `testGetMappings_WithExistingMappings_ReturnsCorrectFormat` (verifies
+      mappings API returns direct array with all required fields) - All 6 tests
+      passing ✓
 - [x] T037 [P] [US1] Frontend unit test for AnalyzersList component in
       `frontend/src/components/analyzers/AnalyzersList/AnalyzersList.test.jsx`
       (Template: `.specify/templates/testing/JestComponent.test.jsx.template`) -
@@ -295,12 +298,18 @@ OpenELIS orders/results without manual intervention.
       `frontend/src/components/analyzers/AnalyzerForm/AnalyzerForm.test.jsx` -
       Test methods: `testSubmitForm_WithValidData_CallsAPI`,
       `testValidateIPAddress_WithInvalidFormat_ShowsError`,
-      `testTestConnection_ShowsModal`
+      `testTestConnection_ShowsModal`,
+      `testAnalyzerTypeDropdown_DisplaysAllOptions` (verifies analyzer type
+      dropdown shows all expected values: HEMATOLOGY, CHEMISTRY, IMMUNOLOGY,
+      MICROBIOLOGY)
 - [x] T039 [P] [US1] Frontend unit test for FieldMapping component in
       `frontend/src/components/analyzers/FieldMapping/FieldMapping.test.jsx` -
       Test methods: `testSelectField_OpensMappingPanel`,
       `testCreateMapping_WithValidData_SavesMapping`,
-      `testTypeCompatibility_BlocksIncompatibleTypes`
+      `testTypeCompatibility_BlocksIncompatibleTypes`,
+      `testMappingsDisplay_WithExistingMappings_ShowsMappedFields` (verifies
+      mappings API response format - direct array - and that mappings are
+      displayed correctly)
 - [x] T040 [P] [US1] Cypress E2E test in
       `frontend/cypress/e2e/analyzerConfiguration.cy.js` (Template:
       `.specify/templates/testing/CypressE2E.cy.js.template`) - Reference:
@@ -762,17 +771,29 @@ impacted messages can be reprocessed successfully.
       `testFindByAnalyzerId_ReturnsErrorsForAnalyzer` - All 6 tests passing:
       findByStatus, findByAnalyzerId, findByErrorType, findBySeverity, get with
       valid ID, get with invalid ID
-- [ ] T085 [P] [US3] Controller test for AnalyzerErrorRestController in
+- [x] T085 [P] [US3] Controller test for AnalyzerErrorRestController in
       `src/test/java/org/openelisglobal/analyzer/controller/AnalyzerErrorRestControllerTest.java` -
-      **Test Slicing**: Use `@WebMvcTest` - Test methods:
+      **Test Slicing**: Uses `BaseWebContextSensitiveTest` (matching existing
+      codebase pattern) - **HTTP Testing**: Uses `MockMvc` - Test methods:
       `testGetErrors_WithFilters_ReturnsFilteredList`,
+      `testGetError_WithValidId_ReturnsError`,
       `testAcknowledgeError_WithValidId_UpdatesStatus`,
-      `testReprocessError_WithValidId_ProcessesMessage`
+      `testReprocessError_WithValidId_ProcessesMessage`,
+      `testGetError_WithInvalidId_Returns404`,
+      `testGetErrors_WithNoFilters_ReturnsAllErrors` (catches bug where service
+      returned empty list when no filters),
+      `testGetErrors_ResponseFormat_MatchesFrontendExpectations` (verifies errors
+      converted to maps and response structure matches frontend) - All 7 tests
+      passing ✓
 - [x] T086 [P] [US3] Frontend unit test for ErrorDashboard component in
       `frontend/src/components/analyzers/ErrorDashboard/ErrorDashboard.test.jsx` -
       Test methods: `testRendersErrorDashboard_WithErrors_DisplaysTable`,
       `testFilterErrors_ByType_FiltersResults`,
-      `testOpenErrorDetails_ShowsModal`
+      `testOpenErrorDetails_ShowsModal`,
+      `testSearchErrors_WithQuery_FiltersResults`,
+      `testAcknowledgeAll_CallsHandler` - **Updated**: All tests now use correct
+      API response format `{ data: { content: [...], statistics: {...} }, status:
+      "success" }` to catch frontend/backend response format mismatches
 - [x] T087 [P] [US3] Frontend unit test for ErrorDetailsModal component in
       `frontend/src/components/analyzers/ErrorDashboard/ErrorDetailsModal.test.jsx` -
       Test methods: `testDisplayErrorDetails_ShowsFullContext`,

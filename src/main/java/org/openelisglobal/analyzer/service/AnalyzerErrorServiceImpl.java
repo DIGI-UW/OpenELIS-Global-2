@@ -108,9 +108,7 @@ public class AnalyzerErrorServiceImpl implements AnalyzerErrorService {
             return analyzerErrorDAO.findBySeverity(severity.name());
         }
 
-        // If no filters, return all errors (this is a simplified implementation)
-        // In production, we'd want pagination and proper filtering
-        // For now, return empty list to avoid loading all errors
-        return new ArrayList<>();
+        // If no filters, return all errors
+        return analyzerErrorDAO.findAll();
     }
 }

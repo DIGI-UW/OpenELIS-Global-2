@@ -82,4 +82,17 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
             throw new LIMSRuntimeException("Error finding AnalyzerError by severity", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerError> findAll() {
+        try {
+            // Eagerly fetch analyzer to avoid LazyInitializationException
+            String hql = "SELECT DISTINCT ae FROM AnalyzerError ae LEFT JOIN FETCH ae.analyzer ORDER BY ae.lastupdated DESC";
+            Query<AnalyzerError> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerError.class);
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error finding all AnalyzerError", e);
+        }
+    }
 }

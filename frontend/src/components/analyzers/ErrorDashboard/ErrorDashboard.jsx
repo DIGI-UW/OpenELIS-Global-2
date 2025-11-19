@@ -89,34 +89,58 @@ const ErrorDashboard = () => {
       : endpoint;
 
     getFromOpenElisServer(url, (data) => {
-      if (Array.isArray(data)) {
-        setErrors(data);
-        setFilteredErrors(data);
+      // API returns { data: { content: [...], statistics: {...} }, status: "success" }
+      let errors = [];
+      let statistics = null;
 
-        // Calculate statistics
+      if (data && data.data) {
+        // Response wrapped in data object
+        if (Array.isArray(data.data.content)) {
+          errors = data.data.content;
+        } else if (Array.isArray(data.data)) {
+          // Fallback: data.data might be the array directly
+          errors = data.data;
+        }
+        if (data.data.statistics) {
+          statistics = data.data.statistics;
+        }
+      } else if (Array.isArray(data)) {
+        // Direct array response (fallback)
+        errors = data;
+      }
+
+      setErrors(errors);
+      setFilteredErrors(errors);
+
+      // Use statistics from API if available, otherwise calculate from errors
+      if (statistics) {
+        setStats({
+          total: statistics.totalErrors || errors.length,
+          unacknowledged: statistics.unacknowledged || 0,
+          critical: statistics.critical || 0,
+          last24Hours: statistics.last24Hours || 0,
+        });
+      } else {
+        // Calculate statistics from errors
         const now = new Date();
         const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const unacknowledgedCount = data.filter(
+        const unacknowledgedCount = errors.filter(
           (e) => e.status === "UNACKNOWLEDGED" || e.status === "unacknowledged",
         ).length;
-        const criticalCount = data.filter(
+        const criticalCount = errors.filter(
           (e) => e.severity === "CRITICAL" || e.severity === "critical",
         ).length;
-        const last24HoursCount = data.filter((e) => {
+        const last24HoursCount = errors.filter((e) => {
           const errorDate = new Date(e.timestamp || e.createdDate);
           return errorDate >= last24Hours;
         }).length;
 
         setStats({
-          total: data.length,
+          total: errors.length,
           unacknowledged: unacknowledgedCount,
           critical: criticalCount,
           last24Hours: last24HoursCount,
         });
-      } else {
-        setErrors([]);
-        setFilteredErrors([]);
-        setStats({ total: 0, unacknowledged: 0, critical: 0, last24Hours: 0 });
       }
       setLoading(false);
     });

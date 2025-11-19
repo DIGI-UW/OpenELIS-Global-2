@@ -82,9 +82,15 @@ describe("ErrorDashboard", () => {
   /**
    * Test: Renders ErrorDashboard with errors displays table
    * Task Reference: T086
+   * 
+   * This test verifies that the component correctly handles the API response format:
+   * { data: { content: [...], statistics: {...} }, status: "success" }
+   * 
+   * This would have caught the bug where frontend expected array but API returned
+   * wrapped object.
    */
   test("testRendersErrorDashboard_WithErrors_DisplaysTable", async () => {
-    // Arrange: Mock API response with errors
+    // Arrange: Mock API response with correct format (matches actual API)
     const mockErrors = [
       createMockError({ id: "ERROR-001" }),
       createMockError({
@@ -94,8 +100,23 @@ describe("ErrorDashboard", () => {
       }),
     ];
 
+    // API returns: { data: { content: [...], statistics: {...} }, status: "success" }
+    const mockApiResponse = {
+      data: {
+        content: mockErrors,
+        totalElements: mockErrors.length,
+        statistics: {
+          totalErrors: mockErrors.length,
+          unacknowledged: mockErrors.filter((e) => e.status === "UNACKNOWLEDGED").length,
+          critical: mockErrors.filter((e) => e.severity === "CRITICAL").length,
+          last24Hours: mockErrors.length,
+        },
+      },
+      status: "success",
+    };
+
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      callback(mockErrors);
+      callback(mockApiResponse);
     });
 
     // Act: Render component
@@ -125,9 +146,12 @@ describe("ErrorDashboard", () => {
   /**
    * Test: Filter errors by type filters results
    * Task Reference: T086
+   * 
+   * This test verifies that the component correctly handles filtered API responses
+   * with the correct response format.
    */
   test("testFilterErrors_ByType_FiltersResults", async () => {
-    // Arrange: Mock API responses
+    // Arrange: Mock API responses with correct format
     const allErrors = [
       createMockError({ id: "ERROR-001", errorType: "MAPPING" }),
       createMockError({ id: "ERROR-002", errorType: "CONNECTION" }),
@@ -136,11 +160,27 @@ describe("ErrorDashboard", () => {
 
     getFromOpenElisServer.mockImplementation((url, callback) => {
       // Simulate filtering on backend
+      let filteredErrors;
       if (url.includes("errorType=MAPPING")) {
-        callback(allErrors.filter((e) => e.errorType === "MAPPING"));
+        filteredErrors = allErrors.filter((e) => e.errorType === "MAPPING");
       } else {
-        callback(allErrors);
+        filteredErrors = allErrors;
       }
+
+      // Return in correct API format
+      callback({
+        data: {
+          content: filteredErrors,
+          totalElements: filteredErrors.length,
+          statistics: {
+            totalErrors: filteredErrors.length,
+            unacknowledged: filteredErrors.filter((e) => e.status === "UNACKNOWLEDGED").length,
+            critical: filteredErrors.filter((e) => e.severity === "CRITICAL").length,
+            last24Hours: filteredErrors.length,
+          },
+        },
+        status: "success",
+      });
     });
 
     // Act: Render component
@@ -174,10 +214,22 @@ describe("ErrorDashboard", () => {
    * This test verifies the actions cell exists and contains the menu structure.
    */
   test("testOpenErrorDetails_ShowsModal", async () => {
-    // Arrange: Mock API response
+    // Arrange: Mock API response with correct format
     const mockError = createMockError();
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      callback([mockError]);
+      callback({
+        data: {
+          content: [mockError],
+          totalElements: 1,
+          statistics: {
+            totalErrors: 1,
+            unacknowledged: 1,
+            critical: 0,
+            last24Hours: 1,
+          },
+        },
+        status: "success",
+      });
     });
 
     // Act: Render component
@@ -198,9 +250,12 @@ describe("ErrorDashboard", () => {
   /**
    * Test: Search errors filters results
    * Task Reference: T086
+   * 
+   * This test verifies that the component correctly handles search-filtered API
+   * responses with the correct response format.
    */
   test("testSearchErrors_WithQuery_FiltersResults", async () => {
-    // Arrange: Mock API responses
+    // Arrange: Mock API responses with correct format
     const allErrors = [
       createMockError({ id: "ERROR-001", errorMessage: "Mapping error" }),
       createMockError({ id: "ERROR-002", errorMessage: "Connection timeout" }),
@@ -208,11 +263,27 @@ describe("ErrorDashboard", () => {
 
     getFromOpenElisServer.mockImplementation((url, callback) => {
       // Simulate search filtering
+      let filteredErrors;
       if (url.includes("search=Mapping")) {
-        callback([allErrors[0]]);
+        filteredErrors = [allErrors[0]];
       } else {
-        callback(allErrors);
+        filteredErrors = allErrors;
       }
+
+      // Return in correct API format
+      callback({
+        data: {
+          content: filteredErrors,
+          totalElements: filteredErrors.length,
+          statistics: {
+            totalErrors: filteredErrors.length,
+            unacknowledged: filteredErrors.filter((e) => e.status === "UNACKNOWLEDGED").length,
+            critical: filteredErrors.filter((e) => e.severity === "CRITICAL").length,
+            last24Hours: filteredErrors.length,
+          },
+        },
+        status: "success",
+      });
     });
 
     // Act: Render component
@@ -241,10 +312,22 @@ describe("ErrorDashboard", () => {
    * Task Reference: T086
    */
   test("testAcknowledgeAll_CallsHandler", async () => {
-    // Arrange: Mock API response
+    // Arrange: Mock API response with correct format
     const mockErrors = [createMockError()];
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      callback(mockErrors);
+      callback({
+        data: {
+          content: mockErrors,
+          totalElements: mockErrors.length,
+          statistics: {
+            totalErrors: mockErrors.length,
+            unacknowledged: mockErrors.filter((e) => e.status === "UNACKNOWLEDGED").length,
+            critical: mockErrors.filter((e) => e.severity === "CRITICAL").length,
+            last24Hours: mockErrors.length,
+          },
+        },
+        status: "success",
+      });
     });
 
     // Spy on console.log to verify acknowledge all is called

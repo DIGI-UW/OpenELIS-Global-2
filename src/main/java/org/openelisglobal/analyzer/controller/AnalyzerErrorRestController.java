@@ -106,11 +106,16 @@ public class AnalyzerErrorRestController extends BaseRestController {
                 return hoursAgo <= 24;
             }).count();
 
+            // Convert errors to maps for JSON response
+            List<Map<String, Object>> errorMaps = errors.stream()
+                    .map(this::errorToMap)
+                    .collect(java.util.stream.Collectors.toList());
+
             // Build response
             Map<String, Object> response = new HashMap<>();
             Map<String, Object> data = new HashMap<>();
-            data.put("content", errors);
-            data.put("totalElements", errors.size());
+            data.put("content", errorMaps);
+            data.put("totalElements", errorMaps.size());
             Map<String, Object> statistics = new HashMap<>();
             statistics.put("totalErrors", totalErrors);
             statistics.put("unacknowledged", unacknowledged);
@@ -296,6 +301,9 @@ public class AnalyzerErrorRestController extends BaseRestController {
         }
         if (error.getAcknowledgedAt() != null) {
             map.put("acknowledgedAt", error.getAcknowledgedAt().toInstant().toString());
+        }
+        if (error.getRawMessage() != null) {
+            map.put("rawMessage", error.getRawMessage());
         }
         return map;
     }

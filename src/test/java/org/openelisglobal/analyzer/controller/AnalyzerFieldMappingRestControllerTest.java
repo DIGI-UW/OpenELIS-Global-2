@@ -104,6 +104,9 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
     /**
      * Test: GET /rest/analyzer/analyzers/{analyzerId}/mappings returns list of
      * mappings Task Reference: T036
+     * 
+     * This test verifies that the mappings endpoint returns a direct array (not
+     * wrapped in data object), which matches frontend expectations.
      */
     @Test
     public void testGetMappings_WithAnalyzerId_ReturnsMappings() throws Exception {
@@ -112,9 +115,58 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
         String analyzerId = ids[0];
 
         // Act & Assert: GET endpoint should return empty list (no mappings yet)
+        // Note: Mappings endpoint returns direct array, not wrapped in { data: {...} }
         mockMvc.perform(
                 get("/rest/analyzer/analyzers/" + analyzerId + "/mappings").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0)); // Empty array initially
+    }
+
+    /**
+     * Test: GET /rest/analyzer/analyzers/{analyzerId}/mappings response format
+     * matches frontend expectations
+     * 
+     * This test verifies that when mappings exist, they are returned in the correct
+     * format that the frontend expects: direct array of mapping objects with all
+     * required fields.
+     * 
+     * Task Reference: T036
+     */
+    @Test
+    public void testGetMappings_WithExistingMappings_ReturnsCorrectFormat() throws Exception {
+        // Arrange: Create test analyzer, field, and mapping
+        String[] ids = createTestAnalyzerAndField();
+        String analyzerId = ids[0];
+        String fieldId = ids[1];
+
+        // Create mapping
+        String requestBody = "{\"analyzerFieldId\":\"" + fieldId + "\",\"openelisFieldId\":\"test-field-123\","
+                + "\"openelisFieldType\":\"TEST\"," + "\"mappingType\":\"TEST_LEVEL\","
+                + "\"isRequired\":false,\"isActive\":true}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers/" + analyzerId + "/mappings")
+                        .contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isCreated()).andReturn();
+
+        // Act & Assert: GET endpoint should return mappings in correct format
+        mockMvc.perform(
+                get("/rest/analyzer/analyzers/" + analyzerId + "/mappings").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                // Verify direct array response (not wrapped in data object)
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
+                // Verify mapping object structure matches frontend expectations
+                .andExpect(jsonPath("$[0].id").exists())
+                .andExpect(jsonPath("$[0].analyzerFieldId").value(fieldId))
+                .andExpect(jsonPath("$[0].analyzerFieldName").exists())
+                .andExpect(jsonPath("$[0].analyzerFieldType").exists())
+                .andExpect(jsonPath("$[0].openelisFieldId").value("test-field-123"))
+                .andExpect(jsonPath("$[0].openelisFieldType").value("TEST"))
+                .andExpect(jsonPath("$[0].mappingType").exists())
+                .andExpect(jsonPath("$[0].isRequired").value(false))
+                .andExpect(jsonPath("$[0].isActive").value(true));
     }
 
     /**
