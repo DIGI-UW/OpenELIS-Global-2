@@ -61,11 +61,10 @@ class Result {
 
   expandSampleDetails() {
     // Wait for table to have rows before trying to expand
-    cy.get("tbody tr", { timeout: 15000 }).should("have.length.greaterThan", 0);
-    return cy
-      .get(this.selectors.expanderButton, { timeout: 15000 })
-      .should("be.visible")
-      .click();
+    // Use queryBy to avoid failing if table is empty, then check
+    cy.get("tbody").should("exist");
+    cy.get("tbody tr").should("exist").should("have.length.greaterThan", 0);
+    return cy.get(this.selectors.expanderButton).should("be.visible").click();
   }
 
   selectTestMethod(method) {
@@ -78,17 +77,21 @@ class Result {
 
   searchResults() {
     cy.get(this.selectors.searchResults).should("be.visible").click();
-    cy.wait(900);
+    // Use Cypress retry-ability - wait for table to appear with rows
+    cy.get("tbody")
+      .should("exist")
+      .find("tr")
+      .should("have.length.greaterThan", 0);
   }
 
   enterCollectionDate() {
     cy.get(this.selectors.collectionDate)
       .should("be.visible")
-      .type("30/04/2025");
+      .type("04/30/2025");
   }
 
   enterReceivedDate() {
-    cy.get(this.selectors.receivedDate).should("be.visible").type("01/05/2025");
+    cy.get(this.selectors.receivedDate).should("be.visible").type("05/01/2025");
   }
 
   clickReceivedDate() {
@@ -130,8 +133,9 @@ class Result {
 
   selectAllButtonEnabled() {
     // Wait for table/data to load first, then check if button is enabled
-    cy.get("tbody tr", { timeout: 15000 }).should("have.length.greaterThan", 0);
-    cy.get(this.selectors.selectAllButton, { timeout: 15000 })
+    cy.get("tbody").should("exist");
+    cy.get("tbody tr").should("exist").should("have.length.greaterThan", 0);
+    cy.get(this.selectors.selectAllButton)
       .should("be.visible")
       .and("be.enabled");
   }
@@ -142,8 +146,9 @@ class Result {
 
   printReportsButtonEnabled() {
     // Wait for table/data to load first, then check if button is enabled
-    cy.get("tbody tr", { timeout: 15000 }).should("have.length.greaterThan", 0);
-    cy.get(this.selectors.printReportButton, { timeout: 15000 })
+    cy.get("tbody").should("exist");
+    cy.get("tbody tr").should("exist").should("have.length.greaterThan", 0);
+    cy.get(this.selectors.printReportButton)
       .should("be.visible")
       .and("be.enabled");
   }
@@ -159,7 +164,20 @@ class Result {
   }
 
   selectInstitute(institute) {
-    cy.get(this.selectors.institute).select(institute);
+    // Handle duplicate options by selecting the first match
+    cy.get(this.selectors.institute)
+      .should("be.visible")
+      .then(($select) => {
+        // Find the first option matching the value
+        const matchingOption = Array.from($select[0].options).find(
+          (opt) => opt.value === institute || opt.text.includes(institute),
+        );
+        if (matchingOption) {
+          cy.wrap($select).select(matchingOption.value);
+        } else {
+          cy.wrap($select).select(institute);
+        }
+      });
   }
 
   getPatientSearchResultsTable() {

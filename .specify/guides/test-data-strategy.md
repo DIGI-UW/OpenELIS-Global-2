@@ -12,33 +12,63 @@ files.
 
 ## Architecture
 
+### Layered Test Data Architecture
+
+Test data is organized into three layers:
+
+1. **Layer 1 (Foundation)**: Liquibase - Schema + reference data + storage
+   hierarchy
+
+   - Loaded automatically via Liquibase with `context="test"`
+   - Shared across ALL test types
+   - Single source of truth
+   - Location:
+     `src/main/resources/liquibase/3.3.x.x/004-insert-test-storage-data.xml`
+
+2. **Layer 2 (Feature-Specific)**: DBUnit XML - E2E test data (patients,
+   samples, analyses, results)
+
+   - Loaded per-test-class via `executeDataSetWithStateManagement()`
+   - Isolated per test type
+   - Location: `src/test/resources/testdata/storage-e2e.xml`
+
+3. **Layer 3 (Test-Specific)**: Test builders - Dynamic data created in tests
+   - Created in test methods using builders/factories
+   - Cleaned up after each test
+
 ### Unified Fixture Loading
 
-All test types use the same fixture loading mechanism:
+All test types use consistent fixture loading:
 
 1. **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
-   `load-test-fixtures.sh` → `storage-test-data.sql`
-2. **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh` →
-   `storage-test-data.sql`
+   `load-test-fixtures.sh` → `storage-test-data.sql` (E2E data only, foundation
+   from Liquibase)
+2. **Backend Integration**: `BaseStorageTest` →
+   `executeDataSetWithStateManagement("testdata/storage-e2e.xml")` (foundation
+   from Liquibase)
 3. **Manual Testing**: Direct execution of `load-test-fixtures.sh` →
-   `storage-test-data.sql`
+   `storage-test-data.sql` (E2E data only, foundation from Liquibase)
 
 ### Fixture Data Ranges
 
-**Fixture Data (Preserved during cleanup):**
+**Foundation Data (Layer 1 - Liquibase, Preserved):**
 
-- Storage: IDs 1-999 (fixtures)
-- Samples: E2E-_ and TEST-_ accession numbers
-- Patients: E2E-PAT-\* external IDs
-- Sample items: IDs 10000-20000 (fixtures)
-- Analyses: IDs 20000-30000 (fixtures)
-- Results: IDs 30000-40000 (fixtures)
+- Storage: IDs 1-999 (rooms, devices, shelves, racks, positions)
+- Reference data: `type_of_sample`, `status_of_sample`, etc.
 
-**Test-Created Data (Cleaned up after tests):**
+**Feature-Specific Data (Layer 2 - DBUnit XML, Preserved):**
+
+- Samples: E2E-\* accession numbers (DBUnit fixtures)
+- Patients: E2E-PAT-\* external IDs (DBUnit fixtures)
+- Sample items: IDs 10000-20000 (DBUnit fixtures)
+- Analyses: IDs 20000-30000 (DBUnit fixtures)
+- Results: IDs 30000-40000 (DBUnit fixtures)
+
+**Test-Created Data (Layer 3 - Test Builders, Cleaned up):**
 
 - Storage: IDs >= 1000, codes/names starting with TEST-
 - Samples: TEST-\* accession numbers (if created by tests)
-- Sample items: IDs >= 20000 (test-created)
+- Sample items: IDs >= 20000 (test-created, not DBUnit fixtures)
 
 ## Scripts
 
@@ -66,6 +96,7 @@ connections.
 **Features:**
 
 - Dependency checks (verifies `type_of_sample`, `status_of_sample` exist)
+- Liquibase validation (verifies storage hierarchy loaded by Liquibase)
 - Comprehensive verification (storage hierarchy, E2E test data)
 - Docker and direct psql support
 - Clear error messages for missing dependencies
@@ -92,21 +123,25 @@ Resets test data ranges only (preserves production data).
 
 ### `storage-test-data.sql`
 
-SQL fixture script that loads all test data.
+SQL fixture script that loads E2E test data only (foundation data loaded by
+Liquibase).
 
 **Features:**
 
-- Dependency validation (checks required tables exist)
+- Dependency validation (checks required tables exist, verifies Liquibase data
+  loaded)
 - Error handling for missing dependencies
 - Verification queries at end of script
-- Comprehensive test data (storage hierarchy, patients, samples, sample items,
-  assignments, analyses, results)
+- E2E test data (patients, samples, sample items, assignments, analyses,
+  results)
+- **Note**: Storage hierarchy is loaded by Liquibase, not this script
 
 ## Backend Integration
 
 ### BaseStorageTest
 
-Base test class for storage-related tests that provides unified fixture loading.
+Base test class for storage-related tests that provides unified fixture loading
+via DBUnit XML.
 
 **Usage:**
 
@@ -114,13 +149,14 @@ Base test class for storage-related tests that provides unified fixture loading.
 public class MyStorageTest extends BaseStorageTest {
     @Before
     public void setUp() throws Exception {
-        super.setUp(); // Loads fixtures automatically
+        super.setUp(); // Loads E2E fixtures via DBUnit XML automatically
+        // Foundation data (storage hierarchy) loaded by Liquibase
         // Your test setup
     }
 
     @After
     public void tearDown() throws Exception {
-        super.tearDown(); // Cleans up test-created data
+        super.tearDown(); // Cleans up test-created data (preserves fixtures)
         // Your test cleanup
     }
 }
@@ -128,16 +164,20 @@ public class MyStorageTest extends BaseStorageTest {
 
 **Features:**
 
-- Loads fixtures once per test run (static flag)
-- Verifies fixtures exist before loading
+- Loads E2E fixtures via DBUnit XML (`testdata/storage-e2e.xml`)
+- Foundation data (storage hierarchy) automatically loaded by Liquibase with
+  `context="test"`
+- Validates test data exists (`validateTestData()`)
 - Cleans up test-created data (preserves fixtures)
 - Provides `cleanStorageTestData()` helper method
 
-**Migration:**
+**Data Loading:**
 
-- Existing tests can gradually migrate to extend `BaseStorageTest`
-- Tests continue to create their own data (IDs >= 1000) but also have fixtures
-  available
+- **Foundation data**: Automatically loaded by Liquibase (no action needed)
+- **E2E data**: Loaded via
+  `executeDataSetWithStateManagement("testdata/storage-e2e.xml")`
+- **Test data**: Created in tests using builders/factories (cleaned up
+  automatically)
 
 ## Cypress E2E Integration
 
@@ -282,6 +322,7 @@ The loader script automatically verifies:
    - `type_of_sample` table has at least 3 rows
    - `status_of_sample` table has required statuses (Entered, Not Tested,
      Finalized, etc.)
+   - Storage hierarchy loaded by Liquibase (3 rooms: MAIN, SEC, INACTIVE)
 
 ### Manual Verification
 

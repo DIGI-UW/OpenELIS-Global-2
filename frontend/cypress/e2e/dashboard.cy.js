@@ -154,7 +154,7 @@ const changeOrderStatusAndSave = (dashboardType) => {
   );
 
   // Wait for dashboard table to load
-  cy.get("table", { timeout: 15000 }).should("be.visible");
+  cy.get("table").should("be.visible");
 
   // Wait for dashboard API call with proper filters (may need to wait for refresh)
   cy.wait("@loadDashboardForStatusChange", { timeout: 10000 }).then(
@@ -173,7 +173,7 @@ const changeOrderStatusAndSave = (dashboardType) => {
   );
 
   // Wait for table rows to appear (indicating orders are loaded)
-  cy.get("table tbody tr", { timeout: 15000 })
+  cy.get("table tbody tr")
     .should("have.length.greaterThan", 0)
     .first()
     .should("be.visible");

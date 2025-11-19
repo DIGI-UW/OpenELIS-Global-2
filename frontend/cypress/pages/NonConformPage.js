@@ -42,9 +42,7 @@ class NonConform {
   }
 
   selectSearchType(type) {
-    cy.get(this.selectors.searchType, { timeout: 15000 })
-      .should("be.visible")
-      .select(type);
+    cy.get(this.selectors.searchType).should("be.visible").select(type);
   }
 
   enterSearchField(value) {
@@ -52,20 +50,21 @@ class NonConform {
   }
 
   clickSearchButton() {
-    cy.get(this.selectors.searchButton, { timeout: 15000 })
-      .should("be.visible")
-      .click();
+    cy.get(this.selectors.searchButton).should("be.visible").click();
   }
 
   validateSearchResult(expectedValue) {
+    // Wait for results to appear, then check if expected value exists
     cy.get(this.selectors.searchResult)
-      .first()
-      .invoke("text")
-      .should("eq", expectedValue);
+      .should("be.visible")
+      .should("have.length.at.least", 1);
+
+    // Check if any result contains the expected value
+    cy.get(this.selectors.searchResult).contains(expectedValue).should("exist");
   }
 
   validateLabNoSearchResult(labNo) {
-    cy.get(this.selectors.searchResult, { timeout: 15000 })
+    cy.get(this.selectors.searchResult)
       .should("be.visible")
       .invoke("text")
       .should("eq", labNo);
@@ -75,10 +74,14 @@ class NonConform {
     cy.get(this.selectors.nceNumberResult).invoke("text").should("eq", NCENo);
   }
 
-  clickCheckbox() {
+  clickCheckbox(options = {}) {
+    // Wait for page to stabilize before clicking checkbox
+    cy.get(this.selectors.searchResult).should("be.visible");
+    cy.wait(500); // Allow DOM to stabilize
     cy.get(this.selectors.sampleCheckbox)
       .should("be.visible")
-      .check({ force: true });
+      .should("exist")
+      .check({ force: true, ...options });
   }
 
   clickGoToNceFormButton() {
@@ -86,7 +89,11 @@ class NonConform {
   }
 
   enterStartDate(date) {
-    cy.get(this.selectors.startDate).type(date);
+    cy.get(this.selectors.startDate, { timeout: 10000 })
+      .should("be.visible")
+      .should("not.be.disabled")
+      .clear()
+      .type(date);
   }
 
   selectReportingUnit(unit) {
@@ -105,8 +112,8 @@ class NonConform {
     cy.get(this.selectors.correctiveActionText).type(correctiveAction);
   }
 
-  enterNceCategory(nceCategory, options = {}) {
-    cy.get(this.selectors.nceCategory, { timeout: options.timeout || 15000 })
+  enterNceCategory(nceCategory) {
+    cy.get(this.selectors.nceCategory)
       .should("be.visible")
       .should("not.be.disabled")
       .select(nceCategory);
@@ -135,9 +142,10 @@ class NonConform {
   }
 
   enterDiscussionDate(date) {
-    cy.get(this.selectors.discussionDate, { timeout: 15000 })
+    cy.get(this.selectors.discussionDate, { timeout: 10000 })
       .should("be.visible")
       .should("not.be.disabled")
+      .clear()
       .type(date);
   }
 

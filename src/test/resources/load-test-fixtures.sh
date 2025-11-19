@@ -78,9 +78,13 @@ check_dependencies() {
         # Check for required statuses: Entered (any type), Not Tested (ANALYSIS), Finalized (ANALYSIS)
         # Note: Entered may be EXTERNAL_ORDER or SAMPLE depending on database initialization
         STATUS_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
+        # Check storage hierarchy exists (from Liquibase)
+        ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
     else
         TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
         STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
+        # Check storage hierarchy exists (from Liquibase)
+        ROOM_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
     fi
 
     if [ "$TYPE_COUNT" -lt 3 ]; then
@@ -96,7 +100,14 @@ check_dependencies() {
         exit 1
     fi
 
-    echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present)"
+    if [ "$ROOM_COUNT" -lt 3 ]; then
+        echo "ERROR: Storage hierarchy not found. Expected 3 test rooms (MAIN, SEC, INACTIVE) from Liquibase. Found: $ROOM_COUNT"
+        echo "Please ensure Liquibase has run with context=\"test\" to load foundation data."
+        echo "Storage hierarchy is loaded by: src/main/resources/liquibase/3.3.x.x/004-insert-test-storage-data.xml"
+        exit 1
+    fi
+
+    echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, storage hierarchy: $ROOM_COUNT rooms from Liquibase)"
     echo ""
 }
 

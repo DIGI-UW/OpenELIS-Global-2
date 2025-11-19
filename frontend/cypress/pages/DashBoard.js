@@ -153,7 +153,7 @@ class DashBoardPage {
 
   selectFirstOrder() {
     // Wait for table to be visible and have data rows
-    cy.get("table", { timeout: 15000 }).should("be.visible");
+    cy.get("table").should("be.visible");
 
     // Log current table state for debugging
     cy.get("table").then(($table) => {
@@ -175,7 +175,7 @@ class DashBoardPage {
 
     // Wait for tbody to exist and have rows (following testing roadmap - use tbody to exclude header)
     // Use a more specific selector that waits for actual data rows
-    cy.get("table tbody tr", { timeout: 15000 })
+    cy.get("table tbody tr")
       .should("have.length.greaterThan", 0)
       .first()
       .should("be.visible")

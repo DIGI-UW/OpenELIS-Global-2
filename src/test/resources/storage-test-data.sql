@@ -4,7 +4,7 @@
 --
 -- Fixture Data Ranges:
 --   Storage: IDs 1-999 (fixtures), 1000+ (test-created)
---   Samples: E2E-* and TEST-* accession numbers
+--   Samples: E2E* and TEST-* accession numbers (no dashes in base accession numbers)
 --   Patients: E2E-PAT-* external IDs
 --   Sample items: IDs 10000-20000 (fixtures), 20000+ (test-created)
 --   Analyses: IDs 20000-30000 (fixtures)
@@ -15,6 +15,7 @@ DO $$
 DECLARE
   type_count INTEGER;
   status_count INTEGER;
+  room_count INTEGER;
 BEGIN
   -- Check type_of_sample table exists and has data
   SELECT COUNT(*) INTO type_count FROM type_of_sample;
@@ -30,6 +31,13 @@ BEGIN
   
   IF status_count < 3 THEN
     RAISE EXCEPTION 'status_of_sample table missing required statuses (found: % matching rows, need at least 3). Required statuses: Entered (any type), Not Tested (ANALYSIS), Finalized (ANALYSIS). Please ensure database is properly initialized.', status_count;
+  END IF;
+
+  -- Check storage hierarchy exists (from Liquibase)
+  -- This script only loads E2E test data - storage hierarchy must be loaded by Liquibase first
+  SELECT COUNT(*) INTO room_count FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');
+  IF room_count < 3 THEN
+    RAISE EXCEPTION 'Storage hierarchy not found. Expected 3 test rooms (MAIN, SEC, INACTIVE) from Liquibase. Found: %. Please ensure Liquibase has run with context="test" to load foundation data.', room_count;
   END IF;
 END $$;
 
@@ -73,158 +81,11 @@ DELETE FROM person WHERE id IN (
   UNION
   SELECT id FROM person WHERE last_name LIKE 'E2E-%'
 );
--- Clean up storage hierarchy test data
-DELETE FROM storage_position WHERE id BETWEEN 100 AND 10000;
-DELETE FROM storage_rack WHERE id BETWEEN 30 AND 100;
-DELETE FROM storage_shelf WHERE id BETWEEN 20 AND 100;
-DELETE FROM storage_device WHERE id BETWEEN 10 AND 100;
-DELETE FROM storage_room WHERE id BETWEEN 1 AND 100;
-
--- Insert Test Rooms
-INSERT INTO storage_room (id, fhir_uuid, name, code, description, active, sys_user_id, last_updated) VALUES
-(1, gen_random_uuid(), 'Main Laboratory', 'MAIN', 'Primary laboratory storage facility', true, 1, CURRENT_TIMESTAMP),
-(2, gen_random_uuid(), 'Secondary Laboratory', 'SEC', 'Secondary storage area', true, 1, CURRENT_TIMESTAMP),
-(3, gen_random_uuid(), 'Inactive Room', 'INACTIVE', 'Deactivated room for testing inactive validation', false, 1, CURRENT_TIMESTAMP);
-
--- Insert Test Devices
--- Each room has unique devices with descriptive names
-INSERT INTO storage_device (id, fhir_uuid, name, code, type, temperature_setting, capacity_limit, active, parent_room_id, sys_user_id, last_updated) VALUES
--- Main Laboratory devices
-(10, gen_random_uuid(), 'Main Lab Freezer Unit 1', 'MAIN-FRZ01', 'freezer', -80.0, 500, true, 1, 1, CURRENT_TIMESTAMP),
-(11, gen_random_uuid(), 'Main Lab Refrigerator Unit 1', 'MAIN-REF01', 'refrigerator', 4.0, 300, true, 1, 1, CURRENT_TIMESTAMP),
--- Secondary Laboratory devices
-(12, gen_random_uuid(), 'Secondary Lab Cabinet Unit 1', 'SEC-CAB01', 'cabinet', NULL, NULL, true, 2, 1, CURRENT_TIMESTAMP),
-(14, gen_random_uuid(), 'Secondary Lab Freezer Unit 1', 'SEC-FRZ01', 'freezer', -20.0, 200, true, 2, 1, CURRENT_TIMESTAMP),
--- Inactive Room device
-(13, gen_random_uuid(), 'Inactive Freezer', 'INACT-FRZ', 'freezer', NULL, NULL, false, 3, 1, CURRENT_TIMESTAMP);
-
--- Insert Test Shelves
--- Each device has uniquely named shelves
-INSERT INTO storage_shelf (id, fhir_uuid, label, code, capacity_limit, active, parent_device_id, sys_user_id, last_updated) VALUES
--- Main Lab Freezer Unit 1 shelves
-(20, gen_random_uuid(), 'Main Freezer Shelf-A', 'MFRZ-SH-A', 50, true, 10, 1, CURRENT_TIMESTAMP),
-(21, gen_random_uuid(), 'Main Freezer Shelf-B', 'MFRZ-SH-B', 50, true, 10, 1, CURRENT_TIMESTAMP),
--- Main Lab Refrigerator Unit 1 shelves
-(22, gen_random_uuid(), 'Main Refrigerator Shelf-1', 'MREF-SH1', 30, true, 11, 1, CURRENT_TIMESTAMP),
-(24, gen_random_uuid(), 'Main Refrigerator Shelf-2', 'MREF-SH2', 30, true, 11, 1, CURRENT_TIMESTAMP),
--- Secondary Lab Cabinet Unit 1 shelves
-(23, gen_random_uuid(), 'Secondary Cabinet Shelf-1', 'SCAB-SH1', 40, true, 12, 1, CURRENT_TIMESTAMP),
--- Secondary Lab Freezer Unit 1 shelves
-(25, gen_random_uuid(), 'Secondary Freezer Shelf-A', 'SFRZ-SH-A', 25, true, 14, 1, CURRENT_TIMESTAMP);
-
--- Insert Test Racks
--- Each shelf has uniquely named racks
-INSERT INTO storage_rack (id, fhir_uuid, label, code, rows, columns, position_schema_hint, active, parent_shelf_id, sys_user_id, last_updated) VALUES
--- Main Freezer Shelf-A racks
-(30, gen_random_uuid(), 'Main Freezer Shelf-A Rack 1', 'MFRZ-RK1', 8, 12, 'A1', true, 20, 1, CURRENT_TIMESTAMP),
-(31, gen_random_uuid(), 'Main Freezer Shelf-A Rack 2', 'MFRZ-RK2', 10, 10, '1-1', true, 20, 1, CURRENT_TIMESTAMP),
--- Main Freezer Shelf-B racks
-(32, gen_random_uuid(), 'Main Freezer Shelf-B Rack 1', 'MFRZ-RK3', 0, 0, NULL, true, 21, 1, CURRENT_TIMESTAMP),
--- Main Refrigerator Shelf-1 racks
-(33, gen_random_uuid(), 'Main Refrigerator Shelf-1 Rack 1', 'MREF-RK1', 8, 12, NULL, true, 22, 1, CURRENT_TIMESTAMP),
--- Secondary Cabinet Shelf-1 racks
-(34, gen_random_uuid(), 'Secondary Cabinet Shelf-1 Rack 1', 'SCAB-RK1', 8, 12, 'A1', true, 23, 1, CURRENT_TIMESTAMP),
--- Secondary Freezer Shelf-A racks
-(35, gen_random_uuid(), 'Secondary Freezer Shelf-A Rack 1', 'SFRZ-RK1', 6, 8, 'A1', true, 25, 1, CURRENT_TIMESTAMP);
-
--- Insert Test Positions
--- Each rack has unique positions
--- Note: After migration, positions require parent_device_id (required) and optionally parent_shelf_id and parent_rack_id
--- Rack 30: Main Freezer Shelf-A Rack 1 -> Shelf 20 -> Device 10
--- Rack 31: Main Freezer Shelf-A Rack 2 -> Shelf 20 -> Device 10
--- Rack 32: Main Freezer Shelf-B Rack 1 -> Shelf 21 -> Device 10
--- Rack 33: Main Refrigerator Shelf-1 Rack 1 -> Shelf 22 -> Device 11
--- Rack 34: Secondary Cabinet Shelf-1 Rack 1 -> Shelf 23 -> Device 12
-INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, parent_device_id, parent_shelf_id, parent_rack_id, sys_user_id, last_updated) VALUES
--- Main Freezer Shelf-A Rack 1 (rack 30) - 8x12 grid positions
--- Shelf 20, Device 10
-(100, gen_random_uuid(), 'A1', 1, 1, 10, 20, 30, 1, CURRENT_TIMESTAMP),
-(101, gen_random_uuid(), 'A2', 1, 2, 10, 20, 30, 1, CURRENT_TIMESTAMP),
-(102, gen_random_uuid(), 'A3', 1, 3, 10, 20, 30, 1, CURRENT_TIMESTAMP),
-(103, gen_random_uuid(), 'A4', 1, 4, 10, 20, 30, 1, CURRENT_TIMESTAMP),
-(104, gen_random_uuid(), 'A5', 1, 5, 10, 20, 30, 1, CURRENT_TIMESTAMP),
-(105, gen_random_uuid(), 'A6', 1, 6, 10, 20, 30, 1, CURRENT_TIMESTAMP),
-(106, gen_random_uuid(), 'A7', 1, 7, 10, 20, 30, 1, CURRENT_TIMESTAMP),
-(107, gen_random_uuid(), 'A8', 1, 8, 10, 20, 30, 1, CURRENT_TIMESTAMP),
-
--- Main Freezer Shelf-A Rack 2 (rack 31) - 10x10 grid, first position
--- Shelf 20, Device 10
-(200, gen_random_uuid(), '1-1', 1, 1, 10, 20, 31, 1, CURRENT_TIMESTAMP),
-
--- Main Freezer Shelf-B Rack 1 (rack 32) - flexible positions (no grid)
--- Shelf 21, Device 10
-(110, gen_random_uuid(), 'RED-01', NULL, NULL, 10, 21, 32, 1, CURRENT_TIMESTAMP),
-(111, gen_random_uuid(), 'RED-02', NULL, NULL, 10, 21, 32, 1, CURRENT_TIMESTAMP),
-(112, gen_random_uuid(), 'RED-03', NULL, NULL, 10, 21, 32, 1, CURRENT_TIMESTAMP),
-
--- Main Refrigerator Shelf-1 Rack 1 (rack 33) - positions
--- Shelf 22, Device 11
-(120, gen_random_uuid(), 'X1', NULL, NULL, 11, 22, 33, 1, CURRENT_TIMESTAMP),
-(121, gen_random_uuid(), 'A1', 1, 1, 11, 22, 33, 1, CURRENT_TIMESTAMP),
-
--- Secondary Cabinet Shelf-1 Rack 1 (rack 34) - positions
--- Shelf 23, Device 12
-(130, gen_random_uuid(), 'A1', 1, 1, 12, 23, 34, 1, CURRENT_TIMESTAMP),
-(131, gen_random_uuid(), 'A2', 1, 2, 12, 23, 34, 1, CURRENT_TIMESTAMP),
-(132, gen_random_uuid(), 'A3', 1, 3, 12, 23, 34, 1, CURRENT_TIMESTAMP);
-
--- Add more positions to Main Freezer Shelf-A Rack 2 (rack 31) for capacity testing
--- Note: Occupancy is now calculated from SampleStorageAssignment records
--- Shelf 20, Device 10
-INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, parent_device_id, parent_shelf_id, parent_rack_id, sys_user_id, last_updated)
-SELECT 
-    200 + (row_num - 1) * 10 + col_num,
-    gen_random_uuid(),
-    row_num || '-' || col_num,
-    row_num,
-    col_num,
-    10,  -- parent_device_id
-    20,  -- parent_shelf_id
-    31,  -- parent_rack_id
-    1,
-    CURRENT_TIMESTAMP
-FROM generate_series(1, 10) AS row_num
-CROSS JOIN generate_series(2, 10) AS col_num
-WHERE ((row_num - 1) * 10 + col_num) <= 99;
-
--- Update sequences to avoid conflicts with test data
-SELECT setval('storage_room_seq', 1000, false);
-SELECT setval('storage_device_seq', 1000, false);
-SELECT setval('storage_shelf_seq', 1000, false);
-SELECT setval('storage_rack_seq', 1000, false);
-SELECT setval('storage_position_seq', 10000, false);
-SELECT setval('sample_storage_assignment_seq', 10000, false);
-SELECT setval('sample_storage_movement_seq', 10000, false);
-
--- Verification queries
-\echo 'Test Data Summary:'
-SELECT 'Rooms' AS entity, COUNT(*) AS count FROM storage_room
-UNION ALL
-SELECT 'Devices', COUNT(*) FROM storage_device
-UNION ALL
-SELECT 'Shelves', COUNT(*) FROM storage_shelf
-UNION ALL
-SELECT 'Racks', COUNT(*) FROM storage_rack
-UNION ALL
-SELECT 'Positions', COUNT(*) FROM storage_position;
-
-\echo ''
-\echo 'Sample Hierarchy (Occupancy from SampleStorageAssignment):'
-SELECT 
-    r.code AS room_code,
-    d.code AS device_code,
-    s.label AS shelf_label,
-    k.label AS rack_label,
-    COUNT(p.id) AS position_count,
-    COUNT(DISTINCT CASE WHEN ssa.location_type = 'rack' AND ssa.location_id = k.id THEN ssa.sample_item_id END) AS occupied_count_from_assignments
-FROM storage_room r
-LEFT JOIN storage_device d ON d.parent_room_id = r.id
-LEFT JOIN storage_shelf s ON s.parent_device_id = d.id
-LEFT JOIN storage_rack k ON k.parent_shelf_id = s.id
-LEFT JOIN storage_position p ON p.parent_rack_id = k.id
-LEFT JOIN sample_storage_assignment ssa ON (ssa.location_type = 'rack' AND ssa.location_id = k.id)
-GROUP BY r.code, d.code, s.label, k.label
-ORDER BY r.code, d.code, s.label, k.label;
+-- Note: Storage hierarchy cleanup removed - Liquibase manages foundation data
+-- Only E2E test data is cleaned above (patients, samples, sample items, assignments, analyses, results)
+-- 
+-- Storage hierarchy (rooms, devices, shelves, racks, positions) is loaded by Liquibase
+-- See: src/main/resources/liquibase/3.3.x.x/004-insert-test-storage-data.xml
 
 -- ============================================================================
 -- E2E Test Fixtures: Referring Clinics (Organizations)
@@ -371,102 +232,155 @@ BEGIN
 
   -- Insert test samples with storage assignments
   -- Sample 1: Assigned to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A1
+  -- Use fixed dates matching test search criteria: collection_date = 30/04/2025, received_date = 01/05/2025
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date, 
                        received_date, lastupdated, is_confirmation)
   VALUES 
-  (1000, 'E2E-001', gen_random_uuid(), 'H', status_id_val,
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  (1000, 'E2E001', gen_random_uuid(), 'H', status_id_val,
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
+    entered_date = EXCLUDED.entered_date,
+    received_date = EXCLUDED.received_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 1 SampleItems: Multiple items for this sample (blood tube + serum aliquot)
+  -- Use fixed collection_date = 30/04/2025 to match test search criteria
   INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
-  (10001, 1000, 1, NULL, 'E2E-001-TUBE-1', serum_type_id, CURRENT_TIMESTAMP, 'Tech-001', 5.0, status_id_val, CURRENT_TIMESTAMP),
-  (10002, 1000, 2, 10001, 'E2E-001-ALIQUOT-1', serum_type_id, CURRENT_TIMESTAMP, 'Tech-001', 2.0, status_id_val, CURRENT_TIMESTAMP)
+  (10001, 1000, 1, NULL, 'E2E001-TUBE-1', serum_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-001', 5.0, status_id_val, CURRENT_TIMESTAMP),
+  (10002, 1000, 2, 10001, 'E2E001-ALIQUOT-1', serum_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-001', 2.0, status_id_val, CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     external_id = EXCLUDED.external_id,
+    collection_date = EXCLUDED.collection_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 2: Assigned to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A2
+  -- Use fixed dates matching test search criteria
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1001, 'E2E-002', gen_random_uuid(), 'H', status_id_val,
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  (1001, 'E2E002', gen_random_uuid(), 'H', status_id_val,
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
+    entered_date = EXCLUDED.entered_date,
+    received_date = EXCLUDED.received_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 2 SampleItems: Single blood tube
+  -- Use fixed collection_date = 30/04/2025 to match test search criteria
   INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
-  (10011, 1001, 1, NULL, 'E2E-002-TUBE-1', blood_type_id, CURRENT_TIMESTAMP, 'Tech-002', 10.0, status_id_val, CURRENT_TIMESTAMP)
+  (10011, 1001, 1, NULL, 'E2E002-TUBE-1', blood_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-002', 10.0, status_id_val, CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     external_id = EXCLUDED.external_id,
+    collection_date = EXCLUDED.collection_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 3: Assigned to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A4
+  -- Use fixed dates matching test search criteria
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1002, 'E2E-003', gen_random_uuid(), 'H', status_id_val,
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  (1002, 'E2E003', gen_random_uuid(), 'H', status_id_val,
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
+    entered_date = EXCLUDED.entered_date,
+    received_date = EXCLUDED.received_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 3 SampleItems: Urine sample with multiple aliquots
+  -- Use fixed collection_date = 30/04/2025 to match test search criteria
   INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
-  (10021, 1002, 1, NULL, 'E2E-003-URINE-1', urine_type_id, CURRENT_TIMESTAMP, 'Tech-003', 50.0, status_id_val, CURRENT_TIMESTAMP),
-  (10022, 1002, 2, 10021, 'E2E-003-ALIQUOT-1', urine_type_id, CURRENT_TIMESTAMP, 'Tech-003', 10.0, status_id_val, CURRENT_TIMESTAMP),
-  (10023, 1002, 3, 10021, 'E2E-003-ALIQUOT-2', urine_type_id, CURRENT_TIMESTAMP, 'Tech-003', 10.0, status_id_val, CURRENT_TIMESTAMP)
+  (10021, 1002, 1, NULL, 'E2E003-URINE-1', urine_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-003', 50.0, status_id_val, CURRENT_TIMESTAMP),
+  (10022, 1002, 2, 10021, 'E2E003-ALIQUOT-1', urine_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-003', 10.0, status_id_val, CURRENT_TIMESTAMP),
+  (10023, 1002, 3, 10021, 'E2E003-ALIQUOT-2', urine_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-003', 10.0, status_id_val, CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     external_id = EXCLUDED.external_id,
+    collection_date = EXCLUDED.collection_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 4: Not assigned (for testing assignment workflow)
+  -- Use fixed dates matching test search criteria
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1003, 'E2E-004', gen_random_uuid(), 'H', status_id_val,
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  (1003, 'E2E004', gen_random_uuid(), 'H', status_id_val,
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
+    entered_date = EXCLUDED.entered_date,
+    received_date = EXCLUDED.received_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 4 SampleItems: Single item, not yet assigned
+  -- Use fixed collection_date = 30/04/2025 to match test search criteria
   INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
-  (10031, 1003, 1, NULL, 'E2E-004-TUBE-1', serum_type_id, CURRENT_TIMESTAMP, 'Tech-004', 5.0, status_id_val, CURRENT_TIMESTAMP)
+  (10031, 1003, 1, NULL, 'E2E004-TUBE-1', serum_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-004', 5.0, status_id_val, CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     external_id = EXCLUDED.external_id,
+    collection_date = EXCLUDED.collection_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 5: Assigned to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A5
+  -- Use fixed dates matching test search criteria
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1004, 'E2E-005', gen_random_uuid(), 'H', status_id_val,
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  (1004, 'E2E005', gen_random_uuid(), 'H', status_id_val,
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
+    entered_date = EXCLUDED.entered_date,
+    received_date = EXCLUDED.received_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 5 SampleItems: Blood sample with multiple tubes
+  -- Use fixed collection_date = 30/04/2025 to match test search criteria
   INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
-  (10041, 1004, 1, NULL, 'E2E-005-TUBE-1', blood_type_id, CURRENT_TIMESTAMP, 'Tech-005', 10.0, status_id_val, CURRENT_TIMESTAMP),
-  (10042, 1004, 2, 10041, 'E2E-005-TUBE-2', blood_type_id, CURRENT_TIMESTAMP, 'Tech-005', 10.0, status_id_val, CURRENT_TIMESTAMP)
+  (10041, 1004, 1, NULL, 'E2E005-TUBE-1', blood_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-005', 10.0, status_id_val, CURRENT_TIMESTAMP),
+  (10042, 1004, 2, 10041, 'E2E005-TUBE-2', blood_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-005', 10.0, status_id_val, CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     external_id = EXCLUDED.external_id,
+    collection_date = EXCLUDED.collection_date,
+    lastupdated = CURRENT_TIMESTAMP;
+
+  -- Sample 6: 3-character accession number "E2E" for Result By Order search tests
+  -- The backend query requires exact length match, so "E2E" (3 chars) is needed
+  -- Use status_id = 1 (Test Entered, ORDER type) to match OrderStatus.Entered
+  -- Use fixed dates matching test search criteria
+  INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
+                       received_date, lastupdated, is_confirmation)
+  VALUES
+  (1005, 'E2E', gen_random_uuid(), 'H', 1,
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
+  ON CONFLICT (id) DO UPDATE SET
+    accession_number = 'E2E',
+    status_id = 1,
+    entered_date = EXCLUDED.entered_date,
+    received_date = EXCLUDED.received_date,
+    lastupdated = CURRENT_TIMESTAMP;
+
+  -- Sample 6 SampleItems: Single serum sample
+  -- Use fixed collection_date = 30/04/2025 to match test search criteria
+  INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
+                           collection_date, collector, quantity, status_id, lastupdated)
+  VALUES
+  (10051, 1005, 1, NULL, 'E2E-TUBE-1', serum_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-006', 5.0, status_id_val, CURRENT_TIMESTAMP)
+  ON CONFLICT (id) DO UPDATE SET
+    samp_id = EXCLUDED.samp_id,
+    external_id = EXCLUDED.external_id,
+    collection_date = EXCLUDED.collection_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Create sample_human links (samples to patients) - must be done before assignments
@@ -476,13 +390,14 @@ BEGIN
   (1001, 1001, 1001, CURRENT_TIMESTAMP),
   (1002, 1002, 1002, CURRENT_TIMESTAMP),
   (1003, 1003, 1000, CURRENT_TIMESTAMP),
-  (1004, 1004, 1001, CURRENT_TIMESTAMP)
+  (1004, 1004, 1001, CURRENT_TIMESTAMP),
+  (1005, 1005, 1000, CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     patient_id = EXCLUDED.patient_id,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Create storage assignments (using new location_id + location_type model, SampleItem-level tracking)
-  -- Assignment 1: SampleItem 10001 (from Sample E2E-001) to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A1
+  -- Assignment 1: SampleItem 10001 (from Sample E2E001) to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A1
   -- Rack 30 (location_id = 30, location_type = 'rack', position_coordinate = 'A1')
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date, 
                                          assigned_by_user_id, notes, last_updated)
@@ -493,7 +408,7 @@ BEGIN
     position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 1b: SampleItem 10002 (from Sample E2E-001) to different location - serum aliquot in refrigerator
+  -- Assignment 1b: SampleItem 10002 (from Sample E2E001) to different location - serum aliquot in refrigerator
   -- Rack 33 (Main Refrigerator Shelf-1 Rack 1)
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
@@ -504,7 +419,7 @@ BEGIN
     position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 2: SampleItem 10011 (from Sample E2E-002) to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A2
+  -- Assignment 2: SampleItem 10011 (from Sample E2E002) to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A2
   -- Rack 30 (location_id = 30, location_type = 'rack', position_coordinate = 'A2')
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
@@ -515,7 +430,7 @@ BEGIN
     position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 3: SampleItem 10021 (from Sample E2E-003) to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A4
+  -- Assignment 3: SampleItem 10021 (from Sample E2E003) to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A4
   -- Rack 30 (location_id = 30, location_type = 'rack', position_coordinate = 'A4')
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
@@ -526,7 +441,7 @@ BEGIN
     position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 3b: SampleItem 10022 (from Sample E2E-003) to same rack, different position
+  -- Assignment 3b: SampleItem 10022 (from Sample E2E003) to same rack, different position
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1004, 10022, 30, 'rack', 'A3', CURRENT_TIMESTAMP, 1, 'E2E test assignment - urine aliquot 1', CURRENT_TIMESTAMP)
@@ -536,7 +451,7 @@ BEGIN
     position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 4: SampleItem 10041 (from Sample E2E-005) to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A5
+  -- Assignment 4: SampleItem 10041 (from Sample E2E005) to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A5
   -- Rack 30 (location_id = 30, location_type = 'rack', position_coordinate = 'A5')
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
@@ -547,7 +462,7 @@ BEGIN
     position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 4b: SampleItem 10042 (from Sample E2E-005) to same rack, different position
+  -- Assignment 4b: SampleItem 10042 (from Sample E2E005) to same rack, different position
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
   VALUES (1006, 10042, 30, 'rack', 'A7', CURRENT_TIMESTAMP, 1, 'E2E test assignment - blood tube 2', CURRENT_TIMESTAMP)
@@ -581,110 +496,135 @@ BEGIN
   -- ============================================================================
 
   -- Sample 6: In Secondary Laboratory (active status)
-  INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
-                       received_date, lastupdated, is_confirmation)
-  VALUES
-  (1005, 'E2E-006', gen_random_uuid(), 'H', status_id_val,
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
-  ON CONFLICT (id) DO UPDATE SET
-    accession_number = EXCLUDED.accession_number,
-    lastupdated = CURRENT_TIMESTAMP;
+  -- NOTE: Sample 1005 is already defined above as 'E2E' for Result By Order tests
+  -- This sample should use a different ID or be removed if not needed
+  -- For now, we'll skip this duplicate definition
+  -- INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
+  --                      received_date, lastupdated, is_confirmation)
+  -- VALUES
+  -- (1005, 'E2E006', gen_random_uuid(), 'H', status_id_val,
+  --  CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  -- ON CONFLICT (id) DO UPDATE SET
+  --   accession_number = EXCLUDED.accession_number,
+  --   lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 6 SampleItems: Multiple serum aliquots
-  INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
-                           collection_date, collector, quantity, status_id, lastupdated)
-  VALUES
-  (10051, 1005, 1, NULL, 'E2E-006-ALIQUOT-1', serum_type_id, CURRENT_TIMESTAMP, 'Tech-006', 2.0, status_id_val, CURRENT_TIMESTAMP),
-  (10052, 1005, 2, 10051, 'E2E-006-ALIQUOT-2', serum_type_id, CURRENT_TIMESTAMP, 'Tech-006', 2.0, status_id_val, CURRENT_TIMESTAMP),
-  (10053, 1005, 3, 10051, 'E2E-006-ALIQUOT-3', serum_type_id, CURRENT_TIMESTAMP, 'Tech-006', 2.0, status_id_val, CURRENT_TIMESTAMP)
-  ON CONFLICT (id) DO UPDATE SET
-    external_id = EXCLUDED.external_id,
-    lastupdated = CURRENT_TIMESTAMP;
+  -- NOTE: Sample items for sample 1005 commented out since sample 1005 is 'E2E' (not 'E2E006')
+  -- INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
+  --                          collection_date, collector, quantity, status_id, lastupdated)
+  -- VALUES
+  -- (10051, 1005, 1, NULL, 'E2E006-ALIQUOT-1', serum_type_id, CURRENT_TIMESTAMP, 'Tech-006', 2.0, status_id_val, CURRENT_TIMESTAMP),
+  -- (10052, 1005, 2, 10051, 'E2E006-ALIQUOT-2', serum_type_id, CURRENT_TIMESTAMP, 'Tech-006', 2.0, status_id_val, CURRENT_TIMESTAMP),
+  -- (10053, 1005, 3, 10051, 'E2E006-ALIQUOT-3', serum_type_id, CURRENT_TIMESTAMP, 'Tech-006', 2.0, status_id_val, CURRENT_TIMESTAMP)
+  -- ON CONFLICT (id) DO UPDATE SET
+  --   external_id = EXCLUDED.external_id,
+  --   lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 7: In Secondary Laboratory (active status)
+  -- Use fixed dates matching test search criteria
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1006, 'E2E-007', gen_random_uuid(), 'H', status_id_val,
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  (1006, 'E2E007', gen_random_uuid(), 'H', status_id_val,
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
+    entered_date = EXCLUDED.entered_date,
+    received_date = EXCLUDED.received_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 7 SampleItems: Single blood tube
+  -- Use fixed collection_date = 30/04/2025 to match test search criteria
   INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
-  (10061, 1006, 1, NULL, 'E2E-007-TUBE-1', blood_type_id, CURRENT_TIMESTAMP, 'Tech-007', 10.0, status_id_val, CURRENT_TIMESTAMP)
+  (10061, 1006, 1, NULL, 'E2E007-TUBE-1', blood_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-007', 10.0, status_id_val, CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     external_id = EXCLUDED.external_id,
+    collection_date = EXCLUDED.collection_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 8: In Main Laboratory (for testing - will have NULL status = active)
+  -- Use fixed dates matching test search criteria
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1007, 'E2E-008', gen_random_uuid(), 'H', status_id_val,
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  (1007, 'E2E008', gen_random_uuid(), 'H', status_id_val,
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
+    entered_date = EXCLUDED.entered_date,
+    received_date = EXCLUDED.received_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 8 SampleItems: Urine sample with multiple aliquots
+  -- Use fixed collection_date = 30/04/2025 to match test search criteria
   INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
-  (10071, 1007, 1, NULL, 'E2E-008-URINE-1', urine_type_id, CURRENT_TIMESTAMP, 'Tech-008', 50.0, status_id_val, CURRENT_TIMESTAMP),
-  (10072, 1007, 2, 10071, 'E2E-008-ALIQUOT-1', urine_type_id, CURRENT_TIMESTAMP, 'Tech-008', 10.0, status_id_val, CURRENT_TIMESTAMP)
+  (10071, 1007, 1, NULL, 'E2E008-URINE-1', urine_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-008', 50.0, status_id_val, CURRENT_TIMESTAMP),
+  (10072, 1007, 2, 10071, 'E2E008-ALIQUOT-1', urine_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-008', 10.0, status_id_val, CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     external_id = EXCLUDED.external_id,
+    collection_date = EXCLUDED.collection_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 9: In Secondary Laboratory (for testing - will have NULL status = active)
+  -- Use fixed dates matching test search criteria
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1008, 'E2E-009', gen_random_uuid(), 'H', status_id_val,
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  (1008, 'E2E009', gen_random_uuid(), 'H', status_id_val,
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
+    entered_date = EXCLUDED.entered_date,
+    received_date = EXCLUDED.received_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 9 SampleItems: Serum sample with multiple aliquots
+  -- Use fixed collection_date = 30/04/2025 to match test search criteria
   INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
-  (10081, 1008, 1, NULL, 'E2E-009-SERUM-1', serum_type_id, CURRENT_TIMESTAMP, 'Tech-009', 5.0, status_id_val, CURRENT_TIMESTAMP),
-  (10082, 1008, 2, 10081, 'E2E-009-ALIQUOT-1', serum_type_id, CURRENT_TIMESTAMP, 'Tech-009', 2.0, status_id_val, CURRENT_TIMESTAMP)
+  (10081, 1008, 1, NULL, 'E2E009-SERUM-1', serum_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-009', 5.0, status_id_val, CURRENT_TIMESTAMP),
+  (10082, 1008, 2, 10081, 'E2E009-ALIQUOT-1', serum_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-009', 2.0, status_id_val, CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     external_id = EXCLUDED.external_id,
+    collection_date = EXCLUDED.collection_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 10: In Main Laboratory > Refrigerator (different device)
+  -- Use fixed dates matching test search criteria
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1009, 'E2E-010', gen_random_uuid(), 'H', status_id_val,
-   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
+  (1009, 'E2E010', gen_random_uuid(), 'H', status_id_val,
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
+    entered_date = EXCLUDED.entered_date,
+    received_date = EXCLUDED.received_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Sample 10 SampleItems: Blood sample with multiple tubes
+  -- Use fixed collection_date = 30/04/2025 to match test search criteria
   INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
-  (10091, 1009, 1, NULL, 'E2E-010-TUBE-1', blood_type_id, CURRENT_TIMESTAMP, 'Tech-010', 10.0, status_id_val, CURRENT_TIMESTAMP),
-  (10092, 1009, 2, 10091, 'E2E-010-TUBE-2', blood_type_id, CURRENT_TIMESTAMP, 'Tech-010', 10.0, status_id_val, CURRENT_TIMESTAMP),
-  (10093, 1009, 3, 10091, 'E2E-010-TUBE-3', blood_type_id, CURRENT_TIMESTAMP, 'Tech-010', 10.0, status_id_val, CURRENT_TIMESTAMP)
+  (10091, 1009, 1, NULL, 'E2E010-TUBE-1', blood_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-010', 10.0, status_id_val, CURRENT_TIMESTAMP),
+  (10092, 1009, 2, 10091, 'E2E010-TUBE-2', blood_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-010', 10.0, status_id_val, CURRENT_TIMESTAMP),
+  (10093, 1009, 3, 10091, 'E2E010-TUBE-3', blood_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-010', 10.0, status_id_val, CURRENT_TIMESTAMP)
   ON CONFLICT (id) DO UPDATE SET
     external_id = EXCLUDED.external_id,
+    collection_date = EXCLUDED.collection_date,
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Create sample_human links for new samples
+  -- NOTE: Sample 1005 link already created above (sample 1005 is 'E2E', not 'E2E006')
   INSERT INTO sample_human (id, samp_id, patient_id, lastupdated)
   VALUES
-  (1005, 1005, 1000, CURRENT_TIMESTAMP),
+  -- (1005, 1005, 1000, CURRENT_TIMESTAMP), -- Already linked above
   (1006, 1006, 1001, CURRENT_TIMESTAMP),
   (1007, 1007, 1002, CURRENT_TIMESTAMP),
   (1008, 1008, 1000, CURRENT_TIMESTAMP),
@@ -694,28 +634,28 @@ BEGIN
     lastupdated = CURRENT_TIMESTAMP;
 
   -- Assignments for new samples (using new location_id + location_type model, SampleItem-level tracking):
-  -- Assignment 5: SampleItem 10051 (from Sample E2E-006) to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1
-  -- Rack 34 (location_id = 34, location_type = 'rack', position_coordinate = 'A1')
-  INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
-                                         assigned_by_user_id, notes, last_updated)
-  VALUES (1007, 10051, 34, 'rack', 'A1', CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab - aliquot 1', CURRENT_TIMESTAMP)
-  ON CONFLICT (id) DO UPDATE SET
-    location_id = EXCLUDED.location_id,
-    location_type = EXCLUDED.location_type,
-    position_coordinate = EXCLUDED.position_coordinate,
-    last_updated = CURRENT_TIMESTAMP;
+  -- NOTE: Assignments for sample items 10051, 10052, 10053 commented out since sample 1005 is 'E2E' (not 'E2E006')
+  -- Assignment 5: SampleItem 10051 (from Sample E2E006) - COMMENTED OUT
+  -- INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
+  --                                        assigned_by_user_id, notes, last_updated)
+  -- VALUES (1007, 10051, 34, 'rack', 'A1', CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab - aliquot 1', CURRENT_TIMESTAMP)
+  -- ON CONFLICT (id) DO UPDATE SET
+  --   location_id = EXCLUDED.location_id,
+  --   location_type = EXCLUDED.location_type,
+  --   position_coordinate = EXCLUDED.position_coordinate,
+  --   last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 5b: SampleItem 10052 to same rack, different position
-  INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
-                                         assigned_by_user_id, notes, last_updated)
-  VALUES (1008, 10052, 34, 'rack', 'A2', CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab - aliquot 2', CURRENT_TIMESTAMP)
-  ON CONFLICT (id) DO UPDATE SET
-    location_id = EXCLUDED.location_id,
-    location_type = EXCLUDED.location_type,
-    position_coordinate = EXCLUDED.position_coordinate,
-    last_updated = CURRENT_TIMESTAMP;
+  -- Assignment 5b: SampleItem 10052 - COMMENTED OUT
+  -- INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
+  --                                        assigned_by_user_id, notes, last_updated)
+  -- VALUES (1008, 10052, 34, 'rack', 'A2', CURRENT_TIMESTAMP, 1, 'E2E test - Secondary Lab - aliquot 2', CURRENT_TIMESTAMP)
+  -- ON CONFLICT (id) DO UPDATE SET
+  --   location_id = EXCLUDED.location_id,
+  --   location_type = EXCLUDED.location_type,
+  --   position_coordinate = EXCLUDED.position_coordinate,
+  --   last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 6: SampleItem 10061 (from Sample E2E-007) to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1
+  -- Assignment 6: SampleItem 10061 (from Sample E2E007) to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1
   -- Rack 34 (location_id = 34, location_type = 'rack', position_coordinate = 'A2')
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
@@ -726,7 +666,7 @@ BEGIN
     position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 7: SampleItem 10071 (from Sample E2E-008) to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A6
+  -- Assignment 7: SampleItem 10071 (from Sample E2E008) to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A6
   -- Rack 30 (location_id = 30, location_type = 'rack', position_coordinate = 'A6')
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
@@ -737,7 +677,7 @@ BEGIN
     position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 8: SampleItem 10081 (from Sample E2E-009) to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1
+  -- Assignment 8: SampleItem 10081 (from Sample E2E009) to Secondary Lab > Secondary Lab Cabinet Unit 1 > Secondary Cabinet Shelf-1 > Secondary Cabinet Shelf-1 Rack 1
   -- Rack 34 (location_id = 34, location_type = 'rack', position_coordinate = 'A3')
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
@@ -748,7 +688,7 @@ BEGIN
     position_coordinate = EXCLUDED.position_coordinate,
     last_updated = CURRENT_TIMESTAMP;
 
-  -- Assignment 9: SampleItem 10091 (from Sample E2E-010) to Main Lab > Main Lab Refrigerator Unit 1 > Main Refrigerator Shelf-1 > Main Refrigerator Shelf-1 Rack 1
+  -- Assignment 9: SampleItem 10091 (from Sample E2E010) to Main Lab > Main Lab Refrigerator Unit 1 > Main Refrigerator Shelf-1 > Main Refrigerator Shelf-1 Rack 1
   -- Rack 33 (location_id = 33, location_type = 'rack', position_coordinate = 'A1')
   INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, position_coordinate, assigned_date,
                                          assigned_by_user_id, notes, last_updated)
@@ -812,7 +752,7 @@ BEGIN
   -- Only create analyses if we have a test
   IF test_id_val IS NOT NULL THEN
     -- Create analyses for E2E sample items
-    -- E2E-001 SampleItem 10001: Finalized analysis (with result)
+    -- E2E001 SampleItem 10001: Finalized analysis (with result)
     INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, 
                           analysis_type, entry_date, started_date, completed_date, 
                           is_reportable, lastupdated)
@@ -824,7 +764,7 @@ BEGIN
       status_id = EXCLUDED.status_id,
       lastupdated = CURRENT_TIMESTAMP;
     
-    -- E2E-001 SampleItem 10001: Not started analysis (no result)
+    -- E2E001 SampleItem 10001: Not started analysis (no result)
     INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, 
                           analysis_type, entry_date, started_date, completed_date, 
                           is_reportable, lastupdated)
@@ -835,7 +775,18 @@ BEGIN
       status_id = EXCLUDED.status_id,
       lastupdated = CURRENT_TIMESTAMP;
     
-    -- E2E-002 SampleItem 10011: Technical acceptance analysis
+    -- E2E SampleItem 10051: Not started analysis (for Result By Order search - unfinished status)
+    INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, 
+                          analysis_type, entry_date, started_date, completed_date, 
+                          is_reportable, lastupdated)
+    VALUES
+    (20010, 10051, test_id_val, test_section_id_val, not_started_status_id, '1',
+     'MANUAL', CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP)
+    ON CONFLICT (id) DO UPDATE SET
+      status_id = EXCLUDED.status_id,
+      lastupdated = CURRENT_TIMESTAMP;
+    
+    -- E2E002 SampleItem 10011: Technical acceptance analysis
     INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, 
                           analysis_type, entry_date, started_date, completed_date, 
                           is_reportable, lastupdated)
@@ -847,7 +798,7 @@ BEGIN
       status_id = EXCLUDED.status_id,
       lastupdated = CURRENT_TIMESTAMP;
     
-    -- E2E-003 SampleItem 10021: Canceled analysis
+    -- E2E003 SampleItem 10021: Canceled analysis
     INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, 
                           analysis_type, entry_date, started_date, completed_date, 
                           is_reportable, lastupdated)
@@ -859,7 +810,7 @@ BEGIN
       status_id = EXCLUDED.status_id,
       lastupdated = CURRENT_TIMESTAMP;
     
-    -- E2E-005 SampleItem 10041: Finalized analysis (with result)
+    -- E2E005 SampleItem 10041: Finalized analysis (with result)
     INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, 
                           analysis_type, entry_date, started_date, completed_date, 
                           is_reportable, lastupdated)
@@ -977,8 +928,8 @@ ORDER BY s.accession_number, si.sort_order;
 \echo '========================================'
 \echo ''
 
--- Storage Hierarchy Verification
-\echo 'Storage Hierarchy:'
+-- Storage Hierarchy Verification (from Liquibase)
+\echo 'Storage Hierarchy (loaded by Liquibase):'
 SELECT 
     'Rooms' AS type, 
     COUNT(*) AS count,
@@ -1052,7 +1003,7 @@ FROM result WHERE id BETWEEN 30000 AND 40000;
 \echo '✅ Complete test fixtures loaded successfully!'
 \echo '========================================'
 \echo ''
-\echo 'Storage Hierarchy:'
+\echo 'Storage Hierarchy (loaded by Liquibase):'
 \echo '   - 3 Rooms (Main Laboratory, Secondary Laboratory, Inactive Room)'
 \echo '   - 5 Devices (Main Lab Freezer, Main Lab Refrigerator, Secondary Lab Cabinet, Secondary Lab Freezer, Inactive Freezer)'
 \echo '   - 6 Shelves (each uniquely named per device)'
@@ -1061,10 +1012,10 @@ FROM result WHERE id BETWEEN 30000 AND 40000;
 \echo ''
 \echo 'E2E Test Data:'
 \echo '   - 3 test patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams)'
-\echo '   - 10 test samples (E2E-001 through E2E-010)'
+\echo '   - 9 test samples (E2E001, E2E002, E2E003, E2E004, E2E005, E2E, E2E007, E2E008, E2E009, E2E010)'
 \echo '   - 20+ test SampleItems (multiple items per sample, various types)'
 \echo '   - 15+ SampleItems with storage assignments'
-\echo '   - 1 unassigned SampleItem (ID: 10031 from E2E-004) for testing assignment workflow'
+\echo '   - 1 unassigned SampleItem (ID: 10031 from E2E004) for testing assignment workflow'
 \echo '   - 5 test analyses (orders) for E2E sample items'
 \echo '   - 2 test results for finalized analyses'
 \echo ''
@@ -1073,16 +1024,16 @@ FROM result WHERE id BETWEEN 30000 AND 40000;
 \echo '   - External ID: E2E-PAT-001, E2E-PAT-002, E2E-PAT-003'
 \echo ''
 \echo 'Test samples can be found by accession number:'
-\echo '   - E2E-001 through E2E-010'
+\echo '   - E2E001, E2E002, E2E003, E2E004, E2E005, E2E, E2E007, E2E008, E2E009, E2E010'
 \echo ''
 \echo 'Test SampleItems can be found by:'
 \echo '   - SampleItem ID: 10001, 10002, 10011, etc. (numeric IDs)'
-\echo '   - External ID: E2E-001-TUBE-1, E2E-001-ALIQUOT-1, E2E-002-TUBE-1, etc.'
-\echo '   - Parent Sample accession: E2E-001, E2E-002, etc.'
+\echo '   - External ID: E2E001-TUBE-1, E2E001-ALIQUOT-1, E2E002-TUBE-1, etc.'
+\echo '   - Parent Sample accession: E2E001, E2E002, etc.'
 \echo ''
 \echo 'SampleItem Variety:'
-\echo '   - Blood samples: tubes (E2E-002, E2E-005, E2E-007, E2E-010)'
-\echo '   - Serum samples: tubes and aliquots (E2E-001, E2E-006, E2E-009)'
-\echo '   - Urine samples: containers and aliquots (E2E-003, E2E-008)'
-\echo '   - Multiple items per sample: E2E-001 (2 items), E2E-003 (3 items), E2E-005 (2 items), etc.'
+\echo '   - Blood samples: tubes (E2E002, E2E005, E2E007, E2E010)'
+\echo '   - Serum samples: tubes and aliquots (E2E001, E2E009)'
+\echo '   - Urine samples: containers and aliquots (E2E003, E2E008)'
+\echo '   - Multiple items per sample: E2E001 (2 items), E2E003 (3 items), E2E005 (2 items), etc.'
 
