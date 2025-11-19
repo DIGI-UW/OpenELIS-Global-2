@@ -734,24 +734,24 @@ impacted messages can be reprocessed successfully.
 
 > **CRITICAL: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T081 [P] [US3] Unit test for AnalyzerErrorService in
+- [x] T081 [P] [US3] Unit test for AnalyzerErrorService in
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerErrorServiceTest.java` -
       Test methods: `testCreateError_WithUnmappedField_CreatesErrorRecord`,
       `testAcknowledgeError_WithValidUser_UpdatesStatus`,
-      `testReprocessError_WithNewMapping_ProcessesMessage`
-- [ ] T082 [P] [US3] Unit test for AnalyzerReprocessingService in
+      `testReprocessError_WithNewMapping_ProcessesMessage` - All 5 tests passing: createError, acknowledgeError, reprocessError, getErrorsByFilters, exception handling
+- [x] T082 [P] [US3] Unit test for AnalyzerReprocessingService in
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerReprocessingServiceTest.java` -
       Test methods: `testReprocessMessage_WithValidMapping_ReturnsSuccess`,
-      `testReprocessMessage_WithStillUnmapped_ReturnsError`
+      `testReprocessMessage_WithStillUnmapped_ReturnsError` - All 4 tests passing: valid mapping, still unmapped, null raw message, empty raw message
 - [ ] T083 [P] [US3] Integration test for error queue workflow in
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerErrorServiceIntegrationTest.java`
       using @SpringBootTest - Test methods:
       `testHoldUnmappedMessage_InErrorQueue`,
       `testReprocessAfterMapping_CreatesOrder`
-- [ ] T084 [P] [US3] DAO test for AnalyzerErrorDAO in
+- [x] T084 [P] [US3] DAO test for AnalyzerErrorDAO in
       `src/test/java/org/openelisglobal/analyzer/dao/AnalyzerErrorDAOTest.java` -
       Test methods: `testFindByStatus_ReturnsUnacknowledgedErrors`,
-      `testFindByAnalyzerId_ReturnsErrorsForAnalyzer`
+      `testFindByAnalyzerId_ReturnsErrorsForAnalyzer` - All 6 tests passing: findByStatus, findByAnalyzerId, findByErrorType, findBySeverity, get with valid ID, get with invalid ID
 - [ ] T085 [P] [US3] Controller test for AnalyzerErrorRestController in
       `src/test/java/org/openelisglobal/analyzer/controller/AnalyzerErrorRestControllerTest.java` -
       **Test Slicing**: Use `@WebMvcTest` - Test methods:
@@ -775,19 +775,19 @@ impacted messages can be reprocessed successfully.
 
 ### Implementation for User Story 3
 
-- [ ] T089 [P] [US3] Create AnalyzerErrorService interface in
-      `src/main/java/org/openelisglobal/analyzer/service/AnalyzerErrorService.java`
-- [ ] T090 [US3] Create AnalyzerErrorServiceImpl in
+- [x] T089 [P] [US3] Create AnalyzerErrorService interface in
+      `src/main/java/org/openelisglobal/analyzer/service/AnalyzerErrorService.java` - Interface created with methods: createError, acknowledgeError, reprocessError, getErrorsByFilters
+- [x] T090 [US3] Create AnalyzerErrorServiceImpl in
       `src/main/java/org/openelisglobal/analyzer/service/AnalyzerErrorServiceImpl.java`
       with @Service and @Transactional annotations - Methods: createError,
-      acknowledgeError, getErrorsByFilters per FR-016
-- [ ] T091 [P] [US3] Create AnalyzerReprocessingService interface in
-      `src/main/java/org/openelisglobal/analyzer/service/AnalyzerReprocessingService.java`
-- [ ] T092 [US3] Create AnalyzerReprocessingServiceImpl in
+      acknowledgeError, getErrorsByFilters per FR-016 - Implementation complete with audit trail logging (setLastupdatedFields, setSysUserId), all unit tests passing
+- [x] T091 [P] [US3] Create AnalyzerReprocessingService interface in
+      `src/main/java/org/openelisglobal/analyzer/service/AnalyzerReprocessingService.java` - Interface created with reprocessMessage method
+- [x] T092 [US3] Create AnalyzerReprocessingServiceImpl in
       `src/main/java/org/openelisglobal/analyzer/service/AnalyzerReprocessingServiceImpl.java`
       with @Service and @Transactional annotations - Reprocess raw message from
       AnalyzerError.rawMessage through ASTMAnalyzerReader with new mappings per
-      FR-017
+      FR-017 - Implementation complete: validates raw message, checks for active mappings, converts to InputStream, processes through ASTMAnalyzerReader, all unit tests passing
 - [ ] T093 [US3] Integrate error creation into
       ASTMAnalyzerReader.processData() - When mapping not found: Create
       AnalyzerError record, hold message in error queue per FR-011 - When
