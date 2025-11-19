@@ -154,12 +154,12 @@ ON CONFLICT (id) DO UPDATE SET
 -- Insert test persons (for patients)
 INSERT INTO person (id, last_name, first_name, middle_name, city, state, zip_code, country, 
                     work_phone, home_phone, cell_phone, primary_phone, email, lastupdated) VALUES
-(1000, 'E2E-Smith', 'John', 'Test', 'Test City', 'Test State', '12345', 'USA', 
- '555-0101', '555-0102', '555-0103', '555-0101', 'john.e2e@test.com', CURRENT_TIMESTAMP),
-(1001, 'E2E-Jones', 'Jane', 'Test', 'Test City', 'Test State', '12345', 'USA',
- '555-0201', '555-0202', '555-0203', '555-0201', 'jane.e2e@test.com', CURRENT_TIMESTAMP),
-(1002, 'E2E-Williams', 'Bob', 'Test', 'Test City', 'Test State', '12345', 'USA',
- '555-0301', '555-0302', '555-0303', '555-0301', 'bob.e2e@test.com', CURRENT_TIMESTAMP)
+(1000, 'TEST-Smith', 'John', 'Test', 'Test City', 'Test State', '12345', 'USA', 
+ '555-0101', '555-0102', '555-0103', '555-0101', 'john.test@test.com', CURRENT_TIMESTAMP),
+(1001, 'TEST-Jones', 'Jane', 'Test', 'Test City', 'Test State', '12345', 'USA',
+ '555-0201', '555-0202', '555-0203', '555-0201', 'jane.test@test.com', CURRENT_TIMESTAMP),
+(1002, 'TEST-Williams', 'Bob', 'Test', 'Test City', 'Test State', '12345', 'USA',
+ '555-0301', '555-0302', '555-0303', '555-0301', 'bob.test@test.com', CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO UPDATE SET
   last_name = EXCLUDED.last_name,
   first_name = EXCLUDED.first_name,
@@ -1011,7 +1011,7 @@ FROM result WHERE id BETWEEN 30000 AND 40000;
 \echo '   - 100+ Positions (mix of occupied/unoccupied)'
 \echo ''
 \echo 'E2E Test Data:'
-\echo '   - 3 test patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams)'
+\echo '   - 3 test patients (John TEST-Smith, Jane TEST-Jones, Bob TEST-Williams)'
 \echo '   - 9 test samples (E2E001, E2E002, E2E003, E2E004, E2E005, E2E, E2E007, E2E008, E2E009, E2E010)'
 \echo '   - 20+ test SampleItems (multiple items per sample, various types)'
 \echo '   - 15+ SampleItems with storage assignments'
