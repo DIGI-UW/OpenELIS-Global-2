@@ -107,8 +107,10 @@ const ImagePreviewModal = ({
 
       setIsCameraActive(true);
     } catch (error) {
-      console.error("Erreur d'accès à la caméra:", error);
-      alert("permission denied");
+      console.error("Camera access error:", error);
+      alert(
+        intl.formatMessage({ id: "patient.photo.camera.permission.denied" }),
+      );
     }
   };
 
@@ -164,9 +166,9 @@ const ImagePreviewModal = ({
     <Modal
       open={open}
       onRequestClose={handleClose}
-      modalHeading="Sélectionner une photo du patient"
-      primaryButtonText="Confirmer"
-      secondaryButtonText="Annuler"
+      modalHeading={intl.formatMessage({ id: "patient.photo.modal.heading" })}
+      primaryButtonText={intl.formatMessage({ id: "patient.photo.confirm" })}
+      secondaryButtonText={intl.formatMessage({ id: "patient.photo.cancel" })}
       onRequestSubmit={handleConfirm}
       size="lg"
       preventCloseOnClickOutside
@@ -175,7 +177,11 @@ const ImagePreviewModal = ({
         selectedIndex={selectedTab}
         onChange={({ selectedIndex }) => handleTabChange(selectedIndex)}
       >
-        <TabList aria-label="Options de sélection d'image">
+        <TabList
+          aria-label={intl.formatMessage({
+            id: "patient.photo.modal.options",
+          })}
+        >
           <Tab renderIcon={CloudUpload}>
             {intl.formatMessage({ id: "patient.photo.import" })}
           </Tab>
@@ -212,15 +218,19 @@ const ImagePreviewModal = ({
                     {intl.formatMessage({ id: "patient.photo.browse" })}
                   </p>
                   <p className="dropzone-formats">
-                    Formats : JPG, PNG (max 1MB)
+                    {intl.formatMessage({ id: "patient.photo.formats" })}
                   </p>
                 </div>
               ) : (
                 <div className="image-preview-container">
-                  <p className="preview-label">Aperçu:</p>
+                  <p className="preview-label">
+                    {intl.formatMessage({ id: "patient.photo.preview" })}
+                  </p>
                   <img
                     src={previewUrl}
-                    alt="Aperçu de l'image patient"
+                    alt={intl.formatMessage({
+                      id: "patient.photo.preview.alt",
+                    })}
                     className="image-preview"
                   />
                   <Button
@@ -229,7 +239,7 @@ const ImagePreviewModal = ({
                     onClick={() => setPreviewUrl(null)}
                     style={{ marginTop: "1rem" }}
                   >
-                    Changer l'image
+                    {intl.formatMessage({ id: "patient.photo.change" })}
                   </Button>
                 </div>
               )}
@@ -260,10 +270,14 @@ const ImagePreviewModal = ({
               ) : !isCameraActive && previewUrl ? (
                 <div className="camera-preview-container">
                   <div className="image-preview-container">
-                    <p className="preview-label">Photo capturée:</p>
+                    <p className="preview-label">
+                      {intl.formatMessage({ id: "patient.photo.captured" })}
+                    </p>
                     <img
                       src={previewUrl}
-                      alt="Photo capturée du patient"
+                      alt={intl.formatMessage({
+                        id: "patient.photo.preview.captured.alt",
+                      })}
                       className="image-preview"
                     />
                   </div>
@@ -289,7 +303,9 @@ const ImagePreviewModal = ({
                       <button
                         className="capture-circle-button"
                         onClick={capturePhoto}
-                        aria-label="Capturer la photo"
+                        aria-label={intl.formatMessage({
+                          id: "patient.photo.capture",
+                        })}
                       >
                         <div className="capture-circle-inner"></div>
                       </button>

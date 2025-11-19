@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { UserAvatar } from "@carbon/icons-react";
 import { SkeletonPlaceholder } from "@carbon/react";
+import Avatar from "react-avatar";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import "./AsyncAvatar.css";
 
@@ -24,6 +25,7 @@ const AsyncAvatar = ({
   const [thumbnail, setThumbnail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
 
   useEffect(() => {
     if (!hasPhoto) {
@@ -34,6 +36,7 @@ const AsyncAvatar = ({
     setLoading(true);
     setError(false);
     setThumbnail(null);
+    setImageLoadError(false);
 
     getFromOpenElisServer(
       `/rest/patient-photos/${patientId}/${true}`,
@@ -51,12 +54,18 @@ const AsyncAvatar = ({
 
   if (!hasPhoto) {
     return (
-      <div
-        className="async-avatar-placeholder"
-        style={{ width: size, height: size }}
-      >
-        <UserAvatar size={Math.floor(size * 0.6)} />
-      </div>
+      <Avatar
+        alt="Patient avatar"
+        color="rgba(0,0,0,0)"
+        name={patientName}
+        src=""
+        size={String(size)}
+        textSizeRatio={1}
+        style={{
+          backgroundImage: `url('/images/patient-background.svg')`,
+          backgroundRepeat: "round",
+        }}
+      />
     );
   }
 
@@ -75,12 +84,36 @@ const AsyncAvatar = ({
 
   if (error || !thumbnail) {
     return (
-      <div
-        className="async-avatar-placeholder"
-        style={{ width: size, height: size }}
-      >
-        <UserAvatar size={Math.floor(size * 0.6)} />
-      </div>
+      <Avatar
+        alt="Patient avatar"
+        color="rgba(0,0,0,0)"
+        name={patientName}
+        src=""
+        size={String(size)}
+        textSizeRatio={1}
+        style={{
+          backgroundImage: `url('/images/patient-background.svg')`,
+          backgroundRepeat: "round",
+        }}
+      />
+    );
+  }
+
+  // If image fails to load, show generated avatar with initials
+  if (imageLoadError) {
+    return (
+      <Avatar
+        alt="Patient avatar"
+        color="rgba(0,0,0,0)"
+        name={patientName}
+        src=""
+        size={String(size)}
+        textSizeRatio={1}
+        style={{
+          backgroundImage: `url('/images/patient-background.svg')`,
+          backgroundRepeat: "round",
+        }}
+      />
     );
   }
 
@@ -93,7 +126,11 @@ const AsyncAvatar = ({
         src={"data:image/jpeg;base64," + thumbnail}
         alt={patientName}
         className="async-avatar-image"
-        style={{ width: size, height: size }}
+        style={{ width: size, height: size, borderRadius: "50%" }}
+        onError={() => {
+          // If image fails to load, show generated avatar with initials
+          setImageLoadError(true);
+        }}
       />
     </div>
   );
