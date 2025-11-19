@@ -8,7 +8,7 @@ import StorageDashboard from "./components/storage/StorageDashboard";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import AnalyzersPage from "./pages/AnalyzersPage";
-import FieldMappingsPage from "./pages/FieldMappingsPage";
+import FieldMapping from "./components/analyzers/FieldMapping/FieldMapping";
 import ErrorDashboardPage from "./pages/ErrorDashboardPage";
 import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
 import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
@@ -438,7 +438,7 @@ export default function App() {
                 <SecureRoute
                   path="/analyzers/:id/mappings"
                   exact
-                  component={() => <FieldMappingsPage />}
+                  component={FieldMapping}
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute

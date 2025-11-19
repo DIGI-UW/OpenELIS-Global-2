@@ -12,14 +12,33 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { Grid, Column, Button, Search } from "@carbon/react";
+import { 
+  Grid, 
+  Column, 
+  Button, 
+  Search, 
+  Tile,
+  InlineNotification 
+} from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams, useHistory, useLocation } from "react-router-dom";
 import * as analyzerService from "../../../services/analyzerService";
 import FieldMappingPanel from "./FieldMappingPanel";
 import MappingPanel from "./MappingPanel";
 import QueryStatusModal from "./QueryStatusModal";
+import PageTitle from "../../common/PageTitle/PageTitle";
 import "./FieldMapping.css";
+
+// Helper function to extract mappings from API response
+const extractMappings = (mappingsData) => {
+  if (!mappingsData) return [];
+  if (Array.isArray(mappingsData)) return mappingsData;
+  if (mappingsData.data) {
+    if (Array.isArray(mappingsData.data.content)) return mappingsData.data.content;
+    if (Array.isArray(mappingsData.data)) return mappingsData.data;
+  }
+  return [];
+};
 
 const FieldMapping = () => {
   const intl = useIntl();
@@ -80,9 +99,8 @@ const FieldMapping = () => {
 
     // Load mappings
     analyzerService.getMappings(analyzerId, (mappingsData) => {
-      if (Array.isArray(mappingsData)) {
-        setMappings(mappingsData);
-      }
+      const mappings = extractMappings(mappingsData);
+      setMappings(mappings);
       setLoading(false);
     });
 
@@ -160,9 +178,8 @@ const FieldMapping = () => {
         } else {
           // Reload mappings
           analyzerService.getMappings(analyzerId, (mappingsData) => {
-            if (Array.isArray(mappingsData)) {
-              setMappings(mappingsData);
-            }
+            const mappings = extractMappings(mappingsData);
+            setMappings(mappings);
           });
           // Keep field selected to show the new mapping
         }
@@ -186,36 +203,101 @@ const FieldMapping = () => {
     ? mappings.find((m) => m.analyzerFieldId === selectedField.id)
     : null;
 
+  // Calculate statistics for stats cards
+  const requiredMappings = mappings.filter((m) => m.isRequired).length;
+  const unmappedFieldsCount = fields.filter(
+    (f) => !mappings.some((m) => m.analyzerFieldId === f.id)
+  ).length;
+  
+  // Check if required mappings are missing
+  const requiredFieldTypes = ["sampleId", "testCode", "resultValue"];
+  const hasUnmappedRequired = requiredFieldTypes.some(
+    (type) => !mappings.some((m) => m.mappingType === type)
+  );
+
   return (
     <div className="field-mapping" data-testid="field-mapping">
-      {/* Header - simplified for modal context (back button removed, handled by modal) */}
-      <div className="field-mapping-header" data-testid="field-mapping-header">
-        <h2 data-testid="field-mapping-title" style={{ marginBottom: "1rem" }}>
-          {analyzer
-            ? analyzer.name
-            : intl.formatMessage({ id: "analyzer.fieldMapping.page.title" })}
-        </h2>
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-          <Button
-            kind="tertiary"
-            data-testid="field-mapping-query-button"
-            onClick={() => {
-              analyzerService.queryAnalyzer(analyzerId, (resp) => {
-                if (resp && resp.jobId) {
-                  setQueryJobId(resp.jobId);
-                  setQueryModalOpen(true);
-                } else {
-                  setQueryModalOpen(true);
-                }
-              });
-            }}
-          >
-            <FormattedMessage id="analyzer.fieldMapping.queryAnalyzer" />
-          </Button>
-          <Button kind="primary" data-testid="field-mapping-save-button">
-            <FormattedMessage id="analyzer.fieldMapping.save" />
-          </Button>
+      {/* Hierarchical Page Title with Back Arrow */}
+      <div className="field-mapping-header">
+        <div className="field-mapping-header-title">
+          <PageTitle
+            breadcrumbs={[
+              { label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }), link: "/analyzers" },
+              { label: intl.formatMessage({ id: "analyzer.page.hierarchy.mappings" }) },
+              { label: analyzer?.name || intl.formatMessage({ id: "analyzer.fieldMapping.page.title" }) }
+            ]}
+            showBackArrow={true}
+            onBack={() => history.push("/analyzers")}
+            subtitle={intl.formatMessage({ id: "analyzer.fieldMapping.page.subtitle" })}
+          />
         </div>
+      </div>
+
+      {/* Warning Banner - Conditional */}
+      {hasUnmappedRequired && (
+        <Grid>
+          <Column lg={16} md={8} sm={4}>
+            <InlineNotification
+              kind="warning"
+              title={intl.formatMessage({ id: "analyzer.fieldMapping.warning.missingRequired" })}
+              subtitle={intl.formatMessage({ id: "analyzer.fieldMapping.warning.missingRequired.detail" })}
+              lowContrast
+              hideCloseButton
+              data-testid="field-mapping-warning"
+            />
+          </Column>
+        </Grid>
+      )}
+
+      {/* Statistics Cards */}
+      <Grid className="field-mapping-stats" data-testid="field-mapping-stats">
+        <Column lg={5} md={4} sm={4}>
+          <Tile data-testid="stat-total-mappings">
+            <div className="stat-label">
+              {intl.formatMessage({ id: "analyzer.fieldMapping.stats.total" })}
+            </div>
+            <div className="stat-value">{mappings.length}</div>
+          </Tile>
+        </Column>
+        <Column lg={6} md={4} sm={4}>
+          <Tile data-testid="stat-required-mappings">
+            <div className="stat-label">
+              {intl.formatMessage({ id: "analyzer.fieldMapping.stats.required" })}
+            </div>
+            <div className="stat-value">{requiredMappings}</div>
+          </Tile>
+        </Column>
+        <Column lg={5} md={4} sm={4}>
+          <Tile data-testid="stat-unmapped-fields">
+            <div className="stat-label">
+              {intl.formatMessage({ id: "analyzer.fieldMapping.stats.unmapped" })}
+            </div>
+            <div className="stat-value">{unmappedFieldsCount}</div>
+          </Tile>
+        </Column>
+      </Grid>
+
+      {/* Action Buttons */}
+      <div className="field-mapping-actions" data-testid="field-mapping-actions">
+        <Button
+          kind="tertiary"
+          data-testid="field-mapping-query-button"
+          onClick={() => {
+            analyzerService.queryAnalyzer(analyzerId, (resp) => {
+              if (resp && resp.jobId) {
+                setQueryJobId(resp.jobId);
+                setQueryModalOpen(true);
+              } else {
+                setQueryModalOpen(true);
+              }
+            });
+          }}
+        >
+          <FormattedMessage id="analyzer.fieldMapping.queryAnalyzer" />
+        </Button>
+        <Button kind="primary" data-testid="field-mapping-save-button">
+          <FormattedMessage id="analyzer.fieldMapping.save" />
+        </Button>
       </div>
 
       {/* Dual Panel Layout */}
@@ -263,9 +345,8 @@ const FieldMapping = () => {
                       analyzerService.getMappings(
                         analyzerId,
                         (mappingsData) => {
-                          if (Array.isArray(mappingsData)) {
-                            setMappings(mappingsData);
-                          }
+                          const mappings = extractMappings(mappingsData);
+                          setMappings(mappings);
                         },
                       );
                     }

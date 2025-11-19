@@ -17,10 +17,14 @@ import {
   OverflowMenu,
   OverflowMenuItem,
 } from "@carbon/react";
+import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { getAnalyzers } from "../../../services/analyzerService";
 import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
+import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
+import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
+import PageTitle from "../../common/PageTitle/PageTitle";
 import "./AnalyzersList.css";
 
 const AnalyzersList = () => {
@@ -45,6 +49,14 @@ const AnalyzersList = () => {
   });
   const [analyzerFormOpen, setAnalyzerFormOpen] = useState(false);
   const [selectedAnalyzer, setSelectedAnalyzer] = useState(null);
+  const [testConnectionModal, setTestConnectionModal] = useState({
+    open: false,
+    analyzer: null,
+  });
+  const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    analyzer: null,
+  });
 
   // Load analyzers from API
   const loadAnalyzers = useCallback((searchFilters = {}) => {
@@ -218,8 +230,18 @@ const AnalyzersList = () => {
         className="analyzers-list-header"
         data-testid="analyzers-list-header"
       >
-        <h1>{intl.formatMessage({ id: "analyzer.list.title" })}</h1>
+        <div className="analyzers-list-header-title">
+          <PageTitle
+            breadcrumbs={[
+              { label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }) },
+              { label: intl.formatMessage({ id: "analyzer.page.hierarchy.list" }) }
+            ]}
+            subtitle={intl.formatMessage({ id: "analyzer.list.subtitle" })}
+          />
+        </div>
         <Button
+          kind="primary"
+          renderIcon={Add}
           data-testid="add-analyzer-button"
           onClick={() => {
             setSelectedAnalyzer(null);
@@ -232,7 +254,7 @@ const AnalyzersList = () => {
 
       {/* Statistics Cards */}
       <Grid className="analyzers-list-stats" data-testid="analyzers-list-stats">
-        <Column lg={4} md={4} sm={4}>
+        <Column lg={5} md={4} sm={4}>
           <Tile data-testid="stat-total">
             <div className="stat-label">
               {intl.formatMessage({ id: "analyzer.stat.total" })}
@@ -240,7 +262,7 @@ const AnalyzersList = () => {
             <div className="stat-value">{stats.total}</div>
           </Tile>
         </Column>
-        <Column lg={4} md={4} sm={4}>
+        <Column lg={6} md={4} sm={4}>
           <Tile data-testid="stat-active">
             <div className="stat-label">
               {intl.formatMessage({ id: "analyzer.stat.active" })}
@@ -248,7 +270,7 @@ const AnalyzersList = () => {
             <div className="stat-value">{stats.active}</div>
           </Tile>
         </Column>
-        <Column lg={4} md={4} sm={4}>
+        <Column lg={5} md={4} sm={4}>
           <Tile data-testid="stat-inactive">
             <div className="stat-label">
               {intl.formatMessage({ id: "analyzer.stat.inactive" })}
@@ -263,21 +285,27 @@ const AnalyzersList = () => {
         className="analyzers-list-filters"
         data-testid="analyzers-list-filters"
       >
-        <Search
-          data-testid="analyzer-search-input"
-          placeholder={intl.formatMessage({
-            id: "analyzer.search.placeholder",
-          })}
-          labelText={intl.formatMessage({ id: "analyzer.search.label" })}
-          value={searchTerm}
-          onChange={(e) => handleSearch(e.target.value)}
-          size="lg"
-        />
+        <Grid>
+          <Column lg={16} md={8} sm={4}>
+            <Search
+              data-testid="analyzer-search-input"
+              placeholder={intl.formatMessage({
+                id: "analyzer.search.placeholder",
+              })}
+              labelText={intl.formatMessage({ id: "analyzer.search.label" })}
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
+              size="lg"
+            />
+          </Column>
+        </Grid>
         {/* TODO: Add filter dropdowns for status, testUnit, analyzerType */}
       </div>
 
       {/* DataTable */}
-      <TableContainer data-testid="analyzers-table-container">
+      <Grid>
+        <Column lg={16} md={8} sm={4}>
+          <TableContainer data-testid="analyzers-table-container">
         <DataTable rows={rows} headers={headers} isSortable>
           {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
             <Table {...getTableProps()} data-testid="analyzers-table">
@@ -351,6 +379,18 @@ const AnalyzersList = () => {
                               />
                               <OverflowMenuItem
                                 itemText={intl.formatMessage({
+                                  id: "analyzer.action.testConnection",
+                                })}
+                                onClick={() => {
+                                  setTestConnectionModal({
+                                    open: true,
+                                    analyzer: analyzer,
+                                  });
+                                }}
+                                data-testid={`analyzer-action-test-connection-${row.id}`}
+                              />
+                              <OverflowMenuItem
+                                itemText={intl.formatMessage({
                                   id: "analyzer.action.edit",
                                 })}
                                 onClick={() => {
@@ -365,7 +405,10 @@ const AnalyzersList = () => {
                                 })}
                                 isDelete
                                 onClick={() => {
-                                  // TODO: Implement delete
+                                  setDeleteModal({
+                                    open: true,
+                                    analyzer: analyzer,
+                                  });
                                 }}
                                 data-testid={`analyzer-action-delete-${row.id}`}
                               />
@@ -386,7 +429,9 @@ const AnalyzersList = () => {
             </Table>
           )}
         </DataTable>
-      </TableContainer>
+          </TableContainer>
+        </Column>
+      </Grid>
 
       {/* AnalyzerForm Modal */}
       {analyzerFormOpen && (
@@ -397,6 +442,32 @@ const AnalyzersList = () => {
             setAnalyzerFormOpen(false);
             setSelectedAnalyzer(null);
             loadAnalyzers(); // Reload list after form closes
+          }}
+        />
+      )}
+
+      {/* Test Connection Modal */}
+      {testConnectionModal.open && (
+        <TestConnectionModal
+          analyzer={testConnectionModal.analyzer}
+          open={testConnectionModal.open}
+          onClose={() => {
+            setTestConnectionModal({ open: false, analyzer: null });
+          }}
+        />
+      )}
+
+      {/* Delete Analyzer Modal */}
+      {deleteModal.open && (
+        <DeleteAnalyzerModal
+          analyzer={deleteModal.analyzer}
+          open={deleteModal.open}
+          onClose={() => {
+            setDeleteModal({ open: false, analyzer: null });
+          }}
+          onConfirm={(deletedId) => {
+            // Reload analyzers list after successful delete
+            loadAnalyzers();
           }}
         />
       )}

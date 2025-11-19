@@ -80,6 +80,9 @@ const FieldMappingPanel = ({
         </h3>
         <Search
           data-testid="field-mapping-search"
+          labelText={intl.formatMessage({
+            id: "analyzer.fieldMapping.panel.source.search",
+          })}
           placeholder={intl.formatMessage({
             id: "analyzer.fieldMapping.panel.source.search",
           })}

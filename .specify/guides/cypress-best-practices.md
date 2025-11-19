@@ -278,6 +278,102 @@ const endpoint = `${config.serverBaseUrl}/rest/storage/...`;
 
 ## Debugging Quick Guide
 
+### Browser Console Logs
+
+**MANDATORY**: Browser console logs are automatically captured and displayed in
+terminal output. This is critical for debugging JavaScript errors, API failures,
+and unexpected warnings.
+
+**What You'll See**:
+```bash
+[ERROR] Warning: Failed prop type: The prop `ariaLabel` is marked as required...
+[WARN] Component is using deprecated API
+[LOG] User action: Sample assigned
+[INFO] Authenticated
+```
+
+**Implementation** (in `cypress/support/e2e.js`):
+
+```javascript
+// Capture browser console logs and forward to terminal
+let consoleLogQueue = [];
+
+const formatMessage = (args) => {
+  return args.map((arg) => {
+    if (typeof arg === "object") {
+      try {
+        return JSON.stringify(arg, null, 2);
+      } catch (e) {
+        return String(arg);
+      }
+    }
+    return String(arg);
+  }).join(" ");
+};
+
+// Forward queued logs after each command
+Cypress.on("command:enqueued", () => {
+  if (consoleLogQueue.length > 0) {
+    const logs = [...consoleLogQueue];
+    consoleLogQueue = [];
+    logs.forEach((log) => {
+      cy.task("log", `[${log.type.toUpperCase()}] ${log.message}`, { log: true });
+    });
+  }
+});
+
+Cypress.on("window:before:load", (win) => {
+  // Override console methods to capture and queue logs
+  const originalError = win.console.error;
+  const originalWarn = win.console.warn;
+  const originalLog = win.console.log;
+  const originalInfo = win.console.info;
+
+  win.console.error = (...args) => {
+    originalError.apply(win.console, args);
+    consoleLogQueue.push({ type: "error", message: formatMessage(args) });
+  };
+
+  win.console.warn = (...args) => {
+    originalWarn.apply(win.console, args);
+    consoleLogQueue.push({ type: "warn", message: formatMessage(args) });
+  };
+
+  win.console.log = (...args) => {
+    originalLog.apply(win.console, args);
+    consoleLogQueue.push({ type: "log", message: formatMessage(args) });
+  };
+
+  win.console.info = (...args) => {
+    originalInfo.apply(win.console, args);
+    consoleLogQueue.push({ type: "info", message: formatMessage(args) });
+  };
+});
+```
+
+**Configuration** (in `cypress.config.js`):
+
+```javascript
+setupNodeEvents(on, config) {
+  on("task", {
+    log(message, options = {}) {
+      if (options.log !== false) {
+        console.log(message);
+      }
+      return null;
+    },
+  });
+  return config;
+}
+```
+
+**Why This Approach**:
+- Browser console logs are essential for debugging ([Electron docs](https://www.electronjs.org/docs/latest/tutorial/application-debugging))
+- `cy.task("log", ...)` forwards to terminal output
+- Queue pattern batches logs for performance
+- Captures all console.error, console.warn, console.log, console.info
+- No test code changes needed - works automatically
+
 **Chrome DevTools**:
 
 1. Right-click in Cypress UI → Inspect
@@ -306,7 +402,7 @@ cy.get('[data-state="error"]')
   .and("include", "Invalid barcode format");
 ```
 
-**Console.log Debugging Patterns**:
+**API Call Debugging** (when you need more detail):
 
 ```javascript
 // Extensive logging for debugging API calls

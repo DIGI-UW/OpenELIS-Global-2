@@ -61,6 +61,10 @@ export default function QueryStatusModal({
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    // Remove focus from any button before closing to prevent aria-hidden warning
+    if (document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
     onClose && onClose();
   };
 
@@ -70,6 +74,7 @@ export default function QueryStatusModal({
       onClose={handleClose}
       aria-label="Query Status"
       data-testid="query-status-modal"
+      preventCloseOnClickOutside={false}
     >
       <ModalHeader
         title={<FormattedMessage id="analyzer.query.modal.title" />}

@@ -135,8 +135,14 @@ impacted messages can be reprocessed successfully.
 - **FR-001**: System MUST provide an Analyzers List page with a searchable,
   filterable data table displaying all analyzers. The page MUST include: a page
   header with "Analyzers" title and "Add Analyzer" primary action button, a
-  statistics section with 3-column grid displaying cards for Total Analyzers,
-  Active Analyzers, and Inactive Analyzers, a search bar with filter dropdowns
+   statistics section with 3-column grid displaying cards for Total Analyzers,
+   Active Analyzers, and Inactive Analyzers. The statistics cards MUST span the
+   same width as the table/content below, using a single-row layout with
+   equal-width cards (3 columns), aligned with table edges for visual
+   consistency. Each card MUST use color-coding and thematic icons: Total
+   Analyzers (blue Carbon token + Analytics icon from @carbon/icons-react),
+   Active (green Carbon token + CheckmarkFilled icon), Inactive (gray Carbon
+   token + WarningAlt icon). A search bar with filter dropdowns
   (Status, Test Unit, Analyzer Type) with 300ms debounce, active filter pills
   (dismissible tags) below the search bar, sortable columns (Name, Type,
   Connection (IP:Port), Test Units, Status, Last Modified, Actions), default
@@ -151,7 +157,8 @@ impacted messages can be reprocessed successfully.
   (`WHERE analyzer.test_unit_ids && ARRAY[selected_unit_ids]`). The UI displays
   test unit names for user selection, but filtering logic uses IDs for database
   queries. System MUST allow authorized users to register and manage ASTM
-  analyzers via an Add/Edit Analyzer modal (ComposedModal, medium size 640px)
+   analyzers via an Add/Edit Analyzer modal (ComposedModal, small size
+   ~400-480px)
   with the following attributes: dialog header with title "Add New Analyzer" /
   "Edit Analyzer" and subtitle "Configure analyzer connection settings and test
   units", form fields including analyzer name (unique, required, 1-100
@@ -169,8 +176,8 @@ impacted messages can be reprocessed successfully.
   by user, all auto-generated). The modal MUST have scrollable content with
   fixed action buttons (Cancel secondary, Save primary). System MUST validate
   analyzer name uniqueness and MUST generate a warning (but not block) if
-  IP:Port combination is duplicate. System MUST provide a Test Connection modal
-  (ComposedModal) with three states: (1) Initial state showing analyzer
+  IP:Port combination is duplicate.    System MUST provide a Test Connection modal
+   (ComposedModal, small size ~400-480px) with three states: (1) Initial state showing analyzer
   information section (read-only display of analyzer name, type, connection
   IP:Port, protocol version) with "Test Connection" button in footer, (2)
   Progress state with loading indicator, "Testing connection..." text, progress
@@ -247,7 +254,8 @@ impacted messages can be reprocessed successfully.
   qualitative mapping modal interface. The system MUST allow multiple analyzer
   values to map to the same OpenELIS code (many-to-one mapping) and MUST allow
   users to specify a default OpenELIS code for unmapped qualitative values.
-- **FR-006**: System MUST provide a Copy Mappings modal (ComposedModal) that
+- **FR-006**: System MUST provide a Copy Mappings modal (ComposedModal, small
+  size ~400-480px) that
   allows users to copy all field mappings from a source analyzer to the current
   analyzer. The modal MUST include: dialog header with title "Copy Field
   Mappings" and subtitle "Copy field mappings from {source analyzer} to {target
@@ -387,9 +395,15 @@ impacted messages can be reprocessed successfully.
 - **FR-016**: System MUST provide an Error Dashboard page that displays all
   unmapped or failed analyzer messages. The page MUST include: a page header
   with title "Error Dashboard" and "Acknowledge All" primary action button (with
-  icon), a statistics section with 4-column grid displaying cards for Total
+  icon),   a statistics section with 4-column grid displaying cards for Total
   Errors (large number display), Unacknowledged (large number display), Critical
-  (large number display), and Last 24 Hours (large number display), a filter bar
+  (large number display), and Last 24 Hours (large number display). The
+  statistics cards MUST span the same width as the table/content below, using a
+  single-row layout with equal-width cards (4 columns), aligned with table edges
+  for visual consistency. Each card MUST use color-coding and thematic icons:
+  Total Errors (red Carbon token + Error icon), Unacknowledged (orange Carbon
+  token + WarningAltFilled icon), Critical (red Carbon token + ErrorFilled
+  icon), Last 24 Hours (blue Carbon token + Time icon). A filter bar
   with search input (placeholder: "Search errors..."), Error Type filter
   dropdown (default: "All Types"), Severity filter dropdown (default: "All
   Severities"), and Analyzer filter dropdown (default: "All"), a searchable,
@@ -705,6 +719,24 @@ analyzer mapping are listed:_
   Actions”) plus the main QC dashboard link. These QC routes point to the 003
   Westgard feature but remain visible so users see a consistent hierarchy even
   before QC is fully delivered.
+
+### Session 2025-01-19
+
+- Q: Modal sizes for CRUD operations and Test Connection → A: Option A - Use
+  Carbon "sm" (small) size (~400-480px width) for Add/Edit Analyzer, Test
+  Connection, Copy Mappings, and Delete modals. All CRUD operations and test
+  connection actions MUST open in small modals to maintain a compact, consistent
+  UI experience.
+- Q: Dashboard tile width and layout → A: Option A - Dashboard tiles span the
+  same width as the table/content below, using a single-row layout with
+  equal-width cards (3 columns), aligned with table edges. The statistics cards
+  MUST be better-laid out and aligned with the table width for visual
+  consistency.
+- Q: Color-coding and thematic icons for dashboard tiles → A: Option A -
+  Color-coded tiles with thematic icons: Total Analyzers (blue Carbon token +
+  Analytics icon), Active (green Carbon token + CheckmarkFilled icon), Inactive
+  (gray Carbon token + WarningAlt icon). Dashboard tiles MUST use color-coding
+  and thematic icons to improve visual distinction and enable quick scanning.
 
 ## Success Criteria _(mandatory)_
 

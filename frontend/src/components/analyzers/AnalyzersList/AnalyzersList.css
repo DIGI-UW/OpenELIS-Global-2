@@ -2,15 +2,45 @@
   padding: 1rem;
 }
 
+/* Ensure consistent content width - all Grid content should align with title */
+.analyzers-list .cds--grid {
+  margin: 0;
+  padding: 0; /* Remove Carbon's default side padding */
+}
+
+.analyzers-list .cds--col {
+  padding: 0;
+}
+
 .analyzers-list-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.analyzers-list-header-title {
+  flex: 1;
+  min-width: 0; /* Allow title to shrink if needed */
 }
 
 .analyzers-list-stats {
   margin-bottom: 1rem;
+}
+
+.analyzers-list-stats .cds--tile {
+  background-color: var(--cds-layer-01);
+  margin-bottom: 1rem;
+}
+
+/* Stats grid uses negative margin for tighter spacing between tiles */
+.analyzers-list-stats .cds--grid {
+  margin: 0 -0.5rem;
+}
+
+.analyzers-list-stats .cds--col {
+  padding: 0 0.5rem;
 }
 
 .stat-label {
@@ -25,5 +55,5 @@
 }
 
 .analyzers-list-filters {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }

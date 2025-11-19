@@ -15,9 +15,7 @@ import { useIntl } from "react-intl";
 import {
   createAnalyzer,
   updateAnalyzer,
-  testConnection,
 } from "../../../services/analyzerService";
-import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import "./AnalyzerForm.css";
 
 const AnalyzerForm = ({ analyzer, open, onClose }) => {
@@ -37,7 +35,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
-  const [testConnectionModalOpen, setTestConnectionModalOpen] = useState(false);
 
   // Analyzer type options
   const analyzerTypeOptions = [
@@ -191,24 +188,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     }
   };
 
-  // Handle test connection
-  const handleTestConnection = () => {
-    if (!formData.ipAddress || !formData.port) {
-      setNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "analyzer.form.error.testConnection" }),
-        subtitle: intl.formatMessage({
-          id: "analyzer.form.error.testConnection.missingFields",
-        }),
-      });
-      return;
-    }
-
-    // For new analyzers, we need to save first or use temporary ID
-    // For now, just show the modal (will be implemented in TestConnectionModal)
-    setTestConnectionModalOpen(true);
-  };
-
   return (
     <>
       <ComposedModal open={open} onClose={onClose} data-testid="analyzer-form">
@@ -231,7 +210,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             />
           )}
 
-          <FormGroup>
+          <FormGroup legendText="">
             <TextInput
               id="analyzer-name"
               data-testid="analyzer-form-name-input"
@@ -259,6 +238,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                   (opt) => opt.id === formData.analyzerType,
                 ) || null
               }
+              itemToString={(item) => (item ? item.text : "")}
               onChange={({ selectedItem }) =>
                 handleFieldChange("analyzerType", selectedItem?.id || "")
               }
@@ -310,16 +290,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
               onToggle={(checked) => handleFieldChange("active", checked)}
             />
           </FormGroup>
-
-          <FormGroup legendText="">
-            <Button
-              kind="tertiary"
-              onClick={handleTestConnection}
-              data-testid="analyzer-form-test-connection-button"
-            >
-              {intl.formatMessage({ id: "analyzer.form.testConnection" })}
-            </Button>
-          </FormGroup>
         </ModalBody>
         <ModalFooter>
           <Button
@@ -339,14 +309,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           </Button>
         </ModalFooter>
       </ComposedModal>
-
-      {testConnectionModalOpen && (
-        <TestConnectionModal
-          analyzer={analyzer || { ...formData, id: "temp" }}
-          open={testConnectionModalOpen}
-          onClose={() => setTestConnectionModalOpen(false)}
-        />
-      )}
     </>
   );
 };

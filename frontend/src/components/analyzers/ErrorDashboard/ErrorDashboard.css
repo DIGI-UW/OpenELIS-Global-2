@@ -2,19 +2,59 @@
   padding: 1rem;
 }
 
+/* Ensure consistent content width - all Grid content should align with title */
+.error-dashboard .cds--grid {
+  margin: 0;
+  padding: 0; /* Remove Carbon's default side padding */
+}
+
+.error-dashboard .cds--col {
+  padding: 0;
+}
+
 .error-dashboard-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.error-dashboard-header-title {
+  flex: 1;
+  min-width: 0; /* Allow title to shrink if needed */
 }
 
 .error-dashboard-stats {
   margin-bottom: 1rem;
 }
 
-.error-dashboard-filters {
+.error-dashboard-stats .cds--tile {
+  background-color: var(--cds-layer-01);
   margin-bottom: 1rem;
+}
+
+/* Stats grid uses negative margin for tighter spacing between tiles */
+.error-dashboard-stats .cds--grid {
+  margin: 0 -0.5rem;
+}
+
+.error-dashboard-stats .cds--col {
+  padding: 0 0.5rem;
+}
+
+.error-dashboard-filters {
+  margin-bottom: 1.5rem;
+}
+
+/* Filters grid uses negative margin for tighter spacing between dropdowns */
+.error-dashboard-filters .cds--grid {
+  margin: 0 -0.5rem;
+}
+
+.error-dashboard-filters .cds--col {
+  padding: 0 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .stat-label {

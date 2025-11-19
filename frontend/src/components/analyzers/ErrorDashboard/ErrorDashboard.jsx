@@ -36,6 +36,7 @@ import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../../../components/utils/Utils";
 import ErrorDetailsModal from "./ErrorDetailsModal";
+import PageTitle from "../../common/PageTitle/PageTitle";
 import "./ErrorDashboard.css";
 
 const ErrorDashboard = () => {
@@ -347,7 +348,15 @@ const ErrorDashboard = () => {
         className="error-dashboard-header"
         data-testid="error-dashboard-header"
       >
-        <h1>{intl.formatMessage({ id: "analyzer.errorDashboard.title" })}</h1>
+        <div className="error-dashboard-header-title">
+          <PageTitle
+            breadcrumbs={[
+              { label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }), link: "/analyzers" },
+              { label: intl.formatMessage({ id: "analyzer.errorDashboard.title" }) }
+            ]}
+            subtitle={intl.formatMessage({ id: "analyzer.errorDashboard.subtitle" })}
+          />
+        </div>
         <Button
           kind="primary"
           data-testid="acknowledge-all-button"
@@ -362,7 +371,7 @@ const ErrorDashboard = () => {
         className="error-dashboard-stats"
         data-testid="error-dashboard-stats"
       >
-        <Column lg={3} md={4} sm={4}>
+        <Column lg={4} md={4} sm={4}>
           <Tile data-testid="stat-total">
             <div className="stat-label">
               {intl.formatMessage({
@@ -372,7 +381,7 @@ const ErrorDashboard = () => {
             <div className="stat-value">{stats.total}</div>
           </Tile>
         </Column>
-        <Column lg={3} md={4} sm={4}>
+        <Column lg={4} md={4} sm={4}>
           <Tile data-testid="stat-unacknowledged">
             <div className="stat-label">
               {intl.formatMessage({
@@ -382,7 +391,7 @@ const ErrorDashboard = () => {
             <div className="stat-value">{stats.unacknowledged}</div>
           </Tile>
         </Column>
-        <Column lg={3} md={4} sm={4}>
+        <Column lg={4} md={4} sm={4}>
           <Tile data-testid="stat-critical">
             <div className="stat-label">
               {intl.formatMessage({
@@ -392,7 +401,7 @@ const ErrorDashboard = () => {
             <div className="stat-value">{stats.critical}</div>
           </Tile>
         </Column>
-        <Column lg={3} md={4} sm={4}>
+        <Column lg={4} md={4} sm={4}>
           <Tile data-testid="stat-last24hours">
             <div className="stat-label">
               {intl.formatMessage({
@@ -410,7 +419,7 @@ const ErrorDashboard = () => {
         data-testid="error-dashboard-filters"
       >
         <Grid>
-          <Column lg={4} md={4} sm={4}>
+          <Column lg={5} md={4} sm={4}>
             <Search
               data-testid="error-search-input"
               placeholder={intl.formatMessage({
@@ -516,11 +525,49 @@ const ErrorDashboard = () => {
               }
             />
           </Column>
+          <Column lg={3} md={4} sm={4}>
+            <Dropdown
+              id="analyzer-filter"
+              data-testid="analyzer-filter"
+              titleText={intl.formatMessage({
+                id: "analyzer.errorDashboard.filter.analyzer",
+              })}
+              label={intl.formatMessage({
+                id: "analyzer.errorDashboard.filter.analyzer.all",
+              })}
+              items={[
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.filter.analyzer.all",
+                }),
+                // TODO: Populate with actual analyzer list from API
+                // For now, show empty list - will be populated when AnalyzerErrorRestController is implemented
+              ]}
+              selectedItem={
+                filters.analyzer ||
+                intl.formatMessage({
+                  id: "analyzer.errorDashboard.filter.analyzer.all",
+                })
+              }
+              onChange={({ selectedItem }) =>
+                handleFilterChange(
+                  "analyzer",
+                  selectedItem ===
+                    intl.formatMessage({
+                      id: "analyzer.errorDashboard.filter.analyzer.all",
+                    })
+                    ? ""
+                    : selectedItem,
+                )
+              }
+            />
+          </Column>
         </Grid>
       </div>
 
       {/* DataTable */}
-      <TableContainer data-testid="error-table-container">
+      <Grid>
+        <Column lg={16} md={8} sm={4}>
+          <TableContainer data-testid="error-table-container">
         <DataTable rows={rows} headers={headers} isSortable>
           {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
             <Table {...getTableProps()} data-testid="error-table">
@@ -610,7 +657,11 @@ const ErrorDashboard = () => {
                         } else if (headerKey === "actions") {
                           testId = `error-actions-${row.id}`;
                           cellContent = error ? (
-                            <OverflowMenu>
+                            <OverflowMenu
+                              ariaLabel={intl.formatMessage({
+                                id: "analyzer.errorDashboard.action.menu",
+                              })}
+                            >
                               <OverflowMenuItem
                                 itemText={intl.formatMessage({
                                   id: "analyzer.errorDashboard.action.viewDetails",
@@ -646,7 +697,9 @@ const ErrorDashboard = () => {
             </Table>
           )}
         </DataTable>
-      </TableContainer>
+          </TableContainer>
+        </Column>
+      </Grid>
 
       {/* Error Details Modal */}
       {errorDetailsOpen && selectedError && (

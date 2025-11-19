@@ -1,33 +1,80 @@
 /**
  * FieldMapping Component Styles
- * Task Reference: T059
+ * Task Reference: T059, T8 (UI/UX Updates)
  */
 
 .field-mapping {
   padding: 1rem;
 }
 
+/* Ensure consistent content width - all Grid content should align with title */
+.field-mapping .cds--grid {
+  margin: 0;
+  padding: 0; /* Remove Carbon's default side padding */
+}
+
+.field-mapping .cds--col {
+  padding: 0;
+}
+
 .field-mapping-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
 }
 
-.field-mapping-header h1 {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 400;
+.field-mapping-header-title {
   flex: 1;
-  text-align: center;
+  min-width: 0; /* Allow title to shrink if needed */
+}
+
+/* Statistics Cards */
+.field-mapping-stats {
+  margin-bottom: 1.5rem;
+  margin-top: 1rem;
+}
+
+.field-mapping-stats .cds--tile {
+  background-color: var(--cds-layer-01);
+  margin-bottom: 1rem;
+}
+
+/* Stats grid uses negative margin for tighter spacing between tiles */
+.field-mapping-stats .cds--grid {
+  margin: 0 -0.5rem;
+}
+
+.field-mapping-stats .cds--col {
+  padding: 0 0.5rem;
+}
+
+.field-mapping-stats .stat-label {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.field-mapping-stats .stat-value {
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+/* Action Buttons */
+.field-mapping-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
 }
 
 .field-mapping-grid {
-  margin-top: 2rem;
+  margin-top: 1rem;
 }
 
 .mapping-panel-placeholder {
   padding: 2rem;
   text-align: center;
-  color: #525252;
+  color: var(--cds-text-secondary);
 }

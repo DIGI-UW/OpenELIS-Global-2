@@ -2183,6 +2183,12 @@ cy.get('[role="menuitem"]').contains("Delete").click();
 - **Viewport issues**: Set viewport before visit
 - **Timing issues**: Use `.should()` instead of `cy.wait()`
 
+#### Browser Console Log Capture
+
+Browser console logs are automatically captured and displayed in Cypress E2E test
+output. See [Cypress Best Practices - Browser Console Logs](.specify/guides/cypress-best-practices.md#browser-console-logs)
+for implementation details.
+
 **Post-Run Review**: See
 [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
 for mandatory post-run review requirements (console logs, screenshots, test
@@ -2237,7 +2243,21 @@ module.exports = defineConfig({
   defaultCommandTimeout: 10000, // Appropriate for Carbon components
   e2e: {
     setupNodeEvents(on, config) {
-      // Browser console logging enabled by default (Cypress captures automatically)
+      // Task to forward browser console logs to terminal
+      // This is used by cypress/support/e2e.js console capture
+      on("task", {
+        log(message, options = {}) {
+          // Forward console logs to terminal output
+          if (options.log !== false) {
+            console.log(message);
+          }
+          return null;
+        },
+        logObject(obj) {
+          console.log(JSON.stringify(obj, null, 2));
+          return null;
+        },
+      });
       return config;
     },
     baseUrl: "https://localhost",
@@ -2247,6 +2267,9 @@ module.exports = defineConfig({
   viewportHeight: 900,
 });
 ```
+
+**Console Log Capture**: Browser console logs automatically captured in E2E tests.
+See [Cypress Best Practices](.specify/guides/cypress-best-practices.md#browser-console-logs) for details.
 
 ---
 

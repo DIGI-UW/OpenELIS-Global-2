@@ -66,11 +66,20 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
   // Analyzer logs (placeholder - will be populated from API)
   const analyzerLogs = error.analyzerLogs || [];
 
+  const handleClose = () => {
+    // Remove focus from any button before closing to prevent aria-hidden warning
+    if (document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
+    onClose && onClose();
+  };
+
   return (
     <ComposedModal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       data-testid="error-details-modal"
+      preventCloseOnClickOutside={false}
     >
       <ModalHeader
         label={intl.formatMessage(
@@ -79,7 +88,7 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
         )}
         title={intl.formatMessage({ id: "analyzer.errorDetails.title" })}
       />
-      <ModalBody>
+      <ModalBody className="error-details-modal">
         <Grid>
           {/* Error Information */}
           <Column lg={16}>
@@ -193,7 +202,7 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
       <ModalFooter>
         <Button
           kind="secondary"
-          onClick={onClose}
+          onClick={handleClose}
           data-testid="error-details-close"
         >
           <FormattedMessage id="analyzer.errorDetails.close" />
@@ -203,7 +212,7 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
             kind="primary"
             onClick={() => {
               onAcknowledge(error.id);
-              onClose();
+              handleClose();
             }}
             data-testid="error-details-acknowledge"
           >

@@ -23,8 +23,43 @@ import "./commands";
 
 // Capture browser console logs and forward to terminal
 // This is especially important for Electron browser
-// Note: Electron console logs are automatically shown when ELECTRON_ENABLE_LOGGING=1
-// This handler captures console messages and logs them via Cypress commands when available
+// Queue logs and forward them via cy.task when in command context
+let consoleLogQueue = [];
+
+// Helper to format console message
+const formatMessage = (args) => {
+  return args
+    .map((arg) => {
+      if (typeof arg === "object") {
+        try {
+          return JSON.stringify(arg, null, 2);
+        } catch (e) {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    })
+    .join(" ");
+};
+
+// Process queued console logs when in command context
+Cypress.on("test:before:run", () => {
+  consoleLogQueue = [];
+});
+
+// Forward queued logs after each command
+Cypress.on("command:enqueued", () => {
+  if (consoleLogQueue.length > 0) {
+    const logs = [...consoleLogQueue];
+    consoleLogQueue = [];
+    logs.forEach((log) => {
+      cy.task("log", `[${log.type.toUpperCase()}] ${log.message}`, {
+        log: true,
+      });
+    });
+  }
+});
+
 Cypress.on("window:before:load", (win) => {
   // Store original console methods
   const originalLog = win.console.log;
@@ -32,60 +67,55 @@ Cypress.on("window:before:load", (win) => {
   const originalWarn = win.console.warn;
   const originalInfo = win.console.info;
 
-  // Override console methods to capture logs
+  // Override console methods to capture and queue logs
   win.console.log = (...args) => {
     originalLog.apply(win.console, args);
-    // Store in window for later retrieval
+    const message = formatMessage(args);
+    consoleLogQueue.push({ type: "log", message });
+    // Also store for later retrieval
     if (!win._cypressConsoleLogs) win._cypressConsoleLogs = [];
     win._cypressConsoleLogs.push({
       type: "log",
-      message: args
-        .map((arg) =>
-          typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg),
-        )
-        .join(" "),
+      message: message,
       timestamp: new Date().toISOString(),
     });
   };
 
   win.console.error = (...args) => {
     originalError.apply(win.console, args);
+    const message = formatMessage(args);
+    consoleLogQueue.push({ type: "error", message });
+    // Also store for later retrieval
     if (!win._cypressConsoleLogs) win._cypressConsoleLogs = [];
     win._cypressConsoleLogs.push({
       type: "error",
-      message: args
-        .map((arg) =>
-          typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg),
-        )
-        .join(" "),
+      message: message,
       timestamp: new Date().toISOString(),
     });
   };
 
   win.console.warn = (...args) => {
     originalWarn.apply(win.console, args);
+    const message = formatMessage(args);
+    consoleLogQueue.push({ type: "warn", message });
+    // Also store for later retrieval
     if (!win._cypressConsoleLogs) win._cypressConsoleLogs = [];
     win._cypressConsoleLogs.push({
       type: "warn",
-      message: args
-        .map((arg) =>
-          typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg),
-        )
-        .join(" "),
+      message: message,
       timestamp: new Date().toISOString(),
     });
   };
 
   win.console.info = (...args) => {
     originalInfo.apply(win.console, args);
+    const message = formatMessage(args);
+    consoleLogQueue.push({ type: "info", message });
+    // Also store for later retrieval
     if (!win._cypressConsoleLogs) win._cypressConsoleLogs = [];
     win._cypressConsoleLogs.push({
       type: "info",
-      message: args
-        .map((arg) =>
-          typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg),
-        )
-        .join(" "),
+      message: message,
       timestamp: new Date().toISOString(),
     });
   };
