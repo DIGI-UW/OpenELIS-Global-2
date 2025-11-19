@@ -20,7 +20,7 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
 
     List<NoteBook> getNoteBookEntries(Integer templateId);
 
-    void updateWithStatus(Integer noteBookId, NoteBookStatus status);
+    void updateWithStatus(Integer noteBookId, NoteBookStatus status, String sysUserId);
 
     NoteBook createWithFormValues(NoteBookForm form);
 

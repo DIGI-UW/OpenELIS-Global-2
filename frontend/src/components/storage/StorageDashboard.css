@@ -1,0 +1,207 @@
+.storage-dashboard {
+  padding: 1rem;
+}
+
+/* Dashboard title */
+.storage-dashboard .dashboard-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  margin-top: 0;
+  color: var(--cds-text-primary);
+}
+
+/* Dashboard indicator panels - better styling */
+.storage-dashboard .cds--tile {
+  min-height: 140px;
+  border-left: 4px solid var(--cds-link-primary);
+  background: var(--cds-layer-01);
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  border-radius: 4px;
+}
+
+.storage-dashboard .cds--tile:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.storage-dashboard .cds--tile h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 0.75rem 0;
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--cds-text-primary);
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* Larger tabs positioned below metric cards - connected to content */
+.storage-dashboard .cds--tabs {
+  margin-top: 2rem;
+  margin-bottom: 0;
+  border-left: 3px solid var(--cds-link-primary);
+  padding-left: 0;
+  border-radius: 0;
+  border-bottom: none !important;
+}
+
+/* Remove bottom border from tab nav container and all default borders */
+.storage-dashboard .cds--tabs .cds--tabs__nav {
+  border-bottom: none !important;
+  border: none !important;
+}
+
+/* Remove all default borders from tab list items */
+.storage-dashboard .cds--tabs .cds--tabs__nav-item {
+  border: none !important;
+}
+
+/* No padding on the grid column - align with body */
+.storage-dashboard .tabs-column {
+  padding: 0;
+}
+
+/* Blue left border on tab content - connects to tab border seamlessly */
+.storage-dashboard .cds--tab-content {
+  border-left: 3px solid var(--cds-link-primary);
+  padding-left: 1rem;
+  margin-top: -1px; /* Eliminate vertical gap between tab nav and content */
+  border-radius: 0;
+}
+
+/* No padding for tab content - let inner elements handle their own padding */
+.storage-dashboard .cds--tabs__panel {
+  margin-top: 0;
+  padding: 0 !important;
+}
+
+.storage-dashboard .cds--tab-content {
+  padding: 0 !important;
+}
+
+.storage-dashboard .cds--tabs .cds--tabs__nav {
+  font-size: 1.125rem;
+}
+
+.storage-dashboard .cds--tabs .cds--tabs__nav-link {
+  padding: 1.25rem 2rem;
+  font-size: 1.125rem !important;
+  font-weight: 400 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  min-width: 120px;
+  /* Allow tab-specific borders to override */
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+}
+
+/* Blue top border for active tabs only - explicitly override any default borders */
+.storage-dashboard .cds--tabs .cds--tabs__nav-link[aria-selected="true"] {
+  border-top-width: 3px !important;
+  border-top-style: solid !important;
+  border-top-color: var(--cds-link-primary) !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-width: 3px 0 0 0 !important;
+  box-shadow: none !important;
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+}
+
+/* Remove pseudo-element borders that Carbon might add */
+.storage-dashboard
+  .cds--tabs
+  .cds--tabs__nav-link[aria-selected="true"]::before,
+.storage-dashboard
+  .cds--tabs
+  .cds--tabs__nav-link[aria-selected="true"]::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+}
+
+/* Remove focus outline and extra borders, but preserve top border for active tabs */
+.storage-dashboard .cds--tabs .cds--tabs__nav-link:focus {
+  outline: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  box-shadow: none !important;
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+}
+
+/* Ensure active tabs keep their top border even when focused */
+.storage-dashboard .cds--tabs .cds--tabs__nav-link[aria-selected="true"]:focus {
+  border-top: 3px solid var(--cds-link-primary) !important;
+}
+
+/* Search section - full width with padding to match table */
+.storage-dashboard .search-section {
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+  padding: 0 1rem;
+}
+
+.storage-dashboard .search-section .cds--search {
+  width: 100%;
+}
+
+/* Filters row with padding to match table */
+.storage-dashboard .filters-row {
+  margin-bottom: 1.5rem;
+  margin-top: 0.5rem;
+  padding: 0 1rem;
+}
+
+.storage-dashboard .filters-row .cds--dropdown {
+  width: 100%;
+}
+
+/* Table section with title */
+.storage-dashboard .table-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.storage-dashboard .table-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: var(--cds-text-primary);
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--cds-border-subtle);
+}
+
+.storage-dashboard .cds--data-table {
+  margin-top: 0;
+}
+
+.storage-dashboard .cds--data-table-container {
+  padding: 0;
+}
+
+.storage-dashboard .cds--table-container {
+  margin-top: 0;
+}

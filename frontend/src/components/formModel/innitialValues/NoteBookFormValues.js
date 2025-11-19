@@ -28,6 +28,7 @@ export const NoteBookFormValues = {
       fileType: "",
     },
   ],
+  comments: [],
 };
 
 export const NoteBookInitialData = {
@@ -48,6 +49,7 @@ export const NoteBookInitialData = {
   analyzers: [],
   pages: [],
   files: [],
+  comments: [],
   isTemplate: null,
 };
 
