@@ -203,11 +203,8 @@ function OEHeader(props) {
     );
   };
   const generateMenuItems = (menuItem, index, level, path) => {
-    // Contextual visibility: Hide "Field Mappings" sub-nav unless on /analyzers/:id/mappings route
-    if (
-      menuItem.menu.elementId === "menu_analyzers_field_mappings" &&
-      !currentPath.match(/^\/analyzers\/[^/]+\/mappings$/)
-    ) {
+    // Hide "Field Mappings" sub-nav - it's now a modal, not a sidenav item
+    if (menuItem.menu.elementId === "menu_analyzers_field_mappings") {
       return <React.Fragment key={path}></React.Fragment>;
     }
 

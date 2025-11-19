@@ -188,40 +188,34 @@ const FieldMapping = () => {
 
   return (
     <div className="field-mapping" data-testid="field-mapping">
-      {/* Page Header */}
+      {/* Header - simplified for modal context (back button removed, handled by modal) */}
       <div className="field-mapping-header" data-testid="field-mapping-header">
-        <Button
-          kind="ghost"
-          onClick={() => history.push("/analyzers")}
-          data-testid="field-mapping-back-button"
-        >
-          <FormattedMessage id="analyzer.fieldMapping.back" />
-        </Button>
-        <h1 data-testid="field-mapping-title">
+        <h2 data-testid="field-mapping-title" style={{ marginBottom: "1rem" }}>
           {analyzer
             ? analyzer.name
             : intl.formatMessage({ id: "analyzer.fieldMapping.page.title" })}
-        </h1>
-        <Button
-          kind="ghost"
-          data-testid="field-mapping-query-button"
-          onClick={() => {
-            analyzerService.queryAnalyzer(analyzerId, (resp) => {
-              if (resp && resp.jobId) {
-                setQueryJobId(resp.jobId);
-                setQueryModalOpen(true);
-              } else {
-                setQueryModalOpen(true);
-              }
-            });
-          }}
-          style={{ marginRight: "0.5rem" }}
-        >
-          <FormattedMessage id="analyzer.fieldMapping.queryAnalyzer" />
-        </Button>
-        <Button kind="primary" data-testid="field-mapping-save-button">
-          <FormattedMessage id="analyzer.fieldMapping.save" />
-        </Button>
+        </h2>
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+          <Button
+            kind="tertiary"
+            data-testid="field-mapping-query-button"
+            onClick={() => {
+              analyzerService.queryAnalyzer(analyzerId, (resp) => {
+                if (resp && resp.jobId) {
+                  setQueryJobId(resp.jobId);
+                  setQueryModalOpen(true);
+                } else {
+                  setQueryModalOpen(true);
+                }
+              });
+            }}
+          >
+            <FormattedMessage id="analyzer.fieldMapping.queryAnalyzer" />
+          </Button>
+          <Button kind="primary" data-testid="field-mapping-save-button">
+            <FormattedMessage id="analyzer.fieldMapping.save" />
+          </Button>
+        </div>
       </div>
 
       {/* Dual Panel Layout */}

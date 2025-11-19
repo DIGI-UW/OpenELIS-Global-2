@@ -309,7 +309,9 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
               toggled={formData.active}
               onToggle={(checked) => handleFieldChange("active", checked)}
             />
+          </FormGroup>
 
+          <FormGroup legendText="">
             <Button
               kind="tertiary"
               onClick={handleTestConnection}
