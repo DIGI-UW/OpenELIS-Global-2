@@ -35,10 +35,9 @@ import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
 import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
-import AsyncAvatar from '../patient/photoManagement/photoAvatar/AyncAvatar'
+import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 import CompactFileInput from "./fileUpload/FileInput";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
-import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({

@@ -1,30 +1,35 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 import { ArrowRight } from "@carbon/icons-react";
 
-const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) => {
-  const [activeTab, setActiveTab] = useState('upload');
+const PatientPhotoModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  existingPhoto = null,
+}) => {
+  const [activeTab, setActiveTab] = useState("upload");
   const [preview, setPreview] = useState(existingPhoto);
   const [dragActive, setDragActive] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [error, setError] = useState(null);
-  
+
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
   const handleFileSelect = (file) => {
     if (!file) return;
-    
-    if (!file.type.startsWith('image/')) {
-      setError('Veuillez sélectionner une image valide');
+
+    if (!file.type.startsWith("image/")) {
+      setError("Veuillez sélectionner une image valide");
       return;
     }
-    
+
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image trop grande (max 5MB)');
+      setError("Image trop grande (max 5MB)");
       return;
     }
-    
+
     setError(null);
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -48,7 +53,7 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileSelect(e.dataTransfer.files[0]);
     }
@@ -57,8 +62,8 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
   // Camera
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 640, height: 480 } 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480 },
       });
       setCameraStream(stream);
       if (videoRef.current) {
@@ -73,7 +78,7 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
 
   const stopCamera = () => {
     if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
     }
   };
@@ -82,31 +87,29 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
     if (videoRef.current && canvasRef.current) {
       const canvas = canvasRef.current;
       const video = videoRef.current;
-      
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      
-      const ctx = canvas.getContext('2d');
+
+      const ctx = canvas.getContext("2d");
       ctx.drawImage(video, 0, 0);
-      
-      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+      const imageData = canvas.toDataURL("image/jpeg", 0.8);
       setPreview(imageData);
       stopCamera();
     }
   };
 
-
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setError(null);
-    
-    if (tab === 'camera') {
+
+    if (tab === "camera") {
       startCamera();
     } else {
       stopCamera();
     }
   };
-
 
   const handleSave = async () => {
     if (preview) {
@@ -119,7 +122,7 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
     stopCamera();
     setPreview(existingPhoto);
     setError(null);
-    setActiveTab('upload');
+    setActiveTab("upload");
     onClose();
   };
 
@@ -142,15 +145,15 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
         {/* Tabs */}
         <div className="tabs-container">
           <button
-            className={`tab ${activeTab === 'upload' ? 'active' : ''}`}
-            onClick={() => handleTabChange('upload')}
+            className={`tab ${activeTab === "upload" ? "active" : ""}`}
+            onClick={() => handleTabChange("upload")}
           >
             <ArrowRight size={18} />
             <span>Importer</span>
           </button>
           <button
-            className={`tab ${activeTab === 'camera' ? 'active' : ''}`}
-            onClick={() => handleTabChange('camera')}
+            className={`tab ${activeTab === "camera" ? "active" : ""}`}
+            onClick={() => handleTabChange("camera")}
           >
             <ArrowRight size={18} />
             <span>Prendre photo</span>
@@ -167,11 +170,11 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
           )}
 
           {/* Tab Upload */}
-          {activeTab === 'upload' && (
+          {activeTab === "upload" && (
             <div className="upload-tab">
               {!preview ? (
                 <div
-                  className={`dropzone ${dragActive ? 'active' : ''}`}
+                  className={`dropzone ${dragActive ? "active" : ""}`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
                   onDragOver={handleDrag}
@@ -187,7 +190,7 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleFileSelect(e.target.files[0])}
-                    style={{ display: 'none' }}
+                    style={{ display: "none" }}
                   />
                 </div>
               ) : (
@@ -206,7 +209,7 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
           )}
 
           {/* Tab Camera */}
-          {activeTab === 'camera' && (
+          {activeTab === "camera" && (
             <div className="camera-tab">
               {!preview ? (
                 <div className="camera-container">
@@ -216,7 +219,7 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
                     playsInline
                     className="video-feed"
                   />
-                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+                  <canvas ref={canvasRef} style={{ display: "none" }} />
                   {cameraStream && (
                     <button className="capture-btn" onClick={capturePhoto}>
                       <ArrowRight size={24} />
@@ -248,8 +251,8 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
           <button className="btn btn-secondary" onClick={handleClose}>
             Annuler
           </button>
-          <button 
-            className="btn btn-primary" 
+          <button
+            className="btn btn-primary"
             onClick={handleSave}
             disabled={!preview}
           >
@@ -529,7 +532,7 @@ const PatientPhotoUploader = () => {
 
   const handleSavePhoto = async (photoBase64) => {
     setSaving(true);
-    
+
     // Simulation de sauvegarde - remplacer par votre API
     try {
       // const patientId = 'votre-patient-id';
@@ -538,81 +541,85 @@ const PatientPhotoUploader = () => {
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify({ photo: photoBase64 })
       // });
-      // 
+      //
       // if (!response.ok) throw new Error('Erreur sauvegarde');
-      
+
       // Simulation
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       setPatientPhoto(photoBase64);
-      alert('Photo sauvegardée avec succès!');
+      alert("Photo sauvegardée avec succès!");
     } catch (error) {
-      console.error('Erreur:', error);
-      alert('Erreur lors de la sauvegarde');
+      console.error("Erreur:", error);
+      alert("Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div style={{maxWidth: '800px', margin: '0 0' }}>
-      <div style={{ 
-        background: 'white', 
-        padding: '1.5rem', 
-        borderRadius: '4px',
-      }}>
-        <label style={{ 
-          display: 'block', 
-          marginBottom: '0.5rem',
-          fontSize: '0.875rem',
-          fontWeight: '500',
-          color: '#161616'
-        }}>
+    <div style={{ maxWidth: "800px", margin: "0 0" }}>
+      <div
+        style={{
+          background: "white",
+          padding: "1.5rem",
+          borderRadius: "4px",
+        }}
+      >
+        <label
+          style={{
+            display: "block",
+            marginBottom: "0.5rem",
+            fontSize: "0.875rem",
+            fontWeight: "500",
+            color: "#161616",
+          }}
+        >
           Photo du patient
         </label>
-        
-        <div 
+
+        <div
           onClick={() => setIsModalOpen(true)}
           style={{
-            width: '150px',
-            height: '150px',
-            border: '2px dashed #8d8d8d',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            background: patientPhoto ? 'transparent' : '#f4f4f4',
-            transition: 'all 0.2s',
-            overflow: 'hidden'
+            width: "150px",
+            height: "150px",
+            border: "2px dashed #8d8d8d",
+            borderRadius: "4px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            background: patientPhoto ? "transparent" : "#f4f4f4",
+            transition: "all 0.2s",
+            overflow: "hidden",
           }}
           onMouseEnter={(e) => {
             if (!patientPhoto) {
-              e.currentTarget.style.borderColor = '#0f62fe';
-              e.currentTarget.style.background = '#e8f4ff';
+              e.currentTarget.style.borderColor = "#0f62fe";
+              e.currentTarget.style.background = "#e8f4ff";
             }
           }}
           onMouseLeave={(e) => {
             if (!patientPhoto) {
-              e.currentTarget.style.borderColor = '#8d8d8d';
-              e.currentTarget.style.background = '#f4f4f4';
+              e.currentTarget.style.borderColor = "#8d8d8d";
+              e.currentTarget.style.background = "#f4f4f4";
             }
           }}
         >
           {patientPhoto ? (
-            <img 
-              src={patientPhoto} 
-              alt="Patient" 
-              style={{ 
-                width: '100%', 
-                height: '100%', 
-                objectFit: 'cover' 
+            <img
+              src={patientPhoto}
+              alt="Patient"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
               }}
             />
           ) : (
-            <div style={{ textAlign: 'center', color: '#8d8d8d' }}>
+            <div style={{ textAlign: "center", color: "#8d8d8d" }}>
               <ArrowRight size={32} />
-              <p style={{ fontSize: '0.75rem', marginTop: '0.5rem' }}>
+              <p style={{ fontSize: "0.75rem", marginTop: "0.5rem" }}>
                 Cliquer pour ajouter
               </p>
             </div>
@@ -628,16 +635,18 @@ const PatientPhotoUploader = () => {
       />
 
       {saving && (
-        <div style={{
-          position: 'fixed',
-          top: '1rem',
-          right: '1rem',
-          background: '#0f62fe',
-          color: 'white',
-          padding: '1rem',
-          borderRadius: '4px',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-        }}>
+        <div
+          style={{
+            position: "fixed",
+            top: "1rem",
+            right: "1rem",
+            background: "#0f62fe",
+            color: "white",
+            padding: "1rem",
+            borderRadius: "4px",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+          }}
+        >
           Sauvegarde en cours...
         </div>
       )}

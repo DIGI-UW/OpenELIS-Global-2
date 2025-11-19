@@ -989,6 +989,7 @@ public class TestResultItem implements ResultItem, Serializable {
     public void setPatientId(String patientId) {
         this.patientId = patientId;
     }
+
     public ResultFileForm getResultFile() {
         return resultFile;
     }

@@ -1,31 +1,42 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 
-import { Camera, Upload, TrashCan, Checkmark, Close } from '@carbon/icons-react';
+import {
+  Camera,
+  Upload,
+  TrashCan,
+  Checkmark,
+  Close,
+} from "@carbon/icons-react";
 
-const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) => {
-  const [activeTab, setActiveTab] = useState('upload');
+const PatientPhotoModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  existingPhoto = null,
+}) => {
+  const [activeTab, setActiveTab] = useState("upload");
   const [preview, setPreview] = useState(existingPhoto);
   const [dragActive, setDragActive] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [error, setError] = useState(null);
-  
+
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
   const handleFileSelect = (file) => {
     if (!file) return;
-    
-    if (!file.type.startsWith('image/')) {
-      setError('Veuillez sélectionner une image valide');
+
+    if (!file.type.startsWith("image/")) {
+      setError("Veuillez sélectionner une image valide");
       return;
     }
-    
+
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image trop grande (max 5MB)');
+      setError("Image trop grande (max 5MB)");
       return;
     }
-    
+
     setError(null);
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -49,17 +60,17 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileSelect(e.dataTransfer.files[0]);
     }
   };
 
-  //  Camera 
+  //  Camera
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 640, height: 480 } 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480 },
       });
       setCameraStream(stream);
       if (videoRef.current) {
@@ -74,7 +85,7 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
 
   const stopCamera = () => {
     if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
     }
   };
@@ -83,25 +94,24 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
     if (videoRef.current && canvasRef.current) {
       const canvas = canvasRef.current;
       const video = videoRef.current;
-      
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      
-      const ctx = canvas.getContext('2d');
+
+      const ctx = canvas.getContext("2d");
       ctx.drawImage(video, 0, 0);
-      
-      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+      const imageData = canvas.toDataURL("image/jpeg", 0.8);
       setPreview(imageData);
       stopCamera();
     }
   };
 
-
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setError(null);
-    
-    if (tab === 'camera') {
+
+    if (tab === "camera") {
       startCamera();
     } else {
       stopCamera();
@@ -116,12 +126,11 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
     }
   };
 
-
   const handleClose = () => {
     stopCamera();
     setPreview(existingPhoto);
     setError(null);
-    setActiveTab('upload');
+    setActiveTab("upload");
     onClose();
   };
 
@@ -136,8 +145,8 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
       <div className="cds--modal-container">
         <div className="cds--modal-header">
           <h3 className="cds--modal-header__heading">Photo du patient</h3>
-          <button 
-            className="cds--modal-close" 
+          <button
+            className="cds--modal-close"
             type="button"
             onClick={handleClose}
             aria-label="Fermer"
@@ -150,17 +159,17 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
         <div className="cds--tabs">
           <div className="cds--tabs__nav">
             <button
-              className={`cds--tabs__nav-item ${activeTab === 'upload' ? 'cds--tabs__nav-item--selected' : ''}`}
+              className={`cds--tabs__nav-item ${activeTab === "upload" ? "cds--tabs__nav-item--selected" : ""}`}
               type="button"
-              onClick={() => handleTabChange('upload')}
+              onClick={() => handleTabChange("upload")}
             >
               <Upload size={16} />
               <span className="cds--tabs__nav-item-label">Importer</span>
             </button>
             <button
-              className={`cds--tabs__nav-item ${activeTab === 'camera' ? 'cds--tabs__nav-item--selected' : ''}`}
+              className={`cds--tabs__nav-item ${activeTab === "camera" ? "cds--tabs__nav-item--selected" : ""}`}
               type="button"
-              onClick={() => handleTabChange('camera')}
+              onClick={() => handleTabChange("camera")}
             >
               <Camera size={16} />
               <span className="cds--tabs__nav-item-label">Prendre photo</span>
@@ -180,11 +189,11 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
           )}
 
           {/* Tab Upload */}
-          {activeTab === 'upload' && (
+          {activeTab === "upload" && (
             <div className="photo-upload-tab">
               {!preview ? (
                 <div
-                  className={`photo-dropzone ${dragActive ? 'photo-dropzone--active' : ''}`}
+                  className={`photo-dropzone ${dragActive ? "photo-dropzone--active" : ""}`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
                   onDragOver={handleDrag}
@@ -193,19 +202,25 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
                 >
                   <Upload size={48} />
                   <p className="photo-dropzone__title">Glissez une image ici</p>
-                  <p className="photo-dropzone__subtitle">ou cliquez pour parcourir</p>
+                  <p className="photo-dropzone__subtitle">
+                    ou cliquez pour parcourir
+                  </p>
                   <p className="photo-dropzone__info">PNG, JPG jusqu'à 5MB</p>
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleFileSelect(e.target.files[0])}
-                    style={{ display: 'none' }}
+                    style={{ display: "none" }}
                   />
                 </div>
               ) : (
                 <div className="photo-preview">
-                  <img src={preview} alt="Preview" className="photo-preview__image" />
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="photo-preview__image"
+                  />
                   <button
                     className="cds--btn cds--btn--danger cds--btn--sm"
                     type="button"
@@ -220,7 +235,7 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
           )}
 
           {/* Tab Camera */}
-          {activeTab === 'camera' && (
+          {activeTab === "camera" && (
             <div className="photo-camera-tab">
               {!preview ? (
                 <div className="camera-wrapper">
@@ -230,9 +245,9 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
                     playsInline
                     className="camera-video"
                   />
-                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+                  <canvas ref={canvasRef} style={{ display: "none" }} />
                   {cameraStream && (
-                    <button 
+                    <button
                       className="cds--btn cds--btn--primary"
                       type="button"
                       onClick={capturePhoto}
@@ -244,7 +259,11 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
                 </div>
               ) : (
                 <div className="photo-preview">
-                  <img src={preview} alt="Preview" className="photo-preview__image" />
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="photo-preview__image"
+                  />
                   <button
                     className="cds--btn cds--btn--secondary cds--btn--sm"
                     type="button"
@@ -263,14 +282,14 @@ const PatientPhotoModal = ({ isOpen, onClose, onSave, existingPhoto = null }) =>
         </div>
 
         <div className="cds--modal-footer">
-          <button 
-            className="cds--btn cds--btn--secondary" 
+          <button
+            className="cds--btn cds--btn--secondary"
             type="button"
             onClick={handleClose}
           >
             Annuler
           </button>
-          <button 
+          <button
             className="cds--btn cds--btn--primary"
             type="button"
             onClick={handleSave}
@@ -295,15 +314,15 @@ const PatientPhotoField = ({ value, onChange, label = "Photo du patient" }) => {
   return (
     <div className="cds--form-item">
       <label className="cds--label">{label}</label>
-      
-      <div 
+
+      <div
         className="patient-photo-preview"
         onClick={() => setIsModalOpen(true)}
       >
         {value ? (
-          <img 
-            src={value} 
-            alt="Patient" 
+          <img
+            src={value}
+            alt="Patient"
             className="patient-photo-preview__image"
           />
         ) : (
@@ -321,7 +340,7 @@ const PatientPhotoField = ({ value, onChange, label = "Photo du patient" }) => {
         existingPhoto={value}
       />
 
-      <style >{`
+      <style>{`
         /* Styles Carbon Design System */
         .cds--modal {
           position: fixed;
@@ -620,35 +639,35 @@ const PatientPhotoField = ({ value, onChange, label = "Photo du patient" }) => {
 // Exemple d'utilisation dans un formulaire patient
 const PatientFormExample = () => {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    dateOfBirth: '',
-    gender: '',
+    firstName: "",
+    lastName: "",
+    dateOfBirth: "",
+    gender: "",
     photo: null, // La photo sera stockée ici en Base64
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Envoi de toutes les données y compris la photo
-    console.log('Données du formulaire:', formData);
-    
+    console.log("Données du formulaire:", formData);
+
     // Exemple d'envoi API
     // const response = await fetch('/rest/patient', {
     //   method: 'POST',
     //   headers: { 'Content-Type': 'application/json' },
     //   body: JSON.stringify(formData)
     // });
-    
-    alert('Formulaire soumis ! Vérifiez la console pour voir les données.');
+
+    alert("Formulaire soumis ! Vérifiez la console pour voir les données.");
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <h2 style={{ marginBottom: '1.5rem', fontWeight: '400' }}>
+    <div style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto" }}>
+      <h2 style={{ marginBottom: "1.5rem", fontWeight: "400" }}>
         Enregistrement du Patient
       </h2>
-      
+
       <form onSubmit={handleSubmit}>
         <div className="cds--form-item">
           <label className="cds--label">Prénom</label>
@@ -656,7 +675,9 @@ const PatientFormExample = () => {
             type="text"
             className="cds--text-input"
             value={formData.firstName}
-            onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, firstName: e.target.value })
+            }
             required
           />
         </div>
@@ -667,18 +688,20 @@ const PatientFormExample = () => {
             type="text"
             className="cds--text-input"
             value={formData.lastName}
-            onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, lastName: e.target.value })
+            }
             required
           />
         </div>
 
         <PatientPhotoField
           value={formData.photo}
-          onChange={(photo) => setFormData({...formData, photo})}
+          onChange={(photo) => setFormData({ ...formData, photo })}
           label="Photo du patient"
         />
 
-        <div style={{ marginTop: '2rem' }}>
+        <div style={{ marginTop: "2rem" }}>
           <button type="submit" className="cds--btn cds--btn--primary">
             Enregistrer le patient
           </button>
