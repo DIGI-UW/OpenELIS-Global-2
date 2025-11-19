@@ -394,17 +394,49 @@ A laboratory supervisor is reviewing historical audit entries for quality assura
 - **FR-075**: System MUST display error "One or both patients could not be found" if either patient ID is invalid
 - **FR-076**: System MUST display error "One or both patients have already been merged" if either patient has `is_merged = TRUE`
 
+#### Demographic History and Recovery (from Clarification Q2)
+
+- **FR-077**: System MUST create a `patient_merge_history` record storing complete demographics snapshot of the non-primary patient at time of merge
+- **FR-078**: System MUST store demographics_snapshot in JSONB format including: firstName, middleName, lastName, dateOfBirth, gender, nationalId, passport, phone, email, address, city, state, postalCode
+- **FR-079**: System MUST store contact_snapshot and identity_snapshot in JSONB format for complete data preservation
+- **FR-080**: System MUST make patient_merge_history records viewable by Global Administrators in the primary patient's detail view under "Merge History" section
+- **FR-081**: System MUST display conflicting demographics from patient_merge_history in a read-only comparison view for audit and recovery purposes
+
+#### Merged Patient Interstitial Page (from Clarification Q3)
+
+- **FR-082**: System MUST display an interstitial page when a user navigates directly to a merged patient's URL
+- **FR-083**: System MUST show message "This patient record ([MERGED-ID]) was merged into [PRIMARY-ID] on [DATE] by [USER]" on the interstitial page
+- **FR-084**: System MUST display the merge reason provided during merge operation on the interstitial page
+- **FR-085**: System MUST provide a prominent "View Current Patient Record" button that navigates to the primary patient
+- **FR-086**: System MUST prevent direct access to merged patient's clinical data except through the interstitial page
+
+#### Action-Level Merge Validation (from Clarification Q4)
+
+- **FR-087**: System MUST validate patient has not been merged before any save/submit action on patient-related forms
+- **FR-088**: System MUST display modal warning "This patient was merged while you were working. Please reload." if merge detected during validation
+- **FR-089**: System MUST provide "Reload Page" button in the merge detection modal
+- **FR-090**: System MUST prevent form submission if patient has been merged, requiring page reload to continue
+
+#### Two-Phase Transaction Handling (from Clarification Q5)
+
+- **FR-091**: System MUST execute database merge in a single transaction as Phase 1, committing all database changes atomically
+- **FR-092**: System MUST attempt FHIR synchronization as Phase 2 after database transaction commits
+- **FR-093**: System MUST NOT rollback database merge if FHIR synchronization fails in Phase 2
+- **FR-094**: System MUST create a critical alert for technical staff if FHIR synchronization fails, including merge audit ID and error details
+- **FR-095**: System MUST log FHIR sync failures with severity CRITICAL for monitoring and manual reconciliation
+- **FR-096**: System MUST display success message to Global Administrator even if FHIR sync fails, with note "Merge complete. FHIR synchronization pending - technical support has been notified."
+
 ### Constitution Compliance Requirements (OpenELIS Global 3.0)
 
 - **CR-001**: UI components MUST use Carbon Design System (@carbon/react) - NO custom CSS frameworks. Patient merge interface must use: Carbon Button, Carbon Tile, Carbon StructuredList, Carbon RadioButtonGroup, Carbon Accordion, Carbon InlineNotification, Carbon TextArea, Carbon Checkbox, Carbon Modal (reuse existing patient search modal), Carbon Loading for progress
 - **CR-002**: All UI strings MUST be internationalized via React Intl (no hardcoded text) - includes all labels, error messages, button text, warnings, tooltips, and confirmation messages
 - **CR-003**: Backend MUST follow 5-layer architecture (Valueholder→DAO→Service→Controller→Form):
-  - Valueholders: `PatientMergeAudit` entity with JPA/Hibernate annotations, extend `Patient` entity with merge-related fields
-  - DAOs: `PatientMergeAuditDAO`, extend existing `PatientDAO` with merge-specific queries
-  - Services: `PatientMergeService` with @Transactional annotation, `PatientMergeNotificationService` for WebSocket broadcasts
+  - Valueholders: `PatientMergeAudit` entity, `PatientMergeHistory` entity with JPA/Hibernate annotations, extend `Patient` entity with merge-related fields
+  - DAOs: `PatientMergeAuditDAO`, `PatientMergeHistoryDAO`, extend existing `PatientDAO` with merge-specific queries
+  - Services: `PatientMergeService` with @Transactional annotation, `PatientMergeNotificationService` for WebSocket broadcasts, `PatientMergeValidationService` for action-level validation
   - Controllers: `PatientMergeController` (NO @Transactional in controllers)
   - Forms: `PatientMergeForm` for data binding with validation annotations
-- **CR-004**: Database changes MUST use Liquibase changesets (NO direct DDL/DML) - includes new `patient_merge_audit` table, ALTER TABLE for `patient` with new columns (`merged_into_patient_id`, `is_merged`, `merge_date`), and indexes for merge-related queries
+- **CR-004**: Database changes MUST use Liquibase changesets (NO direct DDL/DML) - includes new `patient_merge_audit` table, new `patient_merge_history` table for demographics preservation, ALTER TABLE for `patient` with new columns (`merged_into_patient_id`, `is_merged`, `merge_date`), and indexes for merge-related queries
 - **CR-005**: External data integration MUST use FHIR R4 for patient merge notifications to external systems using Patient link functionality with `replaces` and `replaced-by` link types
 - **CR-006**: Configuration-driven variation for country-specific requirements (NO code branching) - use configuration for enabling/disabling real-time notifications, FHIR sync, and external system messaging
 - **CR-007**: Security MUST implement RBAC for Global Administrator role, audit trail with sys_user_id + lastupdated for all merge entities, input validation for patient IDs and merge reason, CSRF protection on merge execution endpoint
@@ -447,6 +479,16 @@ A laboratory supervisor is reviewing historical audit entries for quality assura
   - `reason` (TEXT, NOT NULL) - Reason provided by user for the merge
   - `data_summary` (JSONB) - JSON object with counts: { orders: {total: N, active: N}, results: {total: N}, samples: {total: N}, documents: {total: N}, auditEntries: {total: N}, identifiers: {...}, conflicts: {...} }
   - Indexes: `idx_primary_patient` (primary_patient_id), `idx_merged_patient` (merged_patient_id), `idx_merge_date` (merge_date)
+
+- **PatientMergeHistory**: New entity for storing non-primary patient demographics (from Clarification Q2):
+  - `id` (BIGSERIAL, primary key)
+  - `patient_merge_audit_id` (BIGINT, NOT NULL, foreign key to patient_merge_audit.id) - Links to the merge operation
+  - `merged_patient_id` (BIGINT, NOT NULL, foreign key to patient.id) - The non-primary patient whose data is preserved
+  - `demographics_snapshot` (JSONB, NOT NULL) - Complete JSON snapshot of patient demographics at time of merge including: firstName, middleName, lastName, dateOfBirth, gender, nationalId, passport, phone, email, address, city, state, postalCode
+  - `contact_snapshot` (JSONB) - JSON snapshot of all contact records for the non-primary patient
+  - `identity_snapshot` (JSONB) - JSON snapshot of all identity records for the non-primary patient
+  - `created_date` (TIMESTAMP, NOT NULL, default CURRENT_TIMESTAMP)
+  - Indexes: `idx_merge_audit` (patient_merge_audit_id), `idx_merged_patient_history` (merged_patient_id)
 
 - **FHIR Patient Resource** (Primary Patient):
   - `active`: true
