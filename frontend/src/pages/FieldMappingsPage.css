@@ -17,11 +17,19 @@
   /* Ensure modal body takes full available height */
   height: calc(95vh - 120px); /* Account for header and footer */
   overflow-y: auto;
-  padding: 0;
+  padding: 1rem;
 }
 
-.field-mappings-modal-body > * {
+.field-mappings-modal-body .field-mapping {
   /* FieldMapping component should fill modal body */
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.field-mappings-modal-body .field-mapping-grid {
+  /* Grid should take remaining space */
+  flex: 1;
+  overflow-y: auto;
 }
 
