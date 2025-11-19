@@ -466,9 +466,9 @@ function OEHeader(props) {
   };
 
   const renderSideNavMenuItemLabel = (menuItem, level) => {
-    const fontPercent = 100 - 5 * (level - 1) + "%";
+    // Remove dynamic font sizing - let CSS handle consistent sizing across all levels
     return (
-      <span style={{ fontSize: fontPercent }}>
+      <span>
         <FormattedMessage id={menuItem.menu.displayKey} />
       </span>
     );
