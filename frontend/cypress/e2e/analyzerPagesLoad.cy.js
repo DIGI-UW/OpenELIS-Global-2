@@ -12,15 +12,37 @@
  * - Verify menu items are clickable and navigate correctly
  */
 
+import LoginPage from "../pages/LoginPage";
+
+const login = new LoginPage();
+let usersData;
+
 describe("Analyzer Pages Load", () => {
+  before("Load users fixture", () => {
+    cy.fixture("Users").then((users) => {
+      usersData = users;
+    });
+  });
+
   beforeEach(() => {
-    // Login before each test
+    // Check if already logged in, if not then login
     cy.visit("/");
-    cy.get('input[name="loginName"]').type("admin");
-    cy.get('input[name="password"]').type("adminADMIN!");
-    cy.get('button[type="submit"]').click();
-    // Wait for login to complete
-    cy.url().should("not.include", "/Login");
+    cy.url().then((url) => {
+      if (url.includes("/login")) {
+        // Not logged in - perform login
+        const user = usersData[3];
+        login.enterUsername(user.username);
+        login.enterPassword(user.password);
+        login.signIn();
+        
+        // Wait for login to complete
+        cy.url({ timeout: 10000 }).should("not.include", "/login");
+        cy.get("#mainHeader", { timeout: 10000 }).should("be.visible");
+      } else {
+        // Already logged in - just verify we're on a valid page
+        cy.get("#mainHeader", { timeout: 10000 }).should("be.visible");
+      }
+    });
   });
 
   it("should load Analyzers List page without errors", () => {
@@ -86,12 +108,8 @@ describe("Analyzer Pages Load", () => {
   it("should show analyzer menu items in sidebar", () => {
     cy.visit("/analyzers");
 
-    // Wait for menu to load
-    cy.wait(1000);
-
-    // Verify Analyzers menu item exists (check for menu_analyzers element)
-    // Note: Menu items are rendered dynamically, so we check for the presence of the menu
-    cy.get('nav[aria-label="Side navigation"]').should("be.visible");
+    // Verify sidebar is visible (no arbitrary wait - use should() for retry-ability)
+    cy.get('nav[aria-label="Side navigation"]', { timeout: 10000 }).should("be.visible");
 
     // Console logs are automatically captured via ELECTRON_ENABLE_LOGGING=1
     // Review console logs in Cypress test output for errors/warnings

@@ -437,8 +437,9 @@ button {
   display: flex;
   visibility: visible !important;
   align-items: center;
-  background-color: var(--cds-background-hover, #072655);
+  background-color: transparent; /* No default background */
   color: var(--cds-text-secondary, #ffffff);
+  padding: 0.875rem 1.25rem !important; /* More padding on all sides */
   transition:
     color 110ms,
     background-color 110ms,
@@ -452,9 +453,7 @@ button {
   pointer-events: auto;
 }
 
-.custom-sidenav-button:hover {
-  background-color: var(--cds-background, #295785);
-}
+/* Let Carbon handle hover via parent <a> tag */
 
 .cds--side-nav__link a {
   pointer-events: auto;
@@ -465,8 +464,14 @@ button {
   background-color: var(--cds-background, #295785);
 }
 
-.reduced-padding-nav-menu-item > a.cds--side-nav__link {
-  padding-left: 1rem !important;
+/* Ensure consistent height for all nav items */
+.reduced-padding-nav-menu-item > a.cds--side-nav__link,
+.top-level-menu-item > a,
+.cds--side-nav__menu-item > a.cds--side-nav__link {
+  padding: 0.875rem 1.25rem !important;
+  min-height: 2.5rem !important; /* Consistent height */
+  display: flex !important;
+  align-items: center !important;
 }
 
 .top-level-menu-item > a {
@@ -481,6 +486,35 @@ button {
 #mainHeader .cds--side-nav__link {
   pointer-events: none;
 }
+
+/* Enhanced styling for analyzer sidebar */
+.analyzer-persistent-sidebar {
+  width: 18rem !important; /* Beefier sidebar - increased from default 16rem */
+}
+
+/* Force sidebar to actually hide when not expanded (override Carbon's transform behavior) */
+.cds--side-nav:not(.cds--side-nav--expanded) {
+  transform: translateX(-100%) !important;
+}
+
+.analyzer-persistent-sidebar .cds--side-nav__items {
+  padding: 0.75rem 0;
+  max-height: calc(100vh - 3rem); /* Prevent overflow - account for header */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Active state for analyzer sidebar - style the <a> wrapper (Carbon default pattern) */
+.analyzer-persistent-sidebar .sidenav-item-active > a {
+  background-color: var(--cds-background-hover, #072655) !important;
+}
+
+/* Parent menu gets same blue background when child is active */
+.analyzer-persistent-sidebar .analyzer-parent-active .cds--side-nav__menu-title {
+  background-color: var(--cds-background-hover, #072655) !important;
+  color: var(--cds-text-secondary, #ffffff) !important;
+}
+
 
 @media screen and (max-width: 792px) {
   .banner h5 {

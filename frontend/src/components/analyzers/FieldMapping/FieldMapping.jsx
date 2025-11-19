@@ -11,10 +11,10 @@
  * - Field selection opens mapping panel
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Grid, Column, Button, Search } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useHistory, useLocation } from "react-router-dom";
 import * as analyzerService from "../../../services/analyzerService";
 import FieldMappingPanel from "./FieldMappingPanel";
 import MappingPanel from "./MappingPanel";
@@ -24,6 +24,7 @@ import "./FieldMapping.css";
 const FieldMapping = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const { id: analyzerId } = useParams();
 
   // State
@@ -36,11 +37,37 @@ const FieldMapping = () => {
   const [queryModalOpen, setQueryModalOpen] = useState(false);
   const [queryJobId, setQueryJobId] = useState(null);
 
-  // Load analyzer data
+  // Restore state from URL query parameters and sessionStorage
   useEffect(() => {
     if (!analyzerId) {
       return;
     }
+
+    // Restore from URL query parameters
+    const params = new URLSearchParams(location.search);
+    const initialSearch = params.get("search") || "";
+    const initialSelectedFieldId = params.get("selectedField") || "";
+
+    setSearchTerm(initialSearch);
+
+    // Restore scroll position from sessionStorage
+    const storageKey = `fieldMapping.${analyzerId}.scrollY`;
+    const storedScrollY = sessionStorage.getItem(storageKey);
+    if (storedScrollY) {
+      try {
+        setTimeout(() => {
+          window.scrollTo(0, parseInt(storedScrollY, 10));
+        }, 100);
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    // Restore selected field from URL or sessionStorage
+    const storedSelectedField = sessionStorage.getItem(
+      `fieldMapping.${analyzerId}.selectedField`,
+    );
+    const fieldIdToRestore = initialSelectedFieldId || storedSelectedField;
 
     setLoading(true);
 
@@ -67,16 +94,58 @@ const FieldMapping = () => {
         response.fields.length > 0
       ) {
         setFields(response.fields);
+
+        // Restore selected field after fields are loaded
+        const fieldId = fieldIdToRestore;
+        if (fieldId) {
+          const fieldToSelect = response.fields.find((f) => f.id === fieldId);
+          if (fieldToSelect) {
+            setSelectedField(fieldToSelect);
+          }
+        }
       }
       if (response && response.jobId) {
         setQueryJobId(response.jobId);
       }
     });
-  }, [analyzerId]);
 
-  // Handle field selection
+    // Persist scroll position on unload
+    const onBeforeUnload = () => {
+      sessionStorage.setItem(
+        `fieldMapping.${analyzerId}.scrollY`,
+        String(window.scrollY),
+      );
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      sessionStorage.setItem(
+        `fieldMapping.${analyzerId}.scrollY`,
+        String(window.scrollY),
+      );
+    };
+  }, [analyzerId, location.search]);
+
+  // Handle field selection - update URL and sessionStorage
   const handleFieldSelect = (field) => {
     setSelectedField(field);
+
+    // Update URL query parameters
+    const params = new URLSearchParams(location.search);
+    if (field && field.id) {
+      params.set("selectedField", field.id);
+      sessionStorage.setItem(
+        `fieldMapping.${analyzerId}.selectedField`,
+        field.id,
+      );
+    } else {
+      params.delete("selectedField");
+      sessionStorage.removeItem(`fieldMapping.${analyzerId}.selectedField`);
+    }
+    history.replace({
+      pathname: location.pathname,
+      search: params.toString(),
+    });
   };
 
   // Handle mapping creation
@@ -164,7 +233,21 @@ const FieldMapping = () => {
             selectedField={selectedField}
             onFieldSelect={handleFieldSelect}
             searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
+            onSearchChange={(value) => {
+              setSearchTerm(value);
+
+              // Update URL query parameters
+              const params = new URLSearchParams(location.search);
+              if (value) {
+                params.set("search", value);
+              } else {
+                params.delete("search");
+              }
+              history.replace({
+                pathname: location.pathname,
+                search: params.toString(),
+              });
+            }}
             mappings={mappings}
           />
         </Column>

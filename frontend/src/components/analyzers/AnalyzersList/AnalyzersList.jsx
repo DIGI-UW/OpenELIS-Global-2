@@ -231,8 +231,8 @@ const AnalyzersList = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div
-        className="analyzers-list-stats cds--css-grid"
+      <Grid
+        className="analyzers-list-stats"
         data-testid="analyzers-list-stats"
       >
         <Column lg={4} md={4} sm={4}>
@@ -259,7 +259,7 @@ const AnalyzersList = () => {
             <div className="stat-value">{stats.inactive}</div>
           </Tile>
         </Column>
-      </div>
+      </Grid>
 
       {/* Search and Filters */}
       <div
@@ -336,7 +336,11 @@ const AnalyzersList = () => {
                         } else if (headerKey === "actions") {
                           testId = `analyzer-actions-${row.id}`;
                           cellContent = analyzer ? (
-                            <OverflowMenu>
+                            <OverflowMenu
+                              ariaLabel={intl.formatMessage({
+                                id: "analyzer.table.actions",
+                              })}
+                            >
                               <OverflowMenuItem
                                 itemText={intl.formatMessage({
                                   id: "analyzer.action.fieldMappings",

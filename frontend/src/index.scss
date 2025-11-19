@@ -19,6 +19,26 @@
   margin-top: 3rem;
   padding: 0;
   background-color: #f5f6f8;
+  /* Carbon automatically adds left margin when SideNav is persistent */
+  /* This ensures content is not hidden behind the sidebar */
+  transition: margin-left 0.11s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+/* Override Carbon's default margin to match our custom sidebar width (18rem instead of 16rem) */
+/* Default: no margin */
+.cds--content {
+  margin-left: 0;
+  transition: margin-left 0.11s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+/* When analyzer sidebar is expanded (has .cds--side-nav--expanded class), push content over */
+body:has(.analyzer-persistent-sidebar.cds--side-nav--expanded) .cds--content {
+  margin-left: 18rem !important;
+}
+
+/* When analyzer sidebar is collapsed (does NOT have --expanded class), no margin */
+body:has(.analyzer-persistent-sidebar:not(.cds--side-nav--expanded)) .cds--content {
+  margin-left: 0 !important;
 }
 
 .loginPageContent,

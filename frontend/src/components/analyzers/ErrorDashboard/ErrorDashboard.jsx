@@ -33,12 +33,15 @@ import {
   Dropdown,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { useHistory, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../../../components/utils/Utils";
 import ErrorDetailsModal from "./ErrorDetailsModal";
 import "./ErrorDashboard.css";
 
 const ErrorDashboard = () => {
   const intl = useIntl();
+  const history = useHistory();
+  const location = useLocation();
   const searchTimeoutRef = useRef(null);
 
   // State
@@ -119,14 +122,65 @@ const ErrorDashboard = () => {
     });
   }, []);
 
-  // Initial load
+  // Initial load + restore state from URL/sessionStorage
   useEffect(() => {
-    loadErrors();
-  }, [loadErrors]);
+    // Restore from URL query parameters
+    const params = new URLSearchParams(location.search);
+    const initialSearch = params.get("search") || "";
+    const initialErrorType = params.get("errorType") || "";
+    const initialSeverity = params.get("severity") || "";
+    const initialAnalyzer = params.get("analyzer") || "";
+
+    setSearchTerm(initialSearch);
+    const initialFilters = {
+      errorType: initialErrorType,
+      severity: initialSeverity,
+      analyzer: initialAnalyzer,
+    };
+    setFilters(initialFilters);
+    loadErrors({
+      ...initialFilters,
+      ...(initialSearch ? { search: initialSearch } : {}),
+    });
+
+    // Restore scroll position from sessionStorage
+    const storedScrollY = sessionStorage.getItem("errorDashboard.scrollY");
+    if (storedScrollY) {
+      try {
+        setTimeout(() => {
+          window.scrollTo(0, parseInt(storedScrollY, 10));
+        }, 100);
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    // Persist scroll position on unload
+    const onBeforeUnload = () => {
+      sessionStorage.setItem("errorDashboard.scrollY", String(window.scrollY));
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      sessionStorage.setItem("errorDashboard.scrollY", String(window.scrollY));
+    };
+  }, [loadErrors, location.search]);
 
   // Search handler with debounce
   const handleSearch = (value) => {
     setSearchTerm(value);
+
+    // Update URL query parameters
+    const params = new URLSearchParams(location.search);
+    if (value.trim()) {
+      params.set("search", value.trim());
+    } else {
+      params.delete("search");
+    }
+    history.replace({
+      pathname: location.pathname,
+      search: params.toString(),
+    });
 
     // Clear existing timeout
     if (searchTimeoutRef.current) {
@@ -147,6 +201,19 @@ const ErrorDashboard = () => {
   const handleFilterChange = (filterName, value) => {
     const newFilters = { ...filters, [filterName]: value };
     setFilters(newFilters);
+
+    // Update URL query parameters
+    const params = new URLSearchParams(location.search);
+    if (value) {
+      params.set(filterName, value);
+    } else {
+      params.delete(filterName);
+    }
+    history.replace({
+      pathname: location.pathname,
+      search: params.toString(),
+    });
+
     loadErrors(newFilters);
   };
 

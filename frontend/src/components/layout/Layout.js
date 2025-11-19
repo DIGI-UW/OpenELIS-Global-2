@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
+import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
 import { Content, Theme } from "@carbon/react";
@@ -10,11 +11,14 @@ export const NotificationContext = createContext(null);
 
 export default function Layout(props) {
   const { children } = props;
+  const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [resetConfig, setResetConfig] = useState(false);
   const [configurationProperties, setConfigurationProperties] = useState({});
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  
+  // No custom sidebar tracking needed - Carbon handles it all
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);
@@ -66,7 +70,9 @@ export default function Layout(props) {
         <div className="d-flex flex-column min-vh-100">
           <Header onChangeLanguage={props.onChangeLanguage} />
           <Theme theme="white">
-            <Content>{children}</Content>
+            <Content>
+              {children}
+            </Content>
           </Theme>
           <Footer />
         </div>

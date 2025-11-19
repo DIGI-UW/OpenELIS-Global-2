@@ -47,6 +47,7 @@ import SearchBar from "./search/searchBar";
 function OEHeader(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
+  const history = props.history; // Get history from withRouter
 
   const userSwitchRef = createRef();
   const headerPanelRef = createRef();
@@ -55,6 +56,13 @@ function OEHeader(props) {
 
   const intl = useIntl();
   const currentPath = props.location?.pathname || "";
+  
+  // Helper function to check if a menu item is active based on current path
+  // ONLY exact match - no prefix matching to avoid highlighting all analyzer routes
+  const isMenuItemActive = (actionURL) => {
+    if (!actionURL || !currentPath) return false;
+    return actionURL === currentPath;
+  };
 
   const [switchCollapsed, setSwitchCollapsed] = useState(true);
   const [menus, setMenus] = useState({
@@ -70,6 +78,14 @@ function OEHeader(props) {
   const [readNotifications, setReadNotifications] = useState([]);
   const [searchBar, setSearchBar] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  
+  // Check if we're on an analyzer route (for isPersistent and defaultExpanded)
+  const isAnalyzerRoute = props.location?.pathname?.startsWith("/analyzers") ?? false;
+  
+  // Track if we've initialized analyzer sidebar to expanded
+  const [analyzerSidebarInitialized, setAnalyzerSidebarInitialized] = useState(false);
+  const [lastRouteType, setLastRouteType] = useState(null); // Track if last route was analyzer or not
+  
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
@@ -195,16 +211,31 @@ function OEHeader(props) {
 
     if (menuItem.menu.isActive) {
       if (level === 0 && menuItem.childMenus.length > 0) {
+        // Check if this is the Analyzers parent menu and we're on an analyzer route
+        const isAnalyzersParent = menuItem.menu.elementId === "menu_analyzers";
+        const hasActiveAnalyzerChild = currentPath.startsWith("/analyzers") && 
+          menuItem.childMenus.some(child => 
+            child.menu.actionURL && isMenuItemActive(child.menu.actionURL)
+          );
+        const isParentActive = isAnalyzersParent && currentPath.startsWith("/analyzers");
+        
         return (
           <span id={menuItem.menu.elementId} key={path}>
             <span
               id={menuItem.menu.elementId + "_dropdown"}
               onClick={(e) => {
                 setMenuItemExpanded(e, menuItem, path);
+                // For Analyzers parent menu, also navigate to first child when expanding
+                if (isAnalyzersParent && !menuItem.expanded && menuItem.childMenus.length > 0) {
+                  const firstChild = menuItem.childMenus.find(child => child.menu.isActive && child.menu.actionURL);
+                  if (firstChild) {
+                    history.push(firstChild.menu.actionURL);
+                  }
+                }
               }}
             >
               <SideNavMenu
-                className="top-level-menu-item"
+                className={`top-level-menu-item ${isParentActive ? "analyzer-parent-active" : ""}`}
                 aria-label={intl.formatMessage({
                   id: menuItem.menu.displayKey,
                 })}
@@ -212,10 +243,7 @@ function OEHeader(props) {
                   id: menuItem.menu.displayKey,
                 })}
                 key={"menu_" + index + "_" + level}
-                defaultExpanded={menuItem.expanded}
-                // onClick={(e) => { // not supported yet, but if it becomes so we can simplify the functionality here by having this here and not have a span around it
-                //   setMenuItemExpanded(e, menuItem, path);
-                // }}
+                defaultExpanded={menuItem.expanded || isParentActive}
               >
                 <span
                   onClick={(e) => {
@@ -237,19 +265,29 @@ function OEHeader(props) {
           </span>
         );
       } else if (level === 0) {
+        const isActive = isMenuItemActive(menuItem.menu.actionURL);
         return (
           <span key={path} id={menuItem.menu.elementId}>
             <SideNavMenuItem
               id={menuItem.menu.elementId + "_nav"}
               href={menuItem.menu.actionURL}
               target={menuItem.menu.openInNewWindow ? "_blank" : ""}
-              className="top-level-menu-item"
+              className={`top-level-menu-item ${isActive ? "sidenav-item-active" : ""}`}
+              isActive={isActive}
+              onClick={(e) => {
+                // Prevent default href navigation for internal routes
+                if (!menuItem.menu.openInNewWindow && menuItem.menu.actionURL?.startsWith("/")) {
+                  e.preventDefault();
+                  history.push(menuItem.menu.actionURL);
+                }
+              }}
             >
               {renderSideNavMenuItemLabel(menuItem, level)}
             </SideNavMenuItem>
           </span>
         );
       } else {
+        const isActive = isMenuItemActive(menuItem.menu.actionURL);
         return (
           <span
             data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
@@ -257,11 +295,19 @@ function OEHeader(props) {
             key={path}
           >
             <SideNavMenuItem
-              className="reduced-padding-nav-menu-item"
+              className={`reduced-padding-nav-menu-item ${isActive ? "sidenav-item-active" : ""}`}
               href={menuItem.menu.actionURL}
               target={menuItem.menu.openInNewWindow ? "_blank" : ""}
               style={{ width: "100%" }}
               rel="noreferrer"
+              isActive={isActive}
+              onClick={(e) => {
+                // Prevent default href navigation for internal routes
+                if (!menuItem.menu.openInNewWindow && menuItem.menu.actionURL?.startsWith("/")) {
+                  e.preventDefault();
+                  history.push(menuItem.menu.actionURL);
+                }
+              }}
             >
               <span style={{ display: "flex", width: "100%" }}>
                 {!menuItem.menu.actionURL &&
@@ -301,9 +347,6 @@ function OEHeader(props) {
   };
 
   const hasActiveChildMenu = (menuItem) => {
-    if (menuItem.menu.elementId === "menu_reports_routine") {
-      console.log("reports");
-    }
     return (
       menuItem.childMenus.length >= 1 &&
       menuItem.childMenus.some((element) => {
@@ -314,17 +357,25 @@ function OEHeader(props) {
 
   const renderSingleNavButton = (menuItem, index, level, path) => {
     const marginValue = (level - 1) * 0.5 + "rem";
+    const isActive = isMenuItemActive(menuItem.menu.actionURL);
     return (
       <button
         data-cy="single-sidenav-button"
-        className={"custom-sidenav-button"}
+        className={`custom-sidenav-button ${isActive ? "sidenav-button-active" : ""}`}
         style={{ width: "100%", marginLeft: marginValue }}
         id={menuItem.menu.elementId + "_nav"}
         onClick={() => {
           if (menuItem.menu.openInNewWindow) {
             window.open(menuItem.menu.actionURL);
-          } else {
-            window.location.href = menuItem.menu.actionURL;
+          } else if (menuItem.menu.actionURL) {
+            // Use React Router for client-side navigation (no page reload)
+            const url = menuItem.menu.actionURL;
+            if (url.startsWith("/")) {
+              history.push(url);
+            } else {
+              // External URL - use window.location
+              window.location.href = url;
+            }
           }
         }}
       >
@@ -353,21 +404,29 @@ function OEHeader(props) {
 
   const renderDualNavDropdownButton = (menuItem, index, level, path) => {
     const marginValue = (level - 1) * 0.5 + "rem";
+    const isActive = isMenuItemActive(menuItem.menu.actionURL);
     return (
       <>
         <button
           id={menuItem.menu.elementId + "_nav"}
           className={
             menuItem.menu.actionURL
-              ? "custom-sidenav-button"
+              ? `custom-sidenav-button ${isActive ? "sidenav-button-active" : ""}`
               : "custom-sidenav-button-unclickable"
           }
           style={{ marginLeft: marginValue }}
           onClick={() => {
             if (menuItem.menu.openInNewWindow) {
               window.open(menuItem.menu.actionURL);
-            } else {
-              window.location.href = menuItem.menu.actionURL;
+            } else if (menuItem.menu.actionURL) {
+              // Use React Router for client-side navigation (no page reload)
+              const url = menuItem.menu.actionURL;
+              if (url.startsWith("/")) {
+                history.push(url);
+              } else {
+                // External URL - use window.location
+                window.location.href = url;
+              }
             }
           }}
         >
@@ -441,7 +500,64 @@ function OEHeader(props) {
             }}
           >
             <HeaderContainer
-              render={({ isSideNavExpanded, onClickSideNavExpand }) => (
+              render={({ isSideNavExpanded, onClickSideNavExpand }) => {
+                // On first render of analyzer route, expand the sidebar
+                // On non-analyzer routes, ensure it's collapsed
+                useEffect(() => {
+                  // Reset initialization state when route type changes
+                  if (lastRouteType !== null && lastRouteType !== isAnalyzerRoute) {
+                    setAnalyzerSidebarInitialized(false);
+                  }
+                  
+                  if (isAnalyzerRoute && !analyzerSidebarInitialized && !isSideNavExpanded) {
+                    console.log("[AnalyzerNav] Initializing analyzer sidebar to expanded");
+                    onClickSideNavExpand();
+                    setAnalyzerSidebarInitialized(true);
+                    setLastRouteType(true);
+                  } else if (!isAnalyzerRoute && !analyzerSidebarInitialized) {
+                    // Collapse sidebar on non-analyzer routes if it's expanded
+                    if (isSideNavExpanded) {
+                      console.log("[AnalyzerNav] Collapsing sidebar on non-analyzer route");
+                      onClickSideNavExpand();
+                    }
+                    setAnalyzerSidebarInitialized(true);
+                    setLastRouteType(false);
+                  } else if (lastRouteType === null) {
+                    // Initial load - set route type
+                    setLastRouteType(isAnalyzerRoute);
+                  }
+                }, [isAnalyzerRoute, isSideNavExpanded, analyzerSidebarInitialized, lastRouteType]);
+                
+                console.log("[AnalyzerNav] Render", {
+                  isAnalyzerRoute,
+                  isSideNavExpanded,
+                  analyzerSidebarInitialized,
+                  currentPath,
+                });
+
+                const handleToggle = () => {
+                  console.log("[AnalyzerNav] Toggle clicked BEFORE", {
+                    isAnalyzerRoute,
+                    currentPath,
+                    wasSideNavExpanded: isSideNavExpanded,
+                  });
+                  onClickSideNavExpand();
+                  // Use setTimeout to log state after Carbon updates it
+                  setTimeout(() => {
+                    const sideNav = document.querySelector('.cds--side-nav');
+                    console.log("[AnalyzerNav] Toggle clicked AFTER", {
+                      isSideNavExpanded,
+                      sideNavClasses: sideNav?.className,
+                      ariaExpanded: sideNav?.getAttribute('aria-expanded'),
+                      isExpanded: sideNav?.classList.contains('cds--side-nav--expanded'),
+                      computedDisplay: window.getComputedStyle(sideNav).display,
+                      computedVisibility: window.getComputedStyle(sideNav).visibility,
+                      computedTransform: window.getComputedStyle(sideNav).transform,
+                    });
+                  }, 100);
+                };
+
+                return (
                 <Header id="mainHeader" className="mainHeader" aria-label="">
                   {userSessionDetails.authenticated && (
                     <HeaderMenuButton
@@ -449,7 +565,7 @@ function OEHeader(props) {
                       aria-label={
                         isSideNavExpanded ? "Close menu" : "Open menu"
                       }
-                      onClick={onClickSideNavExpand}
+                      onClick={handleToggle}
                       isActive={isSideNavExpanded}
                       isCollapsible={true}
                     />
@@ -618,14 +734,11 @@ function OEHeader(props) {
                     <>
                       <SideNav
                         aria-label="Side navigation"
-                        expanded={
-                          isSideNavExpanded ||
-                          (props.location?.pathname?.startsWith("/analyzers") ??
-                            false)
-                        }
-                        isPersistent={
-                          props.location?.pathname?.startsWith("/analyzers") ||
-                          false
+                        expanded={isSideNavExpanded}
+                        className={
+                          isAnalyzerRoute
+                            ? "analyzer-persistent-sidebar"
+                            : ""
                         }
                       >
                         <SideNavItems>
@@ -642,7 +755,8 @@ function OEHeader(props) {
                     </>
                   )}
                 </Header>
-              )}
+                );
+              }}
             />
             <div style={{ flex: 1 }}>
               <SlideOver
@@ -672,3 +786,4 @@ function OEHeader(props) {
 }
 
 export default withRouter(injectIntl(OEHeader));
+
