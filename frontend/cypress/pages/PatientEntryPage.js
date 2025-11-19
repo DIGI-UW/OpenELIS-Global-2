@@ -184,21 +184,16 @@ class PatientEntryPage {
       .should(($row) => {
         const firstName = $row.find("td:nth-child(2)").text().trim();
         const lastName = $row.find("td:nth-child(3)").text().trim();
-        // Check if actualName matches first name, last name, or truncated last name
+        // Check if actualName matches first name or last name
         let matches =
           firstName.includes(actualName) || actualName.includes(firstName);
 
-        // Check last name (handle truncation: "E2E-Smith" -> "EE-Smith")
+        // Check last name
         if (!matches) {
           matches =
             lastName === actualName ||
             lastName.includes(actualName) ||
             actualName.includes(lastName);
-          // Handle truncation pattern: E2E-* -> EE-*
-          if (!matches && actualName.startsWith("E2E")) {
-            const truncated = "E" + actualName.substring(2);
-            matches = lastName === truncated || lastName.includes(truncated);
-          }
         }
 
         expect(

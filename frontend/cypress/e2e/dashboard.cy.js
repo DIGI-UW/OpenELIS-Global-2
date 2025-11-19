@@ -115,12 +115,12 @@ const addNewOrder = (dashboardType, testType, sampleType, panelType) => {
     console.log("=== END API DEBUG ===");
   });
 
-  // Wait a moment for React to process the API response and update state
-  cy.wait(500);
+  // Wait for form to be ready (React has processed API response)
+  cy.get("#siteName").should("be.visible").should("be.enabled");
 
   dashboard.generateLabNo();
 
-  // Before selecting site, verify the input is ready
+  // Before selecting site, verify the input is still ready
   cy.get("#siteName").should("be.visible").should("be.enabled");
 
   dashboard.selectSite();
@@ -134,7 +134,11 @@ const addNewOrder = (dashboardType, testType, sampleType, panelType) => {
     .should("not.be.disabled");
   dashboard.submitButton();
   // Wait for submission to complete and success page to appear
-  cy.wait(8000);
+  // Use element visibility check instead of arbitrary timeout
+  cy.get(
+    '[data-testid="success-message"], .success-message, button:contains("Print Barcode")',
+    { timeout: 15000 },
+  ).should("be.visible");
 };
 
 // Helper function to validate success and print barcode
@@ -254,8 +258,10 @@ describe("Dashboard Tests", function () {
     //});
 
     it("User navigates back to Pathology Dashboard to confirm added order", function () {
-      // Wait longer after order creation to ensure PathologySample is persisted
-      cy.wait(3000);
+      // Wait for navigation to complete (URL change indicates page loaded)
+      cy.url().should("include", "/PathologyDashboard");
+      // Wait for dashboard table to be visible (indicates data loaded)
+      cy.get("table", { timeout: 10000 }).should("be.visible");
 
       // Intercept status list API call first (must load before dashboard)
       cy.intercept(
