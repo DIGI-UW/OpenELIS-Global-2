@@ -168,12 +168,12 @@ Which transaction and error handling approach should be used?
 
 ### Resolved Clarifications
 
-- **Q1: Patient Search Workflow** → **A: Inline search forms with no upfront filtering (Modified Option A)**
-  - **Finding**: Figma Make shows inline search forms on the page (not modals) with fields for Patient ID, First Name, Last Name, Gender, and DOB
-  - **Finding**: Search results display in tables below each form with radio button selection
-  - **Finding**: No filtering for EQA/merged patients - validation only prevents selecting same patient twice
-  - **Decision**: Use inline search forms instead of modal popup. Allow selection of any patient with validation at merge time. This matches the Figma design and provides maximum flexibility.
-  - **Impact**: Update FR-006 to specify inline search forms; remove references to "existing patient search modal"
+- **Q1: Patient Search Workflow** → **A: Reuse existing patient search from patient entry (Modified Option A)**
+  - **Finding**: Figma Make shows inline search forms as a prototype demonstration
+  - **Finding**: OpenELIS already has patient search implemented as part of patient entry workflow
+  - **Finding**: No filtering for EQA/merged patients shown in Make - validation only prevents selecting same patient twice
+  - **Decision**: Reuse the existing patient search mechanism from patient entry. Allow selection of any patient with validation at merge time. This maintains consistency with existing OpenELIS workflows and avoids duplicate implementation.
+  - **Impact**: FR-006 correctly references "existing patient search modal"; no changes needed. Validation prevents same patient selection twice.
 
 - **Q2: Conflicting Demographic Data Resolution** → **A: Store non-primary demographics in audit/history table (Option B)**
   - **Finding**: Figma Make displays conflicts to user during confirmation step but doesn't show where non-primary data goes
