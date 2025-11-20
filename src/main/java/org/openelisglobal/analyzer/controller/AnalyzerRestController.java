@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
+import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerQueryService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -40,6 +41,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerQueryService analyzerQueryService;
+
+    @Autowired
+    private AnalyzerFieldService analyzerFieldService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -242,6 +246,34 @@ public class AnalyzerRestController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * GET /rest/analyzer/analyzers/{id}/fields Get all fields for an analyzer
+     */
+    @GetMapping("/analyzers/{id}/fields")
+    public ResponseEntity<List<Map<String, Object>>> getFields(@PathVariable String id) {
+        try {
+            List<org.openelisglobal.analyzer.valueholder.AnalyzerField> fields = analyzerFieldService
+                    .getFieldsByAnalyzerId(id);
+            List<Map<String, Object>> response = new ArrayList<>();
+            for (org.openelisglobal.analyzer.valueholder.AnalyzerField field : fields) {
+                Map<String, Object> fieldMap = new HashMap<>();
+                fieldMap.put("id", field.getId());
+                fieldMap.put("fieldName", field.getFieldName());
+                fieldMap.put("astmRef", field.getAstmRef());
+                fieldMap.put("fieldType", field.getFieldType() != null ? field.getFieldType().toString() : null);
+                fieldMap.put("unit", field.getUnit());
+                fieldMap.put("isActive", field.getIsActive());
+                response.add(fieldMap);
+            }
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error retrieving fields for analyzer: " + id, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
         }
     }
 

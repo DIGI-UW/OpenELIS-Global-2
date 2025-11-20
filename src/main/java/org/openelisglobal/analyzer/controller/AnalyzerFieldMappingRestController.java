@@ -14,6 +14,7 @@ import org.openelisglobal.analyzer.service.AnalyzerMappingPreviewService;
 import org.openelisglobal.analyzer.service.CopyOptions;
 import org.openelisglobal.analyzer.service.CopyMappingsResult;
 import org.openelisglobal.analyzer.service.MappingPreviewResult;
+import org.openelisglobal.analyzer.service.MappingValidationService;
 import org.openelisglobal.analyzer.service.PreviewOptions;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -55,6 +56,9 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
 
     @Autowired(required = false)
     private AnalyzerMappingPreviewService analyzerMappingPreviewService;
+
+    @Autowired(required = false)
+    private MappingValidationService mappingValidationService;
 
     /**
      * GET /rest/analyzer/analyzers/{analyzerId}/mappings Retrieve all field
@@ -251,6 +255,15 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
                             activatedCount++;
                         }
                     } catch (LIMSRuntimeException e) {
+                        // Check for optimistic locking exception (T168a)
+                        if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
+                            logger.warn("Concurrent edit detected for mapping " + mappingId);
+                            Map<String, Object> error = new HashMap<>();
+                            error.put("error", "Concurrent edit detected");
+                            error.put("message", "Mapping was modified by another user. Please reload and try again.");
+                            error.put("mappingId", mappingId);
+                            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                        }
                         logger.warn("Failed to activate mapping " + mappingId + ": " + e.getMessage());
                         // Continue with other mappings
                     }
@@ -268,6 +281,11 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
             logger.error("Error activating mappings: " + e.getMessage(), e);
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
+            // Check for optimistic locking exception (T168a)
+            if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
+                error.put("message", "Mapping was modified by another user. Please reload and try again.");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
             // Check if it's a concurrent edit (would need specific exception type)
             if (e.getMessage() != null && e.getMessage().contains("concurrent")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
@@ -408,6 +426,53 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
             logger.error("Error previewing mapping", e);
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Error processing ASTM message: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * GET /rest/analyzer/analyzers/{id}/validation-metrics
+     * Get validation metrics for an analyzer
+     * 
+     * Task Reference: T206
+     * 
+     * Response: { accuracy: Float (0.0-1.0), unmappedCount: Integer,
+     * unmappedFields: String[], warnings: String[], coverageByTestUnit: Map<String,
+     * Float> }
+     * 
+     * Authorization: Requires analyzer view permissions Caching: Cache metrics for
+     * 5 minutes (invalidate on mapping changes)
+     */
+    @GetMapping("/analyzers/{id}/validation-metrics")
+    public ResponseEntity<Map<String, Object>> getValidationMetrics(@PathVariable String id) {
+        try {
+            if (mappingValidationService == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Mapping validation service not available");
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
+            }
+
+            // Get validation metrics
+            MappingValidationService.ValidationMetrics metrics = mappingValidationService.getValidationMetrics(id);
+
+            // Convert to response map
+            Map<String, Object> response = new HashMap<>();
+            response.put("accuracy", metrics.getAccuracy());
+            response.put("unmappedCount", metrics.getUnmappedCount());
+            response.put("unmappedFields", metrics.getUnmappedFields());
+            response.put("warnings", metrics.getWarnings());
+            response.put("coverageByTestUnit", metrics.getCoverageByTestUnit());
+
+            return ResponseEntity.ok(response);
+        } catch (LIMSRuntimeException e) {
+            logger.error("Error retrieving validation metrics: " + e.getMessage(), e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error retrieving validation metrics", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Error retrieving validation metrics: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }

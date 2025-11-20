@@ -34,7 +34,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
-import { getFromOpenElisServer } from "../../../components/utils/Utils";
+import { getFromOpenElisServer, postToOpenElisServerFullResponse } from "../../../components/utils/Utils";
 import ErrorDetailsModal from "./ErrorDetailsModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./ErrorDashboard.css";
@@ -244,9 +244,33 @@ const ErrorDashboard = () => {
 
   // Handle acknowledge all
   const handleAcknowledgeAll = () => {
-    // TODO: Implement when AnalyzerErrorRestController is implemented (T095)
-    // Endpoint will be: POST /rest/analyzer/errors/batch-acknowledge
-    console.log("Acknowledge all errors - not yet implemented");
+    // Get all unacknowledged error IDs
+    const unacknowledgedErrorIds = filteredErrors
+      .filter((error) => error.status === "UNACKNOWLEDGED" || error.status === "unacknowledged")
+      .map((error) => error.id);
+
+    if (unacknowledgedErrorIds.length === 0) {
+      return; // No errors to acknowledge
+    }
+
+    // Call batch acknowledge endpoint
+    const endpoint = "/rest/analyzer/errors/batch-acknowledge";
+    const payload = JSON.stringify({ errorIds: unacknowledgedErrorIds });
+
+    postToOpenElisServerFullResponse(endpoint, payload, (response) => {
+      if (response.ok) {
+        response.json().then((data) => {
+          if (data.status === "success") {
+            // Reload errors after acknowledgment
+            loadErrors(filters);
+          } else {
+            console.error("Failed to acknowledge errors:", data.error);
+          }
+        });
+      } else {
+        console.error("Failed to acknowledge errors:", response.statusText);
+      }
+    });
   };
 
   // Handle view error details
@@ -257,11 +281,28 @@ const ErrorDashboard = () => {
 
   // Handle acknowledge error
   const handleAcknowledge = (errorId) => {
-    // TODO: Implement when AnalyzerErrorRestController is implemented (T095)
-    // Endpoint will be: POST /rest/analyzer/errors/{id}/acknowledge
-    console.log("Acknowledge error:", errorId);
-    // Reload errors after acknowledgment
-    loadErrors(filters);
+    // Call acknowledge endpoint
+    const endpoint = `/rest/analyzer/errors/${errorId}/acknowledge`;
+    const payload = JSON.stringify({});
+
+    postToOpenElisServerFullResponse(endpoint, payload, (response) => {
+      if (response.ok) {
+        response.json().then((data) => {
+          if (data.status === "success") {
+            // Reload errors after acknowledgment
+            loadErrors(filters);
+            // Close error details modal if open
+            if (selectedError && selectedError.id === errorId) {
+              setErrorDetailsOpen(false);
+            }
+          } else {
+            console.error("Failed to acknowledge error:", data.error);
+          }
+        });
+      } else {
+        console.error("Failed to acknowledge error:", response.statusText);
+      }
+    });
   };
 
   // Format timestamp

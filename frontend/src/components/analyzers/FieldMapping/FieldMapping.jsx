@@ -99,20 +99,40 @@ const FieldMapping = () => {
       }
     });
 
+    // Load fields from database
+    analyzerService.getFields(analyzerId, (fieldsData) => {
+      console.log("Fields data received from database:", fieldsData);
+      if (fieldsData && Array.isArray(fieldsData)) {
+        setFields(fieldsData);
+
+        // Restore selected field after fields are loaded
+        const fieldId = fieldIdToRestore;
+        if (fieldId) {
+          const fieldToSelect = fieldsData.find((f) => f.id === fieldId);
+          if (fieldToSelect) {
+            setSelectedField(fieldToSelect);
+          }
+        }
+      }
+    });
+
     // Load mappings
     analyzerService.getMappings(analyzerId, (mappingsData) => {
+      console.log("Mappings data received:", mappingsData);
       const mappings = extractMappings(mappingsData);
+      console.log("Extracted mappings:", mappings);
       setMappings(mappings);
       setLoading(false);
     });
 
-    // Optionally kick off an initial query (skeleton). If fields are returned immediately (tests/mocks), use them.
+    // Optionally kick off an initial query (async). Fields returned from query will update the list.
     analyzerService.queryAnalyzer(analyzerId, (response) => {
       if (
         response &&
         Array.isArray(response.fields) &&
         response.fields.length > 0
       ) {
+        // Update fields if query returns new data
         setFields(response.fields);
 
         // Restore selected field after fields are loaded

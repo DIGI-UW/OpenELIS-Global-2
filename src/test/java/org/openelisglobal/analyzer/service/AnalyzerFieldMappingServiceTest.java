@@ -477,6 +477,34 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
+     * Test: Activate mapping with stale version throws OptimisticLockException
+     * Task Reference: T168a
+     */
+    @Test(expected = LIMSRuntimeException.class)
+    public void testActivateMapping_WithStaleVersion_ThrowsOptimisticLockException() {
+        // Arrange: Mapping was modified after page load (version changed)
+        AnalyzerFieldMapping originalMapping = new AnalyzerFieldMapping();
+        originalMapping.setId("MAPPING-001");
+        originalMapping.setIsActive(false);
+        originalMapping.setVersion(1L); // Original version
+
+        AnalyzerFieldMapping currentMapping = new AnalyzerFieldMapping();
+        currentMapping.setId("MAPPING-001");
+        currentMapping.setIsActive(false);
+        currentMapping.setVersion(2L); // Version changed by another user
+        currentMapping.setAnalyzerField(numericField);
+
+        numericField.setAnalyzer(testAnalyzer);
+
+        when(analyzerFieldMappingDAO.get("MAPPING-001")).thenReturn(Optional.of(currentMapping));
+
+        // Act: Try to activate with stale version (should throw exception)
+        // Pass the original version to check for concurrent edits
+        Long originalVersion = originalMapping.getVersion();
+        analyzerFieldMappingService.activateMapping("MAPPING-001", true, null, originalVersion);
+    }
+
+    /**
      * Test: Retire mapping with no pending messages sets inactive successfully
      * Task Reference: T201
      */

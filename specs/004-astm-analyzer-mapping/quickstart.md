@@ -28,6 +28,17 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 # Migrations are in: src/main/resources/liquibase/analyzer/
 ```
 
+**Verification**:
+
+```bash
+# Verify analyzer migrations are included in master changelog
+grep -A 2 "analyzer/base.xml" src/main/resources/liquibase/3.3.x.x/base.xml
+
+# After application startup, verify migrations applied
+docker exec openelisglobal-database psql -U clinlims -d clinlims -c \
+  "SELECT id, filename FROM databasechangelog WHERE filename LIKE '%analyzer%' ORDER BY dateexecuted;"
+```
+
 **New Tables Created**:
 
 - `analyzer_configuration` - Analyzer connection settings
@@ -255,35 +266,29 @@ const analyzers = await getFromOpenElisServer("/rest/analyzer");
 await postToOpenElisServer("/rest/analyzer", analyzerData);
 ```
 
-### 3.5 Configure Navigation Menu (Backend-Driven)
+### 3.5 Configure Navigation Menu (Backend-Driven via Liquibase)
 
 The left-hand navigation is populated from the `clinlims.menu` table via
-`/rest/menu`. Insert/update the following records so the UI mirrors the
-clarified hierarchy (An analyzers parent with ASTM + QC routes):
+`/rest/menu`. Menu items are created automatically via Liquibase changeset
+`004-009-add-menu-items.xml` when migrations run. The changeset creates:
 
-```sql
--- Parent "Analyzers" node (presentation_order = 26 if not already present)
-INSERT INTO clinlims.menu (id, presentation_order, element_id, action_url, display_key, tool_tip_key,
-                           new_window, is_active, hide_in_old_ui)
-SELECT nextval('menu_seq'), 26, 'menu_analyzers', '/analyzers',
-       'analyzer.navigation.analyzers', 'analyzer.navigation.analyzers', false, true, true
-WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_analyzers');
+- Parent "Analyzers" node (element_id: `menu_analyzers`, presentation_order: 26)
+- Child routes:
+  1. Analyzers Dashboard (`menu_analyzers_list`, `/analyzers`)
+  2. Error Dashboard (`menu_analyzers_errors`, `/analyzers/errors`)
+  3. Field Mappings (`menu_analyzers_field_mappings`, `/analyzers/:id/mappings`)
+  4. Quality Control placeholders (to be added in feature 003-westgard-qc)
 
--- Child routes (repeat INSERT ... SELECT ... WHERE NOT EXISTS for each)
--- 1. Analyzers Dashboard (/analyzers)
--- 2. Error Dashboard (/analyzers/errors)
--- 3. Field Mappings (contextual) (/analyzers/:id/mappings)
--- 4. Quality Control placeholder (/analyzers/qc)
--- 5. QC Alerts & Violations (/analyzers/qc/alerts)
--- 6. Corrective Actions (/analyzers/qc/corrective-actions)
+**Verification**: After application startup with migrations applied, verify menu items exist:
+
+```bash
+docker exec openelisglobal-database psql -U clinlims -d clinlims -c \
+  "SELECT element_id, display_key, action_url FROM menu WHERE element_id LIKE 'menu_analyzers%';"
 ```
 
-Each child row should set `parent_id` to the ID of `menu_analyzers`, include the
-appropriate `display_key` (add translations to
-`frontend/src/languages/{locale}.json)` and restrict visibility via the existing
-role mapping table so QC entries only appear for QC-enabled roles. The frontend
-will automatically render whatever `/rest/menu` returns, so no hardcoded
-navigation updates are required.
+**Note**: For manual testing or development, SQL inserts can be used as an alternative,
+but Liquibase is the production method. See `004-009-add-menu-items.xml` for the
+canonical menu structure.
 
 ## Step 4: Testing
 

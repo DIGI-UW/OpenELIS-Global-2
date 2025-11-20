@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -58,6 +59,10 @@ public class AnalyzerFieldMapping extends BaseObject<String> {
 
     @Column(name = "panel_constraint", length = 50)
     private String panelConstraint;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
 
     @PrePersist
     protected void onCreate() {
@@ -138,6 +143,14 @@ public class AnalyzerFieldMapping extends BaseObject<String> {
 
     public void setPanelConstraint(String panelConstraint) {
         this.panelConstraint = panelConstraint;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public enum OpenELISFieldType {

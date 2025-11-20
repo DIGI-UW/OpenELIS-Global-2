@@ -15,5 +15,6 @@
   <include relativeToChangelogFile="true" file="004-008-create-custom-field-type-table.xml"/>
   <include relativeToChangelogFile="true" file="004-009-add-menu-items.xml"/>
   <include relativeToChangelogFile="true" file="004-010-add-query-timeout-config.xml"/>
+  <include relativeToChangelogFile="true" file="004-011-add-version-column-to-mapping.xml"/>
 
 </databaseChangeLog>

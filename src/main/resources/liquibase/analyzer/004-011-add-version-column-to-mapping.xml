@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add version column to analyzer_field_mapping for optimistic locking -->
+    <changeSet id="analyzer-011-add-version-column-to-mapping" author="astm-analyzer-mapping-feature">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_field_mapping"/>
+            <not>
+                <columnExists tableName="analyzer_field_mapping" columnName="version"/>
+            </not>
+        </preConditions>
+        <comment>Adding version column to analyzer_field_mapping table for optimistic locking support</comment>
+        <addColumn tableName="analyzer_field_mapping">
+            <column name="version" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="analyzer_field_mapping" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
+

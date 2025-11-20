@@ -1,5 +1,6 @@
 .error-dashboard {
   padding: 1rem;
+  padding-top: 2rem; /* Add extra top padding to prevent tooltips from being hidden */
 }
 
 /* Ensure consistent content width - all Grid content should align with title */

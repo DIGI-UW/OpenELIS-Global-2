@@ -310,7 +310,10 @@ const AnalyzersList = () => {
       {/* DataTable */}
       <Grid>
         <Column lg={16} md={8} sm={4}>
-          <TableContainer data-testid="analyzers-table-container">
+          <TableContainer 
+            data-testid="analyzers-table-container"
+            className="analyzers-list-table-container"
+          >
         <DataTable rows={rows} headers={headers} isSortable>
           {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
             <Table {...getTableProps()} data-testid="analyzers-table">

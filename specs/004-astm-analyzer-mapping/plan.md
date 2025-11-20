@@ -336,6 +336,12 @@ frontend/cypress/e2e/
 - GO_LIVE → MAINTENANCE: Automatic after 7 days OR manual trigger
 - MAINTENANCE → SETUP: Manual reset only (requires admin approval)
 
+**Implementation Notes**:
+- "7 days" refers to calendar days (not business days)
+- Timezone: Use server timezone for date calculations
+- Analyzer downtime: If analyzer is inactive for part of 7-day period, calendar days still count
+- Edge case: If analyzer transitions to GO_LIVE on day 1, maintenance transition occurs on day 8 (inclusive counting)
+
 **Database Columns**:
 - `lifecycle_stage` VARCHAR(20) NOT NULL DEFAULT 'SETUP'
 - `last_activated_date` TIMESTAMP NULL (populated on GO_LIVE transition)
