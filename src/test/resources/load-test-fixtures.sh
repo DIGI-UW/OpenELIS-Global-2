@@ -173,7 +173,7 @@ verify_fixtures() {
                 'E2E Test Data' AS category,
                 'Patients' AS type, COUNT(*) AS count FROM patient WHERE external_id LIKE 'E2E-%'
             UNION ALL
-            SELECT '', 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%'
+            SELECT '', 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'E2E%'
             UNION ALL
             SELECT '', 'Sample Items', COUNT(*) FROM sample_item WHERE id BETWEEN 10000 AND 20000
             UNION ALL
@@ -186,7 +186,7 @@ verify_fixtures() {
 
         # Check specific counts
         ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" | tr -d '[:space:]')
-        SAMPLE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%';" | tr -d '[:space:]')
+        SAMPLE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E%';" | tr -d '[:space:]')
         PATIENT_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%';" | tr -d '[:space:]')
     else
         # Verify storage hierarchy
@@ -212,7 +212,7 @@ verify_fixtures() {
                 'E2E Test Data' AS category,
                 'Patients' AS type, COUNT(*) AS count FROM patient WHERE external_id LIKE 'E2E-%'
             UNION ALL
-            SELECT '', 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%'
+            SELECT '', 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'E2E%'
             UNION ALL
             SELECT '', 'Sample Items', COUNT(*) FROM sample_item WHERE id BETWEEN 10000 AND 20000
             UNION ALL
@@ -225,7 +225,7 @@ verify_fixtures() {
 
         # Check specific counts
         ROOM_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" | tr -d '[:space:]')
-        SAMPLE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%';" | tr -d '[:space:]')
+        SAMPLE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E%';" | tr -d '[:space:]')
         PATIENT_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%';" | tr -d '[:space:]')
     fi
 
