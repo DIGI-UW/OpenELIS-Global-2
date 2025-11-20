@@ -431,7 +431,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 .map(this::convertSampleToDisplayBean).collect(Collectors.toList());
     }
 
-    
     @Transactional
     public List<NoteBook> getAllTemplateNoteBooks() {
         return baseObjectDAO.getAllMatching("isTemplate", true);
@@ -447,7 +446,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
         return new ArrayList<>();
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public List<NoteBook> getAllActiveNotebooks() {
