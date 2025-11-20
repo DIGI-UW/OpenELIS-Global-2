@@ -44,6 +44,7 @@ const ModifyOrder = () => {
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [patientId, setPatientId] = useState("");
   const [changed, setChanged] = useState({
     "sampleOrderItems.providerFirstName": false,
     "sampleOrderItems.providerLastName": false,
@@ -52,17 +53,32 @@ const ModifyOrder = () => {
 
   useEffect(() => {
     componentMounted.current = true;
-    let patientId = new URLSearchParams(window.location.search).get(
+    let patientIdParam = new URLSearchParams(window.location.search).get(
       "patientId",
     );
     let accessionNumber = new URLSearchParams(window.location.search).get(
       "accessionNumber",
     );
     accessionNumber = accessionNumber ? accessionNumber : "";
-    patientId = patientId ? patientId : "";
+    patientIdParam = patientIdParam ? patientIdParam : "";
+
+    // If searching by accession number and no patientId, fetch patient from accession number
+    if (!patientIdParam && accessionNumber) {
+      getFromOpenElisServer(
+        "/rest/patientByLabNumer?accessionNumber=" + accessionNumber,
+        (response) => {
+          if (componentMounted.current && response && response.id) {
+            setPatientId(response.id);
+          }
+        },
+      );
+    } else {
+      setPatientId(patientIdParam);
+    }
+
     getFromOpenElisServer(
       "/rest/SampleEdit?patientId=" +
-        patientId +
+        patientIdParam +
         "&accessionNumber=" +
         accessionNumber,
       loadOrderValues,
@@ -241,7 +257,7 @@ const ModifyOrder = () => {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
       <PatientHeader
-        id={orderFormValues?.nationalId}
+        id={patientId}
         patientName={orderFormValues?.patientName}
         gender={orderFormValues?.gender}
         dob={orderFormValues?.dob}

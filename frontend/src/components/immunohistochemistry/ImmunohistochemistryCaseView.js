@@ -988,7 +988,7 @@ function ImmunohistochemistryCaseView() {
           <Section>
             <Section>
               <PatientHeader
-                id={immunohistochemistrySampleInfo.labNumber}
+                id={immunohistochemistrySampleInfo.patientPK}
                 lastName={immunohistochemistrySampleInfo.lastName}
                 firstName={immunohistochemistrySampleInfo.firstName}
                 gender={immunohistochemistrySampleInfo.sex}
