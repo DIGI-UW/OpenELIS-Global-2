@@ -7,7 +7,287 @@
 
 ## Clarifications
 
-(No clarifications yet - awaiting review)
+### Session 2025-11-20
+
+**Clarification Analysis**: Based on analysis of the Figma Make prototype (file: UrAAxfl1zhRvaCctB3WPqB/components/IDDocumentsSection.tsx and TestRequest.tsx) and the specification, the following clarifications have been resolved.
+
+#### Question 1: Document Upload Location and Workflow Integration
+
+The spec states documents should be added on the "Add a new patient" screen, but the Figma Make shows the ID Documents section integrated into the multi-step "Test Request" workflow at the "Patient Info" step.
+
+**Options:**
+
+**A) Standalone "Add/Modify Patient" screen only**
+- ID Documents section appears only on dedicated patient management screen
+- Not integrated into Test Request workflow
+- Users must navigate to patient edit screen to add documents after test request
+- Pro: Simpler implementation, clear separation of concerns
+- Con: Extra navigation steps, documents can't be added during test order creation
+
+**B) Test Request workflow only (as shown in Figma Make)**
+- ID Documents section integrated into "Patient Info" step of Test Request
+- Only available when creating new patient during test order
+- No standalone patient management screen for documents
+- Pro: Matches Figma Make, streamlined workflow
+- Con: Can't add documents outside test request context
+
+**C) Both locations (dual integration)**
+- ID Documents section available on both "Add/Modify Patient" screen AND "Test Request" workflow
+- Same component reused in both contexts
+- Documents can be added/edited in either workflow
+- Pro: Maximum flexibility, matches real-world workflows
+- Con: More complex, requires careful state management
+
+Which integration approach should be implemented?
+
+---
+
+#### Question 2: Collapsible Section Behavior and Default State
+
+The Figma Make shows the "Identification Documents" section as a collapsible accordion with expand/collapse toggle, while the spec doesn't specify collapsibility.
+
+**Options:**
+
+**A) Always expanded (non-collapsible)**
+- Documents section always visible when on patient form
+- No expand/collapse controls
+- Documents grid immediately visible
+- Pro: Simpler UI, documents always visible
+- Con: Takes vertical space even when not needed
+
+**B) Collapsible, collapsed by default**
+- Section collapsed on initial load (as shown in Figma Make)
+- User must click to expand to see/add documents
+- Badge shows document count when collapsed
+- Pro: Cleaner initial view, reduces cognitive load
+- Con: Extra click required, documents might be forgotten
+
+**C) Collapsible, expanded by default**
+- Section expanded on initial load
+- User can collapse if desired
+- Retains expand/collapse state in session
+- Pro: Documents visible by default, user can hide if needed
+- Con: Takes space by default
+
+**D) Collapsible, with intelligent default (expanded when documents exist)**
+- Collapsed when patient has 0 documents
+- Expanded when patient has 1+ existing documents
+- Pro: Adaptive UI based on context
+- Con: Inconsistent behavior might confuse users
+
+Which collapsible behavior should be implemented?
+
+---
+
+#### Question 3: Upload Button Functionality - Single vs Dual Purpose
+
+The Figma Make shows two separate buttons: "Upload Document" and "Scan ID Card", but both trigger the same file input. The spec lists them as separate methods but doesn't clarify if they should have different behaviors.
+
+**Options:**
+
+**A) Single unified button ("Upload Document")**
+- One button that opens file picker supporting all methods (camera, files, clipboard)
+- Simpler UI with one action
+- Pro: Cleaner interface, less confusion
+- Con: Doesn't distinguish between scanning and uploading pre-existing files
+
+**B) Two separate buttons with same behavior (as in Figma Make)**
+- "Upload Document" and "Scan ID Card" both open file picker
+- Visual distinction but identical functionality
+- Pro: Clear intent even if behavior is same
+- Con: Potentially confusing if both do the same thing
+
+**C) Two separate buttons with different behaviors**
+- "Upload Document" opens file picker for selecting existing files
+- "Scan ID Card" directly activates camera/scanner (if available)
+- Pro: Clear functional distinction, optimized workflows
+- Con: More complex, requires device capability detection
+
+**D) Single button with dropdown for method selection**
+- Main button "Add Document" with dropdown showing "Upload File" and "Scan with Camera"
+- User selects method from dropdown
+- Pro: One button, clear method selection
+- Con: Extra click, less obvious for new users
+
+Which upload button approach should be implemented?
+
+---
+
+#### Question 4: Document Type Selection Timing
+
+The Figma Make shows document type selection BEFORE file upload, while the spec doesn't clarify the workflow timing.
+
+**Options:**
+
+**A) Select type before upload (as in Figma Make)**
+- Dropdown for document type above upload buttons
+- User selects type first, then uploads file
+- Document type pre-set when upload completes
+- Pro: Clear intent before upload, matches Figma Make
+- Con: User might forget to select type, requires validation
+
+**B) Select type after upload**
+- User uploads file first
+- Modal appears asking for document type
+- Pro: Ensures user is prompted for type
+- Con: Interrupts upload workflow, extra modal
+
+**C) Select type during upload**
+- File picker includes document type selector
+- Type and file selected together
+- Pro: Single-step process
+- Con: Non-standard UI pattern, may require custom file picker
+
+**D) Optional type before, required after if not set**
+- User can optionally select type before upload
+- If not selected, system prompts after upload
+- Pro: Flexible, prevents missing type
+- Con: Inconsistent workflow, more complex logic
+
+Which document type selection workflow should be implemented?
+
+---
+
+#### Question 5: Document Grid Layout and Responsiveness
+
+The Figma Make shows a 3-column grid for document thumbnails, but the spec mentions "responsive grid layout with 3 columns on desktop, 2 on tablet, 1 on mobile". The spec doesn't clarify maximum visible documents before pagination.
+
+**Options:**
+
+**A) Unlimited grid with scrolling**
+- All documents displayed in scrollable grid
+- No pagination, just vertical scroll
+- Pro: Simple, all documents visible
+- Con: Performance issues with many documents
+
+**B) Paginated grid (10 documents per page)**
+- Maximum 10 documents visible at once
+- Pagination controls below grid
+- Pro: Better performance, matches spec mention of FR-027
+- Con: Extra clicks to see all documents
+
+**C) Virtual scrolling**
+- Render only visible documents in viewport
+- Smooth infinite scroll
+- Pro: Best performance with many documents
+- Con: More complex implementation
+
+**D) Collapsible pagination (show first 6, "Show more" button)**
+- Initial display shows first 6 documents
+- "Show 4 more" button expands to show next batch
+- Pro: Progressive disclosure, good UX
+- Con: Requires batch loading logic
+
+Which grid layout and pagination approach should be implemented?
+
+---
+
+#### Question 6: Document Viewer Modal Features
+
+The Figma Make shows a basic modal with image preview and close button, while the spec mentions "zoom controls, document metadata, and navigation controls" but doesn't show these in the Make.
+
+**Options:**
+
+**A) Basic modal (as in Figma Make)**
+- Image display with close button
+- Document metadata (type, filename) in header
+- No zoom or navigation controls
+- Pro: Simple, matches Figma Make
+- Con: Limited functionality for detailed viewing
+
+**B) Full-featured modal with zoom**
+- Zoom in/out buttons (+/-), fit-to-screen button
+- Pan image when zoomed
+- Document metadata displayed
+- Pro: Better for detailed inspection
+- Con: More complex, not shown in Make
+
+**C) Full-featured modal with multi-document navigation**
+- All features from Option B
+- Previous/Next buttons to navigate between patient's documents
+- Document count indicator (e.g., "2 of 3")
+- Pro: Efficient multi-document viewing
+- Con: Most complex, deviates from Make
+
+**D) External viewer link**
+- Modal shows thumbnail with "Open in new tab" button
+- Full document opens in separate browser tab
+- Browser provides native zoom controls
+- Pro: Leverages browser capabilities
+- Con: Loses modal context, multiple tabs
+
+Which document viewer features should be implemented?
+
+---
+
+#### Question 7: Document Search Results Integration
+
+The spec mentions adding a "Documents" column to patient search results, but the Figma Make's TestRequest.tsx doesn't show this column in the "Patient Results" table.
+
+**Options:**
+
+**A) Add new "Documents" column to existing table**
+- New column added between existing columns
+- Shows document count badge (e.g., "📄 3")
+- Clickable to open document modal
+- Pro: Highly visible, matches spec
+- Con: Table becomes wider, may require horizontal scroll
+
+**B) Add "Documents" column at end of table**
+- Last column in table
+- Always visible without horizontal scroll
+- Pro: Doesn't disrupt existing columns
+- Con: Less visible, requires scrolling to see
+
+**C) Integrate into "Actions" column**
+- Add document icon button to existing Actions dropdown/buttons
+- Hovering shows document count
+- Pro: No new column needed
+- Con: Less discoverable, hidden in actions
+
+**D) Add row expansion for documents**
+- Clicking row expands to show documents below
+- No new column needed
+- Pro: Clean table, detailed view on demand
+- Con: Requires row expansion implementation
+
+Which search results integration approach should be implemented?
+
+---
+
+#### Question 8: "Other" Document Type Description Requirement
+
+The Figma Make shows an optional "Description" field when "Other" document type is selected, but the spec states "Other (with optional text field for description)" without clarifying if it should be required or truly optional.
+
+**Options:**
+
+**A) Optional description for "Other" type**
+- Text field appears when "Other" selected
+- Can be left empty
+- Document saved as "Other" with no description
+- Pro: Flexible, matches "optional" in spec
+- Con: Unclear what document is if no description provided
+
+**B) Required description for "Other" type**
+- Text field appears when "Other" selected
+- Must provide description before upload
+- Validation prevents empty description
+- Pro: Ensures clarity for "Other" documents
+- Con: Forces user input, deviates from "optional"
+
+**C) Optional during upload, required for searching/filtering**
+- Can upload without description
+- System prompts for description when document is viewed/edited
+- Pro: Doesn't block upload workflow
+- Con: Incomplete metadata initially
+
+Which approach should be used for "Other" document type descriptions?
+
+---
+
+### Resolved Clarifications
+
+(No clarifications resolved yet - awaiting user input)
 
 ## User Scenarios & Testing _(mandatory)_
 
