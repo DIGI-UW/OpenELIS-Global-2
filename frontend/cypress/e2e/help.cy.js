@@ -25,7 +25,7 @@ describe("Interacts with Help options", function () {
     loginPage = new LoginPage();
     homePage = loginPage.goToHomePage();
     helpPage = homePage.goToHelp();
-    
+
     // Verify we're on the help page
     cy.url().should("include", "/Help");
   });
@@ -36,8 +36,7 @@ describe("Interacts with Help options", function () {
     });
 
     // Wait for help page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
+    cy.get("body", { timeout: 10000 }).should("be.visible");
 
     helpPage.clickUserManual();
 
@@ -48,11 +47,10 @@ describe("Interacts with Help options", function () {
     it("Navigates to Help", function () {
       // Navigate to help page
       cy.visit("/Help");
-      
+
       // Wait for help page to be ready
-      cy.get("body", { timeout: 10000 })
-        .should("be.visible");
-      
+      cy.get("body", { timeout: 10000 }).should("be.visible");
+
       helpPage.clickProcessDocumentation();
     });
 
@@ -62,8 +60,7 @@ describe("Interacts with Help options", function () {
       });
 
       // Wait for process documentation to be ready
-      cy.get("body", { timeout: 10000 })
-        .should("be.visible");
+      cy.get("body", { timeout: 10000 }).should("be.visible");
 
       helpPage.clickVLForm();
 
@@ -79,8 +76,7 @@ describe("Interacts with Help options", function () {
       });
 
       // Wait for process documentation to be ready
-      cy.get("body", { timeout: 10000 })
-        .should("be.visible");
+      cy.get("body", { timeout: 10000 }).should("be.visible");
 
       helpPage.clickDBSForm();
 

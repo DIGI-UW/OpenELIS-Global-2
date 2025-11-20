@@ -30,22 +30,20 @@ describe("Routine Reports", function () {
   beforeEach(() => {
     // Navigate to routine reports for each test
     reportPage = homePage.goToRoutineReports();
-    
+
     // Verify we're on the reports page
     cy.url().should("include", "/Reports");
   });
 
   it("User Visits Routine Reports", function () {
     // Verify page loaded
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
+    cy.get("body", { timeout: 10000 }).should("be.visible");
   });
 
   it("User Visits Patient Status Report and checks for Respective Forms", () => {
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.selectPatientStatusReport();
     reportPage.validatePageHeader("Patient Status Report");
 
@@ -67,11 +65,10 @@ describe("Routine Reports", function () {
 
   it("Should Visit Statistics Reports", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.aggregateReports();
     reportPage.selectStatistics();
     reportPage.validatePageHeader("Statistics Report");
@@ -117,11 +114,10 @@ describe("Routine Reports", function () {
 
   it("Visits Summary of all tests", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.aggregateReports();
     reportPage.allReportsSummary();
     reportPage.validatePageHeader("Test Report Summary");
@@ -135,11 +131,10 @@ describe("Routine Reports", function () {
 
   it("Visits HIV Test Summary and validates", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.aggregateReports();
     reportPage.summaryTestHIV();
     reportPage.validateButtonDisabled(".cds--form > :nth-child(3) > .cds--btn");
@@ -152,11 +147,10 @@ describe("Routine Reports", function () {
 
   it("Visits Rejection Report and validates", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.navigateToManagementReports();
     reportPage.selectRejectionReport();
     reportPage.validatePageHeader("Rejection Report");
@@ -170,11 +164,10 @@ describe("Routine Reports", function () {
 
   it("Visits Activity Report By Test Type", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.navigateToManagementReports();
     reportPage.navigateToReportsActivity();
     reportPage.selectByTestType();
@@ -190,11 +183,10 @@ describe("Routine Reports", function () {
 
   it("Visits Activity Report By Panel Type", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.navigateToManagementReports();
     reportPage.navigateToReportsActivity();
     reportPage.selectByPanel();
@@ -210,11 +202,10 @@ describe("Routine Reports", function () {
 
   it("Visits Activity Report By Unit", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.navigateToManagementReports();
     reportPage.navigateToReportsActivity();
     reportPage.selectByUnit();
@@ -230,11 +221,10 @@ describe("Routine Reports", function () {
 
   it("Visits Referred Out Test Report", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.navigateToManagementReports();
     reportPage.selectReferredOutTestReport();
     reportPage.validatePageHeader("External Referrals Report");
@@ -252,11 +242,10 @@ describe("Routine Reports", function () {
 
   it("Visits Non Conformity Report By Date", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.navigateToManagementReports();
     reportPage.navigateToNCReports();
     reportPage.selectNCReportByDate();
@@ -271,11 +260,10 @@ describe("Routine Reports", function () {
 
   it("Visits Non Conformity Report By Unit and Reason", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.navigateToManagementReports();
     reportPage.navigateToNCReports();
     reportPage.selectNCReportByUnit();
@@ -290,11 +278,10 @@ describe("Routine Reports", function () {
 
   it("Visits Export Routine CSV", () => {
     reportPage = homePage.goToRoutineReports();
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("body", { timeout: 10000 }).should("be.visible");
+
     reportPage.navigateToRoutineCSVReport();
     reportPage.validatePageHeader("Export Routine CSV file");
     reportPage.validateButtonDisabled(".cds--form > :nth-child(3) > .cds--btn");
@@ -310,19 +297,17 @@ describe("Study Reports", function () {
   beforeEach(() => {
     // Navigate to study reports for each test
     reportPage = homePage.goToStudyReports();
-    
+
     // Verify we're on the reports page
     cy.url().should("include", "/Reports");
-    
+
     // Wait for page to be ready
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
+    cy.get("body", { timeout: 10000 }).should("be.visible");
   });
 
   it("User Visits Study Reports", function () {
     // Verify page loaded
-    cy.get("body", { timeout: 10000 })
-      .should("be.visible");
+    cy.get("body", { timeout: 10000 }).should("be.visible");
   });
 
   it("should visit ARV Initial Version 1 and verify the button state", () => {

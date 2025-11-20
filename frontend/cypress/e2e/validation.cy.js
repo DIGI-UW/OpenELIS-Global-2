@@ -45,7 +45,9 @@ describe("Validation By Routine", function () {
 
   beforeEach(() => {
     // Set up intercepts BEFORE actions (Constitution V.5)
-    cy.intercept("GET", "**/rest/AccessionValidation?*").as("getValidationResults");
+    cy.intercept("GET", "**/rest/AccessionValidation?*").as(
+      "getValidationResults",
+    );
   });
 
   it("User visits Validation Page", function () {
@@ -55,15 +57,17 @@ describe("Validation By Routine", function () {
   it("Should Select Test Unit From Drop-Down And Validate", function () {
     cy.fixture("workplan").then((order) => {
       // Set up intercept BEFORE action
-      cy.intercept("GET", "**/rest/AccessionValidation?*").as("getValidationResults");
-      
+      cy.intercept("GET", "**/rest/AccessionValidation?*").as(
+        "getValidationResults",
+      );
+
       // Wait for dropdown to be ready (validation page uses #unitType, not #select-1)
       cy.get("#unitType", { timeout: 10000 })
         .should("be.visible")
         .should("not.be.disabled");
-      
+
       validation.selectTestUnit(order.unitType);
-      
+
       // Wait for API call instead of arbitrary wait
       cy.wait("@getValidationResults", { timeout: 15000 })
         .its("response.statusCode")
@@ -79,7 +83,9 @@ describe("Validation By Order", function () {
 
   beforeEach(() => {
     // Set up intercepts BEFORE actions (Constitution V.5)
-    cy.intercept("GET", "**/rest/AccessionValidation?*").as("getValidationResults");
+    cy.intercept("GET", "**/rest/AccessionValidation?*").as(
+      "getValidationResults",
+    );
   });
 
   it("User visits Validation Page", function () {
@@ -89,10 +95,12 @@ describe("Validation By Order", function () {
   it("Enter Lab Number, search and validate", function () {
     cy.fixture("Patient").then((order) => {
       // Set up intercept BEFORE action
-      cy.intercept("GET", "**/rest/AccessionValidation?*").as("getValidationResults");
-      
+      cy.intercept("GET", "**/rest/AccessionValidation?*").as(
+        "getValidationResults",
+      );
+
       validation.enterLabNumberAndSearch(order.labNo);
-      
+
       // Wait for API call instead of arbitrary wait
       cy.wait("@getValidationResults", { timeout: 15000 })
         .its("response.statusCode")
@@ -109,7 +117,9 @@ describe("Validation By Range Of Order", function () {
   beforeEach(() => {
     // Set up intercepts BEFORE actions (Constitution V.5)
     // Validation uses /rest/AccessionValidation endpoint, not LogbookResults
-    cy.intercept("GET", "**/rest/AccessionValidation?*").as("getValidationResults");
+    cy.intercept("GET", "**/rest/AccessionValidation?*").as(
+      "getValidationResults",
+    );
     cy.intercept("POST", "**/rest/AccessionValidation**").as("saveResults");
   });
 
@@ -120,10 +130,12 @@ describe("Validation By Range Of Order", function () {
   it("Should Enter Lab Number and perform a search", function () {
     cy.fixture("Patient").then((order) => {
       // Set up intercept BEFORE action
-      cy.intercept("GET", "**/rest/AccessionValidation?*").as("getValidationResults");
-      
+      cy.intercept("GET", "**/rest/AccessionValidation?*").as(
+        "getValidationResults",
+      );
+
       validation.enterLabNumberAndSearch(order.labNo);
-      
+
       // Wait for API call instead of arbitrary wait
       cy.wait("@getValidationResults", { timeout: 15000 })
         .its("response.statusCode")
@@ -134,9 +146,9 @@ describe("Validation By Range Of Order", function () {
   it("Should Save the results", function () {
     // Set up intercept BEFORE action
     cy.intercept("POST", "**/rest/AccessionValidation**").as("saveResults");
-    
+
     validation.saveResults("Test Note");
-    
+
     // Wait for API call instead of arbitrary wait
     cy.wait("@saveResults", { timeout: 15000 })
       .its("response.statusCode")

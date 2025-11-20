@@ -112,17 +112,19 @@ describe("Add New Patient", function () {
   it("Save new patient information button", function () {
     // Set up intercept BEFORE action
     cy.intercept("POST", "**/rest/patient**").as("createPatient");
-    
+
     patientPage.clickSavePatientButton();
-    
+
     // Wait for API call instead of arbitrary wait
-    cy.wait("@createPatient", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-    
+    cy.wait("@createPatient", { timeout: 15000 })
+      .its("response.statusCode")
+      .should("eq", 200);
+
     // Verify success message appears (use .should() for retry-ability)
     cy.get("div[role='status']", { timeout: 10000 })
       .should("be.visible")
       .should("contain.text", "success");
-    
+
     // Note: We don't clean up here because:
     // 1. The test uses unique data (TestCreate/TestPatient, DOB 12/25/1995) that won't conflict with search tests
     // 2. Search tests use fixture patients (E2E-PAT-001, etc.) with different names/DOBs
@@ -141,11 +143,13 @@ describe("Search Patient", function () {
     // Navigate to patient entry page for each search test
     // Use cy.visit() to ensure clean state (no reload needed)
     cy.visit("/PatientManagement");
-    
+
     // Set up intercepts BEFORE actions (Constitution V.5)
     // Use flexible pattern to match query parameters
-    cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-    
+    cy.intercept("GET", "**/rest/patient-search-results*").as(
+      "getPatientSearch",
+    );
+
     // Wait for page to be ready
     cy.get("section > h3", { timeout: 10000 })
       .should("be.visible")
@@ -155,23 +159,23 @@ describe("Search Patient", function () {
   it("Search patients By gender", function () {
     cy.fixture("Patient").then((patient) => {
       // Set up intercept BEFORE action
-      cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-      
+      cy.intercept("GET", "**/rest/patient-search-results*").as(
+        "getPatientSearch",
+      );
+
       // Use element readiness checks (no arbitrary wait)
-      patientPage.getMaleGenderRadioButton()
-        .should("be.visible")
-        .click();
-      
+      patientPage.getMaleGenderRadioButton().should("be.visible").click();
+
       // Verify button is ready before clicking
-      cy.get("#local_search")
-        .should("be.visible")
-        .should("not.be.disabled");
-      
+      cy.get("#local_search").should("be.visible").should("not.be.disabled");
+
       patientPage.clickSearchPatientButton();
-      
+
       // Wait for API call instead of arbitrary wait
-      cy.wait("@getPatientSearch", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getPatientSearch", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       // Validate results
       patientPage.validatePatientByGender("M");
     });
@@ -180,21 +184,23 @@ describe("Search Patient", function () {
   it("Search Patient By FirstName only", function () {
     cy.fixture("Patient").then((patient) => {
       // Set up intercept BEFORE action
-      cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-      
+      cy.intercept("GET", "**/rest/patient-search-results*").as(
+        "getPatientSearch",
+      );
+
       patientPage.searchPatientByFirstNameOnly(patient.firstName);
       patientPage.getFirstName().should("have.value", patient.firstName);
-      
+
       // Verify button is ready before clicking
-      cy.get("#local_search")
-        .should("be.visible")
-        .should("not.be.disabled");
-      
+      cy.get("#local_search").should("be.visible").should("not.be.disabled");
+
       patientPage.clickSearchPatientButton();
-      
+
       // Wait for API call instead of arbitrary wait
-      cy.wait("@getPatientSearch", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getPatientSearch", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       patientPage.validatePatientSearchTablebyRespectiveField(
         patient.firstName,
         "firstName",
@@ -205,21 +211,23 @@ describe("Search Patient", function () {
   it("Search Patient By LastName only", function () {
     cy.fixture("Patient").then((patient) => {
       // Set up intercept BEFORE action
-      cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-      
+      cy.intercept("GET", "**/rest/patient-search-results*").as(
+        "getPatientSearch",
+      );
+
       patientPage.searchPatientByLastNameOnly(patient.lastName);
       patientPage.getLastName().should("have.value", patient.lastName);
-      
+
       // Verify button is ready before clicking
-      cy.get("#local_search")
-        .should("be.visible")
-        .should("not.be.disabled");
-      
+      cy.get("#local_search").should("be.visible").should("not.be.disabled");
+
       patientPage.clickSearchPatientButton();
-      
+
       // Wait for API call instead of arbitrary wait
-      cy.wait("@getPatientSearch", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getPatientSearch", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       patientPage.validatePatientSearchTablebyRespectiveField(
         patient.lastName,
         "lastName",
@@ -230,8 +238,10 @@ describe("Search Patient", function () {
   it("Search Patient By both Names", function () {
     cy.fixture("Patient").then((patient) => {
       // Set up intercept BEFORE action
-      cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-      
+      cy.intercept("GET", "**/rest/patient-search-results*").as(
+        "getPatientSearch",
+      );
+
       patientPage.searchPatientByFirstAndLastName(
         patient.firstName,
         patient.lastName,
@@ -241,15 +251,15 @@ describe("Search Patient", function () {
       patientPage.getLastName().should("not.have.value", patient.inValidName);
 
       // Verify button is ready before clicking
-      cy.get("#local_search")
-        .should("be.visible")
-        .should("not.be.disabled");
-      
+      cy.get("#local_search").should("be.visible").should("not.be.disabled");
+
       patientPage.clickSearchPatientButton();
-      
+
       // Wait for API call instead of arbitrary wait
-      cy.wait("@getPatientSearch", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getPatientSearch", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       patientPage.validatePatientSearchTable(
         patient.firstName,
         patient.inValidName,
@@ -260,29 +270,33 @@ describe("Search Patient", function () {
   it("Search patient By Date Of Birth", function () {
     cy.fixture("Patient").then((patient) => {
       // Set up intercept BEFORE action (Testing Roadmap: cy.intercept() Patterns)
-      cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-      
+      cy.intercept("GET", "**/rest/patient-search-results*").as(
+        "getPatientSearch",
+      );
+
       // Search by DOB - should return E2E-PAT-001 (TEST-Smith)
       // Note: Validation is flexible - it checks that results exist and patient TEST-Smith is found
       // It does NOT require exact DOB string match (which can vary by locale/format)
       patientPage.searchPatientByDateOfBirth(patient.DOB);
-      
+
       // Verify button is ready before clicking
-      cy.get("#local_search")
-        .should("be.visible")
-        .should("not.be.disabled");
-      
+      cy.get("#local_search").should("be.visible").should("not.be.disabled");
+
       patientPage.clickSearchPatientButton();
-      
+
       // Wait for API call instead of arbitrary wait
       cy.wait("@getPatientSearch", { timeout: 15000 }).then((interception) => {
         // Verify API call succeeded
         expect(interception.response.statusCode).to.eq(200);
         // Verify response has results
-        expect(interception.response.body.patientSearchResults).to.be.an("array");
-        expect(interception.response.body.patientSearchResults.length).to.be.greaterThan(0);
+        expect(interception.response.body.patientSearchResults).to.be.an(
+          "array",
+        );
+        expect(
+          interception.response.body.patientSearchResults.length,
+        ).to.be.greaterThan(0);
       });
-      
+
       // Validate that search returned results and the fixture patient (TEST-Smith) is found
       // Uses last name as stable identifier, not DOB string matching
       patientPage.validatePatientSearchTablebyRespectiveField(
@@ -299,7 +313,7 @@ describe("Search Patient", function () {
       cy.intercept("GET", "**/rest/patient-search-results*").as(
         "getPatientSearch",
       );
-      
+
       // Enter lab number - CustomLabNumberInput behavior depends on AccessionFormat:
       // - ALPHANUM: hidden input with id="labNumber", display input with id="display_labNumber"
       // - Non-ALPHANUM: regular TextInput with id="labNumber"
@@ -309,15 +323,13 @@ describe("Search Patient", function () {
         .should("be.visible")
         .clear()
         .type(patient.labNo);
-      
+
       // Verify button is ready before clicking (use .should() for retry-ability, not cy.wait())
-      cy.get("#local_search")
-        .should("be.visible")
-        .should("not.be.disabled");
-      
+      cy.get("#local_search").should("be.visible").should("not.be.disabled");
+
       // Click search button and wait for API call
       patientPage.clickSearchPatientButton();
-      
+
       // Wait for any patient search API call, then verify it includes labNumber
       cy.wait("@getPatientSearch", { timeout: 15000 }).then((interception) => {
         // Verify the request URL includes the lab number
@@ -344,20 +356,22 @@ describe("Search Patient", function () {
   it("Search patient By PatientId", function () {
     cy.fixture("Patient").then((patient) => {
       // Set up intercept BEFORE action
-      cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-      
+      cy.intercept("GET", "**/rest/patient-search-results*").as(
+        "getPatientSearch",
+      );
+
       patientPage.searchPatientByPatientId(patient.nationalId);
-      
+
       // Verify button is ready before clicking
-      cy.get("#local_search")
-        .should("be.visible")
-        .should("not.be.disabled");
-      
+      cy.get("#local_search").should("be.visible").should("not.be.disabled");
+
       patientPage.clickSearchPatientButton();
-      
+
       // Wait for API call instead of arbitrary wait
-      cy.wait("@getPatientSearch", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getPatientSearch", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       patientPage.validatePatientSearchTable(
         patient.firstName,
         patient.inValidName,
