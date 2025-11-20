@@ -613,6 +613,107 @@ Which multi-document upload approach should be implemented?
 
 ---
 
+### Resolved Clarifications (Q9-Q14)
+
+**Resolution Date**: 2025-11-20
+
+**Q9: Document Viewer Modal Zoom Contradiction** → **Resolved: Option C (Basic zoom only)**
+- **Decision**: Implement basic zoom functionality to satisfy MUST requirements while keeping Phase 1 scope manageable
+- **Implementation**:
+  - Add zoom in button (+) and zoom out button (-)
+  - Add fit-to-screen button
+  - Include document metadata display (type, filename, upload date)
+  - Defer advanced features (pan when zoomed, pinch-to-zoom, zoom slider) to Phase 2
+- **Specification Updates Required**:
+  - Update Q6 resolution to include basic zoom (override previous "no zoom" decision)
+  - Keep FR-021 and UX-011 as MUST requirements (basic zoom satisfies these)
+  - Note in User Story 2: "with basic zoom controls (+/- and fit-to-screen)"
+- **Figma Make Update**: Add three buttons to document viewer modal: Zoom In (+), Zoom Out (-), Fit to Screen
+- **Impact**: Satisfies MUST requirements, provides essential functionality for ID verification, manageable complexity for Phase 1
+
+**Q10: Pagination Contradiction** → **Resolved: Option B (Conditional pagination)**
+- **Decision**: Implement conditional pagination that triggers only when patient has more than 10 documents
+- **Implementation**:
+  - Display all documents with simple vertical scroll when ≤10 documents
+  - When >10 documents: Display 10 per page with pagination controls (Previous/Next, page numbers)
+  - Pagination controls appear below document grid only when >10 documents present
+- **Specification Updates Required**:
+  - Update Q5 resolution to reflect conditional pagination (override previous "no pagination" decision)
+  - Update FR-027: Change from "MUST implement pagination if >10" to "MUST implement conditional pagination"
+  - Add FR-027a: "System MUST display all documents without pagination when patient has ≤10 documents"
+- **Impact**: Honors MUST requirement in FR-027, optimizes for common case (most patients have 1-3 documents), prevents performance issues with large document counts
+
+**Q11: Document Replacement vs Versioning Strategy** → **Resolved: Option B (Simple replacement)**
+- **Decision**: Implement simple in-place replacement with audit trail only, no UI-visible version history
+- **Implementation**:
+  - Update existing document record (same ID) when user replaces document
+  - Increment `version` field number (e.g., 1 → 2 → 3)
+  - Copy old file to audit archive location before replacement
+  - Old versions NOT viewable in main UI (only accessible via admin audit log)
+  - Audit trail records all replacements with old/new file references
+- **Data Model Clarifications**:
+  - `version` field: INTEGER, increments on replacement
+  - `replaced_by_document_id`: NULL for simple replacement (field retained for future use)
+  - `last_modified_date`: Updated on replacement
+  - `modified_by_user_id`: Updated with user who performed replacement
+- **FHIR Behavior**:
+  - Update existing DocumentReference resource (don't create new)
+  - Change `status` from "current" to "superseded" temporarily during replacement
+  - Update `content.attachment` with new file data/URL
+  - Increment version in extension: `http://openelis-global.org/fhir/StructureDefinition/document-version`
+- **Impact**: Simpler UI, less confusion, matches industry standard document management, audit trail provides compliance tracking
+
+**Q12: Storage Location Selection and Default** → **Resolved: Option A (Database storage as default)**
+- **Decision**: Store document files directly in PostgreSQL database by default
+- **Implementation**:
+  - Store files as BLOB or base64-encoded data in `patient_document` table
+  - Add new field: `file_data` (BYTEA for PostgreSQL) to store binary document data
+  - Set default `storage_location` = "DATABASE" for all new documents
+  - Configuration option available to switch to FILESYSTEM or CLOUD in application.properties
+- **Specification Updates Required**:
+  - Update Open Question #2: Remove question, answer is now "Database storage as default"
+  - Update FR-015: Clarify file naming convention applies to filename field, not filesystem path
+  - Add FR-015a: "System MUST store documents in PostgreSQL database as BLOB/base64 by default"
+  - Add CR-006a: "Configuration MUST allow switching storage location to FILESYSTEM or CLOUD without code changes"
+- **Phase 2 Migration Strategy**:
+  - Provide migration tool to move documents from DATABASE → FILESYSTEM or CLOUD
+  - Support configurable storage per document (mixed storage locations)
+  - Add storage location selection in admin UI
+- **Impact**: Simplest deployment (no external dependencies), transactional consistency with patient data, FHIR-compliant embedded data, suitable for <1000 documents
+
+**Q13: Document Type Validation Workflow** → **Resolved: Option A (Disable upload buttons)**
+- **Decision**: Disable upload buttons until document type is selected from dropdown
+- **Implementation**:
+  - Upload buttons ("Upload Document" and "Scan ID Card") start in disabled/grayed out state
+  - Buttons become enabled once user selects any document type (National ID, Insurance Card, or Other)
+  - Add Carbon Tooltip to disabled buttons: "Select document type to enable upload"
+  - Tooltip appears on hover over disabled buttons
+  - No validation error messages needed (invalid state prevented)
+- **UI/UX Details**:
+  - Use Carbon Design System disabled button state styling
+  - Dropdown has placeholder: "Select document type..." (no default selected)
+  - Once type selected, buttons immediately become active with normal styling
+  - Visual feedback is immediate and clear
+- **Impact**: Prevents invalid state from occurring, clear visual feedback, follows standard form validation patterns, no frustrating error messages
+
+**Q14: Multi-Document Upload Capability** → **Resolved: Option A (Single file only)**
+- **Decision**: Support single-file upload only in Phase 1, user uploads one document at a time
+- **Implementation**:
+  - HTML file input element: `<input type="file" multiple={false} />`
+  - User workflow: Select type → Click upload button → Select ONE file → Upload completes → Repeat for next document
+  - Upload progress indicator shows single file progress
+  - Success notification: "Document uploaded successfully" (singular)
+- **User Story Update**:
+  - User Story 1: Clarify that "upload multiple documents" means sequential uploads, not simultaneous
+  - Example workflow: "User selects 'National ID' type, uploads front.jpg. User then selects 'Insurance Card' type, uploads insurance.pdf."
+- **Phase 2 Enhancement**:
+  - Add Option C (multi-file with individual type selection) based on user feedback
+  - Assess user pain points: If users frequently upload 5+ documents, prioritize multi-file
+  - If most users upload 1-3 documents, single-file is sufficient
+- **Impact**: Matches Figma Make implementation, simplest implementation, clear type assignment, Phase 1 focus remains on core functionality
+
+---
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Upload ID Documents During Patient Registration (Priority: P1)
