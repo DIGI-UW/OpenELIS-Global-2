@@ -41,10 +41,10 @@ describe("Work plan by Panel", function () {
 
   it("User can select work plan by test from main menu drop-down. Workplan by panel page appears.", function () {
     workplan = homePage.goToWorkPlanPlanByPanel();
-    
+
     // Verify we're on the workplan page
     cy.url().should("include", "/WorkplanByPanel");
-    
+
     cy.fixture("workplan").then((options) => {
       workplan.getWorkPlanFilterTitle(options.panelTile);
     });
@@ -54,23 +54,25 @@ describe("Work plan by Panel", function () {
     cy.fixture("workplan").then((options) => {
       // Set up intercept BEFORE action
       cy.intercept("GET", "**/rest/workplan**").as("getWorkplan");
-      
+
       // Wait for dropdown to be ready
       cy.get("select#select-1", { timeout: 10000 })
         .should("be.visible")
         .should("not.be.disabled");
-      
+
       workplan.selectDropdownOption(options.bilanPanelType);
-      
+
       // Wait for workplan API call after selection
-      cy.wait("@getWorkplan", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getWorkplan", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       // Wait for table to populate (button only appears when testsList.length > 0)
       cy.get('[data-cy="workplanResultsTable"]', { timeout: 10000 })
         .should("be.visible")
         .find("tbody tr")
         .should("have.length.greaterThan", 0);
-      
+
       // Now Print Workplan button should be visible (button id="print", text="Print Workplan")
       workplan.getPrintWorkPlanButton();
     });
@@ -80,9 +82,10 @@ describe("Work plan by Panel", function () {
     cy.fixture("Order").then((options) => {
       // Testing Roadmap: Use element readiness checks, wait for table rows
       // Wait for table to be ready
-      cy.get('[data-cy="workplanResultsTable"]', { timeout: 10000 })
-        .should("be.visible");
-      
+      cy.get('[data-cy="workplanResultsTable"]', { timeout: 10000 }).should(
+        "be.visible",
+      );
+
       workplan
         .getWorkPlanResultsTable()
         .find("tbody tr", { timeout: 10000 })
@@ -110,10 +113,10 @@ describe("Work plan by Unit", function () {
 
   it("User can select work plan By Unit from main menu drop-down. Workplan By Unit page appears.", function () {
     workplan = homePage.goToWorkPlanPlanByUnit();
-    
+
     // Verify we're on the workplan page
     cy.url().should("include", "/WorkplanByUnit");
-    
+
     cy.fixture("workplan").then((options) => {
       workplan.getWorkPlanFilterTitle(options.unitTile);
     });
@@ -123,23 +126,25 @@ describe("Work plan by Unit", function () {
     cy.fixture("workplan").then((options) => {
       // Set up intercept BEFORE action
       cy.intercept("GET", "**/rest/workplan**").as("getWorkplan");
-      
+
       // Wait for dropdown to be ready
       cy.get("select#select-1", { timeout: 10000 })
         .should("be.visible")
         .should("not.be.disabled");
-      
+
       workplan.selectDropdownOption(options.unitType);
-      
+
       // Wait for workplan API call after selection
-      cy.wait("@getWorkplan", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getWorkplan", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       // Wait for table to populate (button only appears when testsList.length > 0)
       cy.get('[data-cy="workplanResultsTable"]', { timeout: 10000 })
         .should("be.visible")
         .find("tbody tr")
         .should("have.length.greaterThan", 0);
-      
+
       // Now Print Workplan button should be visible
       workplan.getPrintWorkPlanButton();
     });
@@ -149,9 +154,10 @@ describe("Work plan by Unit", function () {
     cy.fixture("Order").then((options) => {
       // Testing Roadmap: Use element readiness checks, wait for table rows
       // Wait for table to be ready
-      cy.get('[data-cy="workplanResultsTable"]', { timeout: 10000 })
-        .should("be.visible");
-      
+      cy.get('[data-cy="workplanResultsTable"]', { timeout: 10000 }).should(
+        "be.visible",
+      );
+
       workplan
         .getWorkPlanResultsTable()
         .find("tbody tr", { timeout: 10000 })
@@ -179,10 +185,10 @@ describe("Work plan by Priority", function () {
 
   it("User can select work plan By Priority from main menu drop-down. Workplan By Priority page appears.", function () {
     workplan = homePage.goToWorkPlanPlanByPriority();
-    
+
     // Verify we're on the workplan page
     cy.url().should("include", "/WorkplanByPriority");
-    
+
     cy.fixture("workplan").then((options) => {
       workplan.getWorkPlanFilterTitle(options.priorityTile);
     });
@@ -192,23 +198,25 @@ describe("Work plan by Priority", function () {
     cy.fixture("workplan").then((options) => {
       // Set up intercept BEFORE action
       cy.intercept("GET", "**/rest/workplan**").as("getWorkplan");
-      
+
       // Wait for dropdown to be ready
       cy.get("select#select-1", { timeout: 10000 })
         .should("be.visible")
         .should("not.be.disabled");
-      
+
       workplan.selectDropdownOption(options.priority);
-      
+
       // Wait for workplan API call after selection
-      cy.wait("@getWorkplan", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getWorkplan", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       // Wait for table to populate (button only appears when testsList.length > 0)
       cy.get('[data-cy="workplanResultsTable"]', { timeout: 10000 })
         .should("be.visible")
         .find("tbody tr")
         .should("have.length.greaterThan", 0);
-      
+
       // Now Print Workplan button should be visible
       workplan.getPrintWorkPlanButton();
     });
@@ -218,9 +226,10 @@ describe("Work plan by Priority", function () {
     cy.fixture("Order").then((options) => {
       // Testing Roadmap: Use element readiness checks, wait for table rows
       // Wait for table to be ready
-      cy.get('[data-cy="workplanResultsTable"]', { timeout: 10000 })
-        .should("be.visible");
-      
+      cy.get('[data-cy="workplanResultsTable"]', { timeout: 10000 }).should(
+        "be.visible",
+      );
+
       workplan
         .getWorkPlanResultsTable()
         .find("tbody tr", { timeout: 10000 })

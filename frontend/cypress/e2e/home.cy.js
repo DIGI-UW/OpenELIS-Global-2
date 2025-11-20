@@ -31,8 +31,9 @@ describe("User interacts with the navigation bar", function () {
     // Navigate to home page for each test
     cy.visit("/");
     // Wait for home page to be ready
-    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 })
-      .should("exist");
+    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 }).should(
+      "exist",
+    );
   });
 
   it("User searches for patient and closes search bar", function () {
@@ -57,8 +58,9 @@ describe("User navigates to different tiles", function () {
     // Navigate to home page for each test
     cy.visit("/");
     // Wait for home page to be ready
-    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 })
-      .should("exist");
+    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 }).should(
+      "exist",
+    );
   });
 
   it("User navigates to the In Progress", function () {

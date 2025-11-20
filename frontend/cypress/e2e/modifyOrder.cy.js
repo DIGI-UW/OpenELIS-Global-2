@@ -80,12 +80,14 @@ describe("Add New Patient", function () {
   it("Save new patient information button", function () {
     // Set up intercept BEFORE action
     cy.intercept("POST", "**/rest/patient**").as("createPatient");
-    
+
     patientPage.clickSavePatientButton();
-    
+
     // Wait for API call instead of arbitrary wait
-    cy.wait("@createPatient", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-    
+    cy.wait("@createPatient", { timeout: 15000 })
+      .its("response.statusCode")
+      .should("eq", 200);
+
     // Verify success message appears (use .should() for retry-ability)
     cy.get("div[role='status']", { timeout: 10000 })
       .should("be.visible")
@@ -97,9 +99,11 @@ describe("Modify Order search by patient ", function () {
   beforeEach(() => {
     // Navigate to modify order page for each test
     cy.visit("/FindOrder");
-    
+
     // Set up intercepts BEFORE actions (Constitution V.5)
-    cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
+    cy.intercept("GET", "**/rest/patient-search-results*").as(
+      "getPatientSearch",
+    );
     cy.intercept("GET", "**/rest/user-programs**").as("getPrograms");
     cy.intercept("POST", "**/rest/SamplePatientEntry**").as("submitOrder");
   });
@@ -113,8 +117,10 @@ describe("Modify Order search by patient ", function () {
   it("Should search Patient By First and LastName", function () {
     cy.fixture("Patient").then((patient) => {
       // Set up intercept BEFORE action
-      cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-      
+      cy.intercept("GET", "**/rest/patient-search-results*").as(
+        "getPatientSearch",
+      );
+
       patientPage.searchPatientByFirstAndLastName(
         patient.firstName,
         patient.lastName,
@@ -127,12 +133,14 @@ describe("Modify Order search by patient ", function () {
       cy.get("[data-cy='searchPatientButton']")
         .should("be.visible")
         .should("not.be.disabled");
-      
+
       modifyOrderPage.clickSearchPatientButton();
-      
+
       // Wait for API call instead of arbitrary wait
-      cy.wait("@getPatientSearch", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getPatientSearch", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       patientPage.validatePatientSearchTable(
         patient.firstName,
         patient.inValidName,
@@ -142,22 +150,24 @@ describe("Modify Order search by patient ", function () {
 
   it("Should be able to search patients By gender", function () {
     // Set up intercept BEFORE action
-    cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-    
-    patientPage.getMaleGenderRadioButton()
-      .should("be.visible")
-      .click();
-    
+    cy.intercept("GET", "**/rest/patient-search-results*").as(
+      "getPatientSearch",
+    );
+
+    patientPage.getMaleGenderRadioButton().should("be.visible").click();
+
     // Verify button is ready before clicking
     cy.get("[data-cy='searchPatientButton']")
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     modifyOrderPage.clickSearchPatientButton();
-    
+
     // Wait for API call instead of arbitrary wait
-    cy.wait("@getPatientSearch", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-    
+    cy.wait("@getPatientSearch", { timeout: 15000 })
+      .its("response.statusCode")
+      .should("eq", 200);
+
     cy.fixture("Patient").then((patient) => {
       patientPage.validatePatientByGender("M");
     });
@@ -166,20 +176,24 @@ describe("Modify Order search by patient ", function () {
   it("should search patient By PatientId", function () {
     cy.fixture("Patient").then((patient) => {
       // Set up intercept BEFORE action
-      cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-      
+      cy.intercept("GET", "**/rest/patient-search-results*").as(
+        "getPatientSearch",
+      );
+
       patientPage.searchPatientByPatientId(patient.nationalId);
-      
+
       // Verify button is ready before clicking
       cy.get("[data-cy='searchPatientButton']")
         .should("be.visible")
         .should("not.be.disabled");
-      
+
       modifyOrderPage.clickSearchPatientButton();
-      
+
       // Wait for API call instead of arbitrary wait
-      cy.wait("@getPatientSearch", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getPatientSearch", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       patientPage.validatePatientSearchTable(
         patient.firstName,
         patient.inValidName,
@@ -193,7 +207,7 @@ describe("Modify Order search by patient ", function () {
       .should("be.visible")
       .find("tbody tr")
       .should("have.length.greaterThan", 0);
-    
+
     modifyOrderPage.clickRespectivePatient();
   });
 
@@ -202,14 +216,14 @@ describe("Modify Order search by patient ", function () {
     cy.get("#additionalQuestionsSelect", { timeout: 10000 })
       .should("be.visible")
       .should("be.disabled");
-    
+
     modifyOrderPage.checkProgramButton();
-    
+
     // Verify next button is ready before clicking
     cy.get("[data-cy='next-button']", { timeout: 10000 })
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     modifyOrderPage.clickNextButton();
   });
 
@@ -219,17 +233,19 @@ describe("Modify Order search by patient ", function () {
       .should("be.visible")
       .find("tbody")
       .should("exist");
-    
+
     // Wait for table rows to appear
-    cy.get("table tbody tr", { timeout: 10000 })
-      .should("have.length.greaterThan", 0);
-    
+    cy.get("table tbody tr", { timeout: 10000 }).should(
+      "have.length.greaterThan",
+      0,
+    );
+
     // Wait for checkboxes to be ready
     cy.get('table input[type="checkbox"][name="add"]', { timeout: 10000 })
       .first()
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     modifyOrderPage.assignValues();
   });
 
@@ -238,27 +254,28 @@ describe("Modify Order search by patient ", function () {
     cy.get("[data-cy='next-button']", { timeout: 10000 })
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     modifyOrderPage.clickNextButton();
-    
+
     // Wait for form to be ready
-    cy.get("#siteName", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("#siteName", { timeout: 10000 }).should("be.visible");
+
     orderEntityPage.rememberSiteAndRequester();
-    
+
     // Set up intercept BEFORE action
     cy.intercept("POST", "**/rest/SamplePatientEntry**").as("submitOrder");
-    
+
     // Verify submit button is ready before clicking
     cy.get("[data-cy='submit-order']", { timeout: 10000 })
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     modifyOrderPage.clickSubmitButton();
-    
+
     // Wait for order submission API call
-    cy.wait("@submitOrder", { timeout: 15000 }).its("response.statusCode").should("be.oneOf", [200, 201]);
+    cy.wait("@submitOrder", { timeout: 15000 })
+      .its("response.statusCode")
+      .should("be.oneOf", [200, 201]);
   });
 });
 
@@ -266,7 +283,7 @@ describe("Modify Order search by accession Number", function () {
   beforeEach(() => {
     // Navigate to modify order page for each test
     cy.visit("/FindOrder");
-    
+
     // Set up intercepts BEFORE actions (Constitution V.5)
     cy.intercept("GET", "**/rest/order**").as("getOrderByAccession");
     cy.intercept("GET", "**/rest/user-programs**").as("getPrograms");
@@ -283,19 +300,21 @@ describe("Modify Order search by accession Number", function () {
     cy.fixture("Patient").then((patient) => {
       // Set up intercept BEFORE action
       cy.intercept("GET", "**/rest/order**").as("getOrderByAccession");
-      
+
       modifyOrderPage.enterAccessionNo(patient.labNo);
-      
+
       // Verify button is ready before clicking
       cy.get("[data-cy='submit-button']", { timeout: 10000 })
         .should("be.visible")
         .should("not.be.disabled");
-      
+
       modifyOrderPage.clickSubmitAccessionButton();
-      
+
       // Wait for API call instead of arbitrary wait
-      cy.wait("@getOrderByAccession", { timeout: 15000 }).its("response.statusCode").should("eq", 200);
-      
+      cy.wait("@getOrderByAccession", { timeout: 15000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
       // Wait for form to load with patient data (indicated by form fields being populated)
       cy.get("input, select", { timeout: 15000 })
         .should("be.visible")
@@ -309,40 +328,38 @@ describe("Modify Order search by accession Number", function () {
     cy.get("#additionalQuestionsSelect", { timeout: 10000 })
       .should("be.visible")
       .should("be.disabled");
-    
+
     modifyOrderPage.checkProgramButton();
-    
+
     // Verify next button is ready before clicking
     cy.get("[data-cy='next-button']", { timeout: 10000 })
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     modifyOrderPage.clickNextButton();
   });
 
   it("Add Sample", function () {
     // Wait for sample form to be ready
-    cy.get("#sampleId_0", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("#sampleId_0", { timeout: 10000 }).should("be.visible");
+
     modifyOrderPage.selectSerumSample();
     orderEntityPage.checkPanelCheckBoxField();
-    
+
     // Verify next button is ready before clicking
     cy.get("[data-cy='next-button']", { timeout: 10000 })
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     modifyOrderPage.clickNextButton();
   });
 
   it("Add Order", function () {
     // Wait for form to be ready
-    cy.get("#siteName", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("#siteName", { timeout: 10000 }).should("be.visible");
+
     orderEntityPage.generateLabOrderNumber();
-    
+
     cy.fixture("Order").then((order) => {
       orderEntityPage.enterSiteName(order.siteName);
       orderEntityPage.enterRequesterLastAndFirstName(
@@ -351,20 +368,22 @@ describe("Modify Order search by accession Number", function () {
         order.requester.lastName,
       );
     });
-    
+
     orderEntityPage.rememberSiteAndRequester();
-    
+
     // Set up intercept BEFORE action
     cy.intercept("POST", "**/rest/SamplePatientEntry**").as("submitOrder");
-    
+
     // Verify submit button is ready before clicking
     cy.get("[data-cy='submit-order']", { timeout: 10000 })
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     modifyOrderPage.clickSubmitButton();
-    
+
     // Wait for order submission API call
-    cy.wait("@submitOrder", { timeout: 15000 }).its("response.statusCode").should("be.oneOf", [200, 201]);
+    cy.wait("@submitOrder", { timeout: 15000 })
+      .its("response.statusCode")
+      .should("be.oneOf", [200, 201]);
   });
 });

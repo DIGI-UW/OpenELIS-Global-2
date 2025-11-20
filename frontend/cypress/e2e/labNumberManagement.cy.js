@@ -27,7 +27,7 @@ before(() => {
   loginPage = new LoginPage();
   homePage = loginPage.goToHomePage();
   adminPage = homePage.goToAdminPageProgram();
-  
+
   // Verify we're on the admin page
   cy.url().should("include", "/Admin");
 });
@@ -35,15 +35,17 @@ before(() => {
 beforeEach(() => {
   // Load fixture data for each test
   cy.fixture("LabNumberManagement").as("labNMData");
-  
+
   // Set up intercepts BEFORE actions (Constitution V.5)
-  cy.intercept("POST", "**/rest/lab-number-management**").as("saveLabNumberConfig");
+  cy.intercept("POST", "**/rest/lab-number-management**").as(
+    "saveLabNumberConfig",
+  );
 });
 
 describe("Lab Number Management", function () {
   it("User navigates to the Lab Number Management page", function () {
     labNumMgtPage = adminPage.goToLabNumberManagementPage();
-    
+
     // Verify we're on the lab number management page
     cy.url().should("include", "/LabNumberManagement");
   });
@@ -55,24 +57,25 @@ describe("Lab Number Management", function () {
   it("User selects legacy lab number type and submits", function () {
     cy.get("@labNMData").then((labNumberManagementData) => {
       // Wait for dropdown to be ready
-      cy.get("select", { timeout: 10000 })
-        .should("be.visible");
-      
+      cy.get("select", { timeout: 10000 }).should("be.visible");
+
       labNumMgtPage.selectLabNumber(
         labNumberManagementData.legacyLabNumberType,
       );
-      
+
       // Set up intercept BEFORE action
-      cy.intercept("POST", "**/rest/lab-number-management**").as("saveLabNumberConfig");
-      
+      cy.intercept("POST", "**/rest/lab-number-management**").as(
+        "saveLabNumberConfig",
+      );
+
       // Verify submit button is ready before clicking
       cy.get("button", { timeout: 10000 })
         .contains("Submit")
         .should("be.visible")
         .should("not.be.disabled");
-      
+
       labNumMgtPage.clickSubmitButton();
-      
+
       // Wait for API call instead of arbitrary wait
       cy.wait("@saveLabNumberConfig", { timeout: 15000 })
         .its("response.statusCode")
@@ -83,29 +86,29 @@ describe("Lab Number Management", function () {
   it("User selects alpha numeric lab number type and submits", function () {
     cy.get("@labNMData").then((labNumberManagementData) => {
       // Wait for dropdown to be ready
-      cy.get("select", { timeout: 10000 })
-        .should("be.visible");
-      
+      cy.get("select", { timeout: 10000 }).should("be.visible");
+
       labNumMgtPage.selectLabNumber(labNumberManagementData.alphaLabNumberType);
       labNumMgtPage.checkPrefixCheckBox();
-      
+
       // Wait for prefix input to be ready
-      cy.get("input", { timeout: 10000 })
-        .should("be.visible");
-      
+      cy.get("input", { timeout: 10000 }).should("be.visible");
+
       labNumMgtPage.typePrefix(labNumberManagementData.userPrefix);
-      
+
       // Set up intercept BEFORE action
-      cy.intercept("POST", "**/rest/lab-number-management**").as("saveLabNumberConfig");
-      
+      cy.intercept("POST", "**/rest/lab-number-management**").as(
+        "saveLabNumberConfig",
+      );
+
       // Verify submit button is ready before clicking
       cy.get("button", { timeout: 10000 })
         .contains("Submit")
         .should("be.visible")
         .should("not.be.disabled");
-      
+
       labNumMgtPage.clickSubmitButton();
-      
+
       // Wait for API call instead of arbitrary wait
       cy.wait("@saveLabNumberConfig", { timeout: 15000 })
         .its("response.statusCode")
@@ -117,24 +120,25 @@ describe("Lab Number Management", function () {
   it("Navigate back to legacy lab number type", function () {
     cy.get("@labNMData").then((labNumberManagementData) => {
       // Wait for dropdown to be ready
-      cy.get("select", { timeout: 10000 })
-        .should("be.visible");
-      
+      cy.get("select", { timeout: 10000 }).should("be.visible");
+
       labNumMgtPage.selectLabNumber(
         labNumberManagementData.legacyLabNumberType,
       );
-      
+
       // Set up intercept BEFORE action
-      cy.intercept("POST", "**/rest/lab-number-management**").as("saveLabNumberConfig");
-      
+      cy.intercept("POST", "**/rest/lab-number-management**").as(
+        "saveLabNumberConfig",
+      );
+
       // Verify submit button is ready before clicking
       cy.get("button", { timeout: 10000 })
         .contains("Submit")
         .should("be.visible")
         .should("not.be.disabled");
-      
+
       labNumMgtPage.clickSubmitButton();
-      
+
       // Wait for API call instead of arbitrary wait
       cy.wait("@saveLabNumberConfig", { timeout: 15000 })
         .its("response.statusCode")

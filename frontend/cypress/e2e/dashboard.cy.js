@@ -41,33 +41,29 @@ const addNewOrder = (dashboardType, testType, sampleType, panelType) => {
   homePage.goToOrderPage();
   dashboard.searchPatientByFName();
   dashboard.searchPatient();
-  
+
   // Wait for search results table (use .should() for retry-ability)
-  cy.get("tbody tr", { timeout: 10000 })
-    .should("have.length.greaterThan", 0);
-  
+  cy.get("tbody tr", { timeout: 10000 }).should("have.length.greaterThan", 0);
+
   dashboard.checkPatientRadio();
   dashboard.clickNext();
-  
+
   // Wait for program dropdown to be ready
-  cy.get("#additionalQuestionsSelect", { timeout: 10000 })
-    .should("be.visible");
-  
+  cy.get("#additionalQuestionsSelect", { timeout: 10000 }).should("be.visible");
+
   dashboard[`select${testType}`]();
   dashboard.clickNext();
-  
+
   // Wait for sample form to be ready
-  cy.get("#sampleId_0", { timeout: 10000 })
-    .should("be.visible");
-  
+  cy.get("#sampleId_0", { timeout: 10000 }).should("be.visible");
+
   dashboard[`select${sampleType}`]();
   dashboard[`check${panelType}`]();
   dashboard.clickNext();
-  
+
   // Wait for the page to navigate and component to mount
-  cy.get("#siteName", { timeout: 10000 })
-    .should("be.visible");
-  
+  cy.get("#siteName", { timeout: 10000 }).should("be.visible");
+
   // Wait for form data to load (siteNames, providers, etc.)
   // The API call happens when AddOrder component mounts
   cy.wait("@loadFormData", { timeout: 10000 }).then((interception) => {
@@ -95,30 +91,30 @@ const addNewOrder = (dashboardType, testType, sampleType, panelType) => {
 
   dashboard.selectSite();
   dashboard.selectRequesting();
-  
+
   // Wait for provider data to load (sets providerFirstName, providerLastName)
   cy.wait("@loadProvider", { timeout: 10000 });
-  
+
   // Wait for form to be ready before submission
   cy.get("button.forwardButton", { timeout: 10000 })
     .contains("Submit")
     .should("be.visible")
     .should("not.be.disabled");
-  
+
   dashboard.submitButton();
-  
+
   // Wait for order submission API call
   cy.wait("@submitOrder", { timeout: 15000 }).then((interception) => {
     // Verify order was submitted successfully
     expect(interception.response.statusCode).to.be.oneOf([200, 201]);
   });
-  
+
   // Wait for submission to complete and success page to appear
   // Order submission redirects to success page with OrderSuccessMessage component
   // Use data-cy selector (from OrderSuccessMessage.js) or wait for URL change
   // Testing Roadmap: Use data-testid/ARIA roles, element readiness checks
   cy.url({ timeout: 15000 }).should("include", "/SamplePatientEntry");
-  
+
   // Wait for success message or Print Barcode button (data-cy="printBarCode" from OrderSuccessMessage.js)
   cy.get('[data-cy="printBarCode"]', { timeout: 15000 })
     .should("be.visible")
@@ -170,18 +166,18 @@ const changeOrderStatusAndSave = (dashboardType) => {
     .should("be.visible");
 
   dashboard.selectFirstOrder();
-  
+
   // Wait for form fields to be ready
   cy.get("#status", { timeout: 10000 })
     .should("be.visible")
     .should("not.be.disabled");
-  
+
   dashboard.selectStatus();
   dashboard.selectTechnician();
   dashboard.selectPathologist();
   dashboard.checkReadyForRelease();
   dashboard.saveOrder();
-  
+
   // Wait for save to complete (use .should() for retry-ability)
   cy.get("table", { timeout: 10000 })
     .should("be.visible")
@@ -203,9 +199,9 @@ describe("Dashboard Tests", function () {
         "GET",
         "**/api/OpenELIS-Global/rest/pathology/dashboard*",
       ).as("loadDashboard");
-      
+
       dashboard = homePage.goToPathologyDashboard();
-      
+
       // Wait for dashboard API call to complete
       cy.wait("@loadDashboard", { timeout: 10000 }).then((interception) => {
         console.log("=== PATHOLOGY DASHBOARD API DEBUG (before hook) ===");
@@ -233,34 +229,33 @@ describe("Dashboard Tests", function () {
       // Navigate back to Pathology Dashboard from success page
       // Testing Roadmap: Use element readiness checks, wait for navigation
       dashboard = homePage.goToPathologyDashboard();
-      
+
       // Wait for navigation to complete (URL change indicates page loaded)
       cy.url({ timeout: 10000 }).should("include", "/PathologyDashboard");
-      
+
       // Wait for dashboard table to be visible (indicates data loaded)
-      cy.get("table", { timeout: 10000 })
-        .should("be.visible");
+      cy.get("table", { timeout: 10000 }).should("be.visible");
 
       // Intercept status list API call first (must load before dashboard)
       cy.intercept(
         "GET",
         "**/api/OpenELIS-Global/rest/displayList/PATHOLOGY_STATUS",
       ).as("loadStatusList");
-      
+
       // Intercept dashboard API call to wait for orders to load
       cy.intercept(
         "GET",
         "**/api/OpenELIS-Global/rest/pathology/dashboard*",
       ).as("loadDashboardAfterOrder");
-      
+
       dashboard = homePage.goToPathologyDashboard();
-      
+
       // Wait for status list to load first (so filters are set correctly)
       cy.wait("@loadStatusList", { timeout: 10000 });
-      
+
       // Wait for first dashboard API call (may have empty statuses)
       cy.wait("@loadDashboardAfterOrder", { timeout: 10000 });
-      
+
       // Wait for second dashboard API call after filters are set (this one should have orders)
       cy.wait("@loadDashboardAfterOrder", { timeout: 10000 }).then(
         (interception) => {
@@ -274,10 +269,12 @@ describe("Dashboard Tests", function () {
           console.log("=== END DASHBOARD AFTER ORDER ===");
         },
       );
-      
+
       // Wait for table to render with orders (use .should() for retry-ability)
-      cy.get("table tbody tr", { timeout: 10000 })
-        .should("have.length.greaterThan", 0);
+      cy.get("table tbody tr", { timeout: 10000 }).should(
+        "have.length.greaterThan",
+        0,
+      );
     });
 
     it("Change The Status of Order and saves it", function () {
@@ -287,7 +284,7 @@ describe("Dashboard Tests", function () {
         .should("be.visible")
         .find("tbody")
         .should("exist");
-      
+
       cy.get("table tbody tr", { timeout: 10000 }).then(($rows) => {
         if ($rows.length === 0) {
           cy.log(
@@ -313,9 +310,9 @@ describe("Dashboard Tests", function () {
         "GET",
         "**/api/OpenELIS-Global/rest/immunochemistry/dashboard*",
       ).as("loadDashboard");
-      
+
       dashboard = homePage.goToImmunoChemistryDashboard();
-      
+
       // Wait for dashboard to load
       cy.wait("@loadDashboard", { timeout: 10000 });
       cy.get("table", { timeout: 10000 }).should("be.visible");
@@ -352,13 +349,12 @@ describe("Dashboard Tests", function () {
   describe("Cytology Dashboard", function () {
     before("Navigate to Cytology Dashboard", function () {
       // Set up intercept BEFORE navigating
-      cy.intercept(
-        "GET",
-        "**/api/OpenELIS-Global/rest/cytology/dashboard*",
-      ).as("loadDashboard");
-      
+      cy.intercept("GET", "**/api/OpenELIS-Global/rest/cytology/dashboard*").as(
+        "loadDashboard",
+      );
+
       dashboard = homePage.goToCytologyDashboard();
-      
+
       // Wait for dashboard to load
       cy.wait("@loadDashboard", { timeout: 10000 });
       cy.get("table", { timeout: 10000 }).should("be.visible");

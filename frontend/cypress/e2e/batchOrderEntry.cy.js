@@ -56,11 +56,10 @@ describe("Batch Order Entry On Demand and Serum form type", function () {
 
   it("User selects Routine Form and Serum Sample", function () {
     const data = this.batchOrderData;
-    
+
     // Wait for form dropdown to be ready
-    cy.get("select", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("select", { timeout: 10000 }).should("be.visible");
+
     batchOrder.selectForm(data.formTypeRoutine);
     batchOrder.selectSampleType(data.serumSample);
   });
@@ -76,11 +75,10 @@ describe("Batch Order Entry On Demand and Serum form type", function () {
 
   it("Should Select Methods, Site Name and Move to Next Page", function () {
     const data = this.batchOrderData;
-    
+
     // Wait for method dropdown to be ready
-    cy.get("select", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("select", { timeout: 10000 }).should("be.visible");
+
     batchOrder.selectMethod(data.methodOnDemand);
     batchOrder.checkFacilityCheckbox();
     batchOrder.checkPatientCheckbox();
@@ -90,11 +88,10 @@ describe("Batch Order Entry On Demand and Serum form type", function () {
 
   it("User adds New Patient", function () {
     batchOrder.clickNewPatientButton();
-    
+
     // Wait for patient form to be ready
-    cy.get("input", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("input", { timeout: 10000 }).should("be.visible");
+
     const data = this.batchOrderData;
     batchOrder.uniqueHealthIDNum(data.healthID);
     batchOrder.nationalID(data.nationalID);
@@ -112,23 +109,22 @@ describe("Batch Order Entry On Demand and Serum form type", function () {
 
   it("Generate BarCode", function () {
     const data = this.batchOrderData;
-    
+
     // Wait for lab number input to be ready
-    cy.get("input", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("input", { timeout: 10000 }).should("be.visible");
+
     batchOrder.typeLabNumber(data.labNumber);
-    
+
     // Set up intercept BEFORE action
     cy.intercept("POST", "**/rest/SamplePatientEntry**").as("saveOrder");
-    
+
     batchOrder.clickGenerateAndSaveBarcode();
-    
+
     // Wait for API call instead of arbitrary wait
     cy.wait("@saveOrder", { timeout: 15000 })
       .its("response.statusCode")
       .should("be.oneOf", [200, 201]);
-    
+
     batchOrder.checkNextLabel().should("be.visible");
   });
 
@@ -138,7 +134,7 @@ describe("Batch Order Entry On Demand and Serum form type", function () {
       .contains("Finish")
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     batchOrder.clickFinishButton();
   });
 });
@@ -150,7 +146,9 @@ describe("Batch Order Entry Pre Printed and EID form type", function () {
 
   beforeEach(() => {
     // Set up intercepts BEFORE actions (Constitution V.5)
-    cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
+    cy.intercept("GET", "**/rest/patient-search-results*").as(
+      "getPatientSearch",
+    );
     cy.intercept("POST", "**/rest/SamplePatientEntry**").as("saveOrder");
   });
 
@@ -161,11 +159,10 @@ describe("Batch Order Entry Pre Printed and EID form type", function () {
 
   it("User selects EID form, samples and test", function () {
     const data = this.batchOrderData;
-    
+
     // Wait for form dropdown to be ready
-    cy.get("select", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("select", { timeout: 10000 }).should("be.visible");
+
     batchOrder.selectForm(data.formTypeEID);
     batchOrder.selectDNAPCRTest();
     batchOrder.selectTubeSample();
@@ -174,11 +171,10 @@ describe("Batch Order Entry Pre Printed and EID form type", function () {
 
   it("User Selects Methods, Site Name and Move to Next Page", function () {
     const data = this.batchOrderData;
-    
+
     // Wait for method dropdown to be ready
-    cy.get("select", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("select", { timeout: 10000 }).should("be.visible");
+
     batchOrder.selectMethod(data.methodPrePrinted);
     batchOrder.checkFacilityCheckbox();
     batchOrder.checkPatientCheckbox();
@@ -188,29 +184,29 @@ describe("Batch Order Entry Pre Printed and EID form type", function () {
 
   it("User Searches for Existing Patient", function () {
     batchOrder.clickSearchPatientButton();
-    
+
     // Wait for search form to be ready
-    cy.get("input", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("input", { timeout: 10000 }).should("be.visible");
+
     const data = this.batchOrderData;
     batchOrder.lastName(data.lastName);
     batchOrder.firstName(data.firstName);
-    
+
     // Set up intercept BEFORE action
-    cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
-    
+    cy.intercept("GET", "**/rest/patient-search-results*").as(
+      "getPatientSearch",
+    );
+
     batchOrder.localSearchButton();
-    
+
     // Wait for API call instead of arbitrary wait
     cy.wait("@getPatientSearch", { timeout: 15000 })
       .its("response.statusCode")
       .should("eq", 200);
-    
+
     // Wait for search results to appear
-    cy.get("tbody tr", { timeout: 10000 })
-      .should("have.length.greaterThan", 0);
-    
+    cy.get("tbody tr", { timeout: 10000 }).should("have.length.greaterThan", 0);
+
     batchOrder.checkPatientRadio(); //the first on the list
   });
 
@@ -220,24 +216,23 @@ describe("Batch Order Entry Pre Printed and EID form type", function () {
 
   it(" User enters Lab Number and Generates Barcode", function () {
     const data = this.batchOrderData;
-    
+
     // Wait for lab number input to be ready
-    cy.get("input", { timeout: 10000 })
-      .should("be.visible");
-    
+    cy.get("input", { timeout: 10000 }).should("be.visible");
+
     batchOrder.typeLabNumber(data.labNumber);
     batchOrder.visitBatchOrderEntryPage();
-    
+
     // Set up intercept BEFORE action
     cy.intercept("POST", "**/rest/SamplePatientEntry**").as("saveOrder");
-    
+
     batchOrder.clickGenerateButton();
-    
+
     // Wait for API call instead of arbitrary wait
     cy.wait("@saveOrder", { timeout: 15000 })
       .its("response.statusCode")
       .should("be.oneOf", [200, 201]);
-    
+
     batchOrder.saveOrder();
   });
 
@@ -247,7 +242,7 @@ describe("Batch Order Entry Pre Printed and EID form type", function () {
       .contains("Finish")
       .should("be.visible")
       .should("not.be.disabled");
-    
+
     batchOrder.clickFinishButton();
   });
 });

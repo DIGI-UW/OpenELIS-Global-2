@@ -110,10 +110,10 @@ Cypress.Commands.add("verifyStorageFixtures", () => {
 /**
  * Login with session caching (10-20x faster - Testing Roadmap pattern)
  * Usage: cy.login() or cy.login(username, password)
- * 
+ *
  * Uses cy.session() to cache login state across tests (same pattern as cy.setupStorageTests()).
  * Login runs ONCE per test file, not before every test.
- * 
+ *
  * Reference: Testing Roadmap - Session Management (cy.session())
  * Pattern matches: cy.setupStorageTests() in storage-setup.js
  */
@@ -131,34 +131,31 @@ Cypress.Commands.add("login", (username, password) => {
     () => {
       // Login via UI (only runs if session doesn't exist)
       cy.visit("/login");
-      cy.get("[data-cy='loginButton']", { timeout: 10000 })
-        .should("be.visible");
-      cy.get("#loginName")
-        .should("be.visible")
-        .clear()
-        .type(loginUsername);
-      cy.get("#password")
-        .should("be.visible")
-        .clear()
-        .type(loginPassword);
+      cy.get("[data-cy='loginButton']", { timeout: 10000 }).should(
+        "be.visible",
+      );
+      cy.get("#loginName").should("be.visible").clear().type(loginUsername);
+      cy.get("#password").should("be.visible").clear().type(loginPassword);
       cy.get("[data-cy='loginButton']")
         .should("be.visible")
         .should("not.be.disabled")
         .click();
-      
+
       // Wait for successful login (check for home page or main header)
       cy.url({ timeout: 15000 }).should("not.include", "/login");
-      cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 })
-        .should("exist");
+      cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 }).should(
+        "exist",
+      );
     },
     {
       cacheAcrossSpecs: true, // Share session across test files (same as storage tests)
-    }
+    },
   );
 
   // After session is established, ensure we're logged in
   // Visit home page to verify session is active
   cy.visit("/");
-  cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 })
-    .should("exist");
+  cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 }).should(
+    "exist",
+  );
 });
