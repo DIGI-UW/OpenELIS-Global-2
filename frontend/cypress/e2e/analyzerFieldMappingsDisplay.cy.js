@@ -38,32 +38,43 @@ describe("Analyzer Field Mappings Display", () => {
   it("should open field mappings page and display mappings when available", () => {
     // Navigate to analyzers list
     cy.visit("/analyzers");
-    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should("be.visible");
-    cy.get('[data-testid="analyzers-table-container"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+    cy.get('[data-testid="analyzers-table-container"]', {
+      timeout: 10000,
+    }).should("be.visible");
 
     // Check if there are any analyzers in the table
-    cy.get('body').then(($body) => {
-      const analyzerRows = $body.find('[data-testid="analyzers-table-container"] tbody tr');
-      
+    cy.get("body").then(($body) => {
+      const analyzerRows = $body.find(
+        '[data-testid="analyzers-table-container"] tbody tr',
+      );
+
       if (analyzerRows.length > 0) {
         // Get first analyzer row ID
-        const firstRowId = analyzerRows.first().attr('id')?.replace('analyzer-row-', '');
-        
+        const firstRowId = analyzerRows
+          .first()
+          .attr("id")
+          ?.replace("analyzer-row-", "");
+
         if (firstRowId) {
           // Open overflow menu for first analyzer
           cy.get(`#analyzer-row-${firstRowId}`)
             .find('[data-testid^="analyzer-actions-"]')
             .find('[role="button"]')
             .click();
-          
+
           // Click the mappings menu item using the correct test ID: analyzer-action-mappings-{row.id}
           cy.get(`[data-testid="analyzer-action-mappings-${firstRowId}"]`)
             .should("be.visible")
             .click();
-          
+
           // Wait for field mappings page to load
           cy.url({ timeout: 10000 }).should("include", "/mappings");
-          cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should("be.visible");
+          cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should(
+            "be.visible",
+          );
 
           // Verify page elements are visible
           cy.get('[data-testid="field-mapping-stats"]').should("be.visible");
@@ -73,13 +84,19 @@ describe("Analyzer Field Mappings Display", () => {
 
           // Verify field mapping panel is visible
           cy.get('[data-testid="field-mapping-panel"]').should("be.visible");
-          cy.get('[data-testid="field-mapping-table-container"]').should("be.visible");
+          cy.get('[data-testid="field-mapping-table-container"]').should(
+            "be.visible",
+          );
 
           // Verify that table is rendered
           cy.get('[data-testid="field-mapping-table"]').should("be.visible");
-          cy.log("Field mappings page opened successfully and displays correctly");
+          cy.log(
+            "Field mappings page opened successfully and displays correctly",
+          );
         } else {
-          cy.log("Could not extract analyzer ID from row - skipping mappings test");
+          cy.log(
+            "Could not extract analyzer ID from row - skipping mappings test",
+          );
         }
       } else {
         cy.log("No analyzers found in table - skipping field mappings test");
@@ -87,4 +104,3 @@ describe("Analyzer Field Mappings Display", () => {
     });
   });
 });
-

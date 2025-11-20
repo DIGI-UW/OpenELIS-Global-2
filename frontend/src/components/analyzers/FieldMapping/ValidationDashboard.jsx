@@ -32,7 +32,10 @@ import {
   Loading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, postToOpenElisServer } from "../../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../../components/utils/Utils";
 import config from "../../../config.json";
 import "./ValidationDashboard.css";
 
@@ -60,13 +63,15 @@ const ValidationDashboard = ({ analyzerId, lifecycleStage }) => {
     setLoading(true);
     setError(null);
 
-    const endpoint = `${config.serverBaseUrl}/rest/analyzer/analyzers/${analyzerId}/validation-metrics`;
+    const endpoint = `/rest/analyzer/analyzers/${analyzerId}/validation-metrics`;
 
     getFromOpenElisServer(endpoint, (data) => {
       if (data && !data.error) {
         setMetrics(data);
       } else {
-        setError(data?.error || intl.formatMessage({ id: "error.loading.metrics" }));
+        setError(
+          data?.error || intl.formatMessage({ id: "error.loading.metrics" }),
+        );
       }
       setLoading(false);
     });
@@ -87,7 +92,9 @@ const ValidationDashboard = ({ analyzerId, lifecycleStage }) => {
         // Show success notification
         setError(null);
       } else {
-        setError(data?.error || intl.formatMessage({ id: "error.validation.failed" }));
+        setError(
+          data?.error || intl.formatMessage({ id: "error.validation.failed" }),
+        );
       }
       setValidating(false);
     });
@@ -103,7 +110,9 @@ const ValidationDashboard = ({ analyzerId, lifecycleStage }) => {
     return (
       <Grid fullWidth className="validation-dashboard">
         <Column lg={16} md={8} sm={4}>
-          <Loading description={intl.formatMessage({ id: "loading.metrics" })} />
+          <Loading
+            description={intl.formatMessage({ id: "loading.metrics" })}
+          />
         </Column>
       </Grid>
     );
@@ -144,14 +153,20 @@ const ValidationDashboard = ({ analyzerId, lifecycleStage }) => {
   ];
 
   // Coverage table rows
-  const coverageRows = Object.entries(metrics.coverageByTestUnit || {}).map(([testUnit, coverage]) => ({
-    id: testUnit,
-    testUnit,
-    coverage: Math.round(coverage * 100),
-  }));
+  const coverageRows = Object.entries(metrics.coverageByTestUnit || {}).map(
+    ([testUnit, coverage]) => ({
+      id: testUnit,
+      testUnit,
+      coverage: Math.round(coverage * 100),
+    }),
+  );
 
   return (
-    <Grid fullWidth className="validation-dashboard" data-testid="validation-dashboard">
+    <Grid
+      fullWidth
+      className="validation-dashboard"
+      data-testid="validation-dashboard"
+    >
       <Column lg={16} md={8} sm={4}>
         <Tile className="validation-dashboard-tile">
           <h3>
@@ -161,16 +176,27 @@ const ValidationDashboard = ({ analyzerId, lifecycleStage }) => {
           {/* Metrics Section */}
           <Grid className="metrics-section">
             <Column lg={4} md={4} sm={4}>
-              <Tile className="metric-tile" data-testid="validation-metric-accuracy">
+              <Tile
+                className="metric-tile"
+                data-testid="validation-metric-accuracy"
+              >
                 <div className="metric-label">
                   <FormattedMessage id="validation.metric.accuracy" />
                 </div>
                 <div className="metric-value">{accuracyPercent}%</div>
-                <ProgressBar value={metrics.accuracy} label={intl.formatMessage({ id: "validation.accuracy.label" })} />
+                <ProgressBar
+                  value={metrics.accuracy}
+                  label={intl.formatMessage({
+                    id: "validation.accuracy.label",
+                  })}
+                />
               </Tile>
             </Column>
             <Column lg={4} md={4} sm={4}>
-              <Tile className="metric-tile" data-testid="validation-metric-unmapped-count">
+              <Tile
+                className="metric-tile"
+                data-testid="validation-metric-unmapped-count"
+              >
                 <div className="metric-label">
                   <FormattedMessage id="validation.metric.unmapped.count" />
                 </div>
@@ -181,11 +207,16 @@ const ValidationDashboard = ({ analyzerId, lifecycleStage }) => {
               </Tile>
             </Column>
             <Column lg={4} md={4} sm={4}>
-              <Tile className="metric-tile" data-testid="validation-metric-warnings">
+              <Tile
+                className="metric-tile"
+                data-testid="validation-metric-warnings"
+              >
                 <div className="metric-label">
                   <FormattedMessage id="validation.metric.warnings" />
                 </div>
-                <div className="metric-value">{metrics.warnings?.length || 0}</div>
+                <div className="metric-value">
+                  {metrics.warnings?.length || 0}
+                </div>
                 <div className="metric-description">
                   <FormattedMessage id="validation.warnings.description" />
                 </div>
@@ -236,7 +267,9 @@ const ValidationDashboard = ({ analyzerId, lifecycleStage }) => {
                   <TableHead>
                     <TableRow>
                       {coverageHeaders.map((header) => (
-                        <TableHeader key={header.key}>{header.header}</TableHeader>
+                        <TableHeader key={header.key}>
+                          {header.header}
+                        </TableHeader>
                       ))}
                     </TableRow>
                   </TableHead>
@@ -245,7 +278,10 @@ const ValidationDashboard = ({ analyzerId, lifecycleStage }) => {
                       <TableRow key={row.id}>
                         <TableCell>{row.testUnit}</TableCell>
                         <TableCell>
-                          <ProgressBar value={row.coverage / 100} label={`${row.coverage}%`} />
+                          <ProgressBar
+                            value={row.coverage / 100}
+                            label={`${row.coverage}%`}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -284,4 +320,3 @@ const ValidationDashboard = ({ analyzerId, lifecycleStage }) => {
 };
 
 export default ValidationDashboard;
-

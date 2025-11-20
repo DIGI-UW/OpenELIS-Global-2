@@ -62,4 +62,3 @@ public class MappingPreviewResult {
         this.errors = errors;
     }
 }
-

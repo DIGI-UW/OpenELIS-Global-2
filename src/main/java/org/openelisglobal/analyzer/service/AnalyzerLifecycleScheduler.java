@@ -15,8 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 
  * Task Reference: T153a, T153b
  * 
- * Transitions analyzers from GO_LIVE to MAINTENANCE after 7 days of being active.
- * Runs daily at 2 AM.
+ * Transitions analyzers from GO_LIVE to MAINTENANCE after 7 days of being
+ * active. Runs daily at 2 AM.
  * 
  * Includes monitoring and alerting for transition failures (T153b).
  */
@@ -32,17 +32,17 @@ public class AnalyzerLifecycleScheduler {
     private long executionTime = 0;
 
     /**
-     * Scheduled job to transition analyzers from GO_LIVE to MAINTENANCE after 7 days
+     * Scheduled job to transition analyzers from GO_LIVE to MAINTENANCE after 7
+     * days
      * 
-     * Runs daily at 2 AM (cron: "0 0 2 * * ?")
-     * Task Reference: T153a
+     * Runs daily at 2 AM (cron: "0 0 2 * * ?") Task Reference: T153a
      */
     @Scheduled(cron = "0 0 2 * * ?")
     @Transactional
     public void transitionToMaintenance() {
         long startTime = System.currentTimeMillis();
         Date jobStartTime = new Date();
-        
+
         LogEvent.logInfo(this.getClass().getSimpleName(), "transitionToMaintenance",
                 "Starting lifecycle transition job at " + jobStartTime);
 
@@ -78,9 +78,10 @@ public class AnalyzerLifecycleScheduler {
                         failureCount++;
                         String analyzerId = config.getAnalyzer() != null ? config.getAnalyzer().getId() : "unknown";
                         failedAnalyzerIds.add(analyzerId);
-                        
-                        LogEvent.logError("Failed to transition analyzer " + analyzerId + " to MAINTENANCE: "
-                                        + e.getMessage(), e);
+
+                        LogEvent.logError(
+                                "Failed to transition analyzer " + analyzerId + " to MAINTENANCE: " + e.getMessage(),
+                                e);
                     }
                 }
             }
@@ -90,10 +91,12 @@ public class AnalyzerLifecycleScheduler {
 
             // Log summary with metrics (T153b)
             LogEvent.logInfo(this.getClass().getSimpleName(), "transitionToMaintenance",
-                    "Lifecycle transition job completed. Transitioned " + transitionedCount + " analyzers to MAINTENANCE, "
-                            + failedCount + " failures. Execution time: " + executionTimeMs + "ms");
+                    "Lifecycle transition job completed. Transitioned " + transitionedCount
+                            + " analyzers to MAINTENANCE, " + failedCount + " failures. Execution time: "
+                            + executionTimeMs + "ms");
 
-            // Failure notification: If >3 analyzers fail transition, log WARNING with summary (T153b)
+            // Failure notification: If >3 analyzers fail transition, log WARNING with
+            // summary (T153b)
             if (failedCount > 3) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "transitionToMaintenance",
                         "WARNING: " + failedCount + " analyzers failed transition to MAINTENANCE. "
@@ -104,9 +107,9 @@ public class AnalyzerLifecycleScheduler {
             failureCount++;
             long executionTimeMs = System.currentTimeMillis() - startTime;
             executionTime = executionTimeMs;
-            
-            LogEvent.logError("Error in lifecycle transition job: " + e.getMessage() + ". Execution time: " + executionTimeMs + "ms",
-                    e);
+
+            LogEvent.logError("Error in lifecycle transition job: " + e.getMessage() + ". Execution time: "
+                    + executionTimeMs + "ms", e);
         }
     }
 
@@ -134,4 +137,3 @@ public class AnalyzerLifecycleScheduler {
         return cal.getTime();
     }
 }
-

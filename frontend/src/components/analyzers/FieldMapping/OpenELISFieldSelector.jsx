@@ -11,17 +11,21 @@
  */
 
 import React, { useState } from "react";
-import { ComboBox, Tag } from "@carbon/react";
+import { ComboBox, Tag, Button } from "@carbon/react";
+import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
+import InlineFieldCreationModal from "./InlineFieldCreationModal";
 import "./OpenELISFieldSelector.css";
 
 const OpenELISFieldSelector = ({
   fieldType,
   selectedFieldId,
   onFieldSelect,
+  onFieldCreated, // Callback when a new field is created
 }) => {
   const intl = useIntl();
   const [searchTerm, setSearchTerm] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Mock OpenELIS fields (TODO: Load from API)
   const mockFields = [
@@ -82,17 +86,53 @@ const OpenELISFieldSelector = ({
     }
   };
 
+  // Handle field creation
+  const handleFieldCreated = (fieldData, fieldId) => {
+    // Call parent callback if provided
+    if (onFieldCreated) {
+      onFieldCreated(fieldData, fieldId);
+    }
+    // Auto-select the newly created field
+    if (onFieldSelect && fieldId) {
+      onFieldSelect(fieldId, fieldData.fieldType || fieldType);
+    }
+  };
+
   return (
     <div className="openelis-field-selector">
-      <ComboBox
-        id="openelis-field-selector"
-        titleText="Select OpenELIS Field"
-        placeholder="Search and select field..."
-        items={items}
-        selectedItem={items.find((item) => item.id === selectedFieldId) || null}
-        onInputChange={(inputValue) => setSearchTerm(inputValue)}
-        onChange={handleSelection}
-        itemToString={(item) => (item ? item.text : "")}
+      <div className="openelis-field-selector-header">
+        <ComboBox
+          id="openelis-field-selector"
+          titleText="Select OpenELIS Field"
+          placeholder="Search and select field..."
+          items={items}
+          selectedItem={
+            items.find((item) => item.id === selectedFieldId) || null
+          }
+          onInputChange={(inputValue) => setSearchTerm(inputValue)}
+          onChange={handleSelection}
+          itemToString={(item) => (item ? item.text : "")}
+        />
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={Add}
+          onClick={() => setShowCreateModal(true)}
+          data-testid="create-new-field-button"
+          tooltipPosition="top"
+          tooltipAlignment="end"
+        >
+          <FormattedMessage
+            id="analyzer.fieldCreation.createNew"
+            defaultMessage="Create New Field"
+          />
+        </Button>
+      </div>
+      <InlineFieldCreationModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onFieldCreated={handleFieldCreated}
+        fieldType={fieldType}
       />
     </div>
   );

@@ -22,10 +22,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * 
  * Task Reference: T181
  * 
- * Tests the complete wrapper pattern workflow:
- * - Process message with mappings applies transformations
- * - Process message without mappings uses original inserter (backward compatibility)
- * - Process message with unmapped field creates error
+ * Tests the complete wrapper pattern workflow: - Process message with mappings
+ * applies transformations - Process message without mappings uses original
+ * inserter (backward compatibility) - Process message with unmapped field
+ * creates error
  * 
  * Uses @SpringBootTest via BaseWebContextSensitiveTest for full integration.
  */
@@ -96,8 +96,8 @@ public class MappingAwareAnalyzerLineInserterIntegrationTest extends BaseWebCont
     }
 
     /**
-     * Test: Check has active mappings returns false when no mappings exist
-     * Task Reference: T181
+     * Test: Check has active mappings returns false when no mappings exist Task
+     * Reference: T181
      */
     @Test
     public void testProcessMessage_WithoutMappings_UsesOriginalInserter() {
@@ -112,8 +112,8 @@ public class MappingAwareAnalyzerLineInserterIntegrationTest extends BaseWebCont
     }
 
     /**
-     * Test: Apply mappings with no mappings returns original lines
-     * Task Reference: T181
+     * Test: Apply mappings with no mappings returns original lines Task Reference:
+     * T181
      */
     @Test
     public void testApplyMappings_WithNoMappings_ReturnsOriginalLines() {
@@ -138,8 +138,7 @@ public class MappingAwareAnalyzerLineInserterIntegrationTest extends BaseWebCont
     }
 
     /**
-     * Test: Process message with unmapped field creates error
-     * Task Reference: T181
+     * Test: Process message with unmapped field creates error Task Reference: T181
      * 
      * Note: This test verifies that when mappings are applied and unmapped fields
      * are detected, an error is created. Full integration test would require
@@ -166,4 +165,3 @@ public class MappingAwareAnalyzerLineInserterIntegrationTest extends BaseWebCont
         assertTrue("Error message should contain unmapped field", error.getErrorMessage().contains("UNMAPPED_TEST"));
     }
 }
-

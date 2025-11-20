@@ -97,13 +97,13 @@ describe("AnalyzerForm", () => {
 
   /**
    * Test: Analyzer type dropdown displays all options correctly
-   * 
+   *
    * This test verifies that the analyzer type dropdown exists and is rendered.
    * The actual dropdown interaction is complex with Carbon components in test
    * environment, so we verify the dropdown exists and has the correct structure.
-   * 
+   *
    * This would have caught the issue where analyzer type dropdown wasn't rendering.
-   * 
+   *
    * Task Reference: T038
    */
   test("testAnalyzerTypeDropdown_DisplaysAllOptions", async () => {

@@ -60,41 +60,50 @@ implementation
       tables exist: `analyzer_configuration`, `analyzer_field`,
       `analyzer_field_mapping`, `qualitative_result_mapping`, `unit_mapping`,
       `analyzer_error`, `custom_field_type`
-- [x] T009a Create Liquibase changeset for SystemConfiguration entries -
-      File: `src/main/resources/liquibase/analyzer/004-009-system-configuration-entries.xml` -
+- [x] T009a Create Liquibase changeset for SystemConfiguration entries - File:
+      `src/main/resources/liquibase/analyzer/004-009-system-configuration-entries.xml` -
       Insert configuration entries: `analyzer.query.timeout.minutes` (default
-      value: "5", description: "Query analyzer timeout in minutes"),
-      `analyzer.query.rate.limit.per.minute` (default: "1", description: "Maximum
-      queries per analyzer per minute"), `analyzer.max.fields.per.query` (default:
-      "500", description: "Maximum fields returned per query") - Support
-      configurable query timeout per FR-002 - Rollback: DELETE FROM
-      system_configuration WHERE name IN ('analyzer.query.timeout.minutes', ...)
+      value: "5", description: "Query analyzer timeout in minutes. If missing or
+      invalid, system uses 5 minutes as default."),
+      `analyzer.query.rate.limit.per.minute` (default: "1", description:
+      "Maximum queries per analyzer per minute"),
+      `analyzer.max.fields.per.query` (default: "500", description: "Maximum
+      fields returned per query") - Support configurable query timeout per
+      FR-002 - Rollback: DELETE FROM system_configuration WHERE name IN
+      ('analyzer.query.timeout.minutes', ...)
 - [x] T010 Create frontend analyzer component directory structure in
       `frontend/src/components/analyzers/` with subdirectories: AnalyzersList/,
       AnalyzerForm/, FieldMapping/, ErrorDashboard/, TestConnectionModal/
 - [x] T011 [P] Add analyzer message keys to `frontend/src/languages/en.json`,
       `fr.json` (internationalization strings from spec.md FR-001 through
       FR-020) - Including keys for: Test Mapping Modal
-      (`analyzer.testMapping.modal.title`, `analyzer.testMapping.modal.subtitle`,
-      `analyzer.testMapping.field.message`, `analyzer.testMapping.preview.title`,
-      `analyzer.testMapping.result.parsedFields`, `analyzer.testMapping.result.warnings`),
-      Copy Mappings Modal (`analyzer.copyMappings.modal.title`,
-      `analyzer.copyMappings.source.label`, `analyzer.copyMappings.target.label`,
-      `analyzer.copyMappings.warning.overwrite`, `analyzer.copyMappings.success.count`),
-      Activation Confirmation (`analyzer.activation.warning.pendingMessages`,
-      `analyzer.activation.error.missingRequired`, `analyzer.activation.error.concurrentEdit`),
-      Validation Dashboard (`analyzer.validation.metrics.accuracy`,
-      `analyzer.validation.unmapped.count`, `analyzer.validation.coverage.testUnit`),
-      Retire Mapping (`analyzer.mapping.retire.confirmation`,
-      `analyzer.mapping.retired.badge`, `analyzer.mapping.retire.reason`),
-      Inline Field Creation (`analyzer.fieldCreation.modal.title`,
+      (`analyzer.testMapping.modal.title`,
+      `analyzer.testMapping.modal.subtitle`,
+      `analyzer.testMapping.field.message`,
+      `analyzer.testMapping.preview.title`,
+      `analyzer.testMapping.result.parsedFields`,
+      `analyzer.testMapping.result.warnings`), Copy Mappings Modal
+      (`analyzer.copyMappings.modal.title`,
+      `analyzer.copyMappings.source.label`,
+      `analyzer.copyMappings.target.label`,
+      `analyzer.copyMappings.warning.overwrite`,
+      `analyzer.copyMappings.success.count`), Activation Confirmation
+      (`analyzer.activation.warning.pendingMessages`,
+      `analyzer.activation.error.missingRequired`,
+      `analyzer.activation.error.concurrentEdit`), Validation Dashboard
+      (`analyzer.validation.metrics.accuracy`,
+      `analyzer.validation.unmapped.count`,
+      `analyzer.validation.coverage.testUnit`), Retire Mapping
+      (`analyzer.mapping.retire.confirmation`, `analyzer.mapping.retired.badge`,
+      `analyzer.mapping.retire.reason`), Inline Field Creation
+      (`analyzer.fieldCreation.modal.title`,
       `analyzer.fieldCreation.entityType.label`,
       `analyzer.fieldCreation.validation.unique`, per entity type validation
       messages), Lifecycle Stages (`analyzer.lifecycle.stage.setup`,
       `analyzer.lifecycle.stage.validation`, `analyzer.lifecycle.stage.goLive`,
       `analyzer.lifecycle.stage.maintenance`), Validation Rules
-      (`analyzer.validation.rule.type.regex`, `analyzer.validation.rule.expression`,
-      `analyzer.validation.rule.test`)
+      (`analyzer.validation.rule.type.regex`,
+      `analyzer.validation.rule.expression`, `analyzer.validation.rule.test`)
 
 **Checkpoint**: Database schema created, module structure initialized, i18n keys
 ready
@@ -149,17 +158,18 @@ completes
       `src/main/java/org/openelisglobal/analyzer/valueholder/AnalyzerError.java`
       extending BaseObject<String> with ErrorType, Severity, ErrorStatus enums
       per data-model.md Section 6
-- [x] T168a [P] Add optimistic locking support to AnalyzerFieldMapping entity per
-      FR-010 concurrent edit detection requirement - Add @Version column to
+- [x] T168a [P] Add optimistic locking support to AnalyzerFieldMapping entity
+      per FR-010 concurrent edit detection requirement - Add @Version column to
       AnalyzerFieldMapping entity (type: Long, default: 0L) - Update Liquibase
-      changeset `004-003-create-analyzer-field-mapping-table.xml` to add `version`
-      INTEGER NOT NULL DEFAULT 0 column - Update T167 validateActivation method to
-      use version-based optimistic locking: Load mappings with version, compare
-      versions before activation, throw OptimisticLockException if versions differ -
-      Add unit test in AnalyzerFieldMappingServiceTest:
-      `testActivateMapping_WithStaleVersion_ThrowsOptimisticLockException` - Update
-      frontend MappingActivationModal to handle HTTP 409 (Conflict) response with
-      optimistic locking error message
+      changeset `004-003-create-analyzer-field-mapping-table.xml` to add
+      `version` INTEGER NOT NULL DEFAULT 0 column - Update T167
+      validateActivation method to use version-based optimistic locking: Load
+      mappings with version, compare versions before activation, throw
+      OptimisticLockException if versions differ - Add unit test in
+      AnalyzerFieldMappingServiceTest:
+      `testActivateMapping_WithStaleVersion_ThrowsOptimisticLockException` -
+      Update frontend MappingActivationModal to handle HTTP 409 (Conflict)
+      response with optimistic locking error message
 - [x] T019 [P] Create AnalyzerFieldDAO interface in
       `src/main/java/org/openelisglobal/analyzer/dao/AnalyzerFieldDAO.java`
       extending BaseDAO<AnalyzerField, String>
@@ -371,10 +381,11 @@ OpenELIS orders/results without manual intervention.
       with conversion factor", "should create qualitative value mapping" - Basic
       implementation complete: 6 test scenarios covering analyzer configuration
       workflow, IP validation, connection testing, and mapping creation
-- [ ] T142 [P] [US1] Add "Create New Field" action to OpenELISFieldSelector
+- [x] T142 [P] [US1] Add "Create New Field" action to OpenELISFieldSelector
       component - Add button/link in dropdown (below field list or in dropdown
-      header) - Opens inline modal form when clicked per FR-019
-- [ ] T143 [P] [US1] Create InlineFieldCreationModal component in
+      header) - Opens inline modal form when clicked per FR-019 - Added "Create
+      New Field" button next to ComboBox, opens InlineFieldCreationModal
+- [x] T143 [P] [US1] Create InlineFieldCreationModal component in
       `frontend/src/components/analyzers/FieldMapping/InlineFieldCreationModal.jsx`
       using Carbon ComposedModal - Form fields: Field Name (required), Entity
       Type (dropdown: TEST, PANEL, RESULT, ORDER, SAMPLE, QC, METADATA, UNIT),
@@ -383,53 +394,65 @@ OpenELIS orders/results without manual intervention.
       Validation: Field name uniqueness check, entity type required, field type
       compatibility - Confirmation step: "Field will be available for mapping
       immediately after creation" - Action buttons: Cancel, Create Field per
-      FR-019
-- [X] T144 [P] [US1] Create OpenELISFieldService interface in
+      FR-019 - Created component with all required form fields, validation, and
+      API integration
+- [x] T144 [P] [US1] Create OpenELISFieldService interface in
       `src/main/java/org/openelisglobal/analyzer/service/OpenELISFieldService.java`
-- [X] T145 [P] [US1] Create OpenELISFieldServiceImpl in
+- [x] T145 [P] [US1] Create OpenELISFieldServiceImpl in
       `src/main/java/org/openelisglobal/analyzer/service/OpenELISFieldServiceImpl.java`
       with @Service and @Transactional annotations - Methods: createField(),
       validateFieldUniqueness(), getFieldById() - Integration with existing
       OpenELIS field entities (Test, Analyte, Result, etc.) per FR-019
-- [X] T146 [P] [US1] Create OpenELISFieldRestController in
+- [x] T146 [P] [US1] Create OpenELISFieldRestController in
       `src/main/java/org/openelisglobal/analyzer/controller/OpenELISFieldRestController.java`
       extending BaseRestController - Endpoint: POST `/rest/openelis-fields` -
       Request body: { name, entityType, loincCode, description, fieldType,
       acceptedUnits } - Validation: Check uniqueness, validate entity type,
       field type compatibility - Returns created field with ID for immediate use
       in mapping - Authorization: LAB_ADMIN or LAB_SUPERVISOR per FR-019
-- [X] T147 [P] [US1] Unit test for OpenELISFieldService in
+- [x] T147 [P] [US1] Unit test for OpenELISFieldService in
       `src/test/java/org/openelisglobal/analyzer/service/OpenELISFieldServiceTest.java` -
       Test methods: `testCreateField_WithValidData_PersistsField`,
       `testCreateField_WithDuplicateName_ThrowsException`,
       `testValidateFieldUniqueness_WithExistingName_ReturnsFalse`
-- [X] T148 [P] [US1] Controller test for OpenELISFieldRestController in
+- [x] T148 [P] [US1] Controller test for OpenELISFieldRestController in
       `src/test/java/org/openelisglobal/analyzer/controller/OpenELISFieldRestControllerTest.java` -
       **Test Slicing**: Use `@WebMvcTest` - Test methods:
       `testCreateField_WithValidData_ReturnsCreated`,
       `testCreateField_WithDuplicateName_ReturnsConflict`
-- [ ] T149 [P] [US1] Frontend unit test for InlineFieldCreationModal in
+- [x] T149 [P] [US1] Frontend unit test for InlineFieldCreationModal in
       `frontend/src/components/analyzers/FieldMapping/InlineFieldCreationModal.test.jsx` -
       Test methods: `testSubmitForm_WithValidData_CallsAPI`,
       `testValidateFieldName_WithDuplicate_ShowsError`,
-      `testSelectEntityType_ShowsRelevantFields`
-- [ ] T150 [US1] Integrate inline field creation into OpenELISFieldSelector
+      `testSelectEntityType_ShowsRelevantFields` - Created comprehensive unit
+      tests covering form submission, validation, entity type selection, modal
+      visibility, and cancel functionality
+- [x] T150 [US1] Integrate inline field creation into OpenELISFieldSelector
       workflow - After successful field creation, refresh field list -
       Auto-select newly created field in mapping - Show success notification per
-      FR-019
+      FR-019 - Integrated modal into OpenELISFieldSelector, added onFieldCreated
+      callback to auto-select newly created field in MappingPanel, added success
+      notification display
 - [x] T151 [P] Add lifecycleStage field to AnalyzerConfiguration entity - Enum:
       SETUP, VALIDATION, GO_LIVE, MAINTENANCE - Default: SETUP for new
       analyzers - Transition rules: SETUP → VALIDATION (when mappings created),
       VALIDATION → GO_LIVE (when activated), GO_LIVE → MAINTENANCE (automatic
-      after 7 days) per FR-015
-- [ ] T152 [P] [US1] Add lifecycle stage badge and filter to AnalyzersList
-      component - Show lifecycle stage badge (Tag component) in analyzer table -
-      Add lifecycle stage filter to analyzer filters dropdown per FR-015
-- [ ] T153 [P] [US1] Add validation workflow integration to FieldMapping
+      after 7 calendar days from activation date) per FR-015
+- [x] T152 [P] [US1] Add lifecycle stage badge and filter to Analyzers Dashboard
+      component (AnalyzersList.jsx) - Show lifecycle stage badge (Tag component)
+      in analyzer table - Add lifecycle stage filter to analyzer filters
+      dropdown per FR-015 - Added lifecycle stage column with color-coded badges
+      (SETUP=gray, VALIDATION=blue, GO_LIVE=green, MAINTENANCE=purple), added
+      lifecycle stage filter dropdown, updated backend API to include
+      lifecycleStage in response and support lifecycleStage filter parameter
+- [x] T153 [P] [US1] Add validation workflow integration to FieldMapping
       component - Add "Validate Mappings" button (only visible in VALIDATION
       stage) - Test mapping functionality (FR-007) integrated into validation
       workflow - Validation dashboard showing test results, mapping accuracy
-      metrics per FR-015
+      metrics per FR-015 - Integrated ValidationDashboard component into
+      FieldMapping, conditionally displayed when analyzer lifecycleStage is
+      VALIDATION, ValidationDashboard already includes "Validate All Mappings"
+      button and test results display
 - [x] T153a [P] [US1] Create scheduled job for lifecycle stage transitions
       (GO_LIVE → MAINTENANCE after 7 days) per FR-015 - Location:
       `src/main/java/org/openelisglobal/analyzer/service/AnalyzerLifecycleScheduler.java` -
@@ -442,16 +465,18 @@ OpenELIS orders/results without manual intervention.
       Test methods: `testTransitionToMaintenance_After7Days_UpdatesStage`,
       `testTransitionToMaintenance_Before7Days_NoUpdate`,
       `testTransitionToMaintenance_WithMultipleAnalyzers_UpdatesAll`
-- [x] T153b [P] [US1] Add monitoring and alerting for lifecycle transition failures
-      per FR-015 scheduled job reliability requirement - Location:
+- [x] T153b [P] [US1] Add monitoring and alerting for lifecycle transition
+      failures per FR-015 scheduled job reliability requirement - Location:
       `src/main/java/org/openelisglobal/analyzer/service/AnalyzerLifecycleScheduler.java` -
-      Log transition failures with ERROR level, include analyzer ID and error details -
-      Track transition metrics: success count, failure count, execution time (via JMX
-      or application metrics) - Add failure notification: If >3 analyzers fail
-      transition in single execution, log WARNING with summary - Add unit test:
+      Log transition failures with ERROR level, include analyzer ID and error
+      details - Track transition metrics: success count, failure count,
+      execution time (via JMX or application metrics) - Add failure
+      notification: If >3 analyzers fail transition in single execution, log
+      WARNING with summary - Add unit test:
       `testTransitionFailure_LogsErrorAndContinuesProcessing`, verify individual
-      analyzer failures don't block batch processing - **Monitoring**: Transition
-      failures should be visible in application logs and metrics dashboard
+      analyzer failures don't block batch processing - **Monitoring**:
+      Transition failures should be visible in application logs and metrics
+      dashboard
 
 ### Validation Dashboard (FR-015)
 
@@ -464,36 +489,36 @@ stage
       Type compatibility warnings, Coverage by test unit (bar chart or table) -
       Test results table: Sample messages tested, Pass/fail status, Issues
       identified, timestamp - Action buttons: "Validate All Mappings" (triggers
-      test mapping for all configured mappings), "View Test History" (opens modal
-      with historical validation results) - Conditional visibility: Only displayed
-      when analyzer lifecycle_stage is VALIDATION
+      test mapping for all configured mappings), "View Test History" (opens
+      modal with historical validation results) - Conditional visibility: Only
+      displayed when analyzer lifecycle_stage is VALIDATION
 - [x] T204 [US1] Create MappingValidationService interface in
       `src/main/java/org/openelisglobal/analyzer/service/MappingValidationService.java`
-- [x] T205 [US1] Create MappingValidationServiceImpl with @Service -
-      Methods: `calculateMappingAccuracy(String analyzerId)` returns percentage of
-      successfully mapped test messages, `identifyUnmappedFields(String analyzerId)`
-      returns list of analyzer fields without mappings,
-      `validateTypeCompatibility(List<AnalyzerFieldMapping> mappings)` checks all
-      mappings have compatible types, `generateCoverageReport(String analyzerId)`
-      returns mapping coverage by test unit - Integration with test mapping
-      results (stores historical test executions for accuracy calculation) - Target
-      response time: <1 second
+- [x] T205 [US1] Create MappingValidationServiceImpl with @Service - Methods:
+      `calculateMappingAccuracy(String analyzerId)` returns percentage of
+      successfully mapped test messages,
+      `identifyUnmappedFields(String analyzerId)` returns list of analyzer
+      fields without mappings,
+      `validateTypeCompatibility(List<AnalyzerFieldMapping> mappings)` checks
+      all mappings have compatible types,
+      `generateCoverageReport(String analyzerId)` returns mapping coverage by
+      test unit - Integration with test mapping results (stores historical test
+      executions for accuracy calculation) - Target response time: <1 second
 - [x] T206 [US1] Add validation metrics endpoint to
       AnalyzerFieldMappingRestController - Endpoint: GET
-      `/rest/analyzer/analyzers/{id}/validation-metrics` - Response: `{ accuracy:
-      Float (0.0-1.0), unmappedCount: Integer, unmappedFields: String[], warnings:
-      String[], coverageByTestUnit: Map<String, Float> }` - Authorization: Requires
-      analyzer view permissions - Caching: Cache metrics for 5 minutes (invalidate
-      on mapping changes)
+      `/rest/analyzer/analyzers/{id}/validation-metrics` - Response:
+      `{ accuracy: Float (0.0-1.0), unmappedCount: Integer, unmappedFields: String[], warnings: String[], coverageByTestUnit: Map<String, Float> }` -
+      Authorization: Requires analyzer view permissions - Caching: Cache metrics
+      for 5 minutes (invalidate on mapping changes)
 - [x] T159 [P] [US1] Add Cypress E2E test for SC-001 (2-hour configuration time)
-      in `frontend/cypress/e2e/analyzerPagesNavigation.cy.js` - Simple navigation test
-      created: Navigate to analyzers list, error dashboard, and field mappings pages
-      (3/3 tests passing) - Full 2-hour configuration test would be manual/extended suite
-      "should complete analyzer configuration with 100 test codes in under 2
-      hours" - Measure time from analyzer registration to all mappings
-      configured and validated - Test with realistic data volume (100 test
-      codes, 50 unit mappings, 30 qualitative mappings) per Success Criteria
-      SC-001
+      in `frontend/cypress/e2e/analyzerPagesNavigation.cy.js` - Simple
+      navigation test created: Navigate to analyzers list, error dashboard, and
+      field mappings pages (3/3 tests passing) - Full 2-hour configuration test
+      would be manual/extended suite "should complete analyzer configuration
+      with 100 test codes in under 2 hours" - Measure time from analyzer
+      registration to all mappings configured and validated - Test with
+      realistic data volume (100 test codes, 50 unit mappings, 30 qualitative
+      mappings) per Success Criteria SC-001
 
 ### Test Mapping Preview (FR-007)
 
@@ -521,41 +546,41 @@ going live
 - [x] T157 [US1] Create AnalyzerMappingPreviewRestController in
       `src/main/java/org/openelisglobal/analyzer/controller/AnalyzerFieldMappingRestController.java`
       (endpoint added to existing controller) - Endpoint: POST
-      `/rest/analyzer/analyzers/{id}/preview-mapping` - Request body: `{
-      astmMessage: String (max 10KB), includeDetailedParsing: Boolean,
-      validateAllMappings: Boolean }` - Response: `{ parsedFields: [...],
-      appliedMappings: [...], entityPreview: {...}, warnings: [...], errors: [...]
-      }` - Validation: Message size limit 10KB, ASTM format validation,
-      authorization check - Returns HTTP 200 with preview or HTTP 400 with
-      validation errors
+      `/rest/analyzer/analyzers/{id}/preview-mapping` - Request body:
+      `{ astmMessage: String (max 10KB), includeDetailedParsing: Boolean, validateAllMappings: Boolean }` -
+      Response:
+      `{ parsedFields: [...], appliedMappings: [...], entityPreview: {...}, warnings: [...], errors: [...] }` -
+      Validation: Message size limit 10KB, ASTM format validation, authorization
+      check - Returns HTTP 200 with preview or HTTP 400 with validation errors
 - [x] T158 [P] [US1] Controller test for AnalyzerMappingPreviewRestController in
       `src/test/java/org/openelisglobal/analyzer/controller/AnalyzerMappingPreviewRestControllerTest.java` -
-      Test methods: `testPreviewMapping_WithValidMessage_ReturnsStructuredResponse`,
+      Test methods:
+      `testPreviewMapping_WithValidMessage_ReturnsStructuredResponse`,
       `testPreviewMapping_WithLargeMessage_ReturnsBadRequest`,
       `testPreviewMapping_WithNullMessage_ReturnsBadRequest`
 - [x] T160 [P] [US1] Create TestMappingModal component in
-      `frontend/src/components/analyzers/FieldMapping/TestMappingModal.jsx` using
-      Carbon ComposedModal (medium size ~600-700px) - Dialog header: title "Test
-      Field Mappings", subtitle "Preview how sample ASTM messages will be
+      `frontend/src/components/analyzers/FieldMapping/TestMappingModal.jsx`
+      using Carbon ComposedModal (medium size ~600-700px) - Dialog header: title
+      "Test Field Mappings", subtitle "Preview how sample ASTM messages will be
       interpreted" - Analyzer info section (read-only): analyzer name, type,
       active mappings count - Form fields: Sample ASTM Message (TextArea,
       required, max 10KB, character counter, placeholder with example), Preview
       Options (checkboxes: "Show detailed parsing steps", "Validate all
-      mappings") - Result display: Parsed Fields table (Field Name, ASTM Ref, Raw
-      Value, Mapped To, Interpretation), Applied Mappings section, OpenELIS Entity
-      Preview (JSON/formatted), Warnings/Errors section - Action buttons: Close
-      (secondary), Test Another (ghost), Save as Test Case (optional) - Validation:
-      ASTM format, size limit, checksum - per FR-007
+      mappings") - Result display: Parsed Fields table (Field Name, ASTM Ref,
+      Raw Value, Mapped To, Interpretation), Applied Mappings section, OpenELIS
+      Entity Preview (JSON/formatted), Warnings/Errors section - Action buttons:
+      Close (secondary), Test Another (ghost), Save as Test Case (optional) -
+      Validation: ASTM format, size limit, checksum - per FR-007
 - [x] T161 [P] [US1] Frontend unit test for TestMappingModal in
       `frontend/src/components/analyzers/FieldMapping/TestMappingModal.test.jsx` -
       Test methods: `testSubmitMessage_WithValidMessage_DisplaysPreview`,
       `testValidation_WithInvalidFormat_ShowsError`,
       `testValidation_WithMessageTooLarge_ShowsError`,
       `testClearForm_WithTestAnother_ResetsState`
-- [x] T162 [US1] Integrate TestMappingModal into FieldMapping component -
-      Add "Test Mapping" button to FieldMapping page header (ghost style,
-      positioned between Back button and Save Mappings button per FR-007) - Wire
-      up modal open/close handlers - Connect to preview API endpoint
+- [x] T162 [US1] Integrate TestMappingModal into FieldMapping component - Add
+      "Test Mapping" button to FieldMapping page header (ghost style, positioned
+      between Back button and Save Mappings button per FR-007) - Wire up modal
+      open/close handlers - Connect to preview API endpoint
       `/rest/analyzer/analyzers/{id}/preview-mapping` - Handle response display
       (parsed fields, mappings, preview, warnings, errors) - Add loading state
       during preview operation
@@ -681,16 +706,13 @@ going live
       role-based access control (LAB_ADMIN, LAB_SUPERVISOR, GLOBAL_ADMIN)
 - [x] T069 [US1] Create Liquibase changeset
       `src/main/resources/liquibase/analyzer/004-009-add-menu-items.xml` for
-      "Analyzers" parent menu item and sub-navigation items ("Analyzers List",
-      "Error Dashboard", "Field Mappings") per FR-020 - Insert into menu table
-      with parent_id, presentation_order, element_id, action_url, display_key -
-      "Field Mappings" menu item has contextual visibility
-      (action_url="/analyzers/:id/mappings") - Contextual visibility handled by
-      frontend based on current route (frontend checks route to determine which
-      contextual items to display) - Menu items added: parent "Analyzers"
-      (presentation_order=26), "Analyzers List" (order=1), "Error Dashboard"
-      (order=2), "Field Mappings" (order=3) - All menu items use i18n display
-      keys from en.json
+      "Analyzers" parent menu item and sub-navigation items ("Analyzers
+      Dashboard", "Error Dashboard") per FR-020 - Insert into menu table with
+      parent_id, presentation_order, element_id, action_url, display_key - Field
+      Mappings page does NOT appear in navigation menu (accessed via analyzer
+      row actions) - Menu items added: parent "Analyzers"
+      (presentation_order=26), "Analyzers Dashboard" (order=1), "Error
+      Dashboard" (order=2) - All menu items use i18n display keys from en.json
 
 **Checkpoint Validation**: At this point, User Story 1 should be fully
 functional and testable independently. ALL tests from T029-T040 MUST pass before
@@ -792,14 +814,15 @@ reflected in an audit trail.
       (updateMapping, activateMapping, disableMapping) call
       setLastupdatedFields() - Detailed audit trail (previous vs new values) can
       be added via AuditTrailService if needed
+
 ### Copy Mappings Feature (FR-006)
 
-**Purpose**: Allow copying field mappings from one analyzer to another for faster
-configuration
+**Purpose**: Allow copying field mappings from one analyzer to another for
+faster configuration
 
-**Note**: Copy Mappings is an optional convenience feature, not required for core
-US2 functionality (draft/active workflow T074, T078 already complete). Can be
-deferred to Phase 8 (Polish) if needed.
+**Note**: Copy Mappings is an optional convenience feature, not required for
+core US2 functionality (draft/active workflow T074, T078 already complete). Can
+be deferred to Phase 8 (Polish) if needed.
 
 - [x] T191 [P] [US2] Unit test for AnalyzerMappingCopyService in
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerMappingCopyServiceTest.java` -
@@ -816,30 +839,37 @@ deferred to Phase 8 (Polish) if needed.
       `copyMappings(sourceAnalyzerId, targetAnalyzerId, CopyOptions)`,
       `validateCopyOperation(source, target)`,
       `resolveConflicts(existingMappings, newMappings)`,
-      `mergeQualitativeMappings(source, target)` - Conflict resolution: Overwrite
-      existing mappings by default, merge qualitative values (deduplicate),
-      validate type compatibility (skip or warn), rollback on any failure - per
-      FR-006 workflow
+      `mergeQualitativeMappings(source, target)` - Conflict resolution:
+      Overwrite existing mappings by default, merge qualitative values
+      (deduplicate), validate type compatibility (skip or warn with Force
+      option), rollback on any failure - When "Force" option is selected for
+      type-incompatible mappings, create mapping with warning badge, mark as
+      `type_incompatible=true` in database, exclude from automatic processing
+      until manually reviewed - per FR-006 workflow
 - [x] T194 [US2] Add copyMappings endpoint to
       AnalyzerFieldMappingRestController - Endpoint: POST
-      `/rest/analyzer/analyzers/{targetId}/copy-mappings` - Request: `{
-      sourceAnalyzerId: String, overwriteExisting: Boolean (default true),
-      skipIncompatible: Boolean (default false) }` - Response: `{ copiedCount:
-      Integer, skippedCount: Integer, warnings: String[], conflicts:
-      ConflictDetail[] }` - Returns HTTP 200 with copy results, HTTP 400 if
-      validation fails, HTTP 409 if rollback occurs
+      `/rest/analyzer/analyzers/{targetId}/copy-mappings` - Request:
+      `{ sourceAnalyzerId: String, overwriteExisting: Boolean (default true), skipIncompatible: Boolean (default false) }` -
+      Response:
+      `{ copiedCount: Integer, skippedCount: Integer, warnings: String[], conflicts: ConflictDetail[] }` -
+      Returns HTTP 200 with copy results, HTTP 400 if validation fails, HTTP 409
+      if rollback occurs
 - [x] T195 [P] [US2] Controller test for copyMappings endpoint in
       `src/test/java/org/openelisglobal/analyzer/controller/AnalyzerFieldMappingRestControllerTest.java` -
       Test methods: `testCopyMappings_WithValidRequest_ReturnsCopyResults`,
       `testCopyMappings_WithNoSourceMappings_ReturnsBadRequest`
 - [x] T076 [P] [US2] Create CopyMappingsModal component in
-      `frontend/src/components/analyzers/FieldMapping/CopyMappingsModal.jsx` using
-      Carbon ComposedModal (small size ~400-480px) - Dialog header: title "Copy
-      Field Mappings", subtitle dynamic - Source analyzer section (read-only):
-      analyzer name, type - Target analyzer section: dropdown (searchable,
-      filters to analyzers with active mappings), auto-populated from context -
-      Mapping summary: "X mappings will be copied" with breakdown - Warning note:
-      overwrite warning - Confirmation: nested modal before copy - Action buttons:
+      `frontend/src/components/analyzers/FieldMapping/CopyMappingsModal.jsx`
+      using Carbon ComposedModal (small size ~400-480px) - Dialog header: title
+      "Copy Field Mappings", subtitle dynamic - Source analyzer section
+      (read-only): analyzer name, type - Target analyzer section: dropdown
+      (searchable, filters to analyzers with active mappings), auto-populated
+      from context - Mapping summary: "X mappings will be copied" with
+      breakdown - Warning note: overwrite warning - Type incompatibility
+      handling: When incompatible types detected, show warning with options:
+      Skip (exclude from copy), Force (copy with warning badge, mark as
+      type_incompatible, exclude from automatic processing), Cancel (abort
+      operation) - Confirmation: nested modal before copy - Action buttons:
       Cancel, "Copy Mappings" (with Copy icon) - Success notification: mapping
       count, "View Target Analyzer" button - Error handling: display conflicts,
       allow retry - per FR-006
@@ -849,10 +879,11 @@ deferred to Phase 8 (Polish) if needed.
       `testCopyMappings_ShowsConfirmationDialog`,
       `testCopySuccess_ShowsNotificationWithCount`,
       `testCopyWithConflicts_DisplaysWarnings`
-- [x] T197 [US2] Integrate CopyMappingsModal into AnalyzersList component -
-      Add "Copy Mappings" action to row overflow menu - Open modal with source
+- [x] T197 [US2] Integrate CopyMappingsModal into AnalyzersList component - Add
+      "Copy Mappings" action to row overflow menu - Open modal with source
       analyzer pre-selected - Wire modal to API endpoint
-      `/rest/analyzer/analyzers/{id}/copy-mappings` - Handle success/error states
+      `/rest/analyzer/analyzers/{id}/copy-mappings` - Handle success/error
+      states
 - [x] T078 [US2] Extend MappingPanel component with Edit Mode supporting draft
       state per FR-010 - Show "Save as Draft" and "Save and Activate" buttons -
       Require confirmation for active analyzers - Integrated
@@ -861,17 +892,19 @@ deferred to Phase 8 (Polish) if needed.
       passing: testUpdateMapping_ShowsConfirmationModal,
       testSaveDraftMapping_DoesNotRequireConfirmation,
       testCreateMapping_DoesNotRequireConfirmation
-- [ ] T079 [US2] Add visual indicators for draft vs active mappings in
+- [x] T079 [US2] Add visual indicators for draft vs active mappings in
       FieldMappingPanel component - Status badges, filter options for
-      draft/active
-- [ ] T080 [US2] Create TestMappingModal component in
+      draft/active - Added draft/active status badges in action column (shows
+      both mapped/unmapped and draft/active status), added draft/active filter
+      options to status dropdown, added draft/active counts to panel footer
+- [x] T080 [US2] Create TestMappingModal component in
       `frontend/src/components/analyzers/FieldMapping/TestMappingModal.jsx`
       using Carbon ComposedModal for inline test mapping capability per FR-007 -
       Submit sample ASTM messages, preview interpretation, show
       warnings/errors - Add "Test Mapping" button in FieldMapping page header
       (ghost style, secondary action) positioned between "Back" button and "Save
       Mappings" button per FR-007 specification - Button opens TestMappingModal
-      when clicked
+      when clicked - Already completed in T160/T162
 - [x] T164 [P] [US2] Create MappingActivationModal component in
       `frontend/src/components/analyzers/FieldMapping/MappingActivationModal.jsx`
       using Carbon ComposedModal (warning variant) - Dialog header with title
@@ -906,35 +939,43 @@ deferred to Phase 8 (Polish) if needed.
       Result Value mappings missing, display error "Cannot activate: Required
       mappings missing" with list of missing fields - Add concurrent edit
       detection: Display optimistic locking warning "Mapping changes detected.
-      Another user modified mappings. Please reload." with "Reload Page" button -
-      Update per FR-010 edge cases
+      Another user modified mappings. Please reload." with "Reload Page"
+      button - Update per FR-010 edge cases
 - [x] T166 [P] [US1] Add activateMapping endpoint to
       AnalyzerFieldMappingRestController - Endpoint: POST
-      `/rest/analyzer/analyzers/{id}/activate-mappings` - Request: `{ mappingIds:
-      String[], confirmationToken: String }` - Validation: Check required mappings
-      present (Sample ID, Test Code, Result Value), check pending messages in
-      error queue, check optimistic lock (compare lastUpdated timestamps) -
-      Response: `{ activatedCount: Integer, warnings: String[], requiresAdditionalConfirmation: Boolean }` -
+      `/rest/analyzer/analyzers/{id}/activate-mappings` - Request:
+      `{ mappingIds: String[], confirmationToken: String }` - Validation: Check
+      required mappings present (Sample ID, Test Code, Result Value), check
+      pending messages in error queue, check optimistic lock (compare
+      lastUpdated timestamps) - Response:
+      `{ activatedCount: Integer, warnings: String[], requiresAdditionalConfirmation: Boolean }` -
       Returns HTTP 400 if validation fails, HTTP 409 if concurrent edit detected
 - [x] T167 [US1] Add validateActivation method to
-      AnalyzerFieldMappingServiceImpl - Method signature: `ActivationValidationResult
-      validateActivation(String analyzerId)` - Validation checks: Required
-      mappings present (Sample ID, Test Code, Result Value), pending messages in
-      error queue count, concurrent edits detection using optimistic locking from
-      T168a (version-based), all active mappings have compatible types, analyzer
-      connection operational (optional warning) - Returns: `{ canActivate: Boolean, missingRequired:
-      String[], pendingMessagesCount: Integer, warnings: String[] }`
+      AnalyzerFieldMappingServiceImpl - Method signature:
+      `ActivationValidationResult validateActivation(String analyzerId)` -
+      Validation checks: Required mappings present (Sample ID, Test Code, Result
+      Value), pending messages in error queue count, concurrent edits detection
+      using optimistic locking from T168a (version-based), all active mappings
+      have compatible types, analyzer connection operational (optional
+      warning) - Returns:
+      `{ canActivate: Boolean, missingRequired: String[], pendingMessagesCount: Integer, warnings: String[] }`
 - [x] T168 [P] [US1] Unit test for activation validation in
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerFieldMappingServiceTest.java` -
-      Add test methods: `testValidateActivation_WithMissingRequired_ReturnsFalse`,
+      Add test methods:
+      `testValidateActivation_WithMissingRequired_ReturnsFalse`,
       `testValidateActivation_WithPendingMessages_ReturnsWarnings`,
       `testValidateActivation_AllChecksPass_ReturnsTrue`,
       `testActivateMapping_WithConcurrentEdit_ThrowsOptimisticLockException`
-- [ ] T169a [P] [US1] Frontend unit test for MappingActivationModal edge cases in
+- [x] T169a [P] [US1] Frontend unit test for MappingActivationModal edge cases
+      in
       `frontend/src/components/analyzers/FieldMapping/MappingActivationModal.test.jsx` -
-      Add test methods: `testActivation_WithMissingRequired_ShowsErrorAndBlocksButton`,
+      Add test methods:
+      `testActivation_WithMissingRequired_ShowsErrorAndBlocksButton`,
       `testActivation_WithPendingMessages_ShowsWarningAndAllowsActivation`,
-      `testActivation_WithConcurrentEdit_ShowsOptimisticLockWarning`
+      `testActivation_WithConcurrentEdit_ShowsOptimisticLockWarning` - Added all
+      three edge case tests: missing required mappings blocks activation,
+      pending messages shows warning but allows activation, concurrent edit
+      shows error and reload option
 
 ### Retire/Disable Mappings (FR-013)
 
@@ -945,14 +986,14 @@ deferred to Phase 8 (Polish) if needed.
       Sets `is_active=false`, records `retirement_date=NOW()`, stores
       `retirement_reason` in notes field - Validation: Cannot retire if analyzer
       has pending messages (UNACKNOWLEDGED/PENDING_RETRY status) using this
-      mapping - Throws `LIMSRuntimeException` with message "Cannot retire mapping:
-      {count} pending messages reference this mapping" - per FR-013
-- [x] T169 [P] [US2] Enhance MappingPanel View Mode with retire action -
-      Add "Retire Mapping" button in View Mode header (positioned next to Edit,
+      mapping - Throws `LIMSRuntimeException` with message "Cannot retire
+      mapping: {count} pending messages reference this mapping" - per FR-013
+- [x] T169 [P] [US2] Enhance MappingPanel View Mode with retire action - Add
+      "Retire Mapping" button in View Mode header (positioned next to Edit,
       before Remove) - Button disabled with tooltip if mapping is required AND
-      analyzer has pending messages - Clicking opens MappingRetirementModal (T170) -
-      Wire to retire endpoint - Add visual indicator: "Retired" badge (gray Tag)
-      on mappings with `is_active=false` - per FR-013
+      analyzer has pending messages - Clicking opens MappingRetirementModal
+      (T170) - Wire to retire endpoint - Add visual indicator: "Retired" badge
+      (gray Tag) on mappings with `is_active=false` - per FR-013
 - [x] T170 [P] [US2] Create MappingRetirementModal component in
       `frontend/src/components/analyzers/FieldMapping/MappingRetirementModal.jsx`
       using Carbon ComposedModal (small size ~400px) - Dialog header: title
@@ -963,18 +1004,19 @@ deferred to Phase 8 (Polish) if needed.
       "Optional: Reason for retiring this mapping") - Warning: If pending
       messages exist, display "Cannot retire: {count} pending messages use this
       mapping" and block action - Action buttons: Cancel (secondary), "Retire
-      Mapping" (destructive, disabled if pending messages) - Success notification:
-      "Mapping retired successfully" - per FR-013
+      Mapping" (destructive, disabled if pending messages) - Success
+      notification: "Mapping retired successfully" - per FR-013
 - [x] T200 [US2] Add getHistoricalMappings endpoint enhancement to
       AnalyzerFieldMappingRestController - Update existing GET
       `/rest/analyzer/analyzers/{id}/mappings` endpoint - Add query parameter:
       `includeRetired` (Boolean, default false) - Response includes
       retirement_date, retirement_reason, retired_by_user for retired mappings -
-      Filter: Only include mappings with `is_active=false` if parameter is true -
-      per FR-013
+      Filter: Only include mappings with `is_active=false` if parameter is
+      true - per FR-013
 - [x] T201 [P] [US2] Unit test for retireMapping in
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerFieldMappingServiceTest.java` -
-      Test methods: `testRetireMapping_WithNoPendingMessages_SetsInactiveSuccessfully`,
+      Test methods:
+      `testRetireMapping_WithNoPendingMessages_SetsInactiveSuccessfully`,
       `testRetireMapping_WithPendingMessages_ThrowsException`,
       `testRetireMapping_WithReason_StoresReasonInNotes`,
       `testRetireMapping_SetsRetirementDateToNow`
@@ -1051,9 +1093,9 @@ impacted messages can be reprocessed successfully.
       `testGetError_WithInvalidId_Returns404`,
       `testGetErrors_WithNoFilters_ReturnsAllErrors` (catches bug where service
       returned empty list when no filters),
-      `testGetErrors_ResponseFormat_MatchesFrontendExpectations` (verifies errors
-      converted to maps and response structure matches frontend) - All 7 tests
-      passing ✓
+      `testGetErrors_ResponseFormat_MatchesFrontendExpectations` (verifies
+      errors converted to maps and response structure matches frontend) - All 7
+      tests passing ✓
 - [x] T086 [P] [US3] Frontend unit test for ErrorDashboard component in
       `frontend/src/components/analyzers/ErrorDashboard/ErrorDashboard.test.jsx` -
       Test methods: `testRendersErrorDashboard_WithErrors_DisplaysTable`,
@@ -1061,8 +1103,9 @@ impacted messages can be reprocessed successfully.
       `testOpenErrorDetails_ShowsModal`,
       `testSearchErrors_WithQuery_FiltersResults`,
       `testAcknowledgeAll_CallsHandler` - **Updated**: All tests now use correct
-      API response format `{ data: { content: [...], statistics: {...} }, status:
-      "success" }` to catch frontend/backend response format mismatches
+      API response format
+      `{ data: { content: [...], statistics: {...} }, status: "success" }` to
+      catch frontend/backend response format mismatches
 - [x] T087 [P] [US3] Frontend unit test for ErrorDetailsModal component in
       `frontend/src/components/analyzers/ErrorDashboard/ErrorDetailsModal.test.jsx` -
       Test methods: `testDisplayErrorDetails_ShowsFullContext`,
@@ -1100,9 +1143,10 @@ impacted messages can be reprocessed successfully.
       AnalyzerError record, hold message in error queue per FR-011 - When
       validation fails: Create AnalyzerError record with validation details -
       Implementation complete: Error creation integrated through
-      MappingAwareAnalyzerLineInserter wrapper in ASTMAnalyzerReader.insertAnalyzerData()
-      (T180). Wrapper creates AnalyzerError records when mappings not found or
-      transformation fails per FR-011
+      MappingAwareAnalyzerLineInserter wrapper in
+      ASTMAnalyzerReader.insertAnalyzerData() (T180). Wrapper creates
+      AnalyzerError records when mappings not found or transformation fails per
+      FR-011
 - [x] T094 [P] [US3] Create AnalyzerErrorForm DTO in
       `src/main/java/org/openelisglobal/analyzer/form/AnalyzerErrorForm.java`
 - [x] T095 [US3] Create AnalyzerErrorRestController in
@@ -1117,7 +1161,8 @@ impacted messages can be reprocessed successfully.
       using Carbon DataTable with statistics cards, filters, pagination per
       FR-016 - Implementation complete: Component created with statistics cards,
       filters (search, error type, severity, analyzer), DataTable with error
-      details, ErrorDetailsModal integration, action dropdown for view/acknowledge
+      details, ErrorDetailsModal integration, action dropdown for
+      view/acknowledge
 - [x] T097 [US3] Create ErrorDetailsModal component in
       `frontend/src/components/analyzers/ErrorDashboard/ErrorDetailsModal.jsx`
       using Carbon ComposedModal with error information, analyzer logs,
@@ -1135,8 +1180,8 @@ impacted messages can be reprocessed successfully.
 - [x] T100 [US3] Add visual indicators for unmapped fields in FieldMappingPanel
       component - Status badges showing "Unmapped", filter options, counts in
       status bar per FR-012 - Implementation complete: Added status filter
-      dropdown, warning icons for unmapped fields, status badges (Mapped/Unmapped),
-      and counts in status bar (mapped/unmapped counts)
+      dropdown, warning icons for unmapped fields, status badges
+      (Mapped/Unmapped), and counts in status bar (mapped/unmapped counts)
 - [x] T101 [US3] Integrate mapping interface modal into ErrorDetailsModal -
       "Create Mapping" button opens FieldMapping modal with pre-filled context
       from error per FR-011 - Implementation complete: Added "Create Mapping"
@@ -1151,8 +1196,8 @@ impacted messages can be reprocessed successfully.
       research.md Section 7 - Implementation complete: Wrapper class created
       with error handling, unit tests passing
 - [x] T178 [P] [US3] Create MappingApplicationService interface in
-      `src/main/java/org/openelisglobal/analyzer/service/MappingApplicationService.java`
-      - Interface created with applyMappings() and hasActiveMappings() methods
+      `src/main/java/org/openelisglobal/analyzer/service/MappingApplicationService.java` -
+      Interface created with applyMappings() and hasActiveMappings() methods
 - [x] T179 [P] [US3] Create MappingApplicationServiceImpl in
       `src/main/java/org/openelisglobal/analyzer/service/MappingApplicationServiceImpl.java`
       with @Service and @Transactional annotations - Method: applyMappings() -
@@ -1177,8 +1222,8 @@ impacted messages can be reprocessed successfully.
       `testProcessMessage_WithMappings_AppliesTransformations`,
       `testProcessMessage_WithoutMappings_UsesOriginalInserter`,
       `testProcessMessage_WithUnmappedField_CreatesError` - Implementation
-      complete: Integration tests created using BaseWebContextSensitiveTest,
-      all 3 tests passing
+      complete: Integration tests created using BaseWebContextSensitiveTest, all
+      3 tests passing
 - [ ] T160 [P] [US3] Add integration test for SC-002 (98% processing rate) in
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerMappingPerformanceTest.java`
       using @SpringBootTest - Test methods:
@@ -1221,17 +1266,18 @@ retrieving available data fields from analyzers
       IP:Port, ASTM query message sending, response parsing per research.md
       Section 1 - Background job pattern: return job ID immediately, poll status
       endpoint per FR-002 - Read query timeout from SystemConfiguration key
-      `analyzer.query.timeout.minutes` (default: 5 minutes) per FR-002
-      specification - Use SystemConfigurationService to lookup timeout value,
-      fallback to 5 minutes if not configured
+      `analyzer.query.timeout.minutes` (default: 5 minutes if missing or
+      invalid) per FR-002 specification - Use SystemConfigurationService to
+      lookup timeout value, fallback to 5 minutes if key is missing or contains
+      invalid value (non-numeric, negative, or zero)
 - [x] T105a [P] Create default SystemConfiguration entry for
       `analyzer.query.timeout.minutes` via Liquibase changeset - Location:
       `src/main/resources/liquibase/analyzer/004-010-add-query-timeout-config.xml` -
       Insert into `system_configuration` table with key
       `analyzer.query.timeout.minutes`, value `5`, description "Query timeout in
-      minutes for analyzer field queries (default: 5 minutes, configurable per
-      deployment)" - This ensures the configuration key exists for T105 to read
-      from per FR-002 specification
+      minutes for analyzer field queries. If missing or invalid, system uses 5
+      minutes as default (configurable per deployment)" - This ensures the
+      configuration key exists for T105 to read from per FR-002 specification
 - [x] T106 Add query endpoints in AnalyzerRestController: POST
       /analyzers/{id}/query (returns job ID), GET
       /analyzers/{id}/query/{jobId}/status (polling endpoint) per FR-002
@@ -1270,9 +1316,10 @@ navigation using unified tab-navigation pattern
 - [x] T112 Extend `MenuController`
       (`src/main/java/org/openelisglobal/menu/controller/MenuController.java`)
       to return the full analyzer nav tree (Analyzers Dashboard, Error
-      Dashboard, contextual Field Mappings, QC dashboard, QC Alerts &
-      Violations, Corrective Actions) via `/rest/menu` with role-based filtering
-      so QC routes only appear for QC-enabled roles per FR-020 clarification
+      Dashboard, QC dashboard, QC Alerts & Violations, Corrective Actions) via
+      `/rest/menu` with role-based filtering so QC routes only appear for
+      QC-enabled roles per FR-020. Note: Field Mappings does NOT appear in
+      navigation menu (accessed via analyzer row actions).
 - [x] T113 Update `frontend/src/components/layout/Header.js` / `GlobalSideBar`
       to render the expanded analyzer hierarchy from the menu API, ensure
       sub-nav items act as tabs, and always highlight the active route
@@ -1332,22 +1379,23 @@ navigation using unified tab-navigation pattern
 
 ### Validation Rule Engine (FR-018)
 
-**Purpose**: Implement runtime validation for custom field types using configurable
-rules
+**Purpose**: Implement runtime validation for custom field types using
+configurable rules
 
 - [ ] T167 [P] [FR-018] Create ValidationRuleConfiguration entity in
       `src/main/java/org/openelisglobal/analyzer/valueholder/ValidationRuleConfiguration.java`
-      extending BaseObject<String> - Fields: id, customFieldTypeId (FK), ruleName,
-      ruleType (REGEX/RANGE/ENUM/LENGTH enum), ruleExpression (TEXT/JSON),
-      errorMessage (VARCHAR 500), isActive (BOOLEAN) - Relationships: Many-to-One
-      with CustomFieldType - Validation: ruleType enum, ruleExpression valid
-      format - per data-model.md Section 8
+      extending BaseObject<String> - Fields: id, customFieldTypeId (FK),
+      ruleName, ruleType (REGEX/RANGE/ENUM/LENGTH enum), ruleExpression
+      (TEXT/JSON), errorMessage (VARCHAR 500), isActive (BOOLEAN) -
+      Relationships: Many-to-One with CustomFieldType - Validation: ruleType
+      enum, ruleExpression valid format - per data-model.md Section 8
 - [ ] T168 [P] [FR-018] Create Liquibase changeset
       `src/main/resources/liquibase/analyzer/004-008-create-validation-rule-configuration-table.xml` -
-      Create validation_rule_configuration table - Columns: id (PK), custom_field_type_id
-      (FK), rule_name, rule_type, rule_expression (TEXT), error_message, is_active,
-      sys_user_id, last_updated - Index on custom_field_type_id for query
-      performance - Rollback: DROP TABLE validation_rule_configuration
+      Create validation_rule_configuration table - Columns: id (PK),
+      custom_field_type_id (FK), rule_name, rule_type, rule_expression (TEXT),
+      error_message, is_active, sys_user_id, last_updated - Index on
+      custom_field_type_id for query performance - Rollback: DROP TABLE
+      validation_rule_configuration
 - [ ] T169 [P] [FR-018] Create ValidationRuleConfigurationDAO interface in
       `src/main/java/org/openelisglobal/analyzer/dao/ValidationRuleConfigurationDAO.java`
       extending BaseDAO<ValidationRuleConfiguration, String>
@@ -1358,16 +1406,18 @@ rules
 - [ ] T171 [P] [FR-018] Create ValidationRuleEngine interface in
       `src/main/java/org/openelisglobal/analyzer/service/ValidationRuleEngine.java` -
       Methods: `evaluateRule(String value, ValidationRuleConfiguration rule)`,
-      `validateRegex(String value, String pattern)`, `validateRange(Number value,
-      Number min, Number max)`, `validateEnum(String value, List<String> allowedValues)`,
+      `validateRegex(String value, String pattern)`,
+      `validateRange(Number value, Number min, Number max)`,
+      `validateEnum(String value, List<String> allowedValues)`,
       `validateLength(String value, Integer minLength, Integer maxLength)`
 - [ ] T172 [FR-018] Create ValidationRuleEngineImpl with @Service (NO
-      @Transactional - stateless validation) - Implement all validation methods -
-      REGEX: Compile pattern, match against value - RANGE: Parse JSON `{"min":
-      X, "max": Y}`, validate numeric value - ENUM: Parse JSON array, check value
-      in list - LENGTH: Parse JSON `{"minLength": X, "maxLength": Y}`, validate
-      string length - Error handling: Return validation errors with custom error
-      messages from rule configuration
+      @Transactional - stateless validation) - Implement all validation
+      methods - REGEX: Compile pattern, match against value - RANGE: Parse JSON
+      `{"min": X, "max": Y}`, validate numeric value - ENUM: Parse JSON array,
+      check value in list - LENGTH: Parse JSON
+      `{"minLength": X, "maxLength": Y}`, validate string length - Error
+      handling: Return validation errors with custom error messages from rule
+      configuration
 - [ ] T173 [P] [FR-018] Create ValidationRuleConfigurationForm in
       `src/main/java/org/openelisglobal/analyzer/form/ValidationRuleConfigurationForm.java` -
       Fields: id, customFieldTypeId, ruleName, ruleType, ruleExpression,
@@ -1375,26 +1425,29 @@ rules
       for string lengths
 - [ ] T174 [FR-018] Add validation rule CRUD endpoints to
       CustomFieldTypeRestController - Endpoints: GET
-      `/rest/analyzer/custom-field-types/{id}/validation-rules` (list rules), POST
-      `/rest/analyzer/custom-field-types/{id}/validation-rules` (create rule), PUT
+      `/rest/analyzer/custom-field-types/{id}/validation-rules` (list rules),
+      POST `/rest/analyzer/custom-field-types/{id}/validation-rules` (create
+      rule), PUT
       `/rest/analyzer/custom-field-types/{id}/validation-rules/{ruleId}` (update
-      rule), DELETE `/rest/analyzer/custom-field-types/{id}/validation-rules/{ruleId}`
-      (delete rule) - Authorization: System Administrator only - Validation:
-      Validate rule expression format before save
+      rule), DELETE
+      `/rest/analyzer/custom-field-types/{id}/validation-rules/{ruleId}` (delete
+      rule) - Authorization: System Administrator only - Validation: Validate
+      rule expression format before save
 - [ ] T175 [P] [FR-018] Create ValidationRuleEditor component in
       `frontend/src/components/analyzers/CustomFieldTypes/ValidationRuleEditor.jsx` -
       Rule type selector (Dropdown: REGEX, RANGE, ENUM, LENGTH) - Dynamic form
       fields based on rule type: REGEX (pattern TextInput with validation),
       RANGE (min/max NumberInputs), ENUM (TagInput for values list), LENGTH
-      (minLength/maxLength NumberInputs) - Error message customization (TextInput,
-      max 500 chars) - Test validation section: Sample value input, "Test Rule"
-      button, validation result display - Action buttons: Save Rule, Cancel
+      (minLength/maxLength NumberInputs) - Error message customization
+      (TextInput, max 500 chars) - Test validation section: Sample value input,
+      "Test Rule" button, validation result display - Action buttons: Save Rule,
+      Cancel
 - [ ] T176 [FR-018] Integrate validation rule evaluation into field mapping
-      workflow - When analyzer field uses custom field type (field_type='CUSTOM',
-      custom_field_type_id != NULL), fetch validation rules - Apply validation
-      rules in AnalyzerFieldMappingService before saving mapping - Display
-      validation errors in MappingPanel - Block mapping save if validation fails -
-      Show validation rules in field info tooltip
+      workflow - When analyzer field uses custom field type
+      (field_type='CUSTOM', custom_field_type_id != NULL), fetch validation
+      rules - Apply validation rules in AnalyzerFieldMappingService before
+      saving mapping - Display validation errors in MappingPanel - Block mapping
+      save if validation fails - Show validation rules in field info tooltip
 - [ ] T177 [P] [FR-018] Unit test for ValidationRuleEngine in
       `src/test/java/org/openelisglobal/analyzer/service/ValidationRuleEngineTest.java` -
       Test methods: `testValidateRegex_WithMatchingValue_ReturnsTrue`,
@@ -1463,9 +1516,10 @@ rules
 - [ ] T131a **Jest Test Anti-Pattern Fixes**: Address act() warnings in
       AnalyzersList.test.jsx - Issue found: State updates in loadAnalyzers
       callback not wrapped in act() - Fix: Wrap API mock callbacks in act() or
-      use waitFor with queryBy* selectors - Verify fix:
+      use waitFor with queryBy\* selectors - Verify fix:
       `npm run test -- --testPathPattern=AnalyzersList.test.jsx` shows no
-      warnings - Reference: [Testing Roadmap - Async Testing Patterns](.specify/guides/testing-roadmap.md#async-testing-patterns) -
+      warnings - Reference:
+      [Testing Roadmap - Async Testing Patterns](.specify/guides/testing-roadmap.md#async-testing-patterns) -
       Apply same fix pattern to AnalyzerForm.test.jsx and FieldMapping.test.jsx
       if similar warnings exist
 - [ ] T132 **Schema Management**: Verify ALL database changes use Liquibase

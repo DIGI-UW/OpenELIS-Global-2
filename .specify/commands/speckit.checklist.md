@@ -52,9 +52,12 @@ You **MUST** consider the user input before proceeding (if not empty).
    - For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m
      Groot' (or double-quote if possible: "I'm Groot").
 
-1a. **Get current date**: Run `date +%Y-%m-%d` command and store the result. This will be used to replace `[DATE]` placeholders in the checklist template.
+1a. **Get current date**: Run `date +%Y-%m-%d` command and store the result.
+This will be used to replace `[DATE]` placeholders in the checklist template.
 
-   **CRITICAL**: NEVER use placeholder dates or assume dates. Always run `date +%Y-%m-%d` to get the actual current date. Incorrect dates in generated documents are a systematic error that must be prevented.
+**CRITICAL**: NEVER use placeholder dates or assume dates. Always run
+`date +%Y-%m-%d` to get the actual current date. Incorrect dates in generated
+documents are a systematic error that must be prevented.
 
 2. **Clarify intent (dynamic)**: Derive up to THREE initial contextual
    clarifying questions (no pre-baked catalog). They MUST:
@@ -144,9 +147,12 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Number items sequentially starting from CHK001
    - Each `/speckit.checklist` run creates a NEW file (never overwrites existing
      checklists)
-   - **Replace `[DATE]` placeholder in checklist template with actual current date from step 1a**
-   
-   **CRITICAL - Date Replacement**: When generating the checklist, replace all `[DATE]` placeholders with the actual current date obtained from step 1a. NEVER use placeholder dates, assumed dates, or hardcoded dates.
+   - **Replace `[DATE]` placeholder in checklist template with actual current
+     date from step 1a**
+
+   **CRITICAL - Date Replacement**: When generating the checklist, replace all
+   `[DATE]` placeholders with the actual current date obtained from step 1a.
+   NEVER use placeholder dates, assumed dates, or hardcoded dates.
 
    **CORE PRINCIPLE - Test the Requirements, Not the Implementation**: Every
    checklist item MUST evaluate the REQUIREMENTS THEMSELVES for:

@@ -285,6 +285,7 @@ terminal output. This is critical for debugging JavaScript errors, API failures,
 and unexpected warnings.
 
 **What You'll See**:
+
 ```bash
 [ERROR] Warning: Failed prop type: The prop `ariaLabel` is marked as required...
 [WARN] Component is using deprecated API
@@ -299,16 +300,18 @@ and unexpected warnings.
 let consoleLogQueue = [];
 
 const formatMessage = (args) => {
-  return args.map((arg) => {
-    if (typeof arg === "object") {
-      try {
-        return JSON.stringify(arg, null, 2);
-      } catch (e) {
-        return String(arg);
+  return args
+    .map((arg) => {
+      if (typeof arg === "object") {
+        try {
+          return JSON.stringify(arg, null, 2);
+        } catch (e) {
+          return String(arg);
+        }
       }
-    }
-    return String(arg);
-  }).join(" ");
+      return String(arg);
+    })
+    .join(" ");
 };
 
 // Forward queued logs after each command
@@ -317,7 +320,9 @@ Cypress.on("command:enqueued", () => {
     const logs = [...consoleLogQueue];
     consoleLogQueue = [];
     logs.forEach((log) => {
-      cy.task("log", `[${log.type.toUpperCase()}] ${log.message}`, { log: true });
+      cy.task("log", `[${log.type.toUpperCase()}] ${log.message}`, {
+        log: true,
+      });
     });
   }
 });
@@ -368,7 +373,9 @@ setupNodeEvents(on, config) {
 ```
 
 **Why This Approach**:
-- Browser console logs are essential for debugging ([Electron docs](https://www.electronjs.org/docs/latest/tutorial/application-debugging))
+
+- Browser console logs are essential for debugging
+  ([Electron docs](https://www.electronjs.org/docs/latest/tutorial/application-debugging))
 - `cy.task("log", ...)` forwards to terminal output
 - Queue pattern batches logs for performance
 - Captures all console.error, console.warn, console.log, console.info

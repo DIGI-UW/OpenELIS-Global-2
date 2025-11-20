@@ -144,9 +144,9 @@ public class AnalyzerConfiguration extends BaseObject<String> {
      * Enum for analyzer lifecycle stages
      */
     public enum LifecycleStage {
-        SETUP,         // Initial configuration
-        VALIDATION,    // Testing and validation
-        GO_LIVE,       // Active and operational
-        MAINTENANCE    // Ongoing maintenance
+        SETUP, // Initial configuration
+        VALIDATION, // Testing and validation
+        GO_LIVE, // Active and operational
+        MAINTENANCE // Ongoing maintenance
     }
 }

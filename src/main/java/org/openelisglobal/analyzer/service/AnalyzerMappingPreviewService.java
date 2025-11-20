@@ -51,4 +51,3 @@ public interface AnalyzerMappingPreviewService {
      */
     EntityPreview buildEntityPreview(List<AppliedMapping> appliedMappings);
 }
-

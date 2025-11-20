@@ -32,7 +32,7 @@ const FieldMappingPanel = ({
   mappings,
 }) => {
   const intl = useIntl();
-  const [statusFilter, setStatusFilter] = useState("all"); // "all", "mapped", "unmapped"
+  const [statusFilter, setStatusFilter] = useState("all"); // "all", "mapped", "unmapped", "draft", "active"
 
   // Table headers
   const headers = [
@@ -43,27 +43,53 @@ const FieldMappingPanel = ({
     { key: "action", header: "Action" },
   ];
 
-  // Calculate mapped/unmapped counts
-  const { mappedCount, unmappedCount } = useMemo(() => {
-    const mapped = fields.filter((field) =>
-      mappings.some((m) => m.analyzerFieldId === field.id)
-    ).length;
-    const unmapped = fields.length - mapped;
-    return { mappedCount: mapped, unmappedCount: unmapped };
-  }, [fields, mappings]);
+  // Calculate mapped/unmapped and draft/active counts
+  const { mappedCount, unmappedCount, draftCount, activeCount } =
+    useMemo(() => {
+      const mapped = fields.filter((field) =>
+        mappings.some((m) => m.analyzerFieldId === field.id),
+      ).length;
+      const unmapped = fields.length - mapped;
+      const draft = fields.filter((field) => {
+        const mapping = mappings.find((m) => m.analyzerFieldId === field.id);
+        return mapping && mapping.isActive === false;
+      }).length;
+      const active = fields.filter((field) => {
+        const mapping = mappings.find((m) => m.analyzerFieldId === field.id);
+        return mapping && mapping.isActive === true;
+      }).length;
+      return {
+        mappedCount: mapped,
+        unmappedCount: unmapped,
+        draftCount: draft,
+        activeCount: active,
+      };
+    }, [fields, mappings]);
 
   // Filter fields by status
   const filteredFields = useMemo(() => {
     if (statusFilter === "all") return fields;
     if (statusFilter === "mapped") {
       return fields.filter((field) =>
-        mappings.some((m) => m.analyzerFieldId === field.id)
+        mappings.some((m) => m.analyzerFieldId === field.id),
       );
     }
     if (statusFilter === "unmapped") {
       return fields.filter(
-        (field) => !mappings.some((m) => m.analyzerFieldId === field.id)
+        (field) => !mappings.some((m) => m.analyzerFieldId === field.id),
       );
+    }
+    if (statusFilter === "draft") {
+      return fields.filter((field) => {
+        const mapping = mappings.find((m) => m.analyzerFieldId === field.id);
+        return mapping && mapping.isActive === false;
+      });
+    }
+    if (statusFilter === "active") {
+      return fields.filter((field) => {
+        const mapping = mappings.find((m) => m.analyzerFieldId === field.id);
+        return mapping && mapping.isActive === true;
+      });
     }
     return fields;
   }, [fields, mappings, statusFilter]);
@@ -146,13 +172,54 @@ const FieldMappingPanel = ({
                   id: "analyzer.fieldMapping.panel.statusFilter.unmapped",
                 }),
               },
+              {
+                id: "draft",
+                text: intl.formatMessage({
+                  id: "analyzer.fieldMapping.panel.statusFilter.draft",
+                }),
+              },
+              {
+                id: "active",
+                text: intl.formatMessage({
+                  id: "analyzer.fieldMapping.panel.statusFilter.active",
+                }),
+              },
             ]}
             selectedItem={
               statusFilter === "all"
-                ? { id: "all", text: intl.formatMessage({ id: "analyzer.fieldMapping.panel.statusFilter.all" }) }
+                ? {
+                    id: "all",
+                    text: intl.formatMessage({
+                      id: "analyzer.fieldMapping.panel.statusFilter.all",
+                    }),
+                  }
                 : statusFilter === "mapped"
-                  ? { id: "mapped", text: intl.formatMessage({ id: "analyzer.fieldMapping.panel.statusFilter.mapped" }) }
-                  : { id: "unmapped", text: intl.formatMessage({ id: "analyzer.fieldMapping.panel.statusFilter.unmapped" }) }
+                  ? {
+                      id: "mapped",
+                      text: intl.formatMessage({
+                        id: "analyzer.fieldMapping.panel.statusFilter.mapped",
+                      }),
+                    }
+                  : statusFilter === "unmapped"
+                    ? {
+                        id: "unmapped",
+                        text: intl.formatMessage({
+                          id: "analyzer.fieldMapping.panel.statusFilter.unmapped",
+                        }),
+                      }
+                    : statusFilter === "draft"
+                      ? {
+                          id: "draft",
+                          text: intl.formatMessage({
+                            id: "analyzer.fieldMapping.panel.statusFilter.draft",
+                          }),
+                        }
+                      : {
+                          id: "active",
+                          text: intl.formatMessage({
+                            id: "analyzer.fieldMapping.panel.statusFilter.active",
+                          }),
+                        }
             }
             onChange={({ selectedItem }) => {
               if (selectedItem) {
@@ -207,7 +274,13 @@ const FieldMappingPanel = ({
                           const mapping = row.mapping;
                           // Show field name with mapped OpenELIS field below (per Figma design)
                           cellContent = (
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.5rem",
+                              }}
+                            >
                               {isUnmapped && (
                                 <WarningAltFilled
                                   className="unmapped-field-icon"
@@ -217,13 +290,28 @@ const FieldMappingPanel = ({
                                   data-testid={`unmapped-icon-${row.id}`}
                                 />
                               )}
-                              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "0.25rem",
+                                }}
+                              >
                                 <span>{cell.value}</span>
-                                {mapping && (mapping.openelisFieldName || mapping.openelisFieldId) && (
-                                  <span style={{ fontSize: "0.875rem", color: "var(--cds-text-secondary)" }}>
-                                    → {mapping.openelisFieldName || mapping.openelisFieldId}
-                                  </span>
-                                )}
+                                {mapping &&
+                                  (mapping.openelisFieldName ||
+                                    mapping.openelisFieldId) && (
+                                    <span
+                                      style={{
+                                        fontSize: "0.875rem",
+                                        color: "var(--cds-text-secondary)",
+                                      }}
+                                    >
+                                      →{" "}
+                                      {mapping.openelisFieldName ||
+                                        mapping.openelisFieldId}
+                                    </span>
+                                  )}
                               </div>
                             </div>
                           );
@@ -242,12 +330,30 @@ const FieldMappingPanel = ({
                           const unit = cell.value !== "-" ? cell.value : null;
                           // Show unit with unit mapping below (per Figma design)
                           if (unit && mapping && mapping.unitMapping) {
+                            // unitMapping can be an object { analyzerUnit, openelisUnit, conversionFactor } or a string
+                            const openelisUnit =
+                              typeof mapping.unitMapping === "string"
+                                ? mapping.unitMapping
+                                : mapping.unitMapping.openelisUnit;
                             cellContent = (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "0.25rem",
+                                }}
+                              >
                                 <span>{unit}</span>
-                                <span style={{ fontSize: "0.875rem", color: "var(--cds-text-secondary)" }}>
-                                  → {mapping.unitMapping}
-                                </span>
+                                {openelisUnit && (
+                                  <span
+                                    style={{
+                                      fontSize: "0.875rem",
+                                      color: "var(--cds-text-secondary)",
+                                    }}
+                                  >
+                                    → {openelisUnit}
+                                  </span>
+                                )}
                               </div>
                             );
                           } else if (unit) {
@@ -258,19 +364,79 @@ const FieldMappingPanel = ({
                         } else if (headerKey === "action") {
                           testId = `field-action-${row.id}`;
                           const isMapped = row.hasMapping;
-                          cellContent = isMapped ? (
-                            <Tag type="green" data-testid={`mapped-badge-${row.id}`}>
-                              {intl.formatMessage({
-                                id: "analyzer.fieldMapping.panel.status.mapped",
-                              })}
-                            </Tag>
-                          ) : (
-                            <Tag type="red" data-testid={`unmapped-badge-${row.id}`}>
-                              {intl.formatMessage({
-                                id: "analyzer.fieldMapping.panel.status.unmapped",
-                              })}
-                            </Tag>
-                          );
+                          const mapping = row.mapping;
+
+                          if (!isMapped) {
+                            // Unmapped field
+                            cellContent = (
+                              <Tag
+                                type="red"
+                                data-testid={`unmapped-badge-${row.id}`}
+                              >
+                                {intl.formatMessage({
+                                  id: "analyzer.fieldMapping.panel.status.unmapped",
+                                })}
+                              </Tag>
+                            );
+                          } else if (mapping && mapping.isActive === false) {
+                            // Draft mapping
+                            cellContent = (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "0.25rem",
+                                  alignItems: "flex-start",
+                                }}
+                              >
+                                <Tag
+                                  type="green"
+                                  data-testid={`mapped-badge-${row.id}`}
+                                >
+                                  {intl.formatMessage({
+                                    id: "analyzer.fieldMapping.panel.status.mapped",
+                                  })}
+                                </Tag>
+                                <Tag
+                                  type="gray"
+                                  data-testid={`draft-badge-${row.id}`}
+                                >
+                                  {intl.formatMessage({
+                                    id: "analyzer.fieldMapping.status.draft",
+                                  })}
+                                </Tag>
+                              </div>
+                            );
+                          } else {
+                            // Active mapping
+                            cellContent = (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "0.25rem",
+                                  alignItems: "flex-start",
+                                }}
+                              >
+                                <Tag
+                                  type="green"
+                                  data-testid={`mapped-badge-${row.id}`}
+                                >
+                                  {intl.formatMessage({
+                                    id: "analyzer.fieldMapping.panel.status.mapped",
+                                  })}
+                                </Tag>
+                                <Tag
+                                  type="green"
+                                  data-testid={`active-badge-${row.id}`}
+                                >
+                                  {intl.formatMessage({
+                                    id: "analyzer.fieldMapping.status.active",
+                                  })}
+                                </Tag>
+                              </div>
+                            );
+                          }
                         }
 
                         return (
@@ -294,13 +460,17 @@ const FieldMappingPanel = ({
           values={{ count: filteredFields.length }}
         />
         {" • "}
-        <FormattedMessage
-          id="analyzer.fieldMapping.panel.status.mapped"
-        />: {mappedCount}
+        <FormattedMessage id="analyzer.fieldMapping.panel.status.mapped" />:{" "}
+        {mappedCount}
         {" • "}
-        <FormattedMessage
-          id="analyzer.fieldMapping.panel.status.unmapped"
-        />: {unmappedCount}
+        <FormattedMessage id="analyzer.fieldMapping.panel.status.unmapped" />:{" "}
+        {unmappedCount}
+        {" • "}
+        <FormattedMessage id="analyzer.fieldMapping.status.draft" />:{" "}
+        {draftCount}
+        {" • "}
+        <FormattedMessage id="analyzer.fieldMapping.status.active" />:{" "}
+        {activeCount}
       </div>
     </div>
   );

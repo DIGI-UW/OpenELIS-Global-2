@@ -19,9 +19,12 @@ You **MUST** consider the user input before proceeding (if not empty).
    quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or
    double-quote if possible: "I'm Groot").
 
-1a. **Get current date**: Run `date +%Y-%m-%d` command and store the result. This will be used to replace `[DATE]` placeholders in the plan.md template.
+1a. **Get current date**: Run `date +%Y-%m-%d` command and store the result.
+This will be used to replace `[DATE]` placeholders in the plan.md template.
 
-   **CRITICAL**: NEVER use placeholder dates or assume dates. Always run `date +%Y-%m-%d` to get the actual current date. Incorrect dates in generated documents are a systematic error that must be prevented.
+**CRITICAL**: NEVER use placeholder dates or assume dates. Always run
+`date +%Y-%m-%d` to get the actual current date. Incorrect dates in generated
+documents are a systematic error that must be prevented.
 
 2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`.
    Load IMPL_PLAN template (already copied).
@@ -31,14 +34,17 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
    - Fill Constitution Check section from constitution
    - Fill Testing Strategy section (MANDATORY - per Testing Roadmap)
-   - **Replace `[DATE]` placeholder in plan.md template with actual current date from step 1a**
+   - **Replace `[DATE]` placeholder in plan.md template with actual current date
+     from step 1a**
    - Evaluate gates (ERROR if violations unjustified)
    - Phase 0: Generate research.md (resolve all NEEDS CLARIFICATION)
    - Phase 1: Generate data-model.md, contracts/, quickstart.md
    - Phase 1: Update agent context by running the agent script
    - Re-evaluate Constitution Check post-design
-   
-   **CRITICAL - Date Replacement**: When filling the plan.md template, replace all `[DATE]` placeholders with the actual current date obtained from step 1a. NEVER use placeholder dates, assumed dates, or hardcoded dates.
+
+   **CRITICAL - Date Replacement**: When filling the plan.md template, replace
+   all `[DATE]` placeholders with the actual current date obtained from step 1a.
+   NEVER use placeholder dates, assumed dates, or hardcoded dates.
 
 4. **Stop and report**: Command ends after Phase 2 planning. Report branch,
    IMPL_PLAN path, and generated artifacts.

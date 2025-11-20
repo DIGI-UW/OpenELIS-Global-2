@@ -18,9 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
  * 
  * Task Reference: T179
  * 
- * This service transforms raw ASTM message segments by applying configured field
- * mappings. Used by MappingAwareAnalyzerLineInserter wrapper to apply mappings
- * before delegating to plugin inserter.
+ * This service transforms raw ASTM message segments by applying configured
+ * field mappings. Used by MappingAwareAnalyzerLineInserter wrapper to apply
+ * mappings before delegating to plugin inserter.
  */
 @Service
 @Transactional
@@ -93,7 +93,8 @@ public class MappingApplicationServiceImpl implements MappingApplicationService 
                 }
 
                 // Transform line based on segment type
-                String transformedLine = transformLine(line, segments, segmentType, mappingsByFieldName, unmappedFields);
+                String transformedLine = transformLine(line, segments, segmentType, mappingsByFieldName,
+                        unmappedFields);
                 transformedLines.add(transformedLine);
             }
 
@@ -115,11 +116,11 @@ public class MappingApplicationServiceImpl implements MappingApplicationService 
     /**
      * Transform a single ASTM line by applying mappings
      * 
-     * @param line              Original line
-     * @param segments          Parsed segments
-     * @param segmentType       Segment type (H, P, O, R, etc.)
+     * @param line                Original line
+     * @param segments            Parsed segments
+     * @param segmentType         Segment type (H, P, O, R, etc.)
      * @param mappingsByFieldName Map of mappings by field name
-     * @param unmappedFields    List to collect unmapped fields
+     * @param unmappedFields      List to collect unmapped fields
      * @return Transformed line
      */
     private String transformLine(String line, String[] segments, String segmentType,
@@ -167,4 +168,3 @@ public class MappingApplicationServiceImpl implements MappingApplicationService 
         }
     }
 }
-

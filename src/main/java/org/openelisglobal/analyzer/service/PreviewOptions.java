@@ -25,4 +25,3 @@ public class PreviewOptions {
         this.validateAllMappings = validateAllMappings;
     }
 }
-

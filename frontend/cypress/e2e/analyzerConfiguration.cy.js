@@ -190,7 +190,9 @@ describe("Analyzer Configuration - User Story 1", function () {
     // Verify validation error is displayed (check for either "Invalid" or "invalid" text)
     cy.get('[data-testid="analyzer-form"]').then(($form) => {
       const formText = $form.text().toLowerCase();
-      expect(formText).to.satisfy((text) => text.includes("invalid") || text.includes("error"));
+      expect(formText).to.satisfy(
+        (text) => text.includes("invalid") || text.includes("error"),
+      );
     });
 
     // Close modal
@@ -357,33 +359,35 @@ describe("Analyzer Configuration - User Story 1", function () {
   /**
    * Test: SC-001 - Complete analyzer configuration with 100 test codes in under 2 hours
    * Task Reference: T159
-   * 
+   *
    * Scenario: User completes full analyzer configuration workflow
    * - Creates analyzer
    * - Queries analyzer fields (simulated - creates test fields)
    * - Creates mappings for test codes
    * - Validates mappings
-   * 
+   *
    * Note: This is a simplified happy path test focusing on user-visible workflow
    * Full 2-hour test with 100 codes would be run manually or in extended test suite
    */
   it("should complete analyzer configuration workflow (happy path)", function () {
     const startTime = Date.now();
-    
+
     // Navigate to analyzers page
     cy.visit("/analyzers");
-    
+
     // Wait for analyzers list to load
-    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
     cy.wait("@getAnalyzers").its("response.statusCode").should("eq", 200);
-    
+
     // Verify test analyzer exists
     cy.get('[data-testid="analyzers-table-container"]')
       .find("tbody")
       .find("tr")
       .contains("TEST-Analyzer-E2E")
       .should("be.visible");
-    
+
     // Navigate to field mappings
     cy.get('[data-testid="analyzers-table-container"]')
       .find("tbody")
@@ -393,23 +397,25 @@ describe("Analyzer Configuration - User Story 1", function () {
       .find('[data-testid="analyzer-action-field-mappings"]')
       .should("be.visible")
       .click();
-    
+
     // Wait for field mappings page
-    cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
     cy.wait("@getMappings").its("response.statusCode").should("eq", 200);
-    
+
     // Verify field mapping interface is displayed
     cy.get('[data-testid="field-mapping-panel"]').should("be.visible");
-    
+
     // Verify test mapping button is available
     cy.get('[data-testid="field-mapping-test-button"]').should("be.visible");
-    
+
     const endTime = Date.now();
     const duration = (endTime - startTime) / 1000; // seconds
-    
+
     // Log duration for monitoring (full 2-hour test would be manual/extended suite)
     cy.log(`Configuration workflow completed in ${duration} seconds`);
-    
+
     // Verify we can navigate back
     cy.get('[data-testid="field-mapping"]').should("be.visible");
   });
@@ -421,27 +427,37 @@ describe("Analyzer Configuration - User Story 1", function () {
   it("should display validation dashboard for analyzer in VALIDATION stage", function () {
     // Navigate to field mappings page
     cy.visit(`/analyzers/${testAnalyzerId}/mappings`);
-    
+
     // Wait for page to load
-    cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
     cy.wait("@getMappings").its("response.statusCode").should("eq", 200);
-    
+
     // Check if validation dashboard is visible (only when lifecycle stage is VALIDATION)
-    cy.get('body').then(($body) => {
+    cy.get("body").then(($body) => {
       if ($body.find('[data-testid="validation-dashboard"]').length > 0) {
         // Validation dashboard should be visible
         cy.get('[data-testid="validation-dashboard"]').should("be.visible");
-        
+
         // Verify metrics are displayed
-        cy.get('[data-testid="validation-metric-accuracy"]').should("be.visible");
-        cy.get('[data-testid="validation-metric-unmapped-count"]').should("be.visible");
-        
+        cy.get('[data-testid="validation-metric-accuracy"]').should(
+          "be.visible",
+        );
+        cy.get('[data-testid="validation-metric-unmapped-count"]').should(
+          "be.visible",
+        );
+
         // Verify action buttons
-        cy.get('[data-testid="validate-all-mappings-button"]').should("be.visible");
+        cy.get('[data-testid="validate-all-mappings-button"]').should(
+          "be.visible",
+        );
         cy.get('[data-testid="view-test-history-button"]').should("be.visible");
       } else {
         // If not in VALIDATION stage, dashboard should not be visible (expected)
-        cy.log("Validation dashboard not visible - analyzer not in VALIDATION stage");
+        cy.log(
+          "Validation dashboard not visible - analyzer not in VALIDATION stage",
+        );
       }
     });
   });
@@ -453,57 +469,65 @@ describe("Analyzer Configuration - User Story 1", function () {
   it("should preview mapping with sample ASTM message", function () {
     // Navigate to field mappings page
     cy.visit(`/analyzers/${testAnalyzerId}/mappings`);
-    
+
     // Wait for page to load
-    cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
     cy.wait("@getMappings").its("response.statusCode").should("eq", 200);
-    
+
     // Click test mapping button
     cy.get('[data-testid="field-mapping-test-button"]')
       .should("be.visible")
       .click();
-    
+
     // Wait for modal to open
-    cy.get('[data-testid="test-mapping-modal"]', { timeout: 10000 }).should("be.visible");
-    
+    cy.get('[data-testid="test-mapping-modal"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
     // Verify modal content
     cy.get('[data-testid="test-mapping-analyzer-info"]').should("be.visible");
-    
+
     // Enter sample ASTM message
-    const sampleMessage = "H|\\^&|||...|20240101120000\nP|1||PATIENT-001|||M|19800101\nO|1||TEST-001||||||||||||||||||\nR|1|^^^RESULT-001|10.5|mg/dL|||N";
+    const sampleMessage =
+      "H|\\^&|||...|20240101120000\nP|1||PATIENT-001|||M|19800101\nO|1||TEST-001||||||||||||||||||\nR|1|^^^RESULT-001|10.5|mg/dL|||N";
     cy.get('[data-testid="test-mapping-message-input"]')
       .should("be.visible")
       .clear()
       .type(sampleMessage);
-    
+
     // Set up intercept for preview API call
-    cy.intercept("POST", `**/rest/analyzer/analyzers/${testAnalyzerId}/preview-mapping`).as("previewMapping");
-    
+    cy.intercept(
+      "POST",
+      `**/rest/analyzer/analyzers/${testAnalyzerId}/preview-mapping`,
+    ).as("previewMapping");
+
     // Click preview button
     cy.get('[data-testid="test-mapping-preview-button"]')
       .should("be.visible")
       .should("not.be.disabled")
       .click();
-    
+
     // Wait for preview API call
     cy.wait("@previewMapping", { timeout: 10000 }).then((interception) => {
       expect(interception.response.statusCode).to.be.oneOf([200, 201]);
     });
-    
+
     // Verify results are displayed (either results or no-results message)
-    cy.get('body').then(($body) => {
+    cy.get("body").then(($body) => {
       if ($body.find('[data-testid="test-mapping-results"]').length > 0) {
         cy.get('[data-testid="test-mapping-results"]').should("be.visible");
-      } else if ($body.find('[data-testid="test-mapping-no-results"]').length > 0) {
+      } else if (
+        $body.find('[data-testid="test-mapping-no-results"]').length > 0
+      ) {
         cy.get('[data-testid="test-mapping-no-results"]').should("be.visible");
       }
     });
-    
+
     // Close modal
-    cy.get('[data-testid="test-mapping-close"]')
-      .should("be.visible")
-      .click();
-    
+    cy.get('[data-testid="test-mapping-close"]').should("be.visible").click();
+
     // Verify modal is closed
     cy.get('[data-testid="test-mapping-modal"]').should("not.exist");
   });
@@ -515,47 +539,138 @@ describe("Analyzer Configuration - User Story 1", function () {
   it("should activate mappings after validation", function () {
     // Navigate to field mappings page
     cy.visit(`/analyzers/${testAnalyzerId}/mappings`);
-    
+
     // Wait for page to load
-    cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
     cy.wait("@getMappings").its("response.statusCode").should("eq", 200);
-    
+
     // Check if activate mappings button is available
-    cy.get('body').then(($body) => {
+    cy.get("body").then(($body) => {
       if ($body.find('[data-testid="activate-mappings-button"]').length > 0) {
         // Set up intercept for activation API call
-        cy.intercept("POST", `**/rest/analyzer/analyzers/${testAnalyzerId}/activate-mappings`).as("activateMappings");
-        
+        cy.intercept(
+          "POST",
+          `**/rest/analyzer/analyzers/${testAnalyzerId}/activate-mappings`,
+        ).as("activateMappings");
+
         // Click activate mappings button
         cy.get('[data-testid="activate-mappings-button"]')
           .should("be.visible")
           .should("not.be.disabled")
           .click();
-        
+
         // Wait for activation modal (if confirmation required)
-        cy.get('body').then(($modalBody) => {
+        cy.get("body").then(($modalBody) => {
           if ($modalBody.find('[role="dialog"]').length > 0) {
             // Confirmation modal opened
             cy.get('[role="dialog"]', { timeout: 5000 }).should("be.visible");
-            
+
             // Confirm activation
             cy.get('[data-testid="activation-confirm-button"]')
               .should("be.visible")
               .click();
           }
         });
-        
+
         // Wait for activation API call
-        cy.wait("@activateMappings", { timeout: 10000 }).then((interception) => {
-          expect(interception.response.statusCode).to.be.oneOf([200, 201]);
-        });
-        
+        cy.wait("@activateMappings", { timeout: 10000 }).then(
+          (interception) => {
+            expect(interception.response.statusCode).to.be.oneOf([200, 201]);
+          },
+        );
+
         // Verify success (mappings should now be active)
         cy.get('[data-testid="field-mapping"]').should("be.visible");
       } else {
-        cy.log("Activate mappings button not available - no draft mappings to activate");
+        cy.log(
+          "Activate mappings button not available - no draft mappings to activate",
+        );
       }
     });
+  });
+
+  /**
+   * Test: Inline field creation with valid data
+   * Scenario: User creates a new OpenELIS field from the mapping panel
+   * Task Reference: T149
+   */
+  it("should create new OpenELIS field via inline field creation modal", function () {
+    // Navigate to field mappings page
+    cy.visit(`/analyzers/${testAnalyzerId}/mappings`);
+
+    // Wait for page to load
+    cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+    cy.wait("@getMappings").its("response.statusCode").should("eq", 200);
+
+    // Wait for fields table to load
+    cy.get('[data-testid="field-mapping-panel"]', { timeout: 5000 }).should(
+      "be.visible",
+    );
+
+    // Select a field to open the mapping panel
+    cy.get('[data-testid^="field-row-"]').first().click();
+
+    // Wait for mapping panel to open
+    cy.get('[data-testid="mapping-panel"]', { timeout: 5000 }).should(
+      "be.visible",
+    );
+
+    // Set up intercept for field creation API call
+    cy.intercept("POST", "**/rest/analyzer/openelis-fields**").as(
+      "createField",
+    );
+
+    // Click "Create New Field" button in OpenELIS Field Selector
+    cy.get('[data-testid="create-new-field-button"]')
+      .should("be.visible")
+      .click();
+
+    // Wait for inline field creation modal to open
+    cy.get('[data-testid="inline-field-creation-modal"]', {
+      timeout: 5000,
+    }).should("be.visible");
+
+    // Fill in the form fields
+    cy.get('[data-testid="field-name-input"]')
+      .should("be.visible")
+      .type("E2E Test Field");
+
+    // Select entity type from dropdown
+    cy.get('[data-testid="entity-type-dropdown"]').should("be.visible").click();
+
+    // Wait for dropdown options to appear and select "Test"
+    cy.get('[role="listbox"]', { timeout: 3000 }).should("be.visible");
+    cy.get('[role="option"]').contains("Test").click();
+
+    // Verify entity type is selected (dropdown should show "Test")
+    cy.get('[data-testid="entity-type-dropdown"]').should("contain", "Test");
+
+    // Submit the form
+    cy.get('[data-testid="field-creation-submit-button"]')
+      .should("be.visible")
+      .should("not.be.disabled")
+      .click();
+
+    // Wait for field creation API call
+    cy.wait("@createField", { timeout: 10000 }).then((interception) => {
+      expect(interception.response.statusCode).to.be.oneOf([200, 201]);
+      expect(interception.request.body).to.include({
+        fieldName: "E2E Test Field",
+        entityType: "TEST",
+        fieldType: "NUMERIC",
+      });
+    });
+
+    // Verify modal closes after successful creation
+    cy.get('[data-testid="inline-field-creation-modal"]').should("not.exist");
+
+    // Verify the newly created field is selected in the OpenELIS Field Selector
+    // (The field should be auto-selected after creation)
+    cy.get('[data-testid="mapping-panel"]').should("be.visible");
   });
 });
 

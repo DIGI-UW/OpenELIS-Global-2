@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,10 +17,10 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldMappingDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
-import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField.FieldType;
-import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping.OpenELISFieldType;
+import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping.MappingType;
+import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping.OpenELISFieldType;
 
 /**
  * Unit tests for MappingValidationService
@@ -73,8 +72,7 @@ public class MappingValidationServiceTest {
         List<AnalyzerFieldMapping> activeMappings = Arrays.asList(activeMapping);
 
         when(analyzerFieldDAO.findByAnalyzerId("ANALYZER-001")).thenReturn(allFields);
-        when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("ANALYZER-001"))
-                .thenReturn(activeMappings);
+        when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("ANALYZER-001")).thenReturn(activeMappings);
 
         // Act
         double accuracy = mappingValidationService.calculateMappingAccuracy("ANALYZER-001");
@@ -104,8 +102,7 @@ public class MappingValidationServiceTest {
         List<AnalyzerFieldMapping> activeMappings = Arrays.asList(activeMapping);
 
         when(analyzerFieldDAO.findByAnalyzerId("ANALYZER-001")).thenReturn(allFields);
-        when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("ANALYZER-001"))
-                .thenReturn(activeMappings);
+        when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("ANALYZER-001")).thenReturn(activeMappings);
 
         // Act
         List<String> unmappedFields = mappingValidationService.identifyUnmappedFields("ANALYZER-001");
@@ -136,8 +133,7 @@ public class MappingValidationServiceTest {
         List<AnalyzerFieldMapping> activeMappings = Arrays.asList(activeMapping);
 
         when(analyzerFieldDAO.findByAnalyzerId("ANALYZER-001")).thenReturn(allFields);
-        when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("ANALYZER-001"))
-                .thenReturn(activeMappings);
+        when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("ANALYZER-001")).thenReturn(activeMappings);
 
         // Act
         MappingValidationService.ValidationMetrics metrics = mappingValidationService
@@ -152,4 +148,3 @@ public class MappingValidationServiceTest {
         assertNotNull("Coverage by test unit should not be null", metrics.getCoverageByTestUnit());
     }
 }
-

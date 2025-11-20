@@ -1,6 +1,6 @@
 /**
  * Analyzer Modals E2E Test
- * 
+ *
  * Tests that all analyzer modals can be opened and closed correctly:
  * 1. Add Analyzer modal (from Add button)
  * 2. Edit Analyzer modal (from overflow menu)
@@ -10,13 +10,13 @@
  * 6. Field Mappings page (navigation, not modal)
  * 7. Error Details modal (from error dashboard)
  * 8. Test Mapping modal (from field mappings page)
- * 
+ *
  * Constitution V.5 Compliance:
  * - Video disabled by default
  * - Screenshots enabled on failure
  * - Uses data-testid selectors (PREFERRED)
  * - Simple happy path test (open/close only)
- * 
+ *
  * Execution:
  * - Development: npm run cy:single "cypress/e2e/analyzerModals.cy.js"
  */
@@ -85,20 +85,22 @@ describe("Analyzer Modals - Open/Close", () => {
 
   it("should open and close Add Analyzer modal", () => {
     cy.visit("/analyzers");
-    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Click Add Analyzer button
-    cy.get('[data-testid="add-analyzer-button"]')
-      .should("be.visible")
-      .click();
+    cy.get('[data-testid="add-analyzer-button"]').should("be.visible").click();
 
     // Verify modal opened
-    cy.get('[data-testid="analyzer-form"]', { timeout: 5000 }).should("be.visible");
+    cy.get('[data-testid="analyzer-form"]', { timeout: 5000 }).should(
+      "be.visible",
+    );
     cy.get('[role="dialog"]').should("be.visible");
 
     // Close modal (click cancel or close button)
     cy.get('[data-testid="analyzer-form"]')
-      .find('button')
+      .find("button")
       .contains(/cancel|close/i)
       .first()
       .should("be.visible")
@@ -110,21 +112,25 @@ describe("Analyzer Modals - Open/Close", () => {
 
   it("should open and close Edit Analyzer modal", () => {
     cy.visit("/analyzers");
-    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Wait for analyzers table to load
-    cy.get('[data-testid="analyzers-table-container"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="analyzers-table-container"]', {
+      timeout: 10000,
+    }).should("be.visible");
 
     // Find test analyzer row and click overflow menu
-    cy.get('body').then(($body) => {
+    cy.get("body").then(($body) => {
       if ($body.find('[data-testid^="analyzer-action-edit-"]').length > 0) {
         // Click overflow menu button for first analyzer
         cy.get('[data-testid="analyzers-table-container"]')
-          .find('tbody')
-          .find('tr')
+          .find("tbody")
+          .find("tr")
           .first()
           .find('[data-testid^="analyzer-actions-"]')
-          .find('button')
+          .find("button")
           .first()
           .should("be.visible")
           .click();
@@ -139,12 +145,14 @@ describe("Analyzer Modals - Open/Close", () => {
           .click();
 
         // Verify modal opened
-        cy.get('[data-testid="analyzer-form"]', { timeout: 5000 }).should("be.visible");
+        cy.get('[data-testid="analyzer-form"]', { timeout: 5000 }).should(
+          "be.visible",
+        );
         cy.get('[role="dialog"]').should("be.visible");
 
         // Close modal
         cy.get('[data-testid="analyzer-form"]')
-          .find('button')
+          .find("button")
           .contains(/cancel|close/i)
           .first()
           .should("be.visible")
@@ -160,17 +168,21 @@ describe("Analyzer Modals - Open/Close", () => {
 
   it("should open and close Delete Analyzer modal", () => {
     cy.visit("/analyzers");
-    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Find analyzer row and click overflow menu
-    cy.get('body').then(($body) => {
+    cy.get("body").then(($body) => {
       if ($body.find('[data-testid^="analyzer-action-delete-"]').length > 0) {
         // Click overflow menu button (Carbon OverflowMenu)
         cy.get('[data-testid="analyzers-table-container"]')
-          .find('tbody')
-          .find('tr')
+          .find("tbody")
+          .find("tr")
           .first()
-          .find('button[aria-label*="Actions"], [data-testid^="analyzer-actions-"]')
+          .find(
+            'button[aria-label*="Actions"], [data-testid^="analyzer-actions-"]',
+          )
           .first()
           .should("be.visible")
           .click();
@@ -185,7 +197,9 @@ describe("Analyzer Modals - Open/Close", () => {
           .click();
 
         // Verify delete modal opened
-        cy.get('[data-testid="delete-analyzer-modal"]', { timeout: 5000 }).should("be.visible");
+        cy.get('[data-testid="delete-analyzer-modal"]', {
+          timeout: 5000,
+        }).should("be.visible");
         cy.get('[role="dialog"]').should("be.visible");
 
         // Close modal (click cancel)
@@ -203,17 +217,24 @@ describe("Analyzer Modals - Open/Close", () => {
 
   it("should open and close Test Connection modal", () => {
     cy.visit("/analyzers");
-    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Find analyzer row and click overflow menu
-    cy.get('body').then(($body) => {
-      if ($body.find('[data-testid^="analyzer-action-test-connection-"]').length > 0) {
+    cy.get("body").then(($body) => {
+      if (
+        $body.find('[data-testid^="analyzer-action-test-connection-"]').length >
+        0
+      ) {
         // Click overflow menu button (Carbon OverflowMenu)
         cy.get('[data-testid="analyzers-table-container"]')
-          .find('tbody')
-          .find('tr')
+          .find("tbody")
+          .find("tr")
           .first()
-          .find('button[aria-label*="Actions"], [data-testid^="analyzer-actions-"]')
+          .find(
+            'button[aria-label*="Actions"], [data-testid^="analyzer-actions-"]',
+          )
           .first()
           .should("be.visible")
           .click();
@@ -228,7 +249,9 @@ describe("Analyzer Modals - Open/Close", () => {
           .click();
 
         // Verify test connection modal opened
-        cy.get('[data-testid="test-connection-modal"]', { timeout: 5000 }).should("be.visible");
+        cy.get('[data-testid="test-connection-modal"]', {
+          timeout: 5000,
+        }).should("be.visible");
         cy.get('[role="dialog"]').should("be.visible");
 
         // Close modal
@@ -246,17 +269,23 @@ describe("Analyzer Modals - Open/Close", () => {
 
   it("should open and close Copy Mappings modal", () => {
     cy.visit("/analyzers");
-    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Find analyzer row and click overflow menu
-    cy.get('body').then(($body) => {
-      if ($body.find('[data-testid^="analyzer-action-copy-mappings-"]').length > 0) {
+    cy.get("body").then(($body) => {
+      if (
+        $body.find('[data-testid^="analyzer-action-copy-mappings-"]').length > 0
+      ) {
         // Click overflow menu button (Carbon OverflowMenu)
         cy.get('[data-testid="analyzers-table-container"]')
-          .find('tbody')
-          .find('tr')
+          .find("tbody")
+          .find("tr")
           .first()
-          .find('button[aria-label*="Actions"], [data-testid^="analyzer-actions-"]')
+          .find(
+            'button[aria-label*="Actions"], [data-testid^="analyzer-actions-"]',
+          )
           .first()
           .should("be.visible")
           .click();
@@ -271,7 +300,9 @@ describe("Analyzer Modals - Open/Close", () => {
           .click();
 
         // Verify copy mappings modal opened
-        cy.get('[data-testid="copy-mappings-modal"]', { timeout: 5000 }).should("be.visible");
+        cy.get('[data-testid="copy-mappings-modal"]', { timeout: 5000 }).should(
+          "be.visible",
+        );
         cy.get('[role="dialog"]').should("be.visible");
 
         // Close modal
@@ -289,15 +320,17 @@ describe("Analyzer Modals - Open/Close", () => {
 
   it("should navigate to Field Mappings page and verify Test Mapping modal", () => {
     cy.visit("/analyzers");
-    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="analyzers-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Navigate to field mappings via analyzer row
-    cy.get('body').then(($body) => {
+    cy.get("body").then(($body) => {
       if ($body.find('[data-testid^="analyzer-action-mappings-"]').length > 0) {
         // Click Field Mappings action
         cy.get('[data-testid="analyzers-table-container"]')
-          .find('tbody')
-          .find('tr')
+          .find("tbody")
+          .find("tr")
           .first()
           .find('[data-testid^="analyzer-action-mappings-"]')
           .should("be.visible")
@@ -305,7 +338,9 @@ describe("Analyzer Modals - Open/Close", () => {
 
         // Verify field mappings page loaded
         cy.url({ timeout: 10000 }).should("include", "/mappings");
-        cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should("be.visible");
+        cy.get('[data-testid="field-mapping"]', { timeout: 10000 }).should(
+          "be.visible",
+        );
 
         // Open Test Mapping modal
         cy.get('[data-testid="field-mapping-test-button"]')
@@ -313,7 +348,9 @@ describe("Analyzer Modals - Open/Close", () => {
           .click();
 
         // Verify test mapping modal opened
-        cy.get('[data-testid="test-mapping-modal"]', { timeout: 5000 }).should("be.visible");
+        cy.get('[data-testid="test-mapping-modal"]', { timeout: 5000 }).should(
+          "be.visible",
+        );
         cy.get('[role="dialog"]').should("be.visible");
 
         // Close modal
@@ -331,15 +368,19 @@ describe("Analyzer Modals - Open/Close", () => {
 
   it("should open and close Error Details modal from Error Dashboard", () => {
     cy.visit("/analyzers/errors");
-    cy.get('[data-testid="error-dashboard"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[data-testid="error-dashboard"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
 
     // Check if there are any error rows in the table
-    cy.get('body').then(($body) => {
-      if ($body.find('[data-testid="error-table-container"] tbody tr').length > 0) {
+    cy.get("body").then(($body) => {
+      if (
+        $body.find('[data-testid="error-table-container"] tbody tr').length > 0
+      ) {
         // Click overflow menu button for first error row
         cy.get('[data-testid="error-table-container"]')
-          .find('tbody')
-          .find('tr')
+          .find("tbody")
+          .find("tr")
           .first()
           .find('button[aria-label*="Actions"]')
           .first()
@@ -356,7 +397,9 @@ describe("Analyzer Modals - Open/Close", () => {
           .click();
 
         // Verify error details modal opened
-        cy.get('[data-testid="error-details-modal"]', { timeout: 5000 }).should("be.visible");
+        cy.get('[data-testid="error-details-modal"]', { timeout: 5000 }).should(
+          "be.visible",
+        );
         cy.get('[role="dialog"]').should("be.visible");
 
         // Close modal
@@ -372,4 +415,3 @@ describe("Analyzer Modals - Open/Close", () => {
     });
   });
 });
-

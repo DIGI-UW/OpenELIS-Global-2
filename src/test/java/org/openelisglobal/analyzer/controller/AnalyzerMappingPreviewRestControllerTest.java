@@ -27,7 +27,8 @@ import org.springframework.test.web.servlet.MvcResult;
  * 
  * Task Reference: T158 Test Coverage Goal: >80%
  * 
- * Uses BaseWebContextSensitiveTest for integration testing with full Spring context
+ * Uses BaseWebContextSensitiveTest for integration testing with full Spring
+ * context
  */
 public class AnalyzerMappingPreviewRestControllerTest extends BaseWebContextSensitiveTest {
 
@@ -43,8 +44,8 @@ public class AnalyzerMappingPreviewRestControllerTest extends BaseWebContextSens
     }
 
     /**
-     * Test: Preview mapping with valid message returns structured response
-     * Task Reference: T158
+     * Test: Preview mapping with valid message returns structured response Task
+     * Reference: T158
      */
     @Test
     public void testPreviewMapping_WithValidMessage_ReturnsStructuredResponse() throws Exception {
@@ -95,25 +96,21 @@ public class AnalyzerMappingPreviewRestControllerTest extends BaseWebContextSens
         // For this test, we'll verify the endpoint structure and response format
 
         // Act & Assert
-        MvcResult result = mockMvc.perform(post("/rest/analyzer/analyzers/{id}/preview-mapping", analyzerId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(form)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.parsedFields").exists())
-                .andExpect(jsonPath("$.appliedMappings").exists())
-                .andExpect(jsonPath("$.entityPreview").exists())
-                .andExpect(jsonPath("$.warnings").exists())
-                .andExpect(jsonPath("$.errors").exists())
-                .andReturn();
-        
+        MvcResult result = mockMvc
+                .perform(post("/rest/analyzer/analyzers/{id}/preview-mapping", analyzerId)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(form)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.parsedFields").exists())
+                .andExpect(jsonPath("$.appliedMappings").exists()).andExpect(jsonPath("$.entityPreview").exists())
+                .andExpect(jsonPath("$.warnings").exists()).andExpect(jsonPath("$.errors").exists()).andReturn();
+
         // Verify response structure
         String responseBody = result.getResponse().getContentAsString();
         assert responseBody != null && !responseBody.isEmpty();
     }
 
     /**
-     * Test: Preview mapping with large message returns bad request
-     * Task Reference: T158
+     * Test: Preview mapping with large message returns bad request Task Reference:
+     * T158
      */
     @Test
     public void testPreviewMapping_WithLargeMessage_ReturnsBadRequest() throws Exception {
@@ -126,15 +123,13 @@ public class AnalyzerMappingPreviewRestControllerTest extends BaseWebContextSens
 
         // Act & Assert
         mockMvc.perform(post("/rest/analyzer/analyzers/{id}/preview-mapping", analyzerId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(form)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(form)))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
     }
 
     /**
-     * Test: Preview mapping with null message returns bad request
-     * Task Reference: T158
+     * Test: Preview mapping with null message returns bad request Task Reference:
+     * T158
      */
     @Test
     public void testPreviewMapping_WithNullMessage_ReturnsBadRequest() throws Exception {
@@ -146,9 +141,7 @@ public class AnalyzerMappingPreviewRestControllerTest extends BaseWebContextSens
 
         // Act & Assert: Validation should fail
         mockMvc.perform(post("/rest/analyzer/analyzers/{id}/preview-mapping", analyzerId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(form)))
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(form)))
                 .andExpect(status().isBadRequest());
     }
 }
-

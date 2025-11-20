@@ -118,8 +118,7 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
         // Note: Mappings endpoint returns direct array, not wrapped in { data: {...} }
         mockMvc.perform(
                 get("/rest/analyzer/analyzers/" + analyzerId + "/mappings").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(0)); // Empty array initially
     }
 
@@ -155,17 +154,14 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
                 get("/rest/analyzer/analyzers/" + analyzerId + "/mappings").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 // Verify direct array response (not wrapped in data object)
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$").isArray()).andExpect(jsonPath("$.length()").value(1))
                 // Verify mapping object structure matches frontend expectations
-                .andExpect(jsonPath("$[0].id").exists())
-                .andExpect(jsonPath("$[0].analyzerFieldId").value(fieldId))
+                .andExpect(jsonPath("$[0].id").exists()).andExpect(jsonPath("$[0].analyzerFieldId").value(fieldId))
                 .andExpect(jsonPath("$[0].analyzerFieldName").exists())
                 .andExpect(jsonPath("$[0].analyzerFieldType").exists())
                 .andExpect(jsonPath("$[0].openelisFieldId").value("test-field-123"))
                 .andExpect(jsonPath("$[0].openelisFieldType").value("TEST"))
-                .andExpect(jsonPath("$[0].mappingType").exists())
-                .andExpect(jsonPath("$[0].isRequired").value(false))
+                .andExpect(jsonPath("$[0].mappingType").exists()).andExpect(jsonPath("$[0].isRequired").value(false))
                 .andExpect(jsonPath("$[0].isActive").value(true));
     }
 
@@ -305,9 +301,8 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
     }
 
     /**
-     * Test: POST /rest/analyzer/analyzers/{targetId}/copy-mappings with valid request
-     * returns copy results
-     * Task Reference: T195
+     * Test: POST /rest/analyzer/analyzers/{targetId}/copy-mappings with valid
+     * request returns copy results Task Reference: T195
      */
     @Test
     public void testCopyMappings_WithValidRequest_ReturnsCopyResults() throws Exception {
@@ -325,19 +320,15 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
 
         // Act & Assert: POST endpoint should copy mappings
         mockMvc.perform(post("/rest/analyzer/analyzers/" + targetAnalyzerId + "/copy-mappings")
-                .contentType(MediaType.APPLICATION_JSON).content(requestBody))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.copiedCount").exists())
-                .andExpect(jsonPath("$.skippedCount").exists())
-                .andExpect(jsonPath("$.warnings").isArray())
-                .andExpect(jsonPath("$.conflicts").isArray())
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.copiedCount").exists()).andExpect(jsonPath("$.skippedCount").exists())
+                .andExpect(jsonPath("$.warnings").isArray()).andExpect(jsonPath("$.conflicts").isArray())
                 .andExpect(jsonPath("$.copiedCount").exists());
     }
 
     /**
      * Test: POST /rest/analyzer/analyzers/{targetId}/copy-mappings with no source
-     * mappings returns bad request
-     * Task Reference: T195
+     * mappings returns bad request Task Reference: T195
      */
     @Test
     public void testCopyMappings_WithNoSourceMappings_ReturnsBadRequest() throws Exception {
@@ -352,17 +343,16 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
         // Create request body
         String requestBody = "{\"sourceAnalyzerId\":\"" + sourceAnalyzerId + "\"}";
 
-        // Act & Assert: POST endpoint should return bad request (source has no mappings)
+        // Act & Assert: POST endpoint should return bad request (source has no
+        // mappings)
         mockMvc.perform(post("/rest/analyzer/analyzers/" + targetAnalyzerId + "/copy-mappings")
-                .contentType(MediaType.APPLICATION_JSON).content(requestBody))
-                .andExpect(status().isBadRequest())
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
     }
 
     /**
      * Test: POST /rest/analyzer/analyzers/{targetId}/copy-mappings with missing
-     * sourceAnalyzerId returns bad request
-     * Task Reference: T195
+     * sourceAnalyzerId returns bad request Task Reference: T195
      */
     @Test
     public void testCopyMappings_WithMissingSourceAnalyzerId_ReturnsBadRequest() throws Exception {
@@ -375,8 +365,7 @@ public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensit
 
         // Act & Assert: POST endpoint should return bad request
         mockMvc.perform(post("/rest/analyzer/analyzers/" + targetAnalyzerId + "/copy-mappings")
-                .contentType(MediaType.APPLICATION_JSON).content(requestBody))
-                .andExpect(status().isBadRequest())
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("sourceAnalyzerId is required"));
     }
 }

@@ -1,7 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -78,8 +77,8 @@ public class AnalyzerLifecycleSchedulerTest {
     }
 
     /**
-     * Test: Transition to MAINTENANCE after 7 days updates stage
-     * Task Reference: T153a
+     * Test: Transition to MAINTENANCE after 7 days updates stage Task Reference:
+     * T153a
      */
     @Test
     public void testTransitionToMaintenance_After7Days_UpdatesStage() {
@@ -96,13 +95,13 @@ public class AnalyzerLifecycleSchedulerTest {
 
         // Assert
         verify(analyzerConfigurationService, times(1)).update(config1);
-        assertEquals("Configuration should be in MAINTENANCE stage",
-                AnalyzerConfiguration.LifecycleStage.MAINTENANCE, config1.getLifecycleStage());
+        assertEquals("Configuration should be in MAINTENANCE stage", AnalyzerConfiguration.LifecycleStage.MAINTENANCE,
+                config1.getLifecycleStage());
     }
 
     /**
-     * Test: Transition to MAINTENANCE before 7 days does not update
-     * Task Reference: T153a
+     * Test: Transition to MAINTENANCE before 7 days does not update Task Reference:
+     * T153a
      */
     @Test
     public void testTransitionToMaintenance_Before7Days_NoUpdate() {
@@ -117,8 +116,8 @@ public class AnalyzerLifecycleSchedulerTest {
 
         // Assert
         verify(analyzerConfigurationService, never()).update(any(AnalyzerConfiguration.class));
-        assertEquals("Configuration should remain in GO_LIVE stage",
-                AnalyzerConfiguration.LifecycleStage.GO_LIVE, config2.getLifecycleStage());
+        assertEquals("Configuration should remain in GO_LIVE stage", AnalyzerConfiguration.LifecycleStage.GO_LIVE,
+                config2.getLifecycleStage());
     }
 
     /**
@@ -149,19 +148,19 @@ public class AnalyzerLifecycleSchedulerTest {
 
         // Assert
         verify(analyzerConfigurationService, times(2)).update(any(AnalyzerConfiguration.class));
-        assertEquals("Config1 should be in MAINTENANCE stage",
-                AnalyzerConfiguration.LifecycleStage.MAINTENANCE, config1.getLifecycleStage());
-        assertEquals("Config2 should remain in GO_LIVE stage",
-                AnalyzerConfiguration.LifecycleStage.GO_LIVE, config2.getLifecycleStage());
-        assertEquals("Config3 should remain in VALIDATION stage",
-                AnalyzerConfiguration.LifecycleStage.VALIDATION, config3.getLifecycleStage());
-        assertEquals("Config4 should be in MAINTENANCE stage",
-                AnalyzerConfiguration.LifecycleStage.MAINTENANCE, config4.getLifecycleStage());
+        assertEquals("Config1 should be in MAINTENANCE stage", AnalyzerConfiguration.LifecycleStage.MAINTENANCE,
+                config1.getLifecycleStage());
+        assertEquals("Config2 should remain in GO_LIVE stage", AnalyzerConfiguration.LifecycleStage.GO_LIVE,
+                config2.getLifecycleStage());
+        assertEquals("Config3 should remain in VALIDATION stage", AnalyzerConfiguration.LifecycleStage.VALIDATION,
+                config3.getLifecycleStage());
+        assertEquals("Config4 should be in MAINTENANCE stage", AnalyzerConfiguration.LifecycleStage.MAINTENANCE,
+                config4.getLifecycleStage());
     }
 
     /**
-     * Test: Transition failure logs error and continues processing
-     * Task Reference: T153b
+     * Test: Transition failure logs error and continues processing Task Reference:
+     * T153b
      */
     @Test
     public void testTransitionFailure_LogsErrorAndContinuesProcessing() {
@@ -177,10 +176,8 @@ public class AnalyzerLifecycleSchedulerTest {
         configurations.add(config4); // Should succeed
 
         when(analyzerConfigurationService.getAllWithAnalyzers()).thenReturn(configurations);
-        when(analyzerConfigurationService.update(config1))
-                .thenThrow(new RuntimeException("Database error"));
-        when(analyzerConfigurationService.update(config4))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(analyzerConfigurationService.update(config1)).thenThrow(new RuntimeException("Database error"));
+        when(analyzerConfigurationService.update(config4)).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
         scheduler.transitionToMaintenance();
@@ -203,4 +200,3 @@ public class AnalyzerLifecycleSchedulerTest {
         return cal.getTime();
     }
 }
-

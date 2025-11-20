@@ -18,13 +18,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
- * Integration tests for OpenELISFieldRestController.
- * Task Reference: T148
+ * Integration tests for OpenELISFieldRestController. Task Reference: T148
  * 
  * Test Coverage Goal: >80%
  * 
- * Note: Using BaseWebContextSensitiveTest pattern since @WebMvcTest dependencies
- * not available. @WebMvcTest would be preferred for unit-level controller testing.
+ * Note: Using BaseWebContextSensitiveTest pattern since @WebMvcTest
+ * dependencies not available. @WebMvcTest would be preferred for unit-level
+ * controller testing.
  */
 public class OpenELISFieldRestControllerTest extends BaseWebContextSensitiveTest {
 
@@ -76,13 +76,10 @@ public class OpenELISFieldRestControllerTest extends BaseWebContextSensitiveTest
         String requestBody = objectMapper.writeValueAsString(form);
 
         // Act & Assert
-        mockMvc.perform(post("/rest/analyzer/openelis-fields")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.field").exists())
-                .andExpect(jsonPath("$.field.name").value(form.getFieldName()))
+        mockMvc.perform(
+                post("/rest/analyzer/openelis-fields").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.field").exists()).andExpect(jsonPath("$.field.name").value(form.getFieldName()))
                 .andExpect(jsonPath("$.message").exists());
     }
 
@@ -112,11 +109,9 @@ public class OpenELISFieldRestControllerTest extends BaseWebContextSensitiveTest
         String requestBody = objectMapper.writeValueAsString(duplicateForm);
 
         // Act & Assert
-        mockMvc.perform(post("/rest/analyzer/openelis-fields")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").exists())
+        mockMvc.perform(
+                post("/rest/analyzer/openelis-fields").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error").exists())
                 .andExpect(jsonPath("$.message").exists());
     }
 
@@ -130,11 +125,9 @@ public class OpenELISFieldRestControllerTest extends BaseWebContextSensitiveTest
         String requestBody = objectMapper.writeValueAsString(form);
 
         // Act & Assert
-        mockMvc.perform(post("/rest/analyzer/openelis-fields")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+        mockMvc.perform(
+                post("/rest/analyzer/openelis-fields").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
     }
 
     @Test
@@ -150,11 +143,8 @@ public class OpenELISFieldRestControllerTest extends BaseWebContextSensitiveTest
         String requestBody = objectMapper.writeValueAsString(form);
 
         // Act & Assert
-        mockMvc.perform(post("/rest/analyzer/openelis-fields/validate")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isUnique").value(true));
+        mockMvc.perform(post("/rest/analyzer/openelis-fields/validate").contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody)).andExpect(status().isOk()).andExpect(jsonPath("$.isUnique").value(true));
     }
 
     @Test
@@ -171,20 +161,15 @@ public class OpenELISFieldRestControllerTest extends BaseWebContextSensitiveTest
         assert fieldId != null;
 
         // Act & Assert
-        mockMvc.perform(get("/rest/analyzer/openelis-fields/" + fieldId)
-                .param("entityType", "TEST"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(fieldId))
-                .andExpect(jsonPath("$.name").exists())
-                .andExpect(jsonPath("$.entityType").value("TEST"));
+        mockMvc.perform(get("/rest/analyzer/openelis-fields/" + fieldId).param("entityType", "TEST"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(fieldId))
+                .andExpect(jsonPath("$.name").exists()).andExpect(jsonPath("$.entityType").value("TEST"));
     }
 
     @Test
     public void testGetField_WithInvalidId_ReturnsNotFound() throws Exception {
         // Act & Assert
-        mockMvc.perform(get("/rest/analyzer/openelis-fields/INVALID-ID")
-                .param("entityType", "TEST"))
+        mockMvc.perform(get("/rest/analyzer/openelis-fields/INVALID-ID").param("entityType", "TEST"))
                 .andExpect(status().isNotFound());
     }
 }
-

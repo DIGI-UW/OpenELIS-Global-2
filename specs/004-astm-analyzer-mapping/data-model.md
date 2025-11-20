@@ -40,18 +40,18 @@ The feature introduces 5 new entities and extends 1 existing entity:
 
 **Fields**:
 
-| Field              | Type        | Constraints                      | Description                               |
-| ------------------ | ----------- | -------------------------------- | ----------------------------------------- |
-| `id`               | VARCHAR(36) | PK, NOT NULL                     | Primary key (UUID)                        |
-| `analyzer_id`      | VARCHAR(36) | FK, NOT NULL, UNIQUE             | References `analyzer.id`                  |
-| `ip_address`       | VARCHAR(15) | NULL                             | IPv4 address (e.g., "192.168.1.10")       |
-| `port`             | INTEGER     | NULL                             | Port number (1-65535)                     |
-| `protocol_version`   | VARCHAR(20) | NOT NULL, DEFAULT 'ASTM LIS2-A2' | Protocol version                          |
-| `test_unit_ids`      | TEXT[]      | NULL                             | Array of test unit IDs (PostgreSQL array) |
-| `lifecycle_stage`    | VARCHAR(20) | NOT NULL, DEFAULT 'SETUP'        | Analyzer lifecycle stage (enum)           |
-| `last_activated_date`| TIMESTAMP   | NULL                             | Date when analyzer was last activated     |
-| `last_updated`       | TIMESTAMP   | NOT NULL                         | Audit timestamp (from BaseObject)         |
-| `sys_user_id`        | VARCHAR(36) | NULL                             | Audit user ID (from BaseObject)           |
+| Field                 | Type        | Constraints                      | Description                               |
+| --------------------- | ----------- | -------------------------------- | ----------------------------------------- |
+| `id`                  | VARCHAR(36) | PK, NOT NULL                     | Primary key (UUID)                        |
+| `analyzer_id`         | VARCHAR(36) | FK, NOT NULL, UNIQUE             | References `analyzer.id`                  |
+| `ip_address`          | VARCHAR(15) | NULL                             | IPv4 address (e.g., "192.168.1.10")       |
+| `port`                | INTEGER     | NULL                             | Port number (1-65535)                     |
+| `protocol_version`    | VARCHAR(20) | NOT NULL, DEFAULT 'ASTM LIS2-A2' | Protocol version                          |
+| `test_unit_ids`       | TEXT[]      | NULL                             | Array of test unit IDs (PostgreSQL array) |
+| `lifecycle_stage`     | VARCHAR(20) | NOT NULL, DEFAULT 'SETUP'        | Analyzer lifecycle stage (enum)           |
+| `last_activated_date` | TIMESTAMP   | NULL                             | Date when analyzer was last activated     |
+| `last_updated`        | TIMESTAMP   | NOT NULL                         | Audit timestamp (from BaseObject)         |
+| `sys_user_id`         | VARCHAR(36) | NULL                             | Audit user ID (from BaseObject)           |
 
 **Validation Rules**:
 
@@ -61,21 +61,28 @@ The feature introduces 5 new entities and extends 1 existing entity:
 - `ip_address` and `port` must both be provided or both be NULL (connection
   configuration is all-or-nothing)
 - `lifecycle_stage`: Must be one of: SETUP, VALIDATION, GO_LIVE, MAINTENANCE
-- `last_activated_date`: Auto-populated when lifecycle_stage transitions to GO_LIVE
+- `last_activated_date`: Auto-populated when lifecycle_stage transitions to
+  GO_LIVE
 
 **Lifecycle Stage Transitions**:
 
 - **SETUP → VALIDATION**: Automatic when first field mappings are created
 - **VALIDATION → GO_LIVE**: Manual activation by user (requires confirmation)
-- **GO_LIVE → MAINTENANCE**: Automatic after 7 days (triggered by scheduled job at 2 AM daily)
-- **MAINTENANCE → SETUP**: Manual reset by administrator (rare, used for major reconfiguration)
+- **GO_LIVE → MAINTENANCE**: Automatic after 7 days (triggered by scheduled job
+  at 2 AM daily)
+- **MAINTENANCE → SETUP**: Manual reset by administrator (rare, used for major
+  reconfiguration)
 
 **Lifecycle Stage Enum Values**:
 
-- `SETUP`: Analyzer registered, connection tested, initial mappings being created (inactive)
-- `VALIDATION`: Draft mappings created, testing with sample messages, validating accuracy (inactive)
-- `GO_LIVE`: Mappings activated, analyzer receiving orders, monitoring enabled (active)
-- `MAINTENANCE`: Operational analyzer with ongoing mapping updates and error resolution (active)
+- `SETUP`: Analyzer registered, connection tested, initial mappings being
+  created (inactive)
+- `VALIDATION`: Draft mappings created, testing with sample messages, validating
+  accuracy (inactive)
+- `GO_LIVE`: Mappings activated, analyzer receiving orders, monitoring enabled
+  (active)
+- `MAINTENANCE`: Operational analyzer with ongoing mapping updates and error
+  resolution (active)
 
 **JPA Entity**:
 
@@ -561,14 +568,14 @@ rules.
 
 **Fields**:
 
-| Field          | Type         | Constraints      | Description                         |
-| -------------- | ------------ | ---------------- | ----------------------------------- |
-| `id`           | VARCHAR(36)  | PK, NOT NULL     | Primary key (UUID)                  |
-| `type_name`    | VARCHAR(100) | NOT NULL, UNIQUE | Display name (e.g., "pH Level")     |
-| `description`  | TEXT         | NULL             | Description of field type usage     |
-| `is_active`    | BOOLEAN      | NOT NULL         | Whether type is available for use   |
-| `last_updated` | TIMESTAMP    | NOT NULL         | Audit timestamp (from BaseObject)   |
-| `sys_user_id`  | VARCHAR(36)  | NULL             | Audit user ID (from BaseObject)     |
+| Field          | Type         | Constraints      | Description                       |
+| -------------- | ------------ | ---------------- | --------------------------------- |
+| `id`           | VARCHAR(36)  | PK, NOT NULL     | Primary key (UUID)                |
+| `type_name`    | VARCHAR(100) | NOT NULL, UNIQUE | Display name (e.g., "pH Level")   |
+| `description`  | TEXT         | NULL             | Description of field type usage   |
+| `is_active`    | BOOLEAN      | NOT NULL         | Whether type is available for use |
+| `last_updated` | TIMESTAMP    | NOT NULL         | Audit timestamp (from BaseObject) |
+| `sys_user_id`  | VARCHAR(36)  | NULL             | Audit user ID (from BaseObject)   |
 
 **Validation Rules**:
 
@@ -614,17 +621,17 @@ patterns, value ranges, enumerated values, and length constraints.
 
 **Fields**:
 
-| Field                 | Type         | Constraints        | Description                                |
-| --------------------- | ------------ | ------------------ | ------------------------------------------ |
-| `id`                  | VARCHAR(36)  | PK, NOT NULL       | Primary key (UUID)                         |
-| `custom_field_type_id`| VARCHAR(36)  | FK, NOT NULL       | References `custom_field_type.id`          |
-| `rule_name`           | VARCHAR(100) | NOT NULL           | Display name (e.g., "pH Range Validator")  |
-| `rule_type`           | VARCHAR(20)  | NOT NULL           | Rule type enum (REGEX, RANGE, ENUM, LENGTH)|
-| `rule_expression`     | TEXT         | NOT NULL           | JSON or pattern string                     |
-| `error_message`       | VARCHAR(500) | NOT NULL           | Custom error message template              |
-| `is_active`           | BOOLEAN      | NOT NULL           | Whether rule is enforced                   |
-| `last_updated`        | TIMESTAMP    | NOT NULL           | Audit timestamp (from BaseObject)          |
-| `sys_user_id`         | VARCHAR(36)  | NULL               | Audit user ID (from BaseObject)            |
+| Field                  | Type         | Constraints  | Description                                 |
+| ---------------------- | ------------ | ------------ | ------------------------------------------- |
+| `id`                   | VARCHAR(36)  | PK, NOT NULL | Primary key (UUID)                          |
+| `custom_field_type_id` | VARCHAR(36)  | FK, NOT NULL | References `custom_field_type.id`           |
+| `rule_name`            | VARCHAR(100) | NOT NULL     | Display name (e.g., "pH Range Validator")   |
+| `rule_type`            | VARCHAR(20)  | NOT NULL     | Rule type enum (REGEX, RANGE, ENUM, LENGTH) |
+| `rule_expression`      | TEXT         | NOT NULL     | JSON or pattern string                      |
+| `error_message`        | VARCHAR(500) | NOT NULL     | Custom error message template               |
+| `is_active`            | BOOLEAN      | NOT NULL     | Whether rule is enforced                    |
+| `last_updated`         | TIMESTAMP    | NOT NULL     | Audit timestamp (from BaseObject)           |
+| `sys_user_id`          | VARCHAR(36)  | NULL         | Audit user ID (from BaseObject)             |
 
 **Rule Expression Formats**:
 

@@ -34,7 +34,10 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
-import { getFromOpenElisServer, postToOpenElisServerFullResponse } from "../../../components/utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
+} from "../../../components/utils/Utils";
 import ErrorDetailsModal from "./ErrorDetailsModal";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./ErrorDashboard.css";
@@ -246,7 +249,11 @@ const ErrorDashboard = () => {
   const handleAcknowledgeAll = () => {
     // Get all unacknowledged error IDs
     const unacknowledgedErrorIds = filteredErrors
-      .filter((error) => error.status === "UNACKNOWLEDGED" || error.status === "unacknowledged")
+      .filter(
+        (error) =>
+          error.status === "UNACKNOWLEDGED" ||
+          error.status === "unacknowledged",
+      )
       .map((error) => error.id);
 
     if (unacknowledgedErrorIds.length === 0) {
@@ -392,10 +399,21 @@ const ErrorDashboard = () => {
         <div className="error-dashboard-header-title">
           <PageTitle
             breadcrumbs={[
-              { label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }), link: "/analyzers" },
-              { label: intl.formatMessage({ id: "analyzer.errorDashboard.title" }) }
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.page.hierarchy.root",
+                }),
+                link: "/analyzers",
+              },
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.errorDashboard.title",
+                }),
+              },
             ]}
-            subtitle={intl.formatMessage({ id: "analyzer.errorDashboard.subtitle" })}
+            subtitle={intl.formatMessage({
+              id: "analyzer.errorDashboard.subtitle",
+            })}
           />
         </div>
         <Button
@@ -609,135 +627,144 @@ const ErrorDashboard = () => {
       <Grid>
         <Column lg={16} md={8} sm={4}>
           <TableContainer data-testid="error-table-container">
-        <DataTable rows={rows} headers={headers} isSortable>
-          {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
-            <Table {...getTableProps()} data-testid="error-table">
-              <TableHead>
-                <TableRow>
-                  {headers.map((header) => (
-                    <TableHeader
-                      key={header.key}
-                      {...getHeaderProps({ header })}
-                    >
-                      {header.header}
-                    </TableHeader>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((row) => {
-                  const error =
-                    row._error || filteredErrors.find((e) => e.id === row.id);
-                  const isAcknowledged =
-                    error?.status === "ACKNOWLEDGED" ||
-                    error?.status === "acknowledged";
-                  const severity = error?.severity || "ERROR";
-                  const errorType = error?.errorType || "MAPPING";
-
-                  // Get severity color
-                  const severityColor =
-                    severity === "CRITICAL" || severity === "critical"
-                      ? "red"
-                      : severity === "ERROR" || severity === "error"
-                        ? "magenta"
-                        : "blue";
-
-                  // Get error type label
-                  const errorTypeKey = `analyzer.errorDashboard.errorType.${errorType.toLowerCase()}`;
-                  const errorTypeLabel = intl.formatMessage(
-                    { id: errorTypeKey },
-                    errorType,
-                  );
-
-                  return (
-                    <TableRow
-                      key={row.id}
-                      {...getRowProps({ row })}
-                      data-testid={`error-row-${row.id}`}
-                    >
-                      {row.cells.map((cell) => {
-                        const headerKey = cell.info.header;
-                        let cellContent = cell.value;
-                        let testId = null;
-
-                        if (headerKey === "type") {
-                          testId = `error-type-${row.id}`;
-                          cellContent = (
-                            <Tag type="blue" data-testid={testId}>
-                              {errorTypeLabel}
-                            </Tag>
-                          );
-                        } else if (headerKey === "severity") {
-                          testId = `error-severity-${row.id}`;
-                          const severityKey = `analyzer.errorDashboard.severity.${severity.toLowerCase()}`;
-                          const severityLabel = intl.formatMessage(
-                            { id: severityKey },
-                            severity,
-                          );
-                          cellContent = (
-                            <Tag type={severityColor} data-testid={testId}>
-                              {severityLabel}
-                            </Tag>
-                          );
-                        } else if (headerKey === "status") {
-                          testId = `error-status-${row.id}`;
-                          const statusKey = isAcknowledged
-                            ? "analyzer.errorDashboard.status.acknowledged"
-                            : "analyzer.errorDashboard.status.unacknowledged";
-                          const statusLabel = intl.formatMessage({
-                            id: statusKey,
-                          });
-                          cellContent = (
-                            <Tag
-                              type={isAcknowledged ? "green" : "red"}
-                              data-testid={testId}
-                            >
-                              {statusLabel}
-                            </Tag>
-                          );
-                        } else if (headerKey === "actions") {
-                          testId = `error-actions-${row.id}`;
-                          cellContent = error ? (
-                            <OverflowMenu
-                              ariaLabel={intl.formatMessage({
-                                id: "analyzer.errorDashboard.action.menu",
-                              })}
-                            >
-                              <OverflowMenuItem
-                                itemText={intl.formatMessage({
-                                  id: "analyzer.errorDashboard.action.viewDetails",
-                                })}
-                                onClick={() => handleViewDetails(error)}
-                                data-testid={`error-action-view-${row.id}`}
-                              />
-                              {!isAcknowledged && (
-                                <OverflowMenuItem
-                                  itemText={intl.formatMessage({
-                                    id: "analyzer.errorDashboard.action.acknowledge",
-                                  })}
-                                  onClick={() => handleAcknowledge(error.id)}
-                                  data-testid={`error-action-acknowledge-${row.id}`}
-                                />
-                              )}
-                            </OverflowMenu>
-                          ) : null;
-                        } else {
-                          testId = `error-${headerKey}-${row.id}`;
-                        }
-
-                        return (
-                          <TableCell key={cell.id} data-testid={testId}>
-                            {cellContent}
-                          </TableCell>
-                        );
-                      })}
+            <DataTable rows={rows} headers={headers} isSortable>
+              {({
+                rows,
+                headers,
+                getHeaderProps,
+                getRowProps,
+                getTableProps,
+              }) => (
+                <Table {...getTableProps()} data-testid="error-table">
+                  <TableHead>
+                    <TableRow>
+                      {headers.map((header) => (
+                        <TableHeader
+                          key={header.key}
+                          {...getHeaderProps({ header })}
+                        >
+                          {header.header}
+                        </TableHeader>
+                      ))}
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </DataTable>
+                  </TableHead>
+                  <TableBody>
+                    {rows.map((row) => {
+                      const error =
+                        row._error ||
+                        filteredErrors.find((e) => e.id === row.id);
+                      const isAcknowledged =
+                        error?.status === "ACKNOWLEDGED" ||
+                        error?.status === "acknowledged";
+                      const severity = error?.severity || "ERROR";
+                      const errorType = error?.errorType || "MAPPING";
+
+                      // Get severity color
+                      const severityColor =
+                        severity === "CRITICAL" || severity === "critical"
+                          ? "red"
+                          : severity === "ERROR" || severity === "error"
+                            ? "magenta"
+                            : "blue";
+
+                      // Get error type label
+                      const errorTypeKey = `analyzer.errorDashboard.errorType.${errorType.toLowerCase()}`;
+                      const errorTypeLabel = intl.formatMessage(
+                        { id: errorTypeKey },
+                        errorType,
+                      );
+
+                      return (
+                        <TableRow
+                          key={row.id}
+                          {...getRowProps({ row })}
+                          data-testid={`error-row-${row.id}`}
+                        >
+                          {row.cells.map((cell) => {
+                            const headerKey = cell.info.header;
+                            let cellContent = cell.value;
+                            let testId = null;
+
+                            if (headerKey === "type") {
+                              testId = `error-type-${row.id}`;
+                              cellContent = (
+                                <Tag type="blue" data-testid={testId}>
+                                  {errorTypeLabel}
+                                </Tag>
+                              );
+                            } else if (headerKey === "severity") {
+                              testId = `error-severity-${row.id}`;
+                              const severityKey = `analyzer.errorDashboard.severity.${severity.toLowerCase()}`;
+                              const severityLabel = intl.formatMessage(
+                                { id: severityKey },
+                                severity,
+                              );
+                              cellContent = (
+                                <Tag type={severityColor} data-testid={testId}>
+                                  {severityLabel}
+                                </Tag>
+                              );
+                            } else if (headerKey === "status") {
+                              testId = `error-status-${row.id}`;
+                              const statusKey = isAcknowledged
+                                ? "analyzer.errorDashboard.status.acknowledged"
+                                : "analyzer.errorDashboard.status.unacknowledged";
+                              const statusLabel = intl.formatMessage({
+                                id: statusKey,
+                              });
+                              cellContent = (
+                                <Tag
+                                  type={isAcknowledged ? "green" : "red"}
+                                  data-testid={testId}
+                                >
+                                  {statusLabel}
+                                </Tag>
+                              );
+                            } else if (headerKey === "actions") {
+                              testId = `error-actions-${row.id}`;
+                              cellContent = error ? (
+                                <OverflowMenu
+                                  ariaLabel={intl.formatMessage({
+                                    id: "analyzer.errorDashboard.action.menu",
+                                  })}
+                                >
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.errorDashboard.action.viewDetails",
+                                    })}
+                                    onClick={() => handleViewDetails(error)}
+                                    data-testid={`error-action-view-${row.id}`}
+                                  />
+                                  {!isAcknowledged && (
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "analyzer.errorDashboard.action.acknowledge",
+                                      })}
+                                      onClick={() =>
+                                        handleAcknowledge(error.id)
+                                      }
+                                      data-testid={`error-action-acknowledge-${row.id}`}
+                                    />
+                                  )}
+                                </OverflowMenu>
+                              ) : null;
+                            } else {
+                              testId = `error-${headerKey}-${row.id}`;
+                            }
+
+                            return (
+                              <TableCell key={cell.id} data-testid={testId}>
+                                {cellContent}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </DataTable>
           </TableContainer>
         </Column>
       </Grid>

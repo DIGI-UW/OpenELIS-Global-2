@@ -148,7 +148,10 @@ const MappingPanel = ({
   };
 
   // Check if retire button should be disabled
-  const canRetire = mapping && (!mapping.isRequired || mapping.isRequired === false) && pendingMessagesCount === 0;
+  const canRetire =
+    mapping &&
+    (!mapping.isRequired || mapping.isRequired === false) &&
+    pendingMessagesCount === 0;
 
   return (
     <div className="mapping-panel" data-testid="mapping-panel">
@@ -156,7 +159,11 @@ const MappingPanel = ({
         <h3>
           Mapping
           {mapping && !mapping.isActive && (
-            <Tag type="gray" className="mapping-status-badge" data-testid="mapping-retired-badge">
+            <Tag
+              type="gray"
+              className="mapping-status-badge"
+              data-testid="mapping-retired-badge"
+            >
               <FormattedMessage
                 id="analyzer.fieldMapping.panel.mapping.retired"
                 defaultMessage="Retired"
@@ -164,7 +171,11 @@ const MappingPanel = ({
             </Tag>
           )}
           {mapping && mapping.isActive && (
-            <Tag type="green" className="mapping-status-badge" data-testid="mapping-active-badge">
+            <Tag
+              type="green"
+              className="mapping-status-badge"
+              data-testid="mapping-active-badge"
+            >
               <FormattedMessage
                 id="analyzer.fieldMapping.panel.mapping.active"
                 defaultMessage="Active"
@@ -189,16 +200,14 @@ const MappingPanel = ({
                     ? intl.formatMessage(
                         {
                           id: "analyzer.fieldMapping.panel.retire.disabled.tooltip",
-                          defaultMessage:
-                            "Cannot retire: {reason}",
+                          defaultMessage: "Cannot retire: {reason}",
                         },
                         {
-                          reason:
-                            mapping.isRequired
-                              ? "Required mapping"
-                              : pendingMessagesCount > 0
-                                ? `${pendingMessagesCount} pending messages`
-                                : "Unknown reason",
+                          reason: mapping.isRequired
+                            ? "Required mapping"
+                            : pendingMessagesCount > 0
+                              ? `${pendingMessagesCount} pending messages`
+                              : "Unknown reason",
                         },
                       )
                     : ""
@@ -245,6 +254,14 @@ const MappingPanel = ({
               onFieldSelect={(fieldId, fieldType) => {
                 handleFieldChange("openelisFieldId", fieldId);
                 handleFieldChange("openelisFieldType", fieldType);
+              }}
+              onFieldCreated={(fieldData, fieldId) => {
+                // Handle newly created field - auto-select it
+                handleFieldChange("openelisFieldId", fieldId);
+                handleFieldChange(
+                  "openelisFieldType",
+                  fieldData.fieldType || field.fieldType,
+                );
               }}
             />
           </div>

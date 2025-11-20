@@ -45,4 +45,3 @@ public class EntityPreview {
         this.sample = sample;
     }
 }
-

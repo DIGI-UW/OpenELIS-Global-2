@@ -98,12 +98,18 @@ const CopyMappingsModal = ({
 
   const handleCopy = () => {
     if (!targetAnalyzerId) {
-      setError(intl.formatMessage({ id: "analyzer.copyMappings.target.required" }));
+      setError(
+        intl.formatMessage({ id: "analyzer.copyMappings.target.required" }),
+      );
       return;
     }
 
     if (mappingCount === 0) {
-      setError(intl.formatMessage({ id: "analyzer.copyMappings.error.noSourceMappings" }));
+      setError(
+        intl.formatMessage({
+          id: "analyzer.copyMappings.error.noSourceMappings",
+        }),
+      );
       return;
     }
 
@@ -128,7 +134,10 @@ const CopyMappingsModal = ({
       (response, extraParams) => {
         setCopying(false);
         if (response.error) {
-          setError(response.error || intl.formatMessage({ id: "analyzer.copyMappings.error" }));
+          setError(
+            response.error ||
+              intl.formatMessage({ id: "analyzer.copyMappings.error" }),
+          );
         } else {
           setCopyResult(response);
           if (typeof onSuccess === "function") {
@@ -158,7 +167,9 @@ const CopyMappingsModal = ({
     analyzer: analyzer,
   }));
 
-  const selectedAnalyzer = analyzerItems.find((item) => item.id === targetAnalyzerId);
+  const selectedAnalyzer = analyzerItems.find(
+    (item) => item.id === targetAnalyzerId,
+  );
 
   return (
     <>
@@ -177,14 +188,21 @@ const CopyMappingsModal = ({
               id="analyzer.copyMappings.subtitle"
               values={{
                 source: sourceAnalyzerName || sourceAnalyzerId,
-                target: selectedAnalyzer?.text || intl.formatMessage({ id: "analyzer.copyMappings.target.placeholder" }),
+                target:
+                  selectedAnalyzer?.text ||
+                  intl.formatMessage({
+                    id: "analyzer.copyMappings.target.placeholder",
+                  }),
               }}
             />
           }
         />
         <ModalBody className="copy-mappings-modal-body">
           {/* Source Analyzer Section */}
-          <div className="copy-mappings-source-section" data-testid="copy-mappings-source-section">
+          <div
+            className="copy-mappings-source-section"
+            data-testid="copy-mappings-source-section"
+          >
             <h3>
               <FormattedMessage id="analyzer.copyMappings.source" />
             </h3>
@@ -203,11 +221,18 @@ const CopyMappingsModal = ({
           </div>
 
           {/* Target Analyzer Section */}
-          <div className="copy-mappings-target-section" data-testid="copy-mappings-target-section">
+          <div
+            className="copy-mappings-target-section"
+            data-testid="copy-mappings-target-section"
+          >
             <Dropdown
               id="target-analyzer-dropdown"
-              titleText={<FormattedMessage id="analyzer.copyMappings.target.required" />}
-              label={intl.formatMessage({ id: "analyzer.copyMappings.target.placeholder" })}
+              titleText={
+                <FormattedMessage id="analyzer.copyMappings.target.required" />
+              }
+              label={intl.formatMessage({
+                id: "analyzer.copyMappings.target.placeholder",
+              })}
               items={analyzerItems}
               selectedItem={selectedAnalyzer || null}
               onChange={({ selectedItem }) => {
@@ -221,7 +246,10 @@ const CopyMappingsModal = ({
 
           {/* Mapping Summary Section */}
           {targetAnalyzerId && mappingCount > 0 && (
-            <div className="copy-mappings-summary-section" data-testid="copy-mappings-summary-section">
+            <div
+              className="copy-mappings-summary-section"
+              data-testid="copy-mappings-summary-section"
+            >
               <h3>
                 <FormattedMessage id="analyzer.copyMappings.summary" />
               </h3>
@@ -235,7 +263,10 @@ const CopyMappingsModal = ({
           )}
 
           {/* Warning Note */}
-          <div className="copy-mappings-warning-section" data-testid="copy-mappings-warning-section">
+          <div
+            className="copy-mappings-warning-section"
+            data-testid="copy-mappings-warning-section"
+          >
             <InlineNotification
               kind="warning"
               title={<FormattedMessage id="analyzer.copyMappings.warning" />}
@@ -257,13 +288,25 @@ const CopyMappingsModal = ({
 
           {/* Loading State */}
           {loading && (
-            <div className="copy-mappings-loading" data-testid="copy-mappings-loading">
-              <Loading description={intl.formatMessage({ id: "analyzer.copyMappings.loading" })} withOverlay={false} />
+            <div
+              className="copy-mappings-loading"
+              data-testid="copy-mappings-loading"
+            >
+              <Loading
+                description={intl.formatMessage({
+                  id: "analyzer.copyMappings.loading",
+                })}
+                withOverlay={false}
+              />
             </div>
           )}
         </ModalBody>
         <ModalFooter>
-          <Button kind="secondary" onClick={handleClose} data-testid="copy-mappings-cancel">
+          <Button
+            kind="secondary"
+            onClick={handleClose}
+            data-testid="copy-mappings-cancel"
+          >
             <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
           </Button>
           <Button
@@ -282,13 +325,17 @@ const CopyMappingsModal = ({
       <ComposedModal
         open={showConfirmation}
         onClose={handleCancelConfirmation}
-        aria-label={intl.formatMessage({ id: "analyzer.copyMappings.confirmation.title" })}
+        aria-label={intl.formatMessage({
+          id: "analyzer.copyMappings.confirmation.title",
+        })}
         data-testid="copy-mappings-confirmation-modal"
         preventCloseOnClickOutside={false}
         size="sm"
       >
         <ModalHeader
-          title={<FormattedMessage id="analyzer.copyMappings.confirmation.title" />}
+          title={
+            <FormattedMessage id="analyzer.copyMappings.confirmation.title" />
+          }
         />
         <ModalBody>
           <p>
@@ -299,7 +346,11 @@ const CopyMappingsModal = ({
           </p>
         </ModalBody>
         <ModalFooter>
-          <Button kind="secondary" onClick={handleCancelConfirmation} data-testid="copy-mappings-confirm-cancel">
+          <Button
+            kind="secondary"
+            onClick={handleCancelConfirmation}
+            data-testid="copy-mappings-confirm-cancel"
+          >
             <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
           </Button>
           <Button
@@ -331,7 +382,10 @@ const CopyMappingsModal = ({
             {copyResult.error ? (
               <InlineNotification
                 kind="error"
-                title={copyResult.error || intl.formatMessage({ id: "analyzer.copyMappings.error" })}
+                title={
+                  copyResult.error ||
+                  intl.formatMessage({ id: "analyzer.copyMappings.error" })
+                }
                 lowContrast
                 hideCloseButton
                 data-testid="copy-mappings-result-error"
@@ -351,9 +405,15 @@ const CopyMappingsModal = ({
                   data-testid="copy-mappings-result-success"
                 />
                 {copyResult.warnings && copyResult.warnings.length > 0 && (
-                  <div className="copy-mappings-warnings" data-testid="copy-mappings-result-warnings">
+                  <div
+                    className="copy-mappings-warnings"
+                    data-testid="copy-mappings-result-warnings"
+                  >
                     <h4>
-                      <FormattedMessage id="analyzer.copyMappings.warnings" defaultMessage="Warnings" />
+                      <FormattedMessage
+                        id="analyzer.copyMappings.warnings"
+                        defaultMessage="Warnings"
+                      />
                     </h4>
                     <ul>
                       {copyResult.warnings.map((warning, index) => (
@@ -367,15 +427,27 @@ const CopyMappingsModal = ({
           </ModalBody>
           <ModalFooter>
             {copyResult.error ? (
-              <Button kind="secondary" onClick={handleClose} data-testid="copy-mappings-result-close">
+              <Button
+                kind="secondary"
+                onClick={handleClose}
+                data-testid="copy-mappings-result-close"
+              >
                 <FormattedMessage id="button.close" defaultMessage="Close" />
               </Button>
             ) : (
               <>
-                <Button kind="secondary" onClick={handleClose} data-testid="copy-mappings-result-close">
+                <Button
+                  kind="secondary"
+                  onClick={handleClose}
+                  data-testid="copy-mappings-result-close"
+                >
                   <FormattedMessage id="button.close" defaultMessage="Close" />
                 </Button>
-                <Button kind="primary" onClick={handleViewTarget} data-testid="copy-mappings-view-target">
+                <Button
+                  kind="primary"
+                  onClick={handleViewTarget}
+                  data-testid="copy-mappings-view-target"
+                >
                   <FormattedMessage id="analyzer.copyMappings.success.viewTarget" />
                 </Button>
               </>
@@ -388,4 +460,3 @@ const CopyMappingsModal = ({
 };
 
 export default CopyMappingsModal;
-

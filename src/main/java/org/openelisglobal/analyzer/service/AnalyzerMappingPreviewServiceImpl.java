@@ -9,7 +9,6 @@ import org.openelisglobal.analyzer.dao.AnalyzerFieldDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldMappingDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -221,15 +220,12 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
         }
 
         // Check for required mappings
-        boolean hasSampleIdMapping = mappings.stream()
-                .anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
-                        && m.getOpenelisFieldType() == AnalyzerFieldMapping.OpenELISFieldType.SAMPLE);
-        boolean hasTestCodeMapping = mappings.stream()
-                .anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
-                        && m.getMappingType() == AnalyzerFieldMapping.MappingType.TEST_LEVEL);
-        boolean hasResultValueMapping = mappings.stream()
-                .anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
-                        && m.getMappingType() == AnalyzerFieldMapping.MappingType.RESULT_LEVEL);
+        boolean hasSampleIdMapping = mappings.stream().anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
+                && m.getOpenelisFieldType() == AnalyzerFieldMapping.OpenELISFieldType.SAMPLE);
+        boolean hasTestCodeMapping = mappings.stream().anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
+                && m.getMappingType() == AnalyzerFieldMapping.MappingType.TEST_LEVEL);
+        boolean hasResultValueMapping = mappings.stream().anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
+                && m.getMappingType() == AnalyzerFieldMapping.MappingType.RESULT_LEVEL);
 
         if (!hasSampleIdMapping) {
             result.getWarnings().add("Required mapping missing: Sample ID");
@@ -242,4 +238,3 @@ public class AnalyzerMappingPreviewServiceImpl implements AnalyzerMappingPreview
         }
     }
 }
-

@@ -66,6 +66,9 @@ export const getAnalyzers = (filters, callback) => {
     if (filters.search) {
       params.append("search", filters.search);
     }
+    if (filters.lifecycleStage) {
+      params.append("lifecycleStage", filters.lifecycleStage);
+    }
   }
 
   if (params.toString()) {
@@ -362,4 +365,16 @@ export const deleteMapping = (analyzerId, mappingId, callback) => {
       console.error("deleteMapping error:", error);
       callback(false, { error: error.message || "Network error" });
     });
+};
+
+/**
+ * Create a new OpenELIS field
+ * @param {Object} fieldData - Field data { fieldName, entityType, loincCode, description, fieldType, acceptedUnits }
+ * @param {Function} callback - Callback function (response, extraParams) => void
+ * @param {*} extraParams - Optional extra parameters passed to callback
+ */
+export const createField = (fieldData, callback, extraParams) => {
+  const endpoint = "/rest/analyzer/openelis-fields";
+  const payload = JSON.stringify(fieldData);
+  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
 };

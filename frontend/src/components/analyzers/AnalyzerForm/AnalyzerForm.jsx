@@ -190,9 +190,9 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
 
   return (
     <>
-      <ComposedModal 
-        open={open} 
-        onClose={onClose} 
+      <ComposedModal
+        open={open}
+        onClose={onClose}
         data-testid="analyzer-form"
         className="analyzer-form-modal"
       >

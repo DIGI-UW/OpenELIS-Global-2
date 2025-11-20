@@ -41,4 +41,3 @@ public class MappingPreviewForm {
         this.validateAllMappings = validateAllMappings;
     }
 }
-

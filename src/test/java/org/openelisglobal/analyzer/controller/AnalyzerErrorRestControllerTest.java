@@ -208,11 +208,13 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
                 "H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^GLUCOSE|123|mmol/L|N");
 
         // Act & Assert: Call endpoint with NO filters
-        mockMvc.perform(get("/rest/analyzer/errors").contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").exists())
-                .andExpect(jsonPath("$.data.content").isArray())
-                .andExpect(jsonPath("$.data.content.length()").value(2)) // Should return both errors
+        mockMvc.perform(
+                get("/rest/analyzer/errors").contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").exists())
+                .andExpect(jsonPath("$.data.content").isArray()).andExpect(jsonPath("$.data.content.length()").value(2)) // Should
+                                                                                                                         // return
+                                                                                                                         // both
+                                                                                                                         // errors
                 .andExpect(jsonPath("$.data.content[0].id").exists())
                 .andExpect(jsonPath("$.data.content[0].errorType").exists())
                 .andExpect(jsonPath("$.data.content[0].severity").exists())
@@ -229,8 +231,8 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
     /**
      * Test: GET /rest/analyzer/errors response format matches frontend expectations
      * 
-     * This test verifies that errors are properly converted to maps (not returned as
-     * entity objects) and that the response structure matches what the frontend
+     * This test verifies that errors are properly converted to maps (not returned
+     * as entity objects) and that the response structure matches what the frontend
      * expects: { data: { content: [...], statistics: {...} }, status: "success" }
      * 
      * Task Reference: T085
@@ -243,14 +245,13 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
                 "H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^GLUCOSE|123|mg/dL|N");
 
         // Act & Assert: Verify response structure matches frontend expectations
-        mockMvc.perform(get("/rest/analyzer/errors").contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+        mockMvc.perform(
+                get("/rest/analyzer/errors").contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
                 // Verify top-level structure
-                .andExpect(jsonPath("$.data").exists())
-                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.data").exists()).andExpect(jsonPath("$.status").value("success"))
                 // Verify data.content is an array (not object)
-                .andExpect(jsonPath("$.data.content").isArray())
-                .andExpect(jsonPath("$.data.content[0]").exists())
+                .andExpect(jsonPath("$.data.content").isArray()).andExpect(jsonPath("$.data.content[0]").exists())
                 // Verify error object structure (should be map, not entity)
                 .andExpect(jsonPath("$.data.content[0].id").value(errorId))
                 .andExpect(jsonPath("$.data.content[0].errorType").value("MAPPING"))
@@ -258,7 +259,8 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
                 .andExpect(jsonPath("$.data.content[0].errorMessage").value("No mapping found for test code: GLUCOSE"))
                 .andExpect(jsonPath("$.data.content[0].status").value("UNACKNOWLEDGED"))
                 .andExpect(jsonPath("$.data.content[0].timestamp").exists())
-                .andExpect(jsonPath("$.data.content[0].rawMessage").value("H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^GLUCOSE|123|mg/dL|N"))
+                .andExpect(jsonPath("$.data.content[0].rawMessage")
+                        .value("H|\\^&|||...\nP|1||...\nO|1||...\nR|1|^^^GLUCOSE|123|mg/dL|N"))
                 // Verify analyzer nested object (should be map, not entity)
                 .andExpect(jsonPath("$.data.content[0].analyzer").exists())
                 .andExpect(jsonPath("$.data.content[0].analyzer.id").exists())

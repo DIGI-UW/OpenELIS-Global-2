@@ -8,12 +8,12 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerFieldMappingDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
-import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField.FieldType;
+import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping.OpenELISFieldType;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 
  * Task Reference: T205
  * 
- * Provides validation metrics and analysis for analyzer field mappings.
- * Target response time: <1 second
+ * Provides validation metrics and analysis for analyzer field mappings. Target
+ * response time: <1 second
  */
 @Service
 @Transactional(readOnly = true)
@@ -52,11 +52,8 @@ public class MappingValidationServiceImpl implements MappingValidationService {
         }
 
         // Count fields with active mappings
-        long mappedFields = activeMappings.stream()
-                .map(AnalyzerFieldMapping::getAnalyzerField)
-                .map(AnalyzerField::getId)
-                .distinct()
-                .count();
+        long mappedFields = activeMappings.stream().map(AnalyzerFieldMapping::getAnalyzerField)
+                .map(AnalyzerField::getId).distinct().count();
 
         // Calculate accuracy as percentage of fields with mappings
         return (double) mappedFields / allFields.size();
@@ -68,16 +65,12 @@ public class MappingValidationServiceImpl implements MappingValidationService {
         List<AnalyzerFieldMapping> activeMappings = analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId(analyzerId);
 
         // Get IDs of fields that have active mappings
-        List<String> mappedFieldIds = activeMappings.stream()
-                .map(AnalyzerFieldMapping::getAnalyzerField)
-                .map(AnalyzerField::getId)
-                .collect(Collectors.toList());
+        List<String> mappedFieldIds = activeMappings.stream().map(AnalyzerFieldMapping::getAnalyzerField)
+                .map(AnalyzerField::getId).collect(Collectors.toList());
 
         // Find fields without mappings
-        return allFields.stream()
-                .filter(field -> !mappedFieldIds.contains(field.getId()))
-                .map(AnalyzerField::getFieldName)
-                .collect(Collectors.toList());
+        return allFields.stream().filter(field -> !mappedFieldIds.contains(field.getId()))
+                .map(AnalyzerField::getFieldName).collect(Collectors.toList());
     }
 
     @Override
@@ -112,32 +105,29 @@ public class MappingValidationServiceImpl implements MappingValidationService {
         Map<String, Double> coverageByTestUnit = new HashMap<>();
 
         // Group fields by test unit (using field name prefix or analyzer ref)
-        Map<String, List<AnalyzerField>> fieldsByTestUnit = allFields.stream()
-                .collect(Collectors.groupingBy(field -> {
-                    // Extract test unit from field name or ASTM ref
-                    String testUnit = field.getAstmRef();
-                    if (testUnit == null || testUnit.isEmpty()) {
-                        // Fallback to field name prefix
-                        String fieldName = field.getFieldName();
-                        int underscoreIndex = fieldName.indexOf('_');
-                        if (underscoreIndex > 0) {
-                            testUnit = fieldName.substring(0, underscoreIndex);
-                        } else {
-                            testUnit = "UNKNOWN";
-                        }
-                    }
-                    return testUnit;
-                }));
+        Map<String, List<AnalyzerField>> fieldsByTestUnit = allFields.stream().collect(Collectors.groupingBy(field -> {
+            // Extract test unit from field name or ASTM ref
+            String testUnit = field.getAstmRef();
+            if (testUnit == null || testUnit.isEmpty()) {
+                // Fallback to field name prefix
+                String fieldName = field.getFieldName();
+                int underscoreIndex = fieldName.indexOf('_');
+                if (underscoreIndex > 0) {
+                    testUnit = fieldName.substring(0, underscoreIndex);
+                } else {
+                    testUnit = "UNKNOWN";
+                }
+            }
+            return testUnit;
+        }));
 
         // Calculate coverage for each test unit
         for (Map.Entry<String, List<AnalyzerField>> entry : fieldsByTestUnit.entrySet()) {
             String testUnit = entry.getKey();
             List<AnalyzerField> fields = entry.getValue();
 
-            long mappedCount = fields.stream()
-                    .filter(field -> activeMappings.stream()
-                            .anyMatch(mapping -> mapping.getAnalyzerField().getId().equals(field.getId())))
-                    .count();
+            long mappedCount = fields.stream().filter(field -> activeMappings.stream()
+                    .anyMatch(mapping -> mapping.getAnalyzerField().getId().equals(field.getId()))).count();
 
             double coverage = fields.isEmpty() ? 0.0 : (double) mappedCount / fields.size();
             coverageByTestUnit.put(testUnit, coverage);
@@ -215,4 +205,3 @@ public class MappingValidationServiceImpl implements MappingValidationService {
         // Cache eviction handled by annotation
     }
 }
-

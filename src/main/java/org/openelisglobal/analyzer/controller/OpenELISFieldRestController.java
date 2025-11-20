@@ -13,8 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,11 +22,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for creating OpenELIS fields inline from the analyzer mapping interface.
- * Task Reference: T146
+ * REST controller for creating OpenELIS fields inline from the analyzer mapping
+ * interface. Task Reference: T146
  * 
- * Endpoint: POST /rest/analyzer/openelis-fields
- * Authorization: LAB_ADMIN or LAB_SUPERVISOR (TODO: Add security annotations)
+ * Endpoint: POST /rest/analyzer/openelis-fields Authorization: LAB_ADMIN or
+ * LAB_SUPERVISOR (TODO: Add security annotations)
  */
 @RestController
 @RequestMapping("/rest/analyzer")
@@ -40,15 +38,13 @@ public class OpenELISFieldRestController extends BaseRestController {
     /**
      * Creates a new OpenELIS field.
      * 
-     * @param form The form containing field creation data
-     * @param result Binding result for validation errors
+     * @param form    The form containing field creation data
+     * @param result  Binding result for validation errors
      * @param request HTTP request
      * @return ResponseEntity with created field data or error
      */
     @PostMapping("/openelis-fields")
-    public ResponseEntity<?> createField(
-            @RequestBody @Valid OpenELISFieldForm form,
-            BindingResult bindingResult,
+    public ResponseEntity<?> createField(@RequestBody @Valid OpenELISFieldForm form, BindingResult bindingResult,
             HttpServletRequest request) {
 
         // Validate form (BindingResult must come immediately after @Valid parameter)
@@ -107,14 +103,12 @@ public class OpenELISFieldRestController extends BaseRestController {
     /**
      * Gets a field by ID and entity type.
      * 
-     * @param fieldId The ID of the field
+     * @param fieldId    The ID of the field
      * @param entityType The entity type (TEST, PANEL, etc.)
      * @return ResponseEntity with field data or 404 if not found
      */
     @GetMapping("/openelis-fields/{fieldId}")
-    public ResponseEntity<?> getField(
-            @PathVariable String fieldId,
-            @RequestParam(required = false) String entityType) {
+    public ResponseEntity<?> getField(@PathVariable String fieldId, @RequestParam(required = false) String entityType) {
 
         try {
             if (entityType == null || entityType.trim().isEmpty()) {
@@ -133,7 +127,8 @@ public class OpenELISFieldRestController extends BaseRestController {
             return ResponseEntity.ok(fieldData);
 
         } catch (NumberFormatException e) {
-            // Invalid ID format (e.g., "INVALID-ID" when numeric ID expected) - treat as not found
+            // Invalid ID format (e.g., "INVALID-ID" when numeric ID expected) - treat as
+            // not found
             return ResponseEntity.notFound().build();
         } catch (IllegalArgumentException e) {
             // Could be invalid entity type
@@ -151,7 +146,7 @@ public class OpenELISFieldRestController extends BaseRestController {
         } catch (Exception e) {
             // For any other exception, check if it's a "not found" type error
             String errorMessage = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-            if (errorMessage.contains("not found") || errorMessage.contains("does not exist") 
+            if (errorMessage.contains("not found") || errorMessage.contains("does not exist")
                     || errorMessage.contains("no such") || errorMessage.contains("for input string")
                     || e instanceof java.util.NoSuchElementException) {
                 return ResponseEntity.notFound().build();
@@ -191,28 +186,29 @@ public class OpenELISFieldRestController extends BaseRestController {
     }
 
     /**
-     * Generates an appropriate error message based on the entity type and form data.
+     * Generates an appropriate error message based on the entity type and form
+     * data.
      */
     private String getUniquenessErrorMessage(OpenELISFieldForm form) {
         switch (form.getEntityType()) {
-            case TEST:
-                if (form.getTestCode() != null) {
-                    return "Test code '" + form.getTestCode() + "' already exists";
-                }
-                return "Test with name '" + form.getFieldName() + "' already exists";
-            case PANEL:
-                return "Panel code '" + form.getPanelCode() + "' already exists";
-            case SAMPLE:
-                return "Sample type code '" + form.getSampleTypeCode() + "' already exists";
-            case QC:
-                return "Control lot number '" + form.getLotNumber() + "' already exists for '" + form.getControlName() + "'";
-            case METADATA:
-                return "Field name '" + form.getFieldName() + "' already exists in metadata";
-            case UNIT:
-                return "Unit code '" + form.getUnitCode() + "' already exists";
-            default:
-                return "Field with the same name or code already exists";
+        case TEST:
+            if (form.getTestCode() != null) {
+                return "Test code '" + form.getTestCode() + "' already exists";
+            }
+            return "Test with name '" + form.getFieldName() + "' already exists";
+        case PANEL:
+            return "Panel code '" + form.getPanelCode() + "' already exists";
+        case SAMPLE:
+            return "Sample type code '" + form.getSampleTypeCode() + "' already exists";
+        case QC:
+            return "Control lot number '" + form.getLotNumber() + "' already exists for '" + form.getControlName()
+                    + "'";
+        case METADATA:
+            return "Field name '" + form.getFieldName() + "' already exists in metadata";
+        case UNIT:
+            return "Unit code '" + form.getUnitCode() + "' already exists";
+        default:
+            return "Field with the same name or code already exists";
         }
     }
 }
-

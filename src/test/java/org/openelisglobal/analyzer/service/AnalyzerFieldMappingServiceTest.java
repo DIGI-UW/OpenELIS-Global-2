@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -21,7 +22,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import java.sql.Timestamp;
 
 /**
  * Unit tests for AnalyzerFieldMappingService implementation
@@ -304,8 +304,8 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Validate activation with missing required mappings returns false
-     * Task Reference: T168
+     * Test: Validate activation with missing required mappings returns false Task
+     * Reference: T168
      * 
      * Validation: Required mappings (Sample ID, Test Code, Result Value) must exist
      * before activation
@@ -330,8 +330,8 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Validate activation with pending messages returns warnings
-     * Task Reference: T168
+     * Test: Validate activation with pending messages returns warnings Task
+     * Reference: T168
      * 
      * Validation: Pending messages in error queue should generate warnings but not
      * block activation
@@ -340,14 +340,14 @@ public class AnalyzerFieldMappingServiceTest {
     public void testValidateActivation_WithPendingMessages_ReturnsWarnings() {
         // Arrange: Required mappings exist, but pending messages in queue
         List<AnalyzerFieldMapping> existingMappings = new ArrayList<>();
-        
+
         // Sample ID mapping
         AnalyzerFieldMapping sampleIdMapping = new AnalyzerFieldMapping();
         sampleIdMapping.setIsRequired(true);
         sampleIdMapping.setOpenelisFieldType(AnalyzerFieldMapping.OpenELISFieldType.SAMPLE);
         sampleIdMapping.setAnalyzerField(numericField); // Set analyzerField for type validation
         existingMappings.add(sampleIdMapping);
-        
+
         // Test Code mapping
         AnalyzerFieldMapping testCodeMapping = new AnalyzerFieldMapping();
         testCodeMapping.setIsRequired(true);
@@ -355,7 +355,7 @@ public class AnalyzerFieldMappingServiceTest {
         testCodeMapping.setOpenelisFieldType(AnalyzerFieldMapping.OpenELISFieldType.TEST);
         testCodeMapping.setAnalyzerField(numericField);
         existingMappings.add(testCodeMapping);
-        
+
         // Result Value mapping
         AnalyzerFieldMapping resultValueMapping = new AnalyzerFieldMapping();
         resultValueMapping.setIsRequired(true);
@@ -375,7 +375,7 @@ public class AnalyzerFieldMappingServiceTest {
         when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("1")).thenReturn(existingMappings);
         when(analyzerErrorService.getErrorsByFilters("1", null, null, AnalyzerError.ErrorStatus.UNACKNOWLEDGED, null,
                 null)).thenReturn(pendingErrors);
-        
+
         // Mock analyzerFieldDAO.get() calls for type validation
         when(analyzerFieldDAO.get("FIELD-001")).thenReturn(Optional.of(numericField));
 
@@ -391,8 +391,8 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Validate activation with all checks passing returns true
-     * Task Reference: T168
+     * Test: Validate activation with all checks passing returns true Task
+     * Reference: T168
      * 
      * Validation: All required mappings present, no pending messages, no concurrent
      * edits
@@ -401,14 +401,14 @@ public class AnalyzerFieldMappingServiceTest {
     public void testValidateActivation_AllChecksPass_ReturnsTrue() {
         // Arrange: All required mappings exist, no pending messages
         List<AnalyzerFieldMapping> existingMappings = new ArrayList<>();
-        
+
         // Sample ID mapping (TEXT field can map to SAMPLE)
         AnalyzerFieldMapping sampleIdMapping = new AnalyzerFieldMapping();
         sampleIdMapping.setIsRequired(true);
         sampleIdMapping.setOpenelisFieldType(AnalyzerFieldMapping.OpenELISFieldType.SAMPLE);
         sampleIdMapping.setAnalyzerField(textField); // Use TEXT field for SAMPLE mapping
         existingMappings.add(sampleIdMapping);
-        
+
         // Test Code mapping
         AnalyzerFieldMapping testCodeMapping = new AnalyzerFieldMapping();
         testCodeMapping.setIsRequired(true);
@@ -416,7 +416,7 @@ public class AnalyzerFieldMappingServiceTest {
         testCodeMapping.setOpenelisFieldType(AnalyzerFieldMapping.OpenELISFieldType.TEST);
         testCodeMapping.setAnalyzerField(numericField);
         existingMappings.add(testCodeMapping);
-        
+
         // Result Value mapping
         AnalyzerFieldMapping resultValueMapping = new AnalyzerFieldMapping();
         resultValueMapping.setIsRequired(true);
@@ -428,7 +428,7 @@ public class AnalyzerFieldMappingServiceTest {
         when(analyzerFieldMappingDAO.findActiveMappingsByAnalyzerId("1")).thenReturn(existingMappings);
         when(analyzerErrorService.getErrorsByFilters("1", null, null, AnalyzerError.ErrorStatus.UNACKNOWLEDGED, null,
                 null)).thenReturn(new ArrayList<>());
-        
+
         // Mock analyzerFieldDAO.get() calls for type validation
         when(analyzerFieldDAO.get("FIELD-001")).thenReturn(Optional.of(numericField));
         when(analyzerFieldDAO.get("FIELD-003")).thenReturn(Optional.of(textField));
@@ -467,8 +467,10 @@ public class AnalyzerFieldMappingServiceTest {
         numericField.setAnalyzer(testAnalyzer);
 
         when(analyzerFieldMappingDAO.get("MAPPING-001")).thenReturn(Optional.of(currentMapping));
-        // Note: analyzerFieldDAO.findByIdWithAnalyzer and analyzerConfigurationService.getByAnalyzerId
-        // are not called because the exception is thrown early in the concurrent edit check
+        // Note: analyzerFieldDAO.findByIdWithAnalyzer and
+        // analyzerConfigurationService.getByAnalyzerId
+        // are not called because the exception is thrown early in the concurrent edit
+        // check
 
         // Act: Try to activate with stale timestamp (should throw exception)
         // Pass the original timestamp to check for concurrent edits
@@ -477,8 +479,8 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Activate mapping with stale version throws OptimisticLockException
-     * Task Reference: T168a
+     * Test: Activate mapping with stale version throws OptimisticLockException Task
+     * Reference: T168a
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testActivateMapping_WithStaleVersion_ThrowsOptimisticLockException() {
@@ -505,8 +507,8 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Retire mapping with no pending messages sets inactive successfully
-     * Task Reference: T201
+     * Test: Retire mapping with no pending messages sets inactive successfully Task
+     * Reference: T201
      */
     @Test
     public void testRetireMapping_WithNoPendingMessages_SetsInactiveSuccessfully() {
@@ -517,7 +519,7 @@ public class AnalyzerFieldMappingServiceTest {
         when(analyzerFieldMappingDAO.get("MAPPING-001")).thenReturn(Optional.of(testMapping));
         when(analyzerFieldMappingDAO.update(org.mockito.ArgumentMatchers.any(AnalyzerFieldMapping.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        
+
         // Mock analyzerFieldDAO.findByIdWithAnalyzer to return the field with analyzer
         when(analyzerFieldDAO.findByIdWithAnalyzer("FIELD-001")).thenReturn(Optional.of(numericField));
 
@@ -538,8 +540,8 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Retire mapping with pending messages throws exception
-     * Task Reference: T201
+     * Test: Retire mapping with pending messages throws exception Task Reference:
+     * T201
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testRetireMapping_WithPendingMessages_ThrowsException() {
@@ -548,7 +550,7 @@ public class AnalyzerFieldMappingServiceTest {
         testMapping.setIsRequired(false);
 
         when(analyzerFieldMappingDAO.get("MAPPING-001")).thenReturn(Optional.of(testMapping));
-        
+
         // Mock analyzerFieldDAO.findByIdWithAnalyzer to return the field with analyzer
         when(analyzerFieldDAO.findByIdWithAnalyzer("FIELD-001")).thenReturn(Optional.of(numericField));
 
@@ -562,7 +564,8 @@ public class AnalyzerFieldMappingServiceTest {
 
             when(analyzerErrorService.getErrorsByFilters(org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull(),
-                    org.mockito.ArgumentMatchers.eq(org.openelisglobal.analyzer.valueholder.AnalyzerError.ErrorStatus.UNACKNOWLEDGED),
+                    org.mockito.ArgumentMatchers
+                            .eq(org.openelisglobal.analyzer.valueholder.AnalyzerError.ErrorStatus.UNACKNOWLEDGED),
                     org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull()))
                     .thenReturn(pendingErrors);
         }
@@ -572,8 +575,7 @@ public class AnalyzerFieldMappingServiceTest {
     }
 
     /**
-     * Test: Retire mapping with reason stores reason in notes
-     * Task Reference: T201
+     * Test: Retire mapping with reason stores reason in notes Task Reference: T201
      */
     @Test
     public void testRetireMapping_WithReason_StoresReasonInNotes() {
@@ -584,10 +586,10 @@ public class AnalyzerFieldMappingServiceTest {
         when(analyzerFieldMappingDAO.get("MAPPING-001")).thenReturn(Optional.of(testMapping));
         when(analyzerFieldMappingDAO.update(org.mockito.ArgumentMatchers.any(AnalyzerFieldMapping.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        
+
         // Mock analyzerFieldDAO.findByIdWithAnalyzer to return the field with analyzer
         when(analyzerFieldDAO.findByIdWithAnalyzer("FIELD-001")).thenReturn(Optional.of(numericField));
-        
+
         // Mock error service to return no pending messages
         when(analyzerErrorService.getErrorsByFilters(org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull(),
@@ -598,17 +600,18 @@ public class AnalyzerFieldMappingServiceTest {
         String retirementReason = "Test discontinued";
         AnalyzerFieldMapping result = analyzerFieldMappingService.disableMapping("MAPPING-001", retirementReason);
 
-        // Assert: Reason should be stored (check notes field or retirement_reason field)
+        // Assert: Reason should be stored (check notes field or retirement_reason
+        // field)
         assertNotNull("Retired mapping should not be null", result);
-        // Note: Implementation may store reason in notes field or separate retirement_reason
+        // Note: Implementation may store reason in notes field or separate
+        // retirement_reason
         // field
         // This test verifies the method accepts and processes the reason parameter
         verify(analyzerFieldMappingDAO).update(org.mockito.ArgumentMatchers.any(AnalyzerFieldMapping.class));
     }
 
     /**
-     * Test: Retire mapping sets retirement date to now
-     * Task Reference: T201
+     * Test: Retire mapping sets retirement date to now Task Reference: T201
      */
     @Test
     public void testRetireMapping_SetsRetirementDateToNow() {
@@ -624,10 +627,10 @@ public class AnalyzerFieldMappingServiceTest {
                     // separate field)
                     return mapping;
                 });
-        
+
         // Mock analyzerFieldDAO.findByIdWithAnalyzer to return the field with analyzer
         when(analyzerFieldDAO.findByIdWithAnalyzer("FIELD-001")).thenReturn(Optional.of(numericField));
-        
+
         // Mock error service to return no pending messages
         when(analyzerErrorService.getErrorsByFilters(org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull(),

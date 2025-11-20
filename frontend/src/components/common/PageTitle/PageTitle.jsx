@@ -1,9 +1,9 @@
 /**
  * PageTitle Component
- * 
+ *
  * Reusable hierarchical breadcrumb page title with optional back navigation
  * Used across analyzer pages for consistent navigation UI
- * 
+ *
  * Features:
  * - Hierarchical breadcrumb display (e.g., "Analyzers > Field Mappings > Hematology Analyzer 1")
  * - Optional back arrow button
@@ -41,7 +41,7 @@ const PageTitle = ({ breadcrumbs, showBackArrow, onBack, subtitle }) => {
 
   const separator = intl.formatMessage(
     { id: "page.breadcrumb.separator" },
-    " > "
+    " > ",
   );
 
   return (
@@ -59,32 +59,39 @@ const PageTitle = ({ breadcrumbs, showBackArrow, onBack, subtitle }) => {
             className="page-title-back-button"
           />
         )}
-        <div className="page-title-breadcrumbs" data-testid="page-title-breadcrumbs">
-          {breadcrumbs && breadcrumbs.map((crumb, index) => (
-            <React.Fragment key={index}>
-              {crumb.link ? (
-                <button
-                  className="page-title-breadcrumb-link"
-                  onClick={() => history.push(crumb.link)}
-                  data-testid={`breadcrumb-link-${index}`}
-                >
-                  {crumb.label}
-                </button>
-              ) : (
-                <span
-                  className="page-title-breadcrumb-current"
-                  data-testid={`breadcrumb-current-${index}`}
-                >
-                  {crumb.label}
-                </span>
-              )}
-              {index < breadcrumbs.length - 1 && (
-                <span className="page-title-breadcrumb-separator" data-testid={`breadcrumb-separator-${index}`}>
-                  {separator}
-                </span>
-              )}
-            </React.Fragment>
-          ))}
+        <div
+          className="page-title-breadcrumbs"
+          data-testid="page-title-breadcrumbs"
+        >
+          {breadcrumbs &&
+            breadcrumbs.map((crumb, index) => (
+              <React.Fragment key={index}>
+                {crumb.link ? (
+                  <button
+                    className="page-title-breadcrumb-link"
+                    onClick={() => history.push(crumb.link)}
+                    data-testid={`breadcrumb-link-${index}`}
+                  >
+                    {crumb.label}
+                  </button>
+                ) : (
+                  <span
+                    className="page-title-breadcrumb-current"
+                    data-testid={`breadcrumb-current-${index}`}
+                  >
+                    {crumb.label}
+                  </span>
+                )}
+                {index < breadcrumbs.length - 1 && (
+                  <span
+                    className="page-title-breadcrumb-separator"
+                    data-testid={`breadcrumb-separator-${index}`}
+                  >
+                    {separator}
+                  </span>
+                )}
+              </React.Fragment>
+            ))}
         </div>
       </div>
       {subtitle && (
@@ -101,7 +108,7 @@ PageTitle.propTypes = {
     PropTypes.shape({
       label: PropTypes.string.isRequired,
       link: PropTypes.string, // Optional - if provided, breadcrumb is clickable
-    })
+    }),
   ).isRequired,
   showBackArrow: PropTypes.bool,
   onBack: PropTypes.func, // Optional custom back handler
@@ -115,4 +122,3 @@ PageTitle.defaultProps = {
 };
 
 export default PageTitle;
-

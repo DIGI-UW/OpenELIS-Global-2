@@ -17,6 +17,8 @@ import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<AnalyzerFieldMapping, String>
         implements AnalyzerFieldMappingService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AnalyzerFieldMappingServiceImpl.class);
 
     private final AnalyzerFieldMappingDAO analyzerFieldMappingDAO;
     private final AnalyzerFieldDAO analyzerFieldDAO;
@@ -73,24 +77,24 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             return null;
         }
         switch (fieldType) {
-            case TEST:
-                return OpenELISFieldForm.EntityType.TEST;
-            case PANEL:
-                return OpenELISFieldForm.EntityType.PANEL;
-            case RESULT:
-                return OpenELISFieldForm.EntityType.RESULT;
-            case ORDER:
-                return OpenELISFieldForm.EntityType.ORDER;
-            case SAMPLE:
-                return OpenELISFieldForm.EntityType.SAMPLE;
-            case QC:
-                return OpenELISFieldForm.EntityType.QC;
-            case METADATA:
-                return OpenELISFieldForm.EntityType.METADATA;
-            case UNIT:
-                return OpenELISFieldForm.EntityType.UNIT;
-            default:
-                return null;
+        case TEST:
+            return OpenELISFieldForm.EntityType.TEST;
+        case PANEL:
+            return OpenELISFieldForm.EntityType.PANEL;
+        case RESULT:
+            return OpenELISFieldForm.EntityType.RESULT;
+        case ORDER:
+            return OpenELISFieldForm.EntityType.ORDER;
+        case SAMPLE:
+            return OpenELISFieldForm.EntityType.SAMPLE;
+        case QC:
+            return OpenELISFieldForm.EntityType.QC;
+        case METADATA:
+            return OpenELISFieldForm.EntityType.METADATA;
+        case UNIT:
+            return OpenELISFieldForm.EntityType.UNIT;
+        default:
+            return null;
         }
     }
 
@@ -127,7 +131,8 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         return activateMapping(mappingId, confirmed, lastKnownUpdateTime, null);
     }
 
-    public AnalyzerFieldMapping activateMapping(String mappingId, boolean confirmed, Timestamp lastKnownUpdateTime, Long expectedVersion) {
+    public AnalyzerFieldMapping activateMapping(String mappingId, boolean confirmed, Timestamp lastKnownUpdateTime,
+            Long expectedVersion) {
         AnalyzerFieldMapping mapping = get(mappingId);
         if (mapping == null) {
             throw new LIMSRuntimeException("Mapping not found: " + mappingId);
@@ -136,16 +141,15 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         // Check for concurrent edits using version-based optimistic locking (T168a)
         if (expectedVersion != null && mapping.getVersion() != null) {
             if (!mapping.getVersion().equals(expectedVersion)) {
-                throw new LIMSRuntimeException(
-                        "Mapping was modified by another user. Please refresh and try again.");
+                throw new LIMSRuntimeException("Mapping was modified by another user. Please refresh and try again.");
             }
         }
-        
-        // Fallback to timestamp-based check if version not provided (backward compatibility)
+
+        // Fallback to timestamp-based check if version not provided (backward
+        // compatibility)
         if (expectedVersion == null && lastKnownUpdateTime != null && mapping.getLastupdated() != null) {
             if (mapping.getLastupdated().after(lastKnownUpdateTime)) {
-                throw new LIMSRuntimeException(
-                        "Mapping was modified by another user. Please refresh and try again.");
+                throw new LIMSRuntimeException("Mapping was modified by another user. Please refresh and try again.");
             }
         }
 
@@ -236,8 +240,8 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
                     OpenELISFieldForm.EntityType entityType = mapOpenelisFieldTypeToEntityType(
                             mapping.getOpenelisFieldType());
                     if (entityType != null) {
-                        Map<String, Object> openelisFieldData = openELISFieldService.getFieldById(
-                                mapping.getOpenelisFieldId(), entityType);
+                        Map<String, Object> openelisFieldData = openELISFieldService
+                                .getFieldById(mapping.getOpenelisFieldId(), entityType);
                         if (openelisFieldData != null && openelisFieldData.containsKey("name")) {
                             map.put("openelisFieldName", openelisFieldData.get("name"));
                         }
@@ -249,22 +253,27 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             }
 
             // Add unit mapping information if available
-            if (unitMappingService != null && field.getUnit() != null) {
+            if (unitMappingService != null && field.getUnit() != null && !field.getUnit().trim().isEmpty()) {
                 try {
                     List<UnitMapping> unitMappings = unitMappingService.getMappingsByAnalyzerFieldId(field.getId());
                     if (unitMappings != null && !unitMappings.isEmpty()) {
                         // Find unit mapping that matches the analyzer unit
                         for (UnitMapping unitMapping : unitMappings) {
-                            if (field.getUnit().equals(unitMapping.getAnalyzerUnit())) {
-                                map.put("unitMapping", unitMapping.getOpenelisUnit());
+                            if (unitMapping.getAnalyzerUnit() != null
+                                    && field.getUnit().equals(unitMapping.getAnalyzerUnit())) {
+                                Map<String, Object> unitMap = new HashMap<>();
+                                unitMap.put("analyzerUnit", unitMapping.getAnalyzerUnit());
+                                unitMap.put("openelisUnit", unitMapping.getOpenelisUnit());
                                 if (unitMapping.getConversionFactor() != null) {
-                                    map.put("unitConversionFactor", unitMapping.getConversionFactor());
+                                    unitMap.put("conversionFactor", unitMapping.getConversionFactor());
                                 }
+                                map.put("unitMapping", unitMap);
                                 break;
                             }
                         }
                     }
                 } catch (Exception e) {
+                    logger.warn("Could not resolve unit mapping for field {}: {}", field.getId(), e.getMessage());
                     // Log but don't fail - unit mapping is optional
                 }
             }
@@ -408,8 +417,9 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             if (openelisFieldType != AnalyzerFieldMapping.OpenELISFieldType.METADATA
                     && openelisFieldType != AnalyzerFieldMapping.OpenELISFieldType.ORDER
                     && openelisFieldType != AnalyzerFieldMapping.OpenELISFieldType.SAMPLE) {
-                throw new LIMSRuntimeException("TEXT analyzer field can only map to METADATA, ORDER, or SAMPLE OpenELIS fields. "
-                        + "Attempted: " + openelisFieldType);
+                throw new LIMSRuntimeException(
+                        "TEXT analyzer field can only map to METADATA, ORDER, or SAMPLE OpenELIS fields. "
+                                + "Attempted: " + openelisFieldType);
             }
         }
         // Other types (CONTROL_TEST, MELTING_POINT, DATE_TIME, CUSTOM) have flexible
@@ -558,15 +568,12 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
 
         // Check required mappings (Sample ID, Test Code, Result Value)
         List<String> missingRequired = new ArrayList<>();
-        boolean hasSampleIdMapping = mappings.stream()
-                .anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
-                        && m.getOpenelisFieldType() == AnalyzerFieldMapping.OpenELISFieldType.SAMPLE);
-        boolean hasTestCodeMapping = mappings.stream()
-                .anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
-                        && m.getMappingType() == AnalyzerFieldMapping.MappingType.TEST_LEVEL);
-        boolean hasResultValueMapping = mappings.stream()
-                .anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
-                        && m.getMappingType() == AnalyzerFieldMapping.MappingType.RESULT_LEVEL);
+        boolean hasSampleIdMapping = mappings.stream().anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
+                && m.getOpenelisFieldType() == AnalyzerFieldMapping.OpenELISFieldType.SAMPLE);
+        boolean hasTestCodeMapping = mappings.stream().anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
+                && m.getMappingType() == AnalyzerFieldMapping.MappingType.TEST_LEVEL);
+        boolean hasResultValueMapping = mappings.stream().anyMatch(m -> m.getIsRequired() != null && m.getIsRequired()
+                && m.getMappingType() == AnalyzerFieldMapping.MappingType.RESULT_LEVEL);
 
         if (!hasSampleIdMapping) {
             missingRequired.add("Sample ID");
@@ -606,9 +613,12 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         }
 
         // Check for concurrent edits using version-based optimistic locking (T168a)
-        // Note: This is a pre-check. Actual optimistic locking happens during update via Hibernate @Version
-        // If any mapping version has changed since last load, concurrent edit is detected
-        // The actual version check happens in activateMapping method when expectedVersion is provided
+        // Note: This is a pre-check. Actual optimistic locking happens during update
+        // via Hibernate @Version
+        // If any mapping version has changed since last load, concurrent edit is
+        // detected
+        // The actual version check happens in activateMapping method when
+        // expectedVersion is provided
 
         result.setWarnings(warnings);
 

@@ -16,6 +16,7 @@ import {
   Tag,
   OverflowMenu,
   OverflowMenuItem,
+  Dropdown,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
@@ -42,6 +43,7 @@ const AnalyzersList = () => {
     status: "",
     testUnit: "",
     analyzerType: "",
+    lifecycleStage: "",
   });
   const [stats, setStats] = useState({
     total: 0,
@@ -97,12 +99,14 @@ const AnalyzersList = () => {
     const initialStatus = params.get("status") || "";
     const initialTestUnit = params.get("testUnit") || "";
     const initialAnalyzerType = params.get("analyzerType") || "";
+    const initialLifecycleStage = params.get("lifecycleStage") || "";
 
     setSearchTerm(initialSearch);
     const initialFilters = {
       status: initialStatus,
       testUnit: initialTestUnit,
       analyzerType: initialAnalyzerType,
+      lifecycleStage: initialLifecycleStage,
     };
     setFilters(initialFilters);
     loadAnalyzers({
@@ -196,6 +200,12 @@ const AnalyzersList = () => {
       header: intl.formatMessage({ id: "analyzer.table.header.status" }),
     },
     {
+      key: "lifecycleStage",
+      header: intl.formatMessage({
+        id: "analyzer.table.header.lifecycleStage",
+      }),
+    },
+    {
       key: "lastModified",
       header: intl.formatMessage({ id: "analyzer.table.header.lastModified" }),
     },
@@ -210,6 +220,7 @@ const AnalyzersList = () => {
         : "-";
 
     const isActive = analyzer.active === true || analyzer.active === "true";
+    const lifecycleStage = analyzer.lifecycleStage || "SETUP";
 
     return {
       id: analyzer.id,
@@ -221,6 +232,7 @@ const AnalyzersList = () => {
           ? `${analyzer.testUnitIds.length} unit(s)`
           : "-",
       status: isActive ? "Active" : "Inactive",
+      lifecycleStage: lifecycleStage,
       lastModified: analyzer.lastModified
         ? new Date(analyzer.lastModified).toLocaleDateString()
         : "-",
@@ -238,8 +250,16 @@ const AnalyzersList = () => {
         <div className="analyzers-list-header-title">
           <PageTitle
             breadcrumbs={[
-              { label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }) },
-              { label: intl.formatMessage({ id: "analyzer.page.hierarchy.list" }) }
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.page.hierarchy.root",
+                }),
+              },
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.page.hierarchy.list",
+                }),
+              },
             ]}
             subtitle={intl.formatMessage({ id: "analyzer.list.subtitle" })}
           />
@@ -304,151 +324,260 @@ const AnalyzersList = () => {
             />
           </Column>
         </Grid>
-        {/* TODO: Add filter dropdowns for status, testUnit, analyzerType */}
+        <Grid>
+          <Column lg={4} md={4} sm={4}>
+            <Dropdown
+              id="lifecycle-stage-filter"
+              data-testid="analyzer-lifecycle-stage-filter"
+              label={intl.formatMessage({
+                id: "analyzer.filter.lifecycleStage.label",
+              })}
+              items={[
+                {
+                  id: "",
+                  text: intl.formatMessage({
+                    id: "analyzer.filter.lifecycleStage.all",
+                  }),
+                },
+                {
+                  id: "SETUP",
+                  text: intl.formatMessage({
+                    id: "analyzer.lifecycle.setup",
+                  }),
+                },
+                {
+                  id: "VALIDATION",
+                  text: intl.formatMessage({
+                    id: "analyzer.lifecycle.validation",
+                  }),
+                },
+                {
+                  id: "GO_LIVE",
+                  text: intl.formatMessage({
+                    id: "analyzer.lifecycle.goLive",
+                  }),
+                },
+                {
+                  id: "MAINTENANCE",
+                  text: intl.formatMessage({
+                    id: "analyzer.lifecycle.maintenance",
+                  }),
+                },
+              ]}
+              selectedItem={
+                filters.lifecycleStage
+                  ? {
+                      id: filters.lifecycleStage,
+                      text: intl.formatMessage({
+                        id: `analyzer.lifecycle.${filters.lifecycleStage.toLowerCase()}`,
+                      }),
+                    }
+                  : {
+                      id: "",
+                      text: intl.formatMessage({
+                        id: "analyzer.filter.lifecycleStage.all",
+                      }),
+                    }
+              }
+              onChange={({ selectedItem }) => {
+                if (selectedItem) {
+                  handleFilterChange("lifecycleStage", selectedItem.id || "");
+                }
+              }}
+              size="lg"
+            />
+          </Column>
+        </Grid>
       </div>
 
       {/* DataTable */}
       <Grid>
         <Column lg={16} md={8} sm={4}>
-          <TableContainer 
+          <TableContainer
             data-testid="analyzers-table-container"
             className="analyzers-list-table-container"
           >
-        <DataTable rows={rows} headers={headers} isSortable>
-          {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
-            <Table {...getTableProps()} data-testid="analyzers-table">
-              <TableHead>
-                <TableRow>
-                  {headers.map((header) => (
-                    <TableHeader
-                      key={header.key}
-                      {...getHeaderProps({ header })}
-                    >
-                      {header.header}
-                    </TableHeader>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((row) => {
-                  const analyzer =
-                    row._analyzer ||
-                    filteredAnalyzers.find((a) => a.id === row.id);
-                  const isActive =
-                    analyzer?.active === true || analyzer?.active === "true";
-
-                  return (
-                    <TableRow
-                      key={row.id}
-                      {...getRowProps({ row })}
-                      data-testid={`analyzer-row-${row.id}`}
-                    >
-                      {row.cells.map((cell, index) => {
-                        // Map cell headers to testids
-                        const headerKey = cell.info.header;
-                        let testId = null;
-                        let cellContent = cell.value;
-
-                        if (headerKey === "name") {
-                          testId = `analyzer-name-${row.id}`;
-                        } else if (headerKey === "type") {
-                          testId = `analyzer-type-${row.id}`;
-                        } else if (headerKey === "connection") {
-                          testId = `analyzer-connection-${row.id}`;
-                        } else if (headerKey === "testUnits") {
-                          testId = `analyzer-test-units-${row.id}`;
-                        } else if (headerKey === "status") {
-                          testId = `analyzer-status-${row.id}`;
-                          cellContent = (
-                            <Tag type={isActive ? "green" : "gray"}>
-                              {isActive ? "Active" : "Inactive"}
-                            </Tag>
-                          );
-                        } else if (headerKey === "lastModified") {
-                          testId = `analyzer-last-modified-${row.id}`;
-                        } else if (headerKey === "actions") {
-                          testId = `analyzer-actions-${row.id}`;
-                          cellContent = analyzer ? (
-                            <OverflowMenu
-                              ariaLabel={intl.formatMessage({
-                                id: "analyzer.table.actions",
-                              })}
-                            >
-                              <OverflowMenuItem
-                                itemText={intl.formatMessage({
-                                  id: "analyzer.action.fieldMappings",
-                                })}
-                                onClick={() =>
-                                  history.push(
-                                    `/analyzers/${analyzer.id}/mappings`,
-                                  )
-                                }
-                                data-testid={`analyzer-action-mappings-${row.id}`}
-                              />
-                              <OverflowMenuItem
-                                itemText={intl.formatMessage({
-                                  id: "analyzer.action.testConnection",
-                                })}
-                                onClick={() => {
-                                  setTestConnectionModal({
-                                    open: true,
-                                    analyzer: analyzer,
-                                  });
-                                }}
-                                data-testid={`analyzer-action-test-connection-${row.id}`}
-                              />
-                              <OverflowMenuItem
-                                itemText={intl.formatMessage({
-                                  id: "analyzer.action.copyMappings",
-                                })}
-                                onClick={() => {
-                                  setCopyMappingsModal({
-                                    open: true,
-                                    analyzer: analyzer,
-                                  });
-                                }}
-                                data-testid={`analyzer-action-copy-mappings-${row.id}`}
-                              />
-                              <OverflowMenuItem
-                                itemText={intl.formatMessage({
-                                  id: "analyzer.action.edit",
-                                })}
-                                onClick={() => {
-                                  setSelectedAnalyzer(analyzer);
-                                  setAnalyzerFormOpen(true);
-                                }}
-                                data-testid={`analyzer-action-edit-${row.id}`}
-                              />
-                              <OverflowMenuItem
-                                itemText={intl.formatMessage({
-                                  id: "analyzer.action.delete",
-                                })}
-                                isDelete
-                                onClick={() => {
-                                  setDeleteModal({
-                                    open: true,
-                                    analyzer: analyzer,
-                                  });
-                                }}
-                                data-testid={`analyzer-action-delete-${row.id}`}
-                              />
-                            </OverflowMenu>
-                          ) : null;
-                        }
-
-                        return (
-                          <TableCell key={cell.id} data-testid={testId}>
-                            {cellContent}
-                          </TableCell>
-                        );
-                      })}
+            <DataTable rows={rows} headers={headers} isSortable>
+              {({
+                rows,
+                headers,
+                getHeaderProps,
+                getRowProps,
+                getTableProps,
+              }) => (
+                <Table {...getTableProps()} data-testid="analyzers-table">
+                  <TableHead>
+                    <TableRow>
+                      {headers.map((header) => (
+                        <TableHeader
+                          key={header.key}
+                          {...getHeaderProps({ header })}
+                        >
+                          {header.header}
+                        </TableHeader>
+                      ))}
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </DataTable>
+                  </TableHead>
+                  <TableBody>
+                    {rows.map((row) => {
+                      const analyzer =
+                        row._analyzer ||
+                        filteredAnalyzers.find((a) => a.id === row.id);
+                      const isActive =
+                        analyzer?.active === true ||
+                        analyzer?.active === "true";
+                      // Get lifecycleStage from analyzer or row data
+                      const lifecycleStage =
+                        analyzer?.lifecycleStage ||
+                        row.lifecycleStage ||
+                        "SETUP";
+
+                      return (
+                        <TableRow
+                          key={row.id}
+                          {...getRowProps({ row })}
+                          data-testid={`analyzer-row-${row.id}`}
+                        >
+                          {row.cells.map((cell, index) => {
+                            // Map cell headers to testids
+                            const headerKey = cell.info.header;
+                            let testId = null;
+                            let cellContent = cell.value;
+
+                            if (headerKey === "name") {
+                              testId = `analyzer-name-${row.id}`;
+                            } else if (headerKey === "type") {
+                              testId = `analyzer-type-${row.id}`;
+                            } else if (headerKey === "connection") {
+                              testId = `analyzer-connection-${row.id}`;
+                            } else if (headerKey === "testUnits") {
+                              testId = `analyzer-test-units-${row.id}`;
+                            } else if (headerKey === "status") {
+                              testId = `analyzer-status-${row.id}`;
+                              cellContent = (
+                                <Tag type={isActive ? "green" : "gray"}>
+                                  {isActive ? "Active" : "Inactive"}
+                                </Tag>
+                              );
+                            } else if (headerKey === "lifecycleStage") {
+                              testId = `analyzer-lifecycle-stage-${row.id}`;
+                              // Use lifecycleStage from analyzer if available, otherwise from row
+                              const rowLifecycleStage =
+                                analyzer?.lifecycleStage ||
+                                row.lifecycleStage ||
+                                "SETUP";
+                              const lifecycleStageColor =
+                                {
+                                  SETUP: "gray",
+                                  VALIDATION: "blue",
+                                  GO_LIVE: "green",
+                                  MAINTENANCE: "purple",
+                                }[rowLifecycleStage] || "gray";
+                              // Map lifecycle stage to translation key
+                              const lifecycleKeyMap = {
+                                SETUP: "analyzer.lifecycle.setup",
+                                VALIDATION: "analyzer.lifecycle.validation",
+                                GO_LIVE: "analyzer.lifecycle.goLive",
+                                MAINTENANCE: "analyzer.lifecycle.maintenance",
+                              };
+                              const lifecycleKey =
+                                lifecycleKeyMap[rowLifecycleStage] ||
+                                "analyzer.lifecycle.setup";
+                              cellContent = (
+                                <Tag
+                                  type={lifecycleStageColor}
+                                  data-testid={`lifecycle-stage-badge-${row.id}`}
+                                >
+                                  {intl.formatMessage({
+                                    id: lifecycleKey,
+                                  })}
+                                </Tag>
+                              );
+                            } else if (headerKey === "lastModified") {
+                              testId = `analyzer-last-modified-${row.id}`;
+                            } else if (headerKey === "actions") {
+                              testId = `analyzer-actions-${row.id}`;
+                              cellContent = analyzer ? (
+                                <OverflowMenu
+                                  ariaLabel={intl.formatMessage({
+                                    id: "analyzer.table.actions",
+                                  })}
+                                >
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.fieldMappings",
+                                    })}
+                                    onClick={() =>
+                                      history.push(
+                                        `/analyzers/${analyzer.id}/mappings`,
+                                      )
+                                    }
+                                    data-testid={`analyzer-action-mappings-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.testConnection",
+                                    })}
+                                    onClick={() => {
+                                      setTestConnectionModal({
+                                        open: true,
+                                        analyzer: analyzer,
+                                      });
+                                    }}
+                                    data-testid={`analyzer-action-test-connection-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.copyMappings",
+                                    })}
+                                    onClick={() => {
+                                      setCopyMappingsModal({
+                                        open: true,
+                                        analyzer: analyzer,
+                                      });
+                                    }}
+                                    data-testid={`analyzer-action-copy-mappings-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.edit",
+                                    })}
+                                    onClick={() => {
+                                      setSelectedAnalyzer(analyzer);
+                                      setAnalyzerFormOpen(true);
+                                    }}
+                                    data-testid={`analyzer-action-edit-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.delete",
+                                    })}
+                                    isDelete
+                                    onClick={() => {
+                                      setDeleteModal({
+                                        open: true,
+                                        analyzer: analyzer,
+                                      });
+                                    }}
+                                    data-testid={`analyzer-action-delete-${row.id}`}
+                                  />
+                                </OverflowMenu>
+                              ) : null;
+                            }
+
+                            return (
+                              <TableCell key={cell.id} data-testid={testId}>
+                                {cellContent}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </DataTable>
           </TableContainer>
         </Column>
       </Grid>
@@ -498,7 +627,10 @@ const AnalyzersList = () => {
           open={copyMappingsModal.open}
           sourceAnalyzerId={copyMappingsModal.analyzer.id}
           sourceAnalyzerName={copyMappingsModal.analyzer.name}
-          sourceAnalyzerType={copyMappingsModal.analyzer.analyzerType || copyMappingsModal.analyzer.type}
+          sourceAnalyzerType={
+            copyMappingsModal.analyzer.analyzerType ||
+            copyMappingsModal.analyzer.type
+          }
           onClose={() => {
             setCopyMappingsModal({ open: false, analyzer: null });
           }}

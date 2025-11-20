@@ -4,10 +4,11 @@ import org.openelisglobal.analyzer.form.OpenELISFieldForm;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 
 /**
- * Service interface for creating OpenELIS fields inline from the analyzer mapping interface.
- * Task Reference: T144
+ * Service interface for creating OpenELIS fields inline from the analyzer
+ * mapping interface. Task Reference: T144
  * 
- * Supports creation of TEST, PANEL, RESULT, ORDER, SAMPLE, QC, METADATA, UNIT entities.
+ * Supports creation of TEST, PANEL, RESULT, ORDER, SAMPLE, QC, METADATA, UNIT
+ * entities.
  */
 public interface OpenELISFieldService {
 
@@ -31,10 +32,9 @@ public interface OpenELISFieldService {
     /**
      * Gets a field by its ID and entity type.
      * 
-     * @param fieldId The ID of the field
+     * @param fieldId    The ID of the field
      * @param entityType The entity type (TEST, PANEL, etc.)
      * @return A map containing field data, or null if not found
      */
     java.util.Map<String, Object> getFieldById(String fieldId, OpenELISFieldForm.EntityType entityType);
 }
-

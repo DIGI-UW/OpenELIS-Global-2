@@ -1,6 +1,10 @@
 # [PROJECT NAME] Development Guidelines
 
-Auto-generated from all feature plans. <!-- CRITICAL: Replace [DATE] with actual current date from `date +%Y-%m-%d` command. NEVER use placeholder or assumed dates. -->Last updated: [DATE]
+Auto-generated from all feature plans.
+
+<!-- CRITICAL: Replace [DATE] with actual current date from `date +%Y-%m-%d` command. NEVER use placeholder or assumed dates. -->Last
+
+updated: [DATE]
 
 **Constitution**: See `.specify/memory/constitution.md` for non-negotiable
 development principles.

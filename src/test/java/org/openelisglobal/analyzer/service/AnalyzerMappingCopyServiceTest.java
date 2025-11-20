@@ -77,8 +77,8 @@ public class AnalyzerMappingCopyServiceTest {
     }
 
     /**
-     * Test: Copy mappings with valid source copies all mappings
-     * Task Reference: T191
+     * Test: Copy mappings with valid source copies all mappings Task Reference:
+     * T191
      */
     @Test
     public void testCopyMappings_WithValidSource_CopiesAllMappings() {
@@ -115,8 +115,8 @@ public class AnalyzerMappingCopyServiceTest {
     }
 
     /**
-     * Test: Copy mappings with existing mappings overwrites target
-     * Task Reference: T191
+     * Test: Copy mappings with existing mappings overwrites target Task Reference:
+     * T191
      */
     @Test
     public void testCopyMappings_WithExistingMappings_OverwritesTarget() {
@@ -156,12 +156,13 @@ public class AnalyzerMappingCopyServiceTest {
     }
 
     /**
-     * Test: Copy mappings with type incompatibility generates warnings
-     * Task Reference: T191
+     * Test: Copy mappings with type incompatibility generates warnings Task
+     * Reference: T191
      */
     @Test
     public void testCopyMappings_WithTypeIncompatibility_GeneratesWarnings() {
-        // Arrange: Source has NUMERIC field, target has QUALITATIVE field with same name
+        // Arrange: Source has NUMERIC field, target has QUALITATIVE field with same
+        // name
         List<AnalyzerFieldMapping> sourceMappings = new ArrayList<>();
         sourceMappings.add(sourceMapping);
 
@@ -191,8 +192,8 @@ public class AnalyzerMappingCopyServiceTest {
     }
 
     /**
-     * Test: Merge qualitative mappings combines values deduplicated
-     * Task Reference: T191
+     * Test: Merge qualitative mappings combines values deduplicated Task Reference:
+     * T191
      */
     @Test
     public void testMergeQualitativeMappings_CombinesValuesDeduplicated() {
@@ -247,8 +248,8 @@ public class AnalyzerMappingCopyServiceTest {
     }
 
     /**
-     * Test: Copy mappings with partial failure rolls back transaction
-     * Task Reference: T191
+     * Test: Copy mappings with partial failure rolls back transaction Task
+     * Reference: T191
      */
     @Test(expected = LIMSRuntimeException.class)
     public void testCopyMappings_WithPartialFailure_RollsBackTransaction() {
@@ -276,4 +277,3 @@ public class AnalyzerMappingCopyServiceTest {
         analyzerMappingCopyService.copyMappings("SOURCE-001", "TARGET-001", null);
     }
 }
-

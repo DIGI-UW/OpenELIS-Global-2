@@ -80,12 +80,20 @@ const TestMappingModal = ({
   const handlePreview = () => {
     // Validate message
     if (!astmMessage || astmMessage.trim().length === 0) {
-      setError(intl.formatMessage({ id: "analyzer.testMapping.validation.messageRequired" }));
+      setError(
+        intl.formatMessage({
+          id: "analyzer.testMapping.validation.messageRequired",
+        }),
+      );
       return;
     }
 
     if (astmMessage.length > MAX_MESSAGE_SIZE) {
-      setError(intl.formatMessage({ id: "analyzer.testMapping.validation.messageTooLarge" }));
+      setError(
+        intl.formatMessage({
+          id: "analyzer.testMapping.validation.messageTooLarge",
+        }),
+      );
       return;
     }
 
@@ -105,7 +113,12 @@ const TestMappingModal = ({
       (response, extraParams) => {
         setLoading(false);
         if (response.error) {
-          setError(response.error || intl.formatMessage({ id: "analyzer.testMapping.validation.invalidFormat" }));
+          setError(
+            response.error ||
+              intl.formatMessage({
+                id: "analyzer.testMapping.validation.invalidFormat",
+              }),
+          );
         } else {
           setPreviewResult(response);
         }
@@ -128,11 +141,36 @@ const TestMappingModal = ({
 
   // Table headers for parsed fields
   const parsedFieldsHeaders = [
-    { key: "fieldName", header: intl.formatMessage({ id: "analyzer.testMapping.parsedFields.fieldName" }) },
-    { key: "astmRef", header: intl.formatMessage({ id: "analyzer.testMapping.parsedFields.astmRef" }) },
-    { key: "rawValue", header: intl.formatMessage({ id: "analyzer.testMapping.parsedFields.rawValue" }) },
-    { key: "mappedTo", header: intl.formatMessage({ id: "analyzer.testMapping.parsedFields.mappedTo" }) },
-    { key: "interpretation", header: intl.formatMessage({ id: "analyzer.testMapping.parsedFields.interpretation" }) },
+    {
+      key: "fieldName",
+      header: intl.formatMessage({
+        id: "analyzer.testMapping.parsedFields.fieldName",
+      }),
+    },
+    {
+      key: "astmRef",
+      header: intl.formatMessage({
+        id: "analyzer.testMapping.parsedFields.astmRef",
+      }),
+    },
+    {
+      key: "rawValue",
+      header: intl.formatMessage({
+        id: "analyzer.testMapping.parsedFields.rawValue",
+      }),
+    },
+    {
+      key: "mappedTo",
+      header: intl.formatMessage({
+        id: "analyzer.testMapping.parsedFields.mappedTo",
+      }),
+    },
+    {
+      key: "interpretation",
+      header: intl.formatMessage({
+        id: "analyzer.testMapping.parsedFields.interpretation",
+      }),
+    },
   ];
 
   return (
@@ -150,7 +188,10 @@ const TestMappingModal = ({
       />
       <ModalBody className="test-mapping-modal-body">
         {/* Analyzer Information Section */}
-        <div className="test-mapping-analyzer-info" data-testid="test-mapping-analyzer-info">
+        <div
+          className="test-mapping-analyzer-info"
+          data-testid="test-mapping-analyzer-info"
+        >
           <h3>
             <FormattedMessage id="analyzer.testMapping.analyzerInfo" />
           </h3>
@@ -168,19 +209,32 @@ const TestMappingModal = ({
           </div>
           <div className="test-mapping-info-row">
             <span className="test-mapping-info-label">
-              <FormattedMessage id="analyzer.testMapping.activeMappings" values={{ count: activeMappingsCount }} />:
+              <FormattedMessage
+                id="analyzer.testMapping.activeMappings"
+                values={{ count: activeMappingsCount }}
+              />
+              :
             </span>
             <span>{activeMappingsCount}</span>
           </div>
         </div>
 
         {/* Sample Message Input Section */}
-        <div className="test-mapping-input-section" data-testid="test-mapping-input-section">
+        <div
+          className="test-mapping-input-section"
+          data-testid="test-mapping-input-section"
+        >
           <TextArea
             id="astm-message-input"
-            labelText={<FormattedMessage id="analyzer.testMapping.messageInput.required" />}
-            helperText={<FormattedMessage id="analyzer.testMapping.messageInput.helper" />}
-            placeholder={intl.formatMessage({ id: "analyzer.testMapping.messageInput.placeholder" })}
+            labelText={
+              <FormattedMessage id="analyzer.testMapping.messageInput.required" />
+            }
+            helperText={
+              <FormattedMessage id="analyzer.testMapping.messageInput.helper" />
+            }
+            placeholder={intl.formatMessage({
+              id: "analyzer.testMapping.messageInput.placeholder",
+            })}
             value={astmMessage}
             onChange={(e) => setAstmMessage(e.target.value)}
             rows={8}
@@ -207,20 +261,27 @@ const TestMappingModal = ({
         </div>
 
         {/* Preview Options Section */}
-        <div className="test-mapping-options-section" data-testid="test-mapping-options-section">
+        <div
+          className="test-mapping-options-section"
+          data-testid="test-mapping-options-section"
+        >
           <h3>
             <FormattedMessage id="analyzer.testMapping.previewOptions" />
           </h3>
           <Checkbox
             id="detailed-parsing-option"
-            labelText={<FormattedMessage id="analyzer.testMapping.previewOptions.detailedParsing" />}
+            labelText={
+              <FormattedMessage id="analyzer.testMapping.previewOptions.detailedParsing" />
+            }
             checked={includeDetailedParsing}
             onChange={(checked) => setIncludeDetailedParsing(checked)}
             data-testid="test-mapping-option-detailed"
           />
           <Checkbox
             id="validate-all-option"
-            labelText={<FormattedMessage id="analyzer.testMapping.previewOptions.validateAll" />}
+            labelText={
+              <FormattedMessage id="analyzer.testMapping.previewOptions.validateAll" />
+            }
             checked={validateAllMappings}
             onChange={(checked) => setValidateAllMappings(checked)}
             data-testid="test-mapping-option-validate"
@@ -240,69 +301,94 @@ const TestMappingModal = ({
 
         {/* Loading State */}
         {loading && (
-          <div className="test-mapping-loading" data-testid="test-mapping-loading">
-            <Loading description={intl.formatMessage({ id: "analyzer.testMapping.loading" })} withOverlay={false} />
+          <div
+            className="test-mapping-loading"
+            data-testid="test-mapping-loading"
+          >
+            <Loading
+              description={intl.formatMessage({
+                id: "analyzer.testMapping.loading",
+              })}
+              withOverlay={false}
+            />
           </div>
         )}
 
         {/* Result Display Section */}
         {previewResult && !loading && (
-          <div className="test-mapping-results" data-testid="test-mapping-results">
+          <div
+            className="test-mapping-results"
+            data-testid="test-mapping-results"
+          >
             <h3>
               <FormattedMessage id="analyzer.testMapping.results" />
             </h3>
 
             {/* Parsed Fields Table */}
-            {previewResult.parsedFields && previewResult.parsedFields.length > 0 && (
-              <div className="test-mapping-section" data-testid="test-mapping-parsed-fields">
-                <h4>
-                  <FormattedMessage id="analyzer.testMapping.parsedFields" />
-                </h4>
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        {parsedFieldsHeaders.map((header) => (
-                          <TableHeader key={header.key}>{header.header}</TableHeader>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {previewResult.parsedFields.map((field, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{field.fieldName || "-"}</TableCell>
-                          <TableCell>{field.astmRef || "-"}</TableCell>
-                          <TableCell>{field.rawValue || "-"}</TableCell>
-                          <TableCell>{field.mappedTo || "-"}</TableCell>
-                          <TableCell>{field.interpretation || "-"}</TableCell>
+            {previewResult.parsedFields &&
+              previewResult.parsedFields.length > 0 && (
+                <div
+                  className="test-mapping-section"
+                  data-testid="test-mapping-parsed-fields"
+                >
+                  <h4>
+                    <FormattedMessage id="analyzer.testMapping.parsedFields" />
+                  </h4>
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          {parsedFieldsHeaders.map((header) => (
+                            <TableHeader key={header.key}>
+                              {header.header}
+                            </TableHeader>
+                          ))}
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </div>
-            )}
+                      </TableHead>
+                      <TableBody>
+                        {previewResult.parsedFields.map((field, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{field.fieldName || "-"}</TableCell>
+                            <TableCell>{field.astmRef || "-"}</TableCell>
+                            <TableCell>{field.rawValue || "-"}</TableCell>
+                            <TableCell>{field.mappedTo || "-"}</TableCell>
+                            <TableCell>{field.interpretation || "-"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </div>
+              )}
 
             {/* Applied Mappings Section */}
-            {previewResult.appliedMappings && previewResult.appliedMappings.length > 0 && (
-              <div className="test-mapping-section" data-testid="test-mapping-applied-mappings">
-                <h4>
-                  <FormattedMessage id="analyzer.testMapping.appliedMappings" />
-                </h4>
-                <ul>
-                  {previewResult.appliedMappings.map((mapping, index) => (
-                    <li key={index}>
-                      {mapping.analyzerFieldName} → {mapping.openelisFieldType} ({mapping.openelisFieldId}):{" "}
-                      {mapping.mappedValue}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            {previewResult.appliedMappings &&
+              previewResult.appliedMappings.length > 0 && (
+                <div
+                  className="test-mapping-section"
+                  data-testid="test-mapping-applied-mappings"
+                >
+                  <h4>
+                    <FormattedMessage id="analyzer.testMapping.appliedMappings" />
+                  </h4>
+                  <ul>
+                    {previewResult.appliedMappings.map((mapping, index) => (
+                      <li key={index}>
+                        {mapping.analyzerFieldName} →{" "}
+                        {mapping.openelisFieldType} ({mapping.openelisFieldId}):{" "}
+                        {mapping.mappedValue}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
             {/* Entity Preview Section */}
             {previewResult.entityPreview && (
-              <div className="test-mapping-section" data-testid="test-mapping-entity-preview">
+              <div
+                className="test-mapping-section"
+                data-testid="test-mapping-entity-preview"
+              >
                 <h4>
                   <FormattedMessage id="analyzer.testMapping.entityPreview" />
                 </h4>
@@ -314,7 +400,10 @@ const TestMappingModal = ({
 
             {/* Warnings Section */}
             {previewResult.warnings && previewResult.warnings.length > 0 && (
-              <div className="test-mapping-section" data-testid="test-mapping-warnings">
+              <div
+                className="test-mapping-section"
+                data-testid="test-mapping-warnings"
+              >
                 <h4>
                   <FormattedMessage id="analyzer.testMapping.warnings" />
                 </h4>
@@ -332,7 +421,10 @@ const TestMappingModal = ({
 
             {/* Errors Section */}
             {previewResult.errors && previewResult.errors.length > 0 && (
-              <div className="test-mapping-section" data-testid="test-mapping-errors">
+              <div
+                className="test-mapping-section"
+                data-testid="test-mapping-errors"
+              >
                 <h4>
                   <FormattedMessage id="analyzer.testMapping.errors" />
                 </h4>
@@ -352,17 +444,28 @@ const TestMappingModal = ({
 
         {/* No Results Message */}
         {!previewResult && !loading && !error && (
-          <div className="test-mapping-no-results" data-testid="test-mapping-no-results">
+          <div
+            className="test-mapping-no-results"
+            data-testid="test-mapping-no-results"
+          >
             <FormattedMessage id="analyzer.testMapping.noResults" />
           </div>
         )}
       </ModalBody>
       <ModalFooter>
-        <Button kind="secondary" onClick={handleClose} data-testid="test-mapping-close">
+        <Button
+          kind="secondary"
+          onClick={handleClose}
+          data-testid="test-mapping-close"
+        >
           <FormattedMessage id="button.close" defaultMessage="Close" />
         </Button>
         {previewResult && (
-          <Button kind="ghost" onClick={handleTestAnother} data-testid="test-mapping-test-another">
+          <Button
+            kind="ghost"
+            onClick={handleTestAnother}
+            data-testid="test-mapping-test-another"
+          >
             <FormattedMessage id="analyzer.testMapping.testAnother" />
           </Button>
         )}
@@ -380,4 +483,3 @@ const TestMappingModal = ({
 };
 
 export default TestMappingModal;
-

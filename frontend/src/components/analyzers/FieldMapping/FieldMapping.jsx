@@ -12,13 +12,13 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { 
-  Grid, 
-  Column, 
-  Button, 
-  Search, 
+import {
+  Grid,
+  Column,
+  Button,
+  Search,
   Tile,
-  InlineNotification 
+  InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams, useHistory, useLocation } from "react-router-dom";
@@ -27,6 +27,7 @@ import FieldMappingPanel from "./FieldMappingPanel";
 import MappingPanel from "./MappingPanel";
 import QueryStatusModal from "./QueryStatusModal";
 import TestMappingModal from "./TestMappingModal";
+import ValidationDashboard from "./ValidationDashboard";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./FieldMapping.css";
 
@@ -35,7 +36,8 @@ const extractMappings = (mappingsData) => {
   if (!mappingsData) return [];
   if (Array.isArray(mappingsData)) return mappingsData;
   if (mappingsData.data) {
-    if (Array.isArray(mappingsData.data.content)) return mappingsData.data.content;
+    if (Array.isArray(mappingsData.data.content))
+      return mappingsData.data.content;
     if (Array.isArray(mappingsData.data)) return mappingsData.data;
   }
   return [];
@@ -228,13 +230,13 @@ const FieldMapping = () => {
   // Calculate statistics for stats cards
   const requiredMappings = mappings.filter((m) => m.isRequired).length;
   const unmappedFieldsCount = fields.filter(
-    (f) => !mappings.some((m) => m.analyzerFieldId === f.id)
+    (f) => !mappings.some((m) => m.analyzerFieldId === f.id),
   ).length;
-  
+
   // Check if required mappings are missing
   const requiredFieldTypes = ["sampleId", "testCode", "resultValue"];
   const hasUnmappedRequired = requiredFieldTypes.some(
-    (type) => !mappings.some((m) => m.mappingType === type)
+    (type) => !mappings.some((m) => m.mappingType === type),
   );
 
   return (
@@ -244,13 +246,30 @@ const FieldMapping = () => {
         <div className="field-mapping-header-title">
           <PageTitle
             breadcrumbs={[
-              { label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }), link: "/analyzers" },
-              { label: intl.formatMessage({ id: "analyzer.page.hierarchy.mappings" }) },
-              { label: analyzer?.name || intl.formatMessage({ id: "analyzer.fieldMapping.page.title" }) }
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.page.hierarchy.root",
+                }),
+                link: "/analyzers",
+              },
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.page.hierarchy.mappings",
+                }),
+              },
+              {
+                label:
+                  analyzer?.name ||
+                  intl.formatMessage({
+                    id: "analyzer.fieldMapping.page.title",
+                  }),
+              },
             ]}
             showBackArrow={true}
             onBack={() => history.push("/analyzers")}
-            subtitle={intl.formatMessage({ id: "analyzer.fieldMapping.page.subtitle" })}
+            subtitle={intl.formatMessage({
+              id: "analyzer.fieldMapping.page.subtitle",
+            })}
           />
         </div>
       </div>
@@ -261,8 +280,12 @@ const FieldMapping = () => {
           <Column lg={16} md={8} sm={4}>
             <InlineNotification
               kind="warning"
-              title={intl.formatMessage({ id: "analyzer.fieldMapping.warning.missingRequired" })}
-              subtitle={intl.formatMessage({ id: "analyzer.fieldMapping.warning.missingRequired.detail" })}
+              title={intl.formatMessage({
+                id: "analyzer.fieldMapping.warning.missingRequired",
+              })}
+              subtitle={intl.formatMessage({
+                id: "analyzer.fieldMapping.warning.missingRequired.detail",
+              })}
               lowContrast
               hideCloseButton
               data-testid="field-mapping-warning"
@@ -284,7 +307,9 @@ const FieldMapping = () => {
         <Column lg={6} md={4} sm={4}>
           <Tile data-testid="stat-required-mappings">
             <div className="stat-label">
-              {intl.formatMessage({ id: "analyzer.fieldMapping.stats.required" })}
+              {intl.formatMessage({
+                id: "analyzer.fieldMapping.stats.required",
+              })}
             </div>
             <div className="stat-value">{requiredMappings}</div>
           </Tile>
@@ -292,15 +317,28 @@ const FieldMapping = () => {
         <Column lg={5} md={4} sm={4}>
           <Tile data-testid="stat-unmapped-fields">
             <div className="stat-label">
-              {intl.formatMessage({ id: "analyzer.fieldMapping.stats.unmapped" })}
+              {intl.formatMessage({
+                id: "analyzer.fieldMapping.stats.unmapped",
+              })}
             </div>
             <div className="stat-value">{unmappedFieldsCount}</div>
           </Tile>
         </Column>
       </Grid>
 
+      {/* Validation Dashboard - Only shown in VALIDATION stage */}
+      {analyzer?.lifecycleStage === "VALIDATION" && (
+        <ValidationDashboard
+          analyzerId={analyzerId}
+          lifecycleStage={analyzer.lifecycleStage}
+        />
+      )}
+
       {/* Action Buttons */}
-      <div className="field-mapping-actions" data-testid="field-mapping-actions">
+      <div
+        className="field-mapping-actions"
+        data-testid="field-mapping-actions"
+      >
         <Button
           kind="tertiary"
           data-testid="field-mapping-query-button"

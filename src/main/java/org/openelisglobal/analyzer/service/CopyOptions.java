@@ -25,4 +25,3 @@ public class CopyOptions {
         this.skipIncompatible = skipIncompatible;
     }
 }
-

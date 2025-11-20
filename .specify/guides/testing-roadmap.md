@@ -2185,8 +2185,9 @@ cy.get('[role="menuitem"]').contains("Delete").click();
 
 #### Browser Console Log Capture
 
-Browser console logs are automatically captured and displayed in Cypress E2E test
-output. See [Cypress Best Practices - Browser Console Logs](.specify/guides/cypress-best-practices.md#browser-console-logs)
+Browser console logs are automatically captured and displayed in Cypress E2E
+test output. See
+[Cypress Best Practices - Browser Console Logs](.specify/guides/cypress-best-practices.md#browser-console-logs)
 for implementation details.
 
 **Post-Run Review**: See
@@ -2268,8 +2269,10 @@ module.exports = defineConfig({
 });
 ```
 
-**Console Log Capture**: Browser console logs automatically captured in E2E tests.
-See [Cypress Best Practices](.specify/guides/cypress-best-practices.md#browser-console-logs) for details.
+**Console Log Capture**: Browser console logs automatically captured in E2E
+tests. See
+[Cypress Best Practices](.specify/guides/cypress-best-practices.md#browser-console-logs)
+for details.
 
 ---
 

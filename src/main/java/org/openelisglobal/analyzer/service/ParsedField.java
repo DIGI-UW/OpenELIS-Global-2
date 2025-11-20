@@ -43,4 +43,3 @@ public class ParsedField {
         this.fieldType = fieldType;
     }
 }
-

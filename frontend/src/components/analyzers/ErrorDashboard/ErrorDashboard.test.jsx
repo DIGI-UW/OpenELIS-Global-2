@@ -82,10 +82,10 @@ describe("ErrorDashboard", () => {
   /**
    * Test: Renders ErrorDashboard with errors displays table
    * Task Reference: T086
-   * 
+   *
    * This test verifies that the component correctly handles the API response format:
    * { data: { content: [...], statistics: {...} }, status: "success" }
-   * 
+   *
    * This would have caught the bug where frontend expected array but API returned
    * wrapped object.
    */
@@ -107,7 +107,9 @@ describe("ErrorDashboard", () => {
         totalElements: mockErrors.length,
         statistics: {
           totalErrors: mockErrors.length,
-          unacknowledged: mockErrors.filter((e) => e.status === "UNACKNOWLEDGED").length,
+          unacknowledged: mockErrors.filter(
+            (e) => e.status === "UNACKNOWLEDGED",
+          ).length,
           critical: mockErrors.filter((e) => e.severity === "CRITICAL").length,
           last24Hours: mockErrors.length,
         },
@@ -146,7 +148,7 @@ describe("ErrorDashboard", () => {
   /**
    * Test: Filter errors by type filters results
    * Task Reference: T086
-   * 
+   *
    * This test verifies that the component correctly handles filtered API responses
    * with the correct response format.
    */
@@ -174,8 +176,11 @@ describe("ErrorDashboard", () => {
           totalElements: filteredErrors.length,
           statistics: {
             totalErrors: filteredErrors.length,
-            unacknowledged: filteredErrors.filter((e) => e.status === "UNACKNOWLEDGED").length,
-            critical: filteredErrors.filter((e) => e.severity === "CRITICAL").length,
+            unacknowledged: filteredErrors.filter(
+              (e) => e.status === "UNACKNOWLEDGED",
+            ).length,
+            critical: filteredErrors.filter((e) => e.severity === "CRITICAL")
+              .length,
             last24Hours: filteredErrors.length,
           },
         },
@@ -250,7 +255,7 @@ describe("ErrorDashboard", () => {
   /**
    * Test: Search errors filters results
    * Task Reference: T086
-   * 
+   *
    * This test verifies that the component correctly handles search-filtered API
    * responses with the correct response format.
    */
@@ -277,8 +282,11 @@ describe("ErrorDashboard", () => {
           totalElements: filteredErrors.length,
           statistics: {
             totalErrors: filteredErrors.length,
-            unacknowledged: filteredErrors.filter((e) => e.status === "UNACKNOWLEDGED").length,
-            critical: filteredErrors.filter((e) => e.severity === "CRITICAL").length,
+            unacknowledged: filteredErrors.filter(
+              (e) => e.status === "UNACKNOWLEDGED",
+            ).length,
+            critical: filteredErrors.filter((e) => e.severity === "CRITICAL")
+              .length,
             last24Hours: filteredErrors.length,
           },
         },
@@ -321,8 +329,11 @@ describe("ErrorDashboard", () => {
           totalElements: mockErrors.length,
           statistics: {
             totalErrors: mockErrors.length,
-            unacknowledged: mockErrors.filter((e) => e.status === "UNACKNOWLEDGED").length,
-            critical: mockErrors.filter((e) => e.severity === "CRITICAL").length,
+            unacknowledged: mockErrors.filter(
+              (e) => e.status === "UNACKNOWLEDGED",
+            ).length,
+            critical: mockErrors.filter((e) => e.severity === "CRITICAL")
+              .length,
             last24Hours: mockErrors.length,
           },
         },

@@ -1,7 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import org.openelisglobal.analyzer.dao.AnalyzerErrorDAO;
@@ -88,7 +87,8 @@ public class AnalyzerErrorServiceImpl implements AnalyzerErrorService {
     @Transactional(readOnly = true)
     public AnalyzerError getErrorById(String errorId) {
         // Use getWithAnalyzer to eagerly fetch analyzer relationship
-        // This prevents LazyInitializationException when controller accesses analyzer.name
+        // This prevents LazyInitializationException when controller accesses
+        // analyzer.name
         return analyzerErrorDAO.getWithAnalyzer(errorId).orElse(null);
     }
 

@@ -19,18 +19,18 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 };
 
 describe("PageTitle Component", () => {
   it("should render simple breadcrumb without back arrow", () => {
-    renderWithIntl(
-      <PageTitle breadcrumbs={[{ label: "Analyzers" }]} />
-    );
+    renderWithIntl(<PageTitle breadcrumbs={[{ label: "Analyzers" }]} />);
 
     expect(screen.getByText("Analyzers")).toBeInTheDocument();
-    expect(screen.queryByTestId("page-title-back-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("page-title-back-button"),
+    ).not.toBeInTheDocument();
   });
 
   it("should render hierarchical breadcrumbs with separator", () => {
@@ -41,13 +41,13 @@ describe("PageTitle Component", () => {
           { label: "Field Mappings" },
           { label: "Hematology Analyzer 1" },
         ]}
-      />
+      />,
     );
 
     expect(screen.getByText("Analyzers")).toBeInTheDocument();
     expect(screen.getByText("Field Mappings")).toBeInTheDocument();
     expect(screen.getByText("Hematology Analyzer 1")).toBeInTheDocument();
-    
+
     // Check separators
     const separators = screen.getAllByText(">");
     expect(separators).toHaveLength(2);
@@ -61,7 +61,7 @@ describe("PageTitle Component", () => {
           { label: "Field Mappings" },
         ]}
         showBackArrow={true}
-      />
+      />,
     );
 
     expect(screen.getByTestId("page-title-back-button")).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe("PageTitle Component", () => {
           { label: "Analyzers", link: "/analyzers" },
           { label: "Field Mappings" },
         ]}
-      />
+      />,
     );
 
     const link = screen.getByTestId("breadcrumb-link-0");
@@ -88,7 +88,7 @@ describe("PageTitle Component", () => {
       <PageTitle
         breadcrumbs={[{ label: "Analyzers" }]}
         subtitle="Configure analyzer settings"
-      />
+      />,
     );
 
     expect(screen.getByText("Configure analyzer settings")).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe("PageTitle Component", () => {
         ]}
         showBackArrow={true}
         onBack={mockOnBack}
-      />
+      />,
     );
 
     const backButton = screen.getByTestId("page-title-back-button");
@@ -112,4 +112,3 @@ describe("PageTitle Component", () => {
     expect(mockOnBack).toHaveBeenCalledTimes(1);
   });
 });
-

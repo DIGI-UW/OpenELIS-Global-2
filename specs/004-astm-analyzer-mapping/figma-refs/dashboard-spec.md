@@ -7,12 +7,14 @@
 ## Analyzers Dashboard (Node 0-1)
 
 ### Page Title
+
 - Text: "Analyzers"
 - Subtitle: "Manage laboratory analyzers and field mappings"
 - Font: Carbon heading-04
 - No breadcrumb navigation on main dashboard
 
 ### Add Analyzer Button
+
 - **Icon**: "+" (Add icon from @carbon/icons-react)
 - **Style**: `kind="primary"` (black background in Figma)
 - **Position**: Top right of page header
@@ -20,6 +22,7 @@
 - **Component**: `<Button renderIcon={Add} kind="primary">`
 
 ### Statistics Tiles
+
 - **Layout**: 3-column grid on desktop
   - Column 1 (lg={5}): "Total Analyzers" - Value: 4, Icon: Activity monitor
   - Column 2 (lg={6}): "Active" - Value: 3, Icon: Checkmark filled (green)
@@ -33,16 +36,19 @@
 - **Grid**: Full width, equal spacing between tiles
 
 ### Search and Filters
+
 - Search input: Full width in first row
 - Filter dropdowns: "All Status", "All Types" in second row
 - Uses Carbon Search and Dropdown components
 
 ### Data Table
+
 - Columns: Name, Type, Connection, Test Units, Status, Last Modified, Actions
 - Status: Tag component (green for Active, gray for Inactive)
 - Actions: OverflowMenu with dropdown items
 
 ### Action Dropdown (from overflow menu visible in screenshot)
+
 - Items:
   1. "Field Mappings" (with icon)
   2. "Test Connection" (with icon)
@@ -55,19 +61,23 @@
 ## Test Connection Modal (Node 1-410)
 
 ### Modal Structure
+
 - **Component**: ComposedModal
 - **Size**: Medium (default)
 - **Title**: "Test Connection"
 - **Subtitle**: "Testing connection to {Analyzer Name}"
 
 ### Content Sections
+
 1. **Analyzer Details** (read-only fields):
+
    - Analyzer name
    - Type
    - Connection (IP:Port)
    - Protocol
 
 2. **Connection Status**:
+
    - Error state: Red inline notification with error message
    - Success state: Green checkmark with success message
    - Testing state: Loading indicator with progress message
@@ -79,11 +89,13 @@
    - Timestamps and log messages in monospace font
 
 ### Action Buttons
+
 - **Close**: Secondary button (left)
 - **Test Again**: Primary button (right)
 - Both buttons enabled at all times
 
 ## Color Tokens Used
+
 - Tile background: `--cds-layer-01`
 - Text primary: `--cds-text-primary`
 - Text secondary: `--cds-text-secondary`
@@ -92,13 +104,16 @@
 - Warning yellow: `--cds-support-warning`
 
 ## Spacing
+
 - Tiles: `margin-bottom: 1rem` between rows
 - Grid columns: `padding: 0 0.5rem` for spacing
 - Page padding: `1rem` standard
 
 ## Implementation Notes
-- Add icon must be imported from `@carbon/icons-react`
-- Tiles should use 3-column layout for dashboard (lg={5}, lg={6}, lg={5} = 16 total)
-- Test Connection modal should be accessible from action dropdown, not inline in form
-- All colors use Carbon design tokens (no hardcoded hex values)
 
+- Add icon must be imported from `@carbon/icons-react`
+- Tiles should use 3-column layout for dashboard (lg={5}, lg={6}, lg={5} = 16
+  total)
+- Test Connection modal should be accessible from action dropdown, not inline in
+  form
+- All colors use Carbon design tokens (no hardcoded hex values)

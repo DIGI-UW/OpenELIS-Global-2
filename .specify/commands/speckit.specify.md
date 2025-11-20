@@ -85,9 +85,12 @@ Given that feature description, do this:
 
 3. Load `.specify/templates/spec-template.md` to understand required sections.
 
-3a. **Get current date**: Run `date +%Y-%m-%d` command and store the result. This will be used to replace `[DATE]` placeholders in the template.
+3a. **Get current date**: Run `date +%Y-%m-%d` command and store the result.
+This will be used to replace `[DATE]` placeholders in the template.
 
-   **CRITICAL**: NEVER use placeholder dates or assume dates. Always run `date +%Y-%m-%d` to get the actual current date. Incorrect dates in generated documents are a systematic error that must be prevented.
+**CRITICAL**: NEVER use placeholder dates or assume dates. Always run
+`date +%Y-%m-%d` to get the actual current date. Incorrect dates in generated
+documents are a systematic error that must be prevented.
 
 4. Follow this execution flow:
 
@@ -119,8 +122,10 @@ Given that feature description, do this:
 5. Write the specification to SPEC_FILE using the template structure, replacing
    placeholders with concrete details derived from the feature description
    (arguments) while preserving section order and headings.
-   
-   **CRITICAL - Date Replacement**: Replace all `[DATE]` placeholders in the template with the actual current date obtained from step 3a. NEVER use placeholder dates, assumed dates, or hardcoded dates.
+
+   **CRITICAL - Date Replacement**: Replace all `[DATE]` placeholders in the
+   template with the actual current date obtained from step 3a. NEVER use
+   placeholder dates, assumed dates, or hardcoded dates.
 
 6. **Specification Quality Validation**: After writing the initial spec,
    validate it against quality criteria:

@@ -1,6 +1,5 @@
 package org.openelisglobal.analyzer.service;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,9 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
  * 
  * Task Reference: T193
  * 
- * Provides business logic for copying mappings from source to target analyzer with:
- * - Conflict resolution (overwrite, merge) - Type compatibility validation -
- * Transaction rollback on failure
+ * Provides business logic for copying mappings from source to target analyzer
+ * with: - Conflict resolution (overwrite, merge) - Type compatibility
+ * validation - Transaction rollback on failure
  */
 @Service
 @Transactional
@@ -78,14 +77,13 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
                 }
 
                 // Find corresponding field in target analyzer
-                Optional<AnalyzerField> targetFieldOpt = analyzerFieldDAO
-                        .findByAnalyzerIdAndFieldName(targetAnalyzerId, sourceField.getFieldName());
+                Optional<AnalyzerField> targetFieldOpt = analyzerFieldDAO.findByAnalyzerIdAndFieldName(targetAnalyzerId,
+                        sourceField.getFieldName());
 
                 if (!targetFieldOpt.isPresent()) {
                     result.setSkippedCount(result.getSkippedCount() + 1);
-                    result.getWarnings()
-                            .add("Skipped mapping for field '" + sourceField.getFieldName()
-                                    + "': Field not found in target analyzer");
+                    result.getWarnings().add("Skipped mapping for field '" + sourceField.getFieldName()
+                            + "': Field not found in target analyzer");
                     continue;
                 }
 
@@ -95,15 +93,16 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
                 if (!sourceField.getFieldType().equals(targetField.getFieldType())) {
                     if (options.isSkipIncompatible()) {
                         result.setSkippedCount(result.getSkippedCount() + 1);
-                        result.getWarnings().add("Skipped mapping for field '" + sourceField.getFieldName()
-                                + "': Type incompatibility (source: " + sourceField.getFieldType() + ", target: "
-                                + targetField.getFieldType() + ")");
+                        result.getWarnings()
+                                .add("Skipped mapping for field '" + sourceField.getFieldName()
+                                        + "': Type incompatibility (source: " + sourceField.getFieldType()
+                                        + ", target: " + targetField.getFieldType() + ")");
                         continue;
                     } else {
                         // Generate warning but continue
-                        result.getWarnings().add("Type incompatibility for field '" + sourceField.getFieldName()
-                                + "': source type " + sourceField.getFieldType() + " vs target type "
-                                + targetField.getFieldType());
+                        result.getWarnings()
+                                .add("Type incompatibility for field '" + sourceField.getFieldName() + "': source type "
+                                        + sourceField.getFieldType() + " vs target type " + targetField.getFieldType());
                     }
                 }
 
@@ -154,4 +153,3 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
         return result;
     }
 }
-

@@ -8,8 +8,9 @@ import java.util.List;
  * 
  * Task Reference: T192
  * 
- * Contains results of copying mappings from source to target analyzer including: -
- * Number of mappings copied - Number of mappings skipped - Warnings and conflicts
+ * Contains results of copying mappings from source to target analyzer
+ * including: - Number of mappings copied - Number of mappings skipped -
+ * Warnings and conflicts
  */
 public class CopyMappingsResult {
 
@@ -84,4 +85,3 @@ public class CopyMappingsResult {
         }
     }
 }
-

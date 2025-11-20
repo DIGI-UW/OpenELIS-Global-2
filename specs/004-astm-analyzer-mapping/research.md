@@ -441,8 +441,8 @@ data insertion. Integration point is in
 
 **Rationale**: OpenELIS uses Spring Framework's built-in scheduling capabilities
 for background jobs. Using `@Scheduled` annotation provides simple, reliable,
-and maintainable solution for automatic lifecycle transitions without introducing
-additional dependencies.
+and maintainable solution for automatic lifecycle transitions without
+introducing additional dependencies.
 
 **Implementation Approach**:
 
@@ -452,7 +452,8 @@ additional dependencies.
 - **Transition Logic**: Query analyzers in GO_LIVE stage with
   `last_activated_date < NOW() - INTERVAL '7 days'`, batch update to MAINTENANCE
   stage
-- **Failure Handling**: Individual analyzer failures logged but don't block batch
+- **Failure Handling**: Individual analyzer failures logged but don't block
+  batch
   - each analyzer transition wrapped in try-catch
 - **Audit Trail**: All transitions logged with user ID "SYSTEM", timestamp,
   previous/new stage
@@ -463,17 +464,17 @@ additional dependencies.
 complexity for simple daily batch job. Spring's `@Scheduled` is sufficient and
 already part of Spring Boot starter dependencies.
 
-**Manual Override**: Admin API endpoint `POST
-/rest/analyzer/analyzers/{id}/lifecycle-stage` allows manual stage changes with
-reason and approval workflow.
+**Manual Override**: Admin API endpoint
+`POST /rest/analyzer/analyzers/{id}/lifecycle-stage` allows manual stage changes
+with reason and approval workflow.
 
 ## 10. Test Mapping Preview Architecture
 
 ### Decision: Reuse ASTMAnalyzerReader for Parsing, Stateless Preview Service
 
-**Rationale**: Existing `ASTMAnalyzerReader` already handles ASTM message parsing.
-Creating separate parser would duplicate code. Preview service should be stateless
-(no persistence) for fast, safe testing.
+**Rationale**: Existing `ASTMAnalyzerReader` already handles ASTM message
+parsing. Creating separate parser would duplicate code. Preview service should
+be stateless (no persistence) for fast, safe testing.
 
 **Implementation Approach**:
 
@@ -492,17 +493,30 @@ Creating separate parser would duplicate code. Preview service should be statele
 ```json
 {
   "parsedFields": [
-    { "fieldName": "GLU", "astmRef": "R|1|^^^GLU", "rawValue": "105", "dataType": "NUMERIC" }
+    {
+      "fieldName": "GLU",
+      "astmRef": "R|1|^^^GLU",
+      "rawValue": "105",
+      "dataType": "NUMERIC"
+    }
   ],
   "appliedMappings": [
-    { "mappingId": "M-001", "analyzerField": "GLU", "openelisField": "Glucose", "confidence": "HIGH" }
+    {
+      "mappingId": "M-001",
+      "analyzerField": "GLU",
+      "openelisField": "Glucose",
+      "confidence": "HIGH"
+    }
   ],
   "entityPreview": {
     "test": { "testCode": "GLU", "testName": "Glucose" },
     "result": { "value": "105", "unit": "mg/dL" }
   },
   "warnings": [
-    { "type": "UNIT_MISMATCH", "message": "Unit conversion applied: mg/dL → mmol/L" }
+    {
+      "type": "UNIT_MISMATCH",
+      "message": "Unit conversion applied: mg/dL → mmol/L"
+    }
   ],
   "errors": [
     { "type": "UNMAPPED_FIELD", "message": "Field 'HbA1c' has no mapping" }
@@ -525,16 +539,16 @@ and UI prevents confusion and improves maintainability.
 
 **Standards**:
 
-| Context                  | Convention              | Example                       | Rationale                                    |
-| ------------------------ | ----------------------- | ----------------------------- | -------------------------------------------- |
-| UI Labels (spec.md, i18n)| Title Case with Spaces  | "Test Unit", "Analyzer"       | Human-readable, professional, accessible     |
-| Code (Java variables)    | camelCase               | `testUnits`, `analyzerId`     | Java naming standards                        |
-| API (JSON keys)          | camelCase               | `"testUnits": [...]`          | JavaScript/JSON convention                   |
-| Database (column names)  | snake_case              | `test_unit_ids`, `analyzer_id`| PostgreSQL convention                        |
-| Enums (Java)             | UPPERCASE_UNDERSCORE    | `FIELD_TYPE.NUMERIC`          | Java enum convention                         |
-| Enums (UI display)       | Title Case              | "Numeric", "Qualitative"      | User-facing display                          |
-| Page Titles              | Title Case, Plural      | "Analyzers", "Field Mappings" | Navigation consistency                       |
-| Entity Names (singular)  | PascalCase              | `Analyzer`, `AnalyzerField`   | Java class naming                            |
+| Context                   | Convention             | Example                        | Rationale                                |
+| ------------------------- | ---------------------- | ------------------------------ | ---------------------------------------- |
+| UI Labels (spec.md, i18n) | Title Case with Spaces | "Test Unit", "Analyzer"        | Human-readable, professional, accessible |
+| Code (Java variables)     | camelCase              | `testUnits`, `analyzerId`      | Java naming standards                    |
+| API (JSON keys)           | camelCase              | `"testUnits": [...]`           | JavaScript/JSON convention               |
+| Database (column names)   | snake_case             | `test_unit_ids`, `analyzer_id` | PostgreSQL convention                    |
+| Enums (Java)              | UPPERCASE_UNDERSCORE   | `FIELD_TYPE.NUMERIC`           | Java enum convention                     |
+| Enums (UI display)        | Title Case             | "Numeric", "Qualitative"       | User-facing display                      |
+| Page Titles               | Title Case, Plural     | "Analyzers", "Field Mappings"  | Navigation consistency                   |
+| Entity Names (singular)   | PascalCase             | `Analyzer`, `AnalyzerField`    | Java class naming                        |
 
 **Specific Standardizations**:
 

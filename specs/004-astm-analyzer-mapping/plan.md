@@ -18,10 +18,11 @@ Resolve unmapped or failed analyzer messages (P3). The system provides a
 dual-panel mapping interface, analyzer management (CRUD operations), error
 dashboard for unmapped messages, and integration with existing ASTM message
 processing infrastructure. The left-hand navigation must mirror the latest Figma
-hierarchy: a single “Analyzers” parent node that expands to Analyzers Dashboard,
-Error Dashboard, Field Mappings (contextual), plus Quality Control placeholders
-(main QC dashboard, “QC Alerts & Violations”, “Corrective Actions”) that link
-into feature `003-westgard-qc`.
+hierarchy: a single "Analyzers" parent node that expands to Analyzers Dashboard,
+Error Dashboard, plus Quality Control placeholders (main QC dashboard, "QC
+Alerts & Violations", "Corrective Actions") that link into feature
+`003-westgard-qc`. Field Mappings page is accessed via analyzer row actions in
+the Analyzers Dashboard and does not appear in the navigation menu.
 
 **Technical Approach**: Extend existing OpenELIS analyzer infrastructure (legacy
 `Analyzer` entity, `ASTMAnalyzerReader`, `AnalyzerImportController`) with new
@@ -83,7 +84,8 @@ Tabs components) while surfacing the future QC routes noted above.
 
 - Entities: Analyzer, AnalyzerField, AnalyzerFieldMapping,
   QualitativeResultMapping, UnitMapping, AnalyzerError
-- UI Pages: Analyzers List, Field Mappings (dual-panel), Error Dashboard
+- UI Pages: Analyzers Dashboard, Field Mappings (dual-panel, accessed via
+  analyzer actions), Error Dashboard
 - API Endpoints: ~15 REST endpoints for CRUD operations, query analyzer, test
   mapping, reprocess errors
 - Integration: Extend existing ASTM message processing pipeline
@@ -108,10 +110,10 @@ Verify compliance with
     (DataTable, ComposedModal, Search, MultiSelect, Tag, SideNavMenu,
     SideNavMenuItem, etc.)
   - **Navigation**: Sub-navigation items function as tabs - SideNavMenuItem
-    components MUST be used exclusively. Carbon Tabs/TabList/TabPanels components
-    MUST NOT be used on analyzer pages (explicit anti-pattern per FR-020 unified
-    tab-navigation pattern). This ensures consistent navigation behavior and
-    prevents duplicate tab affordances.
+    components MUST be used exclusively. Carbon Tabs/TabList/TabPanels
+    components MUST NOT be used on analyzer pages (explicit anti-pattern per
+    FR-020 unified tab-navigation pattern). This ensures consistent navigation
+    behavior and prevents duplicate tab affordances.
   - Field type color coding uses Carbon design tokens ($blue-60, $purple-60,
     etc.)
   - Typography follows Carbon standards ($heading-04, $body-01, etc.)
@@ -314,35 +316,50 @@ frontend/cypress/e2e/
 
 ### Lifecycle Stage Management
 
-**Implementation Pattern**: Spring @Scheduled for automatic lifecycle transitions
+**Implementation Pattern**: Spring @Scheduled for automatic lifecycle
+transitions
 
 **Scheduled Job**:
-- **Class**: `src/main/java/org/openelisglobal/analyzer/service/AnalyzerLifecycleScheduler.java`
+
+- **Class**:
+  `src/main/java/org/openelisglobal/analyzer/service/AnalyzerLifecycleScheduler.java`
 - **Annotation**: `@Scheduled(cron = "0 0 2 * * ?")` - Daily execution at 2 AM
-- **Query**: Select analyzers in GO_LIVE stage where `last_activated_date < NOW() - INTERVAL '7 days'`
+- **Query**: Select analyzers in GO_LIVE stage where
+  `last_activated_date < NOW() - INTERVAL '7 days'` (7 calendar days from
+  activation date)
 - **Update**: Batch update lifecycle_stage to MAINTENANCE with audit logging
-- **Failure Handling**: Individual analyzer failures logged but don't block batch processing
-- **Monitoring**: JMX metrics for transition counts, failure counts, execution time
+- **Failure Handling**: Individual analyzer failures logged but don't block
+  batch processing
+- **Monitoring**: JMX metrics for transition counts, failure counts, execution
+  time
 
 **Manual Transition Support**:
+
 - Admin API endpoint: `POST /rest/analyzer/analyzers/{id}/lifecycle-stage`
 - Request: `{ targetStage: "MAINTENANCE", reason: "Manual override" }`
-- Validation: Check allowed transitions (cannot skip stages), require admin permissions
+- Validation: Check allowed transitions (cannot skip stages), require admin
+  permissions
 - Audit: Log all manual stage changes with user ID and reason
 
 **State Transition Rules**:
+
 - SETUP → VALIDATION: Automatic when first field mappings created
 - VALIDATION → GO_LIVE: Manual activation by user (requires confirmation modal)
 - GO_LIVE → MAINTENANCE: Automatic after 7 days OR manual trigger
 - MAINTENANCE → SETUP: Manual reset only (requires admin approval)
 
 **Implementation Notes**:
-- "7 days" refers to calendar days (not business days)
+
+- "7 days" refers to 7 calendar days from the date when `lifecycleStage`
+  transitions to `GO_LIVE` (activation date)
 - Timezone: Use server timezone for date calculations
-- Analyzer downtime: If analyzer is inactive for part of 7-day period, calendar days still count
-- Edge case: If analyzer transitions to GO_LIVE on day 1, maintenance transition occurs on day 8 (inclusive counting)
+- The 7-day period is calculated using calendar days (not business days) from
+  the activation date
+- Edge case: If analyzer transitions to GO_LIVE on day 1, maintenance transition
+  occurs on day 8 (inclusive counting)
 
 **Database Columns**:
+
 - `lifecycle_stage` VARCHAR(20) NOT NULL DEFAULT 'SETUP'
 - `last_activated_date` TIMESTAMP NULL (populated on GO_LIVE transition)
 
@@ -351,47 +368,76 @@ frontend/cypress/e2e/
 **Implementation Pattern**: Stateless synchronous preview service
 
 **Service Architecture**:
-- **Class**: `src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingPreviewService`
+
+- **Class**:
+  `src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingPreviewService`
 - **Pattern**: @Service annotation, NO @Transactional (read-only operations)
-- **ASTM Parser Integration**: Reuse existing `ASTMAnalyzerReader` for message parsing
-- **Mapping Application**: Apply current field mappings to parsed data without persistence
+- **ASTM Parser Integration**: Reuse existing `ASTMAnalyzerReader` for message
+  parsing
+- **Mapping Application**: Apply current field mappings to parsed data without
+  persistence
 - **Entity Preview**: Construct Test/Result/Sample entities in memory only
 
 **Service Methods**:
-1. `previewMapping(String analyzerId, String astmMessage, PreviewOptions options)` - Main preview method
-2. `parseAstmMessage(String message)` - Parse ASTM message into field/value pairs
-3. `applyMappings(List<ParsedField> fields, List<AnalyzerFieldMapping> mappings)` - Apply mappings to parsed data
-4. `buildEntityPreview(Map<String, Object> mappedData)` - Construct OpenELIS entities (Test, Result, Sample)
-5. `validateMappings(Map<String, Object> mappedData)` - Identify missing mappings, type mismatches, validation errors
+
+1. `previewMapping(String analyzerId, String astmMessage, PreviewOptions options)` -
+   Main preview method
+2. `parseAstmMessage(String message)` - Parse ASTM message into field/value
+   pairs
+3. `applyMappings(List<ParsedField> fields, List<AnalyzerFieldMapping> mappings)` -
+   Apply mappings to parsed data
+4. `buildEntityPreview(Map<String, Object> mappedData)` - Construct OpenELIS
+   entities (Test, Result, Sample)
+5. `validateMappings(Map<String, Object> mappedData)` - Identify missing
+   mappings, type mismatches, validation errors
 
 **Response Format**:
+
 ```json
 {
   "parsedFields": [
-    { "fieldName": "GLU", "astmRef": "R|1|^^^GLU", "rawValue": "105", "dataType": "NUMERIC" }
+    {
+      "fieldName": "GLU",
+      "astmRef": "R|1|^^^GLU",
+      "rawValue": "105",
+      "dataType": "NUMERIC"
+    }
   ],
   "appliedMappings": [
-    { "mappingId": "MAPPING-001", "analyzerField": "GLU", "openelisField": "Glucose", "confidence": "HIGH" }
+    {
+      "mappingId": "MAPPING-001",
+      "analyzerField": "GLU",
+      "openelisField": "Glucose",
+      "confidence": "HIGH"
+    }
   ],
   "entityPreview": {
     "test": { "testCode": "GLU", "testName": "Glucose" },
     "result": { "value": "105", "unit": "mg/dL" }
   },
   "warnings": [
-    { "type": "UNIT_MISMATCH", "message": "Analyzer unit 'mg/dL' does not match OpenELIS unit 'mmol/L' - conversion applied" }
+    {
+      "type": "UNIT_MISMATCH",
+      "message": "Analyzer unit 'mg/dL' does not match OpenELIS unit 'mmol/L' - conversion applied"
+    }
   ],
   "errors": [
-    { "type": "UNMAPPED_FIELD", "message": "Field 'HbA1c' has no mapping configured" }
+    {
+      "type": "UNMAPPED_FIELD",
+      "message": "Field 'HbA1c' has no mapping configured"
+    }
   ]
 }
 ```
 
 **Performance**:
+
 - Target: <2 seconds response time (synchronous operation)
 - Max message size: 10KB (validated before processing)
 - Caching: No caching (always use current mappings for accuracy)
 
 **Security**:
+
 - No database persistence (preview only)
 - User must have analyzer view permissions
 - ASTM message content not logged (may contain PHI)

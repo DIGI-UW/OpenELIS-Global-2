@@ -80,8 +80,16 @@ describe("CopyMappingsModal", () => {
     jest.clearAllMocks();
     analyzerService.getAnalyzers.mockImplementation((filters, callback) => {
       callback([
-        { id: "TARGET-001", name: "Target Analyzer 1", analyzerType: "CHEMISTRY" },
-        { id: "TARGET-002", name: "Target Analyzer 2", analyzerType: "HAEMATOLOGY" },
+        {
+          id: "TARGET-001",
+          name: "Target Analyzer 1",
+          analyzerType: "CHEMISTRY",
+        },
+        {
+          id: "TARGET-002",
+          name: "Target Analyzer 2",
+          analyzerType: "HAEMATOLOGY",
+        },
       ]);
     });
     analyzerService.getMappings.mockImplementation((analyzerId, callback) => {
@@ -99,7 +107,9 @@ describe("CopyMappingsModal", () => {
    * When a target analyzer is selected, the copy button should be enabled.
    */
   test("testSelectTarget_EnablesCopyButton", async () => {
-    const { rerender } = renderWithIntl(<CopyMappingsModal {...defaultProps} />);
+    const { rerender } = renderWithIntl(
+      <CopyMappingsModal {...defaultProps} />,
+    );
 
     // Wait for modal to render
     await waitFor(() => {
@@ -108,7 +118,9 @@ describe("CopyMappingsModal", () => {
 
     // Initially, copy button should be disabled (no target selected)
     const copyButton = screen.getByTestId("copy-mappings-copy-button");
-    expect(copyButton.hasAttribute("disabled") || copyButton.disabled).toBeTruthy();
+    expect(
+      copyButton.hasAttribute("disabled") || copyButton.disabled,
+    ).toBeTruthy();
 
     // Verify dropdown is rendered
     const dropdown = screen.getByTestId("copy-mappings-target-dropdown");
@@ -207,4 +219,3 @@ describe("CopyMappingsModal", () => {
     expect(modal).toBeTruthy();
   });
 });
-

@@ -107,8 +107,7 @@ public class AnalyzerErrorRestController extends BaseRestController {
             }).count();
 
             // Convert errors to maps for JSON response
-            List<Map<String, Object>> errorMaps = errors.stream()
-                    .map(this::errorToMap)
+            List<Map<String, Object>> errorMaps = errors.stream().map(this::errorToMap)
                     .collect(java.util.stream.Collectors.toList());
 
             // Build response

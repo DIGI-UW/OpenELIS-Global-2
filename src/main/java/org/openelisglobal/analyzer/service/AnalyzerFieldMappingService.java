@@ -69,7 +69,7 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * 
      * Task Reference: T200
      * 
-     * @param analyzerId    The analyzer ID
+     * @param analyzerId     The analyzer ID
      * @param includeRetired Whether to include retired (inactive) mappings
      * @return List of maps containing complete mapping data
      */
@@ -145,11 +145,10 @@ public interface AnalyzerFieldMappingService extends BaseObjectService<AnalyzerF
      * Validate activation requirements for an analyzer
      * 
      * Performs comprehensive validation checks before allowing mapping activation:
-     * - Required mappings present (Sample ID, Test Code, Result Value)
-     * - Pending messages in error queue count
-     * - Concurrent edits detection (lastUpdated check)
-     * - All active mappings have compatible types
-     * - Analyzer connection operational (optional warning)
+     * - Required mappings present (Sample ID, Test Code, Result Value) - Pending
+     * messages in error queue count - Concurrent edits detection (lastUpdated
+     * check) - All active mappings have compatible types - Analyzer connection
+     * operational (optional warning)
      * 
      * Task Reference: T167
      * 

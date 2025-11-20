@@ -52,4 +52,3 @@ public class AppliedMapping {
         this.mappingId = mappingId;
     }
 }
-

@@ -13,14 +13,12 @@ import org.openelisglobal.spring.util.SpringContext;
  * 
  * Task Reference: T177
  * 
- * Wrapper logic:
- * 1. Receive raw ASTM message segments from ASTMAnalyzerReader
+ * Wrapper logic: 1. Receive raw ASTM message segments from ASTMAnalyzerReader
  * 2. Call MappingApplicationService.applyMappings() to transform segments using
- *    configured mappings
- * 3. If mappings found and transformation successful: Delegate transformed data
- *    to original plugin inserter
- * 4. If mappings not found or transformation fails: Create AnalyzerError record,
- *    return error (do not delegate to plugin inserter)
+ * configured mappings 3. If mappings found and transformation successful:
+ * Delegate transformed data to original plugin inserter 4. If mappings not
+ * found or transformation fails: Create AnalyzerError record, return error (do
+ * not delegate to plugin inserter)
  * 
  * Per research.md Section 7
  */
@@ -63,7 +61,8 @@ public class MappingAwareAnalyzerLineInserter extends AnalyzerLineInserter {
         try {
             // Check if analyzer has active mappings
             if (!mappingApplicationService.hasActiveMappings(analyzer.getId())) {
-                // No mappings configured - delegate to original inserter (backward compatibility)
+                // No mappings configured - delegate to original inserter (backward
+                // compatibility)
                 return originalInserter.insert(lines, currentUserId);
             }
 
@@ -122,11 +121,10 @@ public class MappingAwareAnalyzerLineInserter extends AnalyzerLineInserter {
     private void createError(String errorMessage, List<String> lines) {
         try {
             String rawMessage = String.join("\n", lines);
-            analyzerErrorService.createError(analyzer, AnalyzerError.ErrorType.MAPPING,
-                    AnalyzerError.Severity.ERROR, errorMessage, rawMessage);
+            analyzerErrorService.createError(analyzer, AnalyzerError.ErrorType.MAPPING, AnalyzerError.Severity.ERROR,
+                    errorMessage, rawMessage);
         } catch (Exception e) {
             LogEvent.logError("Failed to create AnalyzerError: " + e.getMessage(), e);
         }
     }
 }
-

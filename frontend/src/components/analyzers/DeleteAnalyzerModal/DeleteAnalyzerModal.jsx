@@ -1,10 +1,10 @@
 /**
  * DeleteAnalyzerModal Component
- * 
+ *
  * Confirmation modal for deleting an analyzer
  * Displays warning message about data loss
  * Uses danger/destructive styling for delete action
- * 
+ *
  * Reference: Figma node 1-1489
  */
 
@@ -65,7 +65,8 @@ const DeleteAnalyzerModal = ({ analyzer, open, onClose, onConfirm }) => {
     });
   };
 
-  const analyzerName = analyzer?.name || intl.formatMessage({ id: "analyzer.delete.unknown" });
+  const analyzerName =
+    analyzer?.name || intl.formatMessage({ id: "analyzer.delete.unknown" });
 
   return (
     <ComposedModal
@@ -93,7 +94,7 @@ const DeleteAnalyzerModal = ({ analyzer, open, onClose, onConfirm }) => {
         <p data-testid="delete-analyzer-message">
           {intl.formatMessage(
             { id: "analyzer.delete.message" },
-            { name: analyzerName }
+            { name: analyzerName },
           )}
         </p>
       </ModalBody>
@@ -134,4 +135,3 @@ DeleteAnalyzerModal.defaultProps = {
 };
 
 export default DeleteAnalyzerModal;
-

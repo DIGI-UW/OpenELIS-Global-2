@@ -18,11 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service implementation for creating OpenELIS fields inline from the analyzer mapping interface.
- * Task Reference: T145
+ * Service implementation for creating OpenELIS fields inline from the analyzer
+ * mapping interface. Task Reference: T145
  * 
- * Supports creation of TEST, PANEL, RESULT, ORDER, SAMPLE, QC, METADATA, UNIT entities.
- * Currently implements TEST entity type; other types to be added incrementally.
+ * Supports creation of TEST, PANEL, RESULT, ORDER, SAMPLE, QC, METADATA, UNIT
+ * entities. Currently implements TEST entity type; other types to be added
+ * incrementally.
  */
 @Service
 @Transactional
@@ -46,18 +47,18 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
 
         // Create field based on entity type
         switch (form.getEntityType()) {
-            case TEST:
-                return createTestField(form);
-            case PANEL:
-            case RESULT:
-            case ORDER:
-            case SAMPLE:
-            case QC:
-            case METADATA:
-            case UNIT:
-                throw new LIMSRuntimeException("Entity type " + form.getEntityType() + " not yet implemented");
-            default:
-                throw new LIMSRuntimeException("Unknown entity type: " + form.getEntityType());
+        case TEST:
+            return createTestField(form);
+        case PANEL:
+        case RESULT:
+        case ORDER:
+        case SAMPLE:
+        case QC:
+        case METADATA:
+        case UNIT:
+            throw new LIMSRuntimeException("Entity type " + form.getEntityType() + " not yet implemented");
+        default:
+            throw new LIMSRuntimeException("Unknown entity type: " + form.getEntityType());
         }
     }
 
@@ -67,19 +68,19 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
             return false;
         }
         switch (form.getEntityType()) {
-            case TEST:
-                return validateTestUniqueness(form);
-            case PANEL:
-            case RESULT:
-            case ORDER:
-            case SAMPLE:
-            case QC:
-            case METADATA:
-            case UNIT:
-                // TODO: Implement validation for other entity types
-                return true;
-            default:
-                return false;
+        case TEST:
+            return validateTestUniqueness(form);
+        case PANEL:
+        case RESULT:
+        case ORDER:
+        case SAMPLE:
+        case QC:
+        case METADATA:
+        case UNIT:
+            // TODO: Implement validation for other entity types
+            return true;
+        default:
+            return false;
         }
     }
 
@@ -88,37 +89,37 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
     public Map<String, Object> getFieldById(String fieldId, OpenELISFieldForm.EntityType entityType) {
         try {
             switch (entityType) {
-                case TEST:
-                    // Try to parse ID as integer first (Test IDs are numeric)
-                    try {
-                        Integer.parseInt(fieldId);
-                    } catch (NumberFormatException e) {
-                        // Invalid ID format - return null (not found)
-                        return null;
-                    }
-                    java.util.Optional<Test> testOpt = testDAO.get(fieldId);
-                    if (testOpt.isPresent()) {
-                        Test test = testOpt.get();
-                        Map<String, Object> result = new HashMap<>();
-                        result.put("id", test.getId());
-                        result.put("name", test.getDescription());
-                        result.put("code", test.getLocalCode());
-                        result.put("loincCode", test.getLoinc());
-                        result.put("entityType", "TEST");
-                        return result;
-                    }
+            case TEST:
+                // Try to parse ID as integer first (Test IDs are numeric)
+                try {
+                    Integer.parseInt(fieldId);
+                } catch (NumberFormatException e) {
+                    // Invalid ID format - return null (not found)
                     return null;
-                case PANEL:
-                case RESULT:
-                case ORDER:
-                case SAMPLE:
-                case QC:
-                case METADATA:
-                case UNIT:
-                    // TODO: Implement retrieval for other entity types
-                    return null;
-                default:
-                    return null;
+                }
+                java.util.Optional<Test> testOpt = testDAO.get(fieldId);
+                if (testOpt.isPresent()) {
+                    Test test = testOpt.get();
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("id", test.getId());
+                    result.put("name", test.getDescription());
+                    result.put("code", test.getLocalCode());
+                    result.put("loincCode", test.getLoinc());
+                    result.put("entityType", "TEST");
+                    return result;
+                }
+                return null;
+            case PANEL:
+            case RESULT:
+            case ORDER:
+            case SAMPLE:
+            case QC:
+            case METADATA:
+            case UNIT:
+                // TODO: Implement retrieval for other entity types
+                return null;
+            default:
+                return null;
             }
         } catch (NumberFormatException e) {
             // Invalid ID format - return null (not found)
@@ -136,16 +137,14 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
     private String createTestField(OpenELISFieldForm form) throws LIMSRuntimeException {
         try {
             // Create Localization for test name
-            Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(
-                    form.getFieldName(), // English
+            Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(form.getFieldName(), // English
                     form.getFieldName(), // French (use same as English for now)
                     LocalizationServiceImpl.LocalizationType.TEST_NAME);
             String nameLocalizationId = localizationService.insert(nameLocalization);
             nameLocalization.setId(nameLocalizationId);
 
             // Create Localization for reporting name (use same as name for now)
-            Localization reportingNameLocalization = LocalizationServiceImpl.createNewLocalization(
-                    form.getFieldName(), // English
+            Localization reportingNameLocalization = LocalizationServiceImpl.createNewLocalization(form.getFieldName(), // English
                     form.getFieldName(), // French
                     LocalizationServiceImpl.LocalizationType.REPORTING_TEST_NAME);
             String reportingNameLocalizationId = localizationService.insert(reportingNameLocalization);
@@ -158,21 +157,21 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
             test.setLocalizedTestName(nameLocalization);
             test.setLocalizedReportingName(reportingNameLocalization);
             test.setGuid(String.valueOf(UUID.randomUUID()));
-            
+
             // Set default values for required fields
             test.setIsActive("Y");
             test.setOrderable(true);
-            
+
             // Set sysUserId (required for BaseObject)
             // TODO: Get from security context when available
             test.setSysUserId("1"); // Default system user
 
             // Insert the test
             String testId = testService.insert(test);
-            
+
             LogEvent.logInfo(this.getClass().getSimpleName(), "createTestField",
                     "Created new test field: " + testId + " (" + form.getFieldName() + ")");
-            
+
             return testId;
         } catch (Exception e) {
             LogEvent.logError("Error creating test field: " + e.getMessage(), e);
@@ -211,4 +210,3 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
         return true;
     }
 }
-

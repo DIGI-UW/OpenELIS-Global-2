@@ -279,16 +279,17 @@ The left-hand navigation is populated from the `clinlims.menu` table via
   3. Field Mappings (`menu_analyzers_field_mappings`, `/analyzers/:id/mappings`)
   4. Quality Control placeholders (to be added in feature 003-westgard-qc)
 
-**Verification**: After application startup with migrations applied, verify menu items exist:
+**Verification**: After application startup with migrations applied, verify menu
+items exist:
 
 ```bash
 docker exec openelisglobal-database psql -U clinlims -d clinlims -c \
   "SELECT element_id, display_key, action_url FROM menu WHERE element_id LIKE 'menu_analyzers%';"
 ```
 
-**Note**: For manual testing or development, SQL inserts can be used as an alternative,
-but Liquibase is the production method. See `004-009-add-menu-items.xml` for the
-canonical menu structure.
+**Note**: For manual testing or development, SQL inserts can be used as an
+alternative, but Liquibase is the production method. See
+`004-009-add-menu-items.xml` for the canonical menu structure.
 
 ## Step 4: Testing
 

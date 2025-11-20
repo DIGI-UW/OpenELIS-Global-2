@@ -119,11 +119,15 @@ describe("TestMappingModal", () => {
     renderWithIntl(<TestMappingModal {...defaultProps} />);
 
     // Act: Enter ASTM message
-    const messageInput = await screen.findByTestId("test-mapping-message-input");
+    const messageInput = await screen.findByTestId(
+      "test-mapping-message-input",
+    );
     await userEvent.type(messageInput, "H|\\^&|||PSM^Micro^2.0|");
 
     // Act: Click preview button
-    const previewButton = await screen.findByTestId("test-mapping-preview-button");
+    const previewButton = await screen.findByTestId(
+      "test-mapping-preview-button",
+    );
     await userEvent.click(previewButton);
 
     // Assert: Wait for preview results to appear
@@ -157,11 +161,15 @@ describe("TestMappingModal", () => {
     renderWithIntl(<TestMappingModal {...defaultProps} />);
 
     // Act: Enter invalid message
-    const messageInput = await screen.findByTestId("test-mapping-message-input");
+    const messageInput = await screen.findByTestId(
+      "test-mapping-message-input",
+    );
     await userEvent.type(messageInput, "Invalid message");
 
     // Act: Click preview button
-    const previewButton = await screen.findByTestId("test-mapping-preview-button");
+    const previewButton = await screen.findByTestId(
+      "test-mapping-preview-button",
+    );
     await userEvent.click(previewButton);
 
     // Assert: Wait for error to appear
@@ -184,13 +192,17 @@ describe("TestMappingModal", () => {
     renderWithIntl(<TestMappingModal {...defaultProps} />);
 
     // Act: Enter message that exceeds 10KB limit
-    const messageInput = await screen.findByTestId("test-mapping-message-input");
+    const messageInput = await screen.findByTestId(
+      "test-mapping-message-input",
+    );
     const largeMessage = "A".repeat(10241); // 10KB + 1 byte
     // Use direct value assignment for large text to avoid timeout
     fireEvent.change(messageInput, { target: { value: largeMessage } });
 
     // Act: Click preview button
-    const previewButton = await screen.findByTestId("test-mapping-preview-button");
+    const previewButton = await screen.findByTestId(
+      "test-mapping-preview-button",
+    );
     await userEvent.click(previewButton);
 
     // Assert: Wait for error to appear (validation happens synchronously)
@@ -234,10 +246,14 @@ describe("TestMappingModal", () => {
     renderWithIntl(<TestMappingModal {...defaultProps} />);
 
     // Act: Enter message and preview
-    const messageInput = await screen.findByTestId("test-mapping-message-input");
+    const messageInput = await screen.findByTestId(
+      "test-mapping-message-input",
+    );
     await userEvent.type(messageInput, "H|\\^&|||PSM^Micro^2.0|");
 
-    const previewButton = await screen.findByTestId("test-mapping-preview-button");
+    const previewButton = await screen.findByTestId(
+      "test-mapping-preview-button",
+    );
     await userEvent.click(previewButton);
 
     // Assert: Wait for results to appear
@@ -245,7 +261,9 @@ describe("TestMappingModal", () => {
     expect(results).toBeTruthy();
 
     // Act: Click "Test Another Message" button
-    const testAnotherButton = await screen.findByTestId("test-mapping-test-another");
+    const testAnotherButton = await screen.findByTestId(
+      "test-mapping-test-another",
+    );
     await userEvent.click(testAnotherButton);
 
     // Assert: Results should be cleared
@@ -272,7 +290,9 @@ describe("TestMappingModal", () => {
     renderWithIntl(<TestMappingModal {...defaultProps} />);
 
     // Assert: Preview button should be disabled
-    const previewButton = await screen.findByTestId("test-mapping-preview-button");
+    const previewButton = await screen.findByTestId(
+      "test-mapping-preview-button",
+    );
     expect(previewButton.disabled).toBe(true);
   });
 
@@ -288,7 +308,9 @@ describe("TestMappingModal", () => {
     renderWithIntl(<TestMappingModal {...defaultProps} />);
 
     // Assert: Analyzer info section should be visible
-    const analyzerInfo = await screen.findByTestId("test-mapping-analyzer-info");
+    const analyzerInfo = await screen.findByTestId(
+      "test-mapping-analyzer-info",
+    );
     expect(analyzerInfo).toBeTruthy();
 
     // Assert: Analyzer name should be displayed
@@ -301,4 +323,3 @@ describe("TestMappingModal", () => {
     expect(screen.getByText(/15 active mappings/i)).toBeTruthy();
   });
 });
-

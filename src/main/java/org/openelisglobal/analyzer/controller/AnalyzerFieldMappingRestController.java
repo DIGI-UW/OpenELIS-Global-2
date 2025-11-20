@@ -7,12 +7,13 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analyzer.form.AnalyzerFieldMappingForm;
 import org.openelisglobal.analyzer.form.MappingPreviewForm;
+import org.openelisglobal.analyzer.service.ActivationValidationResult;
 import org.openelisglobal.analyzer.service.AnalyzerFieldMappingService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCopyService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingPreviewService;
-import org.openelisglobal.analyzer.service.CopyOptions;
 import org.openelisglobal.analyzer.service.CopyMappingsResult;
+import org.openelisglobal.analyzer.service.CopyOptions;
 import org.openelisglobal.analyzer.service.MappingPreviewResult;
 import org.openelisglobal.analyzer.service.MappingValidationService;
 import org.openelisglobal.analyzer.service.PreviewOptions;
@@ -33,7 +34,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.openelisglobal.analyzer.service.ActivationValidationResult;
 
 /**
  * REST Controller for Analyzer Field Mapping management Handles CRUD operations
@@ -371,16 +371,16 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/analyzers/{id}/preview-mapping
-     * Preview how a sample ASTM message will be interpreted with current mappings
+     * POST /rest/analyzer/analyzers/{id}/preview-mapping Preview how a sample ASTM
+     * message will be interpreted with current mappings
      * 
      * Task Reference: T157
      * 
-     * Request body: { astmMessage: String (max 10KB), includeDetailedParsing: Boolean,
-     * validateAllMappings: Boolean }
+     * Request body: { astmMessage: String (max 10KB), includeDetailedParsing:
+     * Boolean, validateAllMappings: Boolean }
      * 
-     * Response: { parsedFields: [...], appliedMappings: [...], entityPreview: {...},
-     * warnings: [...], errors: [...] }
+     * Response: { parsedFields: [...], appliedMappings: [...], entityPreview:
+     * {...}, warnings: [...], errors: [...] }
      */
     @PostMapping("/analyzers/{id}/preview-mapping")
     public ResponseEntity<Map<String, Object>> previewMapping(@PathVariable String id,
@@ -431,8 +431,8 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/analyzers/{id}/validation-metrics
-     * Get validation metrics for an analyzer
+     * GET /rest/analyzer/analyzers/{id}/validation-metrics Get validation metrics
+     * for an analyzer
      * 
      * Task Reference: T206
      * 

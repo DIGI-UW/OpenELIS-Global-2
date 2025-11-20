@@ -1,7 +1,9 @@
 # Feature Specification: [FEATURE NAME]
 
-**Feature Branch**: `[###-feature-name]`  
+**Feature Branch**: `[###-feature-name]`
+
 <!-- CRITICAL: Replace [DATE] with actual current date from `date +%Y-%m-%d` command. NEVER use placeholder or assumed dates. -->
+
 **Created**: [DATE]  
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"

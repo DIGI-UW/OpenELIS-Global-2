@@ -52,7 +52,7 @@ public class AnalyzerRestController extends BaseRestController {
      */
     @GetMapping("/analyzers")
     public ResponseEntity<List<Map<String, Object>>> getAnalyzers(@RequestParam(required = false) String status,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search, @RequestParam(required = false) String lifecycleStage) {
         try {
             List<Analyzer> analyzers = analyzerService.getAll();
             List<Map<String, Object>> response = new ArrayList<>();
@@ -76,6 +76,15 @@ public class AnalyzerRestController extends BaseRestController {
                 }
 
                 Map<String, Object> analyzerMap = analyzerToMap(analyzer);
+
+                // Apply lifecycle stage filter
+                if (lifecycleStage != null && !lifecycleStage.isEmpty()) {
+                    String analyzerLifecycleStage = (String) analyzerMap.get("lifecycleStage");
+                    if (analyzerLifecycleStage == null || !analyzerLifecycleStage.equalsIgnoreCase(lifecycleStage)) {
+                        continue;
+                    }
+                }
+
                 response.add(analyzerMap);
             }
 
@@ -417,11 +426,22 @@ public class AnalyzerRestController extends BaseRestController {
                 map.put("port", config.getPort());
                 map.put("protocolVersion", config.getProtocolVersion());
                 map.put("testUnitIds", config.getTestUnitIds());
+                // Include lifecycle stage (defaults to SETUP if not set)
+                if (config.getLifecycleStage() != null) {
+                    map.put("lifecycleStage", config.getLifecycleStage().toString());
+                } else {
+                    map.put("lifecycleStage", "SETUP");
+                }
+            } else {
+                // No configuration exists, default lifecycle stage to SETUP
+                map.put("lifecycleStage", "SETUP");
             }
         } catch (Exception e) {
             // Configuration not found or error - just don't include it in response
             logger.debug(
                     "Could not load analyzer configuration for analyzer " + analyzer.getId() + ": " + e.getMessage());
+            // Default lifecycle stage to SETUP if configuration cannot be loaded
+            map.put("lifecycleStage", "SETUP");
         }
 
         return map;

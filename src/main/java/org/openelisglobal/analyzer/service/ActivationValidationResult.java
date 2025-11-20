@@ -8,9 +8,9 @@ import java.util.List;
  * 
  * Task Reference: T167
  * 
- * Contains validation results for analyzer mapping activation including: - Whether
- * activation can proceed - Missing required mappings - Pending message count -
- * Warnings and errors
+ * Contains validation results for analyzer mapping activation including: -
+ * Whether activation can proceed - Missing required mappings - Pending message
+ * count - Warnings and errors
  */
 public class ActivationValidationResult {
 
@@ -58,4 +58,3 @@ public class ActivationValidationResult {
         this.warnings = warnings;
     }
 }
-

@@ -112,4 +112,3 @@ public interface MappingValidationService {
         }
     }
 }
-

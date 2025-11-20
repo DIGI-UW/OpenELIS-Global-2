@@ -50,9 +50,13 @@ to run missing prerequisite command). For single quotes in args like "I'm
 Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm
 Groot").
 
-1a. **Get current date**: Run `date +%Y-%m-%d` command and store the result. This will be used in the analysis report header for "Generated" and "Last Updated" dates.
+1a. **Get current date**: Run `date +%Y-%m-%d` command and store the result.
+This will be used in the analysis report header for "Generated" and "Last
+Updated" dates.
 
-   **CRITICAL**: NEVER use placeholder dates or assume dates. Always run `date +%Y-%m-%d` to get the actual current date. Incorrect dates in generated documents are a systematic error that must be prevented.
+**CRITICAL**: NEVER use placeholder dates or assume dates. Always run
+`date +%Y-%m-%d` to get the actual current date. Incorrect dates in generated
+documents are a systematic error that must be prevented.
 
 ### 2. Load Artifacts (Progressive Disclosure)
 
@@ -165,7 +169,10 @@ Output a Markdown report (no file writes) with the following structure:
 **Generated**: [CURRENT_DATE]  
 **Last Updated**: [CURRENT_DATE]
 
-**CRITICAL - Date Inclusion**: Include "Generated: [CURRENT_DATE]" and "Last Updated: [CURRENT_DATE]" in the report header using the actual current date obtained from step 1a. NEVER use placeholder dates, assumed dates, or hardcoded dates.
+**CRITICAL - Date Inclusion**: Include "Generated: [CURRENT_DATE]" and "Last
+Updated: [CURRENT_DATE]" in the report header using the actual current date
+obtained from step 1a. NEVER use placeholder dates, assumed dates, or hardcoded
+dates.
 
 | ID  | Category    | Severity | Location(s)      | Summary                      | Recommendation                       |
 | --- | ----------- | -------- | ---------------- | ---------------------------- | ------------------------------------ |

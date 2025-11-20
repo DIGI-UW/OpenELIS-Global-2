@@ -64,4 +64,3 @@ public class MappingApplicationResult {
         this.success = success;
     }
 }
-

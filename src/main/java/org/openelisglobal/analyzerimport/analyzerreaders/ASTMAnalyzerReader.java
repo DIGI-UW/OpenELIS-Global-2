@@ -26,7 +26,6 @@ import org.openelisglobal.analyzer.service.AnalyzerConfigurationService;
 import org.openelisglobal.analyzer.service.MappingApplicationService;
 import org.openelisglobal.analyzer.service.MappingAwareAnalyzerLineInserter;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
@@ -138,7 +137,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
             // Check if analyzer has active mappings and wrap inserter if needed
             // Task Reference: T180
             AnalyzerLineInserter finalInserter = wrapInserterIfMappingsExist(inserter);
-            
+
             boolean success = finalInserter.insert(lines, systemUserId);
             if (!success) {
                 error = finalInserter.getError();
@@ -149,14 +148,15 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     /**
-     * Wrap inserter with MappingAwareAnalyzerLineInserter if analyzer has active mappings
+     * Wrap inserter with MappingAwareAnalyzerLineInserter if analyzer has active
+     * mappings
      * 
      * Task Reference: T180
      * 
-     * Per research.md Section 7: Conditional wrapping logic
-     * - Check if analyzer has active mappings before wrapping
-     * - If analyzer has active mappings: Wrap plugin inserter with MappingAwareAnalyzerLineInserter
-     * - If analyzer has no mappings: Use original plugin inserter directly (backward compatibility)
+     * Per research.md Section 7: Conditional wrapping logic - Check if analyzer has
+     * active mappings before wrapping - If analyzer has active mappings: Wrap
+     * plugin inserter with MappingAwareAnalyzerLineInserter - If analyzer has no
+     * mappings: Use original plugin inserter directly (backward compatibility)
      * 
      * @param originalInserter The original plugin inserter
      * @return Wrapped inserter if mappings exist, original inserter otherwise
@@ -165,15 +165,17 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
         try {
             // Try to identify analyzer from message
             Optional<Analyzer> analyzer = identifyAnalyzerFromMessage();
-            
+
             if (!analyzer.isPresent()) {
                 // Cannot identify analyzer - use original inserter (backward compatibility)
                 return originalInserter;
             }
 
             // Check if analyzer has active mappings
-            MappingApplicationService mappingApplicationService = SpringContext.getBean(MappingApplicationService.class);
-            if (mappingApplicationService != null && mappingApplicationService.hasActiveMappings(analyzer.get().getId())) {
+            MappingApplicationService mappingApplicationService = SpringContext
+                    .getBean(MappingApplicationService.class);
+            if (mappingApplicationService != null
+                    && mappingApplicationService.hasActiveMappings(analyzer.get().getId())) {
                 // Analyzer has active mappings - wrap inserter
                 return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer.get());
             }
@@ -191,10 +193,9 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     /**
      * Identify analyzer from ASTM message
      * 
-     * Attempts to identify the analyzer by:
-     * 1. Parsing ASTM header (H segment) for analyzer identification
-     * 2. Looking up AnalyzerConfiguration by IP address (if available in message)
-     * 3. Matching by analyzer name from plugin
+     * Attempts to identify the analyzer by: 1. Parsing ASTM header (H segment) for
+     * analyzer identification 2. Looking up AnalyzerConfiguration by IP address (if
+     * available in message) 3. Matching by analyzer name from plugin
      * 
      * @return Optional Analyzer if identified, empty otherwise
      */
@@ -214,7 +215,8 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                         String manufacturerModel = segments[4];
                         if (manufacturerModel != null && !manufacturerModel.trim().isEmpty()) {
                             // Try to find analyzer by name (simplified - can be enhanced)
-                            AnalyzerConfigurationService configService = SpringContext.getBean(AnalyzerConfigurationService.class);
+                            AnalyzerConfigurationService configService = SpringContext
+                                    .getBean(AnalyzerConfigurationService.class);
                             if (configService != null) {
                                 // For now, return empty - full implementation would parse and match
                                 // This is a placeholder - actual implementation would:
