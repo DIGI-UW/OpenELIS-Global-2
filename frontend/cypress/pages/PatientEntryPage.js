@@ -197,7 +197,7 @@ class PatientEntryPage {
       .find("tr")
       .first()
       .find("td:nth-child(1)")
-      .get("[data-cy='radioButton']")
+      .find("[data-cy='radioButton']")
       .click({ force: true });
   }
 }
