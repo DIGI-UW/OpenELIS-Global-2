@@ -710,12 +710,13 @@ BEGIN
     last_updated = CURRENT_TIMESTAMP;
 
   -- Create storage movement audit logs for new samples (using flexible assignment model, SampleItem-level tracking)
+  -- NOTE: Movement for sample_item 10052 commented out since that sample_item is not inserted (sample 1005 uses 'E2E' not 'E2E006')
   INSERT INTO sample_storage_movement (id, sample_item_id, previous_location_id, previous_location_type, previous_position_coordinate,
                                        new_location_id, new_location_type, new_position_coordinate,
                                        movement_date, moved_by_user_id, reason, last_updated)
   VALUES
   (1007, 10051, NULL, NULL, NULL, 34, 'rack', 'A1', CURRENT_TIMESTAMP, 1, 'Initial assignment - aliquot 1', CURRENT_TIMESTAMP),
-  (1008, 10052, NULL, NULL, NULL, 34, 'rack', 'A2', CURRENT_TIMESTAMP, 1, 'Initial assignment - aliquot 2', CURRENT_TIMESTAMP),
+  -- (1008, 10052, NULL, NULL, NULL, 34, 'rack', 'A2', CURRENT_TIMESTAMP, 1, 'Initial assignment - aliquot 2', CURRENT_TIMESTAMP), -- Commented: sample_item 10052 not inserted
   (1009, 10061, NULL, NULL, NULL, 34, 'rack', 'A2', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
   (1010, 10071, NULL, NULL, NULL, 30, 'rack', 'A6', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
   (1011, 10081, NULL, NULL, NULL, 34, 'rack', 'A3', CURRENT_TIMESTAMP, 1, 'Initial assignment', CURRENT_TIMESTAMP),
