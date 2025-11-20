@@ -54,6 +54,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -185,6 +186,27 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
         addFlashMsgsToRequest(request);
         return form;
+    }
+
+    @GetMapping(value = "patientByLabNumer", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Patient> getPatientByLabNumber(HttpServletRequest request,
+            @RequestParam(required = false) String accessionNumber) {
+        if (GenericValidator.isBlankOrNull(accessionNumber)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Sample sample = getSample(accessionNumber);
+        if (sample == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(patient);
     }
 
     @PostMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)

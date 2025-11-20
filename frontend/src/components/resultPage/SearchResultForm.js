@@ -35,6 +35,7 @@ import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
 import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
+import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 import CompactFileInput from "./fileUpload/FileInput";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
 
@@ -1035,6 +1036,13 @@ export function SearchResults(props) {
               <br></br>
               <br></br>
             </div>
+            <div>
+              <AsyncAvatar
+                patientId={row.patientId}
+                hasPhoto={true}
+                patientName={row.patientName || ""}
+              />
+            </div>
             {row.nonconforming && (
               <picture>
                 <img
@@ -1463,6 +1471,7 @@ export function SearchResults(props) {
               id={"testResult[" + data.id + "].refer"}
               checked={data.refer === "true"}
               disabled={data.referredOut}
+              data-cy="referalcheckbox"
               onChange={(e) => {
                 e.target.value = e.target.checked;
                 handleChange(e, data.id);

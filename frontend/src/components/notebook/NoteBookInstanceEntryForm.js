@@ -332,55 +332,9 @@ const NoteBookInstanceEntryForm = () => {
     }
   };
 
-  const [showPageModal, setShowPageModal] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
-  const [editingPageIndex, setEditingPageIndex] = useState(null);
-  const [newPage, setNewPage] = useState({
-    order: null,
-    title: "",
-    content: "",
-    instructions: "",
-    tests: [],
-  });
   const [newTag, setNewTag] = useState("");
-  const [pageError, setPageError] = useState("");
   const [tagError, setTagError] = useState("");
-
-  // Open modal for adding new page
-  const openPageModal = () => {
-    // Calculate next order number (consecutively starting with 1)
-    const nextOrder =
-      noteBookData.pages.length > 0
-        ? Math.max(...noteBookData.pages.map((page) => page.order || 0)) + 1
-        : 1;
-
-    setNewPage({
-      order: nextOrder,
-      title: "",
-      content: "",
-      instructions: "",
-      tests: [],
-    });
-    setEditingPageIndex(null);
-    setPageError("");
-    setShowPageModal(true);
-  };
-
-  // Open modal for editing existing page
-  const openEditPageModal = (index) => {
-    const page = noteBookData.pages[index];
-    setNewPage({
-      order: page.order,
-      title: page.title || "",
-      content: page.content || "",
-      instructions: page.instructions || "",
-      tests: page.tests || [],
-      completed: page.completed || false,
-    });
-    setEditingPageIndex(index);
-    setPageError("");
-    setShowPageModal(true);
-  };
 
   const openTagModal = () => {
     setNewTag("");
@@ -388,48 +342,11 @@ const NoteBookInstanceEntryForm = () => {
     setShowTagModal(true);
   };
 
-  // Close modal
-  const closePageModal = () => setShowPageModal(false);
   const closeTagModal = () => setShowTagModal(false);
-
-  // Handle modal input changes
-  const handlePageChange = (e) => {
-    const { name, value } = e.target;
-    setNewPage((prev) => ({ ...prev, [name]: value }));
-  };
 
   const handleTagChange = (e) => {
     const { name, value } = e.target;
     setNewTag(value);
-  };
-
-  // Add or update page in noteBookData.pages
-  const handleAddPage = () => {
-    if (!newPage.title.trim() || !newPage.content.trim()) {
-      setPageError(
-        intl.formatMessage({ id: "notebook.page.modal.add.errorRequired" }),
-      );
-      return;
-    }
-    if (editingPageIndex !== null) {
-      // Update existing page
-      setNoteBookData((prev) => {
-        const updatedPages = [...prev.pages];
-        updatedPages[editingPageIndex] = { ...newPage };
-        return {
-          ...prev,
-          pages: updatedPages,
-        };
-      });
-    } else {
-      // Add new page
-      setNoteBookData((prev) => ({
-        ...prev,
-        pages: [...prev.pages, newPage],
-      }));
-    }
-    setShowPageModal(false);
-    setEditingPageIndex(null);
   };
 
   const handleAddTag = () => {
@@ -1376,16 +1293,11 @@ const NoteBookInstanceEntryForm = () => {
         {selectedTab === 3 && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
-              <Column lg={2} md={2} sm={4}>
+              <Column lg={16} md={8} sm={4}>
                 <h5>
                   {" "}
                   <FormattedMessage id="notebook.label.pages" />
                 </h5>
-              </Column>
-              <Column lg={2} md={2} sm={4}>
-                <Button onClick={openPageModal} size="sm" kind="primary">
-                  <Add /> <FormattedMessage id="notebook.label.addpage" />
-                </Button>
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <br></br>
@@ -1488,15 +1400,6 @@ const NoteBookInstanceEntryForm = () => {
                             )}
                           <Column lg={16} md={8} sm={4}>
                             <br />
-                            <Button
-                              kind="primary"
-                              size="sm"
-                              onClick={() => openEditPageModal(index)}
-                              style={{ marginRight: "0.5rem" }}
-                              disabled={page.completed}
-                            >
-                              <FormattedMessage id="label.button.edit" />
-                            </Button>
                             {!page.completed ? (
                               <Button
                                 kind="primary"
@@ -1795,84 +1698,6 @@ const NoteBookInstanceEntryForm = () => {
           </Column>
         )}
       </Grid>
-      <Modal
-        open={showPageModal}
-        modalHeading={intl.formatMessage({
-          id:
-            editingPageIndex !== null
-              ? "notebook.page.modal.edit.title"
-              : "notebook.page.modal.add.title",
-        })}
-        primaryButtonText={intl.formatMessage({
-          id:
-            editingPageIndex !== null
-              ? "label.button.save"
-              : "notebook.label.addpage",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.button.cancel",
-        })}
-        onRequestClose={closePageModal}
-        onRequestSubmit={handleAddPage}
-      >
-        {pageError && (
-          <InlineNotification
-            kind="error"
-            title={intl.formatMessage({ id: "notification.title" })}
-            subtitle={pageError}
-          />
-        )}
-        <TextInput
-          id="title"
-          name="title"
-          labelText={intl.formatMessage({
-            id: "notebook.page.modal.title.label",
-          })}
-          value={newPage.title}
-          onChange={handlePageChange}
-          required
-        />
-        <FilterableMultiSelect
-          key={showPageModal ? "open" : "closed"}
-          id="tests"
-          titleText={intl.formatMessage({
-            id: "barcode.label.info.tests",
-          })}
-          items={allTests}
-          itemToString={(item) => (item ? item.value : "")}
-          initialSelectedItems={
-            editingPageIndex !== null
-              ? allTests.filter((test) => newPage.tests.includes(test.id))
-              : []
-          }
-          onChange={(changes) => {
-            setNewPage({
-              ...newPage,
-              tests: changes.selectedItems.map((test) => test.id),
-            });
-          }}
-          selectionFeedback="top-after-reopen"
-        />
-        <TextArea
-          id="instructions"
-          name="instructions"
-          labelText={intl.formatMessage({
-            id: "notebook.page.modal.instructions.label",
-          })}
-          value={newPage.instructions}
-          onChange={handlePageChange}
-        />
-        <TextArea
-          id="content"
-          name="content"
-          labelText={intl.formatMessage({
-            id: "notebook.page.modal.content.label",
-          })}
-          value={newPage.content}
-          onChange={handlePageChange}
-          required
-        />
-      </Modal>
       <Modal
         open={showTagModal}
         modalHeading={intl.formatMessage({

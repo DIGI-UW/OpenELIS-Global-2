@@ -339,8 +339,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         noteBook.getFiles().clear();
         if (form.getFiles() != null) {
-            for (NoteBookFile file : form.getFiles()) {
+            for (NoteBookForm.NoteBookFileForm fileForm : form.getFiles()) {
+                NoteBookFile file = new NoteBookFile();
                 file.setId(null);
+                file.setFileName(fileForm.getFileName());
+                file.setFileType(fileForm.getFileType());
+                file.setFileData(fileForm.getFileData());
                 file.setNotebook(noteBook);
                 noteBook.getFiles().add(file);
             }

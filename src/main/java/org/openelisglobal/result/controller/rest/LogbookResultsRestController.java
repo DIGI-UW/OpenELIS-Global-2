@@ -398,6 +398,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         addFlashMsgsToRequest(request);
 
         for (TestResultItem resultItem : filteredTests) {
+            AddPatientIdToResult(patient, resultItem);
             if (patientName != "")
                 resultItem.setPatientName(patientName);
             if (patientInfo != "")
@@ -405,6 +406,21 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         return (form);
+    }
+
+    private void AddPatientIdToResult(Patient patient, TestResultItem resultItem) {
+        if (patient != null) {
+            resultItem.setPatientId(patient.getId());
+        } else if (resultItem.getAccessionNumber() != null) {
+            // Si le patient n'est pas défini globalement, le récupérer via l'échantillon
+            Sample sample = sampleService.getSampleByAccessionNumber(resultItem.getAccessionNumber());
+            if (sample != null) {
+                Patient itemPatient = sampleHumanService.getPatientForSample(sample);
+                if (itemPatient != null) {
+                    resultItem.setPatientId(itemPatient.getId());
+                }
+            }
+        }
     }
 
     private String getCurrentDate() {

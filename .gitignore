@@ -45,5 +45,4 @@ volume/database/data*/*
 volume/logs/*
 volume/ocl/*
 volume/odoo/*
-.cursor/
 .specify/temp/
