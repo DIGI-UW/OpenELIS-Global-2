@@ -9,9 +9,13 @@
 
 ## Executive Summary
 
-These tests violate **every major principle** in the Testing Roadmap. They are fundamentally misdesigned and cannot be reliably fixed with patches. They need **complete redesign** following Testing Roadmap patterns.
+These tests violate **every major principle** in the Testing Roadmap. They are
+fundamentally misdesigned and cannot be reliably fixed with patches. They need
+**complete redesign** following Testing Roadmap patterns.
 
-**Key Finding**: The tests are failing not because of bugs in the application, but because the tests themselves are **architecturally flawed** and **violate Cypress best practices**.
+**Key Finding**: The tests are failing not because of bugs in the application,
+but because the tests themselves are **architecturally flawed** and **violate
+Cypress best practices**.
 
 ---
 
@@ -19,44 +23,55 @@ These tests violate **every major principle** in the Testing Roadmap. They are f
 
 ### 1. Arbitrary Waits (CRITICAL VIOLATION)
 
-**Testing Roadmap Section**: [Cypress E2E Testing - DOM Query Effectiveness](.specify/guides/testing-roadmap.md#dom-query-effectiveness)
+**Testing Roadmap Section**:
+[Cypress E2E Testing - DOM Query Effectiveness](.specify/guides/testing-roadmap.md#dom-query-effectiveness)
 
 **What the Roadmap Says**:
-> **DON'T**: Use `cy.wait(5000)` instead of `.should()` assertions (profy.dev anti-pattern)
+
+> **DON'T**: Use `cy.wait(5000)` instead of `.should()` assertions (profy.dev
+> anti-pattern)
 
 **What These Tests Do**:
-- `patientEntry.cy.js`: **15+ instances** of `cy.wait(1000)`, `cy.wait(200)`, `cy.wait(500)`
+
+- `patientEntry.cy.js`: **15+ instances** of `cy.wait(1000)`, `cy.wait(200)`,
+  `cy.wait(500)`
 - `modifyOrder.cy.js`: **10+ instances** of arbitrary waits
 - `dashboard.cy.js`: Multiple `cy.wait(1000)` calls
 - `orderEntity.cy.js`: `cy.wait(1000)`, `cy.wait(300)`, `cy.wait(200)`
 
 **Why This Is Fatal**:
-- Arbitrary waits have **no retry logic** - if element takes 1100ms to appear, test fails
+
+- Arbitrary waits have **no retry logic** - if element takes 1100ms to appear,
+  test fails
 - Tests become **brittle** - any performance change breaks them
 - **No feedback** on what's actually happening - just "wait and hope"
 
 **Example from `patientEntry.cy.js`**:
+
 ```javascript
 it("Search patient By Date Of Birth", function () {
-  cy.wait(1000);  // ❌ VIOLATION: Arbitrary wait
+  cy.wait(1000); // ❌ VIOLATION: Arbitrary wait
   cy.fixture("Patient").then((patient) => {
     patientPage.searchPatientByDateOfBirth(patient.DOB);
     patientPage.clickSearchPatientButton();
     // ...
   });
-  cy.wait(200).reload();  // ❌ VIOLATION: Another arbitrary wait
+  cy.wait(200).reload(); // ❌ VIOLATION: Another arbitrary wait
 });
 ```
 
 **Correct Pattern** (from Testing Roadmap):
+
 ```javascript
 it("Search patient By Date Of Birth", function () {
   cy.fixture("Patient").then((patient) => {
     patientPage.searchPatientByDateOfBirth(patient.DOB);
     patientPage.clickSearchPatientButton();
     // ✅ CORRECT: Use .should() for retry-ability
-    cy.get("table tbody tr", { timeout: 10000 })
-      .should("have.length.greaterThan", 0);
+    cy.get("table tbody tr", { timeout: 10000 }).should(
+      "have.length.greaterThan",
+      0
+    );
   });
 });
 ```
@@ -65,13 +80,18 @@ it("Search patient By Date Of Birth", function () {
 
 ### 2. No Session Management (CRITICAL VIOLATION)
 
-**Testing Roadmap Section**: [Session Management (cy.session())](.specify/guides/testing-roadmap.md#session-management-cysession)
+**Testing Roadmap Section**:
+[Session Management (cy.session())](.specify/guides/testing-roadmap.md#session-management-cysession)
 
 **What the Roadmap Says**:
-> **CRITICAL**: Use `cy.session()` to preserve login state across tests (10-20x faster - Cypress official pattern).
+
+> **CRITICAL**: Use `cy.session()` to preserve login state across tests (10-20x
+> faster - Cypress official pattern).
 
 **What These Tests Do**:
-- `patientEntry.cy.js`: `before("login", () => { loginPage.visit(); })` - **NO cy.session()**
+
+- `patientEntry.cy.js`: `before("login", () => { loginPage.visit(); })` - **NO
+  cy.session()**
 - `orderEntity.cy.js`: Same pattern - login every time
 - `dashboard.cy.js`: Same pattern
 - `workplan.cy.js`: Same pattern
@@ -79,20 +99,23 @@ it("Search patient By Date Of Birth", function () {
 - `modifyOrder.cy.js`: Same pattern
 
 **Why This Is Fatal**:
+
 - **10-20x slower** than necessary (per Testing Roadmap)
 - Login runs **before every test** instead of once per file
 - **Race conditions** - if login takes longer, tests fail
 - **No session caching** - redundant authentication
 
 **Example from `patientEntry.cy.js`**:
+
 ```javascript
 before("login", () => {
   loginPage = new LoginPage();
-  loginPage.visit();  // ❌ VIOLATION: No cy.session()
+  loginPage.visit(); // ❌ VIOLATION: No cy.session()
 });
 ```
 
 **Correct Pattern** (from Testing Roadmap):
+
 ```javascript
 before("login", () => {
   cy.session("test-session", () => {
@@ -104,37 +127,48 @@ before("login", () => {
 });
 ```
 
-**Note**: Only `storage-setup.js` uses `cy.session()` correctly. All other test files violate this.
+**Note**: Only `storage-setup.js` uses `cy.session()` correctly. All other test
+files violate this.
 
 ---
 
 ### 3. CSS Selectors Instead of data-testid (CRITICAL VIOLATION)
 
-**Testing Roadmap Section**: [Selector Strategy (MANDATORY Priority)](.specify/guides/testing-roadmap.md#selector-strategy-mandatory-priority)
+**Testing Roadmap Section**:
+[Selector Strategy (MANDATORY Priority)](.specify/guides/testing-roadmap.md#selector-strategy-mandatory-priority)
 
 **What the Roadmap Says**:
+
 > **STRICT Priority Order**:
+>
 > 1. **data-testid attributes** (MOST STABLE - PREFERRED)
 > 2. **ARIA roles and labels** (ACCESSIBLE - SECOND CHOICE)
 > 3. **Semantic selectors with context** (TEXT CONTENT - USE CAREFULLY)
 > 4. **CSS selectors** (LAST RESORT - STRONGLY DISCOURAGED)
 
 **What These Tests Do**:
-- `patientEntry.cy.js`: `#labNumber`, `#display_labNumber`, `#local_search`, `.cds--data-table` - **ALL CSS selectors**
-- `orderEntity.cy.js`: `button:contains("Print Barcode")` - **Text-based selector without context**
-- `workplan.cy.js`: `select#select-1`, `button:contains(/Print Workplan?/i)` - **CSS + text selectors**
+
+- `patientEntry.cy.js`: `#labNumber`, `#display_labNumber`, `#local_search`,
+  `.cds--data-table` - **ALL CSS selectors**
+- `orderEntity.cy.js`: `button:contains("Print Barcode")` - **Text-based
+  selector without context**
+- `workplan.cy.js`: `select#select-1`, `button:contains(/Print Workplan?/i)` -
+  **CSS + text selectors**
 - `result.cy.js`: `.cds--data-table tbody`, `table tbody tr` - **CSS selectors**
-- `modifyOrder.cy.js`: `table input[type="checkbox"][name="add"]` - **Deep CSS selector chain**
+- `modifyOrder.cy.js`: `table input[type="checkbox"][name="add"]` - **Deep CSS
+  selector chain**
 
 **Why This Is Fatal**:
+
 - **Brittle** - breaks when CSS classes change (Carbon Design System updates)
 - **No semantic meaning** - doesn't express intent
 - **Hard to maintain** - refactoring breaks tests
 - **Not accessible** - doesn't test what users actually interact with
 
 **Example from `patientEntry.cy.js`**:
+
 ```javascript
-cy.get("#display_labNumber, #labNumber", { timeout: 10000 })  // ❌ VIOLATION: CSS selector
+cy.get("#display_labNumber, #labNumber", { timeout: 10000 }) // ❌ VIOLATION: CSS selector
   .first()
   .should("be.visible")
   .clear()
@@ -142,61 +176,74 @@ cy.get("#display_labNumber, #labNumber", { timeout: 10000 })  // ❌ VIOLATION: 
 ```
 
 **Correct Pattern** (from Testing Roadmap):
+
 ```javascript
-cy.get('[data-testid="lab-number-input"]')  // ✅ CORRECT: data-testid
+cy.get('[data-testid="lab-number-input"]') // ✅ CORRECT: data-testid
   .should("be.visible")
   .clear()
   .type(patient.labNo);
 ```
 
-**Note**: `barcodeWorkflow.cy.js` correctly uses `data-testid` - this is why it's more stable.
+**Note**: `barcodeWorkflow.cy.js` correctly uses `data-testid` - this is why
+it's more stable.
 
 ---
 
 ### 4. Missing API Intercepts (CRITICAL VIOLATION)
 
-**Testing Roadmap Section**: [cy.intercept() Patterns](.specify/guides/testing-roadmap.md#cyintercept-patterns)
+**Testing Roadmap Section**:
+[cy.intercept() Patterns](.specify/guides/testing-roadmap.md#cyintercept-patterns)
 
 **What the Roadmap Says**:
+
 > **Timing**: Intercepts MUST be set up before actions that trigger them.
 
 **What These Tests Do**:
-- `patientEntry.cy.js` (Lab Number search): Sets up intercept **correctly** before action ✅
-- `patientEntry.cy.js` (DOB search): **NO intercept** - just waits for table to appear ❌
-- `orderEntity.cy.js`: **NO intercept** for order submission - just waits for button ❌
+
+- `patientEntry.cy.js` (Lab Number search): Sets up intercept **correctly**
+  before action ✅
+- `patientEntry.cy.js` (DOB search): **NO intercept** - just waits for table to
+  appear ❌
+- `orderEntity.cy.js`: **NO intercept** for order submission - just waits for
+  button ❌
 - `dashboard.cy.js`: Some intercepts, but **not consistently** ❌
 - `workplan.cy.js`: **NO intercepts** - relies on arbitrary waits ❌
 - `result.cy.js`: **NO intercepts** - relies on table rendering ❌
-- `storageDisposal.cy.js`: Sets up intercept in `before()` but **times out** - likely wrong URL pattern ❌
+- `storageDisposal.cy.js`: Sets up intercept in `before()` but **times out** -
+  likely wrong URL pattern ❌
 
 **Why This Is Fatal**:
-- **No visibility** into what's actually happening (API calls, responses, errors)
+
+- **No visibility** into what's actually happening (API calls, responses,
+  errors)
 - **Race conditions** - test proceeds before API completes
-- **No error handling** - can't distinguish between "API failed" vs "element not found"
+- **No error handling** - can't distinguish between "API failed" vs "element not
+  found"
 - **Flaky** - depends on network timing
 
 **Example from `patientEntry.cy.js` (DOB search)**:
+
 ```javascript
 it("Search patient By Date Of Birth", function () {
-  cy.wait(1000);  // ❌ VIOLATION: Arbitrary wait
+  cy.wait(1000); // ❌ VIOLATION: Arbitrary wait
   cy.fixture("Patient").then((patient) => {
     patientPage.searchPatientByDateOfBirth(patient.DOB);
     patientPage.clickSearchPatientButton();
     // ❌ VIOLATION: No intercept - just hope table appears
-    patientPage.validatePatientSearchTablebyRespectiveField(
-      patient.DOB,
-      "DOB",
-    );
+    patientPage.validatePatientSearchTablebyRespectiveField(patient.DOB, "DOB");
   });
 });
 ```
 
 **Correct Pattern** (from Testing Roadmap):
+
 ```javascript
 it("Search patient By Date Of Birth", function () {
   cy.fixture("Patient").then((patient) => {
     // ✅ CORRECT: Set up intercept BEFORE action
-    cy.intercept("GET", "**/rest/patient-search-results*").as("getPatientSearch");
+    cy.intercept("GET", "**/rest/patient-search-results*").as(
+      "getPatientSearch"
+    );
     patientPage.searchPatientByDateOfBirth(patient.DOB);
     patientPage.clickSearchPatientButton();
     // ✅ CORRECT: Wait for API call, then validate
@@ -214,10 +261,13 @@ it("Search patient By Date Of Birth", function () {
 
 ### 5. No Viewport Management (CRITICAL VIOLATION)
 
-**Testing Roadmap Section**: [DOM Query Effectiveness](.specify/guides/testing-roadmap.md#dom-query-effectiveness)
+**Testing Roadmap Section**:
+[DOM Query Effectiveness](.specify/guides/testing-roadmap.md#dom-query-effectiveness)
 
 **What the Roadmap Says**:
+
 > **Viewport management** (profy.dev: set viewport before visit):
+>
 > ```javascript
 > beforeEach(() => {
 >   cy.viewport(1025, 900); // Desktop viewport
@@ -226,11 +276,13 @@ it("Search patient By Date Of Birth", function () {
 > ```
 
 **What These Tests Do**:
+
 - **NONE** of the failing tests set viewport before `cy.visit()`
 - Tests rely on default viewport (may vary by environment)
 - Mobile/desktop differences cause failures
 
 **Why This Is Fatal**:
+
 - **Inconsistent** - different viewports show different UI (mobile vs desktop)
 - **Hidden elements** - some elements only visible at certain viewport sizes
 - **Layout differences** - Carbon components render differently on mobile
@@ -238,6 +290,7 @@ it("Search patient By Date Of Birth", function () {
 **Example**: All failing tests lack viewport management.
 
 **Correct Pattern** (from Testing Roadmap):
+
 ```javascript
 beforeEach(() => {
   cy.viewport(1025, 900); // Desktop viewport
@@ -249,10 +302,13 @@ beforeEach(() => {
 
 ### 6. Fragile Table Validation (CRITICAL VIOLATION)
 
-**Testing Roadmap Section**: [DOM Query Effectiveness - Table row filtering](.specify/guides/testing-roadmap.md#dom-query-effectiveness)
+**Testing Roadmap Section**:
+[DOM Query Effectiveness - Table row filtering](.specify/guides/testing-roadmap.md#dom-query-effectiveness)
 
 **What the Roadmap Says**:
+
 > **Table row filtering** (profy.dev debugging example - use `tbody`):
+>
 > ```javascript
 > cy.get("main")
 >   .find("tbody") // Exclude thead
@@ -263,18 +319,25 @@ beforeEach(() => {
 > ```
 
 **What These Tests Do**:
-- `patientEntry.cy.js`: Uses `.cds--data-table > tbody` but **doesn't wait for rows** before validation
-- `result.cy.js`: Uses `.cds--data-table tbody` but **doesn't verify table loaded** before checking rows
-- `workplan.cy.js`: Uses `tbody tr` but **no wait for API** - just hopes table appears
-- `modifyOrder.cy.js`: Uses `table input[type="checkbox"]` - **deep CSS selector**, no readiness check
+
+- `patientEntry.cy.js`: Uses `.cds--data-table > tbody` but **doesn't wait for
+  rows** before validation
+- `result.cy.js`: Uses `.cds--data-table tbody` but **doesn't verify table
+  loaded** before checking rows
+- `workplan.cy.js`: Uses `tbody tr` but **no wait for API** - just hopes table
+  appears
+- `modifyOrder.cy.js`: Uses `table input[type="checkbox"]` - **deep CSS
+  selector**, no readiness check
 
 **Why This Is Fatal**:
+
 - **Race conditions** - validation runs before table renders
 - **Header row confusion** - may select header instead of data rows
 - **No empty state handling** - fails if API returns empty array
 - **Brittle selectors** - breaks when table structure changes
 
 **Example from `result.cy.js`**:
+
 ```javascript
 it("should accept the sample, refer the sample, and save the result", function () {
   // ❌ VIOLATION: No wait for API, no verification table loaded
@@ -285,13 +348,16 @@ it("should accept the sample, refer the sample, and save the result", function (
 ```
 
 **Correct Pattern** (from Testing Roadmap):
+
 ```javascript
 it("should accept the sample, refer the sample, and save the result", function () {
   // ✅ CORRECT: Wait for API, then verify table
   cy.intercept("GET", "**/rest/results**").as("getResults");
   cy.wait("@getResults");
-  cy.get("table tbody tr", { timeout: 10000 })
-    .should("have.length.greaterThan", 0);
+  cy.get("table tbody tr", { timeout: 10000 }).should(
+    "have.length.greaterThan",
+    0
+  );
   result.expandSampleDetails();
   // ...
 });
@@ -302,42 +368,53 @@ it("should accept the sample, refer the sample, and save the result", function (
 ### 7. Reloads Between Tests (CODE SMELL)
 
 **What These Tests Do**:
+
 - `patientEntry.cy.js`: `cy.wait(200).reload()` after **every test**
 - `modifyOrder.cy.js`: `cy.wait(200).reload()` after multiple tests
 - `dashboard.cy.js`: Implicit reloads via navigation
 
 **Why This Is Fatal**:
+
 - **Slow** - unnecessary page reloads
 - **Hides test isolation issues** - if tests need reloads, they're not isolated
 - **Race conditions** - reload may not complete before next test
 - **No session preservation** - may lose authentication state
 
 **Example from `patientEntry.cy.js`**:
+
 ```javascript
 it("Search Patient By FirstName only", function () {
   // ... test logic ...
-  cy.wait(200).reload();  // ❌ VIOLATION: Unnecessary reload
+  cy.wait(200).reload(); // ❌ VIOLATION: Unnecessary reload
 });
 ```
 
-**Correct Pattern**: Tests should be isolated - no reloads needed. If reloads are needed, tests are not properly isolated.
+**Correct Pattern**: Tests should be isolated - no reloads needed. If reloads
+are needed, tests are not properly isolated.
 
 ---
 
 ### 8. Complex, Fragile Validation Logic (CRITICAL VIOLATION)
 
 **What These Tests Do**:
-- `PatientEntryPage.js`: `validatePatientSearchTablebyRespectiveField()` - **200+ lines** of complex validation
-- DOB validation: Checks for "TEST-Smith" in results instead of exact DOB match (workaround, not fix)
-- Table validation: Uses `nth-child()` selectors, text matching, complex conditionals
+
+- `PatientEntryPage.js`: `validatePatientSearchTablebyRespectiveField()` -
+  **200+ lines** of complex validation
+- DOB validation: Checks for "TEST-Smith" in results instead of exact DOB match
+  (workaround, not fix)
+- Table validation: Uses `nth-child()` selectors, text matching, complex
+  conditionals
 
 **Why This Is Fatal**:
+
 - **Overly complex** - hard to understand, maintain, debug
 - **Brittle** - breaks when table structure changes
-- **Workarounds instead of fixes** - DOB validation checks name instead of DOB (hides real issue)
+- **Workarounds instead of fixes** - DOB validation checks name instead of DOB
+  (hides real issue)
 - **No clear intent** - what are we actually testing?
 
 **Example from `PatientEntryPage.js`**:
+
 ```javascript
 validatePatientSearchTablebyRespectiveField(expectedFieldValue, searchBy) {
   if (searchBy === "DOB") {
@@ -369,6 +446,7 @@ validatePatientSearchTablebyRespectiveField(expectedFieldValue, searchBy) {
 ```
 
 **Correct Pattern** (from Testing Roadmap):
+
 ```javascript
 // ✅ CORRECT: Simple, clear validation
 validatePatientSearchResults(expectedPatient) {
@@ -389,25 +467,34 @@ validatePatientSearchResults(expectedPatient) {
 
 ### 9. No Test Data Isolation (CRITICAL VIOLATION)
 
-**Testing Roadmap Section**: [Test Data Management (API-First)](.specify/guides/testing-roadmap.md#test-data-management-api-first)
+**Testing Roadmap Section**:
+[Test Data Management (API-First)](.specify/guides/testing-roadmap.md#test-data-management-api-first)
 
 **What the Roadmap Says**:
-> **DO**: Use `cy.request()` for fast test data setup (profy.dev recommendation).
-> **DON'T**: Use slow UI interactions for setup (profy.dev anti-pattern).
+
+> **DO**: Use `cy.request()` for fast test data setup (profy.dev
+> recommendation). **DON'T**: Use slow UI interactions for setup (profy.dev
+> anti-pattern).
 
 **What These Tests Do**:
-- `patientEntry.cy.js`: "Add New Patient" test **creates data** that conflicts with "Search Patient" tests
+
+- `patientEntry.cy.js`: "Add New Patient" test **creates data** that conflicts
+  with "Search Patient" tests
 - Tests depend on **shared mutable database state**
 - Fixture loading happens in `before()` but **no verification** it worked
-- Tests **pollute each other's data** - "Add New Patient" creates patients that affect search results
+- Tests **pollute each other's data** - "Add New Patient" creates patients that
+  affect search results
 
 **Why This Is Fatal**:
+
 - **Non-deterministic** - test results depend on execution order
 - **Flaky** - fails if previous test didn't clean up
-- **Hard to debug** - "why did search return wrong patient?" → "because previous test created one"
+- **Hard to debug** - "why did search return wrong patient?" → "because previous
+  test created one"
 - **No isolation** - tests can't run in parallel
 
 **Example from `patientEntry.cy.js`**:
+
 ```javascript
 describe("Add New Patient", function () {
   // ❌ VIOLATION: Creates patient that may conflict with search tests
@@ -428,6 +515,7 @@ describe("Search Patient", function () {
 ```
 
 **Correct Pattern** (from Testing Roadmap):
+
 ```javascript
 describe("Add New Patient", function () {
   it("Enter patient Information and save", function () {
@@ -449,10 +537,13 @@ describe("Add New Patient", function () {
 
 ### 10. Missing Element Readiness Checks (CRITICAL VIOLATION)
 
-**Testing Roadmap Section**: [DOM Query Effectiveness - Chaining with .should()](.specify/guides/testing-roadmap.md#dom-query-effectiveness)
+**Testing Roadmap Section**:
+[DOM Query Effectiveness - Chaining with .should()](.specify/guides/testing-roadmap.md#dom-query-effectiveness)
 
 **What the Roadmap Says**:
+
 > **Chaining with .should()** (Cypress retry-ability):
+>
 > ```javascript
 > cy.get('[data-testid="submit-button"]')
 >   .should("be.visible")
@@ -461,26 +552,31 @@ describe("Add New Patient", function () {
 > ```
 
 **What These Tests Do**:
+
 - `orderEntity.cy.js`: Clicks submit button **without checking** if it's enabled
 - `workplan.cy.js`: Clicks dropdown **without checking** if it's ready
 - `modifyOrder.cy.js`: Clicks checkboxes **without checking** if table loaded
 - `result.cy.js`: Expands sample details **without checking** if table has rows
 
 **Why This Is Fatal**:
+
 - **Race conditions** - clicks before element is ready
 - **No retry logic** - fails immediately if element not ready
 - **Flaky** - works sometimes, fails other times
 
 **Example from `orderEntity.cy.js`**:
+
 ```javascript
 it("should click submit order button", function () {
-  orderEntityPage.clickSubmitOrderButton();  // ❌ VIOLATION: No readiness check
-  cy.get('[data-testid="success-message"]', { timeout: 15000 })
-    .should("be.visible");
+  orderEntityPage.clickSubmitOrderButton(); // ❌ VIOLATION: No readiness check
+  cy.get('[data-testid="success-message"]', { timeout: 15000 }).should(
+    "be.visible"
+  );
 });
 ```
 
 **Correct Pattern** (from Testing Roadmap):
+
 ```javascript
 it("should click submit order button", function () {
   // ✅ CORRECT: Check readiness before action
@@ -488,8 +584,9 @@ it("should click submit order button", function () {
     .should("be.visible")
     .should("not.be.disabled")
     .click();
-  cy.get('[data-testid="success-message"]', { timeout: 15000 })
-    .should("be.visible");
+  cy.get('[data-testid="success-message"]', { timeout: 15000 }).should(
+    "be.visible"
+  );
 });
 ```
 
@@ -499,7 +596,8 @@ it("should click submit order button", function () {
 
 ### Root Cause #1: Architectural Violations
 
-These tests violate **every major architectural principle** in the Testing Roadmap:
+These tests violate **every major architectural principle** in the Testing
+Roadmap:
 
 1. ❌ **No session management** - login runs every time (10-20x slower)
 2. ❌ **Arbitrary waits everywhere** - no retry logic, brittle timing
@@ -534,14 +632,18 @@ The tests use **workarounds** that hide problems instead of fixing them:
 
 ## Why Patches Don't Work
 
-**Every fix attempt** has been a **patch** that addresses symptoms, not root causes:
+**Every fix attempt** has been a **patch** that addresses symptoms, not root
+causes:
 
 1. **Fix DOB mismatch** → Update database → **Doesn't fix** test design
-2. **Fix lab number search** → Add intercept → **Doesn't fix** other missing intercepts
+2. **Fix lab number search** → Add intercept → **Doesn't fix** other missing
+   intercepts
 3. **Fix table validation** → Check for rows → **Doesn't fix** missing API waits
-4. **Fix Print Barcode button** → Add timeout → **Doesn't fix** missing readiness checks
+4. **Fix Print Barcode button** → Add timeout → **Doesn't fix** missing
+   readiness checks
 
-**The tests are fundamentally broken** - patches can't fix architectural violations.
+**The tests are fundamentally broken** - patches can't fix architectural
+violations.
 
 ---
 
@@ -564,7 +666,8 @@ The tests use **workarounds** that hide problems instead of fixing them:
 
 ### Option 2: Incremental Migration (ALTERNATIVE)
 
-**Migrate one test file at a time** following Testing Roadmap migration strategy:
+**Migrate one test file at a time** following Testing Roadmap migration
+strategy:
 
 1. Start with `patientEntry.cy.js` (most violations)
 2. Apply all Testing Roadmap patterns
@@ -575,7 +678,8 @@ The tests use **workarounds** that hide problems instead of fixing them:
 
 ### Option 3: Delete and Rewrite (FASTEST)
 
-**Delete failing tests** and rewrite from scratch using Testing Roadmap templates:
+**Delete failing tests** and rewrite from scratch using Testing Roadmap
+templates:
 
 1. Use `.specify/templates/testing/CypressE2E.cy.js.template`
 2. Follow Testing Roadmap patterns from the start
@@ -587,19 +691,25 @@ The tests use **workarounds** that hide problems instead of fixing them:
 
 ## Conclusion
 
-These tests are failing because they **violate every major principle** in the Testing Roadmap. They cannot be reliably fixed with patches - they need **complete redesign** following Testing Roadmap patterns.
+These tests are failing because they **violate every major principle** in the
+Testing Roadmap. They cannot be reliably fixed with patches - they need
+**complete redesign** following Testing Roadmap patterns.
 
-**The tests are not testing the application - they're testing whether arbitrary waits are long enough and whether CSS selectors still work.**
+**The tests are not testing the application - they're testing whether arbitrary
+waits are long enough and whether CSS selectors still work.**
 
-**Recommendation**: Choose Option 3 (Delete and Rewrite) for fastest path to stable tests, or Option 1 (Complete Redesign) for comprehensive fix.
+**Recommendation**: Choose Option 3 (Delete and Rewrite) for fastest path to
+stable tests, or Option 1 (Complete Redesign) for comprehensive fix.
 
 ---
 
 ## References
 
-- [Testing Roadmap](.specify/guides/testing-roadmap.md) - Comprehensive testing guide
-- [Cypress Best Practices Guide](.specify/guides/cypress-best-practices.md) - Quick reference
-- [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices) - E2E testing requirements
-- [Cypress E2E Template](.specify/templates/testing/CypressE2E.cy.js.template) - Standard test template
-
-
+- [Testing Roadmap](.specify/guides/testing-roadmap.md) - Comprehensive testing
+  guide
+- [Cypress Best Practices Guide](.specify/guides/cypress-best-practices.md) -
+  Quick reference
+- [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices) -
+  E2E testing requirements
+- [Cypress E2E Template](.specify/templates/testing/CypressE2E.cy.js.template) -
+  Standard test template
