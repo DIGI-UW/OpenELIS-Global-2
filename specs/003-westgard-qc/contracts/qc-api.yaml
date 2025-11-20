@@ -1,0 +1,667 @@
+openapi: 3.0.3
+info:
+  title: QC Dashboard and Result Entry API
+  version: 1.0.0
+  description: |
+    API endpoints for QC dashboard data retrieval, QC result entry, and control lot management.
+    Part of Feature 003 (Westgard Rules Quality Control Compliance).
+  contact:
+    name: OpenELIS Development Team
+    url: https://github.com/DIGI-UW/OpenELIS-Global-2
+
+servers:
+  - url: https://localhost/rest/qc
+    description: Local development server
+  - url: https://{environment}.openelis.org/rest/qc
+    description: OpenELIS environment
+    variables:
+      environment:
+        default: demo
+        enum:
+          - demo
+          - staging
+          - production
+
+paths:
+  /dashboard:
+    get:
+      summary: Get QC dashboard overview for all analyzers
+      operationId: getDashboard
+      tags:
+        - Dashboard
+      parameters:
+        - name: status
+          in: query
+          description: Filter by compliance status (COMPLIANT, WARNING, REJECTED)
+          required: false
+          schema:
+            type: string
+            enum: [COMPLIANT, WARNING, REJECTED]
+      responses:
+        '200':
+          description: Successful response with dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /dashboard/{analyzerId}:
+    get:
+      summary: Get QC dashboard data for a specific analyzer
+      operationId: getAnalyzerDashboard
+      tags:
+        - Dashboard
+      parameters:
+        - name: analyzerId
+          in: path
+          description: Analyzer ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response with analyzer-specific dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerDashboardResponse'
+        '404':
+          description: Analyzer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /results:
+    post:
+      summary: Create a QC result (manual entry or ASTM interface)
+      operationId: createQCResult
+      tags:
+        - QC Results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QCResultCreateRequest'
+      responses:
+        '201':
+          description: QC result created successfully, rule evaluation triggered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QCResultResponse'
+        '400':
+          description: Invalid request (control lot inactive, missing fields, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /control-lots:
+    get:
+      summary: Get list of QC control lots
+      operationId: getControlLots
+      tags:
+        - Control Lots
+      parameters:
+        - name: analyzerId
+          in: query
+          description: Filter by analyzer ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: testUnitId
+          in: query
+          description: Filter by test unit ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          description: Filter by lot status
+          required: false
+          schema:
+            type: string
+            enum: [ESTABLISHMENT, ACTIVE, EXPIRED, DEACTIVATED]
+      responses:
+        '200':
+          description: Successful response with control lot list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  controlLots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ControlLot'
+
+    post:
+      summary: Create a new QC control lot
+      operationId: createControlLot
+      tags:
+        - Control Lots
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ControlLotCreateRequest'
+      responses:
+        '201':
+          description: Control lot created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlLot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /control-lots/{lotId}:
+    get:
+      summary: Get control lot details
+      operationId: getControlLot
+      tags:
+        - Control Lots
+      parameters:
+        - name: lotId
+          in: path
+          description: Control lot ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response with control lot details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlLot'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update control lot configuration
+      operationId: updateControlLot
+      tags:
+        - Control Lots
+      parameters:
+        - name: lotId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ControlLotUpdateRequest'
+      responses:
+        '200':
+          description: Control lot updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlLot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /control-lots/{lotId}/deactivate:
+    post:
+      summary: Deactivate a control lot
+      operationId: deactivateControlLot
+      tags:
+        - Control Lots
+      parameters:
+        - name: lotId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Control lot deactivated successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /charts/{lotId}:
+    get:
+      summary: Get Levey-Jennings chart data for a control lot
+      operationId: getChartData
+      tags:
+        - Charts
+      parameters:
+        - name: lotId
+          in: path
+          description: Control lot ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          description: Start date for data range (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          description: End date for data range (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          description: Maximum number of data points
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+      responses:
+        '200':
+          description: Successful response with chart data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChartDataResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    DashboardResponse:
+      type: object
+      properties:
+        lastUpdated:
+          type: string
+          format: date-time
+          description: Timestamp of last data update
+        analyzers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyzerDashboardSummary'
+
+    AnalyzerDashboardSummary:
+      type: object
+      properties:
+        analyzerId:
+          type: string
+          format: uuid
+        analyzerName:
+          type: string
+        complianceStatus:
+          type: string
+          enum: [COMPLIANT, WARNING, REJECTED]
+          description: Overall compliance status (green/yellow/red)
+        triggeredRules:
+          type: array
+          items:
+            type: string
+            example: "1₃ₛ"
+          description: List of currently triggered rule codes
+        lastQCDateTime:
+          type: string
+          format: date-time
+          description: Timestamp of last QC result
+        unresolvedViolationCount:
+          type: integer
+          description: Number of unresolved violations
+
+    AnalyzerDashboardResponse:
+      type: object
+      properties:
+        analyzerId:
+          type: string
+          format: uuid
+        analyzerName:
+          type: string
+        complianceStatus:
+          type: string
+          enum: [COMPLIANT, WARNING, REJECTED]
+        controlLots:
+          type: array
+          items:
+            $ref: '#/components/schemas/ControlLotSummary'
+        recentViolations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ViolationSummary'
+
+    ControlLotSummary:
+      type: object
+      properties:
+        lotId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+        lotNumber:
+          type: string
+        controlLevel:
+          type: string
+          enum: [LOW, NORMAL, HIGH]
+        status:
+          type: string
+          enum: [ESTABLISHMENT, ACTIVE, EXPIRED, DEACTIVATED]
+        currentMean:
+          type: number
+          format: double
+        currentSD:
+          type: number
+          format: double
+
+    ViolationSummary:
+      type: object
+      properties:
+        violationId:
+          type: string
+          format: uuid
+        ruleCode:
+          type: string
+          example: "1₃ₛ"
+        severity:
+          type: string
+          enum: [WARNING, REJECTION]
+        violationDateTime:
+          type: string
+          format: date-time
+        resolutionStatus:
+          type: string
+          enum: [UNRESOLVED, ACKNOWLEDGED, CORRECTIVE_ACTION_PENDING, RESOLVED]
+
+    QCResultCreateRequest:
+      type: object
+      required:
+        - analyzerId
+        - testUnitId
+        - controlLotId
+        - controlLevel
+        - resultValue
+        - unit
+        - timestamp
+      properties:
+        analyzerId:
+          type: string
+          format: uuid
+        testUnitId:
+          type: string
+          format: uuid
+        controlLotId:
+          type: string
+          format: uuid
+        controlLevel:
+          type: string
+          enum: [LOW, NORMAL, HIGH]
+        resultValue:
+          type: number
+          format: double
+        unit:
+          type: string
+          example: "mg/dL"
+        timestamp:
+          type: string
+          format: date-time
+          description: When QC was performed
+
+    QCResultResponse:
+      type: object
+      properties:
+        resultId:
+          type: string
+          format: uuid
+        zScore:
+          type: number
+          format: double
+        status:
+          type: string
+          enum: [PENDING, ACCEPTED, REJECTED]
+        violationsDetected:
+          type: array
+          items:
+            type: string
+            example: "1₃ₛ"
+          description: List of rule codes violated by this result
+
+    ControlLot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        analyzerId:
+          type: string
+          format: uuid
+        testUnitId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+        lotNumber:
+          type: string
+        controlLevel:
+          type: string
+          enum: [LOW, NORMAL, HIGH]
+        manufacturerName:
+          type: string
+        manufacturerMean:
+          type: number
+          format: double
+        manufacturerSD:
+          type: number
+          format: double
+        activationDate:
+          type: string
+          format: date
+        expirationDate:
+          type: string
+          format: date
+        calculationMethod:
+          type: string
+          enum: [INITIAL_RUNS, ROLLING, MANUFACTURER_FIXED]
+        initialRunsCount:
+          type: integer
+          minimum: 10
+          maximum: 50
+        rollingWindowSize:
+          type: integer
+          minimum: 20
+          maximum: 100
+        status:
+          type: string
+          enum: [ESTABLISHMENT, ACTIVE, EXPIRED, DEACTIVATED]
+
+    ControlLotCreateRequest:
+      type: object
+      required:
+        - analyzerId
+        - testUnitId
+        - productName
+        - lotNumber
+        - controlLevel
+        - activationDate
+        - expirationDate
+        - calculationMethod
+      properties:
+        analyzerId:
+          type: string
+          format: uuid
+        testUnitId:
+          type: string
+          format: uuid
+        productName:
+          type: string
+        lotNumber:
+          type: string
+        controlLevel:
+          type: string
+          enum: [LOW, NORMAL, HIGH]
+        manufacturerName:
+          type: string
+        manufacturerMean:
+          type: number
+          format: double
+        manufacturerSD:
+          type: number
+          format: double
+        activationDate:
+          type: string
+          format: date
+        expirationDate:
+          type: string
+          format: date
+        calculationMethod:
+          type: string
+          enum: [INITIAL_RUNS, ROLLING, MANUFACTURER_FIXED]
+        initialRunsCount:
+          type: integer
+          default: 20
+        rollingWindowSize:
+          type: integer
+          default: 20
+
+    ControlLotUpdateRequest:
+      type: object
+      properties:
+        manufacturerMean:
+          type: number
+          format: double
+        manufacturerSD:
+          type: number
+          format: double
+        expirationDate:
+          type: string
+          format: date
+        calculationMethod:
+          type: string
+          enum: [INITIAL_RUNS, ROLLING, MANUFACTURER_FIXED]
+        initialRunsCount:
+          type: integer
+        rollingWindowSize:
+          type: integer
+
+    ChartDataResponse:
+      type: object
+      properties:
+        controlLotId:
+          type: string
+          format: uuid
+        mean:
+          type: number
+          format: double
+        standardDeviation:
+          type: number
+          format: double
+        dataPoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChartDataPoint'
+
+    ChartDataPoint:
+      type: object
+      properties:
+        resultId:
+          type: string
+          format: uuid
+        runNumber:
+          type: integer
+        value:
+          type: number
+          format: double
+        zScore:
+          type: number
+          format: double
+        runDateTime:
+          type: string
+          format: date-time
+        violated:
+          type: boolean
+        violations:
+          type: array
+          items:
+            type: string
+            example: "1₃ₛ"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        errorCode:
+          type: string
+          description: Machine-readable error code
+        i18nKey:
+          type: string
+          description: Internationalization key for error message
+          example: "qc.error.control_lot_inactive"
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized - user must have BIOLOGIST or GLOBAL_ADMIN role
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+      description: Spring Security session-based authentication
+
+security:
+  - sessionAuth: []
+
+tags:
+  - name: Dashboard
+    description: QC dashboard data retrieval
+  - name: QC Results
+    description: QC result entry and retrieval
+  - name: Control Lots
+    description: Control lot management
+  - name: Charts
+    description: Levey-Jennings chart data
+

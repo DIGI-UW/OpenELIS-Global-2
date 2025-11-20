@@ -15,8 +15,7 @@ requirements.
 
 **Technical Approach**: Greenfield implementation with service-oriented
 architecture using Strategy pattern for statistics calculation, Chain of
-Responsibility for rule evaluation, integration with feature 004 analyzer
-interface for automated result capture, Carbon Design System for
+Responsibility for rule evaluation. Feature 003 exposes QCResultService.createQCResult() method that feature 004 calls after parsing ASTM Q-segments (per 004:FR-021 and 004:plan.md QC Result Processing Integration section). Carbon Design System for
 dashboard/charting UI, and comprehensive TDD workflow with >80% backend coverage
 and >70% frontend coverage.
 
@@ -50,21 +49,21 @@ and >70% frontend coverage.
 - Rule evaluation: <5 seconds per result entry (FR-028)
 - Dashboard auto-refresh: 5 minutes (configurable, FR-050)
 - Chart rendering: <3 seconds for up to 100 data points (SC-007)
-- Support 50+ instruments without performance degradation (SC-008)
+- Support 50+ analyzers without performance degradation (SC-008)
 - Process minimum 1,000 QC results per day (SC-014)
 
 **Constraints**:
 
 - <200ms API response time (p95) for dashboard data retrieval
-- <100MB memory per instrument for active QC result caching
+- <100MB memory per analyzer for active QC result caching
 - 2-year data retention requirement (SC-015)
 - Real-time alert delivery <30 seconds of violation detection (SC-003)
 - 99.9% uptime for QC result capture and rule evaluation (SC-006)
 
 **Scale/Scope**:
 
-- Support 50+ instruments with multiple test configurations
-- 8 Westgard rules with configurable enable/disable per test-instrument
+- Support 50+ analyzers with multiple test configurations
+- 8 Westgard rules with configurable enable/disable per test-analyzer
 - 3 statistical calculation methods (initial runs, rolling, manufacturer fixed)
 - Multi-level QC (Low/Normal/High control levels)
 - Multi-language support (en, fr minimum per Constitution VII)
@@ -78,7 +77,7 @@ Verify compliance with
 [OpenELIS Global 3.0 Constitution](../../.specify/memory/constitution.md):
 
 - [x] **Configuration-Driven**: Rule configurations stored in database
-      (`westgard_rule_config` table with test_unit_id, instrument_id, rule_code,
+      (`westgard_rule_config` table with test_unit_id, analyzer_id, rule_code,
       enabled flag). No code branching for country-specific QC strategies
       (Constitution I).
 - [x] **Carbon Design System**: UI uses @carbon/react v1.15.0 exclusively.
@@ -183,7 +182,7 @@ mandates.
       reference datasets
     - Z-score calculation accuracy
     - Statistics calculation methods (initial, rolling, manufacturer)
-    - Alert batching logic (max 1 per instrument per 15 min, except 1₃ₛ
+    - Alert batching logic (max 1 per analyzer per 15 min, except 1₃ₛ
       immediate)
     - Corrective action workflow state transitions
 
@@ -217,9 +216,9 @@ mandates.
   - **Mocking**: Use `@MockBean` (NOT `@Mock`) for Spring context mocking
   - **HTTP Testing**: Use `MockMvc` for request/response testing
   - **Focus Areas**:
-    - GET `/rest/qc/dashboard/{instrumentId}` - dashboard data
+    - GET `/rest/qc/dashboard/{analyzerId}` - dashboard data
     - POST `/rest/qc/results` - QC result entry with auto-evaluation
-    - GET `/rest/qc/violations?instrumentId=&status=` - violation listing
+    - GET `/rest/qc/violations?analyzerId=&status=` - violation listing
     - POST `/rest/qc/violations/{id}/resolve` - violation resolution
     - POST `/rest/qc/corrective-actions` - corrective action creation
 
@@ -300,7 +299,7 @@ mandates.
   - **Session Management**: Use `cy.session()` for login (10-20x faster)
   - **Test Data**: API-based setup via `cy.request()` (10x faster than UI)
   - **Focus Areas**:
-    - User Story 1: View instrument compliance status (dashboard interaction)
+    - User Story 1: View analyzer compliance status (dashboard interaction)
     - User Story 2: Monitor QC data with control charts (chart filtering,
       tooltip)
     - User Story 3: Receive automated alerts (notification display, navigation)
@@ -484,7 +483,7 @@ backend/
 frontend/
 ├── src/components/qc/
 │   ├── dashboard/
-│   │   ├── QCDashboard.jsx                     # Main dashboard (compliance cards + instrument list)
+│   │   ├── QCDashboard.jsx                     # Main dashboard (compliance cards + analyzer list)
 │   │   ├── QCDashboard.test.jsx
 │   │   ├── ComplianceStatusTile.jsx            # Green/Yellow/Red indicator tile
 │   │   └── ComplianceStatusTile.test.jsx
@@ -512,7 +511,7 @@ frontend/
 │   │   ├── AlertFeed.jsx                       # Real-time alert display
 │   │   └── AlertFeed.test.jsx
 │   └── ruleConfig/
-│       ├── RuleConfigPanel.jsx                 # Enable/disable rules per instrument
+│       ├── RuleConfigPanel.jsx                 # Enable/disable rules per analyzer
 │       └── RuleConfigPanel.test.jsx
 └── cypress/e2e/qc/
     ├── qcDashboard.cy.js                       # User Story 1: View compliance
@@ -670,20 +669,23 @@ context.
 
 ## Navigation Integration (Feature 004 Analyzer Menu)
 
-**Critical Requirement**: QC pages MUST integrate with analyzer menu structure
-per FR-020 in feature 004 spec.
+**Dependency**: Feature 003's QC pages are nested UNDER feature 004's /analyzers parent menu per 004:FR-020. Feature 004 MANAGES the navigation hierarchy via `/rest/menu` API; feature 003 implements ONLY the page components.
 
-**Navigation Hierarchy**:
+**Routes Provided by 003**:
+- `/analyzers/qc` - Main QC Dashboard (Quality Control overview)
+- `/analyzers/qc/alerts` - QC Alerts & Violations (violation management)
+- `/analyzers/qc/corrective-actions` - Corrective Actions (workflow management)
+
+**Navigation Structure** (004's responsibility):
 
 ```
-Analyzers (parent menu, backend-driven via /rest/menu API)
-├── Analyzers Dashboard (/analyzers)
-├── Error Dashboard (/analyzers/errors)
-├── Field Mappings (/analyzers/:id/mappings) [contextual]
-└── Quality Control [THIS FEATURE]
-    ├── QC Dashboard (/analyzers/qc)
-    ├── QC Alerts & Violations (/analyzers/qc/alerts)
-    └── Corrective Actions (/analyzers/qc/corrective-actions)
+Analyzers (parent, managed by 004)
+├── Analyzers Dashboard (/analyzers) [004]
+├── Error Dashboard (/analyzers/errors) [004]
+└── Quality Control (group)
+    ├── QC Dashboard (/analyzers/qc) [003 - this feature]
+    ├── QC Alerts & Violations (/analyzers/qc/alerts) [003 - this feature]
+    └── Corrective Actions (/analyzers/qc/corrective-actions) [003 - this feature]
 ```
 
 **Implementation Details**:
@@ -807,7 +809,7 @@ public class QCStatisticsServiceImpl {
 
 **Rationale**:
 
-- Prevent alert fatigue (max 1 email per instrument per 15 min)
+- Prevent alert fatigue (max 1 email per analyzer per 15 min)
 - Exception for 1₃ₛ (critical severity requires immediate notification per
   FR-073)
 - Batching logic in service layer maintains testability
@@ -831,7 +833,7 @@ public class QCAlertServiceImpl {
         if (recentAlert != null &&
             ChronoUnit.MINUTES.between(recentAlert.getSentDateTime(), now) < 15) {
             // Within batching window - skip alert
-            logEvent("Alert batched for instrument " + violation.getInstrumentId());
+            logEvent("Alert batched for analyzer " + violation.getAnalyzerId());
             return;
         }
 
@@ -1003,7 +1005,7 @@ const chartOptions = {
 - **Likelihood**: High (frequent warning-level violations)
 - **Impact**: Medium (users ignore important alerts)
 - **Mitigation**:
-  - Implement batching: max 1 email per instrument per 15 min
+  - Implement batching: max 1 email per analyzer per 15 min
   - Exception for 1₃ₛ: immediate alerts for critical rejections
   - In-system notification feed for all alerts (no email spam)
   - User preferences to customize alert channels per severity
@@ -1043,14 +1045,14 @@ const chartOptions = {
 
 **From spec.md SC-001 to SC-015**:
 
-- SC-001: Technicians identify non-compliant instruments within 10 seconds
+- SC-001: Technicians identify non-compliant analyzers within 10 seconds
 - SC-002: Auto-capture + evaluation complete within 5 seconds (FR-028)
 - SC-003: Rejection alerts delivered within 30 seconds (FR-065, FR-073)
 - SC-004: 95% rule evaluations complete without errors
 - SC-005: Rule configuration completes in <5 minutes
 - SC-006: 99.9% uptime for QC capture + evaluation
 - SC-007: Charts render in <3 seconds for 100 data points
-- SC-008: Dashboard supports 50+ instruments without degradation
+- SC-008: Dashboard supports 50+ analyzers without degradation
 - SC-009: <1% false positive/negative rate vs validated datasets
 - SC-010: 100% corrective actions traceable to violations
 - SC-011: Compliance reports export in <30 seconds

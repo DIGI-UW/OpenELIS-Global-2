@@ -1,0 +1,498 @@
+openapi: 3.0.3
+info:
+  title: QC Violation Management API
+  version: 1.0.0
+  description: |
+    API endpoints for managing QC rule violations, including listing, filtering, acknowledgment, and resolution.
+    Part of Feature 003 (Westgard Rules Quality Control Compliance).
+  contact:
+    name: OpenELIS Development Team
+    url: https://github.com/DIGI-UW/OpenELIS-Global-2
+
+servers:
+  - url: https://localhost/rest/qc
+    description: Local development server
+  - url: https://{environment}.openelis.org/rest/qc
+    description: OpenELIS environment
+    variables:
+      environment:
+        default: demo
+        enum:
+          - demo
+          - staging
+          - production
+
+paths:
+  /violations:
+    get:
+      summary: Get list of QC rule violations with filtering
+      operationId: getViolations
+      tags:
+        - Violations
+      parameters:
+        - name: analyzerId
+          in: query
+          description: Filter by analyzer ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: testUnitId
+          in: query
+          description: Filter by test unit ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: severity
+          in: query
+          description: Filter by severity level
+          required: false
+          schema:
+            type: string
+            enum: [WARNING, REJECTION]
+        - name: resolutionStatus
+          in: query
+          description: Filter by resolution status
+          required: false
+          schema:
+            type: string
+            enum: [UNRESOLVED, ACKNOWLEDGED, CORRECTIVE_ACTION_PENDING, RESOLVED]
+        - name: startDate
+          in: query
+          description: Filter violations after this date (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          description: Filter violations before this date (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          description: Page number for pagination (0-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: sort
+          in: query
+          description: Sort field and direction (e.g., "violationDateTime,desc")
+          required: false
+          schema:
+            type: string
+            default: "violationDateTime,desc"
+      responses:
+        '200':
+          description: Successful response with violation list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViolationListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /violations/{violationId}:
+    get:
+      summary: Get detailed information about a specific violation
+      operationId: getViolation
+      tags:
+        - Violations
+      parameters:
+        - name: violationId
+          in: path
+          description: Violation ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response with violation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViolationDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /violations/{violationId}/acknowledge:
+    post:
+      summary: Acknowledge a violation (user has reviewed)
+      operationId: acknowledgeViolation
+      tags:
+        - Violations
+      parameters:
+        - name: violationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Violation acknowledged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViolationDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          description: Violation already acknowledged or resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /violations/{violationId}/resolve:
+    post:
+      summary: Resolve a violation (manual resolution for warning-level violations)
+      operationId: resolveViolation
+      tags:
+        - Violations
+      description: |
+        Manually resolve a warning-level violation without corrective action.
+        Rejection-level violations require corrective action completion before resolution.
+      parameters:
+        - name: violationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolutionNotes:
+                  type: string
+                  description: Notes explaining why violation is being resolved
+              required:
+                - resolutionNotes
+      responses:
+        '200':
+          description: Violation resolved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ViolationDetail'
+        '400':
+          description: Cannot resolve rejection-level violation without corrective action
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /alerts/recent:
+    get:
+      summary: Get recent alerts for current user
+      operationId: getRecentAlerts
+      tags:
+        - Alerts
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of alerts to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+        - name: unreadOnly
+          in: query
+          description: Return only unread alerts
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Successful response with recent alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+                  unreadCount:
+                    type: integer
+                    description: Total number of unread alerts
+
+  /alerts/{alertId}/mark-read:
+    post:
+      summary: Mark an alert as read
+      operationId: markAlertRead
+      tags:
+        - Alerts
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alert marked as read
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    ViolationListResponse:
+      type: object
+      properties:
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ViolationSummary'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    ViolationSummary:
+      type: object
+      properties:
+        violationId:
+          type: string
+          format: uuid
+        analyzerId:
+          type: string
+          format: uuid
+        analyzerName:
+          type: string
+        testUnitId:
+          type: string
+          format: uuid
+        testName:
+          type: string
+        ruleCode:
+          type: string
+          description: Comma-separated if multiple rules violated
+          example: "1₃ₛ,2₂ₛ"
+        severity:
+          type: string
+          enum: [WARNING, REJECTION]
+        violationDateTime:
+          type: string
+          format: date-time
+        resolutionStatus:
+          type: string
+          enum: [UNRESOLVED, ACKNOWLEDGED, CORRECTIVE_ACTION_PENDING, RESOLVED]
+        correctiveActionCount:
+          type: integer
+          description: Number of corrective actions created for this violation
+
+    ViolationDetail:
+      type: object
+      properties:
+        violationId:
+          type: string
+          format: uuid
+        analyzerId:
+          type: string
+          format: uuid
+        analyzerName:
+          type: string
+        testUnitId:
+          type: string
+          format: uuid
+        testName:
+          type: string
+        ruleCode:
+          type: string
+          example: "1₃ₛ"
+        severity:
+          type: string
+          enum: [WARNING, REJECTION]
+        violationDateTime:
+          type: string
+          format: date-time
+        resolutionStatus:
+          type: string
+          enum: [UNRESOLVED, ACKNOWLEDGED, CORRECTIVE_ACTION_PENDING, RESOLVED]
+        resolvedDateTime:
+          type: string
+          format: date-time
+        triggeringResult:
+          $ref: '#/components/schemas/QCResultDetail'
+        relatedResults:
+          type: array
+          items:
+            $ref: '#/components/schemas/QCResultDetail'
+          description: All QC results involved in violation (for sequential rules)
+        correctiveActions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CorrectiveActionSummary'
+
+    QCResultDetail:
+      type: object
+      properties:
+        resultId:
+          type: string
+          format: uuid
+        controlLotId:
+          type: string
+          format: uuid
+        lotNumber:
+          type: string
+        controlLevel:
+          type: string
+          enum: [LOW, NORMAL, HIGH]
+        resultValue:
+          type: number
+          format: double
+        unit:
+          type: string
+        zScore:
+          type: number
+          format: double
+        runDateTime:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [PENDING, ACCEPTED, REJECTED]
+        technician:
+          type: string
+          description: Username of technician who performed QC
+
+    CorrectiveActionSummary:
+      type: object
+      properties:
+        actionId:
+          type: string
+          format: uuid
+        actionType:
+          type: string
+          enum: [RECALIBRATION, MAINTENANCE, REPEAT_CONTROL, REAGENT_CHANGE, OTHER]
+        description:
+          type: string
+        assignedToUser:
+          type: string
+          description: Username of assigned user
+        status:
+          type: string
+          enum: [PENDING, ASSIGNED, IN_PROGRESS, COMPLETED]
+        createdDateTime:
+          type: string
+          format: date-time
+        completedDateTime:
+          type: string
+          format: date-time
+
+    Alert:
+      type: object
+      properties:
+        alertId:
+          type: string
+          format: uuid
+        violationId:
+          type: string
+          format: uuid
+        alertType:
+          type: string
+          enum: [EMAIL, SYSTEM]
+        sentDateTime:
+          type: string
+          format: date-time
+        readStatus:
+          type: boolean
+        readDateTime:
+          type: string
+          format: date-time
+        violationSummary:
+          $ref: '#/components/schemas/ViolationSummary'
+
+    Pagination:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+          description: Current page number (0-based)
+        pageSize:
+          type: integer
+          description: Number of items per page
+        totalItems:
+          type: integer
+          description: Total number of items across all pages
+        totalPages:
+          type: integer
+          description: Total number of pages
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        errorCode:
+          type: string
+          description: Machine-readable error code
+        i18nKey:
+          type: string
+          description: Internationalization key for error message
+          example: "qc.error.violation_already_resolved"
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized - user must have BIOLOGIST or GLOBAL_ADMIN role
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+      description: Spring Security session-based authentication
+
+security:
+  - sessionAuth: []
+
+tags:
+  - name: Violations
+    description: QC rule violation management
+  - name: Alerts
+    description: Alert and notification management
+

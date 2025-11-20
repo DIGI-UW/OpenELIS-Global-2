@@ -3,37 +3,37 @@
 **Feature Branch**: `003-westgard-qc`
 **Created**: 2025-11-14
 **Status**: Draft
-**Input**: User description: "I want to create a specification for a new feature that would implement lab instrument compliance functionality according to issue OGC-41"
+**Input**: User description: "I want to create a specification for a new feature that would implement lab analyzer compliance functionality according to issue OGC-41"
 
 ## User Scenarios & Testing _(mandatory)_
 
-### User Story 1 - View Instrument Compliance Status (Priority: P1)
+### User Story 1 - View Analyzer Compliance Status (Priority: P1)
 
-As a laboratory technician, when I check the compliance status of instruments, I want to see a clear overview with visual indicators so that I can quickly assess which instruments require attention and which are operating normally.
+As a laboratory technician, when I check the compliance status of analyzers, I want to see a clear overview with visual indicators so that I can quickly assess which analyzers require attention and which are operating normally.
 
-**Why this priority**: This is the foundational capability that provides immediate visibility into instrument quality control status, enabling technicians to identify problems before processing patient samples.
+**Why this priority**: This is the foundational capability that provides immediate visibility into analyzer quality control status, enabling technicians to identify problems before processing patient samples.
 
-**Independent Test**: Can be fully tested by displaying a dashboard with multiple instruments showing color-coded status (green/yellow/red) based on pre-configured QC data, and delivers immediate value by showing compliance at a glance.
+**Independent Test**: Can be fully tested by displaying a dashboard with multiple analyzers showing color-coded status (green/yellow/red) based on pre-configured QC data, and delivers immediate value by showing compliance at a glance.
 
 **Acceptance Scenarios**:
 
-1. **Given** multiple instruments are running QC tests, **When** I view the compliance dashboard, **Then** I see each instrument displayed with its current compliance status indicated by color (green for compliant, yellow for warning, red for non-compliant)
-2. **Given** an instrument has recent QC results, **When** I view its instrument card, **Then** I see the current compliance status, list of any triggered rules, and the date/time of the latest data point analyzed
-3. **Given** I want detailed information about an instrument, **When** I click on an instrument card, **Then** I am taken to a detailed view showing control charts and historical data
+1. **Given** multiple analyzers are running QC tests, **When** I view the compliance dashboard, **Then** I see each analyzer displayed with its current compliance status indicated by color (green for compliant, yellow for warning, red for non-compliant)
+2. **Given** an analyzer has recent QC results, **When** I view its analyzer card, **Then** I see the current compliance status, list of any triggered rules, and the date/time of the latest data point analyzed
+3. **Given** I want detailed information about an analyzer, **When** I click on an analyzer card, **Then** I am taken to a detailed view showing control charts and historical data
 
 ---
 
 ### User Story 2 - Monitor QC Data with Control Charts (Priority: P1)
 
-As a laboratory technician, when I need to understand why an instrument is out of compliance, I want to view interactive Levey-Jennings charts with Westgard rule overlays so that I can visually identify patterns and violations in the QC data.
+As a laboratory technician, when I need to understand why an analyzer is out of compliance, I want to view interactive Levey-Jennings charts with Westgard rule overlays so that I can visually identify patterns and violations in the QC data.
 
 **Why this priority**: Control charts are essential for understanding the nature of quality control violations and determining appropriate corrective actions. This is a critical diagnostic tool.
 
-**Independent Test**: Can be fully tested by displaying a Levey-Jennings chart for a single instrument with plotted QC results, standard deviation lines (±1SD, ±2SD, ±3SD), and highlighted violation points.
+**Independent Test**: Can be fully tested by displaying a Levey-Jennings chart for a single analyzer with plotted QC results, standard deviation lines (±1SD, ±2SD, ±3SD), and highlighted violation points.
 
 **Acceptance Scenarios**:
 
-1. **Given** an instrument has historical QC results, **When** I view its control chart, **Then** I see QC values plotted over time with clearly marked mean and standard deviation limits (±1SD, ±2SD, ±3SD)
+1. **Given** an analyzer has historical QC results, **When** I view its control chart, **Then** I see QC values plotted over time with clearly marked mean and standard deviation limits (±1SD, ±2SD, ±3SD)
 2. **Given** QC results violate Westgard rules, **When** I view the control chart, **Then** violation points are highlighted with distinct colors and increased size
 3. **Given** I hover over a data point on the chart, **When** the tooltip appears, **Then** I see the result value, z-score, date/time, and any rule violations for that point
 4. **Given** I need to focus on a specific time period, **When** I apply date range filters, **Then** the chart updates to show only data within that range
@@ -52,8 +52,8 @@ As a lab manager, when Westgard rules are violated, I want to receive automated 
 
 1. **Given** a rejection-level rule is violated (1₃ₛ, 2₂ₛ, R₄ₛ, 4₁ₛ, 10ₓ), **When** the violation is detected, **Then** automated alerts are immediately sent via email to lab managers and technicians
 2. **Given** a warning-level rule is triggered (1₂ₛ, 3₁ₛ, 7ₜ), **When** the violation is detected, **Then** system notifications appear in the user's notification feed
-3. **Given** multiple violations occur on the same instrument within 15 minutes, **When** alerts are generated, **Then** they are batched into a single notification to prevent alert fatigue
-4. **Given** I receive an alert, **When** I click the notification link, **Then** I am taken directly to the detailed view of the affected instrument and violation
+3. **Given** multiple violations occur on the same analyzer within 15 minutes, **When** alerts are generated, **Then** they are batched into a single notification to prevent alert fatigue
+4. **Given** I receive an alert, **When** I click the notification link, **Then** I am taken directly to the detailed view of the affected analyzer and violation
 
 ---
 
@@ -70,23 +70,23 @@ As a laboratory supervisor, when a rule violation requires corrective action, I 
 1. **Given** a rejection-level violation exists, **When** I create a corrective action, **Then** I can select the action type (recalibration, maintenance, repeat control, reagent change, other), provide a description, and assign it to a specific user
 2. **Given** a corrective action is assigned to me, **When** I view my task list, **Then** I see all pending corrective actions with their priority and due status
 3. **Given** I complete a corrective action, **When** I mark it as completed with resolution notes, **Then** the associated violation is automatically resolved and the QC result is annotated with the corrective action summary
-4. **Given** a violation has an active corrective action, **When** patient samples from that instrument are ready for release, **Then** they are held pending violation resolution
+4. **Given** a violation has an active corrective action, **When** patient samples from that analyzer are ready for release, **Then** they are held pending violation resolution
 
 ---
 
 ### User Story 5 - Configure Westgard Rules (Priority: P2)
 
-As a laboratory manager, when setting up quality control for an instrument, I want to configure which Westgard rules are enabled and their parameters so that I can customize the quality control strategy to match our laboratory's needs and regulatory requirements.
+As a laboratory manager, when setting up quality control for an analyzer, I want to configure which Westgard rules are enabled and their parameters so that I can customize the quality control strategy to match our laboratory's needs and regulatory requirements.
 
-**Why this priority**: Different instruments and test methods may require different quality control strategies. Configuration capability allows the system to adapt to various laboratory environments and regulatory frameworks.
+**Why this priority**: Different analyzers and test methods may require different quality control strategies. Configuration capability allows the system to adapt to various laboratory environments and regulatory frameworks.
 
-**Independent Test**: Can be fully tested by configuring rule sets for a test instrument, enabling/disabling specific rules, and verifying that rule evaluation only applies the enabled rules.
+**Independent Test**: Can be fully tested by configuring rule sets for a test analyzer, enabling/disabling specific rules, and verifying that rule evaluation only applies the enabled rules.
 
 **Acceptance Scenarios**:
 
-1. **Given** I am setting up QC for a test-instrument combination, **When** I access the rule configuration interface, **Then** I see all 8 available Westgard rules with options to enable/disable each one
+1. **Given** I am setting up QC for a test-analyzer combination, **When** I access the rule configuration interface, **Then** I see all 8 available Westgard rules with options to enable/disable each one
 2. **Given** I want a basic QC strategy, **When** I select a preset configuration (Basic, Standard, or Comprehensive), **Then** the appropriate rules are enabled automatically
-3. **Given** I enable or disable rules, **When** I save the configuration, **Then** subsequent QC results for that test-instrument combination are evaluated using only the enabled rules
+3. **Given** I enable or disable rules, **When** I save the configuration, **Then** subsequent QC results for that test-analyzer combination are evaluated using only the enabled rules
 4. **Given** I disable all rejection-level rules, **When** I attempt to save, **Then** the system prevents me and displays a warning that at least one rejection rule must be enabled
 
 ---
@@ -101,7 +101,7 @@ As a laboratory supervisor, when introducing a new control lot or batch, I want 
 
 **Acceptance Scenarios**:
 
-1. **Given** I receive a new QC control lot, **When** I create the lot record, **Then** I enter the product name, lot number, level (Low/Normal/High), associated test and instrument, and activation dates
+1. **Given** I receive a new QC control lot, **When** I create the lot record, **Then** I enter the product name, lot number, level (Low/Normal/High), associated test and analyzer, and activation dates
 2. **Given** I am establishing statistics for a new lot, **When** I select the calculation method, **Then** I can choose from: initial establishment (first N runs, default 20), rolling calculation (moving window), or fixed manufacturer values
 3. **Given** I select manufacturer fixed values, **When** I save the lot, **Then** the lot is immediately active and ready for QC result evaluation
 4. **Given** I select initial establishment method, **When** I save the lot, **Then** the lot enters "establishment" status and does not evaluate Westgard rules until sufficient results are collected
@@ -115,31 +115,34 @@ As a laboratory manager, when reviewing quality control performance, I want to v
 
 **Why this priority**: Trend analysis provides strategic insights for laboratory quality improvement and helps demonstrate ongoing compliance to accreditors. While important, it can be implemented after core operational features.
 
-**Independent Test**: Can be fully tested by generating trend reports for a date range showing violation frequency by instrument, rule type, and severity, with filtering and export capabilities.
+**Independent Test**: Can be fully tested by generating trend reports for a date range showing violation frequency by analyzer, rule type, and severity, with filtering and export capabilities.
 
 **Acceptance Scenarios**:
 
-1. **Given** I want to review QC performance, **When** I access the trend analysis view, **Then** I see graphs showing compliance percentage over time with filtering options for date range, instrument, test, and rule type
-2. **Given** I identify an instrument with recurring violations, **When** I view its trend graph, **Then** I can see which specific rules are triggering most frequently
-3. **Given** I need data for an audit, **When** I export compliance reports, **Then** I can generate summary reports showing violations by instrument, rule type, time period, corrective action completion rate, and mean time to resolution
-4. **Given** I want to compare multiple instruments, **When** I view the violation frequency distribution, **Then** I can identify which instruments have the highest violation rates
+1. **Given** I want to review QC performance, **When** I access the trend analysis view, **Then** I see graphs showing compliance percentage over time with filtering options for date range, analyzer, test, and rule type
+2. **Given** I identify an analyzer with recurring violations, **When** I view its trend graph, **Then** I can see which specific rules are triggering most frequently
+3. **Given** I need data for an audit, **When** I export compliance reports, **Then** I can generate summary reports showing violations by analyzer, rule type, time period, corrective action completion rate, and mean time to resolution
+4. **Given** I want to compare multiple analyzers, **When** I view the violation frequency distribution, **Then** I can identify which analyzers have the highest violation rates
 
 ---
 
-### User Story 8 - Integrate with Instrument Interfaces (Priority: P1)
+## Dependencies _(mandatory)_
 
-As a laboratory technician, when analyzers complete QC runs, I want QC results to be automatically captured from the instrument interface so that rule evaluation happens without manual data entry and potential transcription errors.
+**Feature 004 (ASTM Analyzer Field Mapping)**: Feature 003 depends on feature 004 for automatic QC result capture from analyzers. The dependency relationship is as follows:
 
-**Why this priority**: Automated data capture eliminates manual entry errors and enables real-time quality control evaluation. This is essential for operational efficiency and data integrity.
+1. **QC Result Capture**: Feature 004 handles ALL ASTM message processing, including parsing Q-segments (Quality Control result segments) from analyzer messages. See 004:FR-021 for detailed QC result processing requirements.
 
-**Independent Test**: Can be fully tested by simulating ASTM messages from an analyzer with QC results and verifying that results are correctly captured, mapped to the appropriate control lot, and automatically evaluated against configured rules.
+2. **Field Mapping Configuration**: Feature 004 provides the QC field mapping interface where administrators configure mappings for: Control Level (Low/Normal/High), Instrument ID, Lot Number, Result Value, Timestamp. See 004:FR-019 for QC field type definition.
 
-**Acceptance Scenarios**:
+3. **Error Handling**: Feature 004's Error Dashboard (004:FR-011) handles unmapped QC messages. When QC field mappings are incomplete, messages are queued in 004's error dashboard. Once mappings are configured, queued messages are automatically reprocessed.
 
-1. **Given** an analyzer sends QC results via ASTM interface, **When** the message is received, **Then** the system automatically maps the instrument ID, test code, control lot/level, and result value to internal records
-2. **Given** a QC result is captured from the interface, **When** the result is saved, **Then** Westgard rules are automatically evaluated and any violations are immediately detected
-3. **Given** the ASTM interface receives data for an unknown instrument or test, **When** mapping fails, **Then** the result is queued for manual review and the appropriate staff are notified
-4. **Given** the ASTM interface is temporarily unavailable, **When** QC results need to be recorded, **Then** manual entry is available as a fallback method
+4. **Integration Contract**: Feature 004 persists QC results by calling 003's QCResultService.createQCResult() method (per 004:plan.md QC Result Processing Integration section). This is a direct service-to-service call following the 5-layer architecture pattern.
+
+**Implementation Order**: Feature 004 MUST be implemented before 003 can receive automatic QC results from analyzers. However, 003's manual entry functionality (FR-009) can be implemented independently for testing purposes.
+
+**Navigation Hierarchy**: Feature 003's QC pages are nested under feature 004's /analyzers parent menu per 004:FR-020. Routes: /analyzers/qc (main QC dashboard), /analyzers/qc/alerts (QC Alerts & Violations), /analyzers/qc/corrective-actions (Corrective Actions). This navigation hierarchy is MANAGED by 004; 003 implements only the page components.
+
+**Terminology**: This specification uses "analyzer" to refer to laboratory analyzer equipment (e.g., hematology analyzers, chemistry analyzers). The term "analyzer" is synonymous with "instrument" in legacy OpenELIS terminology. Feature 003 links QC results to the Analyzer entity (managed by feature 004), NOT the legacy Instrument entity.
 
 ---
 
@@ -166,9 +169,9 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
   - System should provide option to re-evaluate all historical results with new statistics
   - Previous violations remain in audit trail but may be marked as "recalculated"
 
-- How does the system handle instrument downtime or maintenance periods?
+- How does the system handle analyzer downtime or maintenance periods?
   - Gaps in QC data should not trigger sequential rules that span the gap
-  - System should allow marking instruments as "under maintenance" to suppress alerts
+  - System should allow marking analyzers as "under maintenance" to suppress alerts
 
 - What happens when an alert recipient is unavailable (on leave, email bounces)?
   - System should have a backup notification chain
@@ -187,7 +190,7 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
 
 - **FR-001**: System MUST support creation of QC control lots with product name, lot number, manufacturer information, and activation/deactivation dates
 - **FR-002**: System MUST support multiple control levels (Low, Normal, High) per lot, each with independent statistical tracking
-- **FR-003**: System MUST associate each control lot with a specific test-instrument combination
+- **FR-003**: System MUST associate each control lot with a specific test-analyzer combination
 - **FR-004**: System MUST support three statistical calculation methods: initial establishment (first N runs, configurable, default 20), rolling calculation (moving window), and fixed manufacturer values
 - **FR-005**: System MUST prevent use of control lots before sufficient data is collected for statistical establishment (when using initial runs method)
 - **FR-006**: System MUST require new statistical calculations when control lot changes
@@ -195,8 +198,8 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
 
 #### QC Result Capture
 
-- **FR-008**: System MUST receive and parse QC results from ASTM analyzer interface automatically
-- **FR-009**: System MUST map ASTM data fields to appropriate control lot, level, test, and instrument
+- **FR-008**: System MUST provide QCResultService.createQCResult() method that accepts QC result data from feature 004's ASTM message processing. This method MUST: (1) Accept parameters: analyzer ID, test ID, control lot ID, control level, result value, unit, timestamp, (2) Calculate z-score based on control lot statistics, (3) Persist QCResult entity with all required fields, (4) Publish QCResultCreatedEvent to trigger rule evaluation, (5) Return created QCResult entity. **Integration Pattern**: Feature 004 calls this service method after parsing Q-segments and applying QC field mappings (per 004:FR-021). This is the ONLY entry point for QC results from analyzers.
+- **FR-009**: System MUST support manual QC result entry as fallback method when automatic capture is unavailable. Manual entry MUST use the same QCResultService.createQCResult() method as automatic capture, ensuring consistent z-score calculation and rule evaluation triggering.
 - **FR-010**: System MUST timestamp all QC results with run date and time
 - **FR-011**: System MUST link QC results to the user who performed or approved the test
 - **FR-012**: System MUST store result value and unit of measure
@@ -205,7 +208,7 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
 
 #### Westgard Rule Configuration
 
-- **FR-015**: System MUST allow configuration of rules per test-instrument combination
+- **FR-015**: System MUST allow configuration of rules per test-analyzer combination
 - **FR-016**: System MUST support enabling and disabling individual rules independently
 - **FR-017**: System MUST support all 8 standard Westgard rules:
   - 1₂ₛ: Single control exceeds ±2SD (warning)
@@ -255,14 +258,14 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
 - **FR-042**: System MUST require resolution notes when corrective action is marked as completed
 - **FR-043**: System MUST add external notes to flagged QC results with corrective action summary upon completion
 - **FR-044**: System MUST automatically resolve linked violations when corrective action is completed
-- **FR-045**: System MUST prevent release of patient sample results from affected instrument/test until violation is resolved
+- **FR-045**: System MUST prevent release of patient sample results from affected analyzer/test until violation is resolved
 
 #### Dashboard & Visualization
 
-- **FR-046**: System MUST display overview dashboard showing compliance status for all instruments
+- **FR-046**: System MUST display overview dashboard showing compliance status for all analyzers
 - **FR-047**: System MUST use color-coded indicators: Green (all rules compliant), Yellow (warning-level violations present), Red (rejection-level violations present)
-- **FR-048**: System MUST display instrument cards showing: current compliance status, list of triggered rules with severity, date/time of last QC result, count of unresolved violations
-- **FR-049**: System MUST make instrument cards clickable to access detailed views
+- **FR-048**: System MUST display analyzer cards showing: current compliance status, list of triggered rules with severity, date/time of last QC result, count of unresolved violations
+- **FR-049**: System MUST make analyzer cards clickable to access detailed views
 - **FR-050**: Dashboard MUST auto-refresh at configurable intervals (default: 5 minutes)
 - **FR-051**: Dashboard MUST display timestamp of last data update
 
@@ -280,10 +283,10 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
 #### Trend Analysis
 
 - **FR-060**: System MUST provide compliance trend graphs showing performance over time
-- **FR-061**: Trend graphs MUST support filtering by date range, instrument, test, control level, rule type, and severity
+- **FR-061**: Trend graphs MUST support filtering by date range, analyzer, test, control level, rule type, and severity
 - **FR-062**: System MUST calculate and display compliance percentage over time
 - **FR-063**: System MUST display violation frequency distribution by rule type
-- **FR-064**: System MUST identify instruments with recurring violations based on configurable thresholds
+- **FR-064**: System MUST identify analyzers with recurring violations based on configurable thresholds
 
 #### Alert & Notification System
 
@@ -292,15 +295,15 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
 - **FR-067**: System MUST allow users to configure notification preferences per rule severity
 - **FR-068**: System MUST maintain real-time alert feed on dashboard showing recent violations
 - **FR-069**: System MUST track notification read status
-- **FR-070**: System MUST send alerts to: technician who ran the QC, assigned QC supervisor/manager, and users subscribed to specific instruments
-- **FR-071**: Email alerts MUST include: instrument and test identification, rule violated, QC result value and z-score, link to detailed view, corrective action status
-- **FR-072**: System MUST batch notifications (maximum one per instrument per 15 minutes) to prevent alert fatigue
+- **FR-070**: System MUST send alerts to: technician who ran the QC, assigned QC supervisor/manager, and users subscribed to specific analyzers
+- **FR-071**: Email alerts MUST include: analyzer and test identification, rule violated, QC result value and z-score, link to detailed view, corrective action status
+- **FR-072**: System MUST batch notifications (maximum one per analyzer per 15 minutes) to prevent alert fatigue
 - **FR-073**: System MUST provide immediate (unbatched) alerts for 1₃ₛ violations regardless of batching settings
 
 #### Reporting
 
 - **FR-074**: System MUST provide violation history log with filtering and sorting capabilities
-- **FR-075**: System MUST generate summary reports showing: violations by instrument, violations by rule type, violations by time period, corrective action completion rate, mean time to resolution
+- **FR-075**: System MUST generate summary reports showing: violations by analyzer, violations by rule type, violations by time period, corrective action completion rate, mean time to resolution
 - **FR-076**: System MUST export reports to standard formats (PDF and spreadsheet-compatible formats)
 - **FR-077**: System MUST maintain complete audit trail of all violations, corrective actions, and status changes
 
@@ -327,13 +330,13 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
 
 ### Key Entities
 
-- **QC Control Lot**: Represents a specific batch of quality control material with defined characteristics. Attributes include: product name, lot number, control level (Low/Normal/High), associated test and instrument, manufacturer mean and standard deviation (if applicable), activation dates, establishment method, and current status.
+- **QC Control Lot**: Represents a specific batch of quality control material with defined characteristics. Attributes include: product name, lot number, control level (Low/Normal/High), associated test and analyzer, manufacturer mean and standard deviation (if applicable), activation dates, establishment method, and current status.
 
-- **QC Result**: Represents a single quality control measurement. Attributes include: reference to control lot, test and instrument, measured value, unit of measure, run timestamp, technician who performed the test, status (pending/accepted/rejected), non-conformity flag, and external notes.
+- **QC Result**: Represents a single quality control measurement. Attributes include: reference to control lot, test and analyzer, measured value, unit of measure, run timestamp, technician who performed the test, status (pending/accepted/rejected), non-conformity flag, and external notes.
 
 - **QC Statistics**: Represents calculated statistical parameters for a control lot. Attributes include: reference to control lot, calculation date, mean, standard deviation, number of values used in calculation, calculation method, and validity period.
 
-- **Westgard Rule Configuration**: Represents the active rule set for a test-instrument combination. Attributes include: test and instrument references, rule code, enabled status, severity level, whether corrective action is required, and configuration timestamps.
+- **Westgard Rule Configuration**: Represents the active rule set for a test-analyzer combination. Attributes include: test and analyzer references, rule code, enabled status, severity level, whether corrective action is required, and configuration timestamps.
 
 - **QC Rule Violation**: Represents a detected violation of one or more Westgard rules. Attributes include: triggering QC result, rule code(s) violated, violation timestamp, severity, related QC results involved in the violation, resolution status, linked corrective action, and resolution details.
 
@@ -341,7 +344,7 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
 
 - **QC Alert**: Represents a notification sent about a violation. Attributes include: reference to violation, alert type (email/system), recipient, sent timestamp, read status, and read timestamp.
 
-- **Instrument**: Existing entity representing laboratory analyzer equipment. Must be linked to QC control lots and results for compliance tracking.
+- **Analyzer**: Entity representing laboratory analyzer equipment, managed by feature 004 (ASTM Analyzer Field Mapping). QCResult entities MUST link to Analyzer.id via foreign key qc_result.analyzer_id. Note: This is the Analyzer entity from feature 004, NOT the legacy Instrument entity. QCControlLot also links to Analyzer to associate control materials with specific analyzers.
 
 - **Test**: Existing entity representing laboratory test types. Must be linked to QC control lots and rule configurations.
 
@@ -351,18 +354,18 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
 
 ### Measurable Outcomes
 
-- **SC-001**: Laboratory technicians can identify non-compliant instruments within 10 seconds of viewing the dashboard
-- **SC-002**: All QC results from ASTM-enabled analyzers are automatically captured and evaluated within 5 seconds of transmission
+- **SC-001**: Laboratory technicians can identify non-compliant analyzers within 10 seconds of viewing the dashboard
+- **SC-002**: All QC results received from feature 004's ASTM processing are evaluated within 5 seconds of QCResultService.createQCResult() invocation. Note: ASTM message capture and field mapping are handled by feature 004 (see 004:FR-021); 003's responsibility begins when QCResult entity is persisted.
 - **SC-003**: Lab managers receive automated alerts for rejection-level violations within 30 seconds of detection
 - **SC-004**: 95% of Westgard rule evaluations complete without errors when sufficient historical data is available
-- **SC-005**: Users can configure a complete rule set for a test-instrument combination in under 5 minutes
+- **SC-005**: Users can configure a complete rule set for a test-analyzer combination in under 5 minutes
 - **SC-006**: System maintains 99.9% uptime for QC result capture and rule evaluation
 - **SC-007**: Levey-Jennings charts render within 3 seconds for up to 100 data points
-- **SC-008**: Dashboard supports at least 50 instruments without performance degradation
+- **SC-008**: Dashboard supports at least 50 analyzers without performance degradation
 - **SC-009**: System correctly identifies all 8 Westgard rule types with less than 1% false positive/negative rate when tested against validated reference datasets
 - **SC-010**: 100% of corrective actions are traceable to their originating violations in audit trails
 - **SC-011**: Users can export compliance reports for regulatory audits in under 30 seconds
-- **SC-012**: System prevents release of patient results from instruments with unresolved rejection-level violations in 100% of cases
+- **SC-012**: System prevents release of patient results from analyzers with unresolved rejection-level violations in 100% of cases
 - **SC-013**: Alert batching reduces notification volume by at least 50% while maintaining all critical alerts as immediate
 - **SC-014**: System handles minimum 1,000 QC results per day with all automated evaluations completing successfully
 - **SC-015**: QC data is retained and accessible for minimum 2 years for regulatory compliance
@@ -370,6 +373,6 @@ As a laboratory technician, when analyzers complete QC runs, I want QC results t
 ### Qualitative Outcomes
 
 - **SC-016**: Laboratory meets CLIA and CAP quality control documentation requirements as verified by successful audits
-- **SC-017**: Laboratory staff report increased confidence in instrument quality control compared to manual chart review
-- **SC-018**: Reduction in patient sample reruns due to earlier detection of instrument quality issues
+- **SC-017**: Laboratory staff report increased confidence in analyzer quality control compared to manual chart review
+- **SC-018**: Reduction in patient sample reruns due to earlier detection of analyzer quality issues
 - **SC-019**: Time to identify and resolve quality control issues decreases compared to baseline manual processes

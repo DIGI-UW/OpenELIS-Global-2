@@ -1,0 +1,550 @@
+openapi: 3.0.3
+info:
+  title: QC Corrective Action Management API
+  version: 1.0.0
+  description: |
+    API endpoints for managing QC corrective actions, including creation, assignment, status updates, and completion.
+    Part of Feature 003 (Westgard Rules Quality Control Compliance).
+  contact:
+    name: OpenELIS Development Team
+    url: https://github.com/DIGI-UW/OpenELIS-Global-2
+
+servers:
+  - url: https://localhost/rest/qc
+    description: Local development server
+  - url: https://{environment}.openelis.org/rest/qc
+    description: OpenELIS environment
+    variables:
+      environment:
+        default: demo
+        enum:
+          - demo
+          - staging
+          - production
+
+paths:
+  /corrective-actions:
+    get:
+      summary: Get list of corrective actions with filtering
+      operationId: getCorrectiveActions
+      tags:
+        - Corrective Actions
+      parameters:
+        - name: assignedToUserId
+          in: query
+          description: Filter by assigned user ID (use "me" for current user)
+          required: false
+          schema:
+            type: string
+        - name: violationId
+          in: query
+          description: Filter by violation ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          description: Filter by action status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, ASSIGNED, IN_PROGRESS, COMPLETED]
+        - name: actionType
+          in: query
+          description: Filter by action type
+          required: false
+          schema:
+            type: string
+            enum: [RECALIBRATION, MAINTENANCE, REPEAT_CONTROL, REAGENT_CHANGE, OTHER]
+        - name: page
+          in: query
+          description: Page number (0-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: sort
+          in: query
+          description: Sort field and direction (e.g., "createdDateTime,desc")
+          required: false
+          schema:
+            type: string
+            default: "createdDateTime,desc"
+      responses:
+        '200':
+          description: Successful response with corrective action list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrectiveActionListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Create a new corrective action for a violation
+      operationId: createCorrectiveAction
+      tags:
+        - Corrective Actions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectiveActionCreateRequest'
+      responses:
+        '201':
+          description: Corrective action created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrectiveActionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /corrective-actions/{actionId}:
+    get:
+      summary: Get detailed information about a corrective action
+      operationId: getCorrectiveAction
+      tags:
+        - Corrective Actions
+      parameters:
+        - name: actionId
+          in: path
+          description: Corrective action ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response with corrective action details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrectiveActionDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update corrective action details
+      operationId: updateCorrectiveAction
+      tags:
+        - Corrective Actions
+      parameters:
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectiveActionUpdateRequest'
+      responses:
+        '200':
+          description: Corrective action updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrectiveActionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /corrective-actions/{actionId}/assign:
+    post:
+      summary: Assign corrective action to a user
+      operationId: assignCorrectiveAction
+      tags:
+        - Corrective Actions
+      parameters:
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assignedToUserId:
+                  type: string
+                  format: uuid
+                  description: User ID to assign action to
+              required:
+                - assignedToUserId
+      responses:
+        '200':
+          description: Action assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrectiveActionDetail'
+        '400':
+          description: Action already assigned or user does not have BIOLOGIST role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /corrective-actions/{actionId}/start:
+    post:
+      summary: Mark corrective action as in progress
+      operationId: startCorrectiveAction
+      tags:
+        - Corrective Actions
+      description: |
+        User marks action as in progress. Only the assigned user can start the action.
+      parameters:
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Action started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrectiveActionDetail'
+        '400':
+          description: Action not assigned or already started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: User is not the assigned user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /corrective-actions/{actionId}/complete:
+    post:
+      summary: Mark corrective action as completed
+      operationId: completeCorrectiveAction
+      tags:
+        - Corrective Actions
+      description: |
+        Mark action as completed with resolution notes. Automatically resolves linked violation.
+      parameters:
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolutionNotes:
+                  type: string
+                  description: Detailed notes about actions taken
+              required:
+                - resolutionNotes
+      responses:
+        '200':
+          description: Action completed successfully, violation resolved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  action:
+                    $ref: '#/components/schemas/CorrectiveActionDetail'
+                  violationResolved:
+                    type: boolean
+                    description: Whether linked violation was automatically resolved
+        '400':
+          description: Action not in progress or resolution notes missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: User is not the assigned user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /corrective-actions/my-tasks:
+    get:
+      summary: Get corrective actions assigned to current user
+      operationId: getMyTasks
+      tags:
+        - Corrective Actions
+      description: |
+        Convenience endpoint to retrieve tasks assigned to the authenticated user.
+      parameters:
+        - name: status
+          in: query
+          description: Filter by status (default: ASSIGNED, IN_PROGRESS)
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [PENDING, ASSIGNED, IN_PROGRESS, COMPLETED]
+      responses:
+        '200':
+          description: Successful response with user's task list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CorrectiveActionSummary'
+                  totalCount:
+                    type: integer
+
+components:
+  schemas:
+    CorrectiveActionListResponse:
+      type: object
+      properties:
+        correctiveActions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CorrectiveActionSummary'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    CorrectiveActionSummary:
+      type: object
+      properties:
+        actionId:
+          type: string
+          format: uuid
+        violationId:
+          type: string
+          format: uuid
+        actionType:
+          type: string
+          enum: [RECALIBRATION, MAINTENANCE, REPEAT_CONTROL, REAGENT_CHANGE, OTHER]
+        description:
+          type: string
+        assignedToUser:
+          type: object
+          properties:
+            userId:
+              type: string
+              format: uuid
+            username:
+              type: string
+            firstName:
+              type: string
+            lastName:
+              type: string
+        status:
+          type: string
+          enum: [PENDING, ASSIGNED, IN_PROGRESS, COMPLETED]
+        createdDateTime:
+          type: string
+          format: date-time
+        completedDateTime:
+          type: string
+          format: date-time
+        priority:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+          description: Derived from linked violation severity
+
+    CorrectiveActionDetail:
+      type: object
+      properties:
+        actionId:
+          type: string
+          format: uuid
+        violationId:
+          type: string
+          format: uuid
+        actionType:
+          type: string
+          enum: [RECALIBRATION, MAINTENANCE, REPEAT_CONTROL, REAGENT_CHANGE, OTHER]
+        description:
+          type: string
+        assignedToUser:
+          type: object
+          properties:
+            userId:
+              type: string
+              format: uuid
+            username:
+              type: string
+            firstName:
+              type: string
+            lastName:
+              type: string
+        createdByUser:
+          type: object
+          properties:
+            userId:
+              type: string
+              format: uuid
+            username:
+              type: string
+        status:
+          type: string
+          enum: [PENDING, ASSIGNED, IN_PROGRESS, COMPLETED]
+        createdDateTime:
+          type: string
+          format: date-time
+        completedDateTime:
+          type: string
+          format: date-time
+        resolutionNotes:
+          type: string
+        violationSummary:
+          $ref: '#/components/schemas/ViolationSummary'
+
+    CorrectiveActionCreateRequest:
+      type: object
+      required:
+        - violationId
+        - actionType
+        - description
+      properties:
+        violationId:
+          type: string
+          format: uuid
+        actionType:
+          type: string
+          enum: [RECALIBRATION, MAINTENANCE, REPEAT_CONTROL, REAGENT_CHANGE, OTHER]
+        description:
+          type: string
+          description: Detailed description of action to be taken
+        assignedToUserId:
+          type: string
+          format: uuid
+          description: Optional - assign immediately to specific user
+
+    CorrectiveActionUpdateRequest:
+      type: object
+      properties:
+        description:
+          type: string
+        actionType:
+          type: string
+          enum: [RECALIBRATION, MAINTENANCE, REPEAT_CONTROL, REAGENT_CHANGE, OTHER]
+
+    ViolationSummary:
+      type: object
+      properties:
+        violationId:
+          type: string
+          format: uuid
+        analyzerId:
+          type: string
+          format: uuid
+        analyzerName:
+          type: string
+        testUnitId:
+          type: string
+          format: uuid
+        testName:
+          type: string
+        ruleCode:
+          type: string
+        severity:
+          type: string
+          enum: [WARNING, REJECTION]
+        violationDateTime:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        pageSize:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        errorCode:
+          type: string
+        i18nKey:
+          type: string
+          example: "qc.error.action_not_assigned"
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: Forbidden - user does not have permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+      description: Spring Security session-based authentication
+
+security:
+  - sessionAuth: []
+
+tags:
+  - name: Corrective Actions
+    description: Corrective action workflow management
+
