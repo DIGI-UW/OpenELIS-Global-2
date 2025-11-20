@@ -1,16 +1,40 @@
+/**
+ * E2E Tests for Home Page
+ * Tests navigation bar interactions and dashboard tile navigation
+ *
+ * Constitution V.5 Compliance:
+ * - Video disabled by default (cypress.config.js)
+ * - Screenshots enabled on failure (cypress.config.js)
+ * - Intercepts set up BEFORE actions that trigger them
+ * - Uses .should() assertions for retry-ability (no arbitrary cy.wait())
+ * - Element readiness checks before all interactions
+ * - Session management via cy.login() with cy.session() (10-20x faster)
+ * - Run individually during development: npm run cy:run -- --spec "cypress/e2e/home.cy.js"
+ */
+
 import LoginPage from "../pages/LoginPage";
 
 let loginPage = null;
 let home = null;
 
+// Use cy.login() with cy.session() for login caching (10-20x faster - Testing Roadmap pattern)
+// Same pattern as cy.setupStorageTests() in storage-setup.js
 before(() => {
+  cy.login(); // Uses cy.session() - login runs ONCE, cached for all tests
+  // Navigate to home page after login
   loginPage = new LoginPage();
-  loginPage.visit();
-
   home = loginPage.goToHomePage();
 });
 
 describe("User interacts with the navigation bar", function () {
+  beforeEach(() => {
+    // Navigate to home page for each test
+    cy.visit("/");
+    // Wait for home page to be ready
+    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 })
+      .should("exist");
+  });
+
   it("User searches for patient and closes search bar", function () {
     home.searchBar();
   });
@@ -29,9 +53,12 @@ describe("User interacts with the navigation bar", function () {
 });
 
 describe("User navigates to different tiles", function () {
-  // This action runs after each test
-  afterEach(() => {
-    home.afterAll();
+  beforeEach(() => {
+    // Navigate to home page for each test
+    cy.visit("/");
+    // Wait for home page to be ready
+    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 })
+      .should("exist");
   });
 
   it("User navigates to the In Progress", function () {

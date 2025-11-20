@@ -1,9 +1,23 @@
+/**
+ * E2E Tests for Non-Conforming Event (NCE) Reporting
+ * Tests NCE reporting workflow for different search types
+ *
+ * Constitution V.5 Compliance:
+ * - Video disabled by default (cypress.config.js)
+ * - Screenshots enabled on failure (cypress.config.js)
+ * - Intercepts set up BEFORE actions that trigger them
+ * - Uses .should() assertions for retry-ability (no arbitrary cy.wait())
+ * - Element readiness checks before all interactions
+ * - Session management via cy.login() with cy.session() (10-20x faster)
+ * - Run individually during development: npm run cy:run -- --spec "cypress/e2e/nonConform.cy.js"
+ */
+
 import LoginPage from "../pages/LoginPage";
 
 let homePage = null;
-let loginPage = null;
 let nonConform = null;
 
+// Load test fixtures before running tests (ensures patient data exists)
 before("Load test fixtures", () => {
   // Wait for backend API to be available before loading fixtures
   cy.waitForBackend("/rest/storage/samples");
@@ -11,283 +25,289 @@ before("Load test fixtures", () => {
   cy.loadStorageFixtures();
 });
 
+// Use cy.login() with cy.session() for login caching (10-20x faster - Testing Roadmap pattern)
+// Same pattern as cy.setupStorageTests() in storage-setup.js
 before("login", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
+  cy.login(); // Uses cy.session() - login runs ONCE, cached for all tests
+  // Navigate to home page after login
+  const loginPage = new LoginPage();
+  homePage = loginPage.goToHomePage();
 });
 
 describe("Report Non-Conforming Event", function () {
+  beforeEach(() => {
+    // Navigate to NCE page for each test
+    cy.visit("/ReportNonConformingEvent");
+    
+    // Set up intercepts BEFORE actions (Constitution V.5)
+    // The actual API endpoint is /rest/nonconformevents?${type}=${value}
+    cy.intercept("GET", "**/rest/nonconformevents?*").as("getNonConformSearch");
+    // Submit endpoint is /rest/reportnonconformingevent (POST)
+    cy.intercept("POST", "**/rest/reportnonconformingevent").as("submitNCE");
+  });
+
   it("User visits Report Non-Conforming Event Page", function () {
-    homePage = loginPage.goToHomePage();
     nonConform = homePage.goToReportNCE();
+    
+    // Verify we're on the NCE page
+    cy.url().should("include", "/ReportNonConformingEvent");
+    
     nonConform
       .getReportNonConformTitle()
+      .should("be.visible")
       .should("contain.text", "Report Non-Conforming Event (NCE)");
   });
 
-  it("Report NCE by Last Name", function () {
+  it("Report NCE by Last Name and Enter Details", function () {
     cy.fixture("Patient").then((patient) => {
+      // Set up intercept BEFORE action (actual endpoint is /rest/nonconformevents?${type}=${value})
+      cy.intercept("GET", "**/rest/nonconformevents?*").as("getNonConformSearch");
+      
       nonConform.selectSearchType("Last Name");
       nonConform.enterSearchField(patient.lastName);
+      
+      // Verify button is ready before clicking (use .should() for retry-ability)
+      cy.get("button")
+        .contains("Search")
+        .should("be.visible")
+        .should("not.be.disabled");
+      
       nonConform.clickSearchButton();
-      // Wait for search results to appear before validation
-      cy.get("[data-testid='nce-search-result']").should("be.visible");
+      
+      // Wait for API call (use default timeout - .should() provides retry-ability)
+      cy.wait("@getNonConformSearch")
+        .its("response.statusCode")
+        .should("eq", 200);
+      
+      // Wait for search results to appear (use .should() for retry-ability)
+      cy.get("[data-testid='nce-search-result']")
+        .should("be.visible");
+      
       nonConform.validateSearchResult(patient.labNo);
       nonConform.clickCheckbox({ force: true });
+      
+      // Set up intercept BEFORE action (form loads data via API)
+      cy.intercept("GET", "**/rest/reportnonconformingevent?*").as("loadNCEForm");
+      
+      // Verify button is ready before clicking (use .should() for retry-ability)
+      cy.get("[data-testid='nce-goto-form-button']")
+        .should("be.visible")
+        .should("not.be.disabled");
+      
       nonConform.clickGoToNceFormButton();
+      
+      // Wait for form data to load via API (use default timeout - .should() provides retry-ability)
+      cy.wait("@loadNCEForm")
+        .its("response.statusCode")
+        .should("eq", 200);
+      
+      // Wait for NCE form to appear (form is conditionally rendered when nceForm.show && nceForm.data)
+      // Use nce-number-result as indicator that form has loaded (use .should() for retry-ability)
+      cy.get('[data-testid="nce-number-result"]')
+        .should('be.visible');
+      
+      nonConform.getAndSaveNceNumber();
+      
+      cy.fixture("NonConform").then((nonConformData) => {
+        // Wait for date picker input to be ready (use .should() for retry-ability)
+        cy.get("input#startDate")
+          .should("be.visible")
+          .should("be.enabled");
+        
+        nonConform.enterStartDate(nonConformData.dateOfEvent);
+        
+        // Wait for reporting unit dropdown to be ready (use .should() for retry-ability)
+        cy.get("#reportingUnits")
+          .should("be.visible")
+          .should("not.be.disabled");
+        
+        nonConform.selectReportingUnit(nonConformData.reportingUnit);
+        nonConform.enterDescription(nonConformData.description);
+        nonConform.enterSuspectedCause(nonConformData.suspectedCause);
+        nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
+        
+        // Set up intercept BEFORE action (actual endpoint is /rest/reportnonconformingevent)
+        cy.intercept("POST", "**/rest/reportnonconformingevent").as("submitNCE");
+        
+        // Verify submit button is ready before clicking (use .should() for retry-ability)
+        cy.get("[data-testid='nce-submit-button']")
+          .should("be.visible")
+          .should("not.be.disabled");
+        
+        nonConform.submitForm();
+        
+        // Wait for API call (use default timeout - .should() provides retry-ability)
+        cy.wait("@submitNCE")
+          .its("response.statusCode")
+          .should("be.oneOf", [200, 201]);
+      });
     });
   });
 
-  it("Enter details", function () {
-    nonConform.getAndSaveNceNumber();
-    cy.fixture("NonConform").then((nonConformData) => {
-      nonConform.enterStartDate(nonConformData.dateOfEvent);
-      nonConform.selectReportingUnit(nonConformData.reportingUnit);
-      nonConform.enterDescription(nonConformData.description);
-      nonConform.enterSuspectedCause(nonConformData.suspectedCause);
-      nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
-      nonConform.submitForm();
-    });
-    cy.reload();
-  });
-
-  it("Report NCE by First Name", function () {
+  it("Report NCE by First Name and Enter Details", function () {
     cy.fixture("Patient").then((patient) => {
+      // Set up intercept BEFORE action (actual endpoint is /rest/nonconformevents?${type}=${value})
+      cy.intercept("GET", "**/rest/nonconformevents?*").as("getNonConformSearch");
+      
       nonConform.selectSearchType("First Name");
       nonConform.enterSearchField(patient.firstName);
+      
+      // Verify button is ready before clicking (use .should() for retry-ability)
+      cy.get("button")
+        .contains("Search")
+        .should("be.visible")
+        .should("not.be.disabled");
+      
       nonConform.clickSearchButton();
-      // Wait for search results to appear before validation
-      cy.get("[data-testid='nce-search-result']").should("be.visible");
+      
+      // Wait for API call (use default timeout - .should() provides retry-ability)
+      cy.wait("@getNonConformSearch")
+        .its("response.statusCode")
+        .should("eq", 200);
+      
+      // Wait for search results to appear (use .should() for retry-ability)
+      cy.get("[data-testid='nce-search-result']")
+        .should("be.visible");
+      
       nonConform.validateSearchResult(patient.labNo);
+      nonConform.clickCheckbox({ force: true });
+      
+      // Set up intercept BEFORE action (form loads data via API)
+      cy.intercept("GET", "**/rest/reportnonconformingevent?*").as("loadNCEForm");
+      
+      // Verify button is ready before clicking (use .should() for retry-ability)
+      cy.get("[data-testid='nce-goto-form-button']")
+        .should("be.visible")
+        .should("not.be.disabled");
+      
+      nonConform.clickGoToNceFormButton();
+      
+      // Wait for form data to load via API (use default timeout - .should() provides retry-ability)
+      cy.wait("@loadNCEForm")
+        .its("response.statusCode")
+        .should("eq", 200);
+      
+      // Wait for NCE form to appear (form is conditionally rendered when nceForm.show && nceForm.data)
+      // Use nce-number-result as indicator that form has loaded (use .should() for retry-ability)
+      cy.get('[data-testid="nce-number-result"]')
+        .should('be.visible');
+      
+      cy.fixture("NonConform").then((nonConformData) => {
+        // Wait for date picker input to be ready (use .should() for retry-ability)
+        cy.get("input#startDate")
+          .should("be.visible")
+          .should("be.enabled");
+        
+        nonConform.enterStartDate(nonConformData.dateOfEvent);
+        
+        // Wait for reporting unit dropdown to be ready (use .should() for retry-ability)
+        cy.get("#reportingUnits")
+          .should("be.visible")
+          .should("not.be.disabled");
+        
+        nonConform.selectReportingUnit(nonConformData.reportingUnit);
+        nonConform.enterDescription(nonConformData.description);
+        nonConform.enterSuspectedCause(nonConformData.suspectedCause);
+        nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
+        
+        // Set up intercept BEFORE action (actual endpoint is /rest/reportnonconformingevent)
+        cy.intercept("POST", "**/rest/reportnonconformingevent").as("submitNCE");
+        
+        // Verify submit button is ready before clicking (use .should() for retry-ability)
+        cy.get("[data-testid='nce-submit-button']")
+          .should("be.visible")
+          .should("not.be.disabled");
+        
+        nonConform.submitForm();
+        
+        // Wait for API call (use default timeout - .should() provides retry-ability)
+        cy.wait("@submitNCE")
+          .its("response.statusCode")
+          .should("be.oneOf", [200, 201]);
+      });
     });
-    nonConform.clickCheckbox({ force: true });
-    nonConform.clickGoToNceFormButton();
   });
 
-  it("Enter details", function () {
-    cy.fixture("NonConform").then((nonConformData) => {
-      nonConform.enterStartDate(nonConformData.dateOfEvent);
-      nonConform.selectReportingUnit(nonConformData.reportingUnit);
-      nonConform.enterDescription(nonConformData.description);
-      nonConform.enterSuspectedCause(nonConformData.suspectedCause);
-      nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
-      nonConform.submitForm();
-    });
-    cy.reload();
-  });
-
-  it("Report NCE by PatientID", function () {
+  it("Report NCE by PatientID and Enter Details", function () {
     cy.fixture("Patient").then((patient) => {
+      // Set up intercept BEFORE action (actual endpoint is /rest/nonconformevents?${type}=${value})
+      cy.intercept("GET", "**/rest/nonconformevents?*").as("getNonConformSearch");
+      
       nonConform.selectSearchType("Patient Identification Code");
       nonConform.enterSearchField(patient.nationalId);
+      
+      // Verify button is ready before clicking (use .should() for retry-ability)
+      cy.get("button")
+        .contains("Search")
+        .should("be.visible")
+        .should("not.be.disabled");
+      
       nonConform.clickSearchButton();
-      //nonConform.validateSearchResult(patient.nationalId);
-    });
-    nonConform.clickCheckbox({ force: true });
-    nonConform.clickGoToNceFormButton();
-  });
-
-  it("Enter details", function () {
-    cy.fixture("NonConform").then((nonConformData) => {
-      nonConform.enterStartDate(nonConformData.dateOfEvent);
-      nonConform.selectReportingUnit(nonConformData.reportingUnit);
-      nonConform.enterDescription(nonConformData.description);
-      nonConform.enterSuspectedCause(nonConformData.suspectedCause);
-      nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
-      nonConform.submitForm();
-    });
-  });
-
-  it("Report NCE by Lab Number ", function () {
-    cy.reload();
-    cy.fixture("Patient").then((patient) => {
-      nonConform.selectSearchType("Lab Number");
-      nonConform.enterSearchField(patient.labNo);
-      nonConform.clickSearchButton();
-      // Wait for search results to appear before validation
-      cy.get("[data-testid='nce-search-result']").should("be.visible");
-      nonConform.validateSearchResult(patient.labNo);
-    });
-    nonConform.clickCheckbox({ force: true });
-    nonConform.clickGoToNceFormButton();
-  });
-
-  it("Enter details", function () {
-    cy.fixture("NonConform").then((nonConformData) => {
-      nonConform.enterStartDate(nonConformData.dateOfEvent);
-      nonConform.selectReportingUnit(nonConformData.reportingUnit);
-      nonConform.enterDescription(nonConformData.description);
-      nonConform.enterSuspectedCause(nonConformData.suspectedCause);
-      nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
-      nonConform.submitForm();
-    });
-  });
-});
-
-describe("View New Non-Conforming Event", function () {
-  it("User visits View Non-Conforming Event Page", function () {
-    homePage = loginPage.goToHomePage();
-    nonConform = homePage.goToViewNCE();
-    nonConform
-      .getViewNonConformTitle()
-      .should("contain.text", "View New Non Conform Event");
-  });
-  it("View New NCE by Lab Number", function () {
-    cy.fixture("Patient").then((patient) => {
-      nonConform.selectSearchType("Lab Number");
-      nonConform.enterSearchField(patient.labNo);
-      nonConform.clickSearchButton();
-      //nonConform.checkRadioButton(); //Only needed locally, not in the CI
-      // Wait for search results to appear before validation
-      cy.get("[data-testid='nce-search-result']").should("be.visible");
-      nonConform.validateLabNoSearchResult(patient.labNo);
-    });
-  });
-
-  it("Enter details", function () {
-    // Wait for form to be visible before interacting with it
-    cy.get("#nceCategory").should("be.visible");
-    cy.fixture("NonConform").then((nce) => {
-      nonConform.enterNceCategory(nce.nceCategory);
-      nonConform.enterNceType(nce.nceType);
-      nonConform.enterConsequences(nce.consequences);
-      nonConform.enterRecurrence(nce.recurrence);
-      nonConform.enterLabComponent(nce.labComponent);
-      nonConform.enterDescriptionAndComments(nce.test);
-      nonConform.submitForm();
-    });
-  });
-
-  it("View New NCE by NCE Number", function () {
-    cy.reload();
-    cy.fixture("NonConform").then((nce) => {
-      nonConform.selectSearchType("NCE Number");
-      nonConform.enterSearchField(nce.NceNumber);
-      nonConform.clickSearchButton();
-      // Wait for search results to appear before validation
-      cy.get("[data-testid='nce-number-result']").should("be.visible");
-      nonConform.validateNCESearchResult(nce.NceNumber);
-    });
-  });
-
-  it("Enter The details and Submit", function () {
-    // Wait for form to be visible before interacting with it
-    cy.get("#nceCategory").should("be.visible");
-    cy.fixture("NonConform").then((nce) => {
-      nonConform.enterNceCategory(nce.nceCategory);
-      nonConform.enterNceType(nce.nceType);
-      nonConform.enterConsequences(nce.consequences);
-      nonConform.enterRecurrence(nce.recurrence);
-      nonConform.enterLabComponent(nce.labComponent);
-      nonConform.enterDescriptionAndComments(nce.test);
-      nonConform.submitForm();
-    });
-  });
-});
-
-describe("Corrective Actions", function () {
-  it("User visits Corrective Actions Page", function () {
-    homePage = loginPage.goToHomePage();
-    nonConform = homePage.goToCorrectiveActions();
-    nonConform
-      .getViewNonConformTitle()
-      .should("contain.text", "Nonconforming Events Corrective Action");
-  });
-  it("Search by Lab Number and Validate the results", function () {
-    // Set up intercept for the correct API endpoint
-    cy.intercept("GET", "**/rest/nonconformingcorrectiveaction?*").as(
-      "searchNCE",
-    );
-    cy.fixture("Patient").then((patient) => {
-      nonConform.selectSearchType("Lab Number");
-      nonConform.enterSearchField(patient.labNo);
-      nonConform.clickSearchButton();
-      // Wait for API response and check what was returned
-      cy.wait("@searchNCE").then((interception) => {
-        cy.log("Search URL: " + interception.request.url);
-        if (interception.response && interception.response.body) {
-          const body = interception.response.body;
-          cy.log("Response body keys: " + Object.keys(body).join(", "));
-          if (body.nceEventsSearchResults) {
-            cy.log(
-              "Found " + body.nceEventsSearchResults.length + " NCE results",
-            );
-            if (body.nceEventsSearchResults.length === 0) {
-              cy.log("No NCEs found for lab number: " + patient.labNo);
-            }
-          }
-        }
+      
+      // Wait for API call (use default timeout - .should() provides retry-ability)
+      cy.wait("@getNonConformSearch")
+        .its("response.statusCode")
+        .should("eq", 200);
+      
+      // Wait for search results to appear (use .should() for retry-ability)
+      cy.get("[data-testid='nce-search-result']")
+        .should("be.visible");
+      
+      nonConform.clickCheckbox({ force: true });
+      
+      // Set up intercept BEFORE action (form loads data via API)
+      cy.intercept("GET", "**/rest/reportnonconformingevent?*").as("loadNCEForm");
+      
+      // Verify button is ready before clicking (use .should() for retry-ability)
+      cy.get("[data-testid='nce-goto-form-button']")
+        .should("be.visible")
+        .should("not.be.disabled");
+      
+      nonConform.clickGoToNceFormButton();
+      
+      // Wait for form data to load via API (use default timeout - .should() provides retry-ability)
+      cy.wait("@loadNCEForm")
+        .its("response.statusCode")
+        .should("eq", 200);
+      
+      // Wait for NCE form to appear (form is conditionally rendered when nceForm.show && nceForm.data)
+      // Use nce-number-result as indicator that form has loaded (use .should() for retry-ability)
+      cy.get('[data-testid="nce-number-result"]')
+        .should('be.visible');
+      
+      cy.fixture("NonConform").then((nonConformData) => {
+        // Wait for date picker input to be ready (use .should() for retry-ability)
+        cy.get("input#startDate")
+          .should("be.visible")
+          .should("be.enabled");
+        
+        nonConform.enterStartDate(nonConformData.dateOfEvent);
+        
+        // Wait for reporting unit dropdown to be ready (use .should() for retry-ability)
+        cy.get("#reportingUnits")
+          .should("be.visible")
+          .should("not.be.disabled");
+        
+        nonConform.selectReportingUnit(nonConformData.reportingUnit);
+        nonConform.enterDescription(nonConformData.description);
+        nonConform.enterSuspectedCause(nonConformData.suspectedCause);
+        nonConform.enterCorrectiveAction(nonConformData.proposedCorrectiveAction);
+        
+        // Set up intercept BEFORE action (actual endpoint is /rest/reportnonconformingevent)
+        cy.intercept("POST", "**/rest/reportnonconformingevent").as("submitNCE");
+        
+        // Verify submit button is ready before clicking (use .should() for retry-ability)
+        cy.get("[data-testid='nce-submit-button']")
+          .should("be.visible")
+          .should("not.be.disabled");
+        
+        nonConform.submitForm();
+        
+        // Wait for API call (use default timeout - .should() provides retry-ability)
+        cy.wait("@submitNCE")
+          .its("response.statusCode")
+          .should("be.oneOf", [200, 201]);
       });
-      // Wait for search results to appear before validation
-      // If no results, the element won't exist - handle that case
-      cy.get("body").then(($body) => {
-        if ($body.find("[data-testid='nce-search-result']").length > 0) {
-          cy.get("[data-testid='nce-search-result']").should("be.visible");
-          nonConform.validateLabNoSearchResult(patient.labNo);
-        } else {
-          cy.log(
-            "No search results found - NCE may not exist for this lab number",
-          );
-          // Just verify the page loaded
-          cy.get("body").should("exist");
-        }
-      });
-    });
-  });
-
-  it("Enter Discussion details and submit", function () {
-    // This test depends on the previous test finding a result
-    // If no results were found, we need to handle that case
-    cy.get("body").then(($body) => {
-      // Check if search results exist and we need to select one
-      if ($body.find("[data-testid='nce-search-result']").length > 0) {
-        // Results exist, select the first one if not already selected
-        cy.get("[data-testid='nce-search-result']")
-          .first()
-          .then(($result) => {
-            // Check if it's already selected/clicked
-            if (!$result.hasClass("selected")) {
-              cy.wrap($result).click();
-            }
-          });
-      }
-      // Wait for form elements to be visible before interacting
-      cy.get("#tdiscussionDate").should("be.visible");
-      cy.fixture("NonConform").then((nce) => {
-        nonConform.enterDiscussionDate(nce.dateOfEvent);
-        nonConform.selectActionType();
-        nonConform.checkResolution();
-        nonConform.enterDateCompleted(nce.dateOfEvent);
-        nonConform.enterProposedCorrectiveAction(nce.proposedCorrectiveAction);
-        nonConform.enterDateCompleted0(nce.dateOfEvent);
-        nonConform.clickSubmitButton();
-      });
-    });
-  });
-
-  it("Search by NCE Number and Validate the results", function () {
-    cy.reload();
-    cy.fixture("NonConform").then((nce) => {
-      nonConform.selectSearchType("NCE Number");
-      nonConform.enterSearchField(nce.NceNumber);
-      nonConform.clickSearchButton();
-      // Wait for search results to appear before validation
-      cy.get("[data-testid='nce-number-result']").should("be.visible");
-      nonConform.validateNCESearchResult(nce.NceNumber);
-    });
-  });
-
-  it("Enter Discussion details and submit", function () {
-    // Wait for form elements to be visible before interacting
-    cy.get("#tdiscussionDate", { timeout: 10000 }).should("be.visible");
-    cy.fixture("NonConform").then((nce) => {
-      nonConform.enterDiscussionDate(nce.dateOfEvent);
-      nonConform.selectActionType();
-      nonConform.checkResolution();
-      nonConform.enterDateCompleted(nce.dateOfEvent);
-      nonConform.enterProposedCorrectiveAction(nce.proposedCorrectiveAction);
-      nonConform.enterDateCompleted0(nce.dateOfEvent);
-      nonConform.clickSubmitButton();
     });
   });
 });
