@@ -32,7 +32,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
         }
 
         if (types != null && !types.isEmpty()) {
-            hql.append("and nb.type in (:types) ");
+            hql.append("and nb.type.id in (:types) ");
         }
 
         if (tags != null && !tags.isEmpty()) {
@@ -84,7 +84,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
         }
 
         if (types != null && !types.isEmpty()) {
-            hql.append("and nb.type in (:types) ");
+            hql.append("and nb.type.id in (:types) ");
         }
 
         if (tags != null && !tags.isEmpty()) {

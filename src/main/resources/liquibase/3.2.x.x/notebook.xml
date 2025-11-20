@@ -21,7 +21,10 @@
                 <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook"/>
             </column>
             <column name="title" type="VARCHAR(255)"/>
-            <column name="type" type="VARCHAR(255)"/>
+            <column name="type" type="NUMERIC(10)">
+                <constraints nullable="true" foreignKeyName="fk_notebook_type_dictionary"
+                             referencedTableName="dictionary" referencedColumnNames="id"/>
+            </column>
             <column name="project" type="VARCHAR(255)"/>
             <column name="objective" type="VARCHAR(255)"/>
             <column name="protocol" type="VARCHAR(255)"/>

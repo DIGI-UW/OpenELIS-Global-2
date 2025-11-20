@@ -206,15 +206,10 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setTitle(noteBook.getTitle());
             displayBean.setTags(noteBook.getTags());
 
-            // Handle type - it could be a dictionary ID (numeric) or a string value
+            // Handle type - it's now a Dictionary entity
             if (noteBook.getType() != null) {
-                try {
-                    displayBean.setType(Integer.valueOf(noteBook.getType()));
-                    displayBean.setTypeName(dictionaryService.get(noteBook.getType()).getDictEntry());
-                } catch (NumberFormatException e) {
-                    // If type is not numeric, use it as the type name directly
-                    displayBean.setTypeName(noteBook.getType());
-                }
+                displayBean.setType(Integer.valueOf(noteBook.getType().getId()));
+                displayBean.setTypeName(noteBook.getType().getDictEntry());
             }
 
             displayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
@@ -241,11 +236,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getEntries());
             fullDisplayBean.setId(noteBook.getId());
             fullDisplayBean.setTitle(noteBook.getTitle());
-            fullDisplayBean.setType((Integer.valueOf(noteBook.getType())));
+            if (noteBook.getType() != null) {
+                fullDisplayBean.setType(Integer.valueOf(noteBook.getType().getId()));
+                fullDisplayBean.setTypeName(noteBook.getType().getDictEntry());
+            }
             fullDisplayBean.setTags(noteBook.getTags());
             fullDisplayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             fullDisplayBean.setStatus(noteBook.getStatus());
-            fullDisplayBean.setTypeName(dictionaryService.get(noteBook.getType().toString()).getDictEntry());
             fullDisplayBean.setContent(noteBook.getContent());
             fullDisplayBean.setObjective(noteBook.getObjective());
             fullDisplayBean.setProtocol(noteBook.getProtocol());
@@ -308,7 +305,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             noteBook.setTitle(form.getTitle());
         }
         if (form.getType() != null) {
-            noteBook.setType(form.getType().toString());
+            noteBook.setType(dictionaryService.get(form.getType().toString()));
         }
         if (form.getTags() != null && !form.getTags().isEmpty()) {
             noteBook.setTags(new ArrayList<>(form.getTags()));
