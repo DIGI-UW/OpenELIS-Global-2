@@ -53,6 +53,9 @@ public class NoteBookPage extends BaseObject<Integer> {
     @Column(name = "test")
     private List<Integer> tests;
 
+    @Column(name = "completed")
+    private Boolean completed;
+
     public Integer getId() {
         return id;
     }
@@ -110,6 +113,14 @@ public class NoteBookPage extends BaseObject<Integer> {
 
     public void setTests(List<Integer> tests) {
         this.tests = tests;
+    }
+
+    public Boolean getCompleted() {
+        return completed != null ? completed : false;
+    }
+
+    public void setCompleted(Boolean completed) {
+        this.completed = completed;
     }
 
 }

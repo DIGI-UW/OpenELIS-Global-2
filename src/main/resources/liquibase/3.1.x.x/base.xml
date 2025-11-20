@@ -8,4 +8,5 @@
   <include relativeToChangelogFile="true" file="bar_code_config.xml" />
   <include relativeToChangelogFile="true" file="dictionary-loinc.xml"/>
   <include relativeToChangelogFile="true" file="enable_openelis_to_odoo_connection.xml" />
+  <include relativeToChangelogFile="true" file="provisional_clinical_diagnosis.xml"/>
 </databaseChangeLog>
