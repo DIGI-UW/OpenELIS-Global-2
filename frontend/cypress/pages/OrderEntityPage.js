@@ -78,8 +78,13 @@ class OrderEntityPage {
     requesterFirstName,
     requesterLastName,
   ) {
+    // Testing Roadmap: Use element readiness checks, wait for autocomplete
     cy.get("#requesterId").clear().type(fullName);
-    cy.contains(".suggestion-active", fullName).click();
+    // Wait for autocomplete suggestions to appear (Carbon ComboBox uses portal)
+    cy.get(".suggestion-active", { timeout: 10000 })
+      .should("be.visible")
+      .contains(fullName)
+      .click();
     cy.get("input#requesterFirstName").clear().type(requesterFirstName);
     cy.get("input#requesterLastName").clear().type(requesterLastName);
   }
@@ -87,7 +92,8 @@ class OrderEntityPage {
     cy.contains("span", "Remember site and requester").click();
   }
   clickSubmitOrderButton() {
-    cy.contains("button", "Submit")
+    // Testing Roadmap: Use element readiness checks, wait for button to be enabled
+    cy.contains("button", "Submit", { timeout: 10000 })
       .should("be.visible")
       .should("not.be.disabled")
       .click();

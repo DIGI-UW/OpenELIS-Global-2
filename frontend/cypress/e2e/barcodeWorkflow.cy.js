@@ -88,9 +88,15 @@ describe("Barcode Scan Auto-Open", () => {
 
     cy.wait("@validateBarcode", { timeout: 10000 });
 
-    // Verify form auto-opens with pre-filled hierarchy
-    cy.get('[data-testid="room-combobox"]').should("be.visible");
-    cy.get('[data-testid="device-combobox"]').should("be.visible");
+    // Wait for form to auto-open after barcode validation
+    // The form renders in EnhancedCascadingMode which uses Carbon ComboBox (portal rendering)
+    // Use element readiness check with retry-ability (Testing Roadmap: DOM Query Effectiveness)
+    cy.get('[data-testid="room-combobox"]', { timeout: 10000 })
+      .should("be.visible")
+      .should("not.be.disabled");
+    cy.get('[data-testid="device-combobox"]', { timeout: 10000 })
+      .should("be.visible")
+      .should("not.be.disabled");
     cy.screenshot("06-form-auto-opened-with-prefilled-hierarchy");
   });
 

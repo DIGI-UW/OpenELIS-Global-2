@@ -178,6 +178,9 @@ INSERT INTO patient (id, person_id, race, gender, birth_date, birth_time, nation
 ON CONFLICT (id) DO UPDATE SET
   person_id = EXCLUDED.person_id,
   external_id = EXCLUDED.external_id,
+  birth_date = EXCLUDED.birth_date,
+  birth_time = EXCLUDED.birth_time,
+  entered_birth_date = EXCLUDED.entered_birth_date,
   lastupdated = CURRENT_TIMESTAMP;
 
 -- Get sample type IDs (using first available if specific types not found)

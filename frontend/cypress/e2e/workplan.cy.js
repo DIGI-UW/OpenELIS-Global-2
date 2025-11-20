@@ -33,11 +33,20 @@ describe("Work plan by Panel", function () {
 
   it("All known orders are present", () => {
     cy.fixture("Order").then((options) => {
+      // Testing Roadmap: Use element readiness checks, wait for table rows
       workplan
         .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
+        .find("tbody tr", { timeout: 10000 })
+        .should("have.length.greaterThan", 0)
+        .then(($rows) => {
+          // Check if any row contains the lab number
+          const found = Array.from($rows).some((row) =>
+            row.textContent.includes(options.labNo),
+          );
+          expect(
+            found,
+            `Expected to find lab number ${options.labNo} in workplan results`,
+          ).to.be.true;
         });
     });
   });
@@ -61,11 +70,20 @@ describe("Work plan by Unit", function () {
 
   it("All known orders are present", () => {
     cy.fixture("Order").then((options) => {
+      // Testing Roadmap: Use element readiness checks, wait for table rows
       workplan
         .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
+        .find("tbody tr", { timeout: 10000 })
+        .should("have.length.greaterThan", 0)
+        .then(($rows) => {
+          // Check if any row contains the lab number
+          const found = Array.from($rows).some((row) =>
+            row.textContent.includes(options.labNo),
+          );
+          expect(
+            found,
+            `Expected to find lab number ${options.labNo} in workplan results`,
+          ).to.be.true;
         });
     });
   });
@@ -89,11 +107,20 @@ describe("Work plan by Priority", function () {
 
   it("All known orders are present", () => {
     cy.fixture("Order").then((options) => {
+      // Testing Roadmap: Use element readiness checks, wait for table rows
       workplan
         .getWorkPlanResultsTable()
-        .find("tr")
-        .then((row) => {
-          expect(row.text()).contains(options.labNo);
+        .find("tbody tr", { timeout: 10000 })
+        .should("have.length.greaterThan", 0)
+        .then(($rows) => {
+          // Check if any row contains the lab number
+          const found = Array.from($rows).some((row) =>
+            row.textContent.includes(options.labNo),
+          );
+          expect(
+            found,
+            `Expected to find lab number ${options.labNo} in workplan results`,
+          ).to.be.true;
         });
     });
   });
