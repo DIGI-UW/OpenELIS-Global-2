@@ -1471,6 +1471,7 @@ export function SearchResults(props) {
               id={"testResult[" + data.id + "].refer"}
               checked={data.refer === "true"}
               disabled={data.referredOut}
+              data-cy="referalcheckbox"
               onChange={(e) => {
                 e.target.value = e.target.checked;
                 handleChange(e, data.id);

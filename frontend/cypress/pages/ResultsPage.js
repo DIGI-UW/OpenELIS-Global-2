@@ -68,7 +68,7 @@ class Result {
   }
 
   referTests(referTests) {
-    cy.get('input[type="checkbox"]').check({ force: true });
+    cy.get("[data-cy='referalcheckbox']").check({ force: true });
   }
 
   searchResults() {
