@@ -134,11 +134,16 @@ const addNewOrder = (dashboardType, testType, sampleType, panelType) => {
     .should("not.be.disabled");
   dashboard.submitButton();
   // Wait for submission to complete and success page to appear
-  // Use element visibility check instead of arbitrary timeout
-  cy.get(
-    '[data-testid="success-message"], .success-message, button:contains("Print Barcode")',
-    { timeout: 15000 },
-  ).should("be.visible");
+  // Order submission redirects to success page with OrderSuccessMessage component
+  // Use data-cy selector (from OrderSuccessMessage.js) or wait for URL change
+  // Testing Roadmap: Use data-testid/ARIA roles, element readiness checks
+  cy.url({ timeout: 15000 }).should("include", "/SamplePatientEntry");
+  // Wait for success message or Print Barcode button (data-cy="printBarCode" from OrderSuccessMessage.js)
+  cy.get('[data-cy="printBarCode"], button:contains("Print Barcode")', {
+    timeout: 15000,
+  })
+    .should("be.visible")
+    .should("not.be.disabled");
 };
 
 // Helper function to validate success and print barcode
@@ -258,10 +263,16 @@ describe("Dashboard Tests", function () {
     //});
 
     it("User navigates back to Pathology Dashboard to confirm added order", function () {
+      // Navigate back to Pathology Dashboard from success page
+      // Testing Roadmap: Use element readiness checks, wait for navigation
+      dashboard = homePage.goToPathologyDashboard();
       // Wait for navigation to complete (URL change indicates page loaded)
-      cy.url().should("include", "/PathologyDashboard");
+      cy.url({ timeout: 10000 }).should("include", "/PathologyDashboard");
       // Wait for dashboard table to be visible (indicates data loaded)
-      cy.get("table", { timeout: 10000 }).should("be.visible");
+      // Use more specific selector (Testing Roadmap: data-testid > ARIA > semantic)
+      cy.get("table", { timeout: 10000 })
+        .should("be.visible")
+        .should("have.length.greaterThan", 0);
 
       // Intercept status list API call first (must load before dashboard)
       cy.intercept(
@@ -312,10 +323,13 @@ describe("Dashboard Tests", function () {
 
     it("Change The Status of Order and saves it", function () {
       // Check if orders exist first (PathologySample creation issue)
-      cy.get("table", { timeout: 10000 }).should("be.visible");
-      cy.get("body").then(($body) => {
-        const rows = $body.find("table tbody tr");
-        if (rows.length === 0) {
+      // Testing Roadmap: Use element readiness checks, wait for table to render
+      cy.get("table", { timeout: 10000 })
+        .should("be.visible")
+        .find("tbody")
+        .should("exist");
+      cy.get("table tbody tr", { timeout: 10000 }).then(($rows) => {
+        if ($rows.length === 0) {
           cy.log(
             "SKIPPING: No orders found in dashboard. PathologySample may not have been created.",
           );

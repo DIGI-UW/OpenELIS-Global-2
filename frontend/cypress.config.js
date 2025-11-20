@@ -253,6 +253,24 @@ module.exports = defineConfig({
             return null;
           }
         },
+        execSql(options) {
+          const { execSync } = require("child_process");
+          const { query } = options;
+          try {
+            const result = execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -c "${query}"`,
+              {
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+                encoding: "utf8",
+              },
+            );
+            return { success: true, output: result };
+          } catch (error) {
+            console.error("Error executing SQL:", error);
+            return { success: false, error: error.message };
+          }
+        },
       });
 
       try {
