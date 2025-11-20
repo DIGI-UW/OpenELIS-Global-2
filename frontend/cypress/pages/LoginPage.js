@@ -28,7 +28,6 @@ class LoginPage {
   }
 
   enterUsername(value) {
-    cy.wait(3000);
     this.getUsernameElement().should("be.visible");
     this.getUsernameElement().type(value);
     this.getUsernameElement().should("have.value", value);
@@ -48,15 +47,12 @@ class LoginPage {
   signOut() {
     cy.get(SELECTORS.USER_ICON).should("be.visible");
     cy.get(SELECTORS.USER_ICON).click();
-    cy.wait(200);
     cy.get(SELECTORS.LOGOUT).should("be.visible");
     cy.get(SELECTORS.LOGOUT).click();
-    cy.wait(1000);
   }
 
   changingPassword() {
-    cy.get(SELECTORS.CHANGE_PASSWORD).click();
-    cy.wait(500);
+    cy.get(SELECTORS.CHANGE_PASSWORD).should("be.visible").click();
   }
 
   enterCurrentPassword(value) {
@@ -75,19 +71,15 @@ class LoginPage {
   }
 
   submitNewPassword() {
-    cy.get("[data-cy='submitNewPassword']").should("be.visible");
-    cy.get("[data-cy='submitNewPassword']").click();
-    cy.wait(800);
+    cy.get("[data-cy='submitNewPassword']").should("be.visible").should("not.be.disabled").click();
   }
 
   clickExitPasswordReset() {
-    cy.get("[data-cy='exitPasswordReset']").should("be.visible");
-    cy.get("[data-cy='exitPasswordReset']").click();
-    cy.wait(800);
+    cy.get("[data-cy='exitPasswordReset']").should("be.visible").click();
   }
   clearInputs() {
-    this.getUsernameElement().should("exist").clear();
-    this.getPasswordElement().should("exist").clear();
+    this.getUsernameElement().should("be.visible").clear();
+    this.getPasswordElement().should("be.visible").clear();
   }
 
   goToHomePage() {
@@ -100,7 +92,7 @@ class LoginPage {
         this.signIn();
       }
     });
-    cy.wait(5000);
+    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 }).should("exist");
     return new HomePage();
   }
 }
