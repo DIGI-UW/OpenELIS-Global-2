@@ -32,6 +32,7 @@ import {
   ResultNew,
   Popup,
   Search,
+  Package,
 } from "@carbon/icons-react";
 import PathRoute from "../utils/PathRoute";
 import CalculatedValue from "./calculatedValue/CalculatedValueForm";
@@ -61,6 +62,7 @@ import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotific
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit.js";
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu.js";
+import InventoryManagement from "./inventory/InventoryManagement";
 import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd.js";
 import TestAdd from "./testManagementConfigMenu/TestAdd.js";
 import TestModifyEntry from "./testManagementConfigMenu/TestModifyEntry.js";
@@ -169,6 +171,13 @@ function Admin() {
             href="#organizationManagement"
           >
             <FormattedMessage id="organization.main.title" />
+          </SideNavLink>
+          <SideNavLink
+            data-cy="inventoryMgmnt"
+            renderIcon={Package}
+            href="#inventoryManagement"
+          >
+            <FormattedMessage id="inventory.manage.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="resultReportingConfiguration"
@@ -555,6 +564,9 @@ function Admin() {
       </PathRoute>
       <PathRoute path="#SearchIndexManagement">
         <SearchIndexManagement />
+      </PathRoute>
+      <PathRoute path="#inventoryManagement">
+        <InventoryManagement />
       </PathRoute>
     </>
   );
