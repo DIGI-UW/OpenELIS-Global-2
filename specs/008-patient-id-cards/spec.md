@@ -347,6 +347,272 @@ Which approach should be used for "Other" document type descriptions?
 - **Decision**: Keep description optional for "Other" type. Users can leave empty if desired
 - **Impact**: Flexible but may result in unclear "Other" documents without description
 
+---
+
+### Session 2025-11-20 (Second Analysis) - New Clarifications Needed
+
+**Clarification Analysis**: Deep review of functional requirements, FHIR integration, and edge cases identified additional contradictions and ambiguities that require resolution.
+
+#### Question 9: Document Viewer Modal Zoom Contradiction
+
+**Issue**: The specification contains contradictory requirements regarding zoom functionality:
+- **Resolved Q6** (line 328-333) states: "Basic modal with no zoom controls" (deferred to Phase 2)
+- **FR-021** (line 451) requires: "System MUST support zoom in/out controls for image documents in the viewer"
+- **UX-011** (line 540) requires: "System MUST display zoom controls (+, -, fit to screen) in document viewer for image documents"
+- **User Story 2** (line 390) mentions: "full document should open in a lightbox with zoom controls"
+
+This is a direct contradiction between the resolved clarification (no zoom) and multiple MUST requirements (zoom required).
+
+**Options:**
+
+**A) Defer zoom to Phase 2 (matches resolved Q6)**
+- Remove or downgrade FR-021 and UX-011 to "SHOULD" for Phase 2
+- Update User Story 2 to remove zoom mention
+- Implement basic image display only in Phase 1
+- Pro: Matches Figma Make, simpler Phase 1 implementation
+- Con: Contradicts multiple MUST requirements, may reduce usability
+
+**B) Implement zoom in Phase 1 (matches functional requirements)**
+- Update resolved Q6 decision to include zoom
+- Implement FR-021 and UX-011 as specified
+- Full zoom functionality (zoom in, zoom out, fit to screen, pan when zoomed)
+- Pro: Meets all MUST requirements, better user experience
+- Con: Contradicts Figma Make analysis, more complex implementation
+
+**C) Implement basic zoom only (compromise)**
+- Implement simple zoom in/out buttons (+ / - buttons)
+- Include fit-to-screen button
+- Defer advanced features (pan, pinch-to-zoom, zoom slider) to Phase 2
+- Pro: Meets core FR-021/UX-011, manageable complexity
+- Con: Partial implementation may feel incomplete
+
+**Recommendation**: Option C (basic zoom). This resolves the contradiction by implementing minimal zoom to satisfy MUST requirements while keeping Phase 1 scope reasonable.
+
+Which approach should be implemented?
+
+---
+
+#### Question 10: Pagination Contradiction
+
+**Issue**: Conflicting requirements for document grid pagination:
+- **Resolved Q5** (line 321-326) states: "Unlimited scrolling grid, no pagination" (defer pagination to Phase 2 if performance issues arise)
+- **FR-027** (line 457) requires: "System MUST implement pagination if patient has more than 10 documents"
+- **FR-006** (line 433) allows: "System MUST allow multiple documents per patient with no fixed limit"
+
+This creates ambiguity: if unlimited documents are allowed, and pagination is MUST when >10 docs, then resolved Q5's "no pagination" decision contradicts FR-027.
+
+**Options:**
+
+**A) Remove FR-027, implement unlimited scrolling only**
+- Delete or downgrade FR-027 to Phase 2
+- Implement simple vertical scroll for all documents
+- Add performance monitoring to trigger Phase 2 pagination if needed
+- Pro: Matches Q5 resolution, simpler implementation
+- Con: May have performance issues with 50+ documents
+
+**B) Implement conditional pagination (>10 docs triggers pagination)**
+- Honor FR-027 as written
+- Display all documents when ≤10, paginate when >10
+- Update Q5 resolution to reflect this decision
+- Pro: Meets MUST requirement, better performance with many docs
+- Con: Inconsistent UX (sometimes pagination, sometimes not)
+
+**C) Implement virtual scrolling instead of pagination**
+- Remove FR-027 (replace with virtual scrolling requirement)
+- Render only visible documents in viewport
+- Smooth scroll experience without pagination controls
+- Pro: Best performance, no pagination complexity, unlimited scale
+- Con: More complex implementation, may need library (react-window, react-virtualized)
+
+**Recommendation**: Option B (conditional pagination). This honors the MUST requirement in FR-027 while keeping simple scrolling for common case (<10 docs).
+
+Which approach should be implemented?
+
+---
+
+#### Question 11: Document Replacement vs Versioning Strategy
+
+**Issue**: Multiple requirements mention document replacement and versioning, but the relationship and implementation details are unclear:
+- **FR-032** (line 465): "System MUST allow replacing the image by uploading a new version"
+- **FR-033** (line 466): "System MUST track version history if document is replaced"
+- **EC-011** (line 565-566): "If user attempts to replace document with invalid file type..."
+- **Data Model** (line 607-608): Includes `version` field (INTEGER) and `replaced_by_document_id` (foreign key)
+- **FHIR** (line 710-726): Shows DocumentReference with status "superseded" and relatesTo linking
+
+**Unanswered Questions:**
+1. Does "replace" create a new document record with new ID, or update the existing record?
+2. Should old versions remain viewable in the UI, or only in audit trail?
+3. How many versions should be retained (unlimited, last N versions, time-based retention)?
+4. When viewing documents, should all versions be shown or only current version?
+5. Should version history be visible to end users or admin-only?
+
+**Options:**
+
+**A) Full versioning with viewable history**
+- Create new document record when replacing (new ID, new row)
+- Old document remains in database with link to new version via `replaced_by_document_id`
+- UI shows version history: "Version 3 (current), Version 2, Version 1"
+- All versions viewable by clicking version number
+- Unlimited version retention (or configured limit like 10 versions)
+- Pro: Complete audit trail, users can see document evolution
+- Con: More complex UI, more storage, potential confusion
+
+**B) Simple replacement (update in place, audit only)**
+- Update existing document record (same ID)
+- Increment `version` number
+- Store old file in audit trail or archive location
+- Old versions NOT viewable in UI (only via admin audit log)
+- Pro: Simpler UI, less confusion, matches common document management
+- Con: Users can't compare old vs new versions
+
+**C) Limited versioning (keep last 3 versions)**
+- Create new record for replacement (new ID)
+- Keep last 3 versions viewable in UI
+- Older versions (>3) moved to archive (audit only)
+- UI shows: "Version 5 (current), Version 4, Version 3, ...2 older versions archived"
+- Pro: Balance between history and simplicity
+- Con: Arbitrary limit, added complexity
+
+**Recommendation**: Option B (simple replacement). Most document management systems don't expose version history to end users. Audit trail provides sufficient compliance tracking.
+
+Which versioning strategy should be implemented?
+
+---
+
+#### Question 12: Storage Location Selection and Default
+
+**Issue**: Multiple references to storage strategy throughout spec, but no default specified:
+- **FR-015** (line 442): Mentions file naming convention but doesn't specify storage location
+- **Data Model** (line 599): `storage_location` field with enum: "DATABASE", "FILESYSTEM", "CLOUD"
+- **Technical Architecture** (lines 764-779): Describes all 3 options with pros/cons but no default
+- **Open Question #2** (line 898): "Which storage strategy should be default? (Database, filesystem, or cloud)"
+- **CR-006** (line 521): Requires "configuration for storage locations" but doesn't specify default
+
+**Deployment Considerations:**
+- Small clinics: Database storage simplest (no external dependencies)
+- Medium deployments: Filesystem may be preferred (performance, cost)
+- Large/multi-site: Cloud storage required (scalability, redundancy)
+
+**Options:**
+
+**A) Database storage as default (BLOB/base64)**
+- Store files directly in PostgreSQL database
+- Default for new installations unless explicitly configured otherwise
+- Pros: Simplest deployment, transactional consistency, FHIR-compliant embedded data
+- Cons: Larger database size, potential performance impact with 1000+ documents
+
+**B) Filesystem storage as default**
+- Store files in `/var/openelis/documents/` or similar
+- Database stores file path references only
+- Pros: Better performance, smaller database, standard practice
+- Cons: Requires separate backup strategy, file permissions management
+
+**C) Configurable at deployment time (no default)**
+- Require explicit configuration during installation/setup
+- No default fallback (installation fails if not configured)
+- Pros: Forces intentional decision per deployment
+- Cons: More complex installation, blocker for quick demos/testing
+
+**D) Cloud storage as default (with local fallback)**
+- Attempt cloud storage (S3/Azure/GCS) first
+- Fall back to filesystem if cloud not configured
+- Pros: Modern, scalable default
+- Cons: Requires external dependency, cost considerations
+
+**Recommendation**: Option A (database default) for Phase 1. Simplest deployment, suitable for most initial installations. Add filesystem/cloud options in Phase 2 with migration tool.
+
+Which storage location should be the default?
+
+---
+
+#### Question 13: Document Type Validation Workflow
+
+**Issue**: FR-008 states "document type MUST be required when uploading", and Q4 resolution shows type selected BEFORE upload. However, the workflow for handling missing type selection is not specified.
+
+**Scenario**: User is on the upload screen with document type dropdown and two upload buttons. What happens if user clicks "Upload Document" or "Scan ID Card" without selecting a document type from the dropdown?
+
+**Options:**
+
+**A) Disable upload buttons until type is selected**
+- Upload buttons are disabled/grayed out when no type selected
+- Buttons become enabled once user selects type from dropdown
+- Pro: Prevents invalid state, clear visual feedback
+- Con: Less discoverable (users may not realize why buttons are disabled), requires tooltip
+
+**B) Show validation error when upload clicked without type**
+- Buttons always enabled
+- Clicking upload without type selection shows error: "Please select document type before uploading"
+- Error displayed as inline notification above buttons
+- Pro: Standard form validation pattern, allows exploration
+- Con: Extra click, potentially frustrating
+
+**C) Default to first type ("National ID") if none selected**
+- Dropdown has "National ID" selected by default
+- User can change to "Insurance Card" or "Other" if desired
+- Pro: Zero friction, works for most common case
+- Con: May cause wrong type to be saved if user doesn't change default
+
+**D) Show modal to select type when upload button clicked without selection**
+- Buttons always enabled
+- Clicking upload without type opens modal: "Select document type"
+- Modal forces type selection before file picker opens
+- Pro: Ensures type is set, doesn't block UI
+- Con: Extra modal, interrupts workflow
+
+**Recommendation**: Option A (disable buttons) with tooltip explaining "Select document type to enable upload". This prevents invalid state and provides clear feedback.
+
+Which validation workflow should be implemented?
+
+---
+
+#### Question 14: Multi-Document Upload Capability
+
+**Issue**: User Story 1 mentions uploading multiple documents ("National ID and Insurance Card"), but the upload workflow only describes single-file selection:
+- **User Story 1** (lines 358-370): "I upload multiple documents (e.g., National ID and Insurance Card)"
+- **FR-002** (line 429): "System MUST support multiple upload methods" (refers to methods like drag-drop, camera, paste - not multi-file)
+- **FR-006** (line 433): "System MUST allow multiple documents per patient" (refers to total count, not simultaneous upload)
+- **Figma Make**: Shows single file input, no multi-file selection visible
+
+**Unanswered Questions:**
+1. Can user select multiple files at once (e.g., Ctrl+Click or Shift+Click in file picker)?
+2. If yes, do all files get the same document type, or can user assign different types to each?
+3. Should there be a "bulk upload" UI for multiple files?
+
+**Options:**
+
+**A) Single file only (user must upload one at a time)**
+- File input has `multiple` attribute set to false
+- User selects type, uploads one file, repeats for next document
+- Pro: Simplest implementation, matches Figma Make, clear type assignment
+- Con: Tedious for users with multiple documents, more clicks
+
+**B) Multi-file with same document type**
+- File input allows multiple file selection (Ctrl+Click)
+- All selected files assigned the same document type (the one selected in dropdown)
+- All files uploaded simultaneously
+- Pro: Faster for users with multiple same-type docs (e.g., 3 insurance cards - front, back, extra)
+- Con: Doesn't help if user has different document types (ID + Insurance)
+
+**C) Multi-file with individual type selection after upload**
+- File input allows multiple file selection
+- After selecting files, system shows list of files with type dropdown next to each
+- User assigns type to each file individually
+- Batch upload after all types assigned
+- Pro: Maximum flexibility, handles mixed document types
+- Con: More complex UI, doesn't match Figma Make
+
+**D) Batch upload screen (separate feature)**
+- Keep main upload as single-file only
+- Add separate "Batch Upload" button that opens modal for multi-file management
+- Pro: Keeps simple case simple, advanced users get power feature
+- Con: Two separate workflows, more implementation
+
+**Recommendation**: Option A (single file only) for Phase 1 to match Figma Make. Add Option C (multi-file with individual types) in Phase 2 based on user feedback.
+
+Which multi-document upload approach should be implemented?
+
+---
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Upload ID Documents During Patient Registration (Priority: P1)
