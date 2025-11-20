@@ -433,7 +433,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     public List<SampleDisplayBean> searchSampleItems(String patientId, String accession) {
 
         List<Sample> samples = new ArrayList<>();
-        
+
         if (StringUtils.isNotBlank(accession)) {
             Sample sample = sampleService.getSampleByAccessionNumber(accession);
             if (sample != null) {
