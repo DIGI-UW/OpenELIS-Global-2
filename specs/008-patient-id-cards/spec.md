@@ -287,7 +287,65 @@ Which approach should be used for "Other" document type descriptions?
 
 ### Resolved Clarifications
 
-(No clarifications resolved yet - awaiting user input)
+**Analysis Update 2025-11-20**: Re-analyzed Figma Make after user modifications. Key findings:
+
+**Q1: Document Upload Location and Workflow Integration** → **A: Both locations (Option C)**
+- **Finding**: IDDocumentsSection component now used in BOTH TestRequest.tsx (Test Request workflow) AND AddModifyPatient.tsx (standalone patient management)
+- **Finding**: AddModifyPatient.tsx shows full implementation with document count badge in search results table
+- **Finding**: Component designed to be reusable with `alwaysExpanded` prop for different contexts
+- **Decision**: Implement dual integration. IDDocumentsSection appears in both Test Request workflow (collapsible during new patient creation) and standalone patient management screen (in modal with alwaysExpanded=true)
+- **Impact**: Reusable component design required, careful state management for document changes
+
+**Q2: Collapsible Section Behavior and Default State** → **A: Collapsible with context-aware behavior (Modified Option D)**
+- **Finding**: IDDocumentsSection accepts `alwaysExpanded` prop (boolean, default false)
+- **Finding**: When `alwaysExpanded=false`, shows collapsible accordion with expand/collapse toggle
+- **Finding**: When `alwaysExpanded=true`, section always expanded (used in AddModifyPatient modal)
+- **Finding**: Header shows document count badge when collapsed
+- **Decision**: Implement collapsible by default for Test Request workflow, but support `alwaysExpanded` prop for modal contexts where space is available
+- **Impact**: Component flexibility required; different behavior in different contexts
+
+**Q3: Upload Button Functionality** → **A: Two separate buttons with same behavior (Option B)**
+- **Finding**: Figma Make shows "Upload Document" and "Scan ID Card" buttons
+- **Finding**: Both buttons call `fileInputRef.current?.click()` - identical behavior
+- **Finding**: Visual distinction but same functionality
+- **Decision**: Keep two separate buttons for UX clarity of intent, even though both open file picker. Future enhancement can differentiate behavior (camera vs files)
+- **Impact**: Simple implementation, both buttons trigger same file input
+
+**Q4: Document Type Selection Timing** → **A: Select type before upload (Option A)**
+- **Finding**: Document type dropdown placed ABOVE upload buttons in Figma Make
+- **Finding**: User selects type first, then uploads file
+- **Finding**: Type is pre-set when upload completes
+- **Decision**: Implement type selection before upload workflow as shown in Make
+- **Impact**: Clear intent before upload, matches Figma Make design
+
+**Q5: Document Grid Layout** → **A: Unlimited grid with scrolling (Option A)**
+- **Finding**: Figma Make shows simple 3-column grid with no pagination controls visible
+- **Finding**: All documents rendered in grid with vertical scroll
+- **Finding**: No "Show more" or pagination logic shown
+- **Decision**: Start with unlimited scrolling grid. Add pagination only if performance issues arise (defer to Phase 2)
+- **Impact**: Simpler initial implementation, matches Make prototype
+
+**Q6: Document Viewer Modal Features** → **A: Basic modal (Option A)**
+- **Finding**: Figma Make shows simple modal with image preview and close button
+- **Finding**: No zoom controls, navigation arrows, or advanced features shown
+- **Finding**: Metadata (document type, filename) displayed in header
+- **Decision**: Implement basic modal matching Make. Zoom and navigation can be added in Phase 2 based on user feedback
+- **Impact**: Simple implementation, matches Make design
+
+**Q7: Document Search Results Integration** → **A: Add "ID Documents" column to table (Modified Option A)**
+- **Finding**: AddModifyPatient.tsx now shows "ID Documents" column in patient search results table
+- **Finding**: Column displays clickable badge with FileText icon and document count
+- **Finding**: Clicking badge opens modal with IDDocumentsSection (alwaysExpanded=true)
+- **Finding**: Modal allows viewing and managing documents without leaving search results
+- **Decision**: Add "ID Documents" column to patient search results table showing document count badge. Clicking opens modal for document management
+- **Impact**: New column in table; modal implementation for document viewing/editing from search results
+
+**Q8: "Other" Document Type Description** → **A: Optional description (Option A)**
+- **Finding**: Figma Make shows "Description" field that appears when "Other" is selected
+- **Finding**: Field labeled "Description" without asterisk (not required)
+- **Finding**: Placeholder text "Specify document type" suggests optional
+- **Decision**: Keep description optional for "Other" type. Users can leave empty if desired
+- **Impact**: Flexible but may result in unclear "Other" documents without description
 
 ## User Scenarios & Testing _(mandatory)_
 
