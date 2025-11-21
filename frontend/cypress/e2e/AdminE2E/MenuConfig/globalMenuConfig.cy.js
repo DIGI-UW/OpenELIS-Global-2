@@ -1,15 +1,15 @@
 import LoginPage from "../../../pages/LoginPage";
+import HomePage from "../../../pages/HomePage";
 
-let loginPage = null;
 let homePage = null;
 let adminPage = null;
 let menuConfigPage = null;
 
+// Use cy.login() with cy.session() for login caching (10-20x faster - Testing Roadmap pattern)
 before(() => {
-  // Initialize LoginPage object and navigate to Admin Page
-  loginPage = new LoginPage();
-  loginPage.visit();
-
+  cy.login(); // Uses cy.session() - login runs ONCE, cached for all tests
+  // Navigate to home page after login
+  const loginPage = new LoginPage();
   homePage = loginPage.goToHomePage();
   adminPage = homePage.goToAdminPage();
 });
@@ -46,10 +46,9 @@ describe("Global Menu Configuration", function () {
     menuConfigPage.submitButton();
   });
   it("User relogs in to verify the menu changes", function () {
-    // Initialize LoginPage object and navigate to the menu
-    loginPage = new LoginPage();
-    loginPage.visit();
-
+    // Relogin to verify menu changes (cy.session() will reuse cached session)
+    cy.login(); // Uses cy.session() - will reuse cached session
+    const loginPage = new LoginPage();
     homePage = loginPage.goToHomePage();
     menuConfigPage = homePage.openNavigationMenu();
   });

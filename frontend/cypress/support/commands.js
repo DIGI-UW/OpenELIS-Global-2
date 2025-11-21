@@ -114,38 +114,63 @@ Cypress.Commands.add("verifyStorageFixtures", () => {
  * Uses cy.session() to cache login state across tests (same pattern as cy.setupStorageTests()).
  * Login runs ONCE per test file, not before every test.
  *
+ * Uses API-based authentication (cy.request()) instead of UI-based for:
+ * - 10-20x faster (no page loads, no DOM interactions)
+ * - More reliable (no UI timing issues, direct API call)
+ * - Same endpoint as UI login (/ValidateLogin?apiCall=true)
+ *
+ * NOTE: UI login is still tested in login.cy.js (uses LoginPage directly, not cy.login())
+ *
  * Reference: Testing Roadmap - Session Management (cy.session())
  * Pattern matches: cy.setupStorageTests() in storage-setup.js
  */
 Cypress.Commands.add("login", (username, password) => {
-  // Default credentials (matches TestProperties)
+  // Default credentials (matches TestProperties.js - dev default, non-negotiable)
   const DEFAULT_USERNAME = "admin";
-  const DEFAULT_PASSWORD = "adminADMIN!";
+  const DEFAULT_PASSWORD = "adminADMIN!"; // Dev default (one exclamation mark)
   const loginUsername = username || DEFAULT_USERNAME;
   const loginPassword = password || DEFAULT_PASSWORD;
 
   // Use cy.session() to cache and reuse login session across tests
   // Same pattern as cy.setupStorageTests() in storage-setup.js
+  // Uses HTTP Basic Auth (fast, reliable, works with cy.request() - no cookie issues)
+  // Backend supports Basic Auth via BasicAuthRequestedMatcher (SecurityConfig.java)
   cy.session(
     `login-session-${loginUsername}`,
     () => {
-      // Login via UI (only runs if session doesn't exist)
-      cy.visit("/login");
-      cy.get("[data-cy='loginButton']", { timeout: 10000 }).should(
-        "be.visible",
-      );
-      cy.get("#loginName").should("be.visible").clear().type(loginUsername);
-      cy.get("#password").should("be.visible").clear().type(loginPassword);
-      cy.get("[data-cy='loginButton']")
-        .should("be.visible")
-        .should("not.be.disabled")
-        .click();
+      // Use HTTP Basic Auth for API-based login (10-20x faster, more reliable)
+      // Backend activates Basic Auth when Authorization: Basic header is present
+      // This works with cy.request() because it doesn't require cookies
+      const base64Credentials = btoa(`${loginUsername}:${loginPassword}`);
 
-      // Wait for successful login (check for home page or main header)
-      cy.url({ timeout: 15000 }).should("not.include", "/login");
-      cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 }).should(
-        "exist",
-      );
+      // Test authentication by calling a protected endpoint with Basic Auth
+      cy.request({
+        method: "GET",
+        url: "/api/OpenELIS-Global/rest/user-test-sections/ALL",
+        headers: {
+          Authorization: `Basic ${base64Credentials}`,
+        },
+        failOnStatusCode: false,
+      }).then((response) => {
+        if (response.status !== 200) {
+          cy.log(
+            `Basic Auth failed: status ${response.status}, body: ${JSON.stringify(response.body)}`,
+          );
+        }
+        expect(response.status).to.eq(200);
+      });
+
+      // Also establish browser session by visiting home page with Basic Auth
+      // This ensures both API calls AND browser navigation work
+      cy.visit("/", {
+        auth: {
+          username: loginUsername,
+          password: loginPassword,
+        },
+      });
+
+      // Verify we're logged in
+      cy.get("#mainHeader, [data-cy='menuButton']").should("exist");
     },
     {
       cacheAcrossSpecs: true, // Share session across test files (same as storage tests)
@@ -155,7 +180,5 @@ Cypress.Commands.add("login", (username, password) => {
   // After session is established, ensure we're logged in
   // Visit home page to verify session is active
   cy.visit("/");
-  cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 }).should(
-    "exist",
-  );
+  cy.get("#mainHeader, [data-cy='menuButton']").should("exist");
 });

@@ -265,7 +265,8 @@ describe("Label Printing", () => {
     cy.screenshot("label-06-device-saved");
 
     // Wait a bit for the database transaction to commit and device to be reloaded
-    cy.wait(500);
+    // Wait for modal to close (use .should() for retry-ability instead of arbitrary wait)
+    cy.get('[data-testid="location-management-modal"]').should("not.exist");
 
     // Print label - find the row again after save
     // Wait for modal to close (check for modal container to not be visible)

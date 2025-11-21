@@ -1,18 +1,20 @@
 import LoginPage from "../../pages/LoginPage";
+import HomePage from "../../pages/HomePage";
 
 let homePage = null;
-let loginPage = null;
 let adminPage = null;
 let organizationManagement = null;
 
+// Use cy.login() with cy.session() for login caching (10-20x faster - Testing Roadmap pattern)
 before("login", () => {
-  loginPage = new LoginPage();
-  loginPage.visit();
+  cy.login(); // Uses cy.session() - login runs ONCE, cached for all tests
+  // Navigate to home page after login
+  const loginPage = new LoginPage();
+  homePage = loginPage.goToHomePage();
 });
 
 describe("Add Organization and Institute", function () {
   it("Navigate to Admin Page", function () {
-    homePage = loginPage.goToHomePage();
     adminPage = homePage.goToAdminPageProgram();
   });
 

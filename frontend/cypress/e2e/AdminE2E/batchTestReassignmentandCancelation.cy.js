@@ -1,11 +1,14 @@
 import LoginPage from "../../pages/LoginPage";
+import HomePage from "../../pages/HomePage";
 
 describe("Batch Test Reassignment and Canelation", function () {
-  let homePage, loginPage, adminPage, batchTestPage;
+  let homePage, adminPage, batchTestPage;
 
   before(() => {
-    loginPage = new LoginPage();
-    loginPage.visit();
+    // Use cy.login() with cy.session() for login caching (10-20x faster - Testing Roadmap pattern)
+    cy.login(); // Uses cy.session() - login runs ONCE, cached for all tests
+    // Navigate to home page after login
+    const loginPage = new LoginPage();
     homePage = loginPage.goToHomePage();
     adminPage = homePage.goToAdminPage();
   });

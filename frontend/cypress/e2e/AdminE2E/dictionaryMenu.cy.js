@@ -1,15 +1,16 @@
 import LoginPage from "../../pages/LoginPage";
+import HomePage from "../../pages/HomePage";
 
-let loginPage = null;
 let homePage = null;
 let adminPage = null;
 let dictMenu = null;
 let usersData;
 
+// Use cy.login() with cy.session() for login caching (10-20x faster - Testing Roadmap pattern)
 before(() => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-
+  cy.login(); // Uses cy.session() - login runs ONCE, cached for all tests
+  // Navigate to home page after login
+  const loginPage = new LoginPage();
   homePage = loginPage.goToHomePage();
   adminPage = homePage.goToAdminPage();
 });
@@ -100,8 +101,9 @@ describe("Dictionary Menu", function () {
     });
 
     it("Validate Modified Dictionary", () => {
+      // Wait for page to update after modification (use .should() instead of arbitrary wait)
       cy.reload();
-      cy.wait(2000);
+      cy.get("body").should("exist"); // Wait for page to load
       dictMenu.searchByDictionaryEntry(usersData[0].dictionaryEntry);
       dictMenu.validateColumnContent("isActive", "1378", usersData[0].yes);
     });

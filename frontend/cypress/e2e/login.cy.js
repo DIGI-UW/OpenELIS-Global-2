@@ -54,7 +54,9 @@ describe("Login Test Cases", function () {
       const statusCode = interception.response?.statusCode;
       // Handle both success (200/302) and potential permission issues (403)
       if (statusCode === 403) {
-        cy.log("Password change returned 403 - may require different permissions");
+        cy.log(
+          "Password change returned 403 - may require different permissions",
+        );
         // Still check for error notification
         cy.get(".toastDisplay", { timeout: 10000 }).should("be.visible");
       } else {
@@ -81,7 +83,9 @@ describe("Login Test Cases", function () {
     login.enterNewPassword(usersData[3].password);
     login.repeatNewPassword(usersData[3].password);
     login.submitNewPassword();
-    cy.wait("@changePassword").its("response.statusCode").should("be.oneOf", [200, 302]);
+    cy.wait("@changePassword")
+      .its("response.statusCode")
+      .should("be.oneOf", [200, 302]);
     cy.get(".toastDisplay", { timeout: 10000 })
       .should("be.visible")
       .contains("Password changed successfully");

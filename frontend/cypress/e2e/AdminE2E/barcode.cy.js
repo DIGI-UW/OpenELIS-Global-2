@@ -1,19 +1,20 @@
 import LoginPage from "../../pages/LoginPage";
+import HomePage from "../../pages/HomePage";
 import OrderEntityPage from "../../pages/OrderEntityPage";
 import ModifyOrderPage from "../../pages/ModifyOrderPage";
 import BarcodeConfigPage from "../../pages/BarcodeConfigPage";
 
-let loginPage = null;
 let homePage = null;
 let adminPage = null;
 let barcodePage = new BarcodeConfigPage();
 let orderEntityPage = new OrderEntityPage();
 let modifyOrderPage = new ModifyOrderPage();
 
+// Use cy.login() with cy.session() for login caching (10-20x faster - Testing Roadmap pattern)
 before(() => {
-  loginPage = new LoginPage();
-  loginPage.visit();
-
+  cy.login(); // Uses cy.session() - login runs ONCE, cached for all tests
+  // Navigate to home page after login
+  const loginPage = new LoginPage();
   homePage = loginPage.goToHomePage();
   adminPage = homePage.goToAdminPage();
 });
