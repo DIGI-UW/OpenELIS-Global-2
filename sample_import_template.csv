@@ -1,0 +1,9 @@
+sampleTypeId,quantity,sampleUnitOfMeasure,from,collector,collectionDate,collectionTime,sampleQuantity,notebook,sn,id,storagefreezerlocation,labpersonreceived,sampleType,controlType,expectedCtValue,actualCtValue,targetGenesDetected,testResult,qcPass,Observations/Notes
+Blood,2.5,ml,Dil Fana PH,Girma,12/15/2024,14:30,1,Generic Sample Logbook Metadata,1,001to034,PARA Freezer,Melat,,,,,,,,,
+Urine,1.0,ml,Dil Fana PH,Girma,12/15/2024,15:00,1,Generic Sample Logbook Metadata,2,001-034,PARA Freezer,Melat,,,,,,,,,
+Stool,3.0,ml,Dil Fana PH,Girma,12/16/2024,09:15,1,Generic Sample Logbook Metadata,3,001-034,PARA Freezer,Melat,,,,,,,,,
+Blood,1.5,ml,Dil Fana PH,Girma,12/16/2024,10:00,1,Generic Sample Logbook Metadata,4,001-034,PARA Freezer,Melat,,,,,,,,,
+Urine,2.0,ml,Akaki,Anyne,12/16/2024,11:30,1,Generic Sample Logbook Metadata,5,Animal IDs,PARA Freezer,Melat,,,,,,,,,
+Blood,2.5,ml,Dil Fana PH,Girma,12/15/2024,14:30,1,COVID-19 PCR Validation Study,,,,,nasopharyngeal,positive,25.0,25.5,n-gene|e-gene,detected,true,Sample notes here
+Stool,3.0,ml,Dil Fana PH,Girma,12/16/2024,09:15,1,,,,,,,,,,,,,
+

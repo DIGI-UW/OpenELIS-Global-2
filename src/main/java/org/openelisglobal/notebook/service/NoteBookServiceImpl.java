@@ -97,6 +97,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Override
     @Transactional
+    public List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
+            Date fromDate, Date toDate) {
+        return baseObjectDAO.filterNoteBooks(statuses, types, tags, fromDate, toDate);
+    }
+
+    @Override
+    @Transactional
     public void updateWithStatus(Integer notebookId, NoteBookStatus status, String sysUserId) {
         Optional<NoteBook> optionalNoteBook = baseObjectDAO.get(notebookId);
         if (optionalNoteBook.isPresent()) {
@@ -197,13 +204,19 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getEntries());
             displayBean.setId(noteBook.getId());
             displayBean.setTitle(noteBook.getTitle());
-            displayBean.setType(Integer.valueOf(noteBook.getType()));
             displayBean.setTags(noteBook.getTags());
+
+            // Handle type - it's now a Dictionary entity
+            if (noteBook.getType() != null) {
+                displayBean.setType(Integer.valueOf(noteBook.getType().getId()));
+                displayBean.setTypeName(noteBook.getType().getDictEntry());
+            }
+
             displayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             displayBean.setStatus(noteBook.getStatus());
-            displayBean.setTypeName(dictionaryService.get(noteBook.getType().toString()).getDictEntry());
             displayBean.setIsTemplate(noteBook.getIsTemplate());
             displayBean.setEntriesCount(noteBook.getEntries().size());
+            displayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
         }
         return displayBean;
     }
@@ -223,11 +236,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getEntries());
             fullDisplayBean.setId(noteBook.getId());
             fullDisplayBean.setTitle(noteBook.getTitle());
-            fullDisplayBean.setType((Integer.valueOf(noteBook.getType())));
+            if (noteBook.getType() != null) {
+                fullDisplayBean.setType(Integer.valueOf(noteBook.getType().getId()));
+                fullDisplayBean.setTypeName(noteBook.getType().getDictEntry());
+            }
             fullDisplayBean.setTags(noteBook.getTags());
             fullDisplayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             fullDisplayBean.setStatus(noteBook.getStatus());
-            fullDisplayBean.setTypeName(dictionaryService.get(noteBook.getType().toString()).getDictEntry());
             fullDisplayBean.setContent(noteBook.getContent());
             fullDisplayBean.setObjective(noteBook.getObjective());
             fullDisplayBean.setProtocol(noteBook.getProtocol());
@@ -290,7 +305,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             noteBook.setTitle(form.getTitle());
         }
         if (form.getType() != null) {
-            noteBook.setType(form.getType().toString());
+            noteBook.setType(dictionaryService.get(form.getType().toString()));
         }
         if (form.getTags() != null && !form.getTags().isEmpty()) {
             noteBook.setTags(new ArrayList<>(form.getTags()));
@@ -425,6 +440,15 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             return template.getEntries();
         }
         return new ArrayList<>();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NoteBook> getAllActiveNotebooks() {
+        // Get all notebooks that are not archived
+        List<NoteBookStatus> activeStatuses = List.of(NoteBookStatus.DRAFT, NoteBookStatus.SUBMITTED,
+                NoteBookStatus.FINALIZED, NoteBookStatus.LOCKED);
+        return filterNoteBooks(activeStatuses, null, null, null, null);
     }
 
 }

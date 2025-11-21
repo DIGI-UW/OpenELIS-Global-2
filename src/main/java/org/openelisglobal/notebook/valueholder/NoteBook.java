@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
@@ -21,8 +22,10 @@ import jakarta.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
@@ -58,8 +61,9 @@ public class NoteBook extends BaseObject<Integer> {
     @Column(name = "title")
     private String title;
 
-    @Column(name = "type")
-    private String type;
+    @ManyToOne
+    @JoinColumn(name = "type", referencedColumnName = "id")
+    private Dictionary type;
 
     @Column(name = "project")
     private String project;
@@ -111,6 +115,8 @@ public class NoteBook extends BaseObject<Integer> {
     @OneToMany
     @JoinTable(name = "notebook_entries", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "entry_id"))
     private List<NoteBook> entries;
+    @Column(name = "questionnaire_fhir_uuid")
+    private UUID questionnaireFhirUuid;
 
     @Override
     public Integer getId() {
@@ -130,11 +136,11 @@ public class NoteBook extends BaseObject<Integer> {
         this.title = title;
     }
 
-    public String getType() {
+    public Dictionary getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(Dictionary type) {
         this.type = type;
     }
 
@@ -277,6 +283,14 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setIsTemplate(Boolean isTemplate) {
         this.isTemplate = isTemplate;
+    }
+
+    public UUID getQuestionnaireFhirUuid() {
+        return questionnaireFhirUuid;
+    }
+
+    public void setQuestionnaireFhirUuid(UUID questionnaireFhirUuid) {
+        this.questionnaireFhirUuid = questionnaireFhirUuid;
     }
 
 }
