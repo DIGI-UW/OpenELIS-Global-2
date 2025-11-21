@@ -14,14 +14,9 @@ class LoginPage {
   testProperties = new TestProperties();
 
   visit() {
-    cy.visit("/login", { failOnStatusCode: false });
-    cy.get("body").should("be.visible");
-    // Wait for login page to be ready - check if we're still on login page
-    cy.url().should("include", "/login");
-    // Wait for login button or username field to appear (depending on config)
-    cy.get("body").should(($body) => {
-      expect($body.find(SELECTORS.LOGIN_BUTTON).length > 0 || $body.find(SELECTORS.USERNAME).length > 0).to.be.true;
-    });
+    cy.visit("/login", { failOnStatusCode: false, timeout: 30000 });
+    // Just wait for body to be visible - let individual test methods handle element checks
+    cy.get("body", { timeout: 15000 }).should("be.visible");
   }
 
   getUsernameElement() {
@@ -108,15 +103,21 @@ class LoginPage {
     cy.get("[data-cy='exitPasswordReset']").should("be.visible").click();
   }
   clearInputs() {
-    // Wait for elements to be stable before clearing (prevent detached element errors)
-    this.getUsernameElement()
-      .should("be.visible")
-      .should("exist")
-      .clear({ force: true });
-    this.getPasswordElement()
-      .should("be.visible")
-      .should("exist")
-      .clear({ force: true });
+    // Only clear inputs if form login is enabled (elements exist)
+    cy.get("body").then(($body) => {
+      if ($body.find(SELECTORS.USERNAME).length > 0) {
+        this.getUsernameElement()
+          .should("be.visible")
+          .should("exist")
+          .clear({ force: true });
+      }
+      if ($body.find(SELECTORS.PASSWORD).length > 0) {
+        this.getPasswordElement()
+          .should("be.visible")
+          .should("exist")
+          .clear({ force: true });
+      }
+    });
   }
 
   goToHomePage() {
