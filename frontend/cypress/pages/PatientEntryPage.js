@@ -106,7 +106,18 @@ class PatientEntryPage {
   }
 
   searchPatientByDateOfBirth(dateOfBirth) {
-    cy.enterText(this.dateOfBirth, dateOfBirth);
+    // Carbon DatePicker needs the input to be focused and typed
+    // The date format should match the locale (MM/dd/yyyy or dd/MM/yyyy)
+    cy.get(this.dateOfBirth)
+      .should("be.visible")
+      .should("not.be.disabled")
+      .clear()
+      .type(dateOfBirth, { force: true })
+      .blur(); // Trigger onChange by blurring
+
+    // Wait for the date to be set in the input (CustomDatePicker updates state on valid full date)
+    // This ensures the form state is updated before search is triggered
+    cy.get(this.dateOfBirth).should("have.value", dateOfBirth);
   }
 
   clearPatientInfo() {

@@ -6,9 +6,9 @@ const path = require("path");
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 
 module.exports = defineConfig({
-  defaultCommandTimeout: 10000, // Standard timeout (10s) - Cypress retry-ability handles most cases
-  viewportWidth: 1200,
-  viewportHeight: 700,
+  defaultCommandTimeout: 4000, // Standard timeout (4s) - Cypress retry-ability handles most cases. Only backend API calls should take longer.
+  viewportWidth: 1920,
+  viewportHeight: 1080,
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
@@ -268,6 +268,63 @@ module.exports = defineConfig({
             return { success: true, output: result };
           } catch (error) {
             console.error("Error executing SQL:", error);
+            return { success: false, error: error.message };
+          }
+        },
+        deleteTestPatient(options) {
+          const { execSync } = require("child_process");
+          const { subjectNumber, nationalId } = options;
+          // Delete patient by subjectNumber or nationalId (cascades to person, patient_identity, etc.)
+          const sql = `
+            DELETE FROM patient_identity WHERE patient_id IN (
+              SELECT patient_id FROM patient_identity 
+              WHERE identity_type_id IN (
+                SELECT id FROM patient_identity_type WHERE identity_type = 'SUBJECT'
+              ) AND identity_data = '${subjectNumber}'
+              UNION
+              SELECT patient_id FROM patient_identity 
+              WHERE identity_type_id IN (
+                SELECT id FROM patient_identity_type WHERE identity_type = 'NATIONAL'
+              ) AND identity_data = '${nationalId}'
+            );
+            DELETE FROM patient WHERE id IN (
+              SELECT patient_id FROM patient_identity 
+              WHERE identity_type_id IN (
+                SELECT id FROM patient_identity_type WHERE identity_type = 'SUBJECT'
+              ) AND identity_data = '${subjectNumber}'
+              UNION
+              SELECT patient_id FROM patient_identity 
+              WHERE identity_type_id IN (
+                SELECT id FROM patient_identity_type WHERE identity_type = 'NATIONAL'
+              ) AND identity_data = '${nationalId}'
+            );
+            DELETE FROM person WHERE id IN (
+              SELECT person_id FROM patient WHERE id IN (
+                SELECT patient_id FROM patient_identity 
+                WHERE identity_type_id IN (
+                  SELECT id FROM patient_identity_type WHERE identity_type = 'SUBJECT'
+                ) AND identity_data = '${subjectNumber}'
+                UNION
+                SELECT patient_id FROM patient_identity 
+                WHERE identity_type_id IN (
+                  SELECT id FROM patient_identity_type WHERE identity_type = 'NATIONAL'
+                ) AND identity_data = '${nationalId}'
+              )
+            );
+          `;
+          try {
+            execSync(
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -c "${sql}"`,
+              {
+                cwd: PROJECT_ROOT,
+                shell: "/bin/bash",
+                encoding: "utf8",
+                stdio: "pipe",
+              },
+            );
+            return { success: true };
+          } catch (error) {
+            console.error("Error deleting test patient:", error);
             return { success: false, error: error.message };
           }
         },

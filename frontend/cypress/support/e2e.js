@@ -98,3 +98,41 @@ Cypress.on("uncaught:exception", (err, runnable) => {
   // This allows us to see the error but continue
   return false;
 });
+
+// Global Basic Auth setup for all requests
+// Backend supports Basic Auth via BasicAuthRequestedMatcher (SecurityConfig.java)
+// Basic Auth is enabled by default (matchIfMissing = true)
+// Set up intercept in beforeEach so it applies to all tests
+// Store credentials in Cypress env so they persist across tests
+const DEFAULT_USERNAME = "admin";
+const DEFAULT_PASSWORD = "adminADMIN!"; // Dev default (non-negotiable)
+
+// Initialize default credentials
+Cypress.env("BASIC_AUTH_USERNAME", DEFAULT_USERNAME);
+Cypress.env("BASIC_AUTH_PASSWORD", DEFAULT_PASSWORD);
+
+// Set up global intercept in beforeEach (runs before each test)
+// This ensures Basic Auth header is added to ALL requests EXCEPT login page tests
+// Login page tests (login.cy.js) test UI login flow, so they should NOT use Basic Auth
+beforeEach(function () {
+  // Skip Basic Auth setup for login.cy.js (tests UI login flow)
+  if (Cypress.spec.name.includes("login.cy.js")) {
+    return;
+  }
+
+  const username = Cypress.env("BASIC_AUTH_USERNAME") || DEFAULT_USERNAME;
+  const password = Cypress.env("BASIC_AUTH_PASSWORD") || DEFAULT_PASSWORD;
+  const base64Credentials = btoa(`${username}:${password}`);
+
+  // Intercept all requests and add Basic Auth header if not present
+  cy.intercept("**", (req) => {
+    const authHeader =
+      req.headers["authorization"] || req.headers["Authorization"];
+    const isLoginPage =
+      req.url.includes("/LoginPage") || req.url.includes("/ValidateLogin");
+
+    if (!authHeader && !isLoginPage) {
+      req.headers["authorization"] = `Basic ${base64Credentials}`;
+    }
+  });
+});

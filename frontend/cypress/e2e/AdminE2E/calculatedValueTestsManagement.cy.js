@@ -18,13 +18,8 @@ before(() => {
 describe("Calculated Value Tests Management", () => {
   it("Add Test Result", () => {
     cy.fixture("ReflexTestsConfig").then((test) => {
-      // Wait for page to load and data to be fetched
-      cy.intercept("GET", "**/rest/test-calculations").as("loadCalculations");
-      cy.intercept("GET", "**/rest/math-functions").as("loadMathFunctions");
-      cy.intercept("GET", "**/rest/samples").as("loadSamples");
       reflexTestsConfigPage.verifyPageLoads(test.calcValue);
-      // Wait for all data to load before interacting
-      cy.wait(["@loadCalculations", "@loadMathFunctions", "@loadSamples"]);
+      // Data already loaded in before() hook, just wait for form to be ready
       // Wait for form to be ready (name input visible means form is loaded)
       cy.get('[id="0_name"]').should("be.visible");
       // Toggle might be "On" or "Off" depending on loaded data - check actual state

@@ -360,8 +360,9 @@ function UserAddModify() {
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
+      // Navigate to user management list page after successful save
       setTimeout(() => {
-        window.location.reload();
+        window.location.assign("/MasterListsPage#userManagement");
       }, 200);
     } else {
       addNotification({
@@ -370,6 +371,7 @@ function UserAddModify() {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
+      // On error, reload current page to reset form state
       setTimeout(() => {
         window.location.reload();
       }, 200);
