@@ -1760,7 +1760,6 @@
   "storage.location.code": "Code",
   "storage.location.code.helper": "Max 10 characters, alphanumeric with hyphens/underscores",
   "label.shortCode": "Short Code",
-<<<<<<< HEAD
   "label.print": "Print Label",
   "label.printHistory": "Print History",
   "label.shortCodeWarning": "Changing short code will invalidate existing labels",

@@ -13,17 +13,32 @@ describe("Login Test Cases", function () {
   beforeEach("User visits login page", () => {
     // Always visit login page to ensure clean state
     login.visit();
-    // Wait for login page to be fully loaded and stable
-    cy.get("#loginName", { timeout: 5000 })
-      .should("be.visible")
-      .should("not.be.disabled")
-      .should("exist");
-    cy.get("#password", { timeout: 5000 }).should("be.visible").should("exist");
-    // Wait a moment for page to stabilize before clearing
-    cy.wait(200);
-    // Clear inputs - use force to handle any timing issues
-    cy.get("#loginName").clear({ force: true });
-    cy.get("#password").clear({ force: true });
+    // Wait for login page to be fully loaded - check URL first
+    cy.url({ timeout: 15000 }).then((url) => {
+      if (!url.includes("/login") && !url.includes("/LoginPage")) {
+        cy.log("Already authenticated, skipping login page setup");
+        return;
+      }
+      // Wait for React app to mount - root div should have content
+      cy.get("#root", { timeout: 30000 }).should(($root) => {
+        expect($root.children().length).to.be.greaterThan(0);
+      });
+      // Wait for login form to appear (form element indicates React has rendered)
+      cy.get("form", { timeout: 30000 }).should("exist");
+      // Now wait for login form elements (they appear after configuration loads)
+      cy.get("#loginName", { timeout: 30000 })
+        .should("exist")
+        .should("be.visible")
+        .should("not.be.disabled");
+      cy.get("#password", { timeout: 10000 })
+        .should("exist")
+        .should("be.visible");
+      // Wait a moment for page to stabilize before clearing
+      cy.wait(500);
+      // Clear inputs - use force to handle any timing issues
+      cy.get("#loginName").clear({ force: true });
+      cy.get("#password").clear({ force: true });
+    });
   });
 
   it("Tries to login without credentials", function () {
