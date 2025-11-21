@@ -859,14 +859,8 @@ BEGIN
 
 END $$;
 
--- Update sequences to avoid conflicts with test data
-SELECT setval('person_seq', 2000, false);
-SELECT setval('patient_seq', 2000, false);
-SELECT setval('sample_seq', 2000, false);
-SELECT setval('sample_human_seq', 2000, false);
-SELECT setval('sample_item_seq', 10100, false);
-SELECT setval('analysis_seq', 20000, false);
-SELECT setval('result_seq', 30000, false);
+-- Note: Sequences are NOT reset here - they should only be reset when data is cleared
+-- See reset-test-database.sh for sequence reset logic
 
 \echo ''
 \echo 'E2E Test Fixtures Summary:'

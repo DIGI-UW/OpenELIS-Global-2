@@ -16,7 +16,12 @@ class LoginPage {
   visit() {
     cy.visit("/login", { failOnStatusCode: false });
     cy.get("body").should("be.visible");
-    this.getUsernameElement().should("exist");
+    // Wait for login page to be ready - check if we're still on login page
+    cy.url().should("include", "/login");
+    // Wait for login button or username field to appear (depending on config)
+    cy.get("body").should(($body) => {
+      expect($body.find(SELECTORS.LOGIN_BUTTON).length > 0 || $body.find(SELECTORS.USERNAME).length > 0).to.be.true;
+    });
   }
 
   getUsernameElement() {
@@ -28,8 +33,10 @@ class LoginPage {
   }
 
   enterUsername(value) {
-    this.getUsernameElement().should("be.visible");
-    this.getUsernameElement().type(value);
+    this.getUsernameElement()
+      .should("be.visible")
+      .should("not.be.disabled")
+      .type(value);
     this.getUsernameElement().should("have.value", value);
   }
 
@@ -52,7 +59,26 @@ class LoginPage {
   }
 
   changingPassword() {
-    cy.get(SELECTORS.CHANGE_PASSWORD).should("be.visible").click();
+    // Wait for change password button to be available (might be on login page or home page)
+    cy.url().then((url) => {
+      if (url.includes("/login")) {
+        // On login page - change password button should be visible
+        cy.get(SELECTORS.CHANGE_PASSWORD, { timeout: 5000 })
+          .should("be.visible")
+          .should("not.be.disabled")
+          .click();
+      } else {
+        // On home page - need to navigate to login first or find change password option
+        cy.visit("/login");
+        cy.get(SELECTORS.CHANGE_PASSWORD, { timeout: 5000 })
+          .should("be.visible")
+          .should("not.be.disabled")
+          .click();
+      }
+    });
+    // Wait for change password form to load
+    cy.url({ timeout: 5000 }).should("include", "ChangePassword");
+    cy.get("#loginName", { timeout: 5000 }).should("be.visible");
   }
 
   enterCurrentPassword(value) {
@@ -71,9 +97,10 @@ class LoginPage {
   }
 
   submitNewPassword() {
+    // Wait for button to be enabled (form validation must pass)
     cy.get("[data-cy='submitNewPassword']")
       .should("be.visible")
-      .should("not.be.disabled")
+      .should("not.be.disabled", { timeout: 5000 })
       .click();
   }
 
@@ -81,21 +108,28 @@ class LoginPage {
     cy.get("[data-cy='exitPasswordReset']").should("be.visible").click();
   }
   clearInputs() {
-    this.getUsernameElement().should("be.visible").clear();
-    this.getPasswordElement().should("be.visible").clear();
+    // Wait for elements to be stable before clearing (prevent detached element errors)
+    this.getUsernameElement()
+      .should("be.visible")
+      .should("exist")
+      .clear({ force: true });
+    this.getPasswordElement()
+      .should("be.visible")
+      .should("exist")
+      .clear({ force: true });
   }
 
   goToHomePage() {
     cy.wait(1000);
     cy.url().then((url) => {
       if (url.includes("/login")) {
-        cy.contains("button", "Login", { timeout: 10000 }).should("be.visible");
+        cy.get(SELECTORS.LOGIN_BUTTON, { timeout: 10000 }).should("be.visible");
         this.enterUsername(this.testProperties.getUsername());
         this.enterPassword(this.testProperties.getPassword());
         this.signIn();
       }
     });
-    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 }).should(
+    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 5000 }).should(
       "exist",
     );
     return new HomePage();

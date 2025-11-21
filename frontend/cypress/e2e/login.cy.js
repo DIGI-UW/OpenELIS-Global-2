@@ -11,14 +11,19 @@ describe("Login Test Cases", function () {
   });
 
   beforeEach("User visits login page", () => {
-    cy.url().then((url) => {
-      if (!url.includes("/login")) {
-        login.visit();
-      }
-    });
-    cy.get("#loginName", { timeout: 10000 }).should("be.visible");
-    cy.get("#password", { timeout: 10000 }).should("be.visible");
-    login.clearInputs(); // Clear inputs instead of waiting for backend on each test
+    // Always visit login page to ensure clean state
+    login.visit();
+    // Wait for login page to be fully loaded and stable
+    cy.get("#loginName", { timeout: 5000 })
+      .should("be.visible")
+      .should("not.be.disabled")
+      .should("exist");
+    cy.get("#password", { timeout: 5000 }).should("be.visible").should("exist");
+    // Wait a moment for page to stabilize before clearing
+    cy.wait(200);
+    // Clear inputs - use force to handle any timing issues
+    cy.get("#loginName").clear({ force: true });
+    cy.get("#password").clear({ force: true });
   });
 
   it("Tries to login without credentials", function () {
@@ -45,10 +50,20 @@ describe("Login Test Cases", function () {
   it("User changes from default credentials", function () {
     cy.intercept("POST", "**/ChangePasswordLogin").as("changePassword");
     login.changingPassword();
-    login.enterUsername(usersData[3].username);
+    // Wait for change password form to be fully loaded and stable
+    cy.get("#loginName", { timeout: 5000 })
+      .should("be.visible")
+      .should("not.be.disabled");
+    // Use alias to prevent detached element errors
+    cy.get("#loginName").as("usernameInput");
+    cy.get("@usernameInput").type(usersData[3].username);
     login.enterCurrentPassword(usersData[3].password);
     login.enterNewPassword(usersData[4].password);
     login.repeatNewPassword(usersData[4].password);
+    // Wait for form validation to complete before submitting
+    cy.get("[data-cy='submitNewPassword']").should("not.be.disabled", {
+      timeout: 5000,
+    });
     login.submitNewPassword();
     cy.wait("@changePassword").then((interception) => {
       const statusCode = interception.response?.statusCode;
@@ -58,12 +73,18 @@ describe("Login Test Cases", function () {
           "Password change returned 403 - may require different permissions",
         );
         // Still check for error notification
-        cy.get(".toastDisplay", { timeout: 10000 }).should("be.visible");
+        cy.get(".toastDisplay", { timeout: 5000 }).should("be.visible");
       } else {
         expect(statusCode).to.be.oneOf([200, 302]);
-        cy.get(".toastDisplay", { timeout: 10000 })
+        // Notification is shown before redirect (ChangePassword.js adds it, then redirects after 2s)
+        // Check for notification before redirect happens
+        cy.get(".toastDisplay", { timeout: 5000 })
           .should("be.visible")
           .contains("Password changed successfully");
+        // Wait for redirect to login page
+        cy.url({ timeout: 5000 }).should("satisfy", (url) => {
+          return url.includes("/login") || url.includes("/LoginPage");
+        });
       }
     });
   });
@@ -76,19 +97,41 @@ describe("Login Test Cases", function () {
   });
 
   it("Resets the default credentials", function () {
+    // Ensure we're on login page before trying to change password
+    cy.url().then((url) => {
+      if (!url.includes("/login") && !url.includes("/LoginPage")) {
+        login.visit();
+      }
+    });
     cy.intercept("POST", "**/ChangePasswordLogin").as("changePassword");
     login.changingPassword();
-    login.enterUsername(usersData[4].username);
+    // Wait for change password form to be fully loaded and stable
+    cy.get("#loginName", { timeout: 5000 })
+      .should("be.visible")
+      .should("not.be.disabled");
+    // Use alias to prevent detached element errors
+    cy.get("#loginName").as("usernameInput");
+    cy.get("@usernameInput").type(usersData[4].username);
     login.enterCurrentPassword(usersData[4].password);
     login.enterNewPassword(usersData[3].password);
     login.repeatNewPassword(usersData[3].password);
+    // Wait for form validation to complete before submitting
+    cy.get("[data-cy='submitNewPassword']").should("not.be.disabled", {
+      timeout: 5000,
+    });
     login.submitNewPassword();
     cy.wait("@changePassword")
       .its("response.statusCode")
       .should("be.oneOf", [200, 302]);
-    cy.get(".toastDisplay", { timeout: 10000 })
+    // Notification is shown before redirect (ChangePassword.js adds it, then redirects after 2s)
+    // Check for notification before redirect happens
+    cy.get(".toastDisplay", { timeout: 5000 })
       .should("be.visible")
       .contains("Password changed successfully");
+    // Wait for redirect to login page
+    cy.url({ timeout: 5000 }).should("satisfy", (url) => {
+      return url.includes("/login") || url.includes("/LoginPage");
+    });
   });
 
   it("User exits password reset", function () {
@@ -101,17 +144,55 @@ describe("Login Test Cases", function () {
   });
 
   it("Validates user authentication", function () {
-    usersData.forEach((user) => {
-      // Reloads the page
-      cy.reload();
+    usersData.forEach((user, index) => {
+      cy.log(
+        `Testing user ${index}: ${user.username} (correctPass: ${user.correctPass})`,
+      );
+      // Logout before each test to ensure clean state
+      cy.logout();
+      // Visit login page and wait for it to be fully loaded
+      login.visit();
+      cy.screenshot(`login-before-${index}-${user.username}`);
+      // Wait for login page to be fully loaded and stable (same as beforeEach)
+      cy.get("#loginName", { timeout: 5000 })
+        .should("be.visible")
+        .should("not.be.disabled")
+        .should("exist");
+      cy.get("#password", { timeout: 5000 })
+        .should("be.visible")
+        .should("exist");
+      // Clear inputs to ensure clean state
+      cy.get("#loginName").clear({ force: true });
+      cy.get("#password").clear({ force: true });
 
       login.enterUsername(user.username);
-      login.enterPassword(user.password);
+      // Use valid password for user index 4 (adminADMIN# is only valid during password change tests)
+      // After "Resets the default credentials" test, password is back to adminADMIN!
+      const passwordToUse = index === 4 ? usersData[3].password : user.password;
+      login.enterPassword(passwordToUse);
+      cy.screenshot(`login-after-enter-${index}-${user.username}`);
       login.signIn();
+      cy.screenshot(`login-after-signin-${index}-${user.username}`);
 
-      if (user.correctPass === true) {
-        cy.get("#mainHeader").should("exist");
-        cy.get("[data-cy='menuButton']").should("exist");
+      // correctPass is a STRING in JSON, not boolean
+      if (user.correctPass === "true" || user.correctPass === true) {
+        // Should be redirected away from login page
+        cy.url({ timeout: 5000 }).should("satisfy", (url) => {
+          return !url.includes("/login") && !url.includes("/LoginPage");
+        });
+        cy.get("#mainHeader", { timeout: 5000 }).should("exist");
+        cy.get("[data-cy='menuButton']", { timeout: 5000 }).should("exist");
+        cy.screenshot(`login-success-${index}-${user.username}`);
+      } else {
+        // Should still be on login page with error notification
+        cy.url({ timeout: 5000 }).should("satisfy", (url) => {
+          return url.includes("/login") || url.includes("/LoginPage");
+        });
+        // Error message appears in .toastDisplay notification component
+        cy.get(".toastDisplay", { timeout: 5000 })
+          .should("be.visible")
+          .should("contain.text", "Username or Password are incorrect");
+        cy.screenshot(`login-failure-${index}-${user.username}`);
       }
     });
   });

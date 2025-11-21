@@ -448,10 +448,13 @@ function CreatePatientForm(props) {
     if ("days" in values) {
       delete values.days;
     }
-    console.log(JSON.stringify(values));
+    // Remove photo field - backend handles it separately via photoService.savePhoto()
+    // and the DTO doesn't accept it in the JSON payload
+    const { photo, ...patientData } = values;
+    console.log(JSON.stringify(patientData));
     postToOpenElisServer(
       "/rest/PatientManagement",
-      JSON.stringify(values),
+      JSON.stringify(patientData),
       (status) => {
         handlePost(status);
         resetForm({ values: CreatePatientFormValues });

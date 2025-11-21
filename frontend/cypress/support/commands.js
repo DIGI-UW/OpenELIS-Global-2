@@ -124,6 +124,35 @@ Cypress.Commands.add("verifyStorageFixtures", () => {
  * Reference: Testing Roadmap - Session Management (cy.session())
  * Pattern matches: cy.setupStorageTests() in storage-setup.js
  */
+// Logout command - clears session quickly
+Cypress.Commands.add("logout", () => {
+  // Clear session by calling logout endpoint or clearing cookies
+  cy.request({
+    method: "POST",
+    url: "/Logout",
+    failOnStatusCode: false,
+  }).then(() => {
+    // Clear all cookies to ensure clean state
+    cy.clearCookies();
+    // Clear session storage
+    cy.window().then((win) => {
+      win.sessionStorage.clear();
+    });
+    // Clear local storage as well
+    cy.window().then((win) => {
+      win.localStorage.clear();
+    });
+    // Visit login page to ensure we're logged out
+    cy.visit("/login", { failOnStatusCode: false });
+    // Wait for login page to be ready
+    cy.get("body").should("be.visible");
+    // Verify we're actually on the login page
+    cy.url().should("satisfy", (url) => {
+      return url.includes("/login") || url.includes("/LoginPage");
+    });
+  });
+});
+
 Cypress.Commands.add("login", (username, password) => {
   // Default credentials (matches TestProperties.js - dev default, non-negotiable)
   const DEFAULT_USERNAME = "admin";
@@ -131,19 +160,23 @@ Cypress.Commands.add("login", (username, password) => {
   const loginUsername = username || DEFAULT_USERNAME;
   const loginPassword = password || DEFAULT_PASSWORD;
 
-  // Use cy.session() to cache and reuse login session across tests
+  // Store credentials in Cypress env (persists across tests)
+  // Global intercept in e2e.js will use these credentials
+  Cypress.env("BASIC_AUTH_USERNAME", loginUsername);
+  Cypress.env("BASIC_AUTH_PASSWORD", loginPassword);
+
+  // Use cy.session() to cache and reuse login verification across tests
   // Same pattern as cy.setupStorageTests() in storage-setup.js
   // Uses HTTP Basic Auth (fast, reliable, works with cy.request() - no cookie issues)
   // Backend supports Basic Auth via BasicAuthRequestedMatcher (SecurityConfig.java)
+  // Global intercept in e2e.js adds Basic Auth header to all requests automatically
   cy.session(
     `login-session-${loginUsername}`,
     () => {
-      // Use HTTP Basic Auth for API-based login (10-20x faster, more reliable)
-      // Backend activates Basic Auth when Authorization: Basic header is present
-      // This works with cy.request() because it doesn't require cookies
       const base64Credentials = btoa(`${loginUsername}:${loginPassword}`);
 
       // Test authentication by calling a protected endpoint with Basic Auth
+      // Global intercept will add header automatically, but we set it explicitly here too
       cy.request({
         method: "GET",
         url: "/api/OpenELIS-Global/rest/user-test-sections/ALL",
@@ -160,14 +193,8 @@ Cypress.Commands.add("login", (username, password) => {
         expect(response.status).to.eq(200);
       });
 
-      // Also establish browser session by visiting home page with Basic Auth
-      // This ensures both API calls AND browser navigation work
-      cy.visit("/", {
-        auth: {
-          username: loginUsername,
-          password: loginPassword,
-        },
-      });
+      // Visit home page - global intercept will add Basic Auth header automatically
+      cy.visit("/");
 
       // Verify we're logged in
       cy.get("#mainHeader, [data-cy='menuButton']").should("exist");
@@ -178,7 +205,7 @@ Cypress.Commands.add("login", (username, password) => {
   );
 
   // After session is established, ensure we're logged in
-  // Visit home page to verify session is active
+  // Visit home page to verify session is active (global intercept adds Basic Auth)
   cy.visit("/");
   cy.get("#mainHeader, [data-cy='menuButton']").should("exist");
 });

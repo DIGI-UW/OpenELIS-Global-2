@@ -99,14 +99,23 @@ DELETE FROM storage_shelf WHERE id BETWEEN 20 AND 100;
 DELETE FROM storage_device WHERE id BETWEEN 10 AND 100;
 DELETE FROM storage_room WHERE id BETWEEN 1 AND 100;
 
--- Reset sequences to avoid conflicts
-SELECT setval('storage_room_seq', 1000, false);
-SELECT setval('storage_device_seq', 1000, false);
-SELECT setval('storage_shelf_seq', 1000, false);
-SELECT setval('storage_rack_seq', 1000, false);
-SELECT setval('storage_position_seq', 10000, false);
-SELECT setval('sample_storage_assignment_seq', 10000, false);
-SELECT setval('sample_storage_movement_seq', 10000, false);
+-- Reset sequences to avoid conflicts with test data
+-- Use MAX(id) + 1 to ensure sequences are always ahead of existing data
+-- Cast to BIGINT for setval compatibility
+SELECT setval('storage_room_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_room) AS BIGINT), false);
+SELECT setval('storage_device_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_device) AS BIGINT), false);
+SELECT setval('storage_shelf_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_shelf) AS BIGINT), false);
+SELECT setval('storage_rack_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_rack) AS BIGINT), false);
+SELECT setval('storage_position_seq', CAST((SELECT COALESCE(MAX(id), 10000) + 1 FROM storage_position) AS BIGINT), false);
+SELECT setval('sample_storage_assignment_seq', CAST((SELECT COALESCE(MAX(id), 10000) + 1 FROM sample_storage_assignment) AS BIGINT), false);
+SELECT setval('sample_storage_movement_seq', CAST((SELECT COALESCE(MAX(id), 10000) + 1 FROM sample_storage_movement) AS BIGINT), false);
+SELECT setval('person_seq', CAST((SELECT COALESCE(MAX(id), 2000) + 1 FROM person) AS BIGINT), false);
+SELECT setval('patient_seq', CAST((SELECT COALESCE(MAX(id), 2000) + 1 FROM patient) AS BIGINT), false);
+SELECT setval('sample_seq', CAST((SELECT COALESCE(MAX(id), 2000) + 1 FROM sample) AS BIGINT), false);
+SELECT setval('sample_human_seq', CAST((SELECT COALESCE(MAX(id), 2000) + 1 FROM sample_human) AS BIGINT), false);
+SELECT setval('sample_item_seq', CAST((SELECT COALESCE(MAX(id), 10100) + 1 FROM sample_item) AS BIGINT), false);
+SELECT setval('analysis_seq', CAST((SELECT COALESCE(MAX(id), 20000) + 1 FROM analysis) AS BIGINT), false);
+SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM result) AS BIGINT), false);
 "
 
 if [ "$USE_DOCKER" = true ]; then
