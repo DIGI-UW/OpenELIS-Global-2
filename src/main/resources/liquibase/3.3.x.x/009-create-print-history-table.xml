@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Storage Location Print History Table -->
+    <changeSet id="storage-011-create-print-history-table" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="storage_location_print_history"/>
+            </not>
+        </preConditions>
+        <createTable tableName="storage_location_print_history">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="location_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="short_code" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="printed_by" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="printed_date" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="print_count" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.storage_location_print_history
+            ADD CONSTRAINT chk_location_type
+            CHECK (location_type IN ('device', 'shelf', 'rack'));
+        </sql>
+        <createIndex tableName="storage_location_print_history" indexName="idx_print_history_location">
+            <column name="location_type"/>
+            <column name="location_id"/>
+        </createIndex>
+        <createIndex tableName="storage_location_print_history" indexName="idx_print_history_date">
+            <column name="printed_date"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="storage_location_print_history" indexName="idx_print_history_date"/>
+            <dropIndex tableName="storage_location_print_history" indexName="idx_print_history_location"/>
+            <dropTable tableName="storage_location_print_history"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

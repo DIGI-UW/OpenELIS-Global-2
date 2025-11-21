@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
@@ -21,9 +22,10 @@ import jakarta.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
@@ -53,11 +55,15 @@ public class NoteBook extends BaseObject<Integer> {
     @SequenceGenerator(name = "notebook_generator", sequenceName = "notebook_seq", allocationSize = 1)
     private Integer id;
 
+    @Column(name = "is_template")
+    private Boolean isTemplate;
+
     @Column(name = "title")
     private String title;
 
-    @Column(name = "type")
-    private String type;
+    @ManyToOne
+    @JoinColumn(name = "type", referencedColumnName = "id")
+    private Dictionary type;
 
     @Column(name = "project")
     private String project;
@@ -78,11 +84,6 @@ public class NoteBook extends BaseObject<Integer> {
     @NotNull
     @Column(name = "status")
     private NoteBookStatus status = NoteBookStatus.DRAFT;
-
-    @Valid
-    @OneToOne
-    @JoinColumn(name = "patient_id", referencedColumnName = "id")
-    private Patient patient;
 
     @Valid
     @OneToOne
@@ -108,6 +109,15 @@ public class NoteBook extends BaseObject<Integer> {
     @OneToMany(mappedBy = "notebook", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<NoteBookFile> files;
 
+    @OneToMany(mappedBy = "notebook", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<NoteBookComment> comments;
+
+    @OneToMany
+    @JoinTable(name = "notebook_entries", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "entry_id"))
+    private List<NoteBook> entries;
+    @Column(name = "questionnaire_fhir_uuid")
+    private UUID questionnaireFhirUuid;
+
     @Override
     public Integer getId() {
         return id;
@@ -126,11 +136,11 @@ public class NoteBook extends BaseObject<Integer> {
         this.title = title;
     }
 
-    public String getType() {
+    public Dictionary getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(Dictionary type) {
         this.type = type;
     }
 
@@ -218,14 +228,6 @@ public class NoteBook extends BaseObject<Integer> {
         this.technician = technician;
     }
 
-    public Patient getPatient() {
-        return patient;
-    }
-
-    public void setPatient(Patient patient) {
-        this.patient = patient;
-    }
-
     public Date getDateCreated() {
         return dateCreated;
     }
@@ -245,12 +247,50 @@ public class NoteBook extends BaseObject<Integer> {
         this.files = files;
     }
 
+    public List<NoteBookComment> getComments() {
+        if (comments == null) {
+            comments = new ArrayList<>();
+        }
+        return comments;
+    }
+
+    public void setComments(List<NoteBookComment> comments) {
+        this.comments = comments;
+    }
+
     public NoteBookStatus getStatus() {
         return status;
     }
 
     public void setStatus(NoteBookStatus status) {
         this.status = status;
+    }
+
+    public List<NoteBook> getEntries() {
+        if (entries == null) {
+            entries = new ArrayList<>();
+        }
+        return entries;
+    }
+
+    public void setEntries(List<NoteBook> entries) {
+        this.entries = entries;
+    }
+
+    public Boolean getIsTemplate() {
+        return isTemplate;
+    }
+
+    public void setIsTemplate(Boolean isTemplate) {
+        this.isTemplate = isTemplate;
+    }
+
+    public UUID getQuestionnaireFhirUuid() {
+        return questionnaireFhirUuid;
+    }
+
+    public void setQuestionnaireFhirUuid(UUID questionnaireFhirUuid) {
+        this.questionnaireFhirUuid = questionnaireFhirUuid;
     }
 
 }

@@ -54,4 +54,5 @@ public interface TestResultDAO extends BaseDAO<TestResult, String> {
     TestResult getTestResultsByTestAndDictonaryResult(String testId, String result) throws LIMSRuntimeException;
 
     List<TestResult> getActiveTestResultsByTest(String testId) throws LIMSRuntimeException;
+
 }

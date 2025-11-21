@@ -1,0 +1,10 @@
+/* EditLocationModal styling */
+.edit-location-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.edit-location-form .cds--form-item {
+  margin-bottom: 0;
+}

@@ -22,6 +22,7 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientContactService;
+import org.openelisglobal.patient.service.PatientPhotoService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -63,6 +64,8 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
     private PatientPatientTypeService patientPatientTypeService;
     @Autowired
     private PatientContactService patientContactService;
+    @Autowired
+    private PatientPhotoService patientPhotoService;
     protected PatientUpdateStatus patientUpdateStatus = PatientUpdateStatus.NO_ACTION;
 
     private String ADDRESS_PART_VILLAGE_ID;
@@ -365,6 +368,8 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         persistPatientRelatedInformation(patientInfo);
         patientID = patient.getId();
         patientInfo.setPatientPK(patientID);
+        patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+
     }
 
     @Override

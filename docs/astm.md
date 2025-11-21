@@ -17,7 +17,7 @@
 - Ensure an appropriate version of OE is installed in the environment
 - Place the jar for the analyzer in /var/lib/openelis-global/plugins/ and
   restart OE with a `sudo docker-compose down` followed by a
-  `sudo docker-compose up -d`
+  `sudo docker compose up -d`
   - Only jar that uses ASTM is currently the Aquios
     [here](https://www.dropbox.com/s/zcfhj56yvjhys4z/Aquios-0.0.2.jar?dl=0)
   - The project of all code for plugins that compile to jars is
@@ -32,7 +32,7 @@
   - An example is given in the
     [astm-http-bridge github](https://github.com/CalebSLane/astm-http-bridge/wiki/Configuring-the-project).
     Details about parameters are also included.
-  - Run `sudo docker-compose up -d` wherever this service was added
+  - Run `sudo docker compose up -d` wherever this service was added
 
 ### Configuring OE
 

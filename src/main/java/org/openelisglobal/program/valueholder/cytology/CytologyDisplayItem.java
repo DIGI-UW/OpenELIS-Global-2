@@ -17,6 +17,8 @@ public class CytologyDisplayItem {
 
     private Integer pathologySampleId;
 
+    private String patientPK;
+
     public Date getRequestDate() {
         return requestDate;
     }
@@ -79,5 +81,13 @@ public class CytologyDisplayItem {
 
     public void setAssignedCytoPathologist(String assignedCytoPathologist) {
         this.assignedCytoPathologist = assignedCytoPathologist;
+    }
+
+    public String getPatientPK() {
+        return patientPK;
+    }
+
+    public void setPatientPK(String patientPK) {
+        this.patientPK = patientPK;
     }
 }

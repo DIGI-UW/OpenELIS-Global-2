@@ -161,6 +161,10 @@
         <mapping resource="hibernate/hbm/NcEvent.hbm.xml" />
         <mapping resource="hibernate/hbm/Report.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientContact.hbm.xml" />
+
+        <!-- Sample Storage Management mappings (001-sample-storage) -->
+        <!-- Moved to annotation-based mappings (JPA) - entities registered in
+            test-persistence.xml -->
     </session-factory>
 
 </hibernate-configuration>

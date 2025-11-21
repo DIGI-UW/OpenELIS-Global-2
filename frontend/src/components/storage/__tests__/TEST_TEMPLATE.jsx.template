@@ -1,0 +1,181 @@
+/**
+ * OpenELIS Global 2 - Frontend Unit Test Template
+ *
+ * This template follows the established testing patterns used throughout
+ * the OpenELIS codebase. Copy this template when creating new test files.
+ *
+ * STANDARD PATTERN (MANDATORY):
+ * 1. Import order: React → Testing Library → jest-dom → Intl → Component → Utils → Messages
+ * 2. Mock utilities BEFORE imports that use them
+ * 3. Use renderWithIntl helper for all components
+ * 4. Use beforeEach to clear mocks
+ * 5. Use async/await with waitFor for async operations
+ * 6. Use screen.getBy* for required elements, queryBy* for absence checks, findBy* for async
+ *
+ * Reference: StorageDashboard.test.jsx (canonical example)
+ */
+
+import React from "react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within, // Include if needed for scoped queries
+} from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import { BrowserRouter } from "react-router-dom"; // Include if component uses routing
+// import ComponentName from "./ComponentName"; // Template - replace with actual component
+import { getFromOpenElisServer } from "../../utils/Utils"; // Adjust path as needed
+import messages from "../../../languages/en.json"; // Adjust path as needed
+
+// Mock the API utilities (MUST be before imports that use them)
+jest.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: jest.fn(),
+  // Add other utilities as needed: postToOpenElisServer, etc.
+}));
+
+// Mock react-router-dom if component uses routing
+const mockHistory = {
+  replace: jest.fn(),
+  push: jest.fn(),
+};
+
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useHistory: () => mockHistory,
+  useLocation: () => ({ pathname: "/path" }), // Adjust as needed
+}));
+
+// Helper function to create mock location (if using useLocation)
+const createMockLocation = (pathname) => ({ pathname });
+
+// Mock NotificationContext if component uses it
+const mockNotificationContext = {
+  notificationVisible: false,
+  setNotificationVisible: jest.fn(),
+  addNotification: jest.fn(),
+};
+
+// Standard render helper with IntlProvider
+const renderWithIntl = (component) => {
+  return render(
+    <BrowserRouter>
+      {" "}
+      {/* Include if component uses routing */}
+      <IntlProvider locale="en" messages={messages}>
+        {/* Include NotificationContext.Provider if needed */}
+        {component}
+      </IntlProvider>
+    </BrowserRouter>,
+  );
+};
+
+// Helper function to setup API mocks (if needed)
+const setupApiMocks = (overrides = {}) => {
+  const defaults = {
+    // Define default mock responses
+  };
+  const data = { ...defaults, ...overrides };
+
+  getFromOpenElisServer.mockImplementation((url, callback) => {
+    // Map URLs to mock responses
+    if (url.includes("/rest/endpoint1")) {
+      callback(data.endpoint1);
+    } else if (url.includes("/rest/endpoint2")) {
+      callback(data.endpoint2);
+    }
+  });
+};
+
+// Template file - not meant to be run as a test
+// Uncomment and customize when creating a new test file
+// describe("ComponentName", () => {
+  // Define mock data constants
+  const mockData = {
+    // Component-specific mock data
+  };
+
+  const mockCallback = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Setup default API mocks if needed
+    // setupApiMocks();
+  });
+
+  /**
+   * Test description with task reference (e.g., T123: Test name)
+   */
+  test("testName", async () => {
+    // Arrange: Setup test data and render component
+    renderWithIntl(
+      <ComponentName prop1={mockData.prop1} onCallback={mockCallback} />,
+    );
+
+    // Act: Perform user actions
+    const button = screen.getByTestId("button-id");
+    fireEvent.click(button);
+
+    // Assert: Verify expected behavior
+    // Use waitFor for async operations
+    await waitFor(() => {
+      expect(screen.getByText("Expected Text")).toBeInTheDocument();
+    });
+
+    // Use queryBy* for absence checks
+    expect(screen.queryByTestId("error-message")).not.toBeInTheDocument();
+  });
+
+  /**
+   * Test with async API calls
+   */
+  test("testAsyncOperation", async () => {
+    // Setup API mock response
+    setupApiMocks({
+      endpoint1: { data: "mock response" },
+    });
+
+    renderWithIntl(<ComponentName />);
+
+    // Wait for async operation
+    await waitFor(() => {
+      expect(screen.getByText("Loaded Data")).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Test with scoped queries (using within)
+   */
+  test("testScopedQuery", () => {
+    renderWithIntl(<ComponentName />);
+
+    const container = screen.getByTestId("container");
+    const scopedButton = within(container).getByText("Button Text");
+    expect(scopedButton).toBeInTheDocument();
+  });
+});
+
+/**
+ * BEST PRACTICES CHECKLIST:
+ *
+ * ✅ Import order: React → Testing Library → jest-dom → Intl → Component → Utils → Messages
+ * ✅ Mock utilities BEFORE imports that use them
+ * ✅ Use renderWithIntl helper for all components
+ * ✅ Use beforeEach to clear mocks
+ * ✅ Use async/await with waitFor for async operations
+ * ✅ Use screen.getBy* for required elements
+ * ✅ Use screen.queryBy* for absence checks (with .not.toBeInTheDocument())
+ * ✅ Use screen.findBy* for async element queries
+ * ✅ Use within() for scoped queries within containers
+ * ✅ Use data-testid for reliable element selection
+ * ✅ Use fireEvent for user interactions
+ * ✅ Use waitFor instead of setTimeout for async operations
+ * ✅ Include task references in test comments (e.g., T123: Test name)
+ * ✅ Follow AAA pattern (Arrange, Act, Assert)
+ * ✅ Use descriptive test names (testWhat_When_ExpectedResult)
+ * ✅ Mock child components if they have complex dependencies
+ * ✅ Clear mocks in beforeEach
+ * ✅ Use setupApiMocks helper for complex API mocking scenarios
+ */

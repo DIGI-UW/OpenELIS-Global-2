@@ -86,12 +86,13 @@
     </changeSet>
 
     <changeSet author="CIV developer Group" id="2312131">
+        <validCheckSum>8:5ab80bc3875b87ded964141c1814d466</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="lab_unit_roles"/>
             <tableExists tableName="lab_unit_role_map"/>
         </preConditions>
         <sql>
-            ALTER TABLE clinlims.lab_unit_roles DROP CONSTRAINT user_lab_unit_role_map_fk;
+            ALTER TABLE clinlims.lab_unit_roles DROP CONSTRAINT IF EXISTS user_lab_unit_role_map_fk;
             ALTER TABLE clinlims.lab_unit_roles ADD CONSTRAINT user_lab_unit_role_map_fk FOREIGN KEY (lab_unit_role_map_id) REFERENCES clinlims.lab_unit_role_map(lab_unit_role_map_id) ON DELETE CASCADE ON UPDATE CASCADE;
         </sql>
     </changeSet>

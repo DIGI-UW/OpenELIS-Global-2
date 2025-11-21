@@ -209,6 +209,7 @@ public class SampleOrderItem implements Serializable {
 
     private String contactTracingIndexName;
 
+    private String provisionalClinicalDiagnosis;
     private String contactTracingIndexRecordNumber;
 
     private QuestionnaireResponse additionalQuestions;
@@ -254,6 +255,14 @@ public class SampleOrderItem implements Serializable {
 
     public String getOrderType() {
         return orderType;
+    }
+
+    public String getProvisionalClinicalDiagnosis() {
+        return provisionalClinicalDiagnosis;
+    }
+
+    public void setProvisionalClinicalDiagnosis(String provisionalClinicalDiagnosis) {
+        this.provisionalClinicalDiagnosis = provisionalClinicalDiagnosis;
     }
 
     public void setOrderType(String orderType) {

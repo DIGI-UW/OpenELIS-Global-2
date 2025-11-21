@@ -2,6 +2,7 @@ package org.openelisglobal.notebook.bean;
 
 import java.util.List;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.notebook.valueholder.NoteBookComment;
 import org.openelisglobal.notebook.valueholder.NoteBookFile;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 
@@ -14,10 +15,10 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
     private String content;
     private List<NoteBookPage> pages;
     private List<NoteBookFile> files;
+    private List<NoteBookComment> comments;
     private List<SampleDisplayBean> samples;
     private Integer technicianId;
     private String technicianName;
-    private Integer patientId;
 
     public String getProtocol() {
         return protocol;
@@ -91,19 +92,19 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
         this.technicianName = technicianName;
     }
 
-    public Integer getPatientId() {
-        return patientId;
-    }
-
-    public void setPatientId(Integer patientId) {
-        this.patientId = patientId;
-    }
-
     public List<IdValuePair> getAnalyzers() {
         return analyzers;
     }
 
     public void setAnalyzers(List<IdValuePair> analyzers) {
         this.analyzers = analyzers;
+    }
+
+    public List<NoteBookComment> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<NoteBookComment> comments) {
+        this.comments = comments;
     }
 }

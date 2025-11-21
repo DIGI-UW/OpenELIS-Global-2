@@ -36,7 +36,7 @@ Ensure you:
 - restart the docker service after configuring (`sudo system docker restart`)
 - recreate the docker containers by bringing them down and then back up again
   (in the same directory as the installer: `sudo docker-compose down`,
-  `sudo docker-compose up -d`)
+  `sudo docker compose up -d`)
 
 A suggested configuration file is below, which will keep log files below 1GB.
 This should be added to, or created at `/var/lib/docker/daemon.json`.
@@ -99,6 +99,6 @@ require the user be able to ssh into the server and has sudo privileges
    property which contains the entry in
    `/var/lib/openelis-global/config/EXTERNAL_HOSTS`
 1. if none exists, add the entry manually, making sure to keep the right
-   indentation on the file. and run `sudo docker-compose up -d`
+   indentation on the file. and run `sudo docker compose up -d`
 1. search for a patient by National ID. If this fails, contact a higher level of
    support

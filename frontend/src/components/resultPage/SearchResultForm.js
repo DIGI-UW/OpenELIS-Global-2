@@ -23,6 +23,7 @@ import {
   Link,
   Tag,
   IconButton,
+  FileUploader,
 } from "@carbon/react";
 import {
   Copy,
@@ -41,6 +42,9 @@ import SearchPatientForm from "../patient/SearchPatientForm";
 import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
+import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
+import CompactFileInput from "./fileUpload/FileInput";
+import StorageLocationSelector from "../storage/StorageLocationSelector";
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -796,6 +800,7 @@ export function SearchResults(props) {
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sampleLocations, setSampleLocations] = useState({}); // Track location for each sample by accessionNumber
 
   const componentMounted = useRef(false);
 
@@ -901,6 +906,17 @@ export function SearchResults(props) {
     if (componentMounted.current) {
       setRejectReasons(values);
     }
+  };
+
+  const downloadFile = (fileName, content, fileType) => {
+    var win = window.open();
+    win.document.write(
+      '<iframe src="' +
+        fileType +
+        ";base64," +
+        content +
+        '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
+    );
   };
 
   const addRejectResult = () => {
@@ -1081,508 +1097,321 @@ export function SearchResults(props) {
     );
   };
 
-  const renderCell = (row, index, column, id) => {
-    let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
-    const fullTestName = row.testName;
-    const splitIndex = fullTestName.lastIndexOf("(");
-    const testName = fullTestName.substring(0, splitIndex);
-    const sampleType = fullTestName.substring(splitIndex);
+  // Fetch location for a sample when expanded
+  // Search by parent Sample accession number to find SampleItems
+  const fetchSampleLocation = (accessionNumber) => {
+    if (!accessionNumber || sampleLocations[accessionNumber]) {
+      return; // Already fetched or no accession number
+    }
+    getFromOpenElisServer(
+      `/rest/storage/sample-items/search?q=${encodeURIComponent(accessionNumber)}`,
+      (response) => {
+        if (response && response.length > 0) {
+          // Get first SampleItem (or could allow user to select which SampleItem if multiple)
+          const sampleItem = response[0];
+          const locationPath =
+            sampleItem.hierarchicalPath || sampleItem.location || "";
+          // Store SampleItem data for later use in assignment
+          setSampleLocations((prev) => ({
+            ...prev,
+            [accessionNumber]: {
+              locationPath,
+              sampleItemId: sampleItem.sampleItemId || sampleItem.id,
+              sampleItemExternalId: sampleItem.sampleItemExternalId || null,
+              sampleAccessionNumber:
+                sampleItem.sampleAccessionNumber || accessionNumber,
+            },
+          }));
+        }
+      },
+      (error) => {
+        // Sample may not have location assigned yet
+        console.debug("No location found for sample:", accessionNumber);
+      },
+    );
+  };
 
-    console.debug("renderCell: index: " + index + ", id: " + id);
-    switch (column.id) {
-      case "sampleInfo":
-        return (
-          <>
-            <div>
-              <Button
-                onClick={async () => {
-                  if ("clipboard" in navigator) {
-                    return await navigator.clipboard.writeText(
-                      row.accessionNumber,
-                    );
-                  } else {
-                    return document.execCommand(
-                      "copy",
-                      true,
-                      row.accessionNumber,
-                    );
-                  }
-                }}
-                kind="ghost"
-                iconDescription={intl.formatMessage({
-                  id: "instructions.copy.labnum",
-                })}
-                hasIconOnly
-                renderIcon={Copy}
-              />
-            </div>
-            <div className="sampleInfo">
-              <br></br>
-              {(formatLabNum
-                ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
-                : row.accessionNumber) +
-                "-" +
-                row.sequenceNumber}
-              <br></br>
-              {row.patientName} <br></br>
-              {row.patientInfo}
-              <br></br>
-              <br></br>
-            </div>
-            {row.nonconforming && (
-              <picture>
-                <img
-                  src={config.serverBaseUrl + "/images/nonconforming.gif"}
-                  alt="nonconforming"
-                  width="20"
-                  height="15"
-                />
-              </picture>
-            )}
-          </>
-        );
-      case "testName":
-        return (
-          <div className="sampleInfo">
-            <br></br>
-            {testName}
-            <br></br>
-            {sampleType}
-          </div>
-        );
+  // Handle location assignment
+  // Uses SampleItem ID from stored location data or from locationData
+  const handleLocationAssignment = async (locationData, accessionNumber) => {
+    // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
+    const newLocation = locationData?.newLocation || locationData;
 
-      case "accept":
-        return (
-          <>
-            <Field name="forceTechApproval">
-              {() => (
-                <Checkbox
-                  data-cy="checkTestResult"
-                  id={"testResult" + row.id + ".forceTechApproval"}
-                  name={"testResult[" + row.id + "].forceTechApproval"}
-                  labelText=""
-                  //defaultChecked={acceptAsIs}
-                  onChange={(e) => handleAcceptAsIsChange(e, row.id)}
-                />
-              )}
-            </Field>
-          </>
-        );
+    // Get SampleItem ID from stored location data (from fetchSampleLocation) or from locationData
+    const storedLocationData = sampleLocations[accessionNumber];
+    const sampleItemId =
+      locationData?.sample?.sampleItemId ||
+      locationData?.sample?.id ||
+      locationData?.sample?.sampleId ||
+      (storedLocationData && typeof storedLocationData === "object"
+        ? storedLocationData.sampleItemId
+        : null) ||
+      null;
 
-      case "reject":
-        return (
-          <div>
-            <Field name="reject">
-              {() => (
-                <Checkbox
-                  id={"testResult" + row.id + ".rejected"}
-                  name={"testResult[" + row.id + "].rejected"}
-                  labelText=""
-                  onChange={(e) => handleRejectCheckBoxChange(e, row.id)}
-                />
-              )}
-            </Field>
-            <br></br>
-            {rejectedItems[row.id] == true && (
-              <Select
-                id={"rejectReasonId" + row.id}
-                name={"testResult[" + row.id + "].rejectReasonId"}
-                //noLabel={true}
-                labelText={"Reason"}
-                onChange={(e) => handleChange(e, row.id)}
-              >
-                {/* {...updateShadowResult(e, this, param.rowId)} */}
-                <SelectItem text="" value="" />
-                {rejectReasons.map((reason, reason_index) => (
-                  <SelectItem
-                    text={reason.value}
-                    value={reason.id}
-                    key={reason_index}
-                  />
-                ))}
-              </Select>
-            )}
-          </div>
-        );
+    if (!sampleItemId || !newLocation) {
+      console.error("Missing SampleItem ID or location for assignment", {
+        sampleItemId,
+        newLocation,
+        locationData,
+      });
+      return;
+    }
 
-      case "notes":
-        return (
-          <>
-            <div className="note">
-              <TextArea
-                id={"testResult" + row.id + ".note"}
-                name={"testResult[" + row.id + "].note"}
-                //value={props.results.testResult[row.id]?.pastNotes}
-                disabled={false}
-                type="text"
-                labelText=""
-                rows={1}
-                onChange={(e) => handleChange(e, row.id)}
-              ></TextArea>
-              <div
-                className="note"
-                dangerouslySetInnerHTML={{ __html: row.pastNotes }}
-              />
-            </div>
-          </>
-        );
+    try {
+      // Call assignment API with SampleItem ID
+      const assignmentData = {
+        sampleItemId: sampleItemId,
+        locationId:
+          newLocation.rack?.id ||
+          newLocation.shelf?.id ||
+          newLocation.device?.id,
+        locationType: newLocation.rack
+          ? "rack"
+          : newLocation.shelf
+            ? "shelf"
+            : "device",
+        positionCoordinate:
+          locationData.positionCoordinate ||
+          newLocation.position?.coordinate ||
+          "",
+        notes: locationData.conditionNotes || "", // Assignment form uses "notes" field
+      };
 
-      case "result":
-        switch (row.resultType) {
-          // FIXED: NEW CASE FOR MULTI-SELECT
-          case "M":
-            return (
-              <div className="resultOptionsDisplay">
-                <div className="resultSelectOption">
-                  {renderDictionarySelect("M", 0, row)}
-                </div>
-                <div className="resultTagDisplay">
-                  {multiSelectResultValues
-                    .filter((tag) => tag.testId === row.id)
-                    .map((tag, index) => (
-                      <Tag
-                        filter
-                        key={index}
-                        onClose={() => handleTagClose(row.id, tag.id)}
-                        style={{ marginRight: "0.5rem" }}
-                        type={"green"}
-                      >
-                        {tag.result}
-                      </Tag>
-                    ))}
-                </div>
-              </div>
-            );
-
-          // FIXED: NEW CASE FOR CASCADING SELECT
-          case "C": {
-            const cascadingRender = cascadingSelectResultValues
-              .filter((item) => item.parentId === row.id)
-              .map((item, i) => (
-                <div key={i}>
-                  <div className="resultSelectOption" key={i + item.parentId}>
-                    {renderDictionarySelect("C", 0, row)}
-                    {item.parentResults.map((result, index) => (
-                      <div
-                        className="resultOptionsDisplay"
-                        key={result.id + index}
-                      >
-                        <Tag
-                          filter
-                          key={result.id + index}
-                          onClose={() =>
-                            handleCascadingTagClose(row.id, result.id, 0)
-                          }
-                          style={{ marginRight: "0.5rem", margin: "10px" }}
-                          type={"green"}
-                        >
-                          {result.name}
-                        </Tag>
-                      </div>
-                    ))}
-                    {!(
-                      cascadingSelectResultValues.find(
-                        (p) => p.parentId === item.parentId,
-                      )?.children?.length > 0
-                    ) && (
-                      <IconButton
-                        size="sm"
-                        kind="tertiary"
-                        label=""
-                        onClick={() =>
-                          addCascadingOptions(item.parentId, item.position)
-                        }
-                      >
-                        <Add />
-                      </IconButton>
-                    )}
-                  </div>
-                  {item.children.map((child, j) => (
-                    <div className="resultSelectOption" key={i + j}>
-                      {renderDictionarySelect("C", j + 1, row)}
-                      <IconButton
-                        size="sm"
-                        kind="tertiary"
-                        label=""
-                        onClick={() =>
-                          addCascadingOptions(item.parentId, item.position)
-                        }
-                      >
-                        <Add />
-                      </IconButton>
-
-                      <IconButton
-                        size="sm"
-                        kind="tertiary"
-                        label=""
-                        onClick={() =>
-                          addCascadingOptions(item.parentId, item.position)
-                        }
-                      >
-                        <Subtract />
-                      </IconButton>
-                      {child.results.map((result, child_index) => (
-                        <div className="resultOptionsDisplay" key={child_index}>
-                          <Tag
-                            filter
-                            key={child_index}
-                            onClose={() =>
-                              handleCascadingTagClose(row.id, result.id, 0)
-                            }
-                            style={{ marginRight: "0.5rem", margin: "10px" }}
-                            type={"blue"}
-                          >
-                            {result.name}
-                          </Tag>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              ));
-            return (
-              <div className="resultOptionsDisplay">{cascadingRender}</div>
-            );
+      postToOpenElisServerJsonResponse(
+        "/rest/storage/sample-items/assign",
+        JSON.stringify(assignmentData),
+        (response) => {
+          if (response && response.success) {
+            // Update local state with location path
+            const locationPath = response.hierarchicalPath || "";
+            const storedData = sampleLocations[accessionNumber];
+            setSampleLocations((prev) => ({
+              ...prev,
+              [accessionNumber]:
+                storedData && typeof storedData === "object"
+                  ? { ...storedData, locationPath }
+                  : locationPath,
+            }));
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage({
+                id: "storage.location.assigned.success",
+                defaultMessage: "Location assigned successfully",
+              }),
+              kind: NotificationKinds.success,
+            });
+            setNotificationVisible(true);
           }
-          case "D":
-            return (
-              <Select
-                className="result"
-                id={"resultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                noLabel={true}
-                onChange={(e) => validateResults(e, row.id)}
-                value={row.resultValue}
-              >
-                {/* {...updateShadowResult(e, this, param.rowId)} */}
-                <SelectItem text="" value="" />
-                {row.dictionaryResults.map(
-                  (dictionaryResult, dictionaryResult_index) => (
-                    <SelectItem
-                      text={dictionaryResult.value}
-                      value={dictionaryResult.id}
-                      key={dictionaryResult_index}
-                    />
-                  ),
-                )}
-              </Select>
-            );
-
-          case "N":
-            return (
-              <TextInput
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                labelText=""
-                type="number"
-                value={row.resultValue}
-                style={validationState[row.id]?.style}
-                onBlur={(e) => {
-                  if (
-                    validationState[row.id].isInvalid &&
-                    configurationProperties.ALERT_FOR_INVALID_RESULTS
-                  ) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message:
-                        intl.formatMessage({
-                          id: "result.outOfValidRange.msg",
-                        }) +
-                        " " +
-                        row.testName +
-                        " : " +
-                        row.resultValue,
-                      kind: NotificationKinds.error,
-                    });
-                    setNotificationVisible(true);
-                  }
-                }}
-                onChange={(e) => {
-                  handleChange(e, row.id);
-                  if (
-                    validationState[row.id].isInvalid &&
-                    configurationProperties.ALERT_FOR_INVALID_RESULTS
-                  ) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message:
-                        intl.formatMessage({
-                          id: "result.outOfValidRange.msg",
-                        }) +
-                        " " +
-                        row.testName +
-                        " : " +
-                        row.resultValue,
-                      kind: NotificationKinds.error,
-                    });
-                    setNotificationVisible(true);
-                  }
-                }}
-              />
-            );
-
-          case "R":
-            return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
-            );
-
-          case "A":
-            return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
-            );
-
-          default:
-            return row.resultValue;
-        }
-
-      case "currentResult":
-        switch (row.resultType) {
-          case "M":
-          case "C":
-          case "D":
-            return (
-              <>
-                {
-                  row.dictionaryResults.find(
-                    (result) => result.id == row.shadowResultValue,
-                  )?.value
-                }
-              </>
-            );
-
-          default:
-            return row.shadowResultValue;
-        }
-      default:
-        return;
+        },
+        (error) => {
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({
+              id: "storage.location.assigned.error",
+              defaultMessage: "Failed to assign location",
+            }),
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
+        },
+      );
+    } catch (error) {
+      console.error("Error assigning location:", error);
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "storage.location.assigned.error",
+          defaultMessage: "Failed to assign location",
+        }),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
     }
   };
 
-  const renderReferral = ({ data }) => (
-    <>
-      <Grid>
-        <Column lg={2}>
-          <Select
-            id={"testMethod" + data.id}
-            name={"testResult[" + data.id + "].testMethod"}
-            labelText={intl.formatMessage({ id: "referral.label.testmethod" })}
-            onChange={(e) => handleChange(e, data.id)}
-            value={data.testMethod}
-          >
-            <SelectItem text="" value="" />
-            {methods.map((method, method_index) => (
-              <SelectItem
-                text={method.value}
-                value={method.id}
-                key={method_index}
-              />
-            ))}
-          </Select>
-        </Column>
-        <Column lg={1}></Column>
-        <Column lg={2}>
-          <Checkbox
-            labelText={intl.formatMessage({ id: "results.label.refer" })}
-            name={"testResult[" + data.id + "].refer"}
-            id={"testResult[" + data.id + "].refer"}
-            checked={data.refer === "true"}
-            disabled={data.referredOut}
-            onChange={(e) => {
-              e.target.value = e.target.checked;
-              handleChange(e, data.id);
-            }}
-          />
-        </Column>
-        <Column lg={3}>
-          <Select
-            id={"referralReason" + data.id}
-            name={"testResult[" + data.id + "].referralItem.referralReasonId"}
-            // noLabel={true}
-            labelText={intl.formatMessage({ id: "referral.label.reason" })}
-            onChange={(e) => handleChange(e, data.id)}
-            value={data?.referralItem?.referralReasonId}
-            disabled={!referTest[data.id]}
-          >
-            {/* {...updateShadowResult(e, this, param.rowId)} */}
-            <SelectItem text="" value="" />
-            {referralReasons.map((reason, reason_index) => (
-              <SelectItem
-                text={reason.value}
-                value={reason.id}
-                key={reason_index}
-              />
-            ))}
-          </Select>
-        </Column>
-        <Column lg={3}>
-          <Select
-            id={"institute" + data.id}
-            name={
-              "testResult[" + data.id + "].referralItem.referredInstituteId"
-            }
-            // noLabel={true}
-            labelText={intl.formatMessage({ id: "referral.label.institute" })}
-            onChange={(e) => handleChange(e, data.id)}
-            value={data?.referralItem?.referredInstituteId}
-            disabled={!referTest[data.id]}
-          >
-            {/* {...updateShadowResult(e, this, param.rowId)} */}
+  const renderReferral = ({ data }) => {
+    // Fetch location when row is expanded
+    const accessionNumber = data.accessionNumber;
+    if (accessionNumber && !sampleLocations[accessionNumber]) {
+      fetchSampleLocation(accessionNumber);
+    }
 
-            <SelectItem text="" value="" />
-            {referalOrganizations.map((org, org_index) => (
-              <SelectItem text={org.value} value={org.id} key={org_index} />
-            ))}
-          </Select>
-        </Column>
-        <Column lg={3}>
-          <Select
-            id={"testToPerform" + data.id}
-            name={"testResult[" + data.id + "].referralItem.referredTestId"}
-            // noLabel={true}
-            labelText={intl.formatMessage({
-              id: "referral.label.testtoperform",
-            })}
-            onChange={(e) => handleChange(e, data.id)}
-            value={data?.referralItem?.referredTestId}
-            disabled={!referTest[data.id]}
-          >
-            {/* {...updateShadowResult(e, this, param.rowId)} */}
+    // Get location path from stored data (can be string or object)
+    const locationData = sampleLocations[accessionNumber];
+    const currentLocationPath =
+      typeof locationData === "object"
+        ? locationData.locationPath || ""
+        : locationData || "";
 
-            <SelectItem text={data.testName} value={data.id} />
-          </Select>
-        </Column>
-        <Column lg={2}>
-          <CustomDatePicker
-            id={"sentDate_" + data.id}
-            labelText={intl.formatMessage({
-              id: "referral.label.sentdate",
-            })}
-            onChange={(date) => handleDatePickerChange(date, data.id)}
-            name={"testResult[" + data.id + "].referralItem.referredSendDate"}
-            value={data?.referralItem?.referredSendDate}
-            disabled={!referTest[data.id]}
-            disallowFutureDate={true}
-          />
-        </Column>
-      </Grid>
-    </>
-  );
+    return (
+      <>
+        <Grid>
+          <Column lg={2}>
+            <Select
+              id={"testMethod" + data.id}
+              name={"testResult[" + data.id + "].testMethod"}
+              labelText={intl.formatMessage({
+                id: "referral.label.testmethod",
+              })}
+              onChange={(e) => handleChange(e, data.id)}
+              value={data.testMethod}
+            >
+              <SelectItem text="" value="" />
+              {methods.map((method, method_index) => (
+                <SelectItem
+                  text={method.value}
+                  value={method.id}
+                  key={method_index}
+                />
+              ))}
+            </Select>
+          </Column>
+          <Column lg={2}>
+            <CompactFileInput
+              data={data}
+              results={props.results}
+              setResultForm={props.setResultForm}
+            />
 
-  // FIXED: NEW LOGIC FUNCTIONS START HERE
+            {data.resultFile && data.resultFile.fileName && (
+              <Link
+                onClick={() =>
+                  downloadFile(
+                    data.resultFile.fileName,
+                    data.resultFile.content,
+                    data.resultFile.fileType,
+                  )
+                }
+                style={{ fontSize: "12px" }}
+              >
+                {data.resultFile.fileName}
+              </Link>
+            )}
+          </Column>
+          <Column lg={2}>
+            <Checkbox
+              labelText={intl.formatMessage({ id: "results.label.refer" })}
+              name={"testResult[" + data.id + "].refer"}
+              id={"testResult[" + data.id + "].refer"}
+              checked={data.refer === "true"}
+              disabled={data.referredOut}
+              data-cy="referalcheckbox"
+              onChange={(e) => {
+                e.target.value = e.target.checked;
+                handleChange(e, data.id);
+              }}
+            />
+          </Column>
+          <Column lg={2}>
+            <Select
+              id={"referralReason" + data.id}
+              name={"testResult[" + data.id + "].referralItem.referralReasonId"}
+              // noLabel={true}
+              labelText={intl.formatMessage({ id: "referral.label.reason" })}
+              onChange={(e) => handleChange(e, data.id)}
+              value={data?.referralItem?.referralReasonId}
+              disabled={!referTest[data.id]}
+            >
+              {/* {...updateShadowResult(e, this, param.rowId)} */}
+              <SelectItem text="" value="" />
+              {referralReasons.map((reason, reason_index) => (
+                <SelectItem
+                  text={reason.value}
+                  value={reason.id}
+                  key={reason_index}
+                />
+              ))}
+            </Select>
+          </Column>
+          <Column lg={2}>
+            <Select
+              id={"institute" + data.id}
+              name={
+                "testResult[" + data.id + "].referralItem.referredInstituteId"
+              }
+              // noLabel={true}
+              labelText={intl.formatMessage({ id: "referral.label.institute" })}
+              onChange={(e) => handleChange(e, data.id)}
+              value={data?.referralItem?.referredInstituteId}
+              disabled={!referTest[data.id]}
+            >
+              {/* {...updateShadowResult(e, this, param.rowId)} */}
+
+              <SelectItem text="" value="" />
+              {referalOrganizations.map((org, org_index) => (
+                <SelectItem text={org.value} value={org.id} key={org_index} />
+              ))}
+            </Select>
+          </Column>
+          <Column lg={3}>
+            <Select
+              id={"testToPerform" + data.id}
+              name={"testResult[" + data.id + "].referralItem.referredTestId"}
+              // noLabel={true}
+              labelText={intl.formatMessage({
+                id: "referral.label.testtoperform",
+              })}
+              onChange={(e) => handleChange(e, data.id)}
+              value={data?.referralItem?.referredTestId}
+              disabled={!referTest[data.id]}
+            >
+              {/* {...updateShadowResult(e, this, param.rowId)} */}
+
+              <SelectItem text={data.testName} value={data.id} />
+            </Select>
+          </Column>
+          <Column lg={2}>
+            <CustomDatePicker
+              id={"sentDate_" + data.id}
+              labelText={intl.formatMessage({
+                id: "referral.label.sentdate",
+              })}
+              onChange={(date) => handleDatePickerChange(date, data.id)}
+              name={"testResult[" + data.id + "].referralItem.referredSendDate"}
+              value={data?.referralItem?.referredSendDate}
+              disabled={!referTest[data.id]}
+              disallowFutureDate={true}
+            />
+          </Column>
+        </Grid>
+        {/* Storage Location Widget - INT-002: Integration point */}
+        <Grid style={{ marginTop: "1rem" }}>
+          <Column lg={16}>
+            <StorageLocationSelector
+              workflow="results"
+              showQuickFind={true}
+              sampleInfo={{
+                // Use SampleItem data if available, otherwise fall back to Sample accession number
+                sampleItemId:
+                  locationData && typeof locationData === "object"
+                    ? locationData.sampleItemId
+                    : null,
+                sampleItemExternalId:
+                  locationData && typeof locationData === "object"
+                    ? locationData.sampleItemExternalId
+                    : null,
+                sampleAccessionNumber:
+                  locationData && typeof locationData === "object"
+                    ? locationData.sampleAccessionNumber
+                    : accessionNumber,
+                sampleId:
+                  locationData && typeof locationData === "object"
+                    ? locationData.sampleItemId
+                    : accessionNumber, // Legacy fallback
+                type: data.sampleType || "",
+                status: data.sampleStatus || "Active",
+              }}
+              hierarchicalPath={currentLocationPath}
+              onLocationChange={(locationData) => {
+                handleLocationAssignment(locationData, accessionNumber);
+              }}
+            />
+          </Column>
+        </Grid>
+      </>
+    );
+  };
+
   const validateResults = (e, rowId, resultType, position) => {
     const id = e.target.value;
     const text = e.target.options[e.target.selectedIndex].text;

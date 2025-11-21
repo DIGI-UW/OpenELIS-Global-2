@@ -1,6 +1,5 @@
 package org.openelisglobal.notebook.form;
 
-import jakarta.validation.constraints.NotNull;
 import java.util.Base64;
 import java.util.List;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
@@ -23,15 +22,16 @@ public class NoteBookForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String content;
     private Integer technicianId;
-    @NotNull
-    private Integer patientId;
     private Integer systemUserId;
     private NoteBookStatus status;
     private List<Integer> sampleIds;
     private List<String> tags;
     private List<NoteBookPage> pages;
     private List<NoteBookFileForm> files;
+    private List<NoteBookCommentForm> comments;
     private List<Integer> analyzerIds;
+    private Integer templateId;
+    private Boolean isTemplate;
 
     public String getTitle() {
         return title;
@@ -113,14 +113,6 @@ public class NoteBookForm {
         this.files = files;
     }
 
-    public Integer getPatientId() {
-        return patientId;
-    }
-
-    public void setPatientId(Integer patientId) {
-        this.patientId = patientId;
-    }
-
     public List<NoteBookPage> getPages() {
         return pages;
     }
@@ -161,6 +153,30 @@ public class NoteBookForm {
         this.status = status;
     }
 
+    public Integer getTemplateId() {
+        return templateId;
+    }
+
+    public void setTemplateId(Integer templateId) {
+        this.templateId = templateId;
+    }
+
+    public Boolean getIsTemplate() {
+        return isTemplate;
+    }
+
+    public void setIsTemplate(Boolean isTemplate) {
+        this.isTemplate = isTemplate;
+    }
+
+    public List<NoteBookCommentForm> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<NoteBookCommentForm> comments) {
+        this.comments = comments;
+    }
+
     public static class NoteBookFileForm extends NoteBookFile {
 
         private static final long serialVersionUID = 3142138533368581327L;
@@ -179,6 +195,28 @@ public class NoteBookForm {
 
             setFileType(imageInfo[0]);
             setFileData(Base64.getDecoder().decode(imageInfo[1]));
+        }
+    }
+
+    public static class NoteBookCommentForm {
+        private Integer id;
+        @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+        private String text;
+
+        public Integer getId() {
+            return id;
+        }
+
+        public void setId(Integer id) {
+            this.id = id;
+        }
+
+        public String getText() {
+            return text;
+        }
+
+        public void setText(String text) {
+            this.text = text;
         }
     }
 
