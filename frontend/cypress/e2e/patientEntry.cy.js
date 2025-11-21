@@ -59,7 +59,7 @@ describe("Add New Patient", function () {
 
   beforeEach(() => {
     // Set up intercepts BEFORE actions (Constitution V.5)
-    cy.intercept("POST", "**/rest/patient**").as("createPatient");
+    cy.intercept("POST", "**/rest/PatientManagement**").as("createPatient");
     cy.intercept("GET", "**/rest/patient**").as("getPatient");
   });
 
@@ -110,8 +110,8 @@ describe("Add New Patient", function () {
   });
 
   it("Save new patient information button", function () {
-    // Set up intercept BEFORE action
-    cy.intercept("POST", "**/rest/patient**").as("createPatient");
+    // Set up intercept BEFORE action (actual endpoint is /rest/PatientManagement)
+    cy.intercept("POST", "**/rest/PatientManagement**").as("createPatient");
 
     patientPage.clickSavePatientButton();
 

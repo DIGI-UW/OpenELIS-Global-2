@@ -27,8 +27,12 @@ class MenuConfigPage {
   }
 
   navigateToMainMenu() {
-    cy.wait(5000);
-    cy.get(this.selectors.menuButton).click();
+    // Use alias to prevent element detachment issues (Carbon components re-render)
+    cy.get(this.selectors.menuButton, { timeout: 10000 })
+      .should("be.visible")
+      .should("not.be.disabled")
+      .as("menuBtn");
+    cy.get("@menuBtn").click();
   }
 
   turnOffToggleSwitch() {

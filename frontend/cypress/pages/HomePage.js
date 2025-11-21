@@ -74,7 +74,10 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get(this.selectors.menuButton).click();
+    cy.get(this.selectors.menuButton, { timeout: 10000 })
+      .should("be.visible")
+      .should("not.be.disabled")
+      .click();
   }
 
   // Order Entry related functions

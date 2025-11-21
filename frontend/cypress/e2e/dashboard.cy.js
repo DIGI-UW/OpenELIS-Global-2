@@ -133,7 +133,7 @@ const changeOrderStatusAndSave = (dashboardType) => {
   cy.url().should("include", "/PathologyDashboard");
 
   // Intercept dashboard API to ensure it has loaded
-  cy.intercept("GET", "**/api/OpenELIS-Global/rest/pathology/dashboard*").as(
+  cy.intercept("GET", "**/rest/pathology/dashboard*").as(
     "loadDashboardForStatusChange",
   );
 
@@ -194,11 +194,8 @@ const validateOrderStatus = (dashboardType) => {
 describe("Dashboard Tests", function () {
   describe("Pathology Dashboard", function () {
     before("Navigate to Pathology Dashboard", function () {
-      // Set up intercept BEFORE navigating to dashboard
-      cy.intercept(
-        "GET",
-        "**/api/OpenELIS-Global/rest/pathology/dashboard*",
-      ).as("loadDashboard");
+      // Set up intercept BEFORE navigating to dashboard (actual endpoint is /rest/pathology/dashboard)
+      cy.intercept("GET", "**/rest/pathology/dashboard*").as("loadDashboard");
 
       dashboard = homePage.goToPathologyDashboard();
 
@@ -243,10 +240,9 @@ describe("Dashboard Tests", function () {
       ).as("loadStatusList");
 
       // Intercept dashboard API call to wait for orders to load
-      cy.intercept(
-        "GET",
-        "**/api/OpenELIS-Global/rest/pathology/dashboard*",
-      ).as("loadDashboardAfterOrder");
+      cy.intercept("GET", "**/rest/pathology/dashboard*").as(
+        "loadDashboardAfterOrder",
+      );
 
       dashboard = homePage.goToPathologyDashboard();
 
@@ -306,10 +302,9 @@ describe("Dashboard Tests", function () {
   describe("ImmunoChemistry Dashboard", function () {
     before("Navigate to ImmunoChemistry Dashboard", function () {
       // Set up intercept BEFORE navigating
-      cy.intercept(
-        "GET",
-        "**/api/OpenELIS-Global/rest/immunochemistry/dashboard*",
-      ).as("loadDashboard");
+      cy.intercept("GET", "**/rest/immunohistochemistry/dashboard*").as(
+        "loadDashboard",
+      );
 
       dashboard = homePage.goToImmunoChemistryDashboard();
 
@@ -349,9 +344,7 @@ describe("Dashboard Tests", function () {
   describe("Cytology Dashboard", function () {
     before("Navigate to Cytology Dashboard", function () {
       // Set up intercept BEFORE navigating
-      cy.intercept("GET", "**/api/OpenELIS-Global/rest/cytology/dashboard*").as(
-        "loadDashboard",
-      );
+      cy.intercept("GET", "**/rest/cytology/dashboard*").as("loadDashboard");
 
       dashboard = homePage.goToCytologyDashboard();
 

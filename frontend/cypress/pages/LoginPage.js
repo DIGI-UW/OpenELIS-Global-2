@@ -71,7 +71,10 @@ class LoginPage {
   }
 
   submitNewPassword() {
-    cy.get("[data-cy='submitNewPassword']").should("be.visible").should("not.be.disabled").click();
+    cy.get("[data-cy='submitNewPassword']")
+      .should("be.visible")
+      .should("not.be.disabled")
+      .click();
   }
 
   clickExitPasswordReset() {
@@ -92,7 +95,9 @@ class LoginPage {
         this.signIn();
       }
     });
-    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 }).should("exist");
+    cy.get("#mainHeader, [data-cy='menuButton']", { timeout: 10000 }).should(
+      "exist",
+    );
     return new HomePage();
   }
 }
