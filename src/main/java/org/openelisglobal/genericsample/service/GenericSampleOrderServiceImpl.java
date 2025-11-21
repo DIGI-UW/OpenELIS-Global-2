@@ -20,7 +20,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.hl7.fhir.r4.model.BooleanType;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateType;
@@ -1483,11 +1482,11 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
             throws IOException, CsvException {
         if (fileName.toLowerCase().endsWith(".csv") || (contentType != null && contentType.contains("text/csv"))) {
             return parseCSV(inputStream);
-        } else if (fileName.toLowerCase().endsWith(".xlsx") || fileName.toLowerCase().endsWith(".xls")
+        } else if (fileName.toLowerCase().endsWith(".xls")
                 || (contentType != null && (contentType.contains("spreadsheet") || contentType.contains("excel")))) {
             return parseExcel(inputStream, fileName);
         } else {
-            throw new IOException("Unsupported file type. Please use CSV or Excel (.xlsx, .xls) files.");
+            throw new IOException("Unsupported file type. Please use CSV or Excel (.xls) files.");
         }
     }
 
@@ -1530,12 +1529,7 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         List<String> headers = new ArrayList<>();
         List<Map<String, String>> dataRows = new ArrayList<>();
 
-        Workbook workbook;
-        if (fileName.toLowerCase().endsWith(".xlsx")) {
-            workbook = new XSSFWorkbook(inputStream);
-        } else {
-            workbook = new HSSFWorkbook(inputStream);
-        }
+        Workbook workbook = new HSSFWorkbook(inputStream);
 
         Sheet sheet = workbook.getSheetAt(0);
 
