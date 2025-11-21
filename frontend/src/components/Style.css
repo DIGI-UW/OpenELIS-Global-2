@@ -203,6 +203,20 @@ button {
   margin-left: 1%;
   margin-right: 0%;
 }
+.resultOptionsDisplay {
+  display: flex;
+  flex-wrap: wrap;
+}
+.resultSelectOption {
+  flex: 0 0 auto;
+  padding: 4px;
+  margin: 1px;
+}
+.resultTagDisplay {
+  flex: 1 0 100%;
+  padding: 4px;
+  margin: 1px;
+}
 .searchLabNumber,
 .sampleInfo {
   margin-left: 0%;

@@ -21,17 +21,24 @@ import {
   SelectItem,
   Loading,
   Link,
+  Tag,
+  IconButton,
 } from "@carbon/react";
-import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import {
+  Copy,
+  ArrowLeft,
+  ArrowRight,
+  Add,
+  Subtract,
+} from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
 import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import SearchPatientForm from "../patient/SearchPatientForm";
 import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
-import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
 
@@ -780,6 +787,12 @@ export function SearchResults(props) {
   const [rejectReasons, setRejectReasons] = useState([]);
   const [rejectedItems, setRejectedItems] = useState({});
   const [validationState, setValidationState] = useState({});
+
+  // FIXED: ADDED STATE FOR MULTI-SELECT
+  const [multiSelectResultValues, setMultiSelectResultValues] = useState([]);
+  const [cascadingSelectResultValues, setCascadingSelectResultValues] =
+    useState([]);
+
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -809,11 +822,29 @@ export function SearchResults(props) {
       });
       setRejectedItems(defaultRejectedItems);
     }
+
+    // FIXED: ADDED LOGIC TO INITIALIZE CASCADING/MULTI-SELECT
+    if (props.results.testResult) {
+      let updatedCascadingState = [];
+      props.results.testResult.forEach((row) => {
+        if (row.resultType === "C") {
+          updatedCascadingState.push({
+            parentId: row.id,
+            parentResults: [],
+            position: 0,
+            children: [],
+          });
+        }
+      });
+      setCascadingSelectResultValues(updatedCascadingState);
+    }
+
     return () => {
       componentMounted.current = false;
     };
   }, []);
 
+  // FIXED: ADDED VALIDATION EFFECT
   useEffect(() => {
     if (props.results.testResult) {
       let newValidationState = { ...validationState };
@@ -971,6 +1002,85 @@ export function SearchResults(props) {
     },
   ];
 
+  // FIXED: NEW HELPER FOR DICTIONARY SELECT
+  const renderDictionarySelect = (resultType, position = 0, row) => {
+    // Filter logic for Multi-select/Cascading options
+    const sourceValues =
+      resultType === "M"
+        ? multiSelectResultValues
+        : resultType === "C"
+          ? cascadingSelectResultValues
+          : [];
+
+    // Find already selected items for dynamic disabling
+    const selectedItems = sourceValues.flatMap((item) => {
+      const matchesResultType =
+        resultType === "C"
+          ? Array.isArray(item.parentResults) &&
+            item.parentResults.some((pr) => pr.id === item.id)
+          : item.id === item.id;
+
+      if (!matchesResultType) return [];
+
+      const parentPairs = Array.isArray(item.parentResults)
+        ? item.parentResults
+            .filter((pr) => pr.id === item.id)
+            .map((pr) => ({
+              id: pr.id,
+              position: item.position,
+            }))
+        : [];
+
+      const childPairs = Array.isArray(item.children)
+        ? item.children.flatMap((child) =>
+            Array.isArray(child.results)
+              ? child.results
+                  .filter((r) => r.id === item.id)
+                  .map((r) => ({
+                    id: r.id,
+                    position: child.position,
+                  }))
+              : [],
+          )
+        : [];
+
+      return [...parentPairs, ...childPairs];
+    });
+
+    return (
+      <Select
+        className="result"
+        id={`resultValue${row.id}`}
+        name={`testResult[${row.id}].resultValue`}
+        noLabel
+        onChange={(e) => validateResults(e, row.id, resultType, position)}
+        value={row.resultValue}
+      >
+        <SelectItem text="" value="" />
+
+        {row.dictionaryResults.map((dictionaryResult, index) => {
+          const { id, value, position: dictPosition } = dictionaryResult;
+
+          // Logic for disabling items already selected
+          const isDisabled =
+            selectedItems.some(
+              (sel) =>
+                sel.id === id && sel.position === (dictPosition ?? position),
+            ) && resultType !== "D";
+
+          return (
+            <SelectItem
+              key={index}
+              text={value}
+              value={id}
+              disabled={isDisabled}
+            />
+          );
+        })}
+      </Select>
+    );
+  };
+
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const fullTestName = row.testName;
@@ -981,7 +1091,6 @@ export function SearchResults(props) {
     console.debug("renderCell: index: " + index + ", id: " + id);
     switch (column.id) {
       case "sampleInfo":
-        // return <input id={"results_" + id} type="text" size="6"></input>
         return (
           <>
             <div>
@@ -1120,8 +1229,121 @@ export function SearchResults(props) {
 
       case "result":
         switch (row.resultType) {
+          // FIXED: NEW CASE FOR MULTI-SELECT
           case "M":
-          case "C":
+            return (
+              <div className="resultOptionsDisplay">
+                <div className="resultSelectOption">
+                  {renderDictionarySelect("M", 0, row)}
+                </div>
+                <div className="resultTagDisplay">
+                  {multiSelectResultValues
+                    .filter((tag) => tag.testId === row.id)
+                    .map((tag, index) => (
+                      <Tag
+                        filter
+                        key={index}
+                        onClose={() => handleTagClose(row.id, tag.id)}
+                        style={{ marginRight: "0.5rem" }}
+                        type={"green"}
+                      >
+                        {tag.result}
+                      </Tag>
+                    ))}
+                </div>
+              </div>
+            );
+
+          // FIXED: NEW CASE FOR CASCADING SELECT
+          case "C": {
+            const cascadingRender = cascadingSelectResultValues
+              .filter((item) => item.parentId === row.id)
+              .map((item, i) => (
+                <div key={i}>
+                  <div className="resultSelectOption" key={i + item.parentId}>
+                    {renderDictionarySelect("C", 0, row)}
+                    {item.parentResults.map((result, index) => (
+                      <div
+                        className="resultOptionsDisplay"
+                        key={result.id + index}
+                      >
+                        <Tag
+                          filter
+                          key={result.id + index}
+                          onClose={() =>
+                            handleCascadingTagClose(row.id, result.id, 0)
+                          }
+                          style={{ marginRight: "0.5rem", margin: "10px" }}
+                          type={"green"}
+                        >
+                          {result.name}
+                        </Tag>
+                      </div>
+                    ))}
+                    {!(
+                      cascadingSelectResultValues.find(
+                        (p) => p.parentId === item.parentId,
+                      )?.children?.length > 0
+                    ) && (
+                      <IconButton
+                        size="sm"
+                        kind="tertiary"
+                        label=""
+                        onClick={() =>
+                          addCascadingOptions(item.parentId, item.position)
+                        }
+                      >
+                        <Add />
+                      </IconButton>
+                    )}
+                  </div>
+                  {item.children.map((child, j) => (
+                    <div className="resultSelectOption" key={i + j}>
+                      {renderDictionarySelect("C", j + 1, row)}
+                      <IconButton
+                        size="sm"
+                        kind="tertiary"
+                        label=""
+                        onClick={() =>
+                          addCascadingOptions(item.parentId, item.position)
+                        }
+                      >
+                        <Add />
+                      </IconButton>
+
+                      <IconButton
+                        size="sm"
+                        kind="tertiary"
+                        label=""
+                        onClick={() =>
+                          addCascadingOptions(item.parentId, item.position)
+                        }
+                      >
+                        <Subtract />
+                      </IconButton>
+                      {child.results.map((result, child_index) => (
+                        <div className="resultOptionsDisplay" key={child_index}>
+                          <Tag
+                            filter
+                            key={child_index}
+                            onClose={() =>
+                              handleCascadingTagClose(row.id, result.id, 0)
+                            }
+                            style={{ marginRight: "0.5rem", margin: "10px" }}
+                            type={"blue"}
+                          >
+                            {result.name}
+                          </Tag>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ));
+            return (
+              <div className="resultOptionsDisplay">{cascadingRender}</div>
+            );
+          }
           case "D":
             return (
               <Select
@@ -1359,11 +1581,98 @@ export function SearchResults(props) {
       </Grid>
     </>
   );
-  const validateResults = (e, rowId) => {
-    console.debug("validateResults:" + e.target.value);
-    // e.target.value;
+
+  // FIXED: NEW LOGIC FUNCTIONS START HERE
+  const validateResults = (e, rowId, resultType, position) => {
+    const id = e.target.value;
+    const text = e.target.options[e.target.selectedIndex].text;
+    if (!id) return;
+    if (resultType === "M") {
+      setMultiSelectResultValues((prev) => {
+        const existingTagsForRow = prev.filter((item) => item.testId === rowId);
+        const exists = existingTagsForRow.some((item) => item.id === id);
+        if (exists) return prev;
+        return [...prev, { id, result: text, testId: rowId }];
+      });
+    } else if (resultType === "C") {
+      setCascadingSelectResultValues((prevState) =>
+        prevState.map((item) => {
+          if (item.parentId !== rowId) return item;
+
+          // ---- CASE: position 0 => update parentResults ----
+          if (position === 0) {
+            const parentResults = item.parentResults || [];
+            const exists = parentResults.some((pr) => pr.id === id);
+
+            return {
+              ...item,
+              parentResults: exists
+                ? parentResults
+                : [...parentResults, { id, name: text }],
+            };
+          }
+
+          // ---- CASE: position >= 1 => update child.results ----
+          const updatedChildren = (item.children || []).map((child) => {
+            if (child.position !== position) return child;
+
+            const existingResults = child.results || [];
+            const alreadyExists = existingResults.some((res) => res.id === id);
+
+            return {
+              ...child,
+              position: position,
+              results: alreadyExists
+                ? existingResults
+                : [...existingResults, { id, name: text }],
+            };
+          });
+
+          return {
+            ...item,
+            children: updatedChildren,
+          };
+        }),
+      );
+    }
     handleChange(e, rowId);
   };
+
+  const handleTagClose = (rowId, tagId) => {
+    setMultiSelectResultValues((prev) =>
+      prev.filter((tag) => !(tag.testId === rowId && tag.id === tagId)),
+    );
+  };
+
+  const handleCascadingTagClose = (rowId, tagId, position) => {
+    setCascadingSelectResultValues((prev) =>
+      prev.map((item) => {
+        if (position === 0) {
+          return {
+            ...item,
+            parentResults:
+              item.parentResults?.filter((pr) => pr.id !== tagId) || [],
+          };
+        } else {
+          return item.id === tagId ? null : item;
+        }
+      }),
+    );
+  };
+
+  const addCascadingOptions = (parentId, position) => {
+    setCascadingSelectResultValues((prev) =>
+      prev.map((item) =>
+        item.parentId === parentId
+          ? {
+              ...item,
+              children: [{ childId: "", position: position + 1, results: [] }],
+            }
+          : item,
+      ),
+    );
+  };
+  // FIXED: END NEW LOGIC FUNCTIONS
 
   const validateNumericResults = (value, row) => {
     //ignore < or > from the analyser on validation
@@ -1588,10 +1897,20 @@ export function SearchResults(props) {
     setIsSubmitting(true);
     values.status = saveStatus;
     var searchEndPoint = "/rest/LogbookResults";
+
+    // FIXED: ADDED LOGIC TO MAP MULTI-SELECT VALUES BACK TO STRING
     props.results.testResult.forEach((result) => {
+      const multiSelectTags = multiSelectResultValues.filter(
+        (tag) => tag.testId === result.id,
+      );
+      if (multiSelectTags.length > 0) {
+        result.resultValue = multiSelectTags.map((tag) => tag.id).join(",");
+      }
+
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
     });
+
     postToOpenElisServerJsonResponse(
       searchEndPoint,
       JSON.stringify(props.results),
