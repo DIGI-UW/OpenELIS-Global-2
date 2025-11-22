@@ -21,18 +21,25 @@ import {
   SelectItem,
   Loading,
   Link,
+  Tag,
+  IconButton,
   FileUploader,
 } from "@carbon/react";
-import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import {
+  Copy,
+  ArrowLeft,
+  ArrowRight,
+  Add,
+  Subtract,
+} from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
 import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import SearchPatientForm from "../patient/SearchPatientForm";
 import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
-import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
@@ -784,6 +791,12 @@ export function SearchResults(props) {
   const [rejectReasons, setRejectReasons] = useState([]);
   const [rejectedItems, setRejectedItems] = useState({});
   const [validationState, setValidationState] = useState({});
+
+  // FIXED: ADDED STATE FOR MULTI-SELECT
+  const [multiSelectResultValues, setMultiSelectResultValues] = useState([]);
+  const [cascadingSelectResultValues, setCascadingSelectResultValues] =
+    useState([]);
+
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -814,11 +827,29 @@ export function SearchResults(props) {
       });
       setRejectedItems(defaultRejectedItems);
     }
+
+    // FIXED: ADDED LOGIC TO INITIALIZE CASCADING/MULTI-SELECT
+    if (props.results.testResult) {
+      let updatedCascadingState = [];
+      props.results.testResult.forEach((row) => {
+        if (row.resultType === "C") {
+          updatedCascadingState.push({
+            parentId: row.id,
+            parentResults: [],
+            position: 0,
+            children: [],
+          });
+        }
+      });
+      setCascadingSelectResultValues(updatedCascadingState);
+    }
+
     return () => {
       componentMounted.current = false;
     };
   }, []);
 
+  // FIXED: ADDED VALIDATION EFFECT
   useEffect(() => {
     if (props.results.testResult) {
       let newValidationState = { ...validationState };
@@ -987,290 +1018,83 @@ export function SearchResults(props) {
     },
   ];
 
-  const renderCell = (row, index, column, id) => {
-    let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
-    const fullTestName = row.testName;
-    const splitIndex = fullTestName.lastIndexOf("(");
-    const testName = fullTestName.substring(0, splitIndex);
-    const sampleType = fullTestName.substring(splitIndex);
+  // FIXED: NEW HELPER FOR DICTIONARY SELECT
+  const renderDictionarySelect = (resultType, position = 0, row) => {
+    // Filter logic for Multi-select/Cascading options
+    const sourceValues =
+      resultType === "M"
+        ? multiSelectResultValues
+        : resultType === "C"
+          ? cascadingSelectResultValues
+          : [];
 
-    console.debug("renderCell: index: " + index + ", id: " + id);
-    switch (column.id) {
-      case "sampleInfo":
-        // return <input id={"results_" + id} type="text" size="6"></input>
-        return (
-          <>
-            <div>
-              <Button
-                onClick={async () => {
-                  if ("clipboard" in navigator) {
-                    return await navigator.clipboard.writeText(
-                      row.accessionNumber,
-                    );
-                  } else {
-                    return document.execCommand(
-                      "copy",
-                      true,
-                      row.accessionNumber,
-                    );
-                  }
-                }}
-                kind="ghost"
-                iconDescription={intl.formatMessage({
-                  id: "instructions.copy.labnum",
-                })}
-                hasIconOnly
-                renderIcon={Copy}
-              />
-            </div>
-            <div className="sampleInfo">
-              <br></br>
-              {(formatLabNum
-                ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
-                : row.accessionNumber) +
-                "-" +
-                row.sequenceNumber}
-              <br></br>
-              {row.patientName} <br></br>
-              {row.patientInfo}
-              <br></br>
-              <br></br>
-            </div>
-            <div>
-              <AsyncAvatar
-                patientId={row.patientId}
-                hasPhoto={true}
-                patientName={row.patientName || ""}
-              />
-            </div>
-            {row.nonconforming && (
-              <picture>
-                <img
-                  src={config.serverBaseUrl + "/images/nonconforming.gif"}
-                  alt="nonconforming"
-                  width="20"
-                  height="15"
-                />
-              </picture>
-            )}
-          </>
-        );
-      case "testName":
-        return (
-          <div className="sampleInfo">
-            <br></br>
-            {testName}
-            <br></br>
-            {sampleType}
-          </div>
-        );
+    // Find already selected items for dynamic disabling
+    const selectedItems = sourceValues.flatMap((item) => {
+      const matchesResultType =
+        resultType === "C"
+          ? Array.isArray(item.parentResults) &&
+            item.parentResults.some((pr) => pr.id === item.id)
+          : item.id === item.id;
 
-      case "accept":
-        return (
-          <>
-            <Field name="forceTechApproval">
-              {() => (
-                <Checkbox
-                  data-cy="checkTestResult"
-                  id={"testResult" + row.id + ".forceTechApproval"}
-                  name={"testResult[" + row.id + "].forceTechApproval"}
-                  labelText=""
-                  //defaultChecked={acceptAsIs}
-                  onChange={(e) => handleAcceptAsIsChange(e, row.id)}
-                />
-              )}
-            </Field>
-          </>
-        );
+      if (!matchesResultType) return [];
 
-      case "reject":
-        return (
-          <div>
-            <Field name="reject">
-              {() => (
-                <Checkbox
-                  id={"testResult" + row.id + ".rejected"}
-                  name={"testResult[" + row.id + "].rejected"}
-                  labelText=""
-                  onChange={(e) => handleRejectCheckBoxChange(e, row.id)}
-                />
-              )}
-            </Field>
-            <br></br>
-            {rejectedItems[row.id] == true && (
-              <Select
-                id={"rejectReasonId" + row.id}
-                name={"testResult[" + row.id + "].rejectReasonId"}
-                //noLabel={true}
-                labelText={"Reason"}
-                onChange={(e) => handleChange(e, row.id)}
-              >
-                {/* {...updateShadowResult(e, this, param.rowId)} */}
-                <SelectItem text="" value="" />
-                {rejectReasons.map((reason, reason_index) => (
-                  <SelectItem
-                    text={reason.value}
-                    value={reason.id}
-                    key={reason_index}
-                  />
-                ))}
-              </Select>
-            )}
-          </div>
-        );
+      const parentPairs = Array.isArray(item.parentResults)
+        ? item.parentResults
+            .filter((pr) => pr.id === item.id)
+            .map((pr) => ({
+              id: pr.id,
+              position: item.position,
+            }))
+        : [];
 
-      case "notes":
-        return (
-          <>
-            <div className="note">
-              <TextArea
-                id={"testResult" + row.id + ".note"}
-                name={"testResult[" + row.id + "].note"}
-                //value={props.results.testResult[row.id]?.pastNotes}
-                disabled={false}
-                type="text"
-                labelText=""
-                rows={1}
-                onChange={(e) => handleChange(e, row.id)}
-              ></TextArea>
-              <div
-                className="note"
-                dangerouslySetInnerHTML={{ __html: row.pastNotes }}
-              />
-            </div>
-          </>
-        );
+      const childPairs = Array.isArray(item.children)
+        ? item.children.flatMap((child) =>
+            Array.isArray(child.results)
+              ? child.results
+                  .filter((r) => r.id === item.id)
+                  .map((r) => ({
+                    id: r.id,
+                    position: child.position,
+                  }))
+              : [],
+          )
+        : [];
 
-      case "result":
-        switch (row.resultType) {
-          case "M":
-          case "C":
-          case "D":
-            return (
-              <Select
-                className="result"
-                id={"resultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                noLabel={true}
-                onChange={(e) => validateResults(e, row.id)}
-                value={row.resultValue}
-              >
-                {/* {...updateShadowResult(e, this, param.rowId)} */}
-                <SelectItem text="" value="" />
-                {row.dictionaryResults.map(
-                  (dictionaryResult, dictionaryResult_index) => (
-                    <SelectItem
-                      text={dictionaryResult.value}
-                      value={dictionaryResult.id}
-                      key={dictionaryResult_index}
-                    />
-                  ),
-                )}
-              </Select>
-            );
+      return [...parentPairs, ...childPairs];
+    });
 
-          case "N":
-            return (
-              <TextInput
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                labelText=""
-                type="number"
-                value={row.resultValue}
-                style={validationState[row.id]?.style}
-                onBlur={(e) => {
-                  if (
-                    validationState[row.id]?.isInvalid &&
-                    configurationProperties.ALERT_FOR_INVALID_RESULTS
-                  ) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message:
-                        intl.formatMessage({
-                          id: "result.outOfValidRange.msg",
-                        }) +
-                        " " +
-                        row.testName +
-                        " : " +
-                        row.resultValue,
-                      kind: NotificationKinds.error,
-                    });
-                    setNotificationVisible(true);
-                  }
-                }}
-                onChange={(e) => {
-                  handleChange(e, row.id);
-                  if (
-                    validationState[row.id]?.isInvalid &&
-                    configurationProperties.ALERT_FOR_INVALID_RESULTS
-                  ) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message:
-                        intl.formatMessage({
-                          id: "result.outOfValidRange.msg",
-                        }) +
-                        " " +
-                        row.testName +
-                        " : " +
-                        row.resultValue,
-                      kind: NotificationKinds.error,
-                    });
-                    setNotificationVisible(true);
-                  }
-                }}
-              />
-            );
+    return (
+      <Select
+        className="result"
+        id={`resultValue${row.id}`}
+        name={`testResult[${row.id}].resultValue`}
+        noLabel
+        onChange={(e) => validateResults(e, row.id, resultType, position)}
+        value={row.resultValue}
+      >
+        <SelectItem text="" value="" />
 
-          case "R":
-            return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
-            );
+        {row.dictionaryResults.map((dictionaryResult, index) => {
+          const { id, value, position: dictPosition } = dictionaryResult;
 
-          case "A":
-            return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
-            );
+          // Logic for disabling items already selected
+          const isDisabled =
+            selectedItems.some(
+              (sel) =>
+                sel.id === id && sel.position === (dictPosition ?? position),
+            ) && resultType !== "D";
 
-          default:
-            return row.resultValue;
-        }
-
-      case "currentResult":
-        switch (row.resultType) {
-          case "M":
-          case "C":
-          case "D":
-            return (
-              <>
-                {
-                  row.dictionaryResults.find(
-                    (result) => result.id == row.shadowResultValue,
-                  )?.value
-                }
-              </>
-            );
-
-          default:
-            return row.shadowResultValue;
-        }
-      default:
-        return;
-    }
+          return (
+            <SelectItem
+              key={index}
+              text={value}
+              value={id}
+              disabled={isDisabled}
+            />
+          );
+        })}
+      </Select>
+    );
   };
 
   // Fetch location for a sample when expanded
@@ -1587,11 +1411,97 @@ export function SearchResults(props) {
       </>
     );
   };
-  const validateResults = (e, rowId) => {
-    console.debug("validateResults:" + e.target.value);
-    // e.target.value;
+
+  const validateResults = (e, rowId, resultType, position) => {
+    const id = e.target.value;
+    const text = e.target.options[e.target.selectedIndex].text;
+    if (!id) return;
+    if (resultType === "M") {
+      setMultiSelectResultValues((prev) => {
+        const existingTagsForRow = prev.filter((item) => item.testId === rowId);
+        const exists = existingTagsForRow.some((item) => item.id === id);
+        if (exists) return prev;
+        return [...prev, { id, result: text, testId: rowId }];
+      });
+    } else if (resultType === "C") {
+      setCascadingSelectResultValues((prevState) =>
+        prevState.map((item) => {
+          if (item.parentId !== rowId) return item;
+
+          // ---- CASE: position 0 => update parentResults ----
+          if (position === 0) {
+            const parentResults = item.parentResults || [];
+            const exists = parentResults.some((pr) => pr.id === id);
+
+            return {
+              ...item,
+              parentResults: exists
+                ? parentResults
+                : [...parentResults, { id, name: text }],
+            };
+          }
+
+          // ---- CASE: position >= 1 => update child.results ----
+          const updatedChildren = (item.children || []).map((child) => {
+            if (child.position !== position) return child;
+
+            const existingResults = child.results || [];
+            const alreadyExists = existingResults.some((res) => res.id === id);
+
+            return {
+              ...child,
+              position: position,
+              results: alreadyExists
+                ? existingResults
+                : [...existingResults, { id, name: text }],
+            };
+          });
+
+          return {
+            ...item,
+            children: updatedChildren,
+          };
+        }),
+      );
+    }
     handleChange(e, rowId);
   };
+
+  const handleTagClose = (rowId, tagId) => {
+    setMultiSelectResultValues((prev) =>
+      prev.filter((tag) => !(tag.testId === rowId && tag.id === tagId)),
+    );
+  };
+
+  const handleCascadingTagClose = (rowId, tagId, position) => {
+    setCascadingSelectResultValues((prev) =>
+      prev.map((item) => {
+        if (position === 0) {
+          return {
+            ...item,
+            parentResults:
+              item.parentResults?.filter((pr) => pr.id !== tagId) || [],
+          };
+        } else {
+          return item.id === tagId ? null : item;
+        }
+      }),
+    );
+  };
+
+  const addCascadingOptions = (parentId, position) => {
+    setCascadingSelectResultValues((prev) =>
+      prev.map((item) =>
+        item.parentId === parentId
+          ? {
+              ...item,
+              children: [{ childId: "", position: position + 1, results: [] }],
+            }
+          : item,
+      ),
+    );
+  };
+  // FIXED: END NEW LOGIC FUNCTIONS
 
   const validateNumericResults = (value, row) => {
     //ignore < or > from the analyser on validation
@@ -1816,10 +1726,20 @@ export function SearchResults(props) {
     setIsSubmitting(true);
     values.status = saveStatus;
     var searchEndPoint = "/rest/LogbookResults";
+
+    // FIXED: ADDED LOGIC TO MAP MULTI-SELECT VALUES BACK TO STRING
     props.results.testResult.forEach((result) => {
+      const multiSelectTags = multiSelectResultValues.filter(
+        (tag) => tag.testId === result.id,
+      );
+      if (multiSelectTags.length > 0) {
+        result.resultValue = multiSelectTags.map((tag) => tag.id).join(",");
+      }
+
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
     });
+
     postToOpenElisServerJsonResponse(
       searchEndPoint,
       JSON.stringify(props.results),

@@ -359,11 +359,11 @@ button {
   color: red;
   margin-bottom: 0.25rem;
   /* width: 150px; */
-  /* 
-	  &:before {
-	    content: " ";
-	    font-size: 10px;
-	  } */
+  /*
+      &:before {
+        content: " ";
+        font-size: 10px;
+      } */
 }
 
 .second-row {
@@ -492,6 +492,20 @@ button {
   .formInlineDiv {
     grid-template-columns: 1fr;
   }
+}
+.resultOptionsDisplay {
+  display: flex;
+  flex-wrap: wrap;
+}
+.resultSelectOption {
+  flex: 0 0 auto;
+  padding: 4px;
+  margin: 1px;
+}
+.resultTagDisplay {
+  flex: 1 0 100%;
+  padding: 4px;
+  margin: 1px;
 }
 
 @media screen and (max-width: 1053px) {
