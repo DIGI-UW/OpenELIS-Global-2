@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Hierarchy Traversal Indexes -->
+    <changeSet id="storage-008-create-hierarchy-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_device_parent_room" tableName="storage_device"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_device_parent_room" tableName="storage_device">
+            <column name="parent_room_id"/>
+        </createIndex>
+        <createIndex indexName="idx_shelf_parent_device" tableName="storage_shelf">
+            <column name="parent_device_id"/>
+        </createIndex>
+        <createIndex indexName="idx_rack_parent_shelf" tableName="storage_rack">
+            <column name="parent_shelf_id"/>
+        </createIndex>
+        <createIndex indexName="idx_position_parent_device" tableName="storage_position">
+            <column name="parent_device_id"/>
+        </createIndex>
+        <createIndex indexName="idx_position_parent_shelf" tableName="storage_position">
+            <column name="parent_shelf_id"/>
+        </createIndex>
+        <createIndex indexName="idx_position_parent_rack" tableName="storage_position">
+            <column name="parent_rack_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_device_parent_room" tableName="storage_device"/>
+            <dropIndex indexName="idx_shelf_parent_device" tableName="storage_shelf"/>
+            <dropIndex indexName="idx_rack_parent_shelf" tableName="storage_rack"/>
+            <dropIndex indexName="idx_position_parent_device" tableName="storage_position"/>
+            <dropIndex indexName="idx_position_parent_shelf" tableName="storage_position"/>
+            <dropIndex indexName="idx_position_parent_rack" tableName="storage_position"/>
+        </rollback>
+    </changeSet>
+
+    <!-- FHIR UUID Lookup Indexes -->
+    <changeSet id="storage-009-create-fhir-uuid-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_room_fhir_uuid" tableName="storage_room"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_room_fhir_uuid" tableName="storage_room">
+            <column name="fhir_uuid"/>
+        </createIndex>
+        <createIndex indexName="idx_device_fhir_uuid" tableName="storage_device">
+            <column name="fhir_uuid"/>
+        </createIndex>
+        <createIndex indexName="idx_shelf_fhir_uuid" tableName="storage_shelf">
+            <column name="fhir_uuid"/>
+        </createIndex>
+        <createIndex indexName="idx_rack_fhir_uuid" tableName="storage_rack">
+            <column name="fhir_uuid"/>
+        </createIndex>
+        <createIndex indexName="idx_position_fhir_uuid" tableName="storage_position">
+            <column name="fhir_uuid"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_room_fhir_uuid" tableName="storage_room"/>
+            <dropIndex indexName="idx_device_fhir_uuid" tableName="storage_device"/>
+            <dropIndex indexName="idx_shelf_fhir_uuid" tableName="storage_shelf"/>
+            <dropIndex indexName="idx_rack_fhir_uuid" tableName="storage_rack"/>
+            <dropIndex indexName="idx_position_fhir_uuid" tableName="storage_position"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Active Status Filter Indexes -->
+    <changeSet id="storage-010-create-active-status-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_room_active" tableName="storage_room"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_room_active" tableName="storage_room">
+            <column name="active"/>
+        </createIndex>
+        <createIndex indexName="idx_device_active" tableName="storage_device">
+            <column name="active"/>
+        </createIndex>
+        <createIndex indexName="idx_shelf_active" tableName="storage_shelf">
+            <column name="active"/>
+        </createIndex>
+        <createIndex indexName="idx_rack_active" tableName="storage_rack">
+            <column name="active"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_room_active" tableName="storage_room"/>
+            <dropIndex indexName="idx_device_active" tableName="storage_device"/>
+            <dropIndex indexName="idx_shelf_active" tableName="storage_shelf"/>
+            <dropIndex indexName="idx_rack_active" tableName="storage_rack"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Sample Assignment Lookup Indexes -->
+    <changeSet id="storage-011-create-assignment-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_assignment_sample_item" tableName="sample_storage_assignment"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_assignment_sample_item" tableName="sample_storage_assignment">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <createIndex indexName="idx_assignment_location" tableName="sample_storage_assignment">
+            <column name="location_id"/>
+            <column name="location_type"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_assignment_sample_item" tableName="sample_storage_assignment"/>
+            <dropIndex indexName="idx_assignment_location" tableName="sample_storage_assignment"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Movement Audit Query Indexes -->
+    <changeSet id="storage-012-create-movement-indexes" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_movement_sample_item" tableName="sample_storage_movement"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_movement_sample_item" tableName="sample_storage_movement">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <createIndex indexName="idx_movement_date" tableName="sample_storage_movement">
+            <column name="movement_date" descending="true"/>
+        </createIndex>
+        <rollback>
+            <dropIndex indexName="idx_movement_sample_item" tableName="sample_storage_movement"/>
+            <dropIndex indexName="idx_movement_date" tableName="sample_storage_movement"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Position Occupancy Query Index - REMOVED -->
+    <!-- Occupancy is now calculated dynamically from SampleStorageAssignment records -->
+    <!-- Index removed in changeset storage-014-remove-occupied-column -->
+
+</databaseChangeLog>

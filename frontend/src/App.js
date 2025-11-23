@@ -4,6 +4,7 @@ import { IntlProvider } from "react-intl";
 import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
+import StorageDashboard from "./components/storage/StorageDashboard";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import { Admin } from "./components";
@@ -249,6 +250,36 @@ export default function App() {
                   role=""
                 />
                 <SecureRoute
+                  path="/GenericSample/Order"
+                  exact
+                  component={() => {
+                    const GenericSampleOrder =
+                      require("./components/genericSample/GenericSampleOrder").default;
+                    return <GenericSampleOrder />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/GenericSample/Edit"
+                  exact
+                  component={() => {
+                    const GenericSampleOrderEdit =
+                      require("./components/genericSample/GenericSampleOrderEdit").default;
+                    return <GenericSampleOrderEdit />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/GenericSample/Import"
+                  exact
+                  component={() => {
+                    const GenericSampleOrderImport =
+                      require("./components/genericSample/GenericSampleOrderImport").default;
+                    return <GenericSampleOrderImport />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
                   path="/Dashboard"
                   exact
                   component={() => <Home />}
@@ -410,6 +441,17 @@ export default function App() {
                   exact
                   component={() => <PatientManagement />}
                   role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/Storage"
+                  exact
+                  component={() => <StorageDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/:tab"
+                  component={() => <StorageDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/PatientHistory"

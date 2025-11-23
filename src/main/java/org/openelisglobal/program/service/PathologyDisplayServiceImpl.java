@@ -90,6 +90,7 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         displayItem.setLastName(patient.getPerson().getLastName());
         displayItem.setLabNumber(pathologySample.getSample().getAccessionNumber());
         displayItem.setPathologySampleId(pathologySample.getId());
+        displayItem.setPatientPK(patient.getId());
         displayItem.setProgramQuestionnaire(fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)
                 .withId(pathologySample.getProgram().getQuestionnaireUUID().toString()).execute());
         displayItem.setProgramQuestionnaireResponse(

@@ -25,6 +25,7 @@ import org.openelisglobal.notebook.dao.NoteBookDAO;
 import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
+import org.openelisglobal.notebook.valueholder.NoteBookComment;
 import org.openelisglobal.notebook.valueholder.NoteBookFile;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.result.service.ResultService;
@@ -71,6 +72,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     public NoteBookServiceImpl() {
         super(NoteBook.class);
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -95,11 +97,21 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Override
     @Transactional
-    public void updateWithStatus(Integer notebookId, NoteBookStatus status) {
+    public List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
+            Date fromDate, Date toDate) {
+        return baseObjectDAO.filterNoteBooks(statuses, types, tags, fromDate, toDate);
+    }
+
+    @Override
+    @Transactional
+    public void updateWithStatus(Integer notebookId, NoteBookStatus status, String sysUserId) {
         Optional<NoteBook> optionalNoteBook = baseObjectDAO.get(notebookId);
         if (optionalNoteBook.isPresent()) {
             NoteBook noteBook = optionalNoteBook.get();
             noteBook.setStatus(status);
+            if (sysUserId != null) {
+                noteBook.setSysUserId(sysUserId);
+            }
             update(noteBook);
         }
     }
@@ -114,6 +126,11 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             NoteBook templateNoteBook = get(form.getTemplateId());
             if (templateNoteBook != null && templateNoteBook.getIsTemplate()) {
                 templateNoteBook.getEntries().add(noteBook);
+                // Set sysUserId for audit trail tracking when updating template
+                if (form.getSystemUserId() != null) {
+                    templateNoteBook.setSysUserId(form.getSystemUserId().toString());
+                }
+                initializeLazyCollections(templateNoteBook);
                 update(templateNoteBook);
             }
         }
@@ -128,7 +145,51 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (optionalNoteBook.isPresent()) {
             NoteBook noteBook = optionalNoteBook.get();
             noteBook = createNoteBookFromForm(noteBook, form);
+            initializeLazyCollections(noteBook);
             update(noteBook);
+        }
+    }
+
+    @Override
+    @Transactional
+    protected NoteBook update(NoteBook noteBook, String auditTrailType) {
+        // CRITICAL: Evict the modified object from the session cache BEFORE loading the
+        // old object.
+        // This ensures that when we load the old object, we get a fresh copy from the
+        // database
+        // with the original values, not the modified instance from the session cache.
+        if (auditTrailLog && noteBook.getId() != null) {
+            // Evict the modified object so that get() will return a fresh copy from DB
+            baseObjectDAO.evict(noteBook);
+
+            // Now load the old object - this will get a fresh copy from the database
+            Optional<NoteBook> oldNoteBook = baseObjectDAO.get(noteBook.getId());
+            if (oldNoteBook.isPresent()) {
+                NoteBook oldObject = oldNoteBook.get();
+                // Initialize all lazy collections before the parent evicts the object
+                initializeLazyCollections(oldObject);
+            }
+        }
+        // Let the parent handle the audit trail logic normally
+        // The parent will re-attach the modified object and persist it
+        return super.update(noteBook, auditTrailType);
+    }
+
+    /**
+     * Initialize all lazy collections on a NoteBook entity to prevent
+     * LazyInitializationException when the entity is accessed outside of a
+     * transaction (e.g., in audit trail comparison).
+     */
+    private void initializeLazyCollections(NoteBook noteBook) {
+        Hibernate.initialize(noteBook.getTags());
+        Hibernate.initialize(noteBook.getSamples());
+        Hibernate.initialize(noteBook.getAnalysers());
+        Hibernate.initialize(noteBook.getPages());
+        Hibernate.initialize(noteBook.getFiles());
+        Hibernate.initialize(noteBook.getComments());
+        Hibernate.initialize(noteBook.getEntries());
+        if (noteBook.getTechnician() != null) {
+            Hibernate.initialize(noteBook.getTechnician());
         }
     }
 
@@ -143,13 +204,19 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getEntries());
             displayBean.setId(noteBook.getId());
             displayBean.setTitle(noteBook.getTitle());
-            displayBean.setType(Integer.valueOf(noteBook.getType()));
             displayBean.setTags(noteBook.getTags());
+
+            // Handle type - it's now a Dictionary entity
+            if (noteBook.getType() != null) {
+                displayBean.setType(Integer.valueOf(noteBook.getType().getId()));
+                displayBean.setTypeName(noteBook.getType().getDictEntry());
+            }
+
             displayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             displayBean.setStatus(noteBook.getStatus());
-            displayBean.setTypeName(dictionaryService.get(noteBook.getType().toString()).getDictEntry());
             displayBean.setIsTemplate(noteBook.getIsTemplate());
             displayBean.setEntriesCount(noteBook.getEntries().size());
+            displayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
         }
         return displayBean;
     }
@@ -164,15 +231,18 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getSamples());
             Hibernate.initialize(noteBook.getPages());
             Hibernate.initialize(noteBook.getFiles());
+            Hibernate.initialize(noteBook.getComments());
             Hibernate.initialize(noteBook.getTags());
             Hibernate.initialize(noteBook.getEntries());
             fullDisplayBean.setId(noteBook.getId());
             fullDisplayBean.setTitle(noteBook.getTitle());
-            fullDisplayBean.setType((Integer.valueOf(noteBook.getType())));
+            if (noteBook.getType() != null) {
+                fullDisplayBean.setType(Integer.valueOf(noteBook.getType().getId()));
+                fullDisplayBean.setTypeName(noteBook.getType().getDictEntry());
+            }
             fullDisplayBean.setTags(noteBook.getTags());
             fullDisplayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
             fullDisplayBean.setStatus(noteBook.getStatus());
-            fullDisplayBean.setTypeName(dictionaryService.get(noteBook.getType().toString()).getDictEntry());
             fullDisplayBean.setContent(noteBook.getContent());
             fullDisplayBean.setObjective(noteBook.getObjective());
             fullDisplayBean.setProtocol(noteBook.getProtocol());
@@ -182,6 +252,11 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             fullDisplayBean.setAnalyzers(analyzers);
             fullDisplayBean.setPages(noteBook.getPages());
             fullDisplayBean.setFiles(noteBook.getFiles());
+            // Initialize author for each comment
+            for (NoteBookComment comment : noteBook.getComments()) {
+                Hibernate.initialize(comment.getAuthor());
+            }
+            fullDisplayBean.setComments(noteBook.getComments());
             fullDisplayBean.setTechnicianName(noteBook.getTechnician().getDisplayName());
             fullDisplayBean.setTechnicianId(Integer.valueOf(noteBook.getTechnician().getId()));
             fullDisplayBean.setIsTemplate(noteBook.getIsTemplate());
@@ -230,7 +305,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             noteBook.setTitle(form.getTitle());
         }
         if (form.getType() != null) {
-            noteBook.setType(form.getType().toString());
+            noteBook.setType(dictionaryService.get(form.getType().toString()));
         }
         if (form.getTags() != null && !form.getTags().isEmpty()) {
             noteBook.setTags(new ArrayList<>(form.getTags()));
@@ -250,6 +325,10 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         noteBook.setIsTemplate(form.getIsTemplate());
         if (form.getStatus() != null) {
             noteBook.setStatus(form.getStatus());
+        }
+        // Set sysUserId for audit trail tracking
+        if (form.getSystemUserId() != null) {
+            noteBook.setSysUserId(form.getSystemUserId().toString());
         }
         if (noteBook.getId() == null) {
             noteBook.setDateCreated(new Date());
@@ -275,8 +354,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         noteBook.getFiles().clear();
         if (form.getFiles() != null) {
-            for (NoteBookFile file : form.getFiles()) {
+            for (NoteBookForm.NoteBookFileForm fileForm : form.getFiles()) {
+                NoteBookFile file = new NoteBookFile();
                 file.setId(null);
+                file.setFileName(fileForm.getFileName());
+                file.setFileType(fileForm.getFileType());
+                file.setFileData(fileForm.getFileData());
                 file.setNotebook(noteBook);
                 noteBook.getFiles().add(file);
             }
@@ -288,6 +371,24 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 page.setId(null);
                 page.setNotebook(noteBook);
                 noteBook.getPages().add(page);
+            }
+        }
+
+        // Handle comments - only add new comments (those without id)
+        if (form.getComments() != null) {
+            for (NoteBookForm.NoteBookCommentForm commentForm : form.getComments()) {
+                // Only process new comments (id is null)
+                if (commentForm.getId() == null && !GenericValidator.isBlankOrNull(commentForm.getText())) {
+                    NoteBookComment comment = new NoteBookComment();
+                    comment.setText(commentForm.getText());
+                    comment.setDateCreated(new Date());
+                    comment.setNotebook(noteBook);
+                    // Set author from systemUserId (current user)
+                    if (form.getSystemUserId() != null) {
+                        comment.setAuthor(systemUserService.get(form.getSystemUserId().toString()));
+                    }
+                    noteBook.getComments().add(comment);
+                }
             }
         }
 
@@ -339,6 +440,15 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             return template.getEntries();
         }
         return new ArrayList<>();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NoteBook> getAllActiveNotebooks() {
+        // Get all notebooks that are not archived
+        List<NoteBookStatus> activeStatuses = List.of(NoteBookStatus.DRAFT, NoteBookStatus.SUBMITTED,
+                NoteBookStatus.FINALIZED, NoteBookStatus.LOCKED);
+        return filterNoteBooks(activeStatuses, null, null, null, null);
     }
 
 }

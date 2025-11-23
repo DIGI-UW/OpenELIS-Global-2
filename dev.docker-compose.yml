@@ -1,4 +1,3 @@
-version: '3.3'
 services:
     certs:
         container_name: oe-certs 
@@ -15,7 +14,7 @@ services:
             -  keys-vol:/etc/ssl/private/
             -  certs-vol:/etc/ssl/certs/
 
-    database:
+    db.openelis.org:
         container_name: openelisglobal-database 
         image: postgres:14.4
         ports:
@@ -41,10 +40,10 @@ services:
         # build:
         #     context: .
         #     dockerfile: Dockerfile.dev
-        image: itechuw/openelis-global-2-dev:develop 
-        platform: linux/amd64
+        image: itechuw/openelis-global-2-dev:develop  
+        # platform: linux/amd64
         depends_on:
-            - database
+            - db.openelis.org
             - certs
         ports:
             - "8080:8080"
@@ -57,7 +56,7 @@ services:
             - DEFAULT_PW=adminADMIN! 
             - TZ=Africa/Nairobi
               # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
-            - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://database:5432/clinlims -Ddatasource.username=clinlims
+            - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
             - ./volume/plugins/:/var/lib/openelis-global/plugins
@@ -65,22 +64,23 @@ services:
             - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
             - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
-            - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
+            - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war  # Mount locally built WAR for development
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             -  lucene_index-vol:/var/lib/lucene_index
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
             - ./volume/ocl:/var/lib/openelis-global/ocl
+            - ./configuration:/var/lib/openelis-global/configuration
         secrets:
             - source: datasource.password
             - source: common.properties
             
     fhir.openelis.org:
         container_name: external-fhir-api
-        image: itechuw/openelis-global-2-fhir:develop
-        platform: linux/amd64
+        image: hapiproject/hapi:v6.6.0-tomcat
+        # platform: linux/amd64
         depends_on:
-            - database
+            - db.openelis.org
             - certs
         ports:
             - "8081:8080"
@@ -109,7 +109,7 @@ services:
     frontend.openelis.org:
         image: itechuw/openelis-global-2-frontend-dev:develop
         container_name: openelisglobal-front-end
-        platform: linux/amd64
+        # platform: linux/amd64
         networks:
             - default
         volumes:
@@ -120,9 +120,9 @@ services:
         tty: true
 
     proxy:
-        image: itechuw/openelis-global-2-proxy:develop
+        image: nginx:1.15-alpine
         container_name: openelisglobal-proxy
-        platform: linux/amd64
+        # platform: linux/amd64
         ports:
             - 80:80
             - 443:443
@@ -130,6 +130,7 @@ services:
             - certs-vol:/etc/nginx/certs/
             - keys-vol:/etc/nginx/keys/
             - ./volume/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./volume/nginx/certbot:/var/www/certbot
         networks:
             - default
         restart: unless-stopped

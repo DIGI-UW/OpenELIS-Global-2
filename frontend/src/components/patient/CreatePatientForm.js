@@ -36,6 +36,8 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
+import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
+
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
 
@@ -72,6 +74,12 @@ function CreatePatientForm(props) {
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },
   });
+
+  const handlePhotoChange = (photo, setFieldValue) => {
+    if (setFieldValue) {
+      setFieldValue("photo", photo);
+    }
+  };
 
   const handleNationalIdChange = (event) => {
     const newValue = event.target.value;
@@ -299,8 +307,10 @@ function CreatePatientForm(props) {
         //nextState.healthDistricts = [];
         setHealthDistricts([]);
       }
+      //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
       let patient = props.selectedPatient;
       patient.patientUpdateStatus = "UPDATE";
+      patient.photo = "";
       //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
       const patientContactPerson = {
         ...patientDetails?.patientContact?.person,
@@ -323,6 +333,19 @@ function CreatePatientForm(props) {
       });
       getYearsMonthsDaysFromDOB(patient.birthDateForDisplay);
       setFormAction("UPDATE");
+      // Fetch patient photo if patient exists
+      getFromOpenElisServer(
+        `/rest/patient-photos/${patient.patientPK}/${false}`,
+        (response) => {
+          if (response && response.data) {
+            // Update patient details with photo
+            setPatientDetails((prevDetails) => ({
+              ...prevDetails,
+              photo: response.data,
+            }));
+          }
+        },
+      );
     }
   }, [props.selectedPatient]);
 
@@ -479,6 +502,7 @@ function CreatePatientForm(props) {
           handleChange,
           handleBlur,
           handleSubmit,
+          setFieldValue,
         }) => (
           <Form
             onSubmit={handleSubmit}
@@ -509,6 +533,13 @@ function CreatePatientForm(props) {
               <Column lg={16} md={8} sm={4}>
                 {" "}
                 <br></br>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <PatientImageSelector
+                  value={values.photo}
+                  onChange={(photo) => handlePhotoChange(photo, setFieldValue)}
+                  required={false}
+                />
               </Column>
               <Column lg={8} md={4} sm={4}>
                 <Field name="subjectNumber">

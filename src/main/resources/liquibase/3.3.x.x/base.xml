@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Sample Storage Management POC (001-sample-storage) -->
+  <!-- Clean consolidated migrations - assumes no storage management data exists -->
+  <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml"/>
+  <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml"/>
+  <include relativeToChangelogFile="true" file="003-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="004-insert-test-storage-data.xml" context="test"/>
+  <include relativeToChangelogFile="true" file="005-add-storage-menu-item.xml"/>
+  <include relativeToChangelogFile="true" file="006-add-storage-menu-localization.xml"/>
+  <include relativeToChangelogFile="true" file="007-remove-occupied-column.xml"/>
+  <include relativeToChangelogFile="true" file="008-add-short-code-columns.xml"/>
+  <include relativeToChangelogFile="true" file="009-create-print-history-table.xml"/>
+  <include relativeToChangelogFile="true" file="010-remove-odoo-site-information.xml"/>
+
+</databaseChangeLog>

@@ -82,7 +82,7 @@ This Option can be used where there is fast internet connectivity
 
 ##### Running OpenELIS Global 3x in Docker
 
-    docker-compose up -d
+    docker compose up -d
 
 ###### The Instaces can be accesed at
 
@@ -93,7 +93,7 @@ This Option can be used where there is fast internet connectivity
 
 ##### Running OpenELIS Global 2x in Docker
 
-    docker-compose -f docker-compose-2x.yml up -d
+    docker compose -f docker-compose-2x.yml up -d
 
 ###### The Instaces can be accesed at
 
@@ -110,7 +110,7 @@ This Option can be used where there is fast internet connectivity
 
 1.  Build and Run the docker images from source code
 
-    docker-compose -f build.docker-compose.yml up -d --build
+    docker compose -f build.docker-compose.yml up -d --build
 
 ### Downloaded Installer Offline Setup
 
