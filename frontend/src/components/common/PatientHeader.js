@@ -1,4 +1,3 @@
-import React from "react";
 import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";

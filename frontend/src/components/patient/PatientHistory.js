@@ -1,4 +1,3 @@
-import React from "react";
 import { FormattedMessage, injectIntl } from "react-intl";
 import "../Style.css";
 import { Heading, Grid, Column, Section } from "@carbon/react";

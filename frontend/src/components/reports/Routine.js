@@ -1,4 +1,3 @@
-import React from "react";
 import GlobalSideBar from "../common/GlobalSideBar";
 import { FormattedMessage, injectIntl } from "react-intl";
 import {

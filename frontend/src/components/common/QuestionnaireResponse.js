@@ -1,5 +1,3 @@
-import React from "react";
-
 const QuestionnaireResponse = ({ questionnaireResponse }) => {
   const renderQuestionResponse = (item) => {
     console.debug(JSON.stringify(item));

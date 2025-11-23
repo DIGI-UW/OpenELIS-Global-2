@@ -1,4 +1,3 @@
-import React from "react";
 import { injectIntl } from "react-intl";
 import ReflexRule from "./ReflexRuleForm";
 import { Grid, Column, Section, Heading } from "@carbon/react";
