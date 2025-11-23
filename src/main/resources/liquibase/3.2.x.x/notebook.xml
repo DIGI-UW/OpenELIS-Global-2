@@ -21,7 +21,10 @@
                 <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook"/>
             </column>
             <column name="title" type="VARCHAR(255)"/>
-            <column name="type" type="VARCHAR(255)"/>
+            <column name="type" type="NUMERIC(10)">
+                <constraints nullable="true" foreignKeyName="fk_notebook_type_dictionary"
+                             referencedTableName="dictionary" referencedColumnNames="id"/>
+            </column>
             <column name="project" type="VARCHAR(255)"/>
             <column name="objective" type="VARCHAR(255)"/>
             <column name="protocol" type="VARCHAR(255)"/>
@@ -279,5 +282,65 @@
                 <where>name='NOTEBOOK'</where>
             </delete>
         </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- ADD QUESTIONNAIRE UUID COLUMNS -->
+    <!-- ======================================================== -->
+    <changeSet id="add-questionnaire-fhir-uuid-to-notebook" author="system">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="notebook" columnName="questionnaire_fhir_uuid" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add questionnaire_fhir_uuid column to notebook table to store FHIR Questionnaire UUID reference</comment>
+        <addColumn tableName="notebook" schemaName="clinlims">
+            <column name="questionnaire_fhir_uuid" type="UUID">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-id-column-to-notebook-samples" author="system">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="notebook_samples" columnName="id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add id column to notebook_samples table to convert it from join table to entity table</comment>
+        <addColumn tableName="notebook_samples" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook_samples"/>
+            </column>
+        </addColumn>
+        <createSequence sequenceName="notebook_samples_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="add-questionnaire-response-uuid-to-notebook-samples" author="system">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="notebook_samples" columnName="questionnaire_response_uuid" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add questionnaire_response_uuid column to notebook_samples table to store FHIR QuestionnaireResponse UUID for each sample</comment>
+        <addColumn tableName="notebook_samples" schemaName="clinlims">
+            <column name="questionnaire_response_uuid" type="UUID">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-last-updated-to-notebook-samples" author="system">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="notebook_samples" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add last_updated column to notebook_samples table required by BaseObject entity</comment>
+        <addColumn tableName="notebook_samples" schemaName="clinlims">
+            <column name="last_updated" type="datetime" valueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
     </changeSet>
 </databaseChangeLog>
