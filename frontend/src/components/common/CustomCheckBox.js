@@ -1,4 +1,3 @@
-import React from "react";
 import { Checkbox } from "@carbon/react";
 
 const CustomCheckBox = (props) => {

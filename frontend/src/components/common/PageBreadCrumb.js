@@ -1,5 +1,4 @@
 import { Breadcrumb, BreadcrumbItem, Column, Grid } from "@carbon/react";
-import React from "react";
 import { useIntl } from "react-intl";
 
 const PageBreadCrumb = ({ breadcrumbs }) => {
