@@ -21,7 +21,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
@@ -62,15 +61,14 @@ import org.openelisglobal.common.valueholder.BaseObject;
 @Table(name = "sample_item_aliquot_relationship", uniqueConstraints = {
         @UniqueConstraint(name = "uk_aliquot_parent_sequence", columnNames = { "parent_sample_item_id",
                 "sequence_number" }) })
-public class SampleItemAliquotRelationship extends BaseObject<String> {
+public class SampleItemAliquotRelationship extends BaseObject<Long> {
 
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "aliquot_relationship_seq")
-    @SequenceGenerator(name = "aliquot_relationship_seq", sequenceName = "sample_item_aliquot_relationship_seq", allocationSize = 1)
-    @Column(name = "id", nullable = false, length = 36)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false)
+    private Long id;
 
     /**
      * Parent sample item from which the aliquot was created. Never null - every
@@ -135,12 +133,12 @@ public class SampleItemAliquotRelationship extends BaseObject<String> {
     // ========== Getters and Setters ==========
 
     @Override
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
     @Override
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

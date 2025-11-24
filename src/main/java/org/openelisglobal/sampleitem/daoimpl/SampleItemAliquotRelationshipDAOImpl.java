@@ -40,7 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 @Transactional
-public class SampleItemAliquotRelationshipDAOImpl extends BaseDAOImpl<SampleItemAliquotRelationship, String>
+public class SampleItemAliquotRelationshipDAOImpl extends BaseDAOImpl<SampleItemAliquotRelationship, Long>
         implements SampleItemAliquotRelationshipDAO {
 
     public SampleItemAliquotRelationshipDAOImpl() {

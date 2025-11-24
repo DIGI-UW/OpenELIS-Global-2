@@ -31,7 +31,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItemAliquotRelationship;
  *
  * @see SampleItemAliquotRelationship
  */
-public interface SampleItemAliquotRelationshipDAO extends BaseDAO<SampleItemAliquotRelationship, String> {
+public interface SampleItemAliquotRelationshipDAO extends BaseDAO<SampleItemAliquotRelationship, Long> {
 
     /**
      * Get the maximum sequence number for aliquots of a given parent sample item.

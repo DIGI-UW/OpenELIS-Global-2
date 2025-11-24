@@ -41,7 +41,7 @@
     <!-- Create aliquot relationship tracking table -->
     <changeSet id="sample-mgmt-004-create-aliquot-relationship" author="dev-team">
         <createTable tableName="sample_item_aliquot_relationship">
-            <column name="id" type="NUMERIC(10,0)" autoIncrement="true">
+            <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="parent_sample_item_id" type="NUMERIC(10,0)">
