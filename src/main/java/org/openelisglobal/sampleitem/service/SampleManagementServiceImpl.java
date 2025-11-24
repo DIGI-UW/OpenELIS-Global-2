@@ -70,6 +70,7 @@ public class SampleManagementServiceImpl implements SampleManagementService {
 
         // Step 3: Get all sample items for this sample with hierarchy eagerly loaded
         List<SampleItem> sampleItems = sampleItemDAO.getSampleItemsBySampleId(sample.getId());
+System.out.println("SampleManagementServiceImpl.searchByAccessionNumber: Retrieved " + sampleItems.size() + " sample items for accession number " + accessionNumber);
 
         // Step 4: If hierarchy is needed, use getSampleItemsWithHierarchy for eager
         // loading
@@ -77,7 +78,7 @@ public class SampleManagementServiceImpl implements SampleManagementService {
             List<String> sampleItemIds = sampleItems.stream().map(SampleItem::getId).collect(Collectors.toList());
             sampleItems = sampleItemDAO.getSampleItemsWithHierarchy(sampleItemIds);
         }
-
+System.out.println("SampleManagementServiceImpl.searchByAccessionNumber: Retrieved2 " + sampleItems.size() + " sample items for accession number " + accessionNumber);
         // Step 5: Convert entities to DTOs WITHIN transaction boundary
         List<SampleItemDTO> dtos = sampleItems.stream().map(item -> convertToDTO(item, includeTests))
                 .collect(Collectors.toList());

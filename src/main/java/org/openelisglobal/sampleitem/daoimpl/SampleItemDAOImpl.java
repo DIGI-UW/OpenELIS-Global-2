@@ -331,7 +331,8 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
                     + " LEFT JOIN FETCH si.childAliquots" + " WHERE si.id IN (:ids)";
 
             Query<SampleItem> query = entityManager.unwrap(Session.class).createQuery(hql, SampleItem.class);
-            query.setParameterList("ids", sampleItemIds);
+            // Convert String IDs to Integer to match database numeric type (same pattern as AnalysisDAOImpl line 1511)
+            query.setParameterList("ids", sampleItemIds.stream().map(e -> Integer.parseInt(e)).collect(Collectors.toList()));
 
             return query.list();
         } catch (HibernateException e) {
