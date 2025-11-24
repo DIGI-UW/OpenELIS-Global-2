@@ -687,6 +687,17 @@
             <artifactId>xmlrpc-common</artifactId>
             <version>3.1.3</version>
         </dependency>
+        <!-- Document handling dependencies -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>0.4.20</version>
+        </dependency>
     </dependencies>
     <repositories>
         <repository>

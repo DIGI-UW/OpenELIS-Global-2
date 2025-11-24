@@ -37,6 +37,8 @@ import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
+import DocumentUploader from "./documents/DocumentUploader";
+import DocumentList from "./documents/DocumentList";
 
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
@@ -62,6 +64,7 @@ function CreatePatientForm(props) {
     months: "",
     days: "",
   });
+  const [documentRefreshTrigger, setDocumentRefreshTrigger] = useState(0);
   const [nationalId, setNationalId] = useState(
     props.selectedPatient.nationalId,
   );
@@ -1159,6 +1162,52 @@ function CreatePatientForm(props) {
                           )}
                         </Field>
                       </Column>
+                    </Grid>
+                  </AccordionItem>
+                  <AccordionItem
+                    title={intl.formatMessage({
+                      id: "patient.documents.title",
+                    })}
+                  >
+                    <Grid>
+                      <Column lg={16} md={8} sm={4}>
+                        <DocumentUploader
+                          patientId={values.guid || values.patientID || ""}
+                          onUploadSuccess={(doc) => {
+                            // Refresh document list after successful upload
+                            setDocumentRefreshTrigger(Date.now());
+                          }}
+                          onUploadError={(error) => {
+                            addNotification({
+                              title: intl.formatMessage({ id: "notification.title" }),
+                              message: error?.message || intl.formatMessage({ id: "document.upload.error.failed" }),
+                              kind: NotificationKinds.error,
+                            });
+                          }}
+                        />
+                      </Column>
+                      {(values.guid || values.patientID) && (
+                        <Column lg={16} md={8} sm={4}>
+                          <div style={{ marginTop: "2rem" }}>
+                            <DocumentList
+                              patientId={values.guid || values.patientID}
+                              onRefresh={documentRefreshTrigger}
+                              onView={(doc) => {
+                                // TODO: Open document viewer modal
+                                console.log("View document:", doc);
+                              }}
+                              onEdit={(doc) => {
+                                // TODO: Open document editor
+                                console.log("Edit document:", doc);
+                              }}
+                              onDelete={(doc) => {
+                                // TODO: Confirm and delete
+                                console.log("Delete document:", doc);
+                              }}
+                            />
+                          </div>
+                        </Column>
+                      )}
                     </Grid>
                   </AccordionItem>
                 </Accordion>

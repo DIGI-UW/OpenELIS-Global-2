@@ -1,0 +1,203 @@
+openapi: 3.0.3
+info:
+  title: Patient ID Documents API
+  version: 1.0.0
+servers:
+  - url: /rest
+paths:
+  /patients/{patientId}/documents:
+    get:
+      summary: List documents for a patient
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IDDocumentSummary'
+    post:
+      summary: Upload a new document for patient
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                documentType:
+                  type: string
+                  enum: [NATIONAL_ID, INSURANCE_CARD, OTHER]
+                description:
+                  type: string
+                documentGroupId:
+                  type: string
+      responses:
+        '201':
+          description: Document created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDDocumentSummary'
+  /patients/{patientId}/documents/{documentId}:
+    get:
+      summary: Get document metadata
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDDocumentDetail'
+    delete:
+      summary: Soft-delete document
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Document soft-deleted
+  /patients/{patientId}/documents/{documentId}/versions/{versionId}/content:
+    get:
+      summary: Download document binary (or open in viewer)
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Binary content
+          content:
+            application/octet-stream: {}
+  /patients/{patientId}/documents/{documentId}/metadata:
+    put:
+      summary: Update document metadata (type, description)
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                documentType:
+                  type: string
+                  enum: [NATIONAL_ID, INSURANCE_CARD, OTHER]
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Updated metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDDocumentDetail'
+components:
+  schemas:
+    IDDocumentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        documentType:
+          type: string
+        thumbnailUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        documentCount:
+          type: integer
+    IDDocumentDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        patientId:
+          type: string
+        documentType:
+          type: string
+        description:
+          type: string
+        versions:
+          type: array
+          items:
+            type: object
+            properties:
+              versionId:
+                type: string
+              filename:
+                type: string
+              contentType:
+                type: string
+              sizeBytes:
+                type: integer
+              createdAt:
+                type: string
+                format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+

@@ -38,6 +38,8 @@
     "react-intl": "^5.20.12",
     "react-router-dom": "^5.2.0",
     "react-scripts": "5.0.1",
+    "react-dropzone": "^14.2.3",
+    "pdfjs-dist": "^3.11.174",
     "rxjs": "6.x",
     "sass": "^1.54.3",
     "sass-loader": "^12.3.0",

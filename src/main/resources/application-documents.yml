@@ -1,0 +1,14 @@
+document:
+  storage:
+    path: ./data/documents
+  max-size-bytes: 10485760 # 10MB
+  thumbnail:
+    width: 200
+    height: 200
+  rate-limit:
+    max-uploads: 5
+    window-seconds: 60
+  malware:
+    scanner: noop # noop for dev, set to implementation class name for production
+  retention:
+    years: 7

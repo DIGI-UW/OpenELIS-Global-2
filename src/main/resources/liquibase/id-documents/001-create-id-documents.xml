@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet id="001-create-id-documents" author="speckit-agent">
+        <comment>Create id_document, document_version, and document_audit tables for patient ID card management</comment>
+        
+        <createTable tableName="id_document">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="patient_id" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="document_type" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(255)"/>
+            <column name="document_group_id" type="varchar(64)"/>
+            <column name="created_at" type="timestamp with time zone">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deleted_at" type="timestamp with time zone"/>
+            <column name="current_version_id" type="varchar(64)"/>
+            <column name="fhir_uuid" type="uuid"/>
+            <column name="last_updated" type="timestamp with time zone"/>
+        </createTable>
+
+        <createTable tableName="document_version">
+            <column name="version_id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="id_document_id" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version_number" type="integer" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="filename" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content_type" type="varchar(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="size_bytes" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="storage_key" type="varchar(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="data_hash" type="varchar(64)"/>
+            <column name="thumbnail_path" type="varchar(1024)"/>
+            <column name="ocr_status" type="varchar(32)" defaultValue="NOT_RUN"/>
+            <column name="ocr_extracted" type="jsonb"/>
+            <column name="created_at" type="timestamp with time zone">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deleted_at" type="timestamp with time zone"/>
+            <column name="last_updated" type="timestamp with time zone"/>
+        </createTable>
+
+        <createTable tableName="document_audit">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="action" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="patient_id" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="id_document_id" type="varchar(64)"/>
+            <column name="document_version_id" type="varchar(64)"/>
+            <column name="details" type="jsonb"/>
+            <column name="file_name" type="varchar(255)"/>
+            <column name="file_size" type="bigint"/>
+            <column name="ip_address" type="varchar(64)"/>
+            <column name="session_id" type="varchar(64)"/>
+            <column name="created_at" type="timestamp with time zone">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="timestamp with time zone"/>
+        </createTable>
+
+        <createIndex tableName="id_document" indexName="idx_iddocument_patientid">
+            <column name="patient_id"/>
+        </createIndex>
+
+        <createIndex tableName="id_document" indexName="idx_iddocument_patientid_doctype_active">
+            <column name="patient_id"/>
+            <column name="document_type"/>
+            <column name="is_deleted"/>
+        </createIndex>
+
+        <createIndex tableName="id_document" indexName="idx_iddocument_groupid">
+            <column name="document_group_id"/>
+        </createIndex>
+
+        <createIndex tableName="document_version" indexName="idx_docversion_documentid">
+            <column name="id_document_id"/>
+        </createIndex>
+
+        <createIndex tableName="document_version" indexName="idx_docversion_storagekey">
+            <column name="storage_key"/>
+        </createIndex>
+
+        <createIndex tableName="document_audit" indexName="idx_docaudit_patientid">
+            <column name="patient_id"/>
+        </createIndex>
+
+        <createIndex tableName="document_audit" indexName="idx_docaudit_documentid">
+            <column name="id_document_id"/>
+        </createIndex>
+
+        <createIndex tableName="document_audit" indexName="idx_docaudit_createdat">
+            <column name="created_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="document_audit"/>
+            <dropTable tableName="document_version"/>
+            <dropTable tableName="id_document"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
