@@ -13,7 +13,7 @@
             <column name="remaining_quantity" type="DECIMAL(10,3)">
                 <constraints nullable="true"/>
             </column>
-            <column name="parent_sample_item_id" type="VARCHAR(36)">
+            <column name="parent_sample_item_id" type="NUMERIC(10,0)">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
@@ -41,13 +41,13 @@
     <!-- Create aliquot relationship tracking table -->
     <changeSet id="sample-mgmt-004-create-aliquot-relationship" author="dev-team">
         <createTable tableName="sample_item_aliquot_relationship">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="NUMERIC(10,0)" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="parent_sample_item_id" type="VARCHAR(36)">
+            <column name="parent_sample_item_id" type="NUMERIC(10,0)">
                 <constraints nullable="false"/>
             </column>
-            <column name="child_sample_item_id" type="VARCHAR(36)">
+            <column name="child_sample_item_id" type="NUMERIC(10,0)">
                 <constraints nullable="false"/>
             </column>
             <column name="sequence_number" type="INTEGER">
