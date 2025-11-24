@@ -225,7 +225,8 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         String abbreviation = baseAbbreviation;
         int suffix = 1;
 
-        // Keep trying to create the category with different abbreviations until successful
+        // Keep trying to create the category with different abbreviations until
+        // successful
         while (suffix <= 99) {
             try {
                 DictionaryCategory category = new DictionaryCategory();

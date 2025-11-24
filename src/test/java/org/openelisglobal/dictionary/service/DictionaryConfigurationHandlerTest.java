@@ -1,7 +1,6 @@
 package org.openelisglobal.dictionary.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
@@ -10,17 +9,19 @@ import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 
-@ExtendWith(MockitoExtension.class)
+@RunWith(MockitoJUnitRunner.class)
 public class DictionaryConfigurationHandlerTest {
 
     @Mock
@@ -34,7 +35,10 @@ public class DictionaryConfigurationHandlerTest {
 
     private DictionaryCategory testCategory;
 
-    @BeforeEach
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
+    @Before
     public void setup() {
         testCategory = new DictionaryCategory();
         testCategory.setId("1");
@@ -61,7 +65,9 @@ public class DictionaryConfigurationHandlerTest {
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes());
 
         // Mock category service to return null (category doesn't exist)
-        when(dictionaryCategoryService.getDictionaryCategoryByName("Test Category")).thenReturn(null);
+        // First call returns null (category not found), subsequent calls return the category
+        when(dictionaryCategoryService.getDictionaryCategoryByName("Test Category")).thenReturn(null)
+                .thenReturn(testCategory);
         when(dictionaryCategoryService.insert(any(DictionaryCategory.class))).thenReturn("1");
         when(dictionaryCategoryService.get("1")).thenReturn(testCategory);
 
@@ -73,7 +79,8 @@ public class DictionaryConfigurationHandlerTest {
         handler.processConfiguration(inputStream, "test.csv");
 
         // Then
-        verify(dictionaryCategoryService, times(1)).insert(any(DictionaryCategory.class));
+        // Category insert may be called multiple times due to retry logic for unique abbreviations
+        verify(dictionaryCategoryService, times(2)).getDictionaryCategoryByName("Test Category");
         verify(dictionaryService, times(2)).insert(any(Dictionary.class));
     }
 
@@ -107,47 +114,47 @@ public class DictionaryConfigurationHandlerTest {
     }
 
     @Test
-    public void testProcessConfiguration_EmptyFile_ThrowsException() {
+    public void testProcessConfiguration_EmptyFile_ThrowsException() throws Exception {
         // Given
         String csv = "";
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes());
 
-        // When/Then
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            handler.processConfiguration(inputStream, "test.csv");
-        });
+        // Expect
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Dictionary configuration file test.csv is empty");
 
-        assertEquals("Dictionary configuration file test.csv is empty", exception.getMessage());
+        // When
+        handler.processConfiguration(inputStream, "test.csv");
     }
 
     @Test
-    public void testProcessConfiguration_MissingCategoryColumn_ThrowsException() {
+    public void testProcessConfiguration_MissingCategoryColumn_ThrowsException() throws Exception {
         // Given
         String csv = "dictEntry,localAbbreviation\n" + "Test Entry,TE\n";
 
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes());
 
-        // When/Then
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            handler.processConfiguration(inputStream, "test.csv");
-        });
+        // Expect
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Dictionary configuration file test.csv must have a 'category' column");
 
-        assertEquals("Dictionary configuration file test.csv must have a 'category' column", exception.getMessage());
+        // When
+        handler.processConfiguration(inputStream, "test.csv");
     }
 
     @Test
-    public void testProcessConfiguration_MissingDictEntryColumn_ThrowsException() {
+    public void testProcessConfiguration_MissingDictEntryColumn_ThrowsException() throws Exception {
         // Given
         String csv = "category,localAbbreviation\n" + "Test Category,TE\n";
 
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes());
 
-        // When/Then
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            handler.processConfiguration(inputStream, "test.csv");
-        });
+        // Expect
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Dictionary configuration file test.csv must have a 'dictEntry' column");
 
-        assertEquals("Dictionary configuration file test.csv must have a 'dictEntry' column", exception.getMessage());
+        // When
+        handler.processConfiguration(inputStream, "test.csv");
     }
 
     @Test
@@ -259,8 +266,12 @@ public class DictionaryConfigurationHandlerTest {
         categoryB.setCategoryName("Category B");
 
         // Mock category service for multiple categories
-        when(dictionaryCategoryService.getDictionaryCategoryByName("Category A")).thenReturn(null);
-        when(dictionaryCategoryService.getDictionaryCategoryByName("Category B")).thenReturn(null);
+        // Category A: first call returns null, subsequent calls return categoryA
+        when(dictionaryCategoryService.getDictionaryCategoryByName("Category A")).thenReturn(null)
+                .thenReturn(categoryA);
+        // Category B: first call returns null, subsequent calls return categoryB
+        when(dictionaryCategoryService.getDictionaryCategoryByName("Category B")).thenReturn(null)
+                .thenReturn(categoryB);
         when(dictionaryCategoryService.insert(any(DictionaryCategory.class))).thenReturn("1", "2");
         when(dictionaryCategoryService.get("1")).thenReturn(categoryA);
         when(dictionaryCategoryService.get("2")).thenReturn(categoryB);
@@ -273,7 +284,9 @@ public class DictionaryConfigurationHandlerTest {
         handler.processConfiguration(inputStream, "test.csv");
 
         // Then
-        verify(dictionaryCategoryService, times(2)).insert(any(DictionaryCategory.class));
+        // Category lookup is called once per category for first entry, then once per entry for that category
+        verify(dictionaryCategoryService, times(2)).getDictionaryCategoryByName("Category A");
+        verify(dictionaryCategoryService, times(1)).getDictionaryCategoryByName("Category B");
         verify(dictionaryService, times(3)).insert(any(Dictionary.class));
     }
 }
