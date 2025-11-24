@@ -87,34 +87,34 @@ can be implemented
 
 ### DTOs
 
-- [ ] T011 [P] Create SampleItemDTO in
+- [x] T011 [P] Create SampleItemDTO in
       src/main/java/org/openelisglobal/sampleitem/dto/SampleItemDTO.java (with
       fields: id, externalId, sampleAccessionNumber, sampleType,
       originalQuantity, remainingQuantity, unitOfMeasure, status,
       collectionDate, parentId, parentExternalId, childAliquots, orderedTests,
       hasRemainingQuantity, isAliquot, nestingLevel)
-- [ ] T012 [P] Create AliquotSummaryDTO in
+- [x] T012 [P] Create AliquotSummaryDTO in
       src/main/java/org/openelisglobal/sampleitem/dto/AliquotSummaryDTO.java
       (with fields: id, externalId, originalQuantity, remainingQuantity,
       createdDate)
-- [ ] T013 [P] Create TestSummaryDTO in
+- [x] T013 [P] Create TestSummaryDTO in
       src/main/java/org/openelisglobal/sampleitem/dto/TestSummaryDTO.java (with
       fields: analysisId, testId, testName, status, orderedDate)
-- [ ] T014 [P] Create CreateAliquotForm in
+- [x] T014 [P] Create CreateAliquotForm in
       src/main/java/org/openelisglobal/sampleitem/form/CreateAliquotForm.java
       (with Jakarta validation: @NotBlank parentSampleItemId, @NotNull
       @DecimalMin quantityToTransfer, @Size notes)
-- [ ] T015 [P] Create AddTestsForm in
+- [x] T015 [P] Create AddTestsForm in
       src/main/java/org/openelisglobal/sampleitem/form/AddTestsForm.java (with
       Jakarta validation: @NotEmpty sampleItemIds, @NotEmpty testIds)
-- [ ] T016 [P] Create SearchSamplesResponse in
+- [x] T016 [P] Create SearchSamplesResponse in
       src/main/java/org/openelisglobal/sampleitem/dto/SearchSamplesResponse.java
       (with fields: accessionNumber, sampleItems list, totalCount)
-- [ ] T017 [P] Create CreateAliquotResponse in
+- [x] T017 [P] Create CreateAliquotResponse in
       src/main/java/org/openelisglobal/sampleitem/dto/CreateAliquotResponse.java
       (with fields: aliquot SampleItemDTO, parentUpdatedRemainingQuantity,
       message)
-- [ ] T018 [P] Create AddTestsResponse in
+- [x] T018 [P] Create AddTestsResponse in
       src/main/java/org/openelisglobal/sampleitem/dto/AddTestsResponse.java
       (with fields: successCount, results list of TestAdditionResult)
 
