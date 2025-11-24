@@ -120,9 +120,16 @@
 
     <!-- Add Sample Management menu entry -->
     <changeSet id="sample-mgmt-009-add-menu-entry" author="dev-team">
-        <insert tableName="menu">
-            <column name="id" valueNumeric="210"/>
-            <column name="parent_id" valueNumeric="2"/>
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_sample_management'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Sample Management menu entry under Order menu with dynamic ID generation</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample')"/>
             <column name="presentation_order" valueNumeric="6"/>
             <column name="element_id" value="menu_sample_management"/>
             <column name="action_url" value="/SampleManagement"/>
