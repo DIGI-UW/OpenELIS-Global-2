@@ -3,6 +3,9 @@
 This directory contains role configuration files in CSV format. Role entries are
 loaded automatically during application initialization.
 
+**Note:** Example files are located in the `examples/` subdirectory and are NOT
+automatically loaded. Copy them to this directory to use them.
+
 ## File Format
 
 Each CSV file should contain a header row followed by role entries with the

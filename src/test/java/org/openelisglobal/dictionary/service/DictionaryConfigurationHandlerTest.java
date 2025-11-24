@@ -65,7 +65,8 @@ public class DictionaryConfigurationHandlerTest {
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes());
 
         // Mock category service to return null (category doesn't exist)
-        // First call returns null (category not found), subsequent calls return the category
+        // First call returns null (category not found), subsequent calls return the
+        // category
         when(dictionaryCategoryService.getDictionaryCategoryByName("Test Category")).thenReturn(null)
                 .thenReturn(testCategory);
         when(dictionaryCategoryService.insert(any(DictionaryCategory.class))).thenReturn("1");
@@ -79,7 +80,8 @@ public class DictionaryConfigurationHandlerTest {
         handler.processConfiguration(inputStream, "test.csv");
 
         // Then
-        // Category insert may be called multiple times due to retry logic for unique abbreviations
+        // Category insert may be called multiple times due to retry logic for unique
+        // abbreviations
         verify(dictionaryCategoryService, times(2)).getDictionaryCategoryByName("Test Category");
         verify(dictionaryService, times(2)).insert(any(Dictionary.class));
     }
@@ -284,7 +286,8 @@ public class DictionaryConfigurationHandlerTest {
         handler.processConfiguration(inputStream, "test.csv");
 
         // Then
-        // Category lookup is called once per category for first entry, then once per entry for that category
+        // Category lookup is called once per category for first entry, then once per
+        // entry for that category
         verify(dictionaryCategoryService, times(2)).getDictionaryCategoryByName("Category A");
         verify(dictionaryCategoryService, times(1)).getDictionaryCategoryByName("Category B");
         verify(dictionaryService, times(3)).insert(any(Dictionary.class));

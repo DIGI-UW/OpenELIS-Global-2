@@ -3,6 +3,9 @@
 This directory contains dictionary configuration files in CSV format. Dictionary
 entries are loaded automatically during application initialization.
 
+**Note:** Example files are located in the `examples/` subdirectory and are NOT
+automatically loaded. Copy them to this directory to use them.
+
 ## File Format
 
 Each CSV file should contain a header row followed by dictionary entries with
