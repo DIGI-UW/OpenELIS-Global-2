@@ -1,17 +1,18 @@
 # Developer Quickstart: Sample Management Menu
 
-**Feature**: Sample Management Menu
-**Branch**: `001-sample-management`
-**Date**: 2025-11-20
-**Audience**: Developers implementing this feature
+**Feature**: Sample Management Menu **Branch**: `001-sample-management`
+**Date**: 2025-11-20 **Audience**: Developers implementing this feature
 
 ---
 
 ## Overview
 
-This quickstart guide provides step-by-step instructions for implementing the Sample Management Menu feature following OpenELIS Global's Spec-Driven Development (SDD) methodology and constitution requirements.
+This quickstart guide provides step-by-step instructions for implementing the
+Sample Management Menu feature following OpenELIS Global's Spec-Driven
+Development (SDD) methodology and constitution requirements.
 
 **What This Feature Does**:
+
 - Search for sample items by accession number
 - Add multiple tests to sample items (bulk operations)
 - Create aliquots from samples with quantity tracking
@@ -19,6 +20,7 @@ This quickstart guide provides step-by-step instructions for implementing the Sa
 - Display parent-child relationships in hierarchy view
 
 **Prerequisites**:
+
 - Read [AGENTS.md](../../AGENTS.md) for comprehensive project context
 - Review [constitution.md](../../.specify/memory/constitution.md) (v1.7.0)
 - Understand [research.md](research.md) - technical decisions
@@ -100,9 +102,11 @@ cd frontend && npm start
 
 ### 2.1 Apply Liquibase Changeset
 
-**File to create**: `src/main/resources/liquibase/2.8.x/sample-management-001.xml`
+**File to create**:
+`src/main/resources/liquibase/2.8.x/sample-management-001.xml`
 
-**Reference**: See [data-model.md - Database Schema Changes](data-model.md#database-schema-changes)
+**Reference**: See
+[data-model.md - Database Schema Changes](data-model.md#database-schema-changes)
 
 ```bash
 # Verify Liquibase changelog is registered in master changelog
@@ -132,11 +136,13 @@ mvn liquibase:rollback -Dliquibase.rollbackCount=1
 
 ### 2.2 Modify SampleItem Entity
 
-**File**: `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java`
+**File**:
+`src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java`
 
 **Changes**: Add new fields with JPA annotations (hybrid with XML mapping)
 
-**Reference**: See [data-model.md - SampleItem Entity](data-model.md#1-sampleitem-entity-modified)
+**Reference**: See
+[data-model.md - SampleItem Entity](data-model.md#1-sampleitem-entity-modified)
 
 **Code snippet**:
 
@@ -161,7 +167,8 @@ private List<SampleItem> childAliquots = new ArrayList<>();
 
 **Write Test First** (TDD - Red):
 
-**File**: `src/test/java/org/openelisglobal/sampleitem/valueholder/SampleItemTest.java`
+**File**:
+`src/test/java/org/openelisglobal/sampleitem/valueholder/SampleItemTest.java`
 
 ```java
 @Test
@@ -197,9 +204,11 @@ mvn test -Dtest=SampleItemTest
 
 ### 2.3 Create SampleItemAliquotRelationship Entity
 
-**File**: `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItemAliquotRelationship.java`
+**File**:
+`src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItemAliquotRelationship.java`
 
-**Reference**: See [data-model.md - SampleItemAliquotRelationship Entity](data-model.md#2-sampleitemaliquotrelationship-entity-new)
+**Reference**: See
+[data-model.md - SampleItemAliquotRelationship Entity](data-model.md#2-sampleitemaliquotrelationship-entity-new)
 
 **Test First**:
 
@@ -229,11 +238,13 @@ public void testUniqueConstraintOnParentAndSequence() {
 ### 2.4 Create DTOs
 
 **Files to create**:
+
 - `src/main/java/org/openelisglobal/sampleitem/dto/SampleItemDTO.java`
 - `src/main/java/org/openelisglobal/sampleitem/dto/AliquotSummaryDTO.java`
 - `src/main/java/org/openelisglobal/sampleitem/dto/TestSummaryDTO.java`
 
-**Reference**: See [data-model.md - Data Transfer Objects](data-model.md#data-transfer-objects-dtos)
+**Reference**: See
+[data-model.md - Data Transfer Objects](data-model.md#data-transfer-objects-dtos)
 
 **Use Lombok** for boilerplate reduction:
 
@@ -264,6 +275,7 @@ mvn clean compile
 ### 3.1 Create DAO Interfaces and Implementations
 
 **Files to create**:
+
 - `src/main/java/org/openelisglobal/sampleitem/dao/SampleItemAliquotRelationshipDAO.java`
 - `src/main/java/org/openelisglobal/sampleitem/daoimpl/SampleItemAliquotRelationshipDAOImpl.java`
 
@@ -341,11 +353,13 @@ public List<SampleItem> getSampleItemsWithHierarchy(String sampleId) {
 }
 ```
 
-**Why JOIN FETCH?** Prevents `LazyInitializationException` by loading relationships within transaction (Constitution v1.4.0).
+**Why JOIN FETCH?** Prevents `LazyInitializationException` by loading
+relationships within transaction (Constitution v1.4.0).
 
 ### 3.3 Create SampleManagementService
 
-**File**: `src/main/java/org/openelisglobal/sampleitem/service/SampleManagementService.java`
+**File**:
+`src/main/java/org/openelisglobal/sampleitem/service/SampleManagementService.java`
 
 **Key Methods**:
 
@@ -359,11 +373,14 @@ public interface SampleManagementService {
 
 ### 3.4 Implement createAliquot Method
 
-**File**: `src/main/java/org/openelisglobal/sampleitem/service/SampleManagementServiceImpl.java`
+**File**:
+`src/main/java/org/openelisglobal/sampleitem/service/SampleManagementServiceImpl.java`
 
-**Reference**: See [data-model.md - Concurrency & Transaction Management](data-model.md#concurrency--transaction-management)
+**Reference**: See
+[data-model.md - Concurrency & Transaction Management](data-model.md#concurrency--transaction-management)
 
 **Key Points**:
+
 - `@Transactional` annotation (Constitution - services only)
 - `@Retryable` for optimistic lock failures
 - Compile full DTO within transaction
@@ -557,6 +574,7 @@ mvn test -Dtest=*ServiceTest
 ### 4.1 Create Form Validation Classes
 
 **Files to create**:
+
 - `src/main/java/org/openelisglobal/sampleitem/form/CreateAliquotForm.java`
 - `src/main/java/org/openelisglobal/sampleitem/form/AddTestsForm.java`
 
@@ -592,7 +610,8 @@ validation.notes.size=Notes must not exceed 1000 characters
 
 ### 4.2 Create REST Controller
 
-**File**: `src/main/java/org/openelisglobal/sampleitem/controller/SampleManagementRestController.java`
+**File**:
+`src/main/java/org/openelisglobal/sampleitem/controller/SampleManagementRestController.java`
 
 **Reference**: See [contracts/](contracts/) for OpenAPI specifications
 
@@ -654,7 +673,8 @@ public class SampleManagementRestController {
 
 ### 4.3 Add Exception Handlers
 
-**File**: `src/main/java/org/openelisglobal/sampleitem/controller/SampleManagementExceptionHandler.java`
+**File**:
+`src/main/java/org/openelisglobal/sampleitem/controller/SampleManagementExceptionHandler.java`
 
 ```java
 @RestControllerAdvice(basePackages = "org.openelisglobal.sampleitem.controller")
@@ -690,7 +710,8 @@ public class SampleManagementExceptionHandler {
 
 ### 4.4 Test Controller Endpoints
 
-**File**: `src/test/java/org/openelisglobal/sampleitem/controller/SampleManagementRestControllerTest.java`
+**File**:
+`src/test/java/org/openelisglobal/sampleitem/controller/SampleManagementRestControllerTest.java`
 
 ```java
 @SpringBootTest
@@ -795,7 +816,9 @@ const SampleSearch = ({ onSearchResults }) => {
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/sample-management/search?accessionNumber=${encodeURIComponent(accessionNumber)}`
+        `/api/sample-management/search?accessionNumber=${encodeURIComponent(
+          accessionNumber
+        )}`
       );
       const data = await response.json();
       onSearchResults(data);
@@ -864,10 +887,22 @@ import { FormattedMessage } from "react-intl";
 
 const SampleResultsTable = ({ sampleItems, onSelectionChange }) => {
   const headers = [
-    { key: "externalId", header: <FormattedMessage id="sample.results.externalId" /> },
-    { key: "sampleType", header: <FormattedMessage id="sample.results.type" /> },
-    { key: "originalQuantity", header: <FormattedMessage id="sample.results.originalQty" /> },
-    { key: "remainingQuantity", header: <FormattedMessage id="sample.results.remainingQty" /> },
+    {
+      key: "externalId",
+      header: <FormattedMessage id="sample.results.externalId" />,
+    },
+    {
+      key: "sampleType",
+      header: <FormattedMessage id="sample.results.type" />,
+    },
+    {
+      key: "originalQuantity",
+      header: <FormattedMessage id="sample.results.originalQty" />,
+    },
+    {
+      key: "remainingQuantity",
+      header: <FormattedMessage id="sample.results.remainingQty" />,
+    },
     { key: "status", header: <FormattedMessage id="sample.results.status" /> },
   ];
 
@@ -875,14 +910,25 @@ const SampleResultsTable = ({ sampleItems, onSelectionChange }) => {
     id: item.id,
     externalId: item.externalId,
     sampleType: item.sampleType,
-    originalQuantity: item.originalQuantity ? `${item.originalQuantity} ${item.unitOfMeasure}` : "-",
-    remainingQuantity: item.remainingQuantity ? `${item.remainingQuantity} ${item.unitOfMeasure}` : "-",
+    originalQuantity: item.originalQuantity
+      ? `${item.originalQuantity} ${item.unitOfMeasure}`
+      : "-",
+    remainingQuantity: item.remainingQuantity
+      ? `${item.remainingQuantity} ${item.unitOfMeasure}`
+      : "-",
     status: item.status,
   }));
 
   return (
     <DataTable rows={rows} headers={headers}>
-      {({ rows, headers, getHeaderProps, getRowProps, getSelectionProps, selectedRows }) => {
+      {({
+        rows,
+        headers,
+        getHeaderProps,
+        getRowProps,
+        getSelectionProps,
+        selectedRows,
+      }) => {
         // Call parent callback when selection changes
         React.useEffect(() => {
           onSelectionChange(selectedRows.map((row) => row.id));
@@ -895,7 +941,10 @@ const SampleResultsTable = ({ sampleItems, onSelectionChange }) => {
                 <TableRow>
                   <TableSelectAll {...getSelectionProps()} />
                   {headers.map((header) => (
-                    <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                    <TableHeader
+                      key={header.key}
+                      {...getHeaderProps({ header })}
+                    >
                       {header.header}
                     </TableHeader>
                   ))}
@@ -941,7 +990,12 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 
-const AliquotModal = ({ open, onClose, parentSampleItem, onAliquotCreated }) => {
+const AliquotModal = ({
+  open,
+  onClose,
+  parentSampleItem,
+  onAliquotCreated,
+}) => {
   const intl = useIntl();
   const [quantity, setQuantity] = useState("");
   const [notes, setNotes] = useState("");
@@ -955,7 +1009,9 @@ const AliquotModal = ({ open, onClose, parentSampleItem, onAliquotCreated }) => 
     }
 
     if (parseFloat(quantity) > parentSampleItem.remainingQuantity) {
-      setError(`Quantity exceeds remaining (${parentSampleItem.remainingQuantity})`);
+      setError(
+        `Quantity exceeds remaining (${parentSampleItem.remainingQuantity})`
+      );
       return;
     }
 
@@ -1014,13 +1070,17 @@ const AliquotModal = ({ open, onClose, parentSampleItem, onAliquotCreated }) => 
         <TextInput
           id="remaining-quantity"
           labelText={<FormattedMessage id="sample.aliquot.remainingQuantity" />}
-          value={`${parentSampleItem?.remainingQuantity || 0} ${parentSampleItem?.unitOfMeasure || ""}`}
+          value={`${parentSampleItem?.remainingQuantity || 0} ${
+            parentSampleItem?.unitOfMeasure || ""
+          }`}
           disabled
         />
 
         <TextInput
           id="quantity-to-transfer"
-          labelText={<FormattedMessage id="sample.aliquot.quantityToTransfer" />}
+          labelText={
+            <FormattedMessage id="sample.aliquot.quantityToTransfer" />
+          }
           type="number"
           step="0.001"
           min="0.001"
@@ -1043,7 +1103,11 @@ const AliquotModal = ({ open, onClose, parentSampleItem, onAliquotCreated }) => 
         <Button kind="secondary" onClick={onClose}>
           <FormattedMessage id="button.cancel" />
         </Button>
-        <Button kind="primary" onClick={handleSubmit} disabled={loading || !quantity}>
+        <Button
+          kind="primary"
+          onClick={handleSubmit}
+          disabled={loading || !quantity}
+        >
           <FormattedMessage id="sample.aliquot.create" />
         </Button>
       </ModalFooter>
@@ -1085,11 +1149,13 @@ npm start
 
 ### 6.1 Extend FhirTransformServiceImpl
 
-**File**: `src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java`
+**File**:
+`src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java`
 
 **Modify `transformToSpecimen` method** (around line 1003):
 
-**Reference**: See [data-model.md - FHIR R4 Mapping](data-model.md#fhir-r4-mapping)
+**Reference**: See
+[data-model.md - FHIR R4 Mapping](data-model.md#fhir-r4-mapping)
 
 ```java
 private Specimen transformToSpecimen(SampleItem sampleItem) {
@@ -1174,7 +1240,8 @@ open target/site/jacoco/index.html
 
 ### 7.2 Integration Tests
 
-**File**: `src/test/java/org/openelisglobal/sampleitem/integration/SampleManagementIntegrationTest.java`
+**File**:
+`src/test/java/org/openelisglobal/sampleitem/integration/SampleManagementIntegrationTest.java`
 
 ```java
 @SpringBootTest
@@ -1196,7 +1263,8 @@ public class SampleManagementIntegrationTest {
 
 **File**: `frontend/cypress/e2e/sampleManagement.cy.js`
 
-**Constitution Requirement**: Individual E2E tests must be runnable independently (v1.5.0)
+**Constitution Requirement**: Individual E2E tests must be runnable
+independently (v1.5.0)
 
 ```javascript
 describe("Sample Management - Search", () => {
@@ -1303,7 +1371,8 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 
 **Problem**: `could not initialize proxy - no Session`
 
-**Solution**: Use `JOIN FETCH` in HQL queries and compile DTOs within transaction
+**Solution**: Use `JOIN FETCH` in HQL queries and compile DTOs within
+transaction
 
 ```java
 // BAD
@@ -1335,7 +1404,8 @@ public List<SampleItemDTO> search(String accessionNumber) {
 
 ### 9.2 OptimisticLockException
 
-**Problem**: `org.hibernate.StaleObjectStateException: Row was updated or deleted by another transaction`
+**Problem**:
+`org.hibernate.StaleObjectStateException: Row was updated or deleted by another transaction`
 
 **Solution**: Add `@Retryable` annotation to service method
 
@@ -1370,6 +1440,7 @@ mvn liquibase:update
 **Problem**: Component doesn't appear or throws error
 
 **Checklist**:
+
 - [ ] Is component imported correctly?
 - [ ] Are all i18n message keys defined in `messages_en.js`?
 - [ ] Are Carbon components imported from `@carbon/react`?
@@ -1381,9 +1452,11 @@ mvn liquibase:update
 
 After completing this quickstart:
 
-1. Review completed implementation against [spec.md](spec.md) acceptance criteria
+1. Review completed implementation against [spec.md](spec.md) acceptance
+   criteria
 2. Run `/speckit.analyze` to validate consistency across artifacts
-3. Create pull request following [PULL_REQUEST_TIPS.md](../../PULL_REQUEST_TIPS.md)
+3. Create pull request following
+   [PULL_REQUEST_TIPS.md](../../PULL_REQUEST_TIPS.md)
 4. Update agent context: `.specify/scripts/bash/update-agent-context.sh claude`
 
 ---

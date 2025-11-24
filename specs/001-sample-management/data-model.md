@@ -1,18 +1,19 @@
 # Data Model Design: Sample Management Menu
 
-**Feature**: Sample Management Menu
-**Branch**: `001-sample-management`
-**Date**: 2025-11-20
-**Phase**: 1 - Design & Data Model
-**Prerequisites**: [research.md](research.md) complete
+**Feature**: Sample Management Menu **Branch**: `001-sample-management`
+**Date**: 2025-11-20 **Phase**: 1 - Design & Data Model **Prerequisites**:
+[research.md](research.md) complete
 
 ---
 
 ## Overview
 
-This document specifies the data model changes required to support the Sample Management Menu feature, including aliquoting with parent-child relationships, quantity tracking, and test ordering.
+This document specifies the data model changes required to support the Sample
+Management Menu feature, including aliquoting with parent-child relationships,
+quantity tracking, and test ordering.
 
 **Design Principles**:
+
 - Extend existing entities rather than create duplicates
 - Use JPA annotations for new fields (Constitution v1.3.0)
 - Maintain backward compatibility with legacy XML mappings
@@ -25,7 +26,8 @@ This document specifies the data model changes required to support the Sample Ma
 
 ### 1. SampleItem Entity (MODIFIED)
 
-**File**: `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java`
+**File**:
+`src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java`
 
 **Status**: ✏️ EXISTING ENTITY - Add new fields with annotations
 
@@ -52,12 +54,12 @@ private List<SampleItem> childAliquots = new ArrayList<>();
 
 #### Field Specifications
 
-| Field | Type | Nullable | Default | Constraints | Purpose |
-|-------|------|----------|---------|-------------|---------|
-| `originalQuantity` | `Double` | YES | `NULL` | `precision=10, scale=3` | Initial volume/mass when sample created |
-| `remainingQuantity` | `Double` | YES | `NULL` | `precision=10, scale=3`, must be ≤ originalQuantity | Current available volume after aliquoting |
-| `parentSampleItem` | `SampleItem` | YES | `NULL` | FK to `sample_item.id` | Reference to parent sample (NULL for original samples) |
-| `childAliquots` | `List<SampleItem>` | N/A | Empty list | Mapped by `parentSampleItem` | Collection of aliquots created from this sample |
+| Field               | Type               | Nullable | Default    | Constraints                                         | Purpose                                                |
+| ------------------- | ------------------ | -------- | ---------- | --------------------------------------------------- | ------------------------------------------------------ |
+| `originalQuantity`  | `Double`           | YES      | `NULL`     | `precision=10, scale=3`                             | Initial volume/mass when sample created                |
+| `remainingQuantity` | `Double`           | YES      | `NULL`     | `precision=10, scale=3`, must be ≤ originalQuantity | Current available volume after aliquoting              |
+| `parentSampleItem`  | `SampleItem`       | YES      | `NULL`     | FK to `sample_item.id`                              | Reference to parent sample (NULL for original samples) |
+| `childAliquots`     | `List<SampleItem>` | N/A      | Empty list | Mapped by `parentSampleItem`                        | Collection of aliquots created from this sample        |
 
 #### Validation Methods
 
@@ -93,21 +95,27 @@ public boolean isAliquot() {
 
 - `String id` - Primary key (UUID string)
 - `UUID fhirUuid` - FHIR Specimen resource ID
-- `String externalId` - Human-readable identifier (will include .1, .2, .3 suffix for aliquots)
-- `Double quantity` - Legacy single quantity field (deprecated in favor of originalQuantity/remainingQuantity)
+- `String externalId` - Human-readable identifier (will include .1, .2, .3
+  suffix for aliquots)
+- `Double quantity` - Legacy single quantity field (deprecated in favor of
+  originalQuantity/remainingQuantity)
 - `ValueHolderInterface sample` - Parent Sample entity reference
 - `ValueHolderInterface typeOfSample` - Sample type (blood, urine, etc.)
 - `Timestamp collectionDate` - Collection timestamp
-- `Timestamp lastupdated` - Optimistic locking version field (`@Version` from BaseObject)
+- `Timestamp lastupdated` - Optimistic locking version field (`@Version` from
+  BaseObject)
 
 #### Migration Strategy
 
 **Backward Compatibility**:
+
 - Existing `quantity` field remains in XML mapping (legacy samples)
 - New samples use `originalQuantity` and `remainingQuantity`
-- Data migration script (optional): Copy `quantity` → `originalQuantity` and `remainingQuantity` for existing samples
+- Data migration script (optional): Copy `quantity` → `originalQuantity` and
+  `remainingQuantity` for existing samples
 
 **Hybrid Mapping Approach**:
+
 - Legacy fields: XML mapping in `SampleItem.hbm.xml` (unchanged)
 - New fields: JPA annotations in `SampleItem.java` (Constitution-compliant)
 - Hibernate 6.x supports both mapping approaches simultaneously
@@ -116,11 +124,13 @@ public boolean isAliquot() {
 
 ### 2. SampleItemAliquotRelationship Entity (NEW)
 
-**File**: `src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItemAliquotRelationship.java`
+**File**:
+`src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItemAliquotRelationship.java`
 
 **Status**: ✨ NEW ENTITY - Full annotation-based mapping
 
-**Purpose**: Tracks metadata for each aliquoting operation (sequence number, quantity transferred)
+**Purpose**: Tracks metadata for each aliquoting operation (sequence number,
+quantity transferred)
 
 #### Entity Definition
 
@@ -174,15 +184,15 @@ public class SampleItemAliquotRelationship extends BaseObject<String> {
 
 #### Field Specifications
 
-| Field | Type | Nullable | Constraints | Purpose |
-|-------|------|----------|-------------|---------|
-| `id` | `String` | NO | PK, UUID | Primary key |
-| `parentSampleItem` | `SampleItem` | NO | FK to `sample_item.id` | Parent sample from which aliquot was created |
-| `childSampleItem` | `SampleItem` | NO | FK to `sample_item.id` | Aliquot sample item created |
-| `sequenceNumber` | `Integer` | NO | Unique with parent | Sequential number (.1, .2, .3, etc.) |
-| `quantityTransferred` | `Double` | NO | `precision=10, scale=3` | Volume/mass transferred to aliquot |
-| `fhirUuid` | `UUID` | YES | UUID | FHIR resource identifier |
-| `notes` | `String` | YES | Max 1000 chars | Optional notes about aliquoting operation |
+| Field                 | Type         | Nullable | Constraints             | Purpose                                      |
+| --------------------- | ------------ | -------- | ----------------------- | -------------------------------------------- |
+| `id`                  | `String`     | NO       | PK, UUID                | Primary key                                  |
+| `parentSampleItem`    | `SampleItem` | NO       | FK to `sample_item.id`  | Parent sample from which aliquot was created |
+| `childSampleItem`     | `SampleItem` | NO       | FK to `sample_item.id`  | Aliquot sample item created                  |
+| `sequenceNumber`      | `Integer`    | NO       | Unique with parent      | Sequential number (.1, .2, .3, etc.)         |
+| `quantityTransferred` | `Double`     | NO       | `precision=10, scale=3` | Volume/mass transferred to aliquot           |
+| `fhirUuid`            | `UUID`       | YES      | UUID                    | FHIR resource identifier                     |
+| `notes`               | `String`     | YES      | Max 1000 chars          | Optional notes about aliquoting operation    |
 
 #### Unique Constraints
 
@@ -190,7 +200,8 @@ public class SampleItemAliquotRelationship extends BaseObject<String> {
 UNIQUE (parent_sample_item_id, sequence_number)
 ```
 
-**Rationale**: Ensures each parent has unique sequence numbers (1, 2, 3...) without gaps when aliquots are deleted.
+**Rationale**: Ensures each parent has unique sequence numbers (1, 2, 3...)
+without gaps when aliquots are deleted.
 
 #### Indexes
 
@@ -199,7 +210,8 @@ CREATE INDEX idx_aliquot_parent ON sample_item_aliquot_relationship(parent_sampl
 CREATE INDEX idx_aliquot_child ON sample_item_aliquot_relationship(child_sample_item_id);
 ```
 
-**Rationale**: Optimize queries for parent → children (loading aliquot list) and child → parent (lineage lookup).
+**Rationale**: Optimize queries for parent → children (loading aliquot list) and
+child → parent (lineage lookup).
 
 ---
 
@@ -210,12 +222,14 @@ CREATE INDEX idx_aliquot_child ON sample_item_aliquot_relationship(child_sample_
 **Status**: ✅ USE AS-IS - Serves as "TestOrder" relationship
 
 **Relevant Fields**:
+
 - `@ManyToOne SampleItem sampleItem` - Links test to sample
 - `@ManyToOne Test test` - Test definition
 - `String statusId` - Test lifecycle status (ORDERED, IN_PROGRESS, COMPLETED)
 - `UUID fhirUuid` - Maps to FHIR ServiceRequest
 
-**Rationale**: Existing entity already provides test-to-sample relationship. No modifications needed.
+**Rationale**: Existing entity already provides test-to-sample relationship. No
+modifications needed.
 
 ---
 
@@ -467,7 +481,8 @@ public class TestSummaryDTO {
 
 ### 4. CreateAliquotRequest
 
-**File**: `src/main/java/org/openelisglobal/sampleitem/form/CreateAliquotForm.java`
+**File**:
+`src/main/java/org/openelisglobal/sampleitem/form/CreateAliquotForm.java`
 
 ```java
 package org.openelisglobal.sampleitem.form;
@@ -548,31 +563,31 @@ public class SearchSamplesResponse {
 
 ### 1. Aliquot Creation Rules
 
-| Rule ID | Description | Validation Location |
-|---------|-------------|---------------------|
-| **BR-001** | Quantity to transfer must be > 0 | Form validation (`@DecimalMin`) |
-| **BR-002** | Quantity to transfer must be ≤ parent's remaining quantity | Service layer (`SampleManagementService.createAliquot`) |
-| **BR-003** | Parent must have remaining quantity > 0 | Service layer (check before aliquot creation) |
-| **BR-004** | External ID generated as `parent.externalId + "." + sequenceNumber` | Service layer (automatic) |
-| **BR-005** | Aliquot inherits sample type, collection date from parent | Service layer (copy from parent) |
-| **BR-006** | Aliquot gets new UUID and FHIR UUID | Entity constructor (`@PrePersist`) |
-| **BR-007** | Parent's remaining quantity reduced by transfer amount | Service layer (atomic update) |
+| Rule ID    | Description                                                         | Validation Location                                     |
+| ---------- | ------------------------------------------------------------------- | ------------------------------------------------------- |
+| **BR-001** | Quantity to transfer must be > 0                                    | Form validation (`@DecimalMin`)                         |
+| **BR-002** | Quantity to transfer must be ≤ parent's remaining quantity          | Service layer (`SampleManagementService.createAliquot`) |
+| **BR-003** | Parent must have remaining quantity > 0                             | Service layer (check before aliquot creation)           |
+| **BR-004** | External ID generated as `parent.externalId + "." + sequenceNumber` | Service layer (automatic)                               |
+| **BR-005** | Aliquot inherits sample type, collection date from parent           | Service layer (copy from parent)                        |
+| **BR-006** | Aliquot gets new UUID and FHIR UUID                                 | Entity constructor (`@PrePersist`)                      |
+| **BR-007** | Parent's remaining quantity reduced by transfer amount              | Service layer (atomic update)                           |
 
 ### 2. Test Ordering Rules
 
-| Rule ID | Description | Validation Location |
-|---------|-------------|---------------------|
-| **BR-008** | Cannot add same test twice to same sample item | Service layer (duplicate detection) |
-| **BR-009** | Test must be compatible with sample type | Service layer (type compatibility check) |
+| Rule ID    | Description                                                | Validation Location                                          |
+| ---------- | ---------------------------------------------------------- | ------------------------------------------------------------ |
+| **BR-008** | Cannot add same test twice to same sample item             | Service layer (duplicate detection)                          |
+| **BR-009** | Test must be compatible with sample type                   | Service layer (type compatibility check)                     |
 | **BR-010** | Bulk test addition skips duplicates, continues with others | Service layer (collect results, don't fail entire operation) |
 
 ### 3. Search Rules
 
-| Rule ID | Description | Validation Location |
-|---------|-------------|---------------------|
-| **BR-011** | Search by base accession number returns all related samples (parent + aliquots) | DAO layer (HQL query) |
-| **BR-012** | Search by full external ID (e.g., "SAMPLE001.2") returns exact match + descendants | DAO layer (pattern matching) |
-| **BR-013** | Search results include parent/child relationships fully loaded | Service layer (`@Transactional` with JOIN FETCH) |
+| Rule ID    | Description                                                                        | Validation Location                              |
+| ---------- | ---------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **BR-011** | Search by base accession number returns all related samples (parent + aliquots)    | DAO layer (HQL query)                            |
+| **BR-012** | Search by full external ID (e.g., "SAMPLE001.2") returns exact match + descendants | DAO layer (pattern matching)                     |
+| **BR-013** | Search results include parent/child relationships fully loaded                     | Service layer (`@Transactional` with JOIN FETCH) |
 
 ---
 
@@ -653,16 +668,16 @@ private Specimen transformToSpecimen(SampleItem sampleItem) {
 
 ### Key FHIR Elements
 
-| OpenELIS Field | FHIR Element | Notes |
-|----------------|--------------|-------|
-| `sampleItem.id` | `Specimen.id` | Internal database ID |
-| `sampleItem.fhirUuid` | `Specimen.identifier[0]` | FHIR resource identifier |
-| `sampleItem.externalId` | `Specimen.accessionIdentifier` | Human-readable lab number |
-| `sampleItem.originalQuantity` | `Specimen.container.specimenQuantity` | Initial volume/mass |
-| `sampleItem.remainingQuantity` | `Specimen.extension[remainingQuantity]` | Custom extension (not in base spec) |
-| `sampleItem.parentSampleItem` | `Specimen.parent[0]` | Reference to parent specimen |
-| `sampleItem.typeOfSample` | `Specimen.type` | CodeableConcept (SNOMED CT preferred) |
-| `analysis` (test order) | `Specimen.request[]` | References to ServiceRequest resources |
+| OpenELIS Field                 | FHIR Element                            | Notes                                  |
+| ------------------------------ | --------------------------------------- | -------------------------------------- |
+| `sampleItem.id`                | `Specimen.id`                           | Internal database ID                   |
+| `sampleItem.fhirUuid`          | `Specimen.identifier[0]`                | FHIR resource identifier               |
+| `sampleItem.externalId`        | `Specimen.accessionIdentifier`          | Human-readable lab number              |
+| `sampleItem.originalQuantity`  | `Specimen.container.specimenQuantity`   | Initial volume/mass                    |
+| `sampleItem.remainingQuantity` | `Specimen.extension[remainingQuantity]` | Custom extension (not in base spec)    |
+| `sampleItem.parentSampleItem`  | `Specimen.parent[0]`                    | Reference to parent specimen           |
+| `sampleItem.typeOfSample`      | `Specimen.type`                         | CodeableConcept (SNOMED CT preferred)  |
+| `analysis` (test order)        | `Specimen.request[]`                    | References to ServiceRequest resources |
 
 ---
 
@@ -748,38 +763,48 @@ public class SampleManagementServiceImpl {
 
 ### Transaction Boundaries
 
-| Operation | Transaction Scope | Rationale |
-|-----------|------------------|-----------|
-| **Create Aliquot** | Service method (`@Transactional`) | Atomic update of parent + aliquot creation |
-| **Add Tests** | Service method (`@Transactional`) | Bulk insert with duplicate detection |
-| **Search** | Service method (`@Transactional(readOnly=true)`) | Load hierarchy with JOIN FETCH, compile DTOs |
+| Operation          | Transaction Scope                                | Rationale                                    |
+| ------------------ | ------------------------------------------------ | -------------------------------------------- |
+| **Create Aliquot** | Service method (`@Transactional`)                | Atomic update of parent + aliquot creation   |
+| **Add Tests**      | Service method (`@Transactional`)                | Bulk insert with duplicate detection         |
+| **Search**         | Service method (`@Transactional(readOnly=true)`) | Load hierarchy with JOIN FETCH, compile DTOs |
 
 ---
 
 ## Summary
 
 ### Entities Modified
-- ✏️ **SampleItem**: Add 4 new fields (originalQuantity, remainingQuantity, parentSampleItem, childAliquots)
+
+- ✏️ **SampleItem**: Add 4 new fields (originalQuantity, remainingQuantity,
+  parentSampleItem, childAliquots)
 
 ### Entities Created
-- ✨ **SampleItemAliquotRelationship**: Track aliquot metadata (sequence, quantity transferred)
+
+- ✨ **SampleItemAliquotRelationship**: Track aliquot metadata (sequence,
+  quantity transferred)
 
 ### Database Changes
+
 - 3 new columns on `sample_item` table
 - 1 new table `sample_item_aliquot_relationship`
 - 2 foreign keys, 3 indexes, 1 unique constraint
 
 ### DTOs Created
-- 7 new DTOs for request/response (SampleItemDTO, CreateAliquotForm, AddTestsForm, etc.)
+
+- 7 new DTOs for request/response (SampleItemDTO, CreateAliquotForm,
+  AddTestsForm, etc.)
 
 ### FHIR Mapping Extended
+
 - Add `Specimen.parent` reference for aliquots
 - Add custom extension for `remainingQuantity`
 
 ### Concurrency Control
+
 - Optimistic locking via `@Version` (existing BaseObject field)
 - Retry logic with exponential backoff
 
 ---
 
-**Next Step**: Create API contracts in `contracts/` directory (OpenAPI 3.0 specifications)
+**Next Step**: Create API contracts in `contracts/` directory (OpenAPI 3.0
+specifications)

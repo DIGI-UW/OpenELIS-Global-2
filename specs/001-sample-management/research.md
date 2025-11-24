@@ -1,9 +1,8 @@
 # Research Document: Sample Management Menu
 
-**Feature**: Sample Management Menu
-**Branch**: `001-sample-management`
-**Date**: 2025-11-20
-**Purpose**: Phase 0 research to resolve technical unknowns and document existing patterns
+**Feature**: Sample Management Menu **Branch**: `001-sample-management`
+**Date**: 2025-11-20 **Purpose**: Phase 0 research to resolve technical unknowns
+and document existing patterns
 
 ---
 
@@ -11,14 +10,17 @@
 
 ### Current Structure
 
-**Entity File**: [`src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java`](../../src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java)
+**Entity File**:
+[`src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java`](../../src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java)
 
 **Key Findings**:
 
 #### Existing Fields
+
 - `String id` - Primary key
 - `UUID fhirUuid` - FHIR R4 integration (line 37)
-- **`Double quantity`** - ✅ **EXISTS** (line 35) - Single quantity field currently used
+- **`Double quantity`** - ✅ **EXISTS** (line 35) - Single quantity field
+  currently used
 - `String externalId` - External identifier (line 48)
 - `Timestamp collectionDate` - Collection timestamp (line 49)
 - `String statusId` - Status reference (line 50)
@@ -27,9 +29,12 @@
 - `ValueHolderInterface unitOfMeasure` - Quantity unit (line 46)
 
 #### Current Mapping Approach
-**Mapping File**: [`src/main/resources/hibernate/hbm/SampleItem.hbm.xml`](../../src/main/resources/hibernate/hbm/SampleItem.hbm.xml)
 
-**⚠️ LEGACY XML MAPPING** - Uses XML mapping file instead of annotations (lines 1-79)
+**Mapping File**:
+[`src/main/resources/hibernate/hbm/SampleItem.hbm.xml`](../../src/main/resources/hibernate/hbm/SampleItem.hbm.xml)
+
+**⚠️ LEGACY XML MAPPING** - Uses XML mapping file instead of annotations (lines
+1-79)
 
 ```xml
 <class name="org.openelisglobal.sampleitem.valueholder.SampleItem"
@@ -44,26 +49,36 @@
 
 ### Decision: Entity Modification Strategy
 
-**What was chosen**: Modify existing `SampleItem` entity with annotation-based mappings for new fields
+**What was chosen**: Modify existing `SampleItem` entity with annotation-based
+mappings for new fields
 
 **Rationale**:
-1. Constitution v1.3.0 mandates **JPA/Hibernate annotations** for new/modified entities
+
+1. Constitution v1.3.0 mandates **JPA/Hibernate annotations** for new/modified
+   entities
 2. Existing XML mapping remains for legacy fields (exempt until refactored)
-3. New fields use `@Column`, `@ManyToOne` annotations per modern Hibernate best practices
+3. New fields use `@Column`, `@ManyToOne` annotations per modern Hibernate best
+   practices
 4. Extends `BaseObject<String>` which provides `@Version` for optimistic locking
 
 **Alternatives considered**:
-- ❌ Create new `SampleItemAliquot` entity: Would duplicate fields and complicate queries
+
+- ❌ Create new `SampleItemAliquot` entity: Would duplicate fields and
+  complicate queries
 - ❌ Keep XML mapping for new fields: Violates constitution requirement
 - ✅ **Hybrid approach**: Legacy XML + new annotations for new fields only
 
 **Code references**:
-- [`SampleItem.java`](../../src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java) - Lines 29-260
-- [`SampleItem.hbm.xml`](../../src/main/resources/hibernate/hbm/SampleItem.hbm.xml) - Lines 55-57 (quantity field)
+
+- [`SampleItem.java`](../../src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java) -
+  Lines 29-260
+- [`SampleItem.hbm.xml`](../../src/main/resources/hibernate/hbm/SampleItem.hbm.xml) -
+  Lines 55-57 (quantity field)
 
 ### Required Modifications
 
 **Add to SampleItem.java**:
+
 ```java
 // New annotation-based fields (hybrid with XML mapping)
 @Column(name = "original_quantity", precision = 10, scale = 3)
@@ -94,45 +109,56 @@ public void setRemainingQuantity(Double remainingQuantity) {
 
 ### Current Test-Sample Relationship
 
-**Entity File**: [`src/main/java/org/openelisglobal/analysis/valueholder/Analysis.java`](../../src/main/java/org/openelisglobal/analysis/valueholder/Analysis.java)
+**Entity File**:
+[`src/main/java/org/openelisglobal/analysis/valueholder/Analysis.java`](../../src/main/java/org/openelisglobal/analysis/valueholder/Analysis.java)
 
 **Key Findings**:
+
 - ✅ **Analysis entity serves as TestOrder** - Links Test to SampleItem
 - Has `@ManyToOne` relationship to `SampleItem`
 - Has `@ManyToOne` relationship to `Test`
 - Includes `statusId` field for test lifecycle (ORDERED, IN_PROGRESS, COMPLETED)
 - Has `fhirUuid` for FHIR ServiceRequest mapping
 
-**Search Pattern**: `AnalysisService.getAnalysesBySampleItem(SampleItem)` retrieves tests for a sample
+**Search Pattern**: `AnalysisService.getAnalysesBySampleItem(SampleItem)`
+retrieves tests for a sample
 
 ### Decision: Use Existing Analysis Entity
 
-**What was chosen**: Use existing `Analysis` entity for test ordering (rename conceptually to "TestOrder" in documentation)
+**What was chosen**: Use existing `Analysis` entity for test ordering (rename
+conceptually to "TestOrder" in documentation)
 
 **Rationale**:
+
 1. Analysis already provides the exact functionality needed
 2. Avoids creating duplicate entity with same relationships
 3. Maintains consistency with existing codebase patterns
 4. FHIR mapping already established (Analysis → ServiceRequest)
 
 **Alternatives considered**:
+
 - ❌ Create new `TestOrder` entity: Would duplicate Analysis functionality
 - ❌ Create junction table manually: JPA handles this via Analysis entity
 - ✅ **Use Analysis entity with service layer abstraction**
 
 **Code references**:
-- [`Analysis.java`](../../src/main/java/org/openelisglobal/analysis/valueholder/Analysis.java) - Entity definition
-- [`AnalysisService.java`](../../src/main/java/org/openelisglobal/analysis/service/AnalysisService.java) - Service methods
+
+- [`Analysis.java`](../../src/main/java/org/openelisglobal/analysis/valueholder/Analysis.java) -
+  Entity definition
+- [`AnalysisService.java`](../../src/main/java/org/openelisglobal/analysis/service/AnalysisService.java) -
+  Service methods
 
 ### Duplicate Test Detection Pattern
 
 **Existing Logic**: Query by sampleItemId + testId combination
+
 ```java
 // AnalysisDAO pattern for duplicate detection
 Analysis getAnalysisBySampleItemAndTest(String sampleItemId, String testId);
 ```
 
 **Implementation for bulk add**:
+
 ```java
 // Service layer checks before insert
 List<Analysis> existing = analysisService.getAnalysesBySampleItem(sampleItem);
@@ -151,41 +177,54 @@ List<String> duplicates = testIds.stream()
 
 ### Current Search Pattern
 
-**DAO Interface**: [`src/main/java/org/openelisglobal/sample/dao/SampleDAO.java`](../../src/main/java/org/openelisglobal/sample/dao/SampleDAO.java)
+**DAO Interface**:
+[`src/main/java/org/openelisglobal/sample/dao/SampleDAO.java`](../../src/main/java/org/openelisglobal/sample/dao/SampleDAO.java)
 
 **Key Methods** (Lines 36-38):
+
 ```java
 void getSampleByAccessionNumber(Sample sample) throws LIMSRuntimeException;
 Sample getSampleByAccessionNumber(String accessionNumber) throws LIMSRuntimeException;
 ```
 
 **Search Flow**:
+
 1. User enters accession number
 2. `SampleDAO.getSampleByAccessionNumber(accessionNumber)` retrieves Sample
-3. `SampleItemService.getSampleItemsBySampleId(sampleId)` retrieves all SampleItems for that Sample
+3. `SampleItemService.getSampleItemsBySampleId(sampleId)` retrieves all
+   SampleItems for that Sample
 4. Display SampleItems with parent/child relationships
 
 ### Decision: Extend Existing Search with Hierarchy Support
 
-**What was chosen**: Use existing `getSampleByAccessionNumber` + add hierarchy queries
+**What was chosen**: Use existing `getSampleByAccessionNumber` + add hierarchy
+queries
 
 **Rationale**:
+
 1. Proven search implementation already exists
 2. Need to add recursive query for parent-child relationships
-3. Service layer compiles full hierarchy within transaction (per Constitution v1.4.0)
+3. Service layer compiles full hierarchy within transaction (per Constitution
+   v1.4.0)
 
 **Alternatives considered**:
+
 - ❌ Create new search endpoint: Duplicates existing functionality
-- ❌ Search SampleItem directly: Accession number belongs to Sample, not SampleItem
+- ❌ Search SampleItem directly: Accession number belongs to Sample, not
+  SampleItem
 - ✅ **Extend existing pattern with JOIN FETCH for hierarchy**
 
 **Code references**:
-- [`SampleDAO.java`](../../src/main/java/org/openelisglobal/sample/dao/SampleDAO.java) - Lines 36-38
-- [`SampleDAOImpl.java`](../../src/main/java/org/openelisglobal/sample/daoimpl/SampleDAOImpl.java) - Implementation
+
+- [`SampleDAO.java`](../../src/main/java/org/openelisglobal/sample/dao/SampleDAO.java) -
+  Lines 36-38
+- [`SampleDAOImpl.java`](../../src/main/java/org/openelisglobal/sample/daoimpl/SampleDAOImpl.java) -
+  Implementation
 
 ### Hierarchy Query Pattern
 
 **HQL with JOIN FETCH** (prevents LazyInitializationException):
+
 ```java
 // DAO method for loading full hierarchy
 SELECT DISTINCT si FROM SampleItem si
@@ -196,6 +235,7 @@ ORDER BY si.externalId
 ```
 
 **Service method compiles full tree**:
+
 ```java
 @Transactional(readOnly = true)
 public List<SampleItemDTO> searchByAccessionNumber(String accessionNumber) {
@@ -236,6 +276,7 @@ public List<SampleItemDTO> searchByAccessionNumber(String accessionNumber) {
 **Pattern**: Self-referential `@ManyToOne` / `@OneToMany` relationship
 
 **Best Practice** (from Hibernate documentation):
+
 ```java
 @Entity
 @Table(name = "sample_item")
@@ -252,22 +293,28 @@ public class SampleItem {
 ### Decision: Self-Referential Relationship + Separate Tracking Table
 
 **What was chosen**:
+
 1. `SampleItem.parentSampleItem` field for direct parent reference
-2. `SampleItemAliquotRelationship` table for metadata (sequence number, quantity transferred)
+2. `SampleItemAliquotRelationship` table for metadata (sequence number, quantity
+   transferred)
 
 **Rationale**:
+
 1. Self-referential FK enables efficient parent/child queries
 2. Separate tracking table stores aliquot-specific metadata (sequence, quantity)
 3. Enables recursive CTE queries for full lineage
 4. Follows storage location hierarchy pattern (see feature 001-sample-storage)
 
 **Alternatives considered**:
+
 - ❌ Closure table pattern: Overkill for tree structure
 - ❌ Materialized path (store "1.2.3" as string): Difficult to query efficiently
 - ✅ **Adjacency list (parent FK) + metadata table**
 
 **Code references from similar implementation**:
-- [`StoragePosition.java`](../../src/main/java/org/openelisglobal/storage/valueholder/StoragePosition.java) - Similar parent-child pattern
+
+- [`StoragePosition.java`](../../src/main/java/org/openelisglobal/storage/valueholder/StoragePosition.java) -
+  Similar parent-child pattern
 - Storage feature uses: Position → Rack → Shelf → Device → Room hierarchy
 
 ### External ID Generation Pattern
@@ -275,6 +322,7 @@ public class SampleItem {
 **Decision**: Append ".{sequence}" to parent's external ID
 
 **Algorithm**:
+
 ```java
 public String generateAliquotExternalId(SampleItem parent) {
     // Get max sequence number for this parent
@@ -288,6 +336,7 @@ public String generateAliquotExternalId(SampleItem parent) {
 ```
 
 **Examples**:
+
 - Parent: `SAMPLE001` → First aliquot: `SAMPLE001.1`
 - `SAMPLE001.1` → Nested aliquot: `SAMPLE001.1.1`
 - `SAMPLE001.1.1` → Deeper nesting: `SAMPLE001.1.1.1`
@@ -295,6 +344,7 @@ public String generateAliquotExternalId(SampleItem parent) {
 ### Efficient Hierarchical Queries
 
 **Recursive CTE for Full Lineage** (PostgreSQL):
+
 ```sql
 WITH RECURSIVE lineage AS (
     -- Anchor: start with specific sample
@@ -313,6 +363,7 @@ SELECT * FROM lineage ORDER BY level DESC;
 ```
 
 **HQL Alternative** (Hibernate):
+
 ```java
 // Load full tree with single query
 @Query("SELECT si FROM SampleItem si " +
@@ -328,9 +379,11 @@ List<SampleItem> getSampleItemsWithHierarchy(@Param("sampleId") String sampleId)
 
 ### Existing FHIR Transform Pattern
 
-**Transform Service**: [`FhirTransformServiceImpl.java`](../../src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java)
+**Transform Service**:
+[`FhirTransformServiceImpl.java`](../../src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java)
 
 **Specimen Transform Method** (Lines 1003-1024):
+
 ```java
 private Specimen transformToSpecimen(SampleItem sampleItem) {
     Specimen specimen = new Specimen();
@@ -361,6 +414,7 @@ private Specimen transformToSpecimen(SampleItem sampleItem) {
 ### Parent-Child Specimen Relationships
 
 **FHIR R4 Specimen.parent Field**:
+
 ```java
 // Add parent reference for aliquots
 if (sampleItem.getParentSampleItem() != null) {
@@ -372,6 +426,7 @@ if (sampleItem.getParentSampleItem() != null) {
 ```
 
 **Specimen Container Quantity**:
+
 ```java
 SpecimenContainerComponent container = new SpecimenContainerComponent();
 Quantity specimenQuantity = new Quantity();
@@ -385,6 +440,7 @@ specimen.setContainer(container);
 ### fhirUuid Generation Pattern
 
 **From BaseObject** (Constitution-compliant pattern):
+
 ```java
 @PrePersist
 protected void onCreate() {
@@ -399,6 +455,7 @@ public String getFhirUuidAsString() {
 ```
 
 **Lifecycle Hooks for FHIR Sync**:
+
 ```java
 @PostPersist
 protected void onPostPersist() {
@@ -413,22 +470,30 @@ protected void onPostUpdate() {
 
 ### Decision: Extend Existing Specimen Transform
 
-**What was chosen**: Extend `transformToSpecimen` to include parent reference and remaining quantity extension
+**What was chosen**: Extend `transformToSpecimen` to include parent reference
+and remaining quantity extension
 
 **Rationale**:
+
 1. Existing transform infrastructure handles SampleItem → Specimen
 2. Add `specimen.addParent()` for aliquots
 3. Add custom extension for `remainingQuantity` (not in base Specimen spec)
 4. Maintain existing FHIR persistence pattern
 
 **Alternatives considered**:
-- ❌ Create separate Specimen resource for aliquots: Violates FHIR hierarchy model
+
+- ❌ Create separate Specimen resource for aliquots: Violates FHIR hierarchy
+  model
 - ❌ Store relationship externally: FHIR Specimen.parent is designed for this
 - ✅ **Use Specimen.parent + custom extension for remainingQuantity**
 
 **Code references**:
-- [`FhirTransformServiceImpl.java`](../../src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java) - Lines 1003-1024
-- Storage feature FHIR mappings: [`StorageLocationFhirTransform.java`](../../src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java) - Lines 114-118 (partOf pattern)
+
+- [`FhirTransformServiceImpl.java`](../../src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java) -
+  Lines 1003-1024
+- Storage feature FHIR mappings:
+  [`StorageLocationFhirTransform.java`](../../src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java) -
+  Lines 114-118 (partOf pattern)
 
 ---
 
@@ -439,6 +504,7 @@ protected void onPostUpdate() {
 **Component**: `ComboBox` for type-ahead search
 
 **Example from codebase**:
+
 ```javascript
 // File: frontend/src/components/storage/StorageLocationSelector/QuickFindSearch.jsx
 import { ComboBox } from "@carbon/react";
@@ -451,7 +517,7 @@ const QuickFindSearch = ({ onLocationSelect, debounceMs = 300 }) => {
       id="quick-find-location-search"
       placeholder="Search for location..."
       items={searchResults}
-      itemToString={(item) => item ? item.hierarchicalPath : ""}
+      itemToString={(item) => (item ? item.hierarchicalPath : "")}
       onChange={({ selectedItem }) => onLocationSelect(selectedItem)}
       onInputChange={handleInputChange}
     />
@@ -464,13 +530,10 @@ const QuickFindSearch = ({ onLocationSelect, debounceMs = 300 }) => {
 **Component**: `DataTable` with selectable rows
 
 **Example from codebase**:
+
 ```javascript
 // File: frontend/src/components/admin/testManagementConfigMenu/PanelTestAssign.js
-import {
-  DataTable,
-  TableSelectRow,
-  TableSelectAll,
-} from "@carbon/react";
+import { DataTable, TableSelectRow, TableSelectAll } from "@carbon/react";
 
 <DataTable rows={panelTestList} headers={tableHeaders}>
   {({ rows, headers, getHeaderProps, getRowProps, selectedRows }) => (
@@ -497,7 +560,7 @@ import {
       </Table>
     </TableContainer>
   )}
-</DataTable>
+</DataTable>;
 ```
 
 ### Modal for Aliquot Creation
@@ -505,6 +568,7 @@ import {
 **Component**: `ComposedModal` for forms
 
 **Example from codebase**:
+
 ```javascript
 // File: frontend/src/components/storage/SampleStorage/LocationManagementModal.jsx
 import {
@@ -548,6 +612,7 @@ const AliquotModal = ({ open, onClose, onConfirm }) => {
 **Custom Component**: Tree view for hierarchical data
 
 **Example from codebase**:
+
 ```javascript
 // File: frontend/src/components/storage/StorageDashboard/LocationTreeView.jsx
 const renderNode = (node, nodeType, level = 0) => {
@@ -559,9 +624,7 @@ const renderNode = (node, nodeType, level = 0) => {
         <button onClick={() => toggleNode(node.id)}>
           {isExpanded ? <ChevronDown /> : <ChevronRight />}
         </button>
-        <button onClick={() => handleNodeClick(node)}>
-          {node.name}
-        </button>
+        <button onClick={() => handleNodeClick(node)}>{node.name}</button>
       </div>
       {isExpanded && (
         <ul className="tree-children">
@@ -576,23 +639,31 @@ const renderNode = (node, nodeType, level = 0) => {
 ### Decision: Carbon Components Selection
 
 **What was chosen**:
+
 1. **Search**: `ComboBox` with type-ahead for accession number search
 2. **Results Table**: `DataTable` with `TableSelectRow` for multi-select
 3. **Aliquot Form**: `ComposedModal` with `TextInput` for quantity entry
-4. **Hierarchy Display**: Custom tree view with Carbon icons (`ChevronRight`, `ChevronDown`)
+4. **Hierarchy Display**: Custom tree view with Carbon icons (`ChevronRight`,
+   `ChevronDown`)
 5. **Test Selection**: `MultiSelect` or `ComboBox` for test catalog
 
 **Rationale**:
+
 1. All components from `@carbon/react` v1.15 (matches constitution)
 2. Proven patterns from storage feature implementation
 3. Accessibility (WCAG 2.1 AA) built into Carbon components
 4. React Intl integration for all labels
 
 **Code references**:
-- [`QuickFindSearch.jsx`](../../frontend/src/components/storage/StorageLocationSelector/QuickFindSearch.jsx) - ComboBox pattern
-- [`PanelTestAssign.js`](../../frontend/src/components/admin/testManagementConfigMenu/PanelTestAssign.js) - DataTable with selection
-- [`LocationManagementModal.jsx`](../../frontend/src/components/storage/SampleStorage/LocationManagementModal.jsx) - Modal form pattern
-- [`LocationTreeView.jsx`](../../frontend/src/components/storage/StorageDashboard/LocationTreeView.jsx) - Tree hierarchy
+
+- [`QuickFindSearch.jsx`](../../frontend/src/components/storage/StorageLocationSelector/QuickFindSearch.jsx) -
+  ComboBox pattern
+- [`PanelTestAssign.js`](../../frontend/src/components/admin/testManagementConfigMenu/PanelTestAssign.js) -
+  DataTable with selection
+- [`LocationManagementModal.jsx`](../../frontend/src/components/storage/SampleStorage/LocationManagementModal.jsx) -
+  Modal form pattern
+- [`LocationTreeView.jsx`](../../frontend/src/components/storage/StorageDashboard/LocationTreeView.jsx) -
+  Tree hierarchy
 
 ---
 
@@ -600,9 +671,11 @@ const renderNode = (node, nodeType, level = 0) => {
 
 ### Optimistic Locking Implementation
 
-**BaseObject Pattern**: [`src/main/java/org/openelisglobal/common/valueholder/BaseObject.java`](../../src/main/java/org/openelisglobal/common/valueholder/BaseObject.java)
+**BaseObject Pattern**:
+[`src/main/java/org/openelisglobal/common/valueholder/BaseObject.java`](../../src/main/java/org/openelisglobal/common/valueholder/BaseObject.java)
 
 **Key Finding** (Lines 34-36):
+
 ```java
 @Column(name = "last_updated")
 @Version
@@ -610,6 +683,7 @@ private Timestamp lastupdated;
 ```
 
 **How Optimistic Locking Works**:
+
 1. `@Version` annotation enables Hibernate optimistic locking
 2. On update, Hibernate checks if `lastupdated` matches database value
 3. If mismatch detected → `OptimisticLockException` thrown
@@ -617,15 +691,18 @@ private Timestamp lastupdated;
 
 ### Decision: Use @Version for Aliquot Concurrency
 
-**What was chosen**: Leverage existing `BaseObject.lastupdated` field with `@Version` annotation
+**What was chosen**: Leverage existing `BaseObject.lastupdated` field with
+`@Version` annotation
 
 **Rationale**:
+
 1. SampleItem extends BaseObject → automatic optimistic locking
 2. Prevents lost updates when multiple users aliquot from same parent
 3. Transaction isolation + version checking prevents race conditions
 4. No additional configuration needed
 
 **Scenario**:
+
 ```
 Time  User A                          User B                          Database
 ----  ------------------------------  ------------------------------  -----------
@@ -641,6 +718,7 @@ T6    -                               COMMIT (FAIL)                   remaining=
 ```
 
 **Retry Logic Pattern**:
+
 ```java
 @Service
 public class SampleManagementServiceImpl {
@@ -680,28 +758,33 @@ public class SampleManagementServiceImpl {
 ```
 
 **Alternatives considered**:
-- ❌ Pessimistic locking (`SELECT FOR UPDATE`): Blocks concurrent reads, reduces throughput
+
+- ❌ Pessimistic locking (`SELECT FOR UPDATE`): Blocks concurrent reads, reduces
+  throughput
 - ❌ Application-level locking: Requires distributed lock manager
-- ✅ **Optimistic locking with retry**: Balance between concurrency and consistency
+- ✅ **Optimistic locking with retry**: Balance between concurrency and
+  consistency
 
 **Code references**:
-- [`BaseObject.java`](../../src/main/java/org/openelisglobal/common/valueholder/BaseObject.java) - Lines 34-36
+
+- [`BaseObject.java`](../../src/main/java/org/openelisglobal/common/valueholder/BaseObject.java) -
+  Lines 34-36
 - Storage feature uses same pattern for concurrent sample assignments
 
 ---
 
 ## Summary of Technical Decisions
 
-| Research Area | Decision | Rationale |
-|---------------|----------|-----------|
-| **SampleItem Entity** | Hybrid XML + annotations for new fields | Comply with constitution while preserving legacy mapping |
-| **Test Ordering** | Use existing Analysis entity | Avoid duplication, FHIR mapping exists |
-| **Accession Search** | Extend existing DAO with JOIN FETCH | Proven pattern, add hierarchy support |
-| **Nested Aliquoting** | Self-referential FK + metadata table | Efficient queries, follows storage pattern |
-| **External ID Generation** | Append ".{sequence}" to parent ID | Simple, human-readable, unlimited depth |
-| **FHIR Mapping** | Extend Specimen transform with parent reference | Standard FHIR pattern for aliquots |
-| **Carbon Components** | ComboBox, DataTable, ComposedModal, Tree | Proven from storage feature |
-| **Concurrency** | Optimistic locking (@Version) + retry | Built-in, high throughput, Constitution-compliant |
+| Research Area              | Decision                                        | Rationale                                                |
+| -------------------------- | ----------------------------------------------- | -------------------------------------------------------- |
+| **SampleItem Entity**      | Hybrid XML + annotations for new fields         | Comply with constitution while preserving legacy mapping |
+| **Test Ordering**          | Use existing Analysis entity                    | Avoid duplication, FHIR mapping exists                   |
+| **Accession Search**       | Extend existing DAO with JOIN FETCH             | Proven pattern, add hierarchy support                    |
+| **Nested Aliquoting**      | Self-referential FK + metadata table            | Efficient queries, follows storage pattern               |
+| **External ID Generation** | Append ".{sequence}" to parent ID               | Simple, human-readable, unlimited depth                  |
+| **FHIR Mapping**           | Extend Specimen transform with parent reference | Standard FHIR pattern for aliquots                       |
+| **Carbon Components**      | ComboBox, DataTable, ComposedModal, Tree        | Proven from storage feature                              |
+| **Concurrency**            | Optimistic locking (@Version) + retry           | Built-in, high throughput, Constitution-compliant        |
 
 ---
 
@@ -710,23 +793,28 @@ public class SampleManagementServiceImpl {
 ### Critical Paths for Phase 1 (Entities)
 
 1. **Modify SampleItem.java**:
+
    - Add `@Column` annotations for `originalQuantity`, `remainingQuantity`
    - Add `@ManyToOne` for `parentSampleItem`
    - Add `@OneToMany` for `childAliquots`
    - Keep existing XML mapping for legacy fields
 
 2. **Create SampleItemAliquotRelationship.java**:
+
    - Full annotation-based entity (no XML)
-   - Fields: `id`, `parentSampleItem`, `childSampleItem`, `sequenceNumber`, `quantityTransferred`, `fhirUuid`
+   - Fields: `id`, `parentSampleItem`, `childSampleItem`, `sequenceNumber`,
+     `quantityTransferred`, `fhirUuid`
    - Constraints: Unique on `(parentSampleItem, sequenceNumber)`
 
 3. **Liquibase Changeset**:
-   - Add columns: `original_quantity`, `remaining_quantity`, `parent_sample_item_id` to `sample_item`
+   - Add columns: `original_quantity`, `remaining_quantity`,
+     `parent_sample_item_id` to `sample_item`
    - Create table: `sample_item_aliquot_relationship`
 
 ### Critical Paths for Phase 2 (Services)
 
 1. **SampleManagementService.createAliquot()**:
+
    - Validate remaining quantity
    - Generate external ID with sequence
    - Update parent remaining quantity
@@ -735,6 +823,7 @@ public class SampleManagementServiceImpl {
    - Handle OptimisticLockException with retry
 
 2. **SampleManagementService.addTestsToSamples()**:
+
    - Check for existing tests (duplicate detection)
    - Create Analysis records for each sample/test combination
    - Return list of skipped duplicates
@@ -747,11 +836,13 @@ public class SampleManagementServiceImpl {
 ### Critical Paths for Phase 3 (Controllers)
 
 1. **SampleManagementRestController.search()**:
+
    - Accept `accessionNumber` query parameter
    - Call `SampleManagementService.searchByAccessionNumber()`
    - Return JSON with hierarchy included
 
 2. **SampleManagementRestController.createAliquot()**:
+
    - Accept `CreateAliquotForm` with `parentSampleItemId`, `quantityToTransfer`
    - Call `SampleManagementService.createAliquot()`
    - Return aliquot DTO + updated parent remaining quantity
@@ -764,11 +855,13 @@ public class SampleManagementServiceImpl {
 ### Critical Paths for Phase 4 (Frontend)
 
 1. **SampleSearch.js** (Carbon `ComboBox`):
+
    - Debounced search input
    - Display results in DataTable
    - Show parent-child hierarchy in expandable rows
 
 2. **AliquotForm.js** (Carbon `ComposedModal`):
+
    - Quantity input with validation (0 < qty <= remaining)
    - Display parent info (external ID, remaining quantity)
    - Preview generated aliquot external ID
@@ -780,4 +873,5 @@ public class SampleManagementServiceImpl {
 
 ---
 
-**Research Complete**: All technical unknowns resolved. Ready for Phase 1 (Data Model Design).
+**Research Complete**: All technical unknowns resolved. Ready for Phase 1 (Data
+Model Design).

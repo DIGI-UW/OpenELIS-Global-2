@@ -1,38 +1,61 @@
 # Implementation Plan: Sample Management Menu
 
-**Branch**: `001-sample-management` | **Date**: 2025-11-20 | **Spec**: [spec.md](spec.md)
-**Input**: Feature specification from `/specs/001-sample-management/spec.md`
+**Branch**: `001-sample-management` | **Date**: 2025-11-20 | **Spec**:
+[spec.md](spec.md) **Input**: Feature specification from
+`/specs/001-sample-management/spec.md`
 
 ## Summary
 
-This feature implements a comprehensive sample management menu that enables laboratory technicians to search for sample items, add tests (including bulk operations), and create aliquots with volume tracking. The system supports unlimited nested aliquoting with parent-child relationship tracking, preventing over-dispensing through validation of remaining quantities. Key capabilities include searching by accession number, adding multiple tests to single or multiple samples, creating aliquots with automatic external ID generation (SAMPLE001.1, SAMPLE001.1.1, etc.), and maintaining full lineage tracking. The technical approach follows OpenELIS Global 3.0 Constitution with 5-layer architecture, Carbon Design System UI, FHIR R4 compliance for external data integration, and comprehensive TDD workflow.
+This feature implements a comprehensive sample management menu that enables
+laboratory technicians to search for sample items, add tests (including bulk
+operations), and create aliquots with volume tracking. The system supports
+unlimited nested aliquoting with parent-child relationship tracking, preventing
+over-dispensing through validation of remaining quantities. Key capabilities
+include searching by accession number, adding multiple tests to single or
+multiple samples, creating aliquots with automatic external ID generation
+(SAMPLE001.1, SAMPLE001.1.1, etc.), and maintaining full lineage tracking. The
+technical approach follows OpenELIS Global 3.0 Constitution with 5-layer
+architecture, Carbon Design System UI, FHIR R4 compliance for external data
+integration, and comprehensive TDD workflow.
 
 ## Technical Context
 
-**Language/Version**: Java 21 LTS (OpenJDK/Temurin) - MANDATORY
-**Primary Dependencies**: Spring Boot 3.x, Hibernate 6.x, React 17, Carbon Design System v1.15
-**Storage**: PostgreSQL 14+ with Liquibase 4.8.0 for schema migrations
-**Testing**: JUnit 4 (4.13.1) + Mockito 2.21.0 (backend), Jest + React Testing Library (frontend), Cypress 12.17.3 (E2E)
-**Target Platform**: Web application (Docker + Docker Compose deployment, Ubuntu 20.04+ host)
-**Project Type**: Web (frontend + backend) - OpenELIS Global monorepo with separate frontend/ and backend/ structures
-**Performance Goals**: Search results in <2 seconds for 100K samples, test ordering <30 seconds for 5 tests, aliquot creation <1 second
-**Constraints**: <200ms p95 for API responses, transactional consistency for concurrent aliquoting operations, 3 decimal precision for quantities
-**Scale/Scope**: Support 100K+ sample items, unlimited aliquot hierarchy depth, 10+ concurrent users performing aliquoting operations
+**Language/Version**: Java 21 LTS (OpenJDK/Temurin) - MANDATORY **Primary
+Dependencies**: Spring Boot 3.x, Hibernate 6.x, React 17, Carbon Design System
+v1.15 **Storage**: PostgreSQL 14+ with Liquibase 4.8.0 for schema migrations
+**Testing**: JUnit 4 (4.13.1) + Mockito 2.21.0 (backend), Jest + React Testing
+Library (frontend), Cypress 12.17.3 (E2E) **Target Platform**: Web application
+(Docker + Docker Compose deployment, Ubuntu 20.04+ host) **Project Type**: Web
+(frontend + backend) - OpenELIS Global monorepo with separate frontend/ and
+backend/ structures **Performance Goals**: Search results in <2 seconds for 100K
+samples, test ordering <30 seconds for 5 tests, aliquot creation <1 second
+**Constraints**: <200ms p95 for API responses, transactional consistency for
+concurrent aliquoting operations, 3 decimal precision for quantities
+**Scale/Scope**: Support 100K+ sample items, unlimited aliquot hierarchy depth,
+10+ concurrent users performing aliquoting operations
 
 ## Constitution Check
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Verify compliance with [OpenELIS Global 3.0 Constitution](../../.specify/memory/constitution.md):
+Verify compliance with
+[OpenELIS Global 3.0 Constitution](../../.specify/memory/constitution.md):
 
 - [x] **Configuration-Driven**: No country-specific code branches planned
-- [x] **Carbon Design System**: UI uses @carbon/react exclusively (NO Bootstrap/Tailwind)
-- [x] **FHIR/IHE Compliance**: External data integrates via FHIR R4 + IHE profiles for SampleItem and aliquot relationships
-- [x] **Layered Architecture**: Backend follows 5-layer pattern (Valueholder→DAO→Service→Controller→Form)
-  - **Valueholders MUST use JPA/Hibernate annotations** (NO XML mapping files - legacy exempt until refactored)
-  - **Transaction management MUST be in service layer only** - NO `@Transactional` annotations on controller methods
-  - **Services compile all data within transaction** to prevent LazyInitializationException when loading hierarchies
-- [x] **Test Coverage**: Unit + ORM validation + integration + E2E tests planned (>80% backend, >70% frontend coverage goal per Constitution V)
+- [x] **Carbon Design System**: UI uses @carbon/react exclusively (NO
+      Bootstrap/Tailwind)
+- [x] **FHIR/IHE Compliance**: External data integrates via FHIR R4 + IHE
+      profiles for SampleItem and aliquot relationships
+- [x] **Layered Architecture**: Backend follows 5-layer pattern
+      (Valueholder→DAO→Service→Controller→Form)
+  - **Valueholders MUST use JPA/Hibernate annotations** (NO XML mapping files -
+    legacy exempt until refactored)
+  - **Transaction management MUST be in service layer only** - NO
+    `@Transactional` annotations on controller methods
+  - **Services compile all data within transaction** to prevent
+    LazyInitializationException when loading hierarchies
+- [x] **Test Coverage**: Unit + ORM validation + integration + E2E tests planned
+      (>80% backend, >70% frontend coverage goal per Constitution V)
   - E2E tests MUST follow Cypress best practices (Constitution V.5):
     - Run tests individually during development (not full suite)
     - Browser console logging enabled and reviewed after each run
@@ -41,24 +64,35 @@ Verify compliance with [OpenELIS Global 3.0 Constitution](../../.specify/memory/
     - Use data-testid selectors (PREFERRED)
     - Use cy.session() for login state (10-20x faster)
     - Use API-based test data setup (10x faster than UI)
-    - See [Testing Roadmap](.specify/guides/testing-roadmap.md#cypress-e2e-testing) for comprehensive Cypress guidance
-- [x] **Schema Management**: Database changes via Liquibase changesets only (add columns to sample_item table, create sample_item_aliquot_relationship table)
-- [x] **Internationalization**: All UI strings use React Intl (no hardcoded text)
-- [x] **Security & Compliance**: RBAC for sample management operations, audit trail (sys_user_id + lastupdated), input validation for quantities/IDs, optimistic concurrency control for aliquoting
+    - See
+      [Testing Roadmap](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
+      for comprehensive Cypress guidance
+- [x] **Schema Management**: Database changes via Liquibase changesets only (add
+      columns to sample_item table, create sample_item_aliquot_relationship
+      table)
+- [x] **Internationalization**: All UI strings use React Intl (no hardcoded
+      text)
+- [x] **Security & Compliance**: RBAC for sample management operations, audit
+      trail (sys_user_id + lastupdated), input validation for quantities/IDs,
+      optimistic concurrency control for aliquoting
 
-**Complexity Justification Required If**: N/A - All requirements align with constitution
+**Complexity Justification Required If**: N/A - All requirements align with
+constitution
 
 ## Testing Strategy
 
 **Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
 
-**MANDATORY**: Every plan MUST include a complete testing strategy that references the Testing Roadmap and documents test coverage goals, test types, data management, and checkpoint validations.
+**MANDATORY**: Every plan MUST include a complete testing strategy that
+references the Testing Roadmap and documents test coverage goals, test types,
+data management, and checkpoint validations.
 
 ### Coverage Goals
 
 - **Backend**: >80% code coverage (measured via JaCoCo)
 - **Frontend**: >70% code coverage (measured via Jest)
-- **Critical Paths**: 100% coverage (aliquot creation with volume validation, test ordering, search functionality)
+- **Critical Paths**: 100% coverage (aliquot creation with volume validation,
+  test ordering, search functionality)
 
 ### Test Types
 
@@ -66,60 +100,97 @@ Document which test types will be used for this feature:
 
 - [x] **Unit Tests**: Service layer business logic (JUnit 4 + Mockito)
   - Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`
-  - **Reference**: [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito) for detailed patterns
-  - **Reference**: [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md) for quick reference
+  - **Reference**:
+    [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
+    for detailed patterns
+  - **Reference**:
+    [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
+    for quick reference
   - **Coverage Goal**: >80% (measured via JaCoCo)
   - **SDD Checkpoint**: After Phase 2 (Services), all unit tests MUST pass
-  - **TDD Workflow**: Red-Green-Refactor cycle for complex logic (aliquot numbering, volume calculations, hierarchy traversal)
-  - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit tests (NOT `@SpringBootTest`)
+  - **TDD Workflow**: Red-Green-Refactor cycle for complex logic (aliquot
+    numbering, volume calculations, hierarchy traversal)
+  - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit
+    tests (NOT `@SpringBootTest`)
   - **Mocking**: Use `@Mock` (NOT `@MockBean`) for isolated unit tests
   - **Focus Areas**:
-    - SampleManagementService: aliquot creation, volume validation, nested hierarchy logic
+    - SampleManagementService: aliquot creation, volume validation, nested
+      hierarchy logic
     - SampleItemService: external ID generation with suffix (SAMPLE001.1.1.1)
     - TestOrderService: duplicate test detection, bulk test addition
 - [x] **DAO Tests**: Persistence layer testing (@DataJpaTest)
   - Template: `.specify/templates/testing/DataJpaTestDao.java.template`
-  - **Reference**: [Testing Roadmap - @DataJpaTest (DAO/Repository Layer)](.specify/guides/testing-roadmap.md#datajpatest-daorepository-layer) for detailed patterns
-  - **Reference**: [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md) for quick reference
-  - **Test Slicing**: Use `@DataJpaTest` for DAO testing (NOT `@SpringBootTest` - faster execution)
-  - **Test Data**: Use `TestEntityManager` (NOT JdbcTemplate) for test data setup
+  - **Reference**:
+    [Testing Roadmap - @DataJpaTest (DAO/Repository Layer)](.specify/guides/testing-roadmap.md#datajpatest-daorepository-layer)
+    for detailed patterns
+  - **Reference**:
+    [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
+    for quick reference
+  - **Test Slicing**: Use `@DataJpaTest` for DAO testing (NOT
+    `@SpringBootTest` - faster execution)
+  - **Test Data**: Use `TestEntityManager` (NOT JdbcTemplate) for test data
+    setup
   - **Transaction Management**: Automatic rollback (no manual cleanup needed)
   - **Focus Areas**:
-    - SampleItemDAO: query by accession number, parent-child relationship queries, recursive lineage queries
-    - SampleItemAliquotRelationshipDAO: parent-child mapping CRUD, sequence number tracking
+    - SampleItemDAO: query by accession number, parent-child relationship
+      queries, recursive lineage queries
+    - SampleItemAliquotRelationshipDAO: parent-child mapping CRUD, sequence
+      number tracking
     - TestOrderDAO: duplicate detection queries, bulk insert operations
 - [x] **Controller Tests**: REST API endpoints (@WebMvcTest)
   - Template: `.specify/templates/testing/WebMvcTestController.java.template`
-  - **Reference**: [Testing Roadmap - @WebMvcTest (Controller Layer)](.specify/guides/testing-roadmap.md#webmvctest-controller-layer) for detailed patterns
-  - **Reference**: [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md) for quick reference
-  - **Test Slicing**: Use `@WebMvcTest` for controller testing (NOT `@SpringBootTest` - faster execution)
+  - **Reference**:
+    [Testing Roadmap - @WebMvcTest (Controller Layer)](.specify/guides/testing-roadmap.md#webmvctest-controller-layer)
+    for detailed patterns
+  - **Reference**:
+    [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
+    for quick reference
+  - **Test Slicing**: Use `@WebMvcTest` for controller testing (NOT
+    `@SpringBootTest` - faster execution)
   - **Mocking**: Use `@MockBean` (NOT `@Mock`) for Spring context mocking
   - **HTTP Testing**: Use `MockMvc` for HTTP request/response testing
   - **Focus Areas**:
-    - SampleManagementRestController: search, add tests, create aliquot endpoints
+    - SampleManagementRestController: search, add tests, create aliquot
+      endpoints
     - Request validation, error handling, JSON serialization
 - [x] **ORM Validation Tests**: Entity mapping validation (Constitution V.4)
-  - **Reference**: [Testing Roadmap - ORM Validation Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4) for detailed patterns
+  - **Reference**:
+    [Testing Roadmap - ORM Validation Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
+    for detailed patterns
   - **SDD Checkpoint**: After Phase 1 (Entities), ORM validation tests MUST pass
-  - **Requirements**: MUST execute in <5 seconds, MUST NOT require database connection
+  - **Requirements**: MUST execute in <5 seconds, MUST NOT require database
+    connection
   - **Focus Areas**:
-    - SampleItem entity: verify annotations for originalQuantity, remainingQuantity, parentSampleItem
-    - SampleItemAliquotRelationship entity: verify JPA annotations, relationship mappings
+    - SampleItem entity: verify annotations for originalQuantity,
+      remainingQuantity, parentSampleItem
+    - SampleItemAliquotRelationship entity: verify JPA annotations, relationship
+      mappings
     - TestOrder entity: verify annotations and relationships to SampleItem
 - [x] **Integration Tests**: Full workflow testing (@SpringBootTest)
-  - **Reference**: [Testing Roadmap - @SpringBootTest (Full Integration)](.specify/guides/testing-roadmap.md#springboottest-full-integration) for detailed patterns
-  - **Reference**: [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md) for quick reference
-  - **Test Slicing**: Use `@SpringBootTest` only when full application context is required
-  - **Transaction Management**: Use `@Transactional` for automatic rollback (preferred)
+  - **Reference**:
+    [Testing Roadmap - @SpringBootTest (Full Integration)](.specify/guides/testing-roadmap.md#springboottest-full-integration)
+    for detailed patterns
+  - **Reference**:
+    [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
+    for quick reference
+  - **Test Slicing**: Use `@SpringBootTest` only when full application context
+    is required
+  - **Transaction Management**: Use `@Transactional` for automatic rollback
+    (preferred)
   - **SDD Checkpoint**: After Phase 3 (Controllers), integration tests MUST pass
   - **Focus Areas**:
-    - Complete aliquot creation workflow (search → create aliquot → verify parent/child state)
+    - Complete aliquot creation workflow (search → create aliquot → verify
+      parent/child state)
     - Bulk test ordering workflow
     - Concurrent aliquoting scenario with optimistic locking
-- [x] **Frontend Unit Tests**: React component logic (Jest + React Testing Library)
+- [x] **Frontend Unit Tests**: React component logic (Jest + React Testing
+      Library)
   - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
-  - **Reference**: [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) for detailed patterns
-  - **Reference**: [Jest Best Practices](.specify/guides/jest-best-practices.md) for quick reference
+  - **Reference**:
+    [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
+    for detailed patterns
+  - **Reference**: [Jest Best Practices](.specify/guides/jest-best-practices.md)
+    for quick reference
   - **Coverage Goal**: >70% (measured via Jest)
   - **SDD Checkpoint**: After Phase 4 (Frontend), all unit tests MUST pass
   - **TDD Workflow**: Red-Green-Refactor cycle for complex logic
@@ -129,10 +200,17 @@ Document which test types will be used for this feature:
     - TestSelector component: multi-select logic, duplicate detection
 - [x] **E2E Tests**: Critical user workflows (Cypress)
   - Template: `.specify/templates/testing/CypressE2E.cy.js.template`
-  - **Reference**: [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices) for functional requirements
-  - **Reference**: [Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing) for detailed patterns
-  - **Reference**: [Cypress Best Practices](.specify/guides/cypress-best-practices.md) for quick reference
-  - **Individual Test Execution**: Run tests individually during development (NOT full suite)
+  - **Reference**:
+    [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
+    for functional requirements
+  - **Reference**:
+    [Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
+    for detailed patterns
+  - **Reference**:
+    [Cypress Best Practices](.specify/guides/cypress-best-practices.md) for
+    quick reference
+  - **Individual Test Execution**: Run tests individually during development
+    (NOT full suite)
   - **Focus Areas**:
     - User Story P1: Search sample by accession number
     - User Story P1: Add multiple tests to sample
@@ -144,13 +222,17 @@ Document which test types will be used for this feature:
 Document how test data will be created and cleaned up:
 
 - **Backend**:
+
   - **Unit Tests (JUnit 4 + Mockito)**:
-    - [x] Use builders/factories for test data (SampleItemBuilder, TestOrderBuilder)
+    - [x] Use builders/factories for test data (SampleItemBuilder,
+          TestOrderBuilder)
     - [x] Use mock data builders/factories for reusable test data
-    - [x] Test edge cases (null quantities, zero remaining quantity, invalid parent references)
+    - [x] Test edge cases (null quantities, zero remaining quantity, invalid
+          parent references)
   - **DAO Tests (@DataJpaTest)**:
     - [x] Use `TestEntityManager` for test data setup (NOT JdbcTemplate)
-    - [x] Use builders/factories for test entities (create parent sample, create child aliquots)
+    - [x] Use builders/factories for test entities (create parent sample, create
+          child aliquots)
     - [x] Automatic transaction rollback (no manual cleanup needed)
   - **Controller Tests (@WebMvcTest)**:
     - [x] Use builders/factories for test data
@@ -159,17 +241,22 @@ Document how test data will be created and cleaned up:
     - [x] Use builders/factories for test data
     - [x] Use `@Transactional` for automatic rollback (preferred)
     - [x] Create hierarchical test data (parent → child → grandchild aliquots)
-    - [x] Use `@Sql` scripts for complex data setup (if needed for large hierarchies)
+    - [x] Use `@Sql` scripts for complex data setup (if needed for large
+          hierarchies)
 
 - **Frontend**:
   - **E2E Tests (Cypress)**:
-    - [x] Use API-based setup via `cy.request()` (NOT slow UI interactions) - 10x faster
+    - [x] Use API-based setup via `cy.request()` (NOT slow UI interactions) -
+          10x faster
     - [x] Use fixtures with `cy.intercept()` for consistent test data
     - [x] Use `cy.session()` for login state (10-20x faster than per-test login)
-    - [x] Create parent samples, aliquots, and test orders via API before test execution
-    - [x] Use custom Cypress commands for reusable setup/cleanup (`cy.createSample()`, `cy.createAliquot()`)
+    - [x] Create parent samples, aliquots, and test orders via API before test
+          execution
+    - [x] Use custom Cypress commands for reusable setup/cleanup
+          (`cy.createSample()`, `cy.createAliquot()`)
   - **Unit Tests (Jest)**:
-    - [x] Use mock data builders/factories (per Medium article - use generic cases)
+    - [x] Use mock data builders/factories (per Medium article - use generic
+          cases)
     - [x] Use `setupApiMocks()` helper for consistent API mocking
     - [x] Test edge cases (empty search results, validation errors)
     - [x] Use `renderWithIntl()` helper for consistent component rendering
@@ -178,16 +265,23 @@ Document how test data will be created and cleaned up:
 
 Document which tests must pass at each SDD phase checkpoint:
 
-- [x] **After Phase 1 (Entities)**: ORM validation tests must pass (SampleItem, SampleItemAliquotRelationship, TestOrder entities)
-- [x] **After Phase 2 (Services)**: Backend unit tests must pass (SampleManagementService, SampleItemService, TestOrderService)
-- [x] **After Phase 3 (Controllers)**: Integration tests must pass (full aliquot creation workflow, bulk test ordering)
-- [x] **After Phase 4 (Frontend)**: Frontend unit tests (Jest) AND E2E tests (Cypress) must pass (all 4 user stories)
+- [x] **After Phase 1 (Entities)**: ORM validation tests must pass (SampleItem,
+      SampleItemAliquotRelationship, TestOrder entities)
+- [x] **After Phase 2 (Services)**: Backend unit tests must pass
+      (SampleManagementService, SampleItemService, TestOrderService)
+- [x] **After Phase 3 (Controllers)**: Integration tests must pass (full aliquot
+      creation workflow, bulk test ordering)
+- [x] **After Phase 4 (Frontend)**: Frontend unit tests (Jest) AND E2E tests
+      (Cypress) must pass (all 4 user stories)
 
 ### TDD Workflow
 
-- [x] **TDD Mandatory**: Red-Green-Refactor cycle for complex logic (aliquot numbering, hierarchy traversal, volume calculations)
-- [x] **Test Tasks First**: Test tasks MUST appear before implementation tasks in tasks.md
-- [x] **Checkpoint Enforcement**: Tests must pass before proceeding to next phase
+- [x] **TDD Mandatory**: Red-Green-Refactor cycle for complex logic (aliquot
+      numbering, hierarchy traversal, volume calculations)
+- [x] **Test Tasks First**: Test tasks MUST appear before implementation tasks
+      in tasks.md
+- [x] **Checkpoint Enforcement**: Tests must pass before proceeding to next
+      phase
 
 ## Project Structure
 
@@ -277,7 +371,9 @@ frontend/cypress/
     └── sampleManagement.cy.js
 ```
 
-**Note**: Existing entities will be modified (SampleItem), new entities created (SampleItemAliquotRelationship, TestOrder if not exists), following 5-layer architecture pattern per constitution.
+**Note**: Existing entities will be modified (SampleItem), new entities created
+(SampleItemAliquotRelationship, TestOrder if not exists), following 5-layer
+architecture pattern per constitution.
 
 ## Complexity Tracking
 
@@ -289,41 +385,56 @@ No violations - all requirements align with constitution.
 
 ## Phase 0: Research & Discovery
 
-**Purpose**: Resolve all NEEDS CLARIFICATION items from Technical Context above by researching existing codebase patterns, best practices, and technical approaches.
+**Purpose**: Resolve all NEEDS CLARIFICATION items from Technical Context above
+by researching existing codebase patterns, best practices, and technical
+approaches.
 
 ### Research Tasks
 
 1. **Sample Item Entity Analysis**
-   - Research current SampleItem entity structure in `org.openelisglobal.sampleitem.valueholder.SampleItem`
+
+   - Research current SampleItem entity structure in
+     `org.openelisglobal.sampleitem.valueholder.SampleItem`
    - Identify existing quantity field (if any) and how it's currently used
    - Determine if parent-child relationship already exists or needs to be added
    - Document existing FHIR UUID usage pattern for external integration
 
 2. **Test Ordering System Analysis**
-   - Research how tests are currently ordered for samples (Analysis entity, Test entity)
-   - Identify if TestOrder entity exists or if Analysis entity serves this purpose
+
+   - Research how tests are currently ordered for samples (Analysis entity, Test
+     entity)
+   - Identify if TestOrder entity exists or if Analysis entity serves this
+     purpose
    - Determine duplicate test detection logic (if exists)
    - Document bulk test ordering patterns (if any exist in codebase)
 
 3. **Accession Number Search Pattern**
+
    - Research existing accession number search implementation
    - Identify service/DAO methods used for sample search
    - Document search UI patterns in existing React components
    - Determine if autocomplete exists for partial matches
 
 4. **Nested Aliquoting Technical Approach**
-   - Research best practices for recursive parent-child relationships in JPA/Hibernate
-   - Identify efficient query patterns for hierarchical data (JOIN FETCH, recursive CTEs)
-   - Document external ID generation patterns in existing codebase (sequence management)
+
+   - Research best practices for recursive parent-child relationships in
+     JPA/Hibernate
+   - Identify efficient query patterns for hierarchical data (JOIN FETCH,
+     recursive CTEs)
+   - Document external ID generation patterns in existing codebase (sequence
+     management)
    - Research optimistic locking patterns for concurrent aliquot operations
 
 5. **FHIR R4 Specimen Mapping**
+
    - Research FHIR R4 Specimen resource structure for aliquot relationships
    - Identify IHE Lab profile requirements for specimen hierarchies
-   - Document existing FhirTransformService patterns for entity-to-FHIR conversion
+   - Document existing FhirTransformService patterns for entity-to-FHIR
+     conversion
    - Determine parent-child specimen representation in FHIR
 
 6. **Carbon Design System Components**
+
    - Identify Carbon components for search interface (Search, DataTable)
    - Research multi-select patterns (MultiSelect, Dropdown)
    - Document modal patterns for aliquot creation form
@@ -338,6 +449,7 @@ No violations - all requirements align with constitution.
 ### Research Output Location
 
 `research.md` - Consolidated findings document with:
+
 - Decision: [what was chosen]
 - Rationale: [why chosen]
 - Alternatives considered: [what else evaluated]
@@ -355,18 +467,24 @@ No violations - all requirements align with constitution.
 
 #### Entity Modifications
 
-1. **SampleItem** (MODIFY existing entity in `org.openelisglobal.sampleitem.valueholder.SampleItem`)
+1. **SampleItem** (MODIFY existing entity in
+   `org.openelisglobal.sampleitem.valueholder.SampleItem`)
+
    - Add fields:
      - `Double originalQuantity` - Initial volume when sample created
      - `Double remainingQuantity` - Current available volume for aliquoting
-     - `@ManyToOne SampleItem parentSampleItem` - Parent reference for aliquots (nullable)
-     - `@OneToMany List<SampleItem> childAliquots` - Children references (lazy loaded)
+     - `@ManyToOne SampleItem parentSampleItem` - Parent reference for aliquots
+       (nullable)
+     - `@OneToMany List<SampleItem> childAliquots` - Children references (lazy
+       loaded)
    - Validation:
      - remainingQuantity <= originalQuantity
      - originalQuantity > 0
      - Decimal precision: 3 places (e.g., 0.333)
 
-2. **SampleItemAliquotRelationship** (NEW entity in `org.openelisglobal.samplemanagement.valueholder.SampleItemAliquotRelationship`)
+2. **SampleItemAliquotRelationship** (NEW entity in
+   `org.openelisglobal.samplemanagement.valueholder.SampleItemAliquotRelationship`)
+
    - Fields:
      - `String id` (PK, generated)
      - `@ManyToOne SampleItem parentSampleItem` (FK to sample_item)
@@ -393,7 +511,8 @@ No violations - all requirements align with constitution.
 
 #### Liquibase Changesets
 
-**Output**: `src/main/resources/liquibase/samplemanagement/001-sample-management-schema.xml`
+**Output**:
+`src/main/resources/liquibase/samplemanagement/001-sample-management-schema.xml`
 
 ```xml
 <changeSet id="sample-mgmt-001-add-quantity-columns" author="dev-team">
@@ -523,12 +642,14 @@ Response 400 (validation error):
 **Entities to FHIR Resources**:
 
 1. **SampleItem → Specimen**
+
    - Specimen.identifier = external ID (SAMPLE001.1)
    - Specimen.parent = parent Specimen reference
    - Specimen.container.specimenQuantity = originalQuantity
    - Custom extension for remainingQuantity
 
 2. **SampleItemAliquotRelationship → Specimen relationship**
+
    - Child Specimen.parent references parent Specimen
    - Provenance resource tracks aliquot creation event
 
@@ -539,6 +660,7 @@ Response 400 (validation error):
 ### Quickstart Guide
 
 **Output**: `quickstart.md` - Developer onboarding document with:
+
 - Local setup instructions
 - Database schema overview
 - API endpoint examples with curl commands
@@ -551,15 +673,19 @@ Response 400 (validation error):
 
 **Prerequisites**: Phase 1 complete (data-model.md, contracts/)
 
-**Note**: This phase generates the task breakdown using `/speckit.tasks` command. Tasks will follow TDD workflow with test-first approach and will be dependency-ordered per SDD methodology.
+**Note**: This phase generates the task breakdown using `/speckit.tasks`
+command. Tasks will follow TDD workflow with test-first approach and will be
+dependency-ordered per SDD methodology.
 
 **Expected Task Categories**:
+
 1. **Phase 1 Tasks**: Entity creation and ORM validation
 2. **Phase 2 Tasks**: DAO and Service layer with unit tests
 3. **Phase 3 Tasks**: Controllers and integration tests
 4. **Phase 4 Tasks**: Frontend components and E2E tests
 
-**Task File Location**: `tasks.md` (generated by `/speckit.tasks`, NOT by `/speckit.plan`)
+**Task File Location**: `tasks.md` (generated by `/speckit.tasks`, NOT by
+`/speckit.plan`)
 
 ---
 
@@ -567,6 +693,9 @@ Response 400 (validation error):
 
 1. ✅ **Completed**: Implementation plan created (this file)
 2. ⏭️ **Next**: Run `/speckit.plan` research phase to populate `research.md`
-   - After research complete, data model and contracts will be generated automatically
-   - Once Phase 1 artifacts exist, run `/speckit.tasks` to generate dependency-ordered task breakdown
-3. 🔄 **Then**: Execute `/speckit.implement` to begin TDD implementation workflow
+   - After research complete, data model and contracts will be generated
+     automatically
+   - Once Phase 1 artifacts exist, run `/speckit.tasks` to generate
+     dependency-ordered task breakdown
+3. 🔄 **Then**: Execute `/speckit.implement` to begin TDD implementation
+   workflow

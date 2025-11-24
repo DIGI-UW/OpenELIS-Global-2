@@ -1,8 +1,7 @@
 # Specification Quality Checklist: Sample Management Menu
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2025-11-20
-**Feature**: [spec.md](../spec.md)
+**Purpose**: Validate specification completeness and quality before proceeding
+to planning **Created**: 2025-11-20 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 
@@ -33,16 +32,20 @@
 
 ### Question 1: Nested Aliquoting ✅ RESOLVED
 
-**Context**: Edge case - "What happens when a user tries to aliquot from an aliquot (creating a grandchild sample)?"
+**Context**: Edge case - "What happens when a user tries to aliquot from an
+aliquot (creating a grandchild sample)?"
 
-**What we need to know**: Should the system allow creating aliquots from aliquots (nested/multi-level aliquoting)?
+**What we need to know**: Should the system allow creating aliquots from
+aliquots (nested/multi-level aliquoting)?
 
 **Resolution**: **Option A - Allow nested aliquoting (unlimited levels)**
 
 **Implications Applied**:
+
 - External IDs follow pattern SAMPLE001.1.1.1 for multi-level hierarchy
 - Added FR-019 through FR-025 to cover nested aliquoting requirements
-- Added acceptance scenarios for nested aliquoting (scenarios 7-8 in User Story 3)
+- Added acceptance scenarios for nested aliquoting (scenarios 7-8 in User
+  Story 3)
 - Edge cases updated with specific decisions on nested aliquoting behavior
 - System will support recursive queries for full lineage tracking
 - Each level tracks its own original/remaining quantity independently
