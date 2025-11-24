@@ -20,6 +20,59 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
+            Date fromDate, Date toDate) {
+
+        StringBuilder hql = new StringBuilder("select distinct nb from NoteBook nb ");
+        hql.append("left join nb.tags t where 1=1 ");
+
+        if (statuses != null && !statuses.isEmpty()) {
+            hql.append("and nb.status in (:statuses) ");
+        }
+
+        if (types != null && !types.isEmpty()) {
+            hql.append("and nb.type.id in (:types) ");
+        }
+
+        if (tags != null && !tags.isEmpty()) {
+            hql.append("and t in (:tags) ");
+        }
+
+        if (fromDate != null) {
+            hql.append("and nb.dateCreated >= :fromDate ");
+        }
+
+        if (toDate != null) {
+            hql.append("and nb.dateCreated <= :toDate ");
+        }
+
+        Query<NoteBook> query = entityManager.unwrap(Session.class).createQuery(hql.toString(), NoteBook.class);
+
+        if (statuses != null && !statuses.isEmpty()) {
+            query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        }
+
+        if (types != null && !types.isEmpty()) {
+            query.setParameterList("types", types);
+        }
+
+        if (tags != null && !tags.isEmpty()) {
+            query.setParameterList("tags", tags);
+        }
+
+        if (fromDate != null) {
+            query.setParameter("fromDate", fromDate);
+        }
+
+        if (toDate != null) {
+            query.setParameter("toDate", toDate);
+        }
+
+        return query.list();
+    }
+
+    @Override
     public List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
             Date fromDate, Date toDate, List<Integer> entryIds) {
 
@@ -31,7 +84,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
         }
 
         if (types != null && !types.isEmpty()) {
-            hql.append("and nb.type in (:types) ");
+            hql.append("and nb.type.id in (:types) ");
         }
 
         if (tags != null && !tags.isEmpty()) {

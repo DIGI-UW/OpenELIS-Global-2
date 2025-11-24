@@ -12,6 +12,9 @@ public interface NoteBookDAO extends BaseDAO<NoteBook, Integer> {
     List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
             Date fromDate, Date toDate, List<Integer> entryIds);
 
+    List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags, Date fromDate,
+            Date toDate);
+
     Long getCountWithStatus(List<NoteBookStatus> statuses);
 
     Long getCountWithStatusBetweenDates(List<NoteBookStatus> statuses, Timestamp from, Timestamp to);
