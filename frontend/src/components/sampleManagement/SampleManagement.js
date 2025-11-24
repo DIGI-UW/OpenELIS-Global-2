@@ -130,95 +130,101 @@ export default function SampleManagement() {
       </Grid>
 
       {/* Search Results Metadata */}
-      {searchResponse && searchResponse.sampleItems.length > 0 && (
-        <Grid fullWidth={true}>
-          <Column lg={16} md={8} sm={4}>
-            <div
-              style={{
-                marginTop: "1rem",
-                marginBottom: "1rem",
-                padding: "0.75rem",
-                backgroundColor: "#f4f4f4",
-                borderRadius: "4px",
-              }}
-            >
-              <strong>
-                <FormattedMessage id="sample.management.results.accessionNumber" />
-                :
-              </strong>{" "}
-              {searchResponse.accessionNumber}
-              <span style={{ marginLeft: "2rem" }}>
+      {searchResponse &&
+        searchResponse.sampleItems &&
+        searchResponse.sampleItems.length > 0 && (
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <div
+                style={{
+                  marginTop: "1rem",
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  backgroundColor: "#f4f4f4",
+                  borderRadius: "4px",
+                }}
+              >
                 <strong>
-                  <FormattedMessage id="sample.management.results.totalCount" />
+                  <FormattedMessage id="sample.management.results.accessionNumber" />
                   :
                 </strong>{" "}
-                {searchResponse.totalCount}{" "}
-                {searchResponse.totalCount === 1 ? (
-                  <FormattedMessage id="sample.management.results.item" />
-                ) : (
-                  <FormattedMessage id="sample.management.results.items" />
-                )}
-              </span>
-              {selectedSampleIds.length > 0 && (
+                {searchResponse.accessionNumber}
                 <span style={{ marginLeft: "2rem" }}>
                   <strong>
-                    <FormattedMessage id="sample.management.results.selected" />
+                    <FormattedMessage id="sample.management.results.totalCount" />
                     :
                   </strong>{" "}
-                  {selectedSampleIds.length}
+                  {searchResponse.totalCount}{" "}
+                  {searchResponse.totalCount === 1 ? (
+                    <FormattedMessage id="sample.management.results.item" />
+                  ) : (
+                    <FormattedMessage id="sample.management.results.items" />
+                  )}
                 </span>
-              )}
-            </div>
-          </Column>
-        </Grid>
-      )}
-
-      {/* Empty State (when search has been performed but no results) */}
-      {searchResponse && searchResponse.sampleItems.length === 0 && (
-        <Grid fullWidth={true}>
-          <Column lg={16} md={8} sm={4}>
-            <InlineNotification
-              kind="info"
-              title={intl.formatMessage({
-                id: "sample.management.noResults.title",
-              })}
-              subtitle={intl.formatMessage(
-                { id: "sample.management.noResults.subtitle" },
-                { accessionNumber: searchResponse.accessionNumber },
-              )}
-              hideCloseButton
-            />
-          </Column>
-        </Grid>
-      )}
-
-      {/* Results Table Section */}
-      {searchResponse && searchResponse.sampleItems.length > 0 && (
-        <>
-          <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
-              <Section>
-                <Heading>
-                  <FormattedMessage
-                    id="sample.management.results.title"
-                    defaultMessage="Sample Items"
-                  />
-                </Heading>
-              </Section>
+                {selectedSampleIds.length > 0 && (
+                  <span style={{ marginLeft: "2rem" }}>
+                    <strong>
+                      <FormattedMessage id="sample.management.results.selected" />
+                      :
+                    </strong>{" "}
+                    {selectedSampleIds.length}
+                  </span>
+                )}
+              </div>
             </Column>
           </Grid>
+        )}
 
+      {/* Empty State (when search has been performed but no results) */}
+      {searchResponse &&
+        searchResponse.sampleItems &&
+        searchResponse.sampleItems.length === 0 && (
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
-              <SampleResultsTable
-                sampleItems={searchResponse.sampleItems}
-                selectedRows={selectedSampleIds}
-                onSelectionChange={handleSelectionChange}
+              <InlineNotification
+                kind="info"
+                title={intl.formatMessage({
+                  id: "sample.management.noResults.title",
+                })}
+                subtitle={intl.formatMessage(
+                  { id: "sample.management.noResults.subtitle" },
+                  { accessionNumber: searchResponse.accessionNumber },
+                )}
+                hideCloseButton
               />
             </Column>
           </Grid>
-        </>
-      )}
+        )}
+
+      {/* Results Table Section */}
+      {searchResponse &&
+        searchResponse.sampleItems &&
+        searchResponse.sampleItems.length > 0 && (
+          <>
+            <Grid fullWidth={true}>
+              <Column lg={16} md={8} sm={4}>
+                <Section>
+                  <Heading>
+                    <FormattedMessage
+                      id="sample.management.results.title"
+                      defaultMessage="Sample Items"
+                    />
+                  </Heading>
+                </Section>
+              </Column>
+            </Grid>
+
+            <Grid fullWidth={true}>
+              <Column lg={16} md={8} sm={4}>
+                <SampleResultsTable
+                  sampleItems={searchResponse.sampleItems}
+                  selectedRows={selectedSampleIds}
+                  onSelectionChange={handleSelectionChange}
+                />
+              </Column>
+            </Grid>
+          </>
+        )}
 
       {/* Future: Action buttons for selected samples will go here */}
       {/* This will be implemented in Phase 4-6 for aliquoting and test management */}
