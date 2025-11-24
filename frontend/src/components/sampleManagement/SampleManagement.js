@@ -1,6 +1,13 @@
 import React, { useState } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import { InlineNotification, Breadcrumb, BreadcrumbItem } from "@carbon/react";
+import {
+  Grid,
+  Column,
+  Section,
+  Heading,
+  InlineNotification,
+} from "@carbon/react";
+import { FormattedMessage, useIntl } from "react-intl";
+import PageBreadCrumb from "../common/PageBreadCrumb";
 import SampleSearch from "./SampleSearch";
 import SampleResultsTable from "./SampleResultsTable";
 
@@ -19,8 +26,15 @@ import SampleResultsTable from "./SampleResultsTable";
  *
  * Related: Feature 001-sample-management, User Story 1, Task T035
  */
-function SampleManagement() {
+export default function SampleManagement() {
   const intl = useIntl();
+
+  // Breadcrumb navigation
+  const breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "banner.menu.generic.sample" },
+    { label: "banner.menu.sampleManagement" },
+  ];
 
   // Search results state
   const [searchResponse, setSearchResponse] = useState(null);
@@ -58,115 +72,156 @@ function SampleManagement() {
   };
 
   return (
-    <div className="sample-management-container">
+    <>
       {/* Breadcrumb Navigation */}
-      <Breadcrumb>
-        <BreadcrumbItem href="/">
-          <FormattedMessage id="home.label" />
-        </BreadcrumbItem>
-        <BreadcrumbItem isCurrentPage>
-          <FormattedMessage id="sample.management.breadcrumb.title" />
-        </BreadcrumbItem>
-      </Breadcrumb>
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
       {/* Page Header */}
-      <div style={{ marginTop: "1rem", marginBottom: "2rem" }}>
-        <h1>
-          <FormattedMessage id="sample.management.title" />
-        </h1>
-        <p style={{ color: "#6f6f6f", marginTop: "0.5rem" }}>
-          <FormattedMessage id="sample.management.description" />
-        </p>
-      </div>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Heading>
+              <FormattedMessage
+                id="sample.management.title"
+                defaultMessage="Sample Management"
+              />
+            </Heading>
+          </Section>
+        </Column>
+      </Grid>
 
       {/* Error Notification */}
       {searchError && (
-        <InlineNotification
-          kind="error"
-          title={intl.formatMessage({
-            id: "sample.management.error.title",
-          })}
-          subtitle={searchError.message}
-          onClose={handleDismissError}
-          style={{ marginBottom: "1rem" }}
-        />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({
+                id: "sample.management.error.title",
+              })}
+              subtitle={searchError.message}
+              onClose={handleDismissError}
+            />
+          </Column>
+        </Grid>
       )}
 
-      {/* Search Component */}
-      <div style={{ marginBottom: "2rem" }}>
-        <SampleSearch
-          onSearchResults={handleSearchResults}
-          includeTests={false}
-        />
-      </div>
+      {/* Search Section */}
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Heading>
+              <FormattedMessage
+                id="sample.management.search.title"
+                defaultMessage="Search Samples"
+              />
+            </Heading>
+          </Section>
+        </Column>
+      </Grid>
+
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <SampleSearch
+            onSearchResults={handleSearchResults}
+            includeTests={false}
+          />
+        </Column>
+      </Grid>
 
       {/* Search Results Metadata */}
       {searchResponse && searchResponse.sampleItems.length > 0 && (
-        <div
-          style={{
-            marginBottom: "1rem",
-            padding: "0.75rem",
-            backgroundColor: "#f4f4f4",
-            borderRadius: "4px",
-          }}
-        >
-          <strong>
-            <FormattedMessage id="sample.management.results.accessionNumber" />:
-          </strong>{" "}
-          {searchResponse.accessionNumber}
-          <span style={{ marginLeft: "2rem" }}>
-            <strong>
-              <FormattedMessage id="sample.management.results.totalCount" />:
-            </strong>{" "}
-            {searchResponse.totalCount}{" "}
-            {searchResponse.totalCount === 1 ? (
-              <FormattedMessage id="sample.management.results.item" />
-            ) : (
-              <FormattedMessage id="sample.management.results.items" />
-            )}
-          </span>
-          {selectedSampleIds.length > 0 && (
-            <span style={{ marginLeft: "2rem" }}>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <div
+              style={{
+                marginTop: "1rem",
+                marginBottom: "1rem",
+                padding: "0.75rem",
+                backgroundColor: "#f4f4f4",
+                borderRadius: "4px",
+              }}
+            >
               <strong>
-                <FormattedMessage id="sample.management.results.selected" />:
+                <FormattedMessage id="sample.management.results.accessionNumber" />
+                :
               </strong>{" "}
-              {selectedSampleIds.length}
-            </span>
-          )}
-        </div>
+              {searchResponse.accessionNumber}
+              <span style={{ marginLeft: "2rem" }}>
+                <strong>
+                  <FormattedMessage id="sample.management.results.totalCount" />
+                  :
+                </strong>{" "}
+                {searchResponse.totalCount}{" "}
+                {searchResponse.totalCount === 1 ? (
+                  <FormattedMessage id="sample.management.results.item" />
+                ) : (
+                  <FormattedMessage id="sample.management.results.items" />
+                )}
+              </span>
+              {selectedSampleIds.length > 0 && (
+                <span style={{ marginLeft: "2rem" }}>
+                  <strong>
+                    <FormattedMessage id="sample.management.results.selected" />
+                    :
+                  </strong>{" "}
+                  {selectedSampleIds.length}
+                </span>
+              )}
+            </div>
+          </Column>
+        </Grid>
       )}
 
       {/* Empty State (when search has been performed but no results) */}
       {searchResponse && searchResponse.sampleItems.length === 0 && (
-        <InlineNotification
-          kind="info"
-          title={intl.formatMessage({
-            id: "sample.management.noResults.title",
-          })}
-          subtitle={intl.formatMessage(
-            { id: "sample.management.noResults.subtitle" },
-            { accessionNumber: searchResponse.accessionNumber },
-          )}
-          hideCloseButton
-          style={{ marginBottom: "1rem" }}
-        />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <InlineNotification
+              kind="info"
+              title={intl.formatMessage({
+                id: "sample.management.noResults.title",
+              })}
+              subtitle={intl.formatMessage(
+                { id: "sample.management.noResults.subtitle" },
+                { accessionNumber: searchResponse.accessionNumber },
+              )}
+              hideCloseButton
+            />
+          </Column>
+        </Grid>
       )}
 
-      {/* Results Table */}
+      {/* Results Table Section */}
       {searchResponse && searchResponse.sampleItems.length > 0 && (
-        <div style={{ marginBottom: "2rem" }}>
-          <SampleResultsTable
-            sampleItems={searchResponse.sampleItems}
-            selectedRows={selectedSampleIds}
-            onSelectionChange={handleSelectionChange}
-          />
-        </div>
+        <>
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <Heading>
+                  <FormattedMessage
+                    id="sample.management.results.title"
+                    defaultMessage="Sample Items"
+                  />
+                </Heading>
+              </Section>
+            </Column>
+          </Grid>
+
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <SampleResultsTable
+                sampleItems={searchResponse.sampleItems}
+                selectedRows={selectedSampleIds}
+                onSelectionChange={handleSelectionChange}
+              />
+            </Column>
+          </Grid>
+        </>
       )}
 
       {/* Future: Action buttons for selected samples will go here */}
       {/* This will be implemented in Phase 4-6 for aliquoting and test management */}
-    </div>
+    </>
   );
 }
-
-export default injectIntl(SampleManagement);
