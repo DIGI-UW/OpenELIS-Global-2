@@ -84,7 +84,7 @@
         <many-to-one name="parentSampleItem"
             class="org.openelisglobal.sampleitem.valueholder.SampleItem"
             fetch="select" lazy="proxy">
-            <column name="parent_sample_item_id" precision="10" scale="0" />
+            <column name="parent_sample_item_id" />
         </many-to-one>
 
         <bag name="childAliquots" lazy="true" inverse="true" cascade="none">
