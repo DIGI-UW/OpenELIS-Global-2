@@ -50,6 +50,7 @@ import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
+import SampleManagement from "./components/sampleManagement/SampleManagement";
 
 export default function App() {
   let i18nConfig = {
@@ -455,6 +456,12 @@ export default function App() {
                   path="/Storage/:tab"
                   component={() => <StorageDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleManagement"
+                  exact
+                  component={() => <SampleManagement />}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/PatientHistory"
