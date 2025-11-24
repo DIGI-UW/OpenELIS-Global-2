@@ -11,10 +11,14 @@ how to deploy, installation of software, setup of a bulid server, etc)
 
 ## Configuration
 
-- **[Configuration Documentation](configuration/README.md)** - Detailed guides for configuring OpenELIS domains
-  - [Roles Configuration](configuration/roles-configuration.md) - User role management
-  - [Dictionaries Configuration](configuration/dictionaries-configuration.md) - Dictionary entries for dropdowns
-  - [Questionnaires Configuration](configuration/questionnaires-configuration.md) - FHIR questionnaires for data collection
+- **[Configuration Documentation](configuration/README.md)** - Detailed guides
+  for configuring OpenELIS domains
+  - [Roles Configuration](configuration/roles-configuration.md) - User role
+    management
+  - [Dictionaries Configuration](configuration/dictionaries-configuration.md) -
+    Dictionary entries for dropdowns
+  - [Questionnaires Configuration](configuration/questionnaires-configuration.md) -
+    FHIR questionnaires for data collection
 
 ## For Developers
 
