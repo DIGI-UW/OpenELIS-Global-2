@@ -208,17 +208,59 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         DictionaryCategory category = dictionaryCategoryService.getDictionaryCategoryByName(categoryName);
 
         if (category == null) {
-            // Create new category if it doesn't exist
-            category = new DictionaryCategory();
-            category.setCategoryName(categoryName);
-            category.setDescription("Auto-created from configuration file");
-            String categoryId = dictionaryCategoryService.insert(category);
-            category = dictionaryCategoryService.get(categoryId);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "getOrCreateCategory",
-                    "Created new dictionary category: " + categoryName);
+            // Generate unique abbreviation and try to create category
+            category = tryCreateCategoryWithUniqueAbbreviation(categoryName);
         }
 
         return category;
+    }
+
+    private DictionaryCategory tryCreateCategoryWithUniqueAbbreviation(String categoryName) {
+        // Generate base abbreviation from category name (first 3-5 chars, uppercase)
+        String baseAbbreviation = categoryName.replaceAll("\\s+", "").toUpperCase();
+        if (baseAbbreviation.length() > 5) {
+            baseAbbreviation = baseAbbreviation.substring(0, 5);
+        }
+
+        String abbreviation = baseAbbreviation;
+        int suffix = 1;
+
+        // Keep trying to create the category with different abbreviations until successful
+        while (suffix <= 99) {
+            try {
+                DictionaryCategory category = new DictionaryCategory();
+                category.setCategoryName(categoryName);
+                // Use category name as description to avoid duplicate description conflicts
+                category.setDescription(categoryName);
+                category.setLocalAbbreviation(abbreviation);
+
+                String categoryId = dictionaryCategoryService.insert(category);
+                category = dictionaryCategoryService.get(categoryId);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "tryCreateCategoryWithUniqueAbbreviation",
+                        "Created new dictionary category: " + categoryName + " with abbreviation: " + abbreviation);
+                return category;
+
+            } catch (org.openelisglobal.common.exception.LIMSDuplicateRecordException e) {
+                // Duplicate found, try with a suffix
+                LogEvent.logDebug(this.getClass().getSimpleName(), "tryCreateCategoryWithUniqueAbbreviation",
+                        "Abbreviation " + abbreviation + " already exists, trying with suffix " + suffix);
+
+                // Truncate base to make room for suffix
+                int maxBaseLength = 5 - String.valueOf(suffix).length();
+                if (maxBaseLength < 1) {
+                    maxBaseLength = 1;
+                }
+                String truncatedBase = baseAbbreviation.length() > maxBaseLength
+                        ? baseAbbreviation.substring(0, maxBaseLength)
+                        : baseAbbreviation;
+                abbreviation = truncatedBase + suffix;
+                suffix++;
+            }
+        }
+
+        // If we exhausted all attempts, throw an exception
+        throw new IllegalStateException(
+                "Could not create dictionary category '" + categoryName + "' - exhausted all abbreviation attempts");
     }
 
     private void updateDictionaryFromCsv(Dictionary dictionary, String[] values, DictionaryCategory category,
