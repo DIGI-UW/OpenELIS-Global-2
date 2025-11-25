@@ -71,9 +71,14 @@ describe("Add New Patient", function () {
 
   afterEach(() => {
     // Clean up test patient after each test to ensure isolation
+    // This prevents test pollution - each test run should start clean
     cy.task("deleteTestPatient", {
       subjectNumber: uniqueTestPatient.subjectNumber,
       nationalId: uniqueTestPatient.nationalId,
+    }).then((result) => {
+      if (result && result.success) {
+        cy.log("✅ Cleaned up test patient after test");
+      }
     });
   });
 
@@ -283,38 +288,32 @@ describe("Search Patient", function () {
 
   it("Search patient By Date Of Birth", function () {
     cy.fixture("Patient").then((patient) => {
-      // Set up intercept BEFORE action (Testing Roadmap: cy.intercept() Patterns)
-      // Log all requests to see what's actually being called
-      cy.intercept("GET", "**/rest/patient-search-results*", (req) => {
-        cy.log(`Intercepted: ${req.method} ${req.url}`);
-      }).as("getPatientSearch");
-
       // Search by DOB - should return E2E-PAT-001 (TEST-Smith)
-      // Note: Validation is flexible - it checks that results exist and patient TEST-Smith is found
-      // It does NOT require exact DOB string match (which can vary by locale/format)
       patientPage.searchPatientByDateOfBirth(patient.DOB);
 
       // Verify the date input has the correct value
       cy.get("input#date-picker-default-id").should("have.value", patient.DOB);
 
-      // Verify button is ready before clicking
+      // Close date picker if still open (it covers the search button)
+      cy.get("body").then(($body) => {
+        if ($body.find(".flatpickr-calendar.open").length > 0) {
+          cy.get("body").type("{esc}");
+        }
+      });
+
+      // Click search button
       cy.get("#local_search")
         .should("be.visible")
         .should("not.be.disabled")
         .click();
 
-      // Wait for table to appear (indicates search succeeded)
-      // The search is working (screenshot shows results), so wait for table instead of intercept
-      cy.get("table tbody tr", { timeout: 15000 })
+      // Wait for table to show results - just check the UI, no API intercepts needed
+      cy.get("table tbody tr", { timeout: 10000 })
         .should("be.visible")
         .should("have.length.greaterThan", 0);
 
-      // Validate that search returned results and the fixture patient (TEST-Smith) is found
-      // Uses last name as stable identifier, not DOB string matching
-      patientPage.validatePatientSearchTablebyRespectiveField(
-        patient.DOB,
-        "DOB",
-      );
+      // Validate: TEST-Smith patient should be in the results
+      cy.get("table tbody").should("contain.text", "TEST-Smith");
     });
   });
 

@@ -8,7 +8,11 @@ const PROJECT_ROOT = path.resolve(__dirname, "..");
 module.exports = defineConfig({
   defaultCommandTimeout: 4000, // Standard timeout (4s) - Cypress retry-ability handles most cases. Only backend API calls should take longer.
   viewportWidth: 1920,
-  viewportHeight: 1080,
+  viewportHeight: 1300,
+  screenshotOnRunFailure: true,
+  screenshot: {
+    capture: "fullPage",
+  },
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)

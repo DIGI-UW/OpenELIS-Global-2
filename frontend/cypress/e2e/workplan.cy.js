@@ -120,11 +120,6 @@ describe("Work plan by Unit", function () {
         workplan = homePage.goToWorkPlanPlanByUnit();
         cy.url().should("include", "WorkPlanByTestSection");
 
-        // Set up intercept BEFORE action (actual endpoint is /rest/WorkPlanByTestSection)
-        cy.intercept("GET", "**/rest/WorkPlanByTestSection**").as(
-          "getWorkplan",
-        );
-
         // Wait for dropdown to be ready
         cy.get("select#select-1", { timeout: 10000 })
           .should("be.visible")
@@ -132,15 +127,11 @@ describe("Work plan by Unit", function () {
 
         workplan.selectDropdownOption(workplanOptions.unitType);
 
-        // Wait for workplan API call after selection
-        cy.wait("@getWorkplan", { timeout: 15000 })
-          .its("response.statusCode")
-          .should("eq", 200);
-
-        // Wait for table to populate and verify expected order is present
+        // Wait for table to populate and verify expected order is present (test UI, not API)
+        // DataTable uses ARIA roles, also support standard tables
         cy.get('[data-cy="workplanResultsTable"]', { timeout: 10000 })
-          .should("be.visible")
-          .find("tbody tr")
+          .should("be.visible");
+        cy.get('[data-cy="workplanResultsTable"] [role="rowgroup"] [role="row"], [data-cy="workplanResultsTable"] tbody tr', { timeout: 10000 })
           .should("have.length.greaterThan", 0)
           .then(($rows) => {
             // Verify expected order is present

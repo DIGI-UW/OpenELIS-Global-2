@@ -592,6 +592,10 @@ const Index = () => {
     if ("questionnaire" in orderFormValues.sampleOrderItems) {
       delete orderFormValues.sampleOrderItems.questionnaire;
     }
+    // Remove photo field from patientProperties (backend doesn't accept it)
+    if ("photo" in orderFormValues.patientProperties) {
+      delete orderFormValues.patientProperties.photo;
+    }
     //remove display Lists rom the form
     orderFormValues.sampleOrderItems.priorityList = [];
     orderFormValues.sampleOrderItems.programList = [];

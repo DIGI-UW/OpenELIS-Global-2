@@ -150,7 +150,6 @@ const AddOrder = (props) => {
     });
   }
   function handleChange(path) {
-    console.log([path]);
     setChanged({
       ...changed,
       [path]: true,

@@ -42,7 +42,23 @@ BEGIN
 END $$;
 
 -- Clean up existing test data (if any)
--- Clean up E2E test data (patients, samples, sample items, assignments, analyses, results)
+-- Clean up E2E test data (patients, samples, sample items, assignments, analyses, results, referrals)
+DELETE FROM referral_result WHERE referral_id IN (
+  SELECT id FROM referral WHERE analysis_id IN (
+    SELECT id FROM analysis WHERE sampitem_id IN (
+      SELECT id FROM sample_item WHERE samp_id IN (
+        SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+      )
+    )
+  )
+);
+DELETE FROM referral WHERE analysis_id IN (
+  SELECT id FROM analysis WHERE sampitem_id IN (
+    SELECT id FROM sample_item WHERE samp_id IN (
+      SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+    )
+  )
+);
 DELETE FROM result WHERE analysis_id IN (
   SELECT id FROM analysis WHERE sampitem_id IN (
     SELECT id FROM sample_item WHERE samp_id IN (
@@ -93,14 +109,8 @@ DELETE FROM person WHERE id IN (
 -- Add referring clinic organizations for order entry tests
 -- These organizations appear in the siteName autocomplete dropdown
 
--- Ensure "referring clinic" organization type exists
-INSERT INTO organization_type (id, short_name, description, name_display_key, lastupdated)
-VALUES (100, 'referring clinic', 'Referring Clinic Organization', 'referring clinic', CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO UPDATE SET
-  short_name = EXCLUDED.short_name,
-  description = EXCLUDED.description,
-  name_display_key = EXCLUDED.name_display_key,
-  lastupdated = CURRENT_TIMESTAMP;
+-- Use existing "referring clinic" organization type (ID 5)
+-- No need to create a duplicate - the standard type already exists
 
 -- Add CAMES MAN organization (used in dashboard E2E tests)
 -- Set short_name to NULL so it displays as just "CAMES MAN" (not " - CAMES MAN")
@@ -112,9 +122,9 @@ ON CONFLICT (id) DO UPDATE SET
   is_active = EXCLUDED.is_active,
   lastupdated = CURRENT_TIMESTAMP;
 
--- Link CAMES MAN to referring clinic type
+-- Link CAMES MAN to referring clinic type (ID 5 is the standard type)
 INSERT INTO organization_organization_type (org_id, org_type_id)
-VALUES (1000, 100)
+VALUES (1000, 5)
 ON CONFLICT (org_id, org_type_id) DO NOTHING;
 
 -- Add Optimus provider (used for requester in dashboard E2E tests)
@@ -159,11 +169,7 @@ INSERT INTO person (id, last_name, first_name, middle_name, city, state, zip_cod
 (1001, 'TEST-Jones', 'Jane', 'Test', 'Test City', 'Test State', '12345', 'USA',
  '555-0201', '555-0202', '555-0203', '555-0201', 'jane.test@test.com', CURRENT_TIMESTAMP),
 (1002, 'TEST-Williams', 'Bob', 'Test', 'Test City', 'Test State', '12345', 'USA',
- '555-0301', '555-0302', '555-0303', '555-0301', 'bob.test@test.com', CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO UPDATE SET
-  last_name = EXCLUDED.last_name,
-  first_name = EXCLUDED.first_name,
-  lastupdated = CURRENT_TIMESTAMP;
+ '555-0301', '555-0302', '555-0303', '555-0301', 'bob.test@test.com', CURRENT_TIMESTAMP);
 
 -- Insert test patients
 -- Note: entered_birth_date must be in MM/DD/YYYY format for OpenELIS
@@ -174,14 +180,23 @@ INSERT INTO patient (id, person_id, race, gender, birth_date, birth_time, nation
 (1001, 1001, 'white', 'F', '1985-05-20'::timestamp, '1985-05-20 14:30:00'::timestamp, 'E2E-PAT-002',
  'U', 'E2E-PAT-002', '05/20/1985', CURRENT_TIMESTAMP),
 (1002, 1002, 'asian', 'M', '1992-11-10'::timestamp, '1992-11-10 09:15:00'::timestamp, 'E2E-PAT-003',
- 'U', 'E2E-PAT-003', '11/10/1992', CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO UPDATE SET
-  person_id = EXCLUDED.person_id,
-  external_id = EXCLUDED.external_id,
-  birth_date = EXCLUDED.birth_date,
-  birth_time = EXCLUDED.birth_time,
-  entered_birth_date = EXCLUDED.entered_birth_date,
-  lastupdated = CURRENT_TIMESTAMP;
+ 'U', 'E2E-PAT-003', '11/10/1992', CURRENT_TIMESTAMP);
+
+-- Insert patient_identity records for test patients
+-- Patient 1000 (John TEST-Smith): SUBJECT and NATIONAL identities
+INSERT INTO patient_identity (id, identity_type_id, patient_id, identity_data, lastupdated) VALUES
+(1000, 9, 1000, '001202782410', CURRENT_TIMESTAMP),  -- SUBJECT identity
+(1001, 1, 1000, 'E2E-PAT-001', CURRENT_TIMESTAMP);   -- NATIONAL identity
+
+-- Patient 1001 (Jane TEST-Jones): SUBJECT and NATIONAL identities  
+INSERT INTO patient_identity (id, identity_type_id, patient_id, identity_data, lastupdated) VALUES
+(1002, 9, 1001, '001202782411', CURRENT_TIMESTAMP),  -- SUBJECT identity
+(1003, 1, 1001, 'E2E-PAT-002', CURRENT_TIMESTAMP);    -- NATIONAL identity
+
+-- Patient 1002 (Bob TEST-Williams): SUBJECT and NATIONAL identities
+INSERT INTO patient_identity (id, identity_type_id, patient_id, identity_data, lastupdated) VALUES
+(1004, 9, 1002, '001202782412', CURRENT_TIMESTAMP),  -- SUBJECT identity
+(1005, 1, 1002, 'E2E-PAT-003', CURRENT_TIMESTAMP);    -- NATIONAL identity
 
 -- Get sample type IDs (using first available if specific types not found)
 DO $$
@@ -198,6 +213,13 @@ DECLARE
   tech_accept_status_id INTEGER;
   canceled_status_id INTEGER;
   test_result_id_val INTEGER;
+  -- Variables for referral creation
+  referral_reason_id_val INTEGER;
+  referral_type_id_val INTEGER;
+  referral_org_id INTEGER := 1000; -- CAMES MAN (referring clinic)
+  referral_result_id_val INTEGER;
+  -- Variable for sample status (for Search by Sample status test)
+  sample_status_tests_run_id INTEGER;
 BEGIN
   -- Try to get sample types (adjust these based on your actual data)
   SELECT id INTO serum_type_id FROM type_of_sample WHERE description = 'Serum' LIMIT 1;
@@ -215,13 +237,13 @@ BEGIN
     SELECT id INTO blood_type_id FROM type_of_sample ORDER BY id LIMIT 1 OFFSET 2;
   END IF;
 
-  -- Get status ID once (validated in dependency check above)
-  -- Try SAMPLE type first, then EXTERNAL_ORDER (database may have either)
-  SELECT id INTO status_id_val FROM status_of_sample WHERE name = 'Entered' AND status_type = 'SAMPLE' LIMIT 1;
+  -- Get status ID for ORDER type "Test Entered" (required for LogbookResults - OrderStatus.Entered maps to this)
+  -- LogbookResults filters by OrderStatus.Entered which maps to "Test Entered" (ORDER type), not "Entered" (EXTERNAL_ORDER)
+  SELECT id INTO status_id_val FROM status_of_sample WHERE name = 'Test Entered' AND status_type = 'ORDER' LIMIT 1;
   
-  -- Fallback to EXTERNAL_ORDER if SAMPLE not found
+  -- Fallback to SAMPLE type if ORDER not found
   IF status_id_val IS NULL THEN
-    SELECT id INTO status_id_val FROM status_of_sample WHERE name = 'Entered' AND status_type = 'EXTERNAL_ORDER' LIMIT 1;
+    SELECT id INTO status_id_val FROM status_of_sample WHERE name = 'Entered' AND status_type = 'SAMPLE' LIMIT 1;
   END IF;
   
   -- Final fallback: try SampleEntered
@@ -230,7 +252,7 @@ BEGIN
   END IF;
   
   IF status_id_val IS NULL THEN
-    RAISE EXCEPTION 'Status "Entered" (SAMPLE or EXTERNAL_ORDER type) or "SampleEntered" (SAMPLE type) not found. This should have been caught by dependency validation.';
+    RAISE EXCEPTION 'Status "Test Entered" (ORDER type) or "Entered" (SAMPLE type) or "SampleEntered" (SAMPLE type) not found. This should have been caught by dependency validation.';
   END IF;
 
   -- Insert test samples with storage assignments
@@ -240,12 +262,7 @@ BEGIN
                        received_date, lastupdated, is_confirmation)
   VALUES 
   (1000, 'E2E001', gen_random_uuid(), 'H', status_id_val,
-   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
-  ON CONFLICT (id) DO UPDATE SET
-    accession_number = EXCLUDED.accession_number,
-    entered_date = EXCLUDED.entered_date,
-    received_date = EXCLUDED.received_date,
-    lastupdated = CURRENT_TIMESTAMP;
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false);
 
   -- Sample 1 SampleItems: Multiple items for this sample (blood tube + serum aliquot)
   -- Use fixed collection_date = 30/04/2025 to match test search criteria
@@ -253,11 +270,7 @@ BEGIN
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
   (10001, 1000, 1, NULL, 'E2E001-TUBE-1', serum_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-001', 5.0, status_id_val, CURRENT_TIMESTAMP),
-  (10002, 1000, 2, 10001, 'E2E001-ALIQUOT-1', serum_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-001', 2.0, status_id_val, CURRENT_TIMESTAMP)
-  ON CONFLICT (id) DO UPDATE SET
-    external_id = EXCLUDED.external_id,
-    collection_date = EXCLUDED.collection_date,
-    lastupdated = CURRENT_TIMESTAMP;
+  (10002, 1000, 2, 10001, 'E2E001-ALIQUOT-1', serum_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-001', 2.0, status_id_val, CURRENT_TIMESTAMP);
 
   -- Sample 2: Assigned to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A2
   -- Use fixed dates matching test search criteria
@@ -265,23 +278,14 @@ BEGIN
                        received_date, lastupdated, is_confirmation)
   VALUES
   (1001, 'E2E002', gen_random_uuid(), 'H', status_id_val,
-   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
-  ON CONFLICT (id) DO UPDATE SET
-    accession_number = EXCLUDED.accession_number,
-    entered_date = EXCLUDED.entered_date,
-    received_date = EXCLUDED.received_date,
-    lastupdated = CURRENT_TIMESTAMP;
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false);
 
   -- Sample 2 SampleItems: Single blood tube
   -- Use fixed collection_date = 30/04/2025 to match test search criteria
   INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
                            collection_date, collector, quantity, status_id, lastupdated)
   VALUES
-  (10011, 1001, 1, NULL, 'E2E002-TUBE-1', blood_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-002', 10.0, status_id_val, CURRENT_TIMESTAMP)
-  ON CONFLICT (id) DO UPDATE SET
-    external_id = EXCLUDED.external_id,
-    collection_date = EXCLUDED.collection_date,
-    lastupdated = CURRENT_TIMESTAMP;
+  (10011, 1001, 1, NULL, 'E2E002-TUBE-1', blood_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-002', 10.0, status_id_val, CURRENT_TIMESTAMP);
 
   -- Sample 3: Assigned to Main Lab > Main Lab Freezer Unit 1 > Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A4
   -- Use fixed dates matching test search criteria
@@ -289,12 +293,7 @@ BEGIN
                        received_date, lastupdated, is_confirmation)
   VALUES
   (1002, 'E2E003', gen_random_uuid(), 'H', status_id_val,
-   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
-  ON CONFLICT (id) DO UPDATE SET
-    accession_number = EXCLUDED.accession_number,
-    entered_date = EXCLUDED.entered_date,
-    received_date = EXCLUDED.received_date,
-    lastupdated = CURRENT_TIMESTAMP;
+   '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false);
 
   -- Sample 3 SampleItems: Urine sample with multiple aliquots
   -- Use fixed collection_date = 30/04/2025 to match test search criteria
@@ -739,16 +738,96 @@ BEGIN
   -- ============================================================================
 
   -- Get test and test section IDs (dynamic lookup)
-  SELECT id INTO test_id_val FROM test WHERE is_active = 'Y' ORDER BY id LIMIT 1;
+  -- IMPORTANT: Get a test from Hematology (test_section_id = 36) to match the unit type used in tests
+  -- This ensures test_id and test_sect_id are consistent (both point to Hematology)
+  SELECT t.id, t.test_section_id INTO test_id_val, test_section_id_val 
+    FROM test t 
+    WHERE t.is_active = 'Y' AND t.test_section_id = 36 
+    ORDER BY t.id LIMIT 1;
   
-  -- Get first available active test section (optional, can be NULL)
-  SELECT id INTO test_section_id_val FROM test_section WHERE is_active = 'Y' ORDER BY id LIMIT 1;
+  -- Fallback: if no Hematology test found, use first available test and its test section
+  IF test_id_val IS NULL THEN
+    SELECT id, test_section_id INTO test_id_val, test_section_id_val 
+      FROM test 
+      WHERE is_active = 'Y' 
+      ORDER BY id LIMIT 1;
+  END IF;
   
   -- Get analysis status IDs from status_of_sample table
   SELECT id INTO not_started_status_id FROM status_of_sample WHERE name = 'Not Tested' AND status_type = 'ANALYSIS' LIMIT 1;
   SELECT id INTO finalized_status_id FROM status_of_sample WHERE name = 'Finalized' AND status_type = 'ANALYSIS' LIMIT 1;
   SELECT id INTO tech_accept_status_id FROM status_of_sample WHERE name = 'Technical Acceptance' AND status_type = 'ANALYSIS' LIMIT 1;
   SELECT id INTO canceled_status_id FROM status_of_sample WHERE name = 'Test Canceled' AND status_type = 'ANALYSIS' LIMIT 1;
+  
+  -- Get sample status ID for "Some tests have been run on this sample" (for Search by Sample status test)
+  -- This status is typically "Some tests have been run on this sample" or similar
+  SELECT id INTO sample_status_tests_run_id 
+  FROM status_of_sample 
+  WHERE (name = 'Some tests have been run on this sample' OR name LIKE '%tests have been run%' OR description LIKE '%tests have been run%')
+    AND status_type = 'SAMPLE' 
+  LIMIT 1;
+  
+  -- If not found, use a status that indicates tests are in progress
+  IF sample_status_tests_run_id IS NULL THEN
+    SELECT id INTO sample_status_tests_run_id 
+    FROM status_of_sample 
+    WHERE status_type = 'SAMPLE' 
+      AND (name IN ('In Progress', 'Testing', 'Sample In Testing') OR code IN ('IN_PROGRESS', 'TESTING'))
+    LIMIT 1;
+  END IF;
+  
+  -- If still not found, use first available SAMPLE status that's not "Entered"
+  IF sample_status_tests_run_id IS NULL THEN
+    SELECT id INTO sample_status_tests_run_id 
+    FROM status_of_sample 
+    WHERE status_type = 'SAMPLE' 
+      AND name != 'Entered' 
+      AND name != 'Test Entered'
+    ORDER BY id 
+    LIMIT 1;
+  END IF;
+  
+  -- Create a sample with this status for "Search by Sample status" test (use sample 1010, not 1008 which is E2E009)
+  IF sample_status_tests_run_id IS NOT NULL THEN
+    INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
+                       received_date, lastupdated, is_confirmation)
+    VALUES
+    (1010, 'E2E011', gen_random_uuid(), 'H', sample_status_tests_run_id,
+     '2025-04-30 10:00:00'::timestamp, '2025-05-01 10:00:00'::timestamp, CURRENT_TIMESTAMP, false)
+    ON CONFLICT (id) DO UPDATE SET
+      status_id = EXCLUDED.status_id,
+      lastupdated = CURRENT_TIMESTAMP;
+    
+    -- Create sample item for this sample
+    INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, 
+                           collection_date, collector, quantity, status_id, lastupdated)
+    VALUES
+    (10101, 1010, 1, NULL, 'E2E011-TUBE-1', blood_type_id, '2025-04-30 10:00:00'::timestamp, 'Tech-011', 10.0, status_id_val, CURRENT_TIMESTAMP)
+    ON CONFLICT (id) DO UPDATE SET
+      external_id = EXCLUDED.external_id,
+      collection_date = EXCLUDED.collection_date,
+      lastupdated = CURRENT_TIMESTAMP;
+    
+    -- Link to patient
+    INSERT INTO sample_human (id, samp_id, patient_id, lastupdated)
+    VALUES (1010, 1010, 1000, CURRENT_TIMESTAMP)
+    ON CONFLICT (id) DO UPDATE SET lastupdated = CURRENT_TIMESTAMP;
+    
+    -- Create analysis for this sample
+    IF test_id_val IS NOT NULL THEN
+      INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, 
+                          analysis_type, entry_date, started_date, completed_date, 
+                          is_reportable, lastupdated)
+      VALUES
+      (20007, 10101, test_id_val, test_section_id_val, tech_accept_status_id, '1',
+       'MANUAL', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP - INTERVAL '1 day', NULL, 'Y', CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO UPDATE SET
+        test_id = EXCLUDED.test_id,
+        test_sect_id = EXCLUDED.test_sect_id,
+        status_id = EXCLUDED.status_id,
+        lastupdated = CURRENT_TIMESTAMP;
+    END IF;
+  END IF;
   
   -- Get first available test_result for dictionary type (optional, can be NULL)
   SELECT id INTO test_result_id_val FROM test_result WHERE tst_rslt_type = 'D' AND is_active = true LIMIT 1;
@@ -765,28 +844,34 @@ BEGIN
      'MANUAL', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP - INTERVAL '2 days',
      CURRENT_TIMESTAMP - INTERVAL '1 day', 'Y', CURRENT_TIMESTAMP)
     ON CONFLICT (id) DO UPDATE SET
+      test_id = EXCLUDED.test_id,
+      test_sect_id = EXCLUDED.test_sect_id,
       status_id = EXCLUDED.status_id,
       lastupdated = CURRENT_TIMESTAMP;
     
-    -- E2E001 SampleItem 10001: Not started analysis (no result)
+    -- E2E001 SampleItem 10001: Technical Acceptance analysis (included in unfinished results)
     INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, 
                           analysis_type, entry_date, started_date, completed_date, 
                           is_reportable, lastupdated)
     VALUES
-    (20002, 10001, test_id_val, test_section_id_val, not_started_status_id, '1',
-     'MANUAL', CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP)
+    (20002, 10001, test_id_val, test_section_id_val, tech_accept_status_id, '1',
+     'MANUAL', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP - INTERVAL '1 day', NULL, 'Y', CURRENT_TIMESTAMP)
     ON CONFLICT (id) DO UPDATE SET
+      test_id = EXCLUDED.test_id,
+      test_sect_id = EXCLUDED.test_sect_id,
       status_id = EXCLUDED.status_id,
       lastupdated = CURRENT_TIMESTAMP;
     
-    -- E2E SampleItem 10051: Not started analysis (for Result By Order search - unfinished status)
+    -- E2E SampleItem 10051: Technical Acceptance analysis (for Result By Order search - unfinished status)
     INSERT INTO analysis (id, sampitem_id, test_id, test_sect_id, status_id, status, 
                           analysis_type, entry_date, started_date, completed_date, 
                           is_reportable, lastupdated)
     VALUES
-    (20010, 10051, test_id_val, test_section_id_val, not_started_status_id, '1',
-     'MANUAL', CURRENT_TIMESTAMP, NULL, NULL, 'Y', CURRENT_TIMESTAMP)
+    (20010, 10051, test_id_val, test_section_id_val, tech_accept_status_id, '1',
+     'MANUAL', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP - INTERVAL '1 day', NULL, 'Y', CURRENT_TIMESTAMP)
     ON CONFLICT (id) DO UPDATE SET
+      test_id = EXCLUDED.test_id,
+      test_sect_id = EXCLUDED.test_sect_id,
       status_id = EXCLUDED.status_id,
       lastupdated = CURRENT_TIMESTAMP;
     
@@ -799,6 +884,8 @@ BEGIN
      'MANUAL', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP - INTERVAL '1 day',
      CURRENT_TIMESTAMP - INTERVAL '12 hours', 'Y', CURRENT_TIMESTAMP)
     ON CONFLICT (id) DO UPDATE SET
+      test_id = EXCLUDED.test_id,
+      test_sect_id = EXCLUDED.test_sect_id,
       status_id = EXCLUDED.status_id,
       lastupdated = CURRENT_TIMESTAMP;
     
@@ -811,6 +898,8 @@ BEGIN
      'MANUAL', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP - INTERVAL '3 days',
      NULL, 'N', CURRENT_TIMESTAMP)
     ON CONFLICT (id) DO UPDATE SET
+      test_id = EXCLUDED.test_id,
+      test_sect_id = EXCLUDED.test_sect_id,
       status_id = EXCLUDED.status_id,
       lastupdated = CURRENT_TIMESTAMP;
     
@@ -823,6 +912,8 @@ BEGIN
      'MANUAL', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP - INTERVAL '1 day',
      CURRENT_TIMESTAMP - INTERVAL '6 hours', 'Y', CURRENT_TIMESTAMP)
     ON CONFLICT (id) DO UPDATE SET
+      test_id = EXCLUDED.test_id,
+      test_sect_id = EXCLUDED.test_sect_id,
       status_id = EXCLUDED.status_id,
       lastupdated = CURRENT_TIMESTAMP;
     
@@ -855,6 +946,88 @@ BEGIN
     ON CONFLICT (id) DO UPDATE SET
       value = EXCLUDED.value,
       lastupdated = CURRENT_TIMESTAMP;
+    
+    -- ============================================================================
+    -- Referral Test Fixtures
+    -- ============================================================================
+    -- Create referral records for referred out tests
+    -- Referrals link analyses to organizations and have status (SENT, RECEIVED, etc.)
+    -- ============================================================================
+    
+    -- Get referral reason ID (first available)
+    SELECT id INTO referral_reason_id_val FROM referral_reason WHERE is_active = true ORDER BY id LIMIT 1;
+    
+    -- Get referral type ID (REFERRAL_CONFORMATION - typically ID 1 or 2)
+    SELECT id INTO referral_type_id_val FROM referral_type WHERE name = 'Confirmation' OR name LIKE '%Confirmation%' LIMIT 1;
+    IF referral_type_id_val IS NULL THEN
+      SELECT id INTO referral_type_id_val FROM referral_type ORDER BY id LIMIT 1;
+    END IF;
+    
+    -- Only create referrals if we have required data
+    IF referral_reason_id_val IS NOT NULL AND referral_type_id_val IS NOT NULL AND referral_org_id IS NOT NULL THEN
+      -- Create referral for analysis 20002 (Technical Acceptance - unfinished, can be referred)
+      -- This will show up in referred out tests searches
+      INSERT INTO referral (id, analysis_id, organization_id, referral_reason_id, referral_type_id, 
+                           status, request_date, sent_date, fhir_uuid, sys_user_id, lastupdated)
+      VALUES
+      (40001, 20002, referral_org_id, referral_reason_id_val, referral_type_id_val,
+       'SENT', CURRENT_TIMESTAMP - INTERVAL '2 days', CURRENT_TIMESTAMP - INTERVAL '1 day',
+       gen_random_uuid(), '1', CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO UPDATE SET
+        status = EXCLUDED.status,
+        sent_date = EXCLUDED.sent_date,
+        lastupdated = CURRENT_TIMESTAMP;
+      
+      -- Create referral_result for the referral
+      -- Get or create a result for this analysis (referrals need results)
+      SELECT id INTO referral_result_id_val FROM result WHERE analysis_id = 20002 LIMIT 1;
+      IF referral_result_id_val IS NULL THEN
+        -- Create a result for the referral
+        INSERT INTO result (id, analysis_id, value, result_type, is_reportable, sort_order, lastupdated)
+        VALUES (30003, 20002, 'Pending', 'T', 'Y', 1, CURRENT_TIMESTAMP)
+        ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value;
+        referral_result_id_val := 30003;
+      END IF;
+      
+      INSERT INTO referral_result (id, referral_id, test_id, result_id, sys_user_id, lastupdated)
+      VALUES
+      (50001, 40001, test_id_val, referral_result_id_val, '1', CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO UPDATE SET
+        referral_id = EXCLUDED.referral_id,
+        test_id = EXCLUDED.test_id,
+        result_id = EXCLUDED.result_id,
+        lastupdated = CURRENT_TIMESTAMP;
+      
+      -- Create another referral for analysis 20003 (Technical Acceptance)
+      INSERT INTO referral (id, analysis_id, organization_id, referral_reason_id, referral_type_id,
+                           status, request_date, sent_date, fhir_uuid, sys_user_id, lastupdated)
+      VALUES
+      (40002, 20003, referral_org_id, referral_reason_id_val, referral_type_id_val,
+       'SENT', CURRENT_TIMESTAMP - INTERVAL '3 days', CURRENT_TIMESTAMP - INTERVAL '2 days',
+       gen_random_uuid(), '1', CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO UPDATE SET
+        status = EXCLUDED.status,
+        sent_date = EXCLUDED.sent_date,
+        lastupdated = CURRENT_TIMESTAMP;
+      
+      -- Create result for analysis 20003 if needed
+      SELECT id INTO referral_result_id_val FROM result WHERE analysis_id = 20003 LIMIT 1;
+      IF referral_result_id_val IS NULL THEN
+        INSERT INTO result (id, analysis_id, value, result_type, is_reportable, sort_order, lastupdated)
+        VALUES (30004, 20003, 'Pending', 'T', 'Y', 1, CURRENT_TIMESTAMP)
+        ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value;
+        referral_result_id_val := 30004;
+      END IF;
+      
+      INSERT INTO referral_result (id, referral_id, test_id, result_id, sys_user_id, lastupdated)
+      VALUES
+      (50002, 40002, test_id_val, referral_result_id_val, '1', CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO UPDATE SET
+        referral_id = EXCLUDED.referral_id,
+        test_id = EXCLUDED.test_id,
+        result_id = EXCLUDED.result_id,
+        lastupdated = CURRENT_TIMESTAMP;
+    END IF;
   END IF;
 
 END $$;

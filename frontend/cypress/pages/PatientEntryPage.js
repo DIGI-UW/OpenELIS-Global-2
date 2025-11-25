@@ -152,34 +152,8 @@ class PatientEntryPage {
   validatePatientSearchTablebyRespectiveField(expectedFieldValue, searchBy) {
     if (searchBy === "DOB") {
       // For DOB search, validate that search returned results and the fixture patient exists
-      // Don't validate exact DOB string match - we're testing search functionality, not date formatting
-      // Use last name as stable identifier instead of DOB (which can vary by locale/format)
-      this.getPatientSearchResultsTable()
-        .find("tr")
-        .should("have.length.greaterThan", 0)
-        .then(($rows) => {
-          // Verify the fixture patient (TEST-Smith) is in results by last name
-          // This is more reliable than DOB string matching which can fail due to format differences
-          let foundPatient = false;
-          cy.wrap($rows)
-            .each(($row) => {
-              cy.wrap($row)
-                .find("td")
-                .eq(1)
-                .invoke("text")
-                .then((lastName) => {
-                  if (lastName.trim().includes("TEST-Smith")) {
-                    foundPatient = true;
-                  }
-                });
-            })
-            .then(() => {
-              expect(
-                foundPatient,
-                `Expected to find patient TEST-Smith (E2E-PAT-001) in search results. Search was performed with DOB: ${expectedFieldValue}`,
-              ).to.be.true;
-            });
-        });
+      // Simple validation: just check if TEST-Smith appears anywhere in the table
+      this.getPatientSearchResultsTable().should("contain.text", "TEST-Smith");
     } else {
       // For other search types, check each row
       this.getPatientSearchResultsTable()

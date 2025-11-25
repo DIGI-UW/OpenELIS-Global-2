@@ -633,6 +633,20 @@ public class ResultsLoadUtility {
 
         TestService testService = SpringContext.getBean(TestService.class);
         Test test = analysisService.getTest(analysis);
+        
+        // Guard against null test - this can happen if analysis has null test_id or test relationship isn't loaded
+        if (test == null) {
+            LogEvent.logError(this.getClass().getSimpleName(), "createTestResultItem",
+                    "Analysis " + analysis.getId() + " has null test. Cannot create TestResultItem.");
+            // Return a minimal TestResultItem with error indication
+            TestResultItem errorItem = new TestResultItem();
+            errorItem.setAccessionNumber(accessionNumber);
+            errorItem.setAnalysisId(analysis.getId());
+            errorItem.setSequenceNumber(sequenceNumber);
+            errorItem.setTestName("ERROR: Test not found for analysis");
+            return errorItem;
+        }
+        
         ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(test,
                 currentPatient);
 

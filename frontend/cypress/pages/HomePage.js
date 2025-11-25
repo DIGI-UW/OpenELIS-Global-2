@@ -179,8 +179,12 @@ class HomePage {
 
   goToResultsByOrder() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsAccession).click();
+    cy.get(this.selectors.resultsMenu).should("be.visible").click();
+    // Wait for menu to expand
+    cy.wait(500);
+    cy.get(this.selectors.resultsAccession).should("be.visible").click();
+    // Wait for navigation to complete
+    cy.url().should("include", "/AccessionResults");
     return new Result();
   }
 

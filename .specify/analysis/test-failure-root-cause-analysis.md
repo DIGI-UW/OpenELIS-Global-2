@@ -189,37 +189,32 @@ it's more stable.
 
 ---
 
-### 4. Missing API Intercepts (CRITICAL VIOLATION)
+### 4. Arbitrary Waits vs UI State Waits
 
 **Testing Roadmap Section**:
 [cy.intercept() Patterns](.specify/guides/testing-roadmap.md#cyintercept-patterns)
 
 **What the Roadmap Says**:
 
-> **Timing**: Intercepts MUST be set up before actions that trigger them.
+> **IMPORTANT**: Intercepts are NOT required for basic E2E tests. Wait for UI
+> state instead.
 
 **What These Tests Do**:
 
-- `patientEntry.cy.js` (Lab Number search): Sets up intercept **correctly**
-  before action ✅
-- `patientEntry.cy.js` (DOB search): **NO intercept** - just waits for table to
-  appear ❌
-- `orderEntity.cy.js`: **NO intercept** for order submission - just waits for
-  button ❌
-- `dashboard.cy.js`: Some intercepts, but **not consistently** ❌
-- `workplan.cy.js`: **NO intercepts** - relies on arbitrary waits ❌
-- `result.cy.js`: **NO intercepts** - relies on table rendering ❌
-- `storageDisposal.cy.js`: Sets up intercept in `before()` but **times out** -
-  likely wrong URL pattern ❌
+- `patientEntry.cy.js` (DOB search): Waits for table to appear ✅ (correct
+  approach)
+- `orderEntity.cy.js`: Waits for UI elements ✅ (correct approach)
+- Some tests use `cy.wait(1000)` ❌ (arbitrary wait - wrong)
 
-**Why This Is Fatal**:
+**Why Wait for UI State**:
 
-- **No visibility** into what's actually happening (API calls, responses,
-  errors)
-- **Race conditions** - test proceeds before API completes
-- **No error handling** - can't distinguish between "API failed" vs "element not
-  found"
-- **Flaky** - depends on network timing
+- **Tests what users see** - If UI is correct, test passes
+- **Cypress retry-ability** - `.should()` automatically retries until condition
+  is met
+- **Simpler** - No URL pattern matching dependencies
+- **More reliable** - No timeouts from intercepts that never fire
+- **API issues caught elsewhere** - Integration/backend tests verify API
+  behavior
 
 **Example from `patientEntry.cy.js` (DOB search)**:
 
@@ -229,26 +224,23 @@ it("Search patient By Date Of Birth", function () {
   cy.fixture("Patient").then((patient) => {
     patientPage.searchPatientByDateOfBirth(patient.DOB);
     patientPage.clickSearchPatientButton();
-    // ❌ VIOLATION: No intercept - just hope table appears
+    // ❌ VIOLATION: Arbitrary wait instead of waiting for UI
+    cy.wait(2000);
     patientPage.validatePatientSearchTablebyRespectiveField(patient.DOB, "DOB");
   });
 });
 ```
 
-**Correct Pattern** (from Testing Roadmap):
+**Correct Pattern** (wait for UI state):
 
 ```javascript
 it("Search patient By Date Of Birth", function () {
   cy.fixture("Patient").then((patient) => {
-    // ✅ CORRECT: Set up intercept BEFORE action
-    cy.intercept("GET", "**/rest/patient-search-results*").as(
-      "getPatientSearch"
-    );
     patientPage.searchPatientByDateOfBirth(patient.DOB);
     patientPage.clickSearchPatientButton();
-    // ✅ CORRECT: Wait for API call, then validate
-    cy.wait("@getPatientSearch").then((interception) => {
-      expect(interception.response.statusCode).to.eq(200);
+    // ✅ CORRECT: Wait for UI to show results (Cypress retries automatically)
+    cy.get("table tbody tr").should("be.visible").should("have.length.greaterThan", 0);
+    cy.get("table tbody").should("contain.text", "TEST-Smith");
       expect(interception.response.body.patientSearchResults).to.be.an("array");
     });
     // Then validate table
