@@ -34,6 +34,8 @@ class Result {
       startLabNumber: "[data-cy='startAccession']",
       endLabNumber: "[data-cy='endAccession']",
       testResultCheckbox: "[data-cy='checkTestResult']",
+      patientRadio:
+        "tbody > :nth-child(1) > :nth-child(1) > .cds--radio-button-wrapper > .cds--radio-button__label > .cds--radio-button__appearance",
       referredTestCheckbox:
         "tbody > tr > .cds--table-column-checkbox > .cds--checkbox--inline > .cds--checkbox-label",
       dateToggleButton: "#downshift-1-toggle-button",
@@ -68,7 +70,7 @@ class Result {
   }
 
   referTests(referTests) {
-    cy.get("[data-cy='referalcheckbox']").check({ force: true });
+    cy.contains("span", referTests).click();
   }
 
   searchResults() {
@@ -153,19 +155,8 @@ class Result {
     cy.get(this.selectors.institute).select(institute);
   }
 
-  getPatientSearchResultsTable() {
-    return cy.getElement(
-      ".cds--data-table.cds--data-table--lg.cds--data-table--sort > tbody",
-    );
-  }
-
   selectPatientFromSearchResults() {
-    this.getPatientSearchResultsTable()
-      .find("tr")
-      .first()
-      .find("td:nth-child(1)")
-      .find("[data-cy='radioButton']")
-      .click({ force: true });
+    cy.get(this.selectors.patientRadio).click();
   }
 
   selectRefferedTest() {

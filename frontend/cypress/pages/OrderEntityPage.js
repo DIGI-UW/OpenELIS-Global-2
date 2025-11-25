@@ -87,10 +87,7 @@ class OrderEntityPage {
     cy.contains("span", "Remember site and requester").click();
   }
   clickSubmitOrderButton() {
-    cy.contains("button", "Submit")
-      .should("be.visible")
-      .should("not.be.disabled")
-      .click();
+    cy.contains("button", "Submit").click();
   }
 }
 
