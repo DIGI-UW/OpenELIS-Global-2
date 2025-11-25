@@ -4,9 +4,7 @@ import { Select, SelectItem } from "@carbon/react";
 const CustomSelect = (props) => {
   const handleSelect = (e) => {
     const value = e.target.value;
-    if (props.onChange && typeof props.onChange === "function") {
-      props.onChange(value);
-    }
+    props.onChange(value);
   };
   return (
     <>

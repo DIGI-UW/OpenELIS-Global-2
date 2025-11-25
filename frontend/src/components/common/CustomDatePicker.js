@@ -35,16 +35,8 @@ const CustomDatePicker = (props) => {
 
     if (partialDateRegex.test(inputValue)) {
       e.target.value = inputValue;
-      // When a valid full date is entered, update state to trigger onChange
-      if (fullDateRegex.test(inputValue)) {
-        setCurrentDate(inputValue);
-      }
     } else {
       e.target.value = ""; // Clear invalid input
-      // Clear state if input is invalid
-      if (currentDate !== "") {
-        setCurrentDate("");
-      }
     }
   }
 
