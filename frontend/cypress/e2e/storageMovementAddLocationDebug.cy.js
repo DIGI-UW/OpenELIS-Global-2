@@ -17,9 +17,7 @@ describe("Add Location Button Crash Debug", function () {
     cy.setupStorageIntercepts();
 
     cy.visit("/Storage/samples");
-    // Wait for the sample list to appear instead of waiting for intercept
-    // The intercept might not match if the request pattern differs
-    cy.get('[data-testid="sample-list"]').should("be.visible");
+    cy.wait("@getSamples", { timeout: 10000 });
   });
 
   it("Should not crash when clicking Add Location button", function () {
@@ -55,32 +53,32 @@ describe("Add Location Button Crash Debug", function () {
       "be.visible",
     );
 
-    // Get first sample and open location management modal
+    // Get first sample and open move modal
     cy.get('[data-testid="sample-list"]')
       .find('[data-testid="sample-row"]')
       .should("have.length.at.least", 1)
       .first()
       .within(() => {
-        cy.get('[data-testid="sample-actions-overflow-menu"]')
-          .should("be.visible")
-          .click({ force: true });
+        cy.get('[data-testid="sample-actions-overflow-menu"]').click();
       });
 
-    // Wait for menu to open (portal rendering) - OverflowMenu items render in portal
-    // Use manage-location-menu-item (not move-menu-item which doesn't exist)
-    cy.get('[data-testid="manage-location-menu-item"]', { timeout: 10000 })
+    // Wait for menu to open (portal rendering)
+    cy.wait(500);
+
+    // Click Move menu item outside .within() block (Carbon OverflowMenu renders in portal)
+    cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
       .should("be.visible")
-      .click({ force: true });
+      .click();
 
-    // Wait for location management modal to open (handles both assignment and movement)
-    cy.get('[data-testid="location-management-modal"]', {
-      timeout: 10000,
-    }).should("be.visible");
-
-    // Verify Add Location button exists and is visible
-    cy.get('[data-testid="add-location-button"]', { timeout: 10000 }).should(
+    // Wait for move modal to open
+    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
       "be.visible",
     );
+
+    // Verify Add Location button exists
+    cy.get('[data-testid="add-location-button"]', { timeout: 2000 })
+      .should("be.visible")
+      .should("contain.text", /location/i);
 
     // Click Add Location button - this is where it crashes
     cy.get('[data-testid="add-location-button"]').should("be.visible").click();
@@ -106,7 +104,7 @@ describe("Add Location Button Crash Debug", function () {
 
     // Verify the page is still responsive (not crashed)
     cy.get("body").should("exist");
-    cy.get('[data-testid="location-management-modal"]').should("be.visible");
+    cy.get('[data-testid="move-modal"]').should("be.visible");
 
     // Check if create form appeared
     cy.get("body").then(($body) => {

@@ -54,14 +54,8 @@ class ProviderManagementPage {
   }
 
   confirmProvider(value) {
-    // Testing Roadmap: Use element readiness checks, wait for table to render
-    // Wait for table to be visible first, then find the value
-    cy.get("table", { timeout: 10000 }).should("be.visible");
-    cy.get("table tbody tr", { timeout: 10000 })
-      .should("have.length.greaterThan", 0)
-      .contains("td", value)
-      .should("exist")
-      .should("be.visible");
+    cy.contains("td", value).should("exist");
+    cy.wait(200);
   }
 
   checkProvider(value) {

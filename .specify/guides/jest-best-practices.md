@@ -80,19 +80,13 @@ examples.
 
 ```javascript
 // Mocks FIRST (before imports)
-// Mock BOTH getFromOpenElisServer and postToOpenElisServerJsonResponse
 jest.mock("../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
 }));
 
 // Then imports
 import ComponentName from "./ComponentName";
 ```
-
-**Note**: Many components use `postToOpenElisServerJsonResponse` for POST
-requests with JSON responses. Always mock both utilities if component uses
-either.
 
 ---
 
@@ -213,29 +207,6 @@ const input = screen.getByLabelText(/name/i);
 await userEvent.type(input, "Test Name", { delay: 0 });
 ```
 
-**TextInput Enter Key Event Handling**:
-
-```javascript
-// Carbon TextInput may pass Enter key as event.key, event.keyCode, or event.code
-// Test all three variants in unit tests
-const input = screen.getByRole("textbox");
-const barcode = "MAIN-FRZ01";
-
-fireEvent.change(input, { target: { value: barcode } });
-
-// Test event.key
-fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
-
-// Test event.keyCode (legacy)
-fireEvent.keyDown(input, { keyCode: 13 });
-
-// Test event.code
-fireEvent.keyDown(input, { code: "Enter" });
-
-// Component code should check all three:
-// const isEnterKey = event.key === "Enter" || event.keyCode === 13 || event.code === "Enter";
-```
-
 **ComboBox**:
 
 ```javascript
@@ -281,27 +252,6 @@ const confirmButton = within(modal).getByRole("button", { name: /confirm/i });
 await userEvent.click(confirmButton);
 ```
 
-**Error Message Assertion Patterns**:
-
-```javascript
-// Error messages may be in title attribute (not text content)
-// Some components use title for accessibility (e.g., BarcodeVisualFeedback)
-
-// Check if error element exists
-const errorElement = screen.queryByTestId("barcode-feedback-error");
-if (errorElement) {
-  // Check title attribute for error message
-  expect(errorElement).toHaveAttribute("title", "Invalid barcode format");
-}
-
-// Pattern: Use queryBy* to check if error element exists, then check title
-await waitFor(() => {
-  const element = screen.queryByTestId("barcode-feedback-error");
-  expect(element).toBeInTheDocument();
-  expect(element).toHaveAttribute("title", expect.stringContaining("Invalid"));
-});
-```
-
 ---
 
 ## Edge Case Testing
@@ -327,89 +277,6 @@ renderWithIntl(<ComponentName maxLength={100} />);
 const input = screen.getByLabelText(/name/i);
 await userEvent.type(input, "a".repeat(100));
 expect(input.value.length).toBe(100);
-```
-
----
-
-## Integration Test Error Response Structure
-
-**postToOpenElisServerJsonResponse Error Handling**:
-
-```javascript
-// postToOpenElisServerJsonResponse passes errors in response object (not thrown)
-// Errors are included in the response with status/error fields
-
-postToOpenElisServerJsonResponse.mockImplementation(
-  (url, payload, callback) => {
-    // Simulate error response
-    callback({
-      valid: false,
-      errorMessage: "Invalid barcode format",
-      error: "Invalid barcode format",
-      status: 400,
-    });
-  }
-);
-
-// Component should check response.error or response.errorMessage
-// NOT expect thrown exceptions
-```
-
-**Pattern**: Check `response.error` or `response.errorMessage` in callback, not
-try/catch blocks.
-
----
-
-## Mocking Fetch with Blob Responses
-
-**PDF/Blob Download Testing**:
-
-```javascript
-// Mock fetch for PDF/blob downloads
-const mockBlob = new Blob(["PDF content"], { type: "application/pdf" });
-
-global.fetch.mockResolvedValueOnce({
-  ok: true,
-  status: 200,
-  headers: {
-    get: (name) => {
-      if (name === "content-type") return "application/pdf";
-      return null;
-    },
-  },
-  blob: () => Promise.resolve(mockBlob),
-});
-
-// Mock URL.createObjectURL and URL.revokeObjectURL
-global.URL.createObjectURL = jest.fn(() => "blob:mock-url");
-global.URL.revokeObjectURL = jest.fn();
-
-// Mock DOM link click
-const mockLink = {
-  click: jest.fn(),
-  href: "",
-  download: "",
-};
-document.createElement = jest.fn(() => mockLink);
-document.body.appendChild = jest.fn();
-document.body.removeChild = jest.fn();
-
-// After component action
-await waitFor(() => {
-  expect(global.fetch).toHaveBeenCalledWith(
-    expect.stringContaining("/print-label"),
-    expect.objectContaining({
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": expect.any(String),
-      },
-      credentials: "include",
-    })
-  );
-  expect(global.URL.createObjectURL).toHaveBeenCalled();
-  expect(mockLink.click).toHaveBeenCalled();
-});
 ```
 
 ---
@@ -504,14 +371,6 @@ const setupApiMocks = (overrides = {}) => {
       callback(data.rooms);
     }
   });
-  // Also mock postToOpenElisServerJsonResponse if component uses it
-  postToOpenElisServerJsonResponse.mockImplementation(
-    (url, payload, callback) => {
-      if (url.includes("/rest/storage/barcode/validate")) {
-        callback(data.barcodeValidation || { valid: false });
-      }
-    }
-  );
 };
 ```
 

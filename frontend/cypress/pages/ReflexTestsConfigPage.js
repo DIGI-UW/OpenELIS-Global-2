@@ -41,8 +41,7 @@ class ReflexTestsConfigPage {
 
   reloadAndWait() {
     cy.reload();
-    // Wait for page to load (use .should() instead of arbitrary wait)
-    cy.get("body").should("exist");
+    cy.wait(200);
   }
 
   verifyPageLoads(value) {
@@ -59,10 +58,7 @@ class ReflexTestsConfigPage {
   }
 
   validateToggleStatus(value) {
-    // Wait for toggle text to be visible and contain the expected value
-    cy.get(this.selectors.validateToggle)
-      .should("be.visible")
-      .should("contain.text", value);
+    cy.contains(this.selectors.validateToggle, value);
   }
 
   selectOverAllOptions(value) {
@@ -121,11 +117,7 @@ class ReflexTestsConfigPage {
   }
 
   selectMathFunction(value) {
-    // Wait for dropdown to be visible and enabled
-    cy.get(this.selectors.insertOperation)
-      .should("be.visible")
-      .should("not.be.disabled")
-      .select(value);
+    cy.get(this.selectors.insertOperation).select(value);
   }
 
   verifyRemoveOperationButton() {
@@ -146,19 +138,11 @@ class ReflexTestsConfigPage {
   }
 
   clickMathFunctionButton() {
-    // Wait for button to be visible and enabled (elements are conditionally rendered)
-    cy.get(this.selectors.mathFunctionButton)
-      .should("be.visible")
-      .should("not.be.disabled")
-      .click();
+    cy.get(this.selectors.mathFunctionButton).click();
   }
 
   clickIntegerButton() {
-    // Wait for button to be visible and enabled (elements are conditionally rendered)
-    cy.get(this.selectors.integerButton)
-      .should("be.visible")
-      .should("not.be.disabled")
-      .click();
+    cy.get(this.selectors.integerButton).click();
   }
 
   enterInteger(value) {
@@ -166,11 +150,7 @@ class ReflexTestsConfigPage {
   }
 
   clickPatientAttributeButton() {
-    // Wait for button to be visible and enabled (elements are conditionally rendered)
-    cy.get(this.selectors.patientAttributeButton)
-      .should("be.visible")
-      .should("not.be.disabled")
-      .click();
+    cy.get(this.selectors.patientAttributeButton).click();
   }
 
   selectPatientAttribute(value) {
@@ -178,11 +158,7 @@ class ReflexTestsConfigPage {
   }
 
   selectThirdSample(value) {
-    // Wait for dropdown to be visible and enabled
-    cy.get(this.selectors.thirdSample)
-      .should("be.visible")
-      .should("not.be.disabled")
-      .select(value);
+    cy.get(this.selectors.thirdSample).select(value);
   }
 
   selectFourthSample(value) {

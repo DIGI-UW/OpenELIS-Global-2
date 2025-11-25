@@ -44,11 +44,10 @@ module.exports = defineConfig({
   },
   e2e: {
     setupNodeEvents(on, config) {
-      // NOTE: Storage E2E tests (001-sample-storage) are currently disabled
-      // Storage tests excluded via excludeSpecPattern in e2e config
-      // Storage support imports commented out in e2e.js
-      // Storage tasks below remain registered but won't be called (harmless)
-      // To re-enable: Uncomment imports in e2e.js and remove excludeSpecPattern
+      // NOTE: Storage E2E tests have been moved to e2e-testing-infrastructure branch
+      // Storage tests excluded via excludeSpecPattern below
+      // Storage tasks remain registered but won't be called until tests are re-enabled
+      // To re-enable: Remove storage patterns from excludeSpecPattern after e2e branch merges
 
       // Task to log messages to terminal (for console.log capture)
       // This is used to forward browser console logs to terminal
@@ -384,8 +383,9 @@ module.exports = defineConfig({
     },
     baseUrl: "https://localhost",
     testIsolation: false,
-    // Storage tests re-enabled for debugging and validation
-    // excludeSpecPattern: ["**/storage*.cy.js"],
+    // Storage E2E tests moved to e2e-testing-infrastructure branch
+    // Re-enable after that branch is merged
+    excludeSpecPattern: ["**/storage*.cy.js", "**/barcodeWorkflow.cy.js"],
     env: {
       STARTUP_WAIT_MILLISECONDS: 300000,
     },

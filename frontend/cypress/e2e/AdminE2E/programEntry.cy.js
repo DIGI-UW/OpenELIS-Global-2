@@ -1,6 +1,6 @@
 import LoginPage from "../../pages/LoginPage";
-import HomePage from "../../pages/HomePage";
 
+let loginPage = null;
 let homePage = null;
 let adminPage = null;
 let programEntry = null;
@@ -21,17 +21,22 @@ const programs = [
   { name: "Histopathology", test: null }, // No test selection needed
 ];
 
-// Use cy.login() with cy.session() for login caching (10-20x faster - Testing Roadmap pattern)
-before(() => {
-  cy.login(); // Uses cy.session() - login runs ONCE, cached for all tests
-  // Navigate to home page after login
-  const loginPage = new LoginPage();
+// Navigate to the Program Entry page
+const navigateToProgramEntry = () => {
+  loginPage = new LoginPage();
+  loginPage.visit();
   homePage = loginPage.goToHomePage();
   adminPage = homePage.goToAdminPageProgram();
-
-  // Navigate to the Program Entry page
   programEntry = adminPage.goToProgramEntry();
   programEntry.verifyPageLoads();
+};
+before(() => {
+  navigateToProgramEntry();
+});
+
+afterEach(() => {
+  cy.wait(5000);
+  cy.reload();
 });
 
 describe("Selects various Programs", () => {

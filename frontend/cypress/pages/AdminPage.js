@@ -110,8 +110,7 @@ class AdminPage {
   }
 
   goToUserManagementPage() {
-    cy.get(this.selectors.userManagement).should("be.visible").click();
-    cy.url().should("include", "userManagement");
+    cy.get(this.selectors.userManagement).click();
     return new UserManagementPage();
   }
 

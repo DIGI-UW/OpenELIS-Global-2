@@ -70,11 +70,14 @@ describe("{Feature Name} - {User Story}", function () {
     // Viewport management (profy.dev: set viewport before visit)
     cy.viewport(1025, 900); // Desktop viewport
 
-    // NOTE: Intercepts are NOT required for basic E2E tests
-    // Wait for UI state instead - tests what users actually see
-    // Only use intercepts for: stubbing/mocking, debugging, or binary response handling
+    // Set up API intercepts BEFORE actions that trigger them (Constitution V.5)
+    // Official Cypress pattern: use aliases and cy.wait('@alias')
+    cy.intercept("GET", "**/rest/{module}/{entities}**").as("get{Entities}");
+    cy.intercept("POST", "**/rest/{module}/{entities}**").as("create{Entity}");
+    cy.intercept("PUT", "**/rest/{module}/{entities}**").as("update{Entity}");
+    cy.intercept("DELETE", "**/rest/{module}/{entities}**").as("delete{Entity}");
 
-    // Navigate to page
+    // Navigate to page (after viewport and intercepts are set)
     cy.visit("/{feature}");
   });
 

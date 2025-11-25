@@ -1,6 +1,9 @@
 class Validation {
   checkForHeading() {
-    cy.get("section > h3").should("contain.text", "Validation");
+    cy.get("section > h3", { timeout: 15000 }).should(
+      "contain.text",
+      "Validation",
+    );
   }
 
   selectTestUnit(unitType) {

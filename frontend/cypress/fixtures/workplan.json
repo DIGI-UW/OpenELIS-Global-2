@@ -3,7 +3,7 @@
   "bilanPanelType": "Bilan Biochimique",
   "panelType": "Serologie VIH",
   "unitBioType": "Biochemistry",
-  "unitType": "Hematology",
+  "unitType": "Serology-Immunology",
   "priority": "Routine",
   "panelTile": "Workplan By Panel",
   "testTile": "Workplan By Test",

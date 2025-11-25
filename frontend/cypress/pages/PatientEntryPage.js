@@ -57,7 +57,7 @@ class PatientEntryPage {
   }
 
   enterPreviousLabNumber(value) {
-    cy.get(this.enterPreviousLabNo)
+    cy.get(this.enterPreviousLabNo, { timeout: 15000 })
       .invoke("css", "display", "block")
       .should("be.visible")
       .type(value, { force: true });
@@ -106,18 +106,7 @@ class PatientEntryPage {
   }
 
   searchPatientByDateOfBirth(dateOfBirth) {
-    // Carbon DatePicker needs the input to be focused and typed
-    // The date format should match the locale (MM/dd/yyyy or dd/MM/yyyy)
-    cy.get(this.dateOfBirth)
-      .should("be.visible")
-      .should("not.be.disabled")
-      .clear()
-      .type(dateOfBirth, { force: true })
-      .blur(); // Trigger onChange by blurring
-
-    // Wait for the date to be set in the input (CustomDatePicker updates state on valid full date)
-    // This ensures the form state is updated before search is triggered
-    cy.get(this.dateOfBirth).should("have.value", dateOfBirth);
+    cy.enterText(this.dateOfBirth, dateOfBirth);
   }
 
   clearPatientInfo() {
@@ -130,10 +119,7 @@ class PatientEntryPage {
 
   searchPatientByFirstAndLastName(firstName, lastName) {
     cy.enterText(this.firstNameSelector, firstName);
-    // Only enter last name if provided (avoid empty string error)
-    if (lastName && lastName.trim() !== "") {
-      cy.enterText(this.lastNameSelector, lastName);
-    }
+    cy.enterText(this.lastNameSelector, lastName);
   }
 
   searchPatientByPatientId(PID) {
@@ -150,67 +136,47 @@ class PatientEntryPage {
     );
   }
   validatePatientSearchTablebyRespectiveField(expectedFieldValue, searchBy) {
-    if (searchBy === "DOB") {
-      // For DOB search, validate that search returned results and the fixture patient exists
-      // Simple validation: just check if TEST-Smith appears anywhere in the table
-      this.getPatientSearchResultsTable().should("contain.text", "TEST-Smith");
-    } else {
-      // For other search types, check each row
-      this.getPatientSearchResultsTable()
-        .find("tr")
-        .each(($el, index, $list) => {
-          if (searchBy === "firstName") {
-            cy.wrap($el)
-              .find("td:nth-child(3)")
-              .invoke("text")
-              .then((cellText) => {
-                const trimmedText = cellText.trim();
-                expect(trimmedText).to.contain(expectedFieldValue);
-              });
-          } else if (searchBy === "lastName") {
-            cy.wrap($el)
-              .find("td:nth-child(2)")
-              .invoke("text")
-              .then((cellText) => {
-                const trimmedText = cellText.trim();
-                expect(trimmedText).to.contain(expectedFieldValue);
-              });
-          }
-        });
-    }
+    this.getPatientSearchResultsTable()
+      .find("tr")
+      .each(($el, index, $list) => {
+        if (searchBy === "firstName") {
+          cy.wrap($el)
+            .find("td:nth-child(3)")
+            .invoke("text")
+            .then((cellText) => {
+              const trimmedText = cellText.trim();
+              expect(trimmedText).to.contain(expectedFieldValue);
+            });
+        } else if (searchBy === "lastName") {
+          cy.wrap($el)
+            .find("td:nth-child(2)")
+            .invoke("text")
+            .then((cellText) => {
+              const trimmedText = cellText.trim();
+              expect(trimmedText).to.contain(expectedFieldValue);
+            });
+        } else if (searchBy === "DOB") {
+          cy.wrap($el)
+            .find("td:nth-child(5)")
+            .invoke("text")
+            .then((cellText) => {
+              const trimmedText = cellText.trim();
+              expect(trimmedText).to.contain(expectedFieldValue);
+            });
+        }
+      });
   }
 
   validatePatientSearchTable(actualName, inValidName) {
-    // Use Cypress retry-ability - wait for table rows to appear
-    this.getPatientSearchResultsTable()
-      .find("tr")
-      .should("exist")
-      .should("have.length.greaterThan", 0);
-    // Validate - check if name appears in any column (handles first name or last name)
-    // Column 2 = first name, Column 3 = last name
     this.getPatientSearchResultsTable()
       .find("tr")
       .last()
-      .should(($row) => {
-        const firstName = $row.find("td:nth-child(2)").text().trim();
-        const lastName = $row.find("td:nth-child(3)").text().trim();
-        // Check if actualName matches first name or last name
-        let matches =
-          firstName.includes(actualName) || actualName.includes(firstName);
-
-        // Check last name
-        if (!matches) {
-          matches =
-            lastName === actualName ||
-            lastName.includes(actualName) ||
-            actualName.includes(lastName);
-        }
-
-        expect(
-          matches,
-          `Expected "${actualName}" to match first name "${firstName}" or last name "${lastName}"`,
-        ).to.be.true;
-        expect(lastName).not.to.eq(inValidName);
+      .find("td:nth-child(3)")
+      .invoke("text")
+      .then((cellText) => {
+        const trimmedText = cellText.trim();
+        expect(trimmedText).to.contain(actualName);
+        expect(trimmedText).not.eq(inValidName);
       });
   }
 
@@ -231,8 +197,7 @@ class PatientEntryPage {
       .find("tr")
       .first()
       .find("td:nth-child(1)")
-      .find("[data-cy='radioButton']")
-      .click({ force: true });
+      .click();
   }
 }
 

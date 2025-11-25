@@ -1,20 +1,20 @@
 class RoutineReportPage {
   aggregateReports() {
-    cy.get("#menu_reports_aggregate")
+    cy.get("#menu_reports_aggregate", { timeout: 15000 })
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
   }
 
   selectStatistics() {
-    cy.get("#menu_reports_aggregate_statistics")
+    cy.get("#menu_reports_aggregate_statistics", { timeout: 15000 })
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
   }
 
   allReportsSummary() {
-    cy.get("#menu_reports_aggregate_all_nav")
+    cy.get("#menu_reports_aggregate_all_nav", { timeout: 15000 })
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
@@ -28,20 +28,20 @@ class RoutineReportPage {
   }
 
   navigateToManagementReports() {
-    cy.get("#menu_reports_management")
+    cy.get("#menu_reports_management", { timeout: 15000 })
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
   }
   selectRejectionReport() {
-    cy.get("#menu_reports_management_rejection_nav")
+    cy.get("#menu_reports_management_rejection_nav", { timeout: 15000 })
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
   }
 
   navigateToReportsActivity() {
-    cy.get("#menu_reports_activity")
+    cy.get("#menu_reports_activity", { timeout: 15000 })
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();
@@ -63,7 +63,7 @@ class RoutineReportPage {
   }
 
   validateFieldVisibility(selector) {
-    cy.get(selector).should("be.visible");
+    cy.get(selector, { timeout: 15000 }).should("be.visible");
   }
 
   selectByUnit() {
@@ -122,7 +122,7 @@ class RoutineReportPage {
   }
 
   selectPatientStatusReport() {
-    cy.get("#menu_reports_status_patient")
+    cy.get("#menu_reports_status_patient", { timeout: 15000 })
       .scrollIntoView({ behavior: "smooth" })
       .should("be.visible")
       .click();

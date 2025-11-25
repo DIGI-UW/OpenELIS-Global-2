@@ -8,8 +8,6 @@ import LoginPage from "../pages/LoginPage";
  * Environment variables (set via CYPRESS_* prefix):
  * - SKIP_FIXTURES=true: Skip fixture loading entirely (assumes fixtures exist)
  * - FORCE_FIXTURES=true: Force reload fixtures even if they exist
- * - RESET_DATABASE=true: Reset database before loading fixtures (use with FORCE_FIXTURES)
- * - VERIFY_FIXTURES=true: Verify fixtures even when skipping load
  * - CLEANUP_FIXTURES=true: Clean up fixtures after tests (default: false)
  *
  * Smart fixture management:
@@ -24,12 +22,6 @@ import LoginPage from "../pages/LoginPage";
  *   # Force reload fixtures
  *   CYPRESS_FORCE_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
  *
- *   # Reset database and reload fixtures
- *   CYPRESS_FORCE_FIXTURES=true CYPRESS_RESET_DATABASE=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
- *
- *   # Verify fixtures without loading
- *   CYPRESS_SKIP_FIXTURES=true CYPRESS_VERIFY_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
- *
  *   # Clean up after tests
  *   CYPRESS_CLEANUP_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
  */
@@ -37,15 +29,7 @@ Cypress.Commands.add("setupStorageTests", () => {
   // Wait for backend API to be available
   cy.waitForBackend("/rest/storage/samples");
 
-  // Use cy.session() to cache and reuse login session across tests
-  cy.session("storage-tests-session", () => {
-    // Login only if session doesn't exist
-    const loginPage = new LoginPage();
-    loginPage.visit();
-    loginPage.goToHomePage();
-  });
-
-  // After session is established, navigate to home page
+  // Login
   const loginPage = new LoginPage();
   loginPage.visit();
   const homePage = loginPage.goToHomePage();
@@ -53,7 +37,6 @@ Cypress.Commands.add("setupStorageTests", () => {
   // Smart fixture loading based on env vars and existence check
   const skipFixtures = Cypress.env("SKIP_FIXTURES") === true;
   const forceFixtures = Cypress.env("FORCE_FIXTURES") === true;
-  const resetDatabase = Cypress.env("RESET_DATABASE") === true;
 
   if (skipFixtures) {
     cy.log(
@@ -63,38 +46,15 @@ Cypress.Commands.add("setupStorageTests", () => {
     cy.log(
       "Force loading fixtures (FORCE_FIXTURES=true) - reloading even if exist",
     );
-    cy.loadStorageFixtures({ reset: resetDatabase });
-
-    // Verify fixtures after loading
-    cy.task("verifyFixtures").then((isValid) => {
-      if (!isValid) {
-        cy.log("⚠️  WARNING: Fixture verification found missing data");
-      }
-    });
+    cy.loadStorageFixtures();
   } else {
     // Check if fixtures already exist before loading
     cy.checkStorageFixturesExist().then((fixturesExist) => {
       if (fixturesExist) {
         cy.log("Fixtures already exist - skipping load for faster iteration");
-
-        // Optional verification even if skipping load
-        if (Cypress.env("VERIFY_FIXTURES") === true) {
-          cy.task("verifyFixtures").then((isValid) => {
-            if (!isValid) {
-              cy.log("⚠️  WARNING: Fixture verification found missing data");
-            }
-          });
-        }
       } else {
         cy.log("Fixtures not found - loading test data");
-        cy.loadStorageFixtures({ reset: resetDatabase });
-
-        // Verify fixtures after loading
-        cy.task("verifyFixtures").then((isValid) => {
-          if (!isValid) {
-            cy.log("⚠️  WARNING: Fixture verification found missing data");
-          }
-        });
+        cy.loadStorageFixtures();
       }
     });
   }

@@ -1,13 +1,9 @@
 /**
  * Cypress command to load storage test fixtures
- * Usage: cy.loadStorageFixtures() or cy.loadStorageFixtures({ reset: true })
- *
- * Options:
- *   - reset: If true, resets database before loading fixtures
- *   - noVerify: If true, skips verification after loading
+ * Usage: cy.loadStorageFixtures()
  */
-Cypress.Commands.add("loadStorageFixtures", (options = {}) => {
-  cy.task("loadStorageTestData", options, { log: false });
+Cypress.Commands.add("loadStorageFixtures", () => {
+  cy.task("loadStorageTestData", null, { log: false });
 });
 
 /**

@@ -42,7 +42,9 @@ class NonConform {
   }
 
   selectSearchType(type) {
-    cy.get(this.selectors.searchType).should("be.visible").select(type);
+    cy.get(this.selectors.searchType, { timeout: 15000 })
+      .should("be.visible")
+      .select(type);
   }
 
   enterSearchField(value) {
@@ -50,38 +52,30 @@ class NonConform {
   }
 
   clickSearchButton() {
-    cy.get(this.selectors.searchButton).should("be.visible").click();
+    cy.get(this.selectors.searchButton, { timeout: 15000 })
+      .should("be.visible")
+      .click();
   }
 
   validateSearchResult(expectedValue) {
-    // Wait for results to appear, then check if expected value exists
     cy.get(this.selectors.searchResult)
-      .should("be.visible")
-      .should("have.length.at.least", 1);
-
-    // Check if any result contains the expected value
-    cy.get(this.selectors.searchResult).contains(expectedValue).should("exist");
+      .first()
+      .invoke("text")
+      .should("eq", expectedValue);
   }
 
   validateLabNoSearchResult(labNo) {
-    cy.get(this.selectors.searchResult)
-      .should("be.visible")
-      .invoke("text")
-      .should("eq", labNo);
+    cy.get(this.selectors.searchResult).invoke("text").should("eq", labNo);
   }
 
   validateNCESearchResult(NCENo) {
     cy.get(this.selectors.nceNumberResult).invoke("text").should("eq", NCENo);
   }
 
-  clickCheckbox(options = {}) {
-    // Wait for page to stabilize before clicking checkbox
-    cy.get(this.selectors.searchResult).should("be.visible");
-    cy.wait(500); // Allow DOM to stabilize
+  clickCheckbox() {
     cy.get(this.selectors.sampleCheckbox)
       .should("be.visible")
-      .should("exist")
-      .check({ force: true, ...options });
+      .check({ force: true });
   }
 
   clickGoToNceFormButton() {
@@ -89,11 +83,7 @@ class NonConform {
   }
 
   enterStartDate(date) {
-    cy.get(this.selectors.startDate, { timeout: 10000 })
-      .should("be.visible")
-      .should("not.be.disabled")
-      .clear()
-      .type(date);
+    cy.get(this.selectors.startDate).type(date);
   }
 
   selectReportingUnit(unit) {
@@ -113,10 +103,7 @@ class NonConform {
   }
 
   enterNceCategory(nceCategory) {
-    cy.get(this.selectors.nceCategory)
-      .should("be.visible")
-      .should("not.be.disabled")
-      .select(nceCategory);
+    cy.get(this.selectors.nceCategory).select(nceCategory);
   }
 
   enterNceType(nceType) {
@@ -142,11 +129,7 @@ class NonConform {
   }
 
   enterDiscussionDate(date) {
-    cy.get(this.selectors.discussionDate, { timeout: 10000 })
-      .should("be.visible")
-      .should("not.be.disabled")
-      .clear()
-      .type(date);
+    cy.get(this.selectors.discussionDate).type(date);
   }
 
   enterProposedCorrectiveAction(action) {

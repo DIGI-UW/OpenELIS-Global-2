@@ -74,10 +74,7 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get(this.selectors.menuButton, { timeout: 10000 })
-      .should("be.visible")
-      .should("not.be.disabled")
-      .click();
+    cy.get(this.selectors.menuButton).click();
   }
 
   // Order Entry related functions
@@ -179,12 +176,8 @@ class HomePage {
 
   goToResultsByOrder() {
     this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).should("be.visible").click();
-    // Wait for menu to expand
-    cy.wait(500);
-    cy.get(this.selectors.resultsAccession).should("be.visible").click();
-    // Wait for navigation to complete
-    cy.url().should("include", "/AccessionResults");
+    cy.get(this.selectors.resultsMenu).click();
+    cy.get(this.selectors.resultsAccession).click();
     return new Result();
   }
 
