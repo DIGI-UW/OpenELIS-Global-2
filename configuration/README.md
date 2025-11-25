@@ -8,7 +8,8 @@ automatically loaded into the system during initialization.
 Each domain has its own subdirectory:
 
 - `questionnaires/` - FHIR Questionnaire JSON files
-- `roles/` - Dictionary configuration files (example)
+- `dictionaries/` - Dictionary entries CSV files
+- `roles/` - Role configuration files (example)
 - `[other-domains]/` - Additional domain configurations
 
 ## How It Works
