@@ -38,6 +38,21 @@ describe("Add New Patient", function () {
     cy.intercept("POST", "**/rest/PatientManagement**").as("createPatient");
   });
 
+  afterEach(() => {
+    // Clean up test patient after each test to ensure isolation
+    // This prevents test pollution - each test run should start clean
+    cy.fixture("Patient").then((patient) => {
+      cy.task("deleteTestPatient", {
+        subjectNumber: patient.subjectNumber,
+        nationalId: patient.nationalId,
+      }).then((result) => {
+        if (result && result.success) {
+          cy.log("✅ Cleaned up test patient after test");
+        }
+      });
+    });
+  });
+
   it("User Visits Home Page and goes to Add Add|Modify Patient Page", () => {
     patientPage = homePage.goToPatientEntry();
     // Verify we're on the patient entry page

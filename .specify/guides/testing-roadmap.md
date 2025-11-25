@@ -2062,18 +2062,12 @@ loading if fixtures already present, use environment variables for control
 
 #### cy.intercept() Patterns
 
-**Official Cypress Pattern** with aliases:
+**IMPORTANT**: Intercepts are NOT required for basic E2E tests. Wait for UI
+state instead.
 
-```javascript
-// Set up intercept BEFORE action that triggers it
-cy.intercept("POST", "/rest/storage/rooms").as("createRoom");
-cy.get('[data-testid="save-button"]').click();
-cy.wait("@createRoom").its("response.statusCode").should("eq", 201);
-```
+**When to Use Intercepts** (Optional, not required):
 
-**Timing**: Intercepts MUST be set up before actions that trigger them.
-
-**Fixture Usage**:
+1. **Stubbing/Mocking** - Faster tests by avoiding real API calls:
 
 ```javascript
 cy.intercept("GET", "/rest/storage/rooms", { fixture: "rooms.json" }).as(
@@ -2083,26 +2077,55 @@ cy.visit("/storage");
 cy.wait("@getRooms");
 ```
 
-**PDF/Blob Response Handling**:
+2. **Debugging** - See what API calls are being made:
 
 ```javascript
-// Intercept POST endpoints that return PDFs
-cy.intercept("POST", "**/rest/storage/**/print-label").as("printLabel");
+cy.intercept("POST", "/rest/storage/rooms").as("createRoom");
+cy.get('[data-testid="save-button"]').click();
+cy.wait("@createRoom").then((interception) => {
+  console.log("API called:", interception.request.url);
+});
+```
 
-// After action triggers request
+3. **PDF/Blob Response Handling** - When you need to verify binary responses:
+
+```javascript
+cy.intercept("POST", "**/rest/storage/**/print-label").as("printLabel");
 cy.wait("@printLabel").then((interception) => {
-  // Check content-type to distinguish PDF from JSON errors
   const contentType = interception.response.headers["content-type"];
   if (contentType && contentType.includes("application/pdf")) {
-    // PDF response - success
     expect(interception.response.statusCode).to.equal(200);
-  } else {
-    // Error response - parse JSON
-    const errorData = interception.response.body;
-    console.log("Error:", errorData.error || errorData.message);
   }
 });
 ```
+
+**When NOT to Use Intercepts** (Preferred for E2E):
+
+For basic E2E tests that verify UI behavior, **wait for UI state instead**:
+
+```javascript
+// ✅ CORRECT: Wait for UI to show results
+cy.get('[data-testid="save-button"]').click();
+cy.get("table tbody tr")
+  .should("be.visible")
+  .should("have.length.greaterThan", 0);
+
+// ❌ UNNECESSARY: Don't wait for API intercepts
+cy.intercept("POST", "/rest/storage/rooms").as("createRoom");
+cy.wait("@createRoom"); // Adds dependency, can timeout if URL pattern doesn't match
+```
+
+**Why Wait for UI Instead of Intercepts:**
+
+- **Tests what users see** - If UI is correct, test passes
+- **Simpler** - No URL pattern matching dependencies
+- **More reliable** - Cypress retry-ability handles timing automatically
+- **Fewer failure modes** - Intercepts can timeout even when UI works
+- **API issues caught elsewhere** - Integration/backend tests verify API
+  behavior
+
+**Timing**: If you do use intercepts, they MUST be set up before actions that
+trigger them.
 
 #### Database Transaction Timing in E2E Tests
 
