@@ -44,6 +44,11 @@ import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 public class OclToOpenElisMapper {
     private static final Log log = LogFactory.getLog(OclToOpenElisMapper.class);
 
+    private static final String DEFAULT_RESULTS_ROLE_DESCRIPTION = "Enter and review laboratory results";
+    private static final String DEFAULT_VALIDATION_ROLE_DESCRIPTION = "Validate laboratory results";
+    private static final String RESULTS_ROLE_DISPLAY_KEY = "role.results";
+    private static final String VALIDATION_ROLE_DISPLAY_KEY = "role.validation";
+
     private String defaultTestSection;
     private String defaultSampleType;
     private JsonNode rootNode;
@@ -175,8 +180,10 @@ public class OclToOpenElisMapper {
                     SystemModule resultModule = createSystemModule("LogbookResults", englishName, systemUserId);
                     SystemModule validationModule = createSystemModule("ResultValidation", englishName, systemUserId);
 
-                    Role resultsEntryRole = roleService.getRoleByName(Constants.ROLE_RESULTS);
-                    Role validationRole = roleService.getRoleByName(Constants.ROLE_VALIDATION);
+                    Role resultsEntryRole = ensureRoleExists(Constants.ROLE_RESULTS, DEFAULT_RESULTS_ROLE_DESCRIPTION,
+                            RESULTS_ROLE_DISPLAY_KEY);
+                    Role validationRole = ensureRoleExists(Constants.ROLE_VALIDATION,
+                            DEFAULT_VALIDATION_ROLE_DESCRIPTION, VALIDATION_ROLE_DISPLAY_KEY);
 
                     RoleModule workplanResultModule = createRoleModule(systemUserId, workplanModule, resultsEntryRole);
                     RoleModule resultResultModule = createRoleModule(systemUserId, resultModule, resultsEntryRole);
@@ -768,6 +775,32 @@ public class OclToOpenElisMapper {
         roleModule.setHasSelect("Y");
         roleModule.setHasUpdate("Y");
         return roleModule;
+    }
+
+    private Role ensureRoleExists(String roleName, String description, String displayKey) {
+        Role role = roleService.getRoleByName(roleName);
+        if (role != null) {
+            return role;
+        }
+
+        role = new Role();
+        role.setName(roleName);
+        role.setDescription(description);
+        role.setDisplayKey(displayKey);
+        role.setGroupingRole(false);
+        role.setActive(true);
+        role.setEditable(false);
+        role.setSysUserId(systemUserId);
+
+        Role labUnitGroupRole = roleService.getRoleByName(Constants.LAB_ROLES_GROUP);
+        if (labUnitGroupRole != null) {
+            role.setGroupingParent(labUnitGroupRole.getId());
+        }
+
+        String newRoleId = roleService.insert(role);
+        role.setId(newRoleId);
+        log.info("OCL Import: Created missing role " + roleName);
+        return role;
     }
 
     public Set<String> getLabSetMemebrs(JsonNode concept) {

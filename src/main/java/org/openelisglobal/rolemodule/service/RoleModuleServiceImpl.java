@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.systemusermodule.dao.RoleModuleDAO;
 import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
@@ -71,25 +72,41 @@ public class RoleModuleServiceImpl extends AuditableBaseObjectServiceImpl<RoleMo
 
     @Override
     public String insert(RoleModule roleModule) {
+        // Validate required references before attempting persistence to avoid NPEs
+        if (roleModule == null || roleModule.getRole() == null || roleModule.getSystemModule() == null) {
+            throw new LIMSRuntimeException("Cannot insert RoleModule: role or system module is null");
+        }
+
         if (getBaseObjectDAO().duplicateRoleModuleExists(roleModule)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + roleModule.getPermissionAgentId());
         }
+
         return super.insert(roleModule);
     }
 
     @Override
     public RoleModule save(RoleModule roleModule) {
+        if (roleModule == null || roleModule.getRole() == null || roleModule.getSystemModule() == null) {
+            throw new LIMSRuntimeException("Cannot save RoleModule: role or system module is null");
+        }
+
         if (getBaseObjectDAO().duplicateRoleModuleExists(roleModule)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + roleModule.getPermissionAgentId());
         }
+
         return super.save(roleModule);
     }
 
     @Override
     public RoleModule update(RoleModule roleModule) {
+        if (roleModule == null || roleModule.getRole() == null || roleModule.getSystemModule() == null) {
+            throw new LIMSRuntimeException("Cannot update RoleModule: role or system module is null");
+        }
+
         if (getBaseObjectDAO().duplicateRoleModuleExists(roleModule)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + roleModule.getPermissionAgentId());
         }
+
         return super.update(roleModule);
     }
 

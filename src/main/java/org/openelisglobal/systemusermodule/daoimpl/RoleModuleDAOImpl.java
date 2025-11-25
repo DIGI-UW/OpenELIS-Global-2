@@ -163,6 +163,13 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
             String sql = "from RoleModule s where s.role.id = :param and s.systemModule.id = :param2 and s.id !="
                     + " :param3";
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
+            // Defensive: if role or systemModule is null, no duplicate can be found here.
+            if (roleModule == null || roleModule.getRole() == null || roleModule.getSystemModule() == null
+                    || StringUtil.isNullorNill(roleModule.getRole().getId())
+                    || StringUtil.isNullorNill(roleModule.getSystemModule().getId())) {
+                return false;
+            }
+
             query.setParameter("param", Integer.parseInt(roleModule.getRole().getId()));
             query.setParameter("param2", Integer.parseInt(roleModule.getSystemModule().getId()));
 
