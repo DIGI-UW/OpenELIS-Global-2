@@ -255,7 +255,7 @@ public class SampleStorageServiceFlexibleAssignmentTest {
 
         // Execute
         String movementId = sampleStorageService.moveSampleItemWithLocation("sample-item-123", "20", "shelf", null,
-                "Moving to shelf");
+                "Moving to shelf", null);
 
         // Verify
         assertNotNull(movementId);
@@ -285,7 +285,7 @@ public class SampleStorageServiceFlexibleAssignmentTest {
 
         // Execute
         String movementId = sampleStorageService.moveSampleItemWithLocation("sample-item-123", "30", "rack", "C7",
-                "Moving to rack");
+                "Moving to rack", null);
 
         // Verify
         assertNotNull(movementId);

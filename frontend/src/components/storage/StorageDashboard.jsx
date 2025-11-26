@@ -3858,19 +3858,20 @@ const StorageDashboard = () => {
       <LocationManagementModal
         open={locationModalOpen && !!selectedSample}
         sample={selectedSample}
-        currentLocation={
-          (() => {
-            const currentLoc = selectedSample?.location
-              ? {
-                  path: selectedSample.location,
-                  position: selectedSample.positionCoordinate
-                    ? { coordinate: selectedSample.positionCoordinate }
-                    : null,
-                  notes: selectedSample.notes || "",
-                }
-              : null;
-            if (locationModalOpen && selectedSample) {
-              console.log("[StorageDashboard] Passing currentLocation to modal:", {
+        currentLocation={(() => {
+          const currentLoc = selectedSample?.location
+            ? {
+                path: selectedSample.location,
+                position: selectedSample.positionCoordinate
+                  ? { coordinate: selectedSample.positionCoordinate }
+                  : null,
+                notes: selectedSample.notes || "",
+              }
+            : null;
+          if (locationModalOpen && selectedSample) {
+            console.log(
+              "[StorageDashboard] Passing currentLocation to modal:",
+              {
                 selectedSample: {
                   id: selectedSample.id,
                   location: selectedSample.location,
@@ -3878,11 +3879,11 @@ const StorageDashboard = () => {
                   notes: selectedSample.notes,
                 },
                 currentLoc,
-              });
-            }
-            return currentLoc;
-          })()
-        }
+              },
+            );
+          }
+          return currentLoc;
+        })()}
         onClose={handleLocationModalClose}
         onConfirm={handleLocationModalConfirm}
       />

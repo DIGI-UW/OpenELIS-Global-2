@@ -222,13 +222,12 @@ public class StorageSearchServiceImplTest {
     }
 
     /**
-     * T-OGC-72: Test prefix matching for accession numbers and external IDs.
-     * Searching "12345" should find "12345", "12345.1", "123456" (prefix matches)
-     * but NOT find "0012345" (not a prefix match - starts with different
-     * characters).
+     * T-OGC-72: Test substring matching for accession numbers and external IDs.
+     * Searching "12345" should find any sample where accession number or external
+     * ID contains the substring "12345" anywhere in the field.
      */
     @Test
-    public void testSearchSamples_PrefixMatchingForAccessionAndExternalId() throws Exception {
+    public void testSearchSamples_SubstringMatchingForAccessionAndExternalId() throws Exception {
         // Create test data with various accession number patterns
         List<Map<String, Object>> testSamples = new ArrayList<>();
 
@@ -259,20 +258,20 @@ public class StorageSearchServiceImplTest {
         numericSuffix.put("location", "Room C");
         testSamples.add(numericSuffix);
 
-        // Sample that should NOT match (accession doesn't start with search term)
+        // Sample that should NOT match (completely different accession number)
         Map<String, Object> noMatch = new HashMap<>();
         noMatch.put("id", "4");
         noMatch.put("sampleItemId", "4");
         noMatch.put("sampleItemExternalId", "EXT-44");
-        noMatch.put("sampleAccessionNumber", "0012345"); // Starts with "00", not "12345"
+        noMatch.put("sampleAccessionNumber", "999888777"); // Completely different, does not contain "12345"
         noMatch.put("location", "Room D");
         testSamples.add(noMatch);
 
-        // Sample that should NOT match (accession contains but doesn't start with)
+        // Sample that should NOT match (no field contains the search term)
         Map<String, Object> containsButNotPrefix = new HashMap<>();
         containsButNotPrefix.put("id", "5");
         containsButNotPrefix.put("sampleItemId", "5");
-        containsButNotPrefix.put("sampleItemExternalId", "ABC12345"); // Contains but doesn't start with
+        containsButNotPrefix.put("sampleItemExternalId", "ABC-XYZ"); // Does not contain "12345"
         containsButNotPrefix.put("sampleAccessionNumber", "ABC-001");
         containsButNotPrefix.put("location", "Room E");
         testSamples.add(containsButNotPrefix);
@@ -283,7 +282,7 @@ public class StorageSearchServiceImplTest {
         List<Map<String, Object>> results = searchService.searchSamples("12345");
 
         assertNotNull("Results should not be null", results);
-        assertEquals("Should return 3 samples (exact, .1 suffix, numeric suffix)", 3, results.size());
+        assertEquals("Should return 3 samples matching substring '12345'", 3, results.size());
 
         // Verify the specific samples that should be returned
         boolean foundExact = false;

@@ -100,8 +100,8 @@ public class SampleStorageRestController extends BaseRestController {
                     // DEBUG: Check if response has positionCoordinate for sample 10001
                     for (Map<String, Object> map : response) {
                         if ("10001".equals(String.valueOf(map.get("id")))) {
-                            System.out.println("[CONTROLLER] Sample 10001 before JSON: positionCoordinate='" +
-                                map.get("positionCoordinate") + "', keys=" + map.keySet());
+                            System.out.println("[CONTROLLER] Sample 10001 before JSON: positionCoordinate='"
+                                    + map.get("positionCoordinate") + "', keys=" + map.keySet());
                             break;
                         }
                     }

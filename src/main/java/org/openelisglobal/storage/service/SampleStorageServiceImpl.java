@@ -123,8 +123,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
                 // Debug: Log first 3 samples with assignments
                 if (response.size() < 3) {
-                    logger.info("DEBUG getAllSamplesWithAssignments - Sample #{}: ID={}, positionCoordinate='{}', notes='{}', mapKeys={}",
-                        response.size() + 1, sampleItem.getId(), posCoord, notesVal, map.keySet());
+                    logger.info(
+                            "DEBUG getAllSamplesWithAssignments - Sample #{}: ID={}, positionCoordinate='{}', notes='{}', mapKeys={}",
+                            response.size() + 1, sampleItem.getId(), posCoord, notesVal, map.keySet());
                 }
             } else {
                 // No assignment - sample is unassigned

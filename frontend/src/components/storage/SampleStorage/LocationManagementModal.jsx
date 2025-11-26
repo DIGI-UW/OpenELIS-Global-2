@@ -50,10 +50,10 @@ const LocationManagementModal = ({
   // Map status codes to human-readable labels
   const getStatusLabel = (status) => {
     const statusMap = {
-      "20": "Sample Entered",
-      "21": "Entered",
-      "active": "Active",
-      "disposed": "Disposed",
+      20: "Sample Entered",
+      21: "Entered",
+      active: "Active",
+      disposed: "Disposed",
     };
     return statusMap[String(status)] || status || "Unknown";
   };
@@ -88,17 +88,23 @@ const LocationManagementModal = ({
 
   // Pre-populate position and notes if current location exists
   useEffect(() => {
-    console.log("[LocationManagementModal] Pre-populating from currentLocation:", {
-      currentLocation,
-      hasPosition: !!currentLocation?.position,
-      positionCoordinate: currentLocation?.position?.coordinate,
-      notes: currentLocation?.notes,
-    });
+    console.log(
+      "[LocationManagementModal] Pre-populating from currentLocation:",
+      {
+        currentLocation,
+        hasPosition: !!currentLocation?.position,
+        positionCoordinate: currentLocation?.position?.coordinate,
+        notes: currentLocation?.notes,
+      },
+    );
 
     if (currentLocation) {
       // Pre-populate position if available, otherwise reset to empty
       const initialPosition = currentLocation.position?.coordinate || "";
-      console.log("[LocationManagementModal] Setting position to:", initialPosition);
+      console.log(
+        "[LocationManagementModal] Setting position to:",
+        initialPosition,
+      );
       setPositionCoordinate(initialPosition);
       setInitialPositionCoordinate(initialPosition);
 
@@ -823,7 +829,9 @@ const LocationManagementModal = ({
                   />
                   :
                 </span>
-                <span className="info-value">{getStatusLabel(sample.status)}</span>
+                <span className="info-value">
+                  {getStatusLabel(sample.status)}
+                </span>
               </div>
               {sample.dateCollected && (
                 <div className="info-row">
