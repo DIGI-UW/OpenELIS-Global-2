@@ -1,0 +1,858 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet id="create-freezer-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="freezer"/>
+            </not>
+        </preConditions>
+        <comment>Create freezer table for storing cold storage device monitoring configuration</comment>
+
+        <createSequence
+                schemaName="clinlims"
+                sequenceName="freezer_seq"
+                startValue="1"
+                incrementBy="1"
+                cacheSize="1"/>
+
+        <createTable schemaName="clinlims" tableName="freezer">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(128)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="protocol" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="host" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="port" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="serial_port" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="baud_rate" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="data_bits" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="stop_bits" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="parity" type="VARCHAR(8)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="slave_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="temperature_register" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="humidity_register" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="temperature_scale" type="DECIMAL" defaultValueNumeric="1.0">
+                <constraints nullable="true"/>
+            </column>
+            <column name="temperature_offset" type="DECIMAL" defaultValueNumeric="0.0">
+                <constraints nullable="true"/>
+            </column>
+            <column name="humidity_scale" type="DECIMAL" defaultValueNumeric="1.0">
+                <constraints nullable="true"/>
+            </column>
+            <column name="humidity_offset" type="DECIMAL" defaultValueNumeric="0.0">
+                <constraints nullable="true"/>
+            </column>
+            <column name="target_temperature" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="warning_threshold" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="critical_threshold" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="polling_interval_seconds" type="INTEGER" defaultValueNumeric="60">
+                <constraints nullable="true"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_freezer_name"
+                     schemaName="clinlims"
+                     tableName="freezer"
+                     unique="true">
+            <column name="name"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="freezer"/>
+            <dropSequence schemaName="clinlims" sequenceName="freezer_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-threshold-profile-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="threshold_profile"/>
+            </not>
+        </preConditions>
+        <comment>Create threshold_profile table for reusable temperature/humidity thresholds</comment>
+
+        <createSequence
+                schemaName="clinlims"
+                sequenceName="threshold_profile_seq"
+                startValue="1"
+                incrementBy="1"
+                cacheSize="1"/>
+
+        <createTable schemaName="clinlims" tableName="threshold_profile">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(128)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="warning_min" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="warning_max" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="critical_min" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="critical_max" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="min_excursion_minutes" type="INTEGER" defaultValueNumeric="5">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_duration_minutes" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="humidity_warning_min" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="humidity_warning_max" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="humidity_critical_min" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="humidity_critical_max" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_by" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="threshold_profile"
+                baseColumnNames="created_by"
+                constraintName="fk_threshold_profile_created_by"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="system_user"
+                referencedColumnNames="id"
+                onDelete="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims"
+                                      baseTableName="threshold_profile"
+                                      constraintName="fk_threshold_profile_created_by"/>
+            <dropTable schemaName="clinlims" tableName="threshold_profile"/>
+            <dropSequence schemaName="clinlims" sequenceName="threshold_profile_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-freezer-threshold-profile-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="freezer_threshold_profile"/>
+            </not>
+        </preConditions>
+        <comment>Create freezer_threshold_profile table for time-based threshold assignments</comment>
+
+        <createSequence
+                schemaName="clinlims"
+                sequenceName="freezer_threshold_profile_seq"
+                startValue="1"
+                incrementBy="1"
+                cacheSize="1"/>
+
+        <createTable schemaName="clinlims" tableName="freezer_threshold_profile">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="freezer_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="threshold_profile_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_start" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_end" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="is_default" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_freezer_threshold_freezer"
+                baseTableSchemaName="clinlims"
+                baseTableName="freezer_threshold_profile"
+                baseColumnNames="freezer_id"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="freezer"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+                constraintName="fk_freezer_threshold_profile"
+                baseTableSchemaName="clinlims"
+                baseTableName="freezer_threshold_profile"
+                baseColumnNames="threshold_profile_id"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="threshold_profile"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="freezer_threshold_profile"/>
+            <dropSequence schemaName="clinlims" sequenceName="freezer_threshold_profile_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-freezer-reading-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="freezer_reading"/>
+            </not>
+        </preConditions>
+        <comment>Create freezer_reading table for storing temperature/humidity sensor readings</comment>
+
+        <createSequence
+                schemaName="clinlims"
+                sequenceName="freezer_reading_seq"
+                startValue="1"
+                incrementBy="1"
+                cacheSize="1"/>
+
+        <createTable schemaName="clinlims" tableName="freezer_reading">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="freezer_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recorded_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="temperature_celsius" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="humidity_percentage" type="DECIMAL">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transmission_ok" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="error_message" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                constraintName="fk_freezer_reading_freezer"
+                baseTableSchemaName="clinlims"
+                baseTableName="freezer_reading"
+                baseColumnNames="freezer_id"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="freezer"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+
+        <createIndex indexName="idx_freezer_reading_name_time"
+                     schemaName="clinlims"
+                     tableName="freezer_reading">
+            <column name="freezer_id"/>
+            <column name="recorded_at"/>
+        </createIndex>
+
+        <createIndex indexName="idx_freezer_reading_status"
+                     schemaName="clinlims"
+                     tableName="freezer_reading">
+            <column name="status"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="freezer_reading"/>
+            <dropSequence schemaName="clinlims" sequenceName="freezer_reading_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-freezer-storage-device-fk" author="mherman22">
+        <comment>Link Freezer to StorageDevice as parent entity</comment>
+
+        <addColumn schemaName="clinlims" tableName="freezer">
+            <column name="storage_device_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addForeignKeyConstraint
+                constraintName="fk_freezer_storage_device"
+                baseTableSchemaName="clinlims"
+                baseTableName="freezer"
+                baseColumnNames="storage_device_id"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="storage_device"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+
+        <createIndex indexName="idx_freezer_storage_device"
+                     schemaName="clinlims"
+                     tableName="freezer">
+            <column name="storage_device_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="add-unique-constraint-freezer-storage-device" author="mherman22">
+        <comment>One-to-one relationship: one StorageDevice can have at most one Freezer monitoring config</comment>
+
+        <addUniqueConstraint
+                constraintName="uk_freezer_storage_device"
+                schemaName="clinlims"
+                tableName="freezer"
+                columnNames="storage_device_id"/>
+    </changeSet>
+
+    <changeSet author="mherman22" id="add-freezer-system-config-site-information">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                select count(*) from clinlims.site_information where name = 'freezer.modbus.tcp.port';
+            </sqlCheck>
+        </preConditions>
+        <comment>Add freezer monitoring system configuration to SiteInformation (B1 remediation - replaces system_config table)</comment>
+
+        <!-- Modbus TCP Port -->
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="freezer.modbus.tcp.port" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Modbus TCP port for freezer monitoring (default: 502)" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+            <column name="value_type" value="text" />
+            <column name="value" value="502" />
+            <column name="group" value="0" />
+        </insert>
+
+        <!-- BACnet UDP Port -->
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="freezer.bacnet.udp.port" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="BACnet UDP port for freezer monitoring (default: 47808)" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')" />
+            <column name="value_type" value="text" />
+            <column name="value" value="47808" />
+            <column name="group" value="0" />
+        </insert>
+
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name IN ('freezer.modbus.tcp.port', 'freezer.bacnet.udp.port')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="mherman22" id="remove-system-config-table" context="production">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="system_config"/>
+        </preConditions>
+        <comment>Remove system_config table - migrated to SiteInformation (B1 remediation)</comment>
+
+        <dropTable schemaName="clinlims" tableName="system_config"/>
+        <dropSequence schemaName="clinlims" sequenceName="system_config_seq"/>
+
+        <rollback>
+            <createSequence
+                    schemaName="clinlims"
+                    sequenceName="system_config_seq"
+                    startValue="1"
+                    incrementBy="1"
+                    cacheSize="1"/>
+            <createTable schemaName="clinlims" tableName="system_config">
+                <column name="id" type="BIGINT">
+                    <constraints primaryKey="true" nullable="false"/>
+                </column>
+                <column name="modbus_tcp_port" type="INTEGER" defaultValueNumeric="502">
+                    <constraints nullable="true"/>
+                </column>
+                <column name="bacnet_udp_port" type="INTEGER" defaultValueNumeric="47808">
+                    <constraints nullable="true"/>
+                </column>
+                <column name="two_factor_auth_enabled" type="BOOLEAN" defaultValueBoolean="false">
+                    <constraints nullable="true"/>
+                </column>
+                <column name="session_timeout_minutes" type="INTEGER" defaultValueNumeric="30">
+                    <constraints nullable="true"/>
+                </column>
+                <column name="system_version" type="VARCHAR(50)">
+                    <constraints nullable="true"/>
+                </column>
+                <column name="database_version" type="VARCHAR(100)">
+                    <constraints nullable="true"/>
+                </column>
+                <column name="last_update" type="TIMESTAMP WITH TIME ZONE">
+                    <constraints nullable="true"/>
+                </column>
+                <column name="uptime_seconds" type="BIGINT" defaultValueNumeric="0">
+                    <constraints nullable="true"/>
+                </column>
+                <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                    <constraints nullable="true"/>
+                </column>
+                <column name="last_updated" type="TIMESTAMP">
+                    <constraints nullable="true"/>
+                </column>
+            </createTable>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="mherman22" id="add-freezer-monitoring-menu-item">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_freezer_monitoring';
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Cold Storage Monitoring entry to the application side navigation</comment>
+        <insert schemaName="clinlims" tableName="menu">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="presentation_order" value="126"/>
+            <column name="element_id" value="menu_freezer_monitoring"/>
+            <column name="display_key" value="sidenav.label.coldstorage"/>
+            <column name="tool_tip_key" value="sidenav.label.coldstorage.tooltip"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="action_url" value="/FreezerMonitoring"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="mherman22" id="reorganize-storage-menu-1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage' AND action_url = '/Storage'
+            </sqlCheck>
+        </preConditions>
+        <comment>Remove action_url from Storage menu to make it expandable with child items</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value=""/>
+            <where>element_id = 'menu_storage'</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="mherman22" id="reorganize-storage-menu-2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_storage_management'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Storage Management Dashboard as child of Storage menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_storage')" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_storage_management" />
+            <column name="action_url" value="/Storage" />
+            <column name="display_key" value="sidenav.label.storage.management"  />
+            <column name="tool_tip_key" value="sidenav.label.storage.management.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="mherman22" id="reorganize-storage-menu-3">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_freezer_monitoring' AND parent_id IS NULL
+            </sqlCheck>
+        </preConditions>
+        <comment>Move Cold Storage menu as child of Storage menu and update display key</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_storage')"/>
+            <column name="presentation_order" value="2"/>
+            <column name="display_key" value="sidenav.label.storage.coldstorage"/>
+            <column name="tool_tip_key" value="sidenav.label.storage.coldstorage.tooltip"/>
+            <where>element_id = 'menu_freezer_monitoring'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="create-corrective-action-system" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="corrective_action"/>
+            </not>
+        </preConditions>
+        <comment>
+            Create device-centric corrective_action table for tracking maintenance and repair actions
+            on cold storage devices (freezers). Actions are linked directly to devices, not alerts.
+        </comment>
+
+        <createSequence
+                schemaName="clinlims"
+                sequenceName="corrective_action_seq"
+                startValue="1"
+                incrementBy="1"
+                cacheSize="1"/>
+
+        <createTable schemaName="clinlims" tableName="corrective_action">
+            <column name="id" type="BIGINT" defaultValueSequenceNext="corrective_action_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="freezer_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="action_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_by" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="${now}">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="is_edited" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="completed_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="completion_notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="retracted_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="retraction_reason" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="corrective_action"
+                baseColumnNames="freezer_id"
+                constraintName="fk_corrective_action_freezer"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="freezer"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="corrective_action"
+                baseColumnNames="created_by"
+                constraintName="fk_corrective_action_created_by"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="system_user"
+                referencedColumnNames="id"
+                onDelete="RESTRICT"/>
+
+        <addForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="corrective_action"
+                baseColumnNames="updated_by"
+                constraintName="fk_corrective_action_updated_by"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="system_user"
+                referencedColumnNames="id"
+                onDelete="RESTRICT"/>
+
+        <sql>
+            ALTER TABLE clinlims.corrective_action ADD CONSTRAINT chk_corrective_action_type
+            CHECK (action_type IN (
+            'TEMPERATURE_ADJUSTMENT',
+            'EQUIPMENT_REPAIR',
+            'SAMPLE_RELOCATION',
+            'CALIBRATION',
+            'ITEM_REORDER',
+            'MAINTENANCE',
+            'OTHER'
+            ));
+        </sql>
+
+        <!-- Check Constraint: Status (includes RETRACTED) -->
+        <sql>
+            ALTER TABLE clinlims.corrective_action ADD CONSTRAINT chk_corrective_action_status
+            CHECK (status IN (
+            'PENDING',
+            'IN_PROGRESS',
+            'COMPLETED',
+            'CANCELLED',
+            'RETRACTED'
+            ));
+        </sql>
+
+        <!-- Performance Indexes -->
+        <createIndex indexName="idx_corrective_action_freezer"
+                     schemaName="clinlims"
+                     tableName="corrective_action">
+            <column name="freezer_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_corrective_action_status"
+                     schemaName="clinlims"
+                     tableName="corrective_action">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_corrective_action_created_at"
+                     schemaName="clinlims"
+                     tableName="corrective_action">
+            <column name="created_at" descending="true"/>
+        </createIndex>
+
+        <createIndex indexName="idx_corrective_action_edited"
+                     schemaName="clinlims"
+                     tableName="corrective_action">
+            <column name="is_edited"/>
+        </createIndex>
+
+        <!-- Composite index for dashboard filtering -->
+        <createIndex indexName="idx_corrective_action_freezer_created"
+                     schemaName="clinlims"
+                     tableName="corrective_action">
+            <column name="freezer_id"/>
+            <column name="created_at" descending="true"/>
+        </createIndex>
+
+        <!-- Rollback: Drop everything -->
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="corrective_action" indexName="idx_corrective_action_freezer_created"/>
+            <dropIndex schemaName="clinlims" tableName="corrective_action" indexName="idx_corrective_action_edited"/>
+            <dropIndex schemaName="clinlims" tableName="corrective_action" indexName="idx_corrective_action_created_at"/>
+            <dropIndex schemaName="clinlims" tableName="corrective_action" indexName="idx_corrective_action_status"/>
+            <dropIndex schemaName="clinlims" tableName="corrective_action" indexName="idx_corrective_action_freezer"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="corrective_action" constraintName="fk_corrective_action_updated_by"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="corrective_action" constraintName="fk_corrective_action_created_by"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="corrective_action" constraintName="fk_corrective_action_freezer"/>
+            <dropTable schemaName="clinlims" tableName="corrective_action"/>
+            <dropSequence schemaName="clinlims" sequenceName="corrective_action_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-alert-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="alert"/>
+            </not>
+        </preConditions>
+        <comment>Create generic alert table for system-wide alert management (freezer monitoring, equipment monitoring, inventory alerts, etc.)</comment>
+
+        <createSequence
+                schemaName="clinlims"
+                sequenceName="alert_seq"
+                startValue="1"
+                incrementBy="1"
+                cacheSize="1"/>
+
+        <createTable schemaName="clinlims" tableName="alert">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="alert_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="alert_entity_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="alert_entity_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="severity" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="start_time" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_time" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="message" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="context_data" type="JSONB">
+                <constraints nullable="true"/>
+            </column>
+            <column name="acknowledged_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="acknowledged_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="resolved_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="resolved_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="resolution_notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_duplicate_time" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="duplicate_count" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <!-- Foreign Keys -->
+        <addForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="alert"
+                baseColumnNames="acknowledged_by"
+                constraintName="fk_alert_acknowledged_by"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="system_user"
+                referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="alert"
+                baseColumnNames="resolved_by"
+                constraintName="fk_alert_resolved_by"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="system_user"
+                referencedColumnNames="id"/>
+
+        <!-- Check Constraints -->
+        <sql>
+            ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_severity
+            CHECK (severity IN ('WARNING', 'CRITICAL'));
+            ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_status
+            CHECK (status IN ('OPEN', 'ACKNOWLEDGED', 'RESOLVED'));
+            ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+            CHECK (alert_type IN ('FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER'));
+        </sql>
+
+        <!-- Indexes for Performance -->
+        <createIndex indexName="idx_alert_entity"
+                     schemaName="clinlims"
+                     tableName="alert">
+            <column name="alert_entity_type"/>
+            <column name="alert_entity_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_alert_type"
+                     schemaName="clinlims"
+                     tableName="alert">
+            <column name="alert_type"/>
+        </createIndex>
+
+        <createIndex indexName="idx_alert_status"
+                     schemaName="clinlims"
+                     tableName="alert">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_alert_severity"
+                     schemaName="clinlims"
+                     tableName="alert">
+            <column name="severity"/>
+        </createIndex>
+
+        <createIndex indexName="idx_alert_start_time"
+                     schemaName="clinlims"
+                     tableName="alert">
+            <column name="start_time"/>
+        </createIndex>
+
+        <createIndex indexName="idx_alert_status_severity"
+                     schemaName="clinlims"
+                     tableName="alert">
+            <column name="status"/>
+            <column name="severity"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
