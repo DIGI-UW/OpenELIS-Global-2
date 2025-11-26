@@ -1800,5 +1800,10 @@
   "banner.menu.generic.sample": "Generic Sample",
   "banner.menu.generic.sample.order": "Create Order",
   "banner.menu.generic.sample.edit": "Edit Order",
-  "banner.menu.generic.sample.import": "Import Samples"
+  "banner.menu.generic.sample.import": "Import Samples",
+  "coldstorage.label.dashboard": "Cold Storage Dashboard",
+  "sidenav.label.storage.coldstorage": "Cold Storage Monitoring",
+  "sidenav.label.storage.coldstorage.tooltip": "Monitor temperature and humidity of freezers and refrigerators",
+  "sidenav.label.storage.management": "Storage Management",
+  "sidenav.label.storage.management.tooltip": "Manage storage locations and devices"
 }
