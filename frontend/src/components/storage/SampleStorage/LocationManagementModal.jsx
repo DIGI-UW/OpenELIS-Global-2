@@ -32,9 +32,10 @@ import "./LocationManagementModal.css";
  * - onClose: function - Callback when modal closes
  * - onConfirm: function - Callback when location is confirmed with { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
  *   - The sample object should include sampleItemId for API calls
- * - autoSave: boolean - Whether to auto-save when a valid location is selected (default: true, OGC-71)
+ * - autoSave: boolean - Whether to auto-save when a valid location is selected (default: false)
  *   - When true, automatically calls onConfirm after a 500ms delay when a valid location is selected
  *   - Valid location = minimum device level selected
+ *   - Default false: user must click confirm button to submit
  */
 const LocationManagementModal = ({
   open,
@@ -42,7 +43,7 @@ const LocationManagementModal = ({
   currentLocation,
   onClose,
   onConfirm,
-  autoSave = true, // OGC-71: Auto-save on location selection (default true)
+  autoSave = false, // Disabled by default - user must click confirm button
 }) => {
   const intl = useIntl();
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -62,6 +63,7 @@ const LocationManagementModal = ({
   const [showAdditionalInvalidWarning, setShowAdditionalInvalidWarning] =
     useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false); // Track auto-save in progress
+  const [showAutoSaved, setShowAutoSaved] = useState(false); // Show "autosaved" indicator
   const autoSaveTimeoutRef = useRef(null); // Ref to store auto-save timeout
 
   // Determine modal mode: assignment (no location) or movement (location exists)
@@ -93,6 +95,7 @@ const LocationManagementModal = ({
       setFocusField(null);
       setShowAdditionalInvalidWarning(false);
       setIsAutoSaving(false);
+      setShowAutoSaved(false);
       // Clear any pending auto-save timeout
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
@@ -149,10 +152,11 @@ const LocationManagementModal = ({
           if (process.env.NODE_ENV === "development") {
             console.log("[LocationManagementModal] Auto-save completed");
           }
-          // Close modal on successful auto-save
-          if (onClose) {
-            onClose();
-          }
+          // Show autosaved indicator (don't close modal - user must click confirm to close)
+          setShowAutoSaved(true);
+          setIsAutoSaving(false);
+          // Hide the indicator after 3 seconds
+          setTimeout(() => setShowAutoSaved(false), 3000);
         } catch (error) {
           console.error("[LocationManagementModal] Auto-save error:", error);
           // Don't close modal on error, reset auto-saving state
@@ -174,7 +178,6 @@ const LocationManagementModal = ({
     open,
     isAutoSaving,
     onConfirm,
-    onClose,
     sample,
     isMovementMode,
     reason,
@@ -907,6 +910,18 @@ const LocationManagementModal = ({
                 </div>
                 <div className="location-path">{selectedLocationPath}</div>
               </div>
+              {/* Unobtrusive autosaved indicator */}
+              {showAutoSaved && (
+                <div
+                  className="autosaved-indicator"
+                  data-testid="autosaved-indicator"
+                >
+                  <FormattedMessage
+                    id="storage.autosaved"
+                    defaultMessage="✓ Autosaved"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

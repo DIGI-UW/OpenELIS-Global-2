@@ -174,9 +174,15 @@ public class SampleAddService {
 
                 addTests(testIDs, tests);
 
+                // Parse storage location attributes for later assignment
+                String storageLocationId = sampleItem.attributeValue("storageLocationId");
+                String storageLocationType = sampleItem.attributeValue("storageLocationType");
+                String storagePositionCoordinate = sampleItem.attributeValue("storagePositionCoordinate");
+
                 sampleItemsTests.add(new SampleTestCollection(item, tests,
                         USE_RECEIVE_DATE_FOR_COLLECTION_DATE ? collectionDateFromRecieveDate : collectionDateTime,
-                        initialConditionList, testIdToUserSectionMap, testIdToSampleTypeMap, sampleNature));
+                        initialConditionList, testIdToUserSectionMap, testIdToSampleTypeMap, sampleNature,
+                        storageLocationId, storageLocationType, storagePositionCoordinate));
             }
         } catch (DocumentException e) {
             LogEvent.logDebug(e);
@@ -285,6 +291,11 @@ public class SampleAddService {
         // gets added as they are persisted
         public List<Analysis> analysises;
 
+        // Storage location info - parsed from sample XML for later assignment
+        public String storageLocationId;
+        public String storageLocationType;
+        public String storagePositionCoordinate;
+
         public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
                 List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,
                 Map<String, String> testIdToUserSampleTypeMap, ObservationHistory sampleNature) {
@@ -295,6 +306,17 @@ public class SampleAddService {
             this.testIdToUserSampleTypeMap = testIdToUserSampleTypeMap;
             initialSampleConditionIdList = initialConditionList;
             this.sampleNature = sampleNature;
+        }
+
+        public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
+                List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,
+                Map<String, String> testIdToUserSampleTypeMap, ObservationHistory sampleNature,
+                String storageLocationId, String storageLocationType, String storagePositionCoordinate) {
+            this(item, tests, collectionDate, initialConditionList, testIdToUserSectionMap, testIdToUserSampleTypeMap,
+                    sampleNature);
+            this.storageLocationId = storageLocationId;
+            this.storageLocationType = storageLocationType;
+            this.storagePositionCoordinate = storagePositionCoordinate;
         }
     }
 }
