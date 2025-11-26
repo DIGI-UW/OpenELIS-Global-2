@@ -30,7 +30,8 @@ public class StorageDeviceForm {
 
     private Boolean active = true;
 
-    @NotBlank(message = "Parent room ID is required")
+    // Note: parentRoomId is required for creation but optional for updates
+    // (parent cannot be changed after creation, backend ignores this field on PUT)
     private String parentRoomId;
 
     // Getters and Setters

@@ -78,6 +78,20 @@ const DisposeSampleModal = ({
 
   const canConfirm = reason && method && confirmed;
 
+  // Handle Enter key to submit form (except in textarea)
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      // Don't submit if focus is in textarea
+      if (event.target.tagName === "TEXTAREA") {
+        return;
+      }
+      event.preventDefault();
+      if (canConfirm) {
+        handleConfirm();
+      }
+    }
+  };
+
   return (
     <ComposedModal
       open={open}
@@ -98,7 +112,7 @@ const DisposeSampleModal = ({
           { sampleId: sample?.sampleId || "" },
         )}
       />
-      <ModalBody>
+      <ModalBody onKeyDown={handleKeyDown}>
         {/* Red Warning Alert */}
         <div className="dispose-modal-alert" data-testid="warning-alert">
           <InlineNotification

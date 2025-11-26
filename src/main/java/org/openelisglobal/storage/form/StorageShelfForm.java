@@ -21,7 +21,8 @@ public class StorageShelfForm {
 
     private Boolean active = true;
 
-    @NotBlank(message = "Parent device ID is required")
+    // Note: parentDeviceId is required for creation but optional for updates
+    // (parent cannot be changed after creation, so backend ignores this on PUT)
     private String parentDeviceId;
 
     // Getters and Setters

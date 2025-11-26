@@ -670,6 +670,15 @@ describe("EditLocationModal", () => {
     const saveButton = screen.getByTestId("edit-location-save-button");
     await userEvent.click(saveButton);
 
+    // Code was changed from FRZ01 to FRZ02, so warning dialog appears
+    // Wait for and confirm the code change warning dialog
+    const confirmButton = await screen.findByTestId(
+      "code-change-confirm-button",
+      {},
+      { timeout: 3000 },
+    );
+    await userEvent.click(confirmButton);
+
     // Wait for API call
     await waitFor(() => {
       expect(Utils.putToOpenElisServer).toHaveBeenCalled();

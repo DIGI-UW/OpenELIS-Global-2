@@ -510,7 +510,21 @@ const LocationManagementModal = ({
   }
 
   const meetsMinimumLevels = (hasRoom && hasDevice) || hasLocationId;
-  const canConfirm = meetsMinimumLevels && canExtractLocationId;
+  const canConfirmLocation = meetsMinimumLevels && canExtractLocationId;
+
+  // Handle Enter key to submit form (except in textarea)
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      // Don't submit if focus is in textarea
+      if (event.target.tagName === "TEXTAREA") {
+        return;
+      }
+      event.preventDefault();
+      if (canConfirmLocation) {
+        handleConfirm();
+      }
+    }
+  };
 
   // Determine if Reason for Move should be visible
   // Show only when: location exists AND different location selected
@@ -584,7 +598,7 @@ const LocationManagementModal = ({
               )
         }
       />
-      <ModalBody>
+      <ModalBody onKeyDown={handleKeyDown}>
         {/* Comprehensive Sample Information Section */}
         {sample && (
           <div
@@ -903,7 +917,7 @@ const LocationManagementModal = ({
         <Button
           kind="primary"
           onClick={handleConfirm}
-          disabled={!canConfirm}
+          disabled={!canConfirmLocation}
           data-testid={isMovementMode ? "confirm-move-button" : "assign-button"}
         >
           {buttonText}
