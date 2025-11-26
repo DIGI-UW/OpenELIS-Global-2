@@ -204,6 +204,25 @@ const EditLocationModal = ({
     setError(null);
   };
 
+  // Handle Enter key to submit form
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      // Check if form is valid before submitting
+      const isValid =
+        (locationType === "room" && formData.name) ||
+        (locationType === "device" && formData.name) ||
+        (locationType === "shelf" && formData.label) ||
+        (locationType === "rack" &&
+          formData.label &&
+          formData.rows &&
+          formData.columns);
+      if (isValid && !isSubmitting) {
+        handleSaveClick();
+      }
+    }
+  };
+
   // Intercept save to check for code changes
   const handleSaveClick = () => {
     if (hasCodeChanged()) {
@@ -246,12 +265,16 @@ const EditLocationModal = ({
         payload.code = formData.code || null;
         payload.type = formData.type;
         payload.temperatureSetting = formData.temperatureSetting || null;
-        payload.capacityLimit = formData.capacityLimit || null;
+        payload.capacityLimit = formData.capacityLimit
+          ? parseInt(formData.capacityLimit, 10)
+          : null;
         payload.active = formData.active;
       } else if (locationType === "shelf") {
         payload.label = formData.label;
         payload.code = formData.code || null;
-        payload.capacityLimit = formData.capacityLimit || null;
+        payload.capacityLimit = formData.capacityLimit
+          ? parseInt(formData.capacityLimit, 10)
+          : null;
         payload.active = formData.active;
       } else if (locationType === "rack") {
         payload.label = formData.label;
@@ -343,7 +366,7 @@ const EditLocationModal = ({
           />
         )}
 
-        <div className="edit-location-form">
+        <div className="edit-location-form" onKeyDown={handleKeyDown}>
           {/* Room fields */}
           {locationType === "room" && (
             <>
