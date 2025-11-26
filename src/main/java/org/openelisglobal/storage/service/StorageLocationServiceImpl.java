@@ -1224,6 +1224,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     /**
      * Check if a device can be deleted (no child shelves, no active samples)
+     * OGC-75: Added sample count check
      */
     private boolean canDeleteDevice(StorageDevice device) {
         if (device == null || device.getId() == null) {
@@ -1236,13 +1237,18 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
+        // OGC-75: Check for active samples assigned to this device
+        int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("device", device.getId());
+        if (sampleCount > 0) {
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * Check if a shelf can be deleted (no child racks, no active samples)
+     * Check if a shelf can be deleted (no child racks, no active samples) OGC-75:
+     * Added sample count check
      */
     private boolean canDeleteShelf(StorageShelf shelf) {
         if (shelf == null || shelf.getId() == null) {
@@ -1255,26 +1261,36 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
+        // OGC-75: Check for active samples assigned to this shelf
+        int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("shelf", shelf.getId());
+        if (sampleCount > 0) {
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * Check if a rack can be deleted (no active samples)
+     * Check if a rack can be deleted (no active samples) OGC-75: Added sample count
+     * check
      */
     private boolean canDeleteRack(StorageRack rack) {
         if (rack == null || rack.getId() == null) {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
-        // For now, racks can be deleted if no constraints (sample check will be added
-        // later)
+        // OGC-75: Check for active samples assigned to this rack
+        int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rack.getId());
+        if (sampleCount > 0) {
+            return false;
+        }
+
         return true;
     }
 
+    /**
+     * OGC-75: Updated to include sample counts in error messages
+     */
     @Override
     @Transactional(readOnly = true)
     public String getDeleteConstraintMessage(Object locationEntity) {
@@ -1289,7 +1305,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 return String.format("Cannot delete Room '%s' because it contains %d device(s)", room.getName(),
                         deviceCount);
             }
-            // TODO: Add sample count check when available
+            // TODO: Add room-level sample count check when room assignments are supported
             return "Cannot delete room: unknown constraint";
         } else if (locationEntity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) locationEntity;
@@ -1298,7 +1314,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 return String.format("Cannot delete Device '%s' because it contains %d shelf(s)", device.getName(),
                         shelfCount);
             }
-            // TODO: Add sample count check when available
+            // OGC-75: Check for assigned samples
+            int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("device", device.getId());
+            if (sampleCount > 0) {
+                return String.format("Cannot delete Device '%s' because it has %d sample(s) assigned", device.getName(),
+                        sampleCount);
+            }
             return "Cannot delete device: unknown constraint";
         } else if (locationEntity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) locationEntity;
@@ -1307,11 +1328,21 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 return String.format("Cannot delete Shelf '%s' because it contains %d rack(s)", shelf.getLabel(),
                         rackCount);
             }
-            // TODO: Add sample count check when available
+            // OGC-75: Check for assigned samples
+            int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("shelf", shelf.getId());
+            if (sampleCount > 0) {
+                return String.format("Cannot delete Shelf '%s' because it has %d sample(s) assigned", shelf.getLabel(),
+                        sampleCount);
+            }
             return "Cannot delete shelf: unknown constraint";
         } else if (locationEntity instanceof StorageRack) {
             StorageRack rack = (StorageRack) locationEntity;
-            // TODO: Add sample count check when available
+            // OGC-75: Check for assigned samples
+            int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rack.getId());
+            if (sampleCount > 0) {
+                return String.format("Cannot delete Rack '%s' because it has %d sample(s) assigned", rack.getLabel(),
+                        sampleCount);
+            }
             return "Cannot delete rack: unknown constraint";
         }
 

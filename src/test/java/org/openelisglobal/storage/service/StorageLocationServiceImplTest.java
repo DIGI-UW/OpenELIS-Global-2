@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
 import org.openelisglobal.storage.dao.StoragePositionDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
@@ -50,6 +51,9 @@ public class StorageLocationServiceImplTest {
 
     @Mock
     private StoragePositionDAO storagePositionDAO;
+
+    @Mock
+    private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
 
     @Mock
     private CodeGenerationService codeGenerationService;
@@ -855,5 +859,111 @@ public class StorageLocationServiceImplTest {
         Map<String, Object> shelfMap = result.get(0);
         assertEquals("Should include capacityLimit", Integer.valueOf(100), shelfMap.get("capacityLimit"));
         assertEquals("Should include capacityType='manual'", "manual", shelfMap.get("capacityType"));
+    }
+
+    // ========== OGC-75: Delete Location Error Messaging Tests ==========
+
+    /**
+     * OGC-75: Test validating delete constraints for device with assigned samples returns false
+     * Validation: Device with assigned samples cannot be deleted
+     */
+    @Test
+    public void testValidateDeleteConstraints_DeviceWithAssignedSamples_ReturnsFalse() {
+        // Given: Device with no child shelves but with assigned samples
+        when(storageShelfDAO.countByDeviceId(testDevice.getId())).thenReturn(0); // No shelves
+        when(sampleStorageAssignmentDAO.countByLocationTypeAndId("device", testDevice.getId())).thenReturn(5); // 5 samples
+
+        // When: Validate delete constraints
+        boolean canDelete = storageLocationService.validateDeleteConstraints(testDevice);
+
+        // Then: Expect false (has assigned samples)
+        assertFalse("Device with assigned samples should not be deletable", canDelete);
+    }
+
+    /**
+     * OGC-75: Test validating delete constraints for shelf with assigned samples returns false
+     * Validation: Shelf with assigned samples cannot be deleted
+     */
+    @Test
+    public void testValidateDeleteConstraints_ShelfWithAssignedSamples_ReturnsFalse() {
+        // Given: Shelf with no child racks but with assigned samples
+        when(storageRackDAO.countByShelfId(testShelf.getId())).thenReturn(0); // No racks
+        when(sampleStorageAssignmentDAO.countByLocationTypeAndId("shelf", testShelf.getId())).thenReturn(3); // 3 samples
+
+        // When: Validate delete constraints
+        boolean canDelete = storageLocationService.validateDeleteConstraints(testShelf);
+
+        // Then: Expect false (has assigned samples)
+        assertFalse("Shelf with assigned samples should not be deletable", canDelete);
+    }
+
+    /**
+     * OGC-75: Test validating delete constraints for rack with assigned samples returns false
+     * Validation: Rack with assigned samples cannot be deleted
+     */
+    @Test
+    public void testValidateDeleteConstraints_RackWithAssignedSamples_ReturnsFalse() {
+        // Given: Rack with assigned samples
+        when(sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", testRack.getId())).thenReturn(2); // 2 samples
+
+        // When: Validate delete constraints
+        boolean canDelete = storageLocationService.validateDeleteConstraints(testRack);
+
+        // Then: Expect false (has assigned samples)
+        assertFalse("Rack with assigned samples should not be deletable", canDelete);
+    }
+
+    /**
+     * OGC-75: Test getting delete constraint message for device with samples returns clear message
+     * Validation: Error message should include sample count
+     */
+    @Test
+    public void testGetDeleteConstraintMessage_DeviceWithSamples_ReturnsMessageWithSampleCount() {
+        // Given: Device with no shelves but with 5 assigned samples
+        when(storageShelfDAO.countByDeviceId(testDevice.getId())).thenReturn(0);
+        when(sampleStorageAssignmentDAO.countByLocationTypeAndId("device", testDevice.getId())).thenReturn(5);
+
+        // When: Get constraint message
+        String message = storageLocationService.getDeleteConstraintMessage(testDevice);
+
+        // Then: Expect message mentioning sample count
+        assertNotNull("Message should not be null", message);
+        assertTrue("Message should mention samples", message.toLowerCase().contains("sample"));
+        assertTrue("Message should mention count", message.contains("5"));
+    }
+
+    /**
+     * OGC-75: Test getting delete constraint message for rack with samples returns clear message
+     * Validation: Error message should include sample count
+     */
+    @Test
+    public void testGetDeleteConstraintMessage_RackWithSamples_ReturnsMessageWithSampleCount() {
+        // Given: Rack with 2 assigned samples
+        when(sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", testRack.getId())).thenReturn(2);
+
+        // When: Get constraint message
+        String message = storageLocationService.getDeleteConstraintMessage(testRack);
+
+        // Then: Expect message mentioning sample count
+        assertNotNull("Message should not be null", message);
+        assertTrue("Message should mention samples", message.toLowerCase().contains("sample"));
+        assertTrue("Message should mention count", message.contains("2"));
+    }
+
+    /**
+     * OGC-75: Test validating delete constraints for device with no shelves and no samples returns true
+     * Validation: Device with no children and no samples can be deleted
+     */
+    @Test
+    public void testValidateDeleteConstraints_DeviceNoShelvesNoSamples_ReturnsTrue() {
+        // Given: Device with no shelves and no samples
+        when(storageShelfDAO.countByDeviceId(testDevice.getId())).thenReturn(0);
+        when(sampleStorageAssignmentDAO.countByLocationTypeAndId("device", testDevice.getId())).thenReturn(0);
+
+        // When: Validate delete constraints
+        boolean canDelete = storageLocationService.validateDeleteConstraints(testDevice);
+
+        // Then: Expect true (no constraints)
+        assertTrue("Device with no shelves and no samples should be deletable", canDelete);
     }
 }

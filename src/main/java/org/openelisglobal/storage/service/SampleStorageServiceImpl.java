@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.hibernate.StaleObjectStateException;
@@ -883,5 +884,110 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 existingAssignment.getPositionCoordinate(), existingAssignment.getNotes() != null ? "updated" : "null");
 
         return response;
+    }
+
+    /**
+     * OGC-73: Dispose a SampleItem - marks status as disposed and clears location
+     */
+    @Override
+    @Transactional
+    public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes) {
+        try {
+            // Validate inputs
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("SampleItem ID is required");
+            }
+            if (reason == null || reason.trim().isEmpty()) {
+                throw new LIMSRuntimeException("Disposal reason is required");
+            }
+            if (method == null || method.trim().isEmpty()) {
+                throw new LIMSRuntimeException("Disposal method is required");
+            }
+
+            // Validate SampleItem exists
+            SampleItem sampleItem = sampleItemDAO.get(sampleItemId)
+                    .orElseThrow(() -> new LIMSRuntimeException("SampleItem not found: " + sampleItemId));
+
+            // Check if already disposed
+            if ("disposed".equalsIgnoreCase(sampleItem.getStatusId())) {
+                throw new LIMSRuntimeException("SampleItem is already disposed");
+            }
+
+            // Find existing assignment to get previous location
+            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItemId);
+            String previousLocation = null;
+            Integer previousLocationId = null;
+            String previousLocationType = null;
+            String previousPositionCoordinate = null;
+
+            if (existingAssignment != null) {
+                previousLocationId = existingAssignment.getLocationId();
+                previousLocationType = existingAssignment.getLocationType();
+                previousPositionCoordinate = existingAssignment.getPositionCoordinate();
+
+                // Build hierarchical path for audit log
+                if (previousLocationId != null && previousLocationType != null) {
+                    Object locationEntity = null;
+                    switch (previousLocationType) {
+                    case "device":
+                        locationEntity = storageLocationService.get(previousLocationId, StorageDevice.class);
+                        break;
+                    case "shelf":
+                        locationEntity = storageLocationService.get(previousLocationId, StorageShelf.class);
+                        break;
+                    case "rack":
+                        locationEntity = storageLocationService.get(previousLocationId, StorageRack.class);
+                        break;
+                    }
+                    previousLocation = buildHierarchicalPathForEntity(locationEntity, previousLocationType,
+                            previousPositionCoordinate);
+                }
+
+                // Clear the location (remove assignment)
+                sampleStorageAssignmentDAO.delete(existingAssignment);
+            }
+
+            // Update SampleItem status to "disposed"
+            sampleItem.setStatusId("disposed");
+            sampleItemDAO.update(sampleItem);
+
+            // Create audit movement record for disposal
+            SampleStorageMovement movement = new SampleStorageMovement();
+            movement.setSampleItem(sampleItem);
+            movement.setPreviousLocationId(previousLocationId);
+            movement.setPreviousLocationType(previousLocationType);
+            movement.setPreviousPositionCoordinate(previousPositionCoordinate);
+            movement.setNewLocationId(null); // No new location - disposed
+            movement.setNewLocationType("disposed");
+            movement.setNewPositionCoordinate(null);
+            movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
+            movement.setReason(
+                    "Disposal: " + reason + " | Method: " + method + (notes != null ? " | Notes: " + notes : ""));
+            movement.setMovedByUserId(1); // Default to system user
+
+            Integer movementIdInt = sampleStorageMovementDAO.insert(movement);
+            String movementId = movementIdInt != null ? movementIdInt.toString() : null;
+
+            // Log successful disposal
+            if (logger.isInfoEnabled()) {
+                logger.info("SampleItem {} disposed successfully. Disposal ID: {}", sampleItemId, movementId);
+            }
+
+            // Build response
+            Map<String, Object> response = new HashMap<>();
+            response.put("disposalId", movementId);
+            response.put("sampleItemId", sampleItemId);
+            response.put("status", "disposed");
+            response.put("previousLocation", previousLocation);
+            response.put("disposedDate", new Timestamp(System.currentTimeMillis()).toString());
+            response.put("reason", reason);
+            response.put("method", method);
+
+            return response;
+
+        } catch (StaleObjectStateException e) {
+            throw new LIMSRuntimeException("Sample was just modified by another user. Please refresh and try again.",
+                    e);
+        }
     }
 }

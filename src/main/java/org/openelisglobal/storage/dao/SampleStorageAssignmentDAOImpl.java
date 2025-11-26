@@ -137,4 +137,25 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
 
     // No override needed - BaseDAOImpl.getAll() uses entity fetch strategies
     // All relationships are EAGER at entity level, so they load automatically
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countByLocationTypeAndId(String locationType, Integer locationId) {
+        try {
+            if (locationType == null || locationId == null) {
+                return 0;
+            }
+
+            String hql = "SELECT COUNT(*) FROM SampleStorageAssignment ssa "
+                    + "WHERE ssa.locationType = :locationType AND ssa.locationId = :locationId";
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameter("locationType", locationType);
+            query.setParameter("locationId", locationId);
+            Long count = query.uniqueResult();
+            return count != null ? count.intValue() : 0;
+        } catch (Exception e) {
+            logger.error("Error counting sample storage assignments by location: " + e.getMessage(), e);
+            return 0;
+        }
+    }
 }

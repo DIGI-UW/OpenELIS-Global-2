@@ -646,26 +646,65 @@ const StorageDashboard = () => {
     setSelectedSampleForDispose(null);
   };
 
-  // Handle Dispose Modal confirm
-  const handleDisposeModalConfirm = (sample, reason, method, notes) => {
-    console.log("Dispose sample confirmed", {
-      sample,
-      reason,
-      method,
-      notes,
-    });
-    // TODO: Implement API call to dispose sample
-    // For now, just close modal and show notification
-    addNotification({
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage({
-        id: "storage.dispose.success",
-        defaultMessage: "Sample disposed successfully",
-      }),
-      kind: "success",
-    });
-    setNotificationVisible(true);
-    handleDisposeModalClose();
+  // Handle Dispose Modal confirm (OGC-73: Call API to dispose sample)
+  const handleDisposeModalConfirm = async (disposalData) => {
+    const { sample, reason, method, notes } = disposalData;
+    console.log("Dispose sample confirmed", { sample, reason, method, notes });
+
+    try {
+      // Call disposal API
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/storage/sample-items/dispose`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            sampleItemId: sample?.id || sample?.sampleItemId,
+            reason,
+            method,
+            notes,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to dispose sample");
+      }
+
+      // Success - show notification and refresh data
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "storage.dispose.success",
+          defaultMessage: "Sample disposed successfully",
+        }),
+        kind: "success",
+      });
+      setNotificationVisible(true);
+      handleDisposeModalClose();
+
+      // OGC-73: Refresh sample list and metrics to show updated status
+      loadSamples();
+      loadMetrics();
+    } catch (error) {
+      console.error("Error disposing sample:", error);
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message:
+          error.message ||
+          intl.formatMessage({
+            id: "storage.dispose.error",
+            defaultMessage: "Failed to dispose sample",
+          }),
+        kind: "error",
+      });
+      setNotificationVisible(true);
+    }
   };
 
   // Determine which filters should be visible based on active tab

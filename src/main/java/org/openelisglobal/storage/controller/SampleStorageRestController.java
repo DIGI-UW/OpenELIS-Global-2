@@ -8,6 +8,7 @@ import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
+import org.openelisglobal.storage.form.SampleDisposalForm;
 import org.openelisglobal.storage.form.SampleMovementForm;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageDashboardService;
@@ -372,6 +373,64 @@ public class SampleStorageRestController extends BaseRestController {
             logger.error("Error updating SampleItem metadata", e);
             Map<String, Object> error = new HashMap<>();
             error.put("message", "An error occurred during update: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * OGC-73: Dispose SampleItem POST /rest/storage/sample-items/dispose Marks
+     * sample as disposed and clears storage location
+     */
+    @PostMapping("/dispose")
+    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form) {
+        try {
+            // Validate required fields
+            if (form.getSampleItemId() == null || form.getSampleItemId().trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "SampleItem ID is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            if (form.getReason() == null || form.getReason().trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "Disposal reason is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            if (form.getMethod() == null || form.getMethod().trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "Disposal method is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            // Log incoming request for debugging
+            if (logger.isDebugEnabled()) {
+                logger.debug("Disposing SampleItem {}: reason={}, method={}", form.getSampleItemId(), form.getReason(),
+                        form.getMethod());
+            }
+
+            // Service layer handles all business logic
+            Map<String, Object> response = sampleStorageService.disposeSampleItem(form.getSampleItemId(),
+                    form.getReason(), form.getMethod(), form.getNotes());
+
+            // Log successful disposal
+            if (logger.isInfoEnabled()) {
+                logger.info("SampleItem {} disposed successfully", form.getSampleItemId());
+            }
+
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error disposing SampleItem", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "An error occurred during disposal: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
