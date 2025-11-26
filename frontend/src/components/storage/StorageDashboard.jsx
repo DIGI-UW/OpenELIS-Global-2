@@ -66,6 +66,7 @@ const StorageDashboard = () => {
   const {
     assignSampleItem,
     moveSampleItem,
+    updateSampleItemMetadata,
     isSubmitting: isMovingSample,
   } = useSampleStorage();
 
@@ -531,6 +532,7 @@ const StorageDashboard = () => {
           locationType: locationType,
           positionCoordinate: finalPositionCoordinate || null,
           reason: reason || null,
+          notes: conditionNotes || null,
         };
         const response = await moveSampleItem(locationPayload);
 

@@ -599,6 +599,7 @@ const SampleType = (props) => {
               type: selectedSampleType?.name || sampleXml?.sampleTypeName || "",
               status: sampleXml?.rejected ? "Rejected" : "Active",
             }}
+            initialLocation={sampleXml?.storageLocation || null}
             onLocationChange={(locationData) => {
               // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
               // Extract newLocation and positionCoordinate from locationData

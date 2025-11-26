@@ -193,7 +193,8 @@ public class SampleStorageRestController extends BaseRestController {
 
             // Service layer handles all business logic
             String movementId = sampleStorageService.moveSampleItemWithLocation(form.getSampleItemId(),
-                    form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getReason());
+                    form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getReason(),
+                    form.getNotes());
 
             // Log successful movement
             if (logger.isInfoEnabled()) {
@@ -314,6 +315,54 @@ public class SampleStorageRestController extends BaseRestController {
             logger.error("Error moving SampleItem", e);
             Map<String, Object> error = new HashMap<>();
             error.put("message", "An error occurred during movement: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Update position and/or notes for existing assignment without changing
+     * location PATCH /rest/storage/sample-items/{sampleItemId}
+     */
+    @PatchMapping("/{sampleItemId}")
+    public ResponseEntity<Map<String, Object>> updateAssignmentMetadata(@PathVariable String sampleItemId,
+            @RequestBody Map<String, String> updates) {
+        try {
+            // Validate sampleItemId
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "SampleItem ID is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            // Extract position and notes from request body (null means don't update, empty
+            // string means clear)
+            String positionCoordinate = updates.get("positionCoordinate");
+            String notes = updates.get("notes");
+
+            // Log incoming request for debugging
+            if (logger.isDebugEnabled()) {
+                logger.debug("Updating metadata for SampleItem {}: positionCoordinate={}, notes={}", sampleItemId,
+                        positionCoordinate, notes != null ? "provided" : "null");
+            }
+
+            // Service layer handles update
+            Map<String, Object> response = sampleStorageService.updateAssignmentMetadata(sampleItemId,
+                    positionCoordinate, notes);
+
+            // Log successful update
+            if (logger.isInfoEnabled()) {
+                logger.info("SampleItem {} metadata updated successfully", sampleItemId);
+            }
+
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error updating SampleItem metadata", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "An error occurred during update: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }

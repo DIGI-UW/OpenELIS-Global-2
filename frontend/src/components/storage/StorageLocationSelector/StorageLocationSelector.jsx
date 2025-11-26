@@ -31,13 +31,57 @@ const StorageLocationSelector = ({
   showQuickFind = false,
   sampleInfo = null,
   hierarchicalPath: initialHierarchicalPath = "",
+  initialLocation = null,
 }) => {
   const intl = useIntl();
-  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState(initialLocation);
   const [hierarchicalPath, setHierarchicalPath] = useState(
-    initialHierarchicalPath,
+    initialHierarchicalPath ||
+      (initialLocation ? buildHierarchicalPathStatic(initialLocation) : ""),
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Helper function to build path from location object (static version for initial state)
+  function buildHierarchicalPathStatic(location) {
+    if (!location) return "";
+    // Check if it has hierarchicalPath or hierarchical_path already
+    if (location.hierarchicalPath) return location.hierarchicalPath;
+    if (location.hierarchical_path) return location.hierarchical_path;
+    // Build from components
+    if (location.position?.coordinate) {
+      return `${location.room?.name || ""} > ${location.device?.name || ""} > ${location.shelf?.label || ""} > ${location.rack?.label || ""} > Position ${location.position.coordinate}`;
+    } else if (location.rack?.label) {
+      return `${location.room?.name || ""} > ${location.device?.name || ""} > ${location.shelf?.label || ""} > ${location.rack?.label}`;
+    } else if (location.shelf?.label) {
+      return `${location.room?.name || ""} > ${location.device?.name || ""} > ${location.shelf?.label}`;
+    } else if (location.device?.name) {
+      return `${location.room?.name || ""} > ${location.device?.name}`;
+    } else if (location.room?.name) {
+      return location.room.name;
+    }
+    // Check for positionCoordinate as direct property
+    if (location.positionCoordinate) {
+      const parts = [];
+      if (location.room?.name) parts.push(location.room.name);
+      if (location.device?.name) parts.push(location.device.name);
+      if (location.shelf?.label) parts.push(location.shelf.label);
+      if (location.rack?.label) parts.push(location.rack.label);
+      parts.push(`Position ${location.positionCoordinate}`);
+      return parts.join(" > ");
+    }
+    return "";
+  }
+
+  // Update hierarchicalPath and selectedLocation when initialLocation prop changes
+  useEffect(() => {
+    if (initialLocation) {
+      setSelectedLocation(initialLocation);
+      const path = buildHierarchicalPathStatic(initialLocation);
+      if (path) {
+        setHierarchicalPath(path);
+      }
+    }
+  }, [initialLocation]);
 
   // Update hierarchicalPath when initialHierarchicalPath prop changes
   useEffect(() => {

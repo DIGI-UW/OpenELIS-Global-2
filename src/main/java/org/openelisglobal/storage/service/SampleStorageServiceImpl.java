@@ -416,7 +416,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Override
     @Transactional
     public String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
-            String positionCoordinate, String reason) {
+            String positionCoordinate, String reason, String notes) {
         try {
             // Validate inputs
             if (locationId == null || locationId.trim().isEmpty()) {
@@ -526,7 +526,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     existingAssignment.setPositionCoordinate(null);
                 }
                 existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-                existingAssignment.setNotes(reason);
+                if (notes != null) {
+                    existingAssignment.setNotes(notes);
+                }
                 sampleStorageAssignmentDAO.update(existingAssignment);
 
                 // Log new state for debugging
@@ -546,7 +548,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     assignment.setPositionCoordinate(positionCoordinate.trim());
                 }
                 assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-                assignment.setNotes(reason);
+                if (notes != null) {
+                    assignment.setNotes(notes);
+                }
                 assignment.setAssignedByUserId(1); // Default to system user for tests
                 sampleStorageAssignmentDAO.insert(assignment);
 
@@ -789,5 +793,59 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
 
         return null;
+    }
+
+    @Override
+    @Transactional
+    public java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
+            String notes) {
+        // Validate SampleItem exists
+        if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+            throw new LIMSRuntimeException("SampleItem ID is required");
+        }
+
+        // Find existing assignment for SampleItem
+        SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItemId);
+        if (existingAssignment == null) {
+            throw new LIMSRuntimeException("No storage assignment found for SampleItem: " + sampleItemId);
+        }
+
+        // Update position coordinate if provided (empty string clears it, null keeps
+        // existing)
+        if (positionCoordinate != null) {
+            if (positionCoordinate.trim().isEmpty()) {
+                existingAssignment.setPositionCoordinate(null);
+            } else {
+                existingAssignment.setPositionCoordinate(positionCoordinate.trim());
+            }
+        }
+
+        // Update notes if provided (empty string clears it, null keeps existing)
+        if (notes != null) {
+            if (notes.trim().isEmpty()) {
+                existingAssignment.setNotes(null);
+            } else {
+                existingAssignment.setNotes(notes.trim());
+            }
+        }
+
+        sampleStorageAssignmentDAO.update(existingAssignment);
+
+        // Build response with current assignment state
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("assignmentId", existingAssignment.getId());
+        response.put("sampleItemId", sampleItemId);
+        response.put("positionCoordinate", existingAssignment.getPositionCoordinate());
+        response.put("notes", existingAssignment.getNotes());
+        response.put("updatedDate", new Timestamp(System.currentTimeMillis()).toString());
+
+        // Build hierarchical path for location
+        String hierarchicalPath = buildHierarchicalPathForAssignment(existingAssignment);
+        response.put("hierarchicalPath", hierarchicalPath);
+
+        logger.info("Updated metadata for SampleItem {}: positionCoordinate={}, notes={}", sampleItemId,
+                existingAssignment.getPositionCoordinate(), existingAssignment.getNotes() != null ? "updated" : "null");
+
+        return response;
     }
 }
