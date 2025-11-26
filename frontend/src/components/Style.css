@@ -337,7 +337,7 @@ button {
   position: fixed; /*or fixed*/
   top: 47px;
   right: 0px;
-  z-index: 10;
+  z-index: 9100; /* Must be higher than Carbon modals (9000) to appear on top */
 }
 
 .selectSampleType {

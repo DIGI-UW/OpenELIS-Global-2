@@ -79,16 +79,13 @@ const PrintLabelButton = ({
       // Check if response is PDF or error JSON
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/pdf")) {
-        // PDF response - create blob and download
+        // PDF response - create blob and open in new tab
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `label-${locationType}-${locationId}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        // Open in new tab instead of downloading
+        window.open(url, "_blank");
+        // Delay revoking URL to allow the new tab to load the PDF
+        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
 
         setIsPrinting(false);
         if (onPrintSuccess) {

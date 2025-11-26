@@ -54,6 +54,9 @@ const EditLocationModal = ({
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // Track original code to detect changes and show warning
+  const [originalCode, setOriginalCode] = useState("");
+  const [showCodeChangeWarning, setShowCodeChangeWarning] = useState(false);
 
   // Helper function to normalize active value to boolean
   const normalizeActive = (value) => {
@@ -108,6 +111,7 @@ const EditLocationModal = ({
     if (open && location && location.id && locationType) {
       // Initialize immediately from location prop to avoid undefined values
       setFormData(initializeFormDataFromLocation(location));
+      setOriginalCode(location.code || "");
       setIsLoading(true);
       setError(null);
 
@@ -133,6 +137,8 @@ const EditLocationModal = ({
               columns: fullLocation.columns || "",
               positionSchemaHint: fullLocation.positionSchemaHint || "",
             });
+            // Store original code from full data
+            setOriginalCode(fullLocation.code || "");
             setError(null);
             setIsLoading(false);
           } else {
@@ -183,12 +189,41 @@ const EditLocationModal = ({
       setFormData({});
       setError(null);
       setIsSubmitting(false);
+      setOriginalCode("");
+      setShowCodeChangeWarning(false);
     }
   }, [open]);
+
+  // Check if code has been changed from original
+  const hasCodeChanged = () => {
+    return originalCode !== "" && formData.code !== originalCode;
+  };
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setError(null);
+  };
+
+  // Intercept save to check for code changes
+  const handleSaveClick = () => {
+    if (hasCodeChanged()) {
+      // Show warning dialog if code has been changed
+      setShowCodeChangeWarning(true);
+    } else {
+      // No code change, proceed directly
+      handleSave();
+    }
+  };
+
+  // Confirm code change and proceed with save
+  const handleConfirmCodeChange = () => {
+    setShowCodeChangeWarning(false);
+    handleSave();
+  };
+
+  // Cancel code change warning
+  const handleCancelCodeChange = () => {
+    setShowCodeChangeWarning(false);
   };
 
   const handleSave = async () => {
@@ -671,7 +706,7 @@ const EditLocationModal = ({
         </Button>
         <Button
           kind="primary"
-          onClick={handleSave}
+          onClick={handleSaveClick}
           disabled={
             isSubmitting ||
             (locationType === "room" && !formData.name) ||
@@ -688,6 +723,59 @@ const EditLocationModal = ({
           />
         </Button>
       </ModalFooter>
+
+      {/* Code change warning confirmation modal */}
+      <ComposedModal
+        open={showCodeChangeWarning}
+        onClose={handleCancelCodeChange}
+        size="sm"
+        data-testid="code-change-warning-modal"
+      >
+        <ModalHeader
+          title={intl.formatMessage({
+            id: "storage.code.change.warning.title",
+            defaultMessage: "Code Change Warning",
+          })}
+        />
+        <ModalBody>
+          <InlineNotification
+            kind="warning"
+            title={intl.formatMessage({
+              id: "storage.code.change.warning",
+              defaultMessage: "Warning",
+            })}
+            subtitle={intl.formatMessage({
+              id: "storage.code.change.warning.message",
+              defaultMessage:
+                "Changing the code will invalidate any previously printed labels for this location. You may need to print new labels.",
+            })}
+            lowContrast
+            hideCloseButton
+          />
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            kind="secondary"
+            onClick={handleCancelCodeChange}
+            data-testid="code-change-cancel-button"
+          >
+            <FormattedMessage
+              id="label.button.cancel"
+              defaultMessage="Cancel"
+            />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleConfirmCodeChange}
+            data-testid="code-change-confirm-button"
+          >
+            <FormattedMessage
+              id="storage.code.change.confirm"
+              defaultMessage="Continue with Change"
+            />
+          </Button>
+        </ModalFooter>
+      </ComposedModal>
     </ComposedModal>
   );
 };
