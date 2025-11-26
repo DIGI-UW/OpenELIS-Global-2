@@ -46,6 +46,18 @@ const LocationManagementModal = ({
   autoSave = false, // Disabled by default - user must click confirm button
 }) => {
   const intl = useIntl();
+
+  // Map status codes to human-readable labels
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      "20": "Sample Entered",
+      "21": "Entered",
+      "active": "Active",
+      "disposed": "Disposed",
+    };
+    return statusMap[String(status)] || status || "Unknown";
+  };
+
   const [selectedLocation, setSelectedLocation] = useState(null);
   const selectedLocationRef = useRef(null);
   const [selectedLocationPath, setSelectedLocationPath] = useState("");
@@ -76,15 +88,23 @@ const LocationManagementModal = ({
 
   // Pre-populate position and notes if current location exists
   useEffect(() => {
+    console.log("[LocationManagementModal] Pre-populating from currentLocation:", {
+      currentLocation,
+      hasPosition: !!currentLocation?.position,
+      positionCoordinate: currentLocation?.position?.coordinate,
+      notes: currentLocation?.notes,
+    });
+
     if (currentLocation) {
-      // Pre-populate position if available
-      if (currentLocation.position) {
-        const initialPosition = currentLocation.position.coordinate || "";
-        setPositionCoordinate(initialPosition);
-        setInitialPositionCoordinate(initialPosition);
-      }
-      // Pre-populate notes if available
+      // Pre-populate position if available, otherwise reset to empty
+      const initialPosition = currentLocation.position?.coordinate || "";
+      console.log("[LocationManagementModal] Setting position to:", initialPosition);
+      setPositionCoordinate(initialPosition);
+      setInitialPositionCoordinate(initialPosition);
+
+      // Pre-populate notes if available, otherwise reset to empty
       const initialNotes = currentLocation.notes || "";
+      console.log("[LocationManagementModal] Setting notes to:", initialNotes);
       setConditionNotes(initialNotes);
       setInitialConditionNotes(initialNotes);
     } else {
@@ -582,6 +602,23 @@ const LocationManagementModal = ({
     onClose();
   };
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && open) {
+        handleClose();
+      }
+    };
+
+    if (open) {
+      document.addEventListener("keydown", handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open, handleClose]);
+
   const selectedLocationForValidation =
     selectedLocationRef.current || selectedLocation;
 
@@ -786,7 +823,7 @@ const LocationManagementModal = ({
                   />
                   :
                 </span>
-                <span className="info-value">{sample.status}</span>
+                <span className="info-value">{getStatusLabel(sample.status)}</span>
               </div>
               {sample.dateCollected && (
                 <div className="info-row">

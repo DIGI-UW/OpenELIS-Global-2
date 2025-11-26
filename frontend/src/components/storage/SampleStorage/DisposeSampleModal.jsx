@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ComposedModal,
   ModalHeader,
@@ -75,6 +75,23 @@ const DisposeSampleModal = ({
     setConfirmed(false);
     onClose();
   };
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && open) {
+        handleClose();
+      }
+    };
+
+    if (open) {
+      document.addEventListener("keydown", handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open, handleClose]);
 
   const canConfirm = reason && method && confirmed;
 

@@ -96,6 +96,15 @@ public class SampleStorageRestController extends BaseRestController {
                     // No filters - return all SampleItems
                     response = sampleStorageService.getAllSamplesWithAssignments();
                     logger.info("Returning {} SampleItems with storage assignments", response.size());
+
+                    // DEBUG: Check if response has positionCoordinate for sample 10001
+                    for (Map<String, Object> map : response) {
+                        if ("10001".equals(String.valueOf(map.get("id")))) {
+                            System.out.println("[CONTROLLER] Sample 10001 before JSON: positionCoordinate='" +
+                                map.get("positionCoordinate") + "', keys=" + map.keySet());
+                            break;
+                        }
+                    }
                 }
                 return ResponseEntity.ok(response);
             }

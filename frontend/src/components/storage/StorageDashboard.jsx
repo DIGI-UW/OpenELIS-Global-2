@@ -1286,6 +1286,16 @@ const StorageDashboard = () => {
           );
           if (response && Array.isArray(response)) {
             console.log("Sample Items loaded:", response.length, response);
+            // Debug: Log first sample's fields to verify positionCoordinate and notes
+            if (response.length > 0) {
+              console.log("[StorageDashboard] First sample fields:", {
+                id: response[0].id,
+                location: response[0].location,
+                positionCoordinate: response[0].positionCoordinate,
+                notes: response[0].notes,
+                allFields: Object.keys(response[0]),
+              });
+            }
             setSamples(response);
             if (response.length === 0) {
               console.warn(
@@ -2406,6 +2416,8 @@ const StorageDashboard = () => {
               status: sampleItem.status || "Active",
               location:
                 sampleItem.location || sampleItem.hierarchicalPath || "",
+              positionCoordinate: sampleItem.positionCoordinate || "",
+              notes: sampleItem.notes || "",
             }}
             onManageLocation={handleManageLocation}
             onDispose={handleDispose}
@@ -3847,15 +3859,29 @@ const StorageDashboard = () => {
         open={locationModalOpen && !!selectedSample}
         sample={selectedSample}
         currentLocation={
-          selectedSample?.location
-            ? {
-                path: selectedSample.location,
-                position: selectedSample.positionCoordinate
-                  ? { coordinate: selectedSample.positionCoordinate }
-                  : null,
-                notes: selectedSample.notes || "",
-              }
-            : null
+          (() => {
+            const currentLoc = selectedSample?.location
+              ? {
+                  path: selectedSample.location,
+                  position: selectedSample.positionCoordinate
+                    ? { coordinate: selectedSample.positionCoordinate }
+                    : null,
+                  notes: selectedSample.notes || "",
+                }
+              : null;
+            if (locationModalOpen && selectedSample) {
+              console.log("[StorageDashboard] Passing currentLocation to modal:", {
+                selectedSample: {
+                  id: selectedSample.id,
+                  location: selectedSample.location,
+                  positionCoordinate: selectedSample.positionCoordinate,
+                  notes: selectedSample.notes,
+                },
+                currentLoc,
+              });
+            }
+            return currentLoc;
+          })()
         }
         onClose={handleLocationModalClose}
         onConfirm={handleLocationModalConfirm}

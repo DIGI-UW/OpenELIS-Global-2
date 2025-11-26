@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import {
+  postToOpenElisServerJsonResponse,
+  patchToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
 
 /**
  * Hook for sample item storage assignment and movement
@@ -113,17 +116,10 @@ export const useSampleStorage = () => {
     setError(null);
 
     return new Promise((resolve, reject) => {
-      // Use fetch for PATCH request since postToOpenElisServerJsonResponse uses POST
-      fetch(`/api/rest/storage/sample-items/${sampleItemId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updates),
-        credentials: "include",
-      })
-        .then((response) => response.json())
-        .then((response) => {
+      patchToOpenElisServerJsonResponse(
+        `/rest/storage/sample-items/${sampleItemId}`,
+        JSON.stringify(updates),
+        (response) => {
           setIsSubmitting(false);
           if (response.assignmentId || response.hierarchicalPath) {
             setError(null);
@@ -139,13 +135,8 @@ export const useSampleStorage = () => {
             setError(errorMessage);
             reject(new Error(errorMessage));
           }
-        })
-        .catch((err) => {
-          setIsSubmitting(false);
-          const errorMessage = err.message || "Failed to update metadata";
-          setError(errorMessage);
-          reject(new Error(errorMessage));
-        });
+        },
+      );
     });
   };
 

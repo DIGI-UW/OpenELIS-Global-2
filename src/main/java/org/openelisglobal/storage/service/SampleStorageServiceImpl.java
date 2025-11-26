@@ -116,9 +116,16 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 map.put("assignedBy", assignment.getAssignedByUserId());
                 map.put("date", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
                 // Include position coordinate and notes as separate fields for editing
-                map.put("positionCoordinate",
-                        assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "");
-                map.put("notes", assignment.getNotes() != null ? assignment.getNotes() : "");
+                String posCoord = assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "";
+                String notesVal = assignment.getNotes() != null ? assignment.getNotes() : "";
+                map.put("positionCoordinate", posCoord);
+                map.put("notes", notesVal);
+
+                // Debug: Log first 3 samples with assignments
+                if (response.size() < 3) {
+                    logger.info("DEBUG getAllSamplesWithAssignments - Sample #{}: ID={}, positionCoordinate='{}', notes='{}', mapKeys={}",
+                        response.size() + 1, sampleItem.getId(), posCoord, notesVal, map.keySet());
+                }
             } else {
                 // No assignment - sample is unassigned
                 map.put("location", "");
@@ -154,6 +161,28 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
         logger.info("getAllSamplesWithAssignments: Returning {} SampleItems (assigned and unassigned)",
                 response.size());
+
+        // DEBUG: Print first map keys and sample 10001 data
+        if (!response.isEmpty()) {
+            System.out.println("====== DEBUG getAllSamplesWithAssignments ======");
+            System.out.println("First map ID: " + response.get(0).get("id"));
+            System.out.println("First map positionCoordinate: '" + response.get(0).get("positionCoordinate") + "'");
+
+            // Find and log sample 10001 specifically
+            for (Map<String, Object> map : response) {
+                if ("10001".equals(String.valueOf(map.get("id")))) {
+                    System.out.println("--- Sample 10001 ---");
+                    System.out.println("ID: " + map.get("id"));
+                    System.out.println("location: " + map.get("location"));
+                    System.out.println("positionCoordinate: '" + map.get("positionCoordinate") + "'");
+                    System.out.println("notes: '" + map.get("notes") + "'");
+                    break;
+                }
+            }
+            System.out.println("Total samples: " + response.size());
+            System.out.println("===============================================");
+        }
+
         return response;
     }
 
