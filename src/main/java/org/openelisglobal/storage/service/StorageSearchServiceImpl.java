@@ -51,15 +51,20 @@ public class StorageSearchServiceImpl implements StorageSearchService {
                 matchesSampleItemId = sampleItemIdStr.toLowerCase().contains(normalizedQuery);
             }
 
-            // Search by SampleItem External ID
+            // Search by SampleItem External ID - use prefix matching (startsWith) per
+            // OGC-72
+            // This ensures "12345" finds "12345", "12345.1", "12345.2", "123456", etc.
             String sampleItemExternalId = (String) sampleItem.get("sampleItemExternalId");
             boolean matchesExternalId = sampleItemExternalId != null && !sampleItemExternalId.isEmpty()
-                    && sampleItemExternalId.toLowerCase().contains(normalizedQuery);
+                    && sampleItemExternalId.toLowerCase().startsWith(normalizedQuery);
 
-            // Search by parent Sample accession number
+            // Search by parent Sample accession number - use prefix matching (startsWith)
+            // per OGC-72
+            // This ensures "12345" finds all sample items with accession starting with
+            // "12345"
             String sampleAccessionNumber = (String) sampleItem.get("sampleAccessionNumber");
             boolean matchesAccessionNumber = sampleAccessionNumber != null && !sampleAccessionNumber.isEmpty()
-                    && sampleAccessionNumber.toLowerCase().contains(normalizedQuery);
+                    && sampleAccessionNumber.toLowerCase().startsWith(normalizedQuery);
 
             // Search by location path (full hierarchical path)
             String location = (String) sampleItem.get("location");

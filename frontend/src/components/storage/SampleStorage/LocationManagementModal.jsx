@@ -32,6 +32,9 @@ import "./LocationManagementModal.css";
  * - onClose: function - Callback when modal closes
  * - onConfirm: function - Callback when location is confirmed with { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
  *   - The sample object should include sampleItemId for API calls
+ * - autoSave: boolean - Whether to auto-save when a valid location is selected (default: true, OGC-71)
+ *   - When true, automatically calls onConfirm after a 500ms delay when a valid location is selected
+ *   - Valid location = minimum device level selected
  */
 const LocationManagementModal = ({
   open,
@@ -39,6 +42,7 @@ const LocationManagementModal = ({
   currentLocation,
   onClose,
   onConfirm,
+  autoSave = true, // OGC-71: Auto-save on location selection (default true)
 }) => {
   const intl = useIntl();
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -57,6 +61,8 @@ const LocationManagementModal = ({
   const [focusField, setFocusField] = useState(null); // 'device' | 'shelf' | 'rack' | 'position'
   const [showAdditionalInvalidWarning, setShowAdditionalInvalidWarning] =
     useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false); // Track auto-save in progress
+  const autoSaveTimeoutRef = useRef(null); // Ref to store auto-save timeout
 
   // Determine modal mode: assignment (no location) or movement (location exists)
   const isMovementMode = !!currentLocation;
@@ -86,8 +92,95 @@ const LocationManagementModal = ({
       setPrefillLocation(null);
       setFocusField(null);
       setShowAdditionalInvalidWarning(false);
+      setIsAutoSaving(false);
+      // Clear any pending auto-save timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
+      }
     }
   }, [open]);
+
+  // OGC-71: Auto-save effect - triggers handleConfirm when a valid location is selected
+  // Uses a debounced approach with 500ms delay to allow user to continue making changes
+  useEffect(() => {
+    // Only auto-save if enabled and modal is open
+    if (!autoSave || !open || isAutoSaving) {
+      return;
+    }
+
+    // Clear any existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+    }
+
+    // Check if we have a valid location (minimum: device selected)
+    const locationToCheck = selectedLocation || selectedLocationRef.current;
+    const hasValidLocation =
+      locationToCheck &&
+      (locationToCheck.device?.id ||
+        (locationToCheck.type === "device" && locationToCheck.id) ||
+        locationToCheck.shelf?.id ||
+        locationToCheck.rack?.id);
+
+    if (hasValidLocation && onConfirm) {
+      // Set auto-saving state and trigger save after delay
+      autoSaveTimeoutRef.current = setTimeout(async () => {
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "[LocationManagementModal] Auto-save triggered for location:",
+            locationToCheck,
+          );
+        }
+        setIsAutoSaving(true);
+        try {
+          const result = onConfirm({
+            sample,
+            newLocation: locationToCheck,
+            reason: isMovementMode ? reason : undefined,
+            conditionNotes: conditionNotes || undefined,
+            positionCoordinate: positionCoordinate || undefined,
+          });
+          // If onConfirm returns a promise, await it
+          if (result && typeof result.then === "function") {
+            await result;
+          }
+          if (process.env.NODE_ENV === "development") {
+            console.log("[LocationManagementModal] Auto-save completed");
+          }
+          // Close modal on successful auto-save
+          if (onClose) {
+            onClose();
+          }
+        } catch (error) {
+          console.error("[LocationManagementModal] Auto-save error:", error);
+          // Don't close modal on error, reset auto-saving state
+          setIsAutoSaving(false);
+        }
+      }, 500); // 500ms delay for debouncing
+    }
+
+    // Cleanup function
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
+      }
+    };
+  }, [
+    selectedLocation,
+    autoSave,
+    open,
+    isAutoSaving,
+    onConfirm,
+    onClose,
+    sample,
+    isMovementMode,
+    reason,
+    conditionNotes,
+    positionCoordinate,
+  ]);
 
   const handleLocationChange = useCallback(
     (location) => {
