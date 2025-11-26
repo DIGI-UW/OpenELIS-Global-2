@@ -10,6 +10,7 @@ import {
   Dropdown,
   Toggle,
   InlineNotification,
+  Checkbox,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -56,7 +57,7 @@ const EditLocationModal = ({
   const [isLoading, setIsLoading] = useState(false);
   // Track original code to detect changes and show warning
   const [originalCode, setOriginalCode] = useState("");
-  const [showCodeChangeWarning, setShowCodeChangeWarning] = useState(false);
+  const [codeChangeAcknowledged, setCodeChangeAcknowledged] = useState(false);
 
   // Helper function to normalize active value to boolean
   const normalizeActive = (value) => {
@@ -190,7 +191,7 @@ const EditLocationModal = ({
       setError(null);
       setIsSubmitting(false);
       setOriginalCode("");
-      setShowCodeChangeWarning(false);
+      setCodeChangeAcknowledged(false);
     }
   }, [open]);
 
@@ -217,32 +218,15 @@ const EditLocationModal = ({
           formData.label &&
           formData.rows &&
           formData.columns);
-      if (isValid && !isSubmitting) {
-        handleSaveClick();
+      if (isValid && !isSubmitting && !isSaveDisabledDueToCodeChange()) {
+        handleSave();
       }
     }
   };
 
-  // Intercept save to check for code changes
-  const handleSaveClick = () => {
-    if (hasCodeChanged()) {
-      // Show warning dialog if code has been changed
-      setShowCodeChangeWarning(true);
-    } else {
-      // No code change, proceed directly
-      handleSave();
-    }
-  };
-
-  // Confirm code change and proceed with save
-  const handleConfirmCodeChange = () => {
-    setShowCodeChangeWarning(false);
-    handleSave();
-  };
-
-  // Cancel code change warning
-  const handleCancelCodeChange = () => {
-    setShowCodeChangeWarning(false);
+  // Check if save should be disabled due to unacknowledged code change
+  const isSaveDisabledDueToCodeChange = () => {
+    return hasCodeChanged() && !codeChangeAcknowledged;
   };
 
   const handleSave = async () => {
@@ -716,6 +700,40 @@ const EditLocationModal = ({
               />
             </>
           )}
+
+          {/* Inline warning when code has been changed */}
+          {hasCodeChanged() && (
+            <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+              <InlineNotification
+                kind="error"
+                title={intl.formatMessage({
+                  id: "storage.code.change.warning",
+                  defaultMessage: "Warning",
+                })}
+                subtitle={intl.formatMessage({
+                  id: "storage.code.change.warning.message",
+                  defaultMessage:
+                    "Changing the code will invalidate any previously printed labels for this location.",
+                })}
+                lowContrast
+                hideCloseButton
+              />
+              <Checkbox
+                id="code-change-acknowledge"
+                data-testid="code-change-acknowledge-checkbox"
+                labelText={intl.formatMessage({
+                  id: "storage.code.change.acknowledge",
+                  defaultMessage:
+                    "I understand and want to proceed with the code change",
+                })}
+                checked={codeChangeAcknowledged}
+                onChange={(_, { checked }) =>
+                  setCodeChangeAcknowledged(checked)
+                }
+                style={{ marginTop: "0.5rem" }}
+              />
+            </div>
+          )}
         </div>
       </ModalBody>
       <ModalFooter>
@@ -729,9 +747,10 @@ const EditLocationModal = ({
         </Button>
         <Button
           kind="primary"
-          onClick={handleSaveClick}
+          onClick={handleSave}
           disabled={
             isSubmitting ||
+            isSaveDisabledDueToCodeChange() ||
             (locationType === "room" && !formData.name) ||
             (locationType === "device" && !formData.name) ||
             (locationType === "shelf" && !formData.label) ||
@@ -746,59 +765,6 @@ const EditLocationModal = ({
           />
         </Button>
       </ModalFooter>
-
-      {/* Code change warning confirmation modal */}
-      <ComposedModal
-        open={showCodeChangeWarning}
-        onClose={handleCancelCodeChange}
-        size="sm"
-        data-testid="code-change-warning-modal"
-      >
-        <ModalHeader
-          title={intl.formatMessage({
-            id: "storage.code.change.warning.title",
-            defaultMessage: "Code Change Warning",
-          })}
-        />
-        <ModalBody>
-          <InlineNotification
-            kind="warning"
-            title={intl.formatMessage({
-              id: "storage.code.change.warning",
-              defaultMessage: "Warning",
-            })}
-            subtitle={intl.formatMessage({
-              id: "storage.code.change.warning.message",
-              defaultMessage:
-                "Changing the code will invalidate any previously printed labels for this location. You may need to print new labels.",
-            })}
-            lowContrast
-            hideCloseButton
-          />
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            kind="secondary"
-            onClick={handleCancelCodeChange}
-            data-testid="code-change-cancel-button"
-          >
-            <FormattedMessage
-              id="label.button.cancel"
-              defaultMessage="Cancel"
-            />
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleConfirmCodeChange}
-            data-testid="code-change-confirm-button"
-          >
-            <FormattedMessage
-              id="storage.code.change.confirm"
-              defaultMessage="Continue with Change"
-            />
-          </Button>
-        </ModalFooter>
-      </ComposedModal>
     </ComposedModal>
   );
 };
