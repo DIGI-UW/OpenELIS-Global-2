@@ -420,7 +420,59 @@ const StorageDashboard = () => {
     // Determine if this is assignment (no current location) or movement (location exists)
     const isAssignment = !sample.location || !sample.location.trim();
 
+    // Check if only metadata is being updated (no location change)
+    // This happens when newLocation is null/undefined but position or notes are provided
+    // Note: check for !== undefined to handle empty strings
+    const hasPositionUpdate =
+      positionCoordinate !== undefined && positionCoordinate !== null;
+    const hasNotesUpdate =
+      conditionNotes !== undefined && conditionNotes !== null;
+    const isMetadataOnlyUpdate =
+      !isAssignment && !newLocation && (hasPositionUpdate || hasNotesUpdate);
+
+    console.log("[StorageDashboard] handleLocationModalConfirm", {
+      isAssignment,
+      hasNewLocation: !!newLocation,
+      hasPositionUpdate,
+      hasNotesUpdate,
+      isMetadataOnlyUpdate,
+      positionCoordinate,
+      conditionNotes,
+    });
+
     try {
+      // Handle metadata-only update
+      if (isMetadataOnlyUpdate) {
+        const updates = {};
+        if (positionCoordinate !== undefined && positionCoordinate !== null) {
+          updates.positionCoordinate = positionCoordinate;
+        }
+        if (conditionNotes !== undefined && conditionNotes !== null) {
+          updates.notes = conditionNotes;
+        }
+
+        const response = await updateSampleItemMetadata(
+          sample.sampleItemId || sample.id,
+          updates,
+        );
+
+        loadSamples();
+        loadMetrics();
+
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "storage.update.success",
+            defaultMessage: "Storage metadata updated successfully",
+          }),
+          kind: "success",
+        });
+        setNotificationVisible(true);
+
+        // Close modal on success
+        handleLocationModalClose();
+        return;
+      }
       let locationId = null;
       let locationType = null;
       let finalPositionCoordinate = positionCoordinate;
@@ -3796,7 +3848,13 @@ const StorageDashboard = () => {
         sample={selectedSample}
         currentLocation={
           selectedSample?.location
-            ? { path: selectedSample.location, position: null }
+            ? {
+                path: selectedSample.location,
+                position: selectedSample.positionCoordinate
+                  ? { coordinate: selectedSample.positionCoordinate }
+                  : null,
+                notes: selectedSample.notes || "",
+              }
             : null
         }
         onClose={handleLocationModalClose}

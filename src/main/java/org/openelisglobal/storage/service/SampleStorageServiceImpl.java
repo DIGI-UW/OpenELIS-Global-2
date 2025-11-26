@@ -115,11 +115,17 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 map.put("location", hierarchicalPath != null ? hierarchicalPath : "");
                 map.put("assignedBy", assignment.getAssignedByUserId());
                 map.put("date", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+                // Include position coordinate and notes as separate fields for editing
+                map.put("positionCoordinate",
+                        assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "");
+                map.put("notes", assignment.getNotes() != null ? assignment.getNotes() : "");
             } else {
                 // No assignment - sample is unassigned
                 map.put("location", "");
                 map.put("assignedBy", null);
                 map.put("date", "");
+                map.put("positionCoordinate", "");
+                map.put("notes", "");
             }
 
             response.add(map);

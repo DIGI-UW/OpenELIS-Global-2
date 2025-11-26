@@ -69,10 +69,30 @@ const LocationManagementModal = ({
   // Determine modal mode: assignment (no location) or movement (location exists)
   const isMovementMode = !!currentLocation;
 
-  // Pre-populate position if current location exists
+  // Track initial values for position and notes to detect changes
+  const [initialPositionCoordinate, setInitialPositionCoordinate] =
+    useState("");
+  const [initialConditionNotes, setInitialConditionNotes] = useState("");
+
+  // Pre-populate position and notes if current location exists
   useEffect(() => {
-    if (currentLocation && currentLocation.position) {
-      setPositionCoordinate(currentLocation.position.coordinate || "");
+    if (currentLocation) {
+      // Pre-populate position if available
+      if (currentLocation.position) {
+        const initialPosition = currentLocation.position.coordinate || "";
+        setPositionCoordinate(initialPosition);
+        setInitialPositionCoordinate(initialPosition);
+      }
+      // Pre-populate notes if available
+      const initialNotes = currentLocation.notes || "";
+      setConditionNotes(initialNotes);
+      setInitialConditionNotes(initialNotes);
+    } else {
+      // Reset to empty when no current location
+      setPositionCoordinate("");
+      setInitialPositionCoordinate("");
+      setConditionNotes("");
+      setInitialConditionNotes("");
     }
   }, [currentLocation]);
 
@@ -285,9 +305,15 @@ const LocationManagementModal = ({
   const handleConfirm = async () => {
     const locationToUse = selectedLocation || selectedLocationRef.current;
 
-    if (!locationToUse) {
+    // Allow submission when:
+    // 1. Location is selected (normal case)
+    // 2. No location but metadata changed in movement mode (metadata-only update)
+    if (
+      !locationToUse &&
+      !(isMovementMode && (positionCoordinate || conditionNotes))
+    ) {
       console.error(
-        "[LocationManagementModal] handleConfirm: No location selected",
+        "[LocationManagementModal] handleConfirm: No location selected and no metadata to update",
       );
       return;
     }
@@ -307,13 +333,14 @@ const LocationManagementModal = ({
           hasNewLocation: !!locationToUse,
           reason: isMovementMode ? reason : undefined,
           positionCoordinate: positionCoordinate || undefined,
+          conditionNotes: conditionNotes || undefined,
         },
       );
 
       // Ensure onConfirm returns a promise
       const result = onConfirm({
         sample,
-        newLocation: locationToUse,
+        newLocation: locationToUse || null, // null if only metadata changed
         reason: isMovementMode ? reason : undefined,
         conditionNotes: conditionNotes || undefined,
         positionCoordinate: positionCoordinate || undefined,
@@ -606,7 +633,18 @@ const LocationManagementModal = ({
   }
 
   const meetsMinimumLevels = (hasRoom && hasDevice) || hasLocationId;
-  const canConfirmLocation = meetsMinimumLevels && canExtractLocationId;
+
+  // Check if position or notes have changed from initial values
+  const positionChanged = positionCoordinate !== initialPositionCoordinate;
+  const notesChanged = conditionNotes !== initialConditionNotes;
+  const metadataChanged = positionChanged || notesChanged;
+
+  // Enable button if:
+  // 1. Location is selected (original behavior), OR
+  // 2. Metadata changed AND we're in movement mode with existing location (can update metadata only)
+  const canConfirmLocation =
+    (meetsMinimumLevels && canExtractLocationId) ||
+    (isMovementMode && metadataChanged);
 
   // Handle Enter key to submit form (except in textarea)
   const handleKeyDown = (event) => {
