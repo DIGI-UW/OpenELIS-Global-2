@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.sampleitem.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 
@@ -33,8 +34,8 @@ public class AliquotSummaryDTO {
 
     private String id;
     private String externalId;
-    private BigDecimal originalQuantity;
-    private BigDecimal remainingQuantity;
+    private Double quantity; // Original quantity from legacy column
+    private BigDecimal remainingQuantity; // Remaining quantity (null means use quantity)
     private Timestamp createdDate;
 
     // ========== Constructors ==========
@@ -42,11 +43,11 @@ public class AliquotSummaryDTO {
     public AliquotSummaryDTO() {
     }
 
-    public AliquotSummaryDTO(String id, String externalId, BigDecimal originalQuantity, BigDecimal remainingQuantity,
+    public AliquotSummaryDTO(String id, String externalId, Double quantity, BigDecimal remainingQuantity,
             Timestamp createdDate) {
         this.id = id;
         this.externalId = externalId;
-        this.originalQuantity = originalQuantity;
+        this.quantity = quantity;
         this.remainingQuantity = remainingQuantity;
         this.createdDate = createdDate;
     }
@@ -69,12 +70,12 @@ public class AliquotSummaryDTO {
         this.externalId = externalId;
     }
 
-    public BigDecimal getOriginalQuantity() {
-        return originalQuantity;
+    public Double getQuantity() {
+        return quantity;
     }
 
-    public void setOriginalQuantity(BigDecimal originalQuantity) {
-        this.originalQuantity = originalQuantity;
+    public void setQuantity(Double quantity) {
+        this.quantity = quantity;
     }
 
     public BigDecimal getRemainingQuantity() {
@@ -83,6 +84,20 @@ public class AliquotSummaryDTO {
 
     public void setRemainingQuantity(BigDecimal remainingQuantity) {
         this.remainingQuantity = remainingQuantity;
+    }
+
+    /**
+     * Get effective remaining quantity, falling back to quantity if
+     * remainingQuantity is null.
+     *
+     * @return effective remaining quantity
+     */
+    @JsonProperty("effectiveRemainingQuantity")
+    public BigDecimal getEffectiveRemainingQuantity() {
+        if (remainingQuantity != null) {
+            return remainingQuantity;
+        }
+        return quantity != null ? BigDecimal.valueOf(quantity) : null;
     }
 
     public Timestamp getCreatedDate() {

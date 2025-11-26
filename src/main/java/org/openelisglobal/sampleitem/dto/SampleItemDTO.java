@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.sampleitem.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -39,8 +40,8 @@ public class SampleItemDTO {
     private String sampleAccessionNumber;
     private String sampleType;
     private String sampleTypeId;
-    private BigDecimal originalQuantity;
-    private BigDecimal remainingQuantity;
+    private Double quantity; // Original quantity from legacy column
+    private BigDecimal remainingQuantity; // Remaining quantity for aliquoting (null means use quantity)
     private String unitOfMeasure;
     private String unitOfMeasureId;
     private String status;
@@ -110,12 +111,12 @@ public class SampleItemDTO {
         this.sampleTypeId = sampleTypeId;
     }
 
-    public BigDecimal getOriginalQuantity() {
-        return originalQuantity;
+    public Double getQuantity() {
+        return quantity;
     }
 
-    public void setOriginalQuantity(BigDecimal originalQuantity) {
-        this.originalQuantity = originalQuantity;
+    public void setQuantity(Double quantity) {
+        this.quantity = quantity;
     }
 
     public BigDecimal getRemainingQuantity() {
@@ -124,6 +125,20 @@ public class SampleItemDTO {
 
     public void setRemainingQuantity(BigDecimal remainingQuantity) {
         this.remainingQuantity = remainingQuantity;
+    }
+
+    /**
+     * Get effective remaining quantity, falling back to quantity if
+     * remainingQuantity is null. This matches the behavior in SampleItem entity.
+     *
+     * @return effective remaining quantity
+     */
+    @JsonProperty("effectiveRemainingQuantity")
+    public BigDecimal getEffectiveRemainingQuantity() {
+        if (remainingQuantity != null) {
+            return remainingQuantity;
+        }
+        return quantity != null ? BigDecimal.valueOf(quantity) : null;
     }
 
     public String getUnitOfMeasure() {

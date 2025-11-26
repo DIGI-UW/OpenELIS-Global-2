@@ -68,16 +68,9 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     // New fields using JPA annotations (hybrid approach per Constitution III.2)
 
     /**
-     * Original quantity when the sample item was first created or received. For
-     * aliquots, this is the quantity transferred from the parent. Used with
-     * remainingQuantity to track volume dispensing.
-     */
-    @Column(name = "original_quantity", precision = 10, scale = 3)
-    private BigDecimal originalQuantity;
-
-    /**
      * Remaining quantity available for aliquoting or testing. Decremented when
-     * creating aliquots. Cannot be negative.
+     * creating aliquots. Cannot be negative. If null, the quantity field should be
+     * used as the remaining quantity (for legacy samples without aliquoting).
      */
     @Column(name = "remaining_quantity", precision = 10, scale = 3)
     private BigDecimal remainingQuantity;
@@ -315,20 +308,26 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     // ========== Aliquoting Getters/Setters (Feature 001-sample-management)
     // ==========
 
-    public BigDecimal getOriginalQuantity() {
-        return originalQuantity;
-    }
-
-    public void setOriginalQuantity(BigDecimal originalQuantity) {
-        this.originalQuantity = originalQuantity;
-    }
-
     public BigDecimal getRemainingQuantity() {
         return remainingQuantity;
     }
 
     public void setRemainingQuantity(BigDecimal remainingQuantity) {
         this.remainingQuantity = remainingQuantity;
+    }
+
+    /**
+     * Get the effective remaining quantity, falling back to quantity if
+     * remainingQuantity is null (for legacy samples).
+     *
+     * @return the remaining quantity, or quantity if remainingQuantity is null
+     */
+    public BigDecimal getEffectiveRemainingQuantity() {
+        if (remainingQuantity != null) {
+            return remainingQuantity;
+        }
+        // Fallback to quantity for legacy samples without remainingQuantity set
+        return quantity != null ? BigDecimal.valueOf(quantity) : null;
     }
 
     public SampleItem getParentSampleItem() {
@@ -378,11 +377,14 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     /**
      * Check if this sample item has remaining quantity available for aliquoting.
+     * Falls back to quantity field for legacy samples.
      *
-     * @return true if remaining quantity is not null and greater than zero
+     * @return true if effective remaining quantity is not null and greater than
+     *         zero
      */
     public boolean hasRemainingQuantity() {
-        return remainingQuantity != null && remainingQuantity.compareTo(BigDecimal.ZERO) > 0;
+        BigDecimal effective = getEffectiveRemainingQuantity();
+        return effective != null && effective.compareTo(BigDecimal.ZERO) > 0;
     }
 
     /**
@@ -396,20 +398,22 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     /**
      * Check if the requested quantity can be aliquoted from this sample. Validates
-     * that sufficient remaining quantity exists.
+     * that sufficient remaining quantity exists. Falls back to quantity field for
+     * legacy samples.
      *
      * @param requestedQuantity the quantity to aliquot
-     * @return true if requested quantity is valid and does not exceed remaining
-     *         quantity
+     * @return true if requested quantity is valid and does not exceed effective
+     *         remaining quantity
      */
     public boolean canAliquot(BigDecimal requestedQuantity) {
         if (requestedQuantity == null || requestedQuantity.compareTo(BigDecimal.ZERO) <= 0) {
             return false;
         }
-        if (remainingQuantity == null) {
+        BigDecimal effective = getEffectiveRemainingQuantity();
+        if (effective == null) {
             return false;
         }
-        return remainingQuantity.compareTo(requestedQuantity) >= 0;
+        return effective.compareTo(requestedQuantity) >= 0;
     }
 
     /**
@@ -427,8 +431,15 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
         if (amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Amount to decrement cannot be negative: " + amount);
         }
+        // For legacy samples without remainingQuantity, initialize from original
+        // quantity
         if (remainingQuantity == null) {
-            throw new IllegalStateException("Cannot decrement remaining quantity: remaining quantity is not set");
+            if (quantity != null) {
+                remainingQuantity = BigDecimal.valueOf(quantity);
+            } else {
+                throw new IllegalStateException(
+                        "Cannot decrement remaining quantity: neither remainingQuantity nor quantity is set");
+            }
         }
         if (remainingQuantity.compareTo(amount) < 0) {
             throw new IllegalArgumentException("Cannot decrement " + amount + " from remaining quantity "

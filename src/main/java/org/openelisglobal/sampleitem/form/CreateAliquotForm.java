@@ -14,13 +14,21 @@
 package org.openelisglobal.sampleitem.form;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
 /**
- * Form object for creating an aliquot from a parent sample item.
+ * Form object for creating aliquots from a parent sample item.
+ *
+ * <p>
+ * Supports creating multiple equal-volume aliquots by specifying
+ * numberOfAliquots. When numberOfAliquots is 1 (default), creates a single
+ * aliquot with the specified quantity. When numberOfAliquots is greater than 1,
+ * divides the total quantity equally among all aliquots.
  *
  * <p>
  * Includes Jakarta validation annotations for request validation at the
@@ -40,6 +48,10 @@ public class CreateAliquotForm {
     @DecimalMin(value = "0.001", inclusive = true, message = "Quantity must be at least 0.001")
     private BigDecimal quantityToTransfer;
 
+    @Min(value = 1, message = "Number of aliquots must be at least 1")
+    @Max(value = 100, message = "Number of aliquots cannot exceed 100")
+    private int numberOfAliquots = 1;
+
     @Size(max = 1000, message = "Notes cannot exceed 1000 characters")
     private String notes;
 
@@ -51,6 +63,14 @@ public class CreateAliquotForm {
     public CreateAliquotForm(String parentSampleItemId, BigDecimal quantityToTransfer, String notes) {
         this.parentSampleItemId = parentSampleItemId;
         this.quantityToTransfer = quantityToTransfer;
+        this.notes = notes;
+    }
+
+    public CreateAliquotForm(String parentSampleItemId, BigDecimal quantityToTransfer, int numberOfAliquots,
+            String notes) {
+        this.parentSampleItemId = parentSampleItemId;
+        this.quantityToTransfer = quantityToTransfer;
+        this.numberOfAliquots = numberOfAliquots;
         this.notes = notes;
     }
 
@@ -70,6 +90,14 @@ public class CreateAliquotForm {
 
     public void setQuantityToTransfer(BigDecimal quantityToTransfer) {
         this.quantityToTransfer = quantityToTransfer;
+    }
+
+    public int getNumberOfAliquots() {
+        return numberOfAliquots;
+    }
+
+    public void setNumberOfAliquots(int numberOfAliquots) {
+        this.numberOfAliquots = numberOfAliquots;
     }
 
     public String getNotes() {

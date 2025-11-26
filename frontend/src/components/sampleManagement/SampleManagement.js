@@ -1,15 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Grid,
   Column,
   Section,
   Heading,
   InlineNotification,
+  Button,
+  Tag,
 } from "@carbon/react";
+import { Add, Chemistry, CheckboxChecked } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import SampleSearch from "./SampleSearch";
 import SampleResultsTable from "./SampleResultsTable";
+import CreateAliquotModal from "./CreateAliquotModal";
+import AddTestsModal from "./AddTestsModal";
 
 /**
  * SampleManagement - Main container component for Sample Management feature.
@@ -41,6 +46,73 @@ export default function SampleManagement() {
   const [searchError, setSearchError] = useState(null);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
 
+  // Modal state for aliquoting
+  const [isAliquotModalOpen, setIsAliquotModalOpen] = useState(false);
+
+  // Modal state for adding tests
+  const [isAddTestsModalOpen, setIsAddTestsModalOpen] = useState(false);
+
+  // Get selected sample for aliquoting (single selection only)
+  const selectedSample =
+    selectedSampleIds.length === 1
+      ? searchResponse?.sampleItems?.find(
+          (item) => item.id === selectedSampleIds[0],
+        )
+      : null;
+
+  // Compute aliquot-related statistics for bulk operations
+  const aliquotStats = useMemo(() => {
+    if (!searchResponse?.sampleItems) {
+      return { aliquots: [], parents: [], aliquotCount: 0, parentCount: 0 };
+    }
+
+    const aliquots = searchResponse.sampleItems.filter(
+      (item) => item.isAliquot,
+    );
+    const parents = searchResponse.sampleItems.filter(
+      (item) => !item.isAliquot,
+    );
+
+    const selectedAliquots = selectedSampleIds.filter((id) =>
+      aliquots.some((a) => a.id === id),
+    );
+    const selectedParents = selectedSampleIds.filter((id) =>
+      parents.some((p) => p.id === id),
+    );
+
+    return {
+      aliquots,
+      parents,
+      aliquotCount: aliquots.length,
+      parentCount: parents.length,
+      selectedAliquotCount: selectedAliquots.length,
+      selectedParentCount: selectedParents.length,
+    };
+  }, [searchResponse?.sampleItems, selectedSampleIds]);
+
+  /**
+   * Select all aliquots in the search results.
+   */
+  const handleSelectAllAliquots = () => {
+    const aliquotIds = aliquotStats.aliquots.map((a) => a.id);
+    setSelectedSampleIds(aliquotIds);
+  };
+
+  /**
+   * Select all parent samples (non-aliquots) in the search results.
+   */
+  const handleSelectAllParents = () => {
+    const parentIds = aliquotStats.parents.map((p) => p.id);
+    setSelectedSampleIds(parentIds);
+  };
+
+  /**
+   * Clear all selections.
+   */
+  const handleClearSelection = () => {
+    setSelectedSampleIds([]);
+  };
+
   /**
    * Handle search results callback from SampleSearch component.
    *
@@ -71,6 +143,197 @@ export default function SampleManagement() {
     setSearchError(null);
   };
 
+  /**
+   * Open aliquot modal for the selected sample.
+   */
+  const handleOpenAliquotModal = () => {
+    setIsAliquotModalOpen(true);
+  };
+
+  /**
+   * Close aliquot modal.
+   */
+  const handleCloseAliquotModal = () => {
+    setIsAliquotModalOpen(false);
+  };
+
+  /**
+   * Handle successful aliquot creation.
+   */
+  const handleAliquotSuccess = (response) => {
+    // Refresh search results to show the new aliquot(s)
+    if (searchResponse && searchResponse.accessionNumber) {
+      handleSearchResults(null, null); // Clear current results
+      // Trigger a re-search by calling the search API directly
+      // Note: In production, you might want to add a refresh mechanism
+      // For now, we'll just show a success message and user can re-search
+
+      // Handle both single and multiple aliquot creation
+      const aliquotCount = response.aliquotCount || 1;
+      let message;
+      if (aliquotCount > 1) {
+        // Multiple aliquots created
+        const externalIds = response.aliquots
+          .map((a) => a.externalId)
+          .join(", ");
+        message = intl.formatMessage(
+          { id: "sample.management.aliquot.successMultiple" },
+          { count: aliquotCount, externalIds: externalIds },
+        );
+      } else {
+        // Single aliquot created
+        message = intl.formatMessage(
+          { id: "sample.management.aliquot.success" },
+          { externalId: response.aliquot.externalId },
+        );
+      }
+
+      setSearchError({
+        message: message,
+        kind: "success",
+      });
+    }
+  };
+
+  /**
+   * Open add tests modal.
+   */
+  const handleOpenAddTestsModal = () => {
+    setIsAddTestsModalOpen(true);
+  };
+
+  /**
+   * Close add tests modal.
+   */
+  const handleCloseAddTestsModal = () => {
+    setIsAddTestsModalOpen(false);
+  };
+
+  /**
+   * Handle successful test addition.
+   * Shows detailed per-sample/aliquot breakdown in the success message.
+   */
+  const handleAddTestsSuccess = (response) => {
+    // Calculate totals
+    const totalSkipped = response.results.reduce(
+      (sum, r) => sum + (r.skippedTestIds ? r.skippedTestIds.length : 0),
+      0,
+    );
+
+    // Check if we have multiple samples with detailed results
+    const hasDetailedResults = response.results && response.results.length > 1;
+
+    // Build detailed per-sample breakdown for multiple samples
+    let detailedBreakdown = "";
+    if (hasDetailedResults) {
+      const sampleResults = response.results.map((result) => {
+        const addedCount = result.addedTestIds ? result.addedTestIds.length : 0;
+        const skippedCount = result.skippedTestIds
+          ? result.skippedTestIds.length
+          : 0;
+
+        // Use external ID for display, fallback to sample item ID
+        const displayId = result.sampleItemExternalId || result.sampleItemId;
+
+        if (skippedCount > 0) {
+          return intl.formatMessage(
+            { id: "sample.management.addTests.resultItem.withSkipped" },
+            { sampleId: displayId, added: addedCount, skipped: skippedCount },
+          );
+        } else {
+          return intl.formatMessage(
+            { id: "sample.management.addTests.resultItem" },
+            { sampleId: displayId, added: addedCount },
+          );
+        }
+      });
+
+      detailedBreakdown = sampleResults.join("; ");
+    }
+
+    // Show success message
+    let message;
+    if (hasDetailedResults) {
+      // Detailed message with per-sample breakdown
+      if (totalSkipped > 0) {
+        message = intl.formatMessage(
+          { id: "sample.management.addTests.successDetailedWithSkipped" },
+          {
+            added: response.successCount,
+            skipped: totalSkipped,
+            samples: response.results.length,
+            details: detailedBreakdown,
+          },
+        );
+      } else {
+        message = intl.formatMessage(
+          { id: "sample.management.addTests.successDetailed" },
+          {
+            count: response.successCount,
+            samples: response.results.length,
+            details: detailedBreakdown,
+          },
+        );
+      }
+    } else {
+      // Simple message for single sample
+      if (totalSkipped > 0) {
+        message = intl.formatMessage(
+          { id: "sample.management.addTests.successWithSkipped" },
+          { added: response.successCount, skipped: totalSkipped },
+        );
+      } else {
+        message = intl.formatMessage(
+          { id: "sample.management.addTests.success" },
+          { count: response.successCount },
+        );
+      }
+    }
+
+    setSearchError({
+      message: message,
+      kind: "success",
+    });
+
+    // Clear selection after adding tests
+    setSelectedSampleIds([]);
+  };
+
+  /**
+   * Handle test removal/cancellation from expanded row.
+   * Updates local state to remove the test from the sample item.
+   */
+  const handleTestRemoved = (sampleItemId, analysisId, testName) => {
+    // Update local state to remove the cancelled test
+    if (searchResponse && searchResponse.sampleItems) {
+      const updatedSampleItems = searchResponse.sampleItems.map((item) => {
+        if (item.id === sampleItemId) {
+          return {
+            ...item,
+            orderedTests: item.orderedTests.filter(
+              (test) => test.analysisId !== analysisId,
+            ),
+          };
+        }
+        return item;
+      });
+
+      setSearchResponse({
+        ...searchResponse,
+        sampleItems: updatedSampleItems,
+      });
+    }
+
+    // Show success notification
+    setSearchError({
+      message: intl.formatMessage(
+        { id: "sample.management.cancelTest.success" },
+        { testName: testName },
+      ),
+      kind: "success",
+    });
+  };
+
   return (
     <>
       {/* Breadcrumb Navigation */}
@@ -90,14 +353,17 @@ export default function SampleManagement() {
         </Column>
       </Grid>
 
-      {/* Error Notification */}
+      {/* Notification (Error or Success) */}
       {searchError && (
         <Grid fullWidth={true}>
           <Column lg={16} md={8} sm={4}>
             <InlineNotification
-              kind="error"
+              kind={searchError.kind || "error"}
               title={intl.formatMessage({
-                id: "sample.management.error.title",
+                id:
+                  searchError.kind === "success"
+                    ? "sample.management.success.title"
+                    : "sample.management.error.title",
               })}
               subtitle={searchError.message}
               onClose={handleDismissError}
@@ -124,7 +390,7 @@ export default function SampleManagement() {
         <Column lg={16} md={8} sm={4}>
           <SampleSearch
             onSearchResults={handleSearchResults}
-            includeTests={false}
+            includeTests={true}
           />
         </Column>
       </Grid>
@@ -144,32 +410,107 @@ export default function SampleManagement() {
                   borderRadius: "4px",
                 }}
               >
-                <strong>
-                  <FormattedMessage id="sample.management.results.accessionNumber" />
-                  :
-                </strong>{" "}
-                {searchResponse.accessionNumber}
-                <span style={{ marginLeft: "2rem" }}>
-                  <strong>
-                    <FormattedMessage id="sample.management.results.totalCount" />
-                    :
-                  </strong>{" "}
-                  {searchResponse.totalCount}{" "}
-                  {searchResponse.totalCount === 1 ? (
-                    <FormattedMessage id="sample.management.results.item" />
-                  ) : (
-                    <FormattedMessage id="sample.management.results.items" />
-                  )}
-                </span>
-                {selectedSampleIds.length > 0 && (
-                  <span style={{ marginLeft: "2rem" }}>
-                    <strong>
-                      <FormattedMessage id="sample.management.results.selected" />
-                      :
-                    </strong>{" "}
-                    {selectedSampleIds.length}
-                  </span>
-                )}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: "0.5rem",
+                  }}
+                >
+                  {/* Left side: Summary info */}
+                  <div
+                    style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}
+                  >
+                    <span>
+                      <strong>
+                        <FormattedMessage id="sample.management.results.accessionNumber" />
+                        :
+                      </strong>{" "}
+                      {searchResponse.accessionNumber}
+                    </span>
+                    <span>
+                      <strong>
+                        <FormattedMessage id="sample.management.results.totalCount" />
+                        :
+                      </strong>{" "}
+                      {searchResponse.totalCount}{" "}
+                      {searchResponse.totalCount === 1 ? (
+                        <FormattedMessage id="sample.management.results.item" />
+                      ) : (
+                        <FormattedMessage id="sample.management.results.items" />
+                      )}
+                    </span>
+                    {aliquotStats.aliquotCount > 0 && (
+                      <span>
+                        <Tag type="blue" size="sm">
+                          {aliquotStats.aliquotCount}{" "}
+                          <FormattedMessage id="sample.management.results.aliquots" />
+                        </Tag>
+                      </span>
+                    )}
+                    {selectedSampleIds.length > 0 && (
+                      <span>
+                        <strong>
+                          <FormattedMessage id="sample.management.results.selected" />
+                          :
+                        </strong>{" "}
+                        {selectedSampleIds.length}
+                        {aliquotStats.selectedAliquotCount > 0 && (
+                          <span
+                            style={{ marginLeft: "0.25rem", color: "#0f62fe" }}
+                          >
+                            ({aliquotStats.selectedAliquotCount}{" "}
+                            <FormattedMessage id="sample.management.results.aliquotsSelected" />
+                            )
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Right side: Quick selection buttons */}
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    {aliquotStats.aliquotCount > 0 && (
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        renderIcon={CheckboxChecked}
+                        onClick={handleSelectAllAliquots}
+                        disabled={
+                          aliquotStats.selectedAliquotCount ===
+                          aliquotStats.aliquotCount
+                        }
+                      >
+                        <FormattedMessage id="sample.management.action.selectAllAliquots" />
+                      </Button>
+                    )}
+                    {aliquotStats.parentCount > 0 &&
+                      aliquotStats.aliquotCount > 0 && (
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          onClick={handleSelectAllParents}
+                          disabled={
+                            aliquotStats.selectedParentCount ===
+                            aliquotStats.parentCount
+                          }
+                        >
+                          <FormattedMessage id="sample.management.action.selectAllParents" />
+                        </Button>
+                      )}
+                    {selectedSampleIds.length > 0 && (
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        onClick={handleClearSelection}
+                      >
+                        <FormattedMessage id="sample.management.action.clearSelection" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             </Column>
           </Grid>
@@ -196,6 +537,52 @@ export default function SampleManagement() {
           </Grid>
         )}
 
+      {/* Action Buttons */}
+      {searchResponse &&
+        searchResponse.sampleItems &&
+        searchResponse.sampleItems.length > 0 &&
+        selectedSampleIds.length > 0 && (
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <div
+                style={{
+                  marginTop: "1rem",
+                  marginBottom: "1rem",
+                  display: "flex",
+                  gap: "1rem",
+                }}
+              >
+                {/* Create Aliquot Button (only when single sample selected) */}
+                {selectedSampleIds.length === 1 && selectedSample && (
+                  <Button
+                    kind="primary"
+                    renderIcon={Add}
+                    onClick={handleOpenAliquotModal}
+                    disabled={!selectedSample.hasRemainingQuantity}
+                  >
+                    <FormattedMessage
+                      id="sample.management.action.createAliquot"
+                      defaultMessage="Create Aliquot"
+                    />
+                  </Button>
+                )}
+
+                {/* Add Tests Button (available when any samples are selected) */}
+                <Button
+                  kind="secondary"
+                  renderIcon={Chemistry}
+                  onClick={handleOpenAddTestsModal}
+                >
+                  <FormattedMessage
+                    id="sample.management.addTests.button"
+                    defaultMessage="Add Tests"
+                  />
+                </Button>
+              </div>
+            </Column>
+          </Grid>
+        )}
+
       {/* Results Table Section */}
       {searchResponse &&
         searchResponse.sampleItems &&
@@ -218,16 +605,36 @@ export default function SampleManagement() {
               <Column lg={16} md={8} sm={4}>
                 <SampleResultsTable
                   sampleItems={searchResponse.sampleItems}
-                  selectedRows={selectedSampleIds}
                   onSelectionChange={handleSelectionChange}
+                  onTestRemoved={handleTestRemoved}
                 />
               </Column>
             </Grid>
           </>
         )}
 
-      {/* Future: Action buttons for selected samples will go here */}
-      {/* This will be implemented in Phase 4-6 for aliquoting and test management */}
+      {/* Create Aliquot Modal */}
+      {selectedSample && (
+        <CreateAliquotModal
+          open={isAliquotModalOpen}
+          onClose={handleCloseAliquotModal}
+          parentSample={selectedSample}
+          onSuccess={handleAliquotSuccess}
+        />
+      )}
+
+      {/* Add Tests Modal */}
+      <AddTestsModal
+        open={isAddTestsModalOpen}
+        onClose={handleCloseAddTestsModal}
+        selectedSampleIds={selectedSampleIds}
+        selectedSamples={
+          searchResponse?.sampleItems?.filter((item) =>
+            selectedSampleIds.includes(item.id),
+          ) || []
+        }
+        onSuccess={handleAddTestsSuccess}
+      />
     </>
   );
 }
