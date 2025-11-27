@@ -177,6 +177,43 @@ export const getFromOpenElisServerSync = (endPoint, callback) => {
   return callback(JSON.parse(request.response));
 };
 
+export const postToOpenElisServerForBlob = (
+  endPoint,
+  payLoad,
+  callback,
+  errorCallback,
+) => {
+  fetch(
+    config.serverBaseUrl + endPoint,
+
+    {
+      //includes the browser sessionId in the Header for Authentication on the backend server
+      credentials: "include",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      body: payLoad,
+    },
+  )
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.blob().then((blob) => ({ blob, response }));
+    })
+    .then(({ blob, response }) => {
+      callback(blob, response);
+    })
+    .catch((error) => {
+      console.error(error);
+      if (errorCallback) {
+        errorCallback(error);
+      }
+    });
+};
+
 export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
   fetch(
     config.serverBaseUrl + endPoint,
@@ -235,6 +272,45 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
     });
 };
 
+export const deleteFromOpenElisServer = (endPoint, callback) => {
+  fetch(config.serverBaseUrl + endPoint, {
+    // includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+  })
+    .then((response) => response.status)
+    .then((status) => {
+      callback(status);
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+};
+
+export const hasRole = (userSessionDetails, role) => {
+  return userSessionDetails.roles && userSessionDetails.roles.includes(role);
+};
+
+// this is complicated to enable it to format "smartly" as a person types
+// possible rework could allow it to only format completed numbers
+
+export const getFromOpenElisServerV2 = (url) => {
+  return new Promise((resolve, reject) => {
+    // Simulating the original callback-based function
+    getFromOpenElisServer(url, (res) => {
+      if (res) {
+        resolve(res);
+      } else {
+        reject("Failed to fetch Subscription data");
+      }
+    });
+  });
+};
+
 export const patchToOpenElisServerJsonResponse = (
   endPoint,
   payLoad,
@@ -267,26 +343,6 @@ export const patchToOpenElisServerJsonResponse = (
     .catch((error) => {
       console.error(error);
     });
-};
-
-export const hasRole = (userSessionDetails, role) => {
-  return userSessionDetails.roles && userSessionDetails.roles.includes(role);
-};
-
-// this is complicated to enable it to format "smartly" as a person types
-// possible rework could allow it to only format completed numbers
-
-export const getFromOpenElisServerV2 = (url) => {
-  return new Promise((resolve, reject) => {
-    // Simulating the original callback-based function
-    getFromOpenElisServer(url, (res) => {
-      if (res) {
-        resolve(res);
-      } else {
-        reject("Failed to fetch Subscription data");
-      }
-    });
-  });
 };
 
 export const convertAlphaNumLabNumForDisplay = (labNumber) => {
