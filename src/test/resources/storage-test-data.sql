@@ -7,32 +7,32 @@
 DELETE FROM result WHERE analysis_id IN (
   SELECT id FROM analysis WHERE sampitem_id IN (
     SELECT id FROM sample_item WHERE samp_id IN (
-      SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+      SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
     )
   )
 );
 DELETE FROM analysis WHERE sampitem_id IN (
   SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+    SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
   )
 );
 DELETE FROM sample_storage_movement WHERE sample_item_id IN (
   SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+    SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
   )
 );
 DELETE FROM sample_storage_assignment WHERE sample_item_id IN (
   SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+    SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
   )
 );
 DELETE FROM sample_item WHERE samp_id IN (
-  SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+  SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
 );
 DELETE FROM sample_human WHERE samp_id IN (
-  SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+  SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
 );
-DELETE FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%';
+DELETE FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%';
 DELETE FROM patient_identity WHERE patient_id IN (
   SELECT id FROM patient WHERE external_id LIKE 'E2E-%'
 );
@@ -286,7 +286,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date, 
                        received_date, lastupdated, is_confirmation)
   VALUES 
-  (1000, 'E2E-001', gen_random_uuid(), 'H', status_id_val,
+  (1000, 'DEV01000000000000001', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -306,7 +306,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1001, 'E2E-002', gen_random_uuid(), 'H', status_id_val,
+  (1001, 'DEV01000000000000002', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -325,7 +325,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1002, 'E2E-003', gen_random_uuid(), 'H', status_id_val,
+  (1002, 'DEV01000000000000003', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -346,7 +346,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1003, 'E2E-004', gen_random_uuid(), 'H', status_id_val,
+  (1003, 'DEV01000000000000004', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -365,7 +365,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1004, 'E2E-005', gen_random_uuid(), 'H', status_id_val,
+  (1004, 'DEV01000000000000005', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -496,7 +496,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1005, 'E2E-006', gen_random_uuid(), 'H', status_id_val,
+  (1005, 'DEV01000000000000006', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -517,7 +517,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1006, 'E2E-007', gen_random_uuid(), 'H', status_id_val,
+  (1006, 'DEV01000000000000007', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -536,7 +536,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1007, 'E2E-008', gen_random_uuid(), 'H', status_id_val,
+  (1007, 'DEV01000000000000008', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -556,7 +556,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1008, 'E2E-009', gen_random_uuid(), 'H', status_id_val,
+  (1008, 'DEV01000000000000009', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -576,7 +576,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1009, 'E2E-010', gen_random_uuid(), 'H', status_id_val,
+  (1009, 'DEV01000000000000010', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -829,7 +829,7 @@ SELECT setval('result_seq', 30000, false);
 \echo 'E2E Test Fixtures Summary:'
 SELECT 'Patients' AS entity, COUNT(*) AS count FROM patient WHERE external_id LIKE 'E2E-%'
 UNION ALL
-SELECT 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%'
+SELECT 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'DEV0100%'
 UNION ALL
 SELECT 'SampleItems', COUNT(*) FROM sample_item WHERE id BETWEEN 10000 AND 20000
 UNION ALL
@@ -879,7 +879,7 @@ LEFT JOIN storage_shelf sh ON
   (ssa.location_type = 'shelf' AND sh.id = ssa.location_id)
   OR (ssa.location_type = 'rack' AND sh.id IN (SELECT parent_shelf_id FROM storage_rack WHERE id = ssa.location_id))
 LEFT JOIN storage_rack k ON ssa.location_type = 'rack' AND k.id = ssa.location_id
-WHERE s.accession_number LIKE 'E2E-%'
+WHERE s.accession_number LIKE 'DEV0100%'
 ORDER BY s.accession_number, si.sort_order;
 
 \echo ''
@@ -893,7 +893,7 @@ ORDER BY s.accession_number, si.sort_order;
 \echo ''
 \echo '   E2E Test Data:'
 \echo '   - 3 test patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams)'
-\echo '   - 10 test samples (E2E-001 through E2E-010)'
+\echo '   - 10 test samples (DEV01000000000000001 through DEV01000000000000010)'
 \echo '   - 20+ test SampleItems (multiple items per sample, various types)'
 \echo '   - 15+ SampleItems with storage assignments'
 \echo '   - 1 unassigned SampleItem (ID: 10031 from E2E-004) for testing assignment workflow'
@@ -905,7 +905,7 @@ ORDER BY s.accession_number, si.sort_order;
 \echo '   - External ID: E2E-PAT-001, E2E-PAT-002, E2E-PAT-003'
 \echo ''
 \echo 'Test samples can be found by accession number:'
-\echo '   - E2E-001 through E2E-010'
+\echo '   - DEV01000000000000001 through DEV01000000000000010 (year 2000 format, no clash with auto-gen)'
 \echo ''
 \echo 'Test SampleItems can be found by:'
 \echo '   - SampleItem ID: 10001, 10002, 10011, etc. (numeric IDs)'
@@ -913,8 +913,8 @@ ORDER BY s.accession_number, si.sort_order;
 \echo '   - Parent Sample accession: E2E-001, E2E-002, etc.'
 \echo ''
 \echo 'SampleItem Variety:'
-\echo '   - Blood samples: tubes (E2E-002, E2E-005, E2E-007, E2E-010)'
-\echo '   - Serum samples: tubes and aliquots (E2E-001, E2E-006, E2E-009)'
-\echo '   - Urine samples: containers and aliquots (E2E-003, E2E-008)'
-\echo '   - Multiple items per sample: E2E-001 (2 items), E2E-003 (3 items), E2E-005 (2 items), etc.'
+\echo '   - Blood samples: tubes (samples 002, 005, 007, 010)'
+\echo '   - Serum samples: tubes and aliquots (samples 001, 006, 009)'
+\echo '   - Urine samples: containers and aliquots (samples 003, 008)'
+\echo '   - Multiple items per sample: 001 (2 items), 003 (3 items), 005 (2 items), etc.'
 
