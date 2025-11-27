@@ -18,6 +18,10 @@ import "./LocationSearchAndCreate.css";
  * - showCreateButton: boolean - Show "Add Location" button (default: true)
  * - searchPlaceholder: string - Placeholder text for search input (default: "Search for location...")
  * - isActive: boolean - Whether this input method is currently active (for visual feedback)
+ * - autoOpenCreateForm: boolean - Auto-open create form (for barcode auto-open behavior)
+ * - prefillLocation: object - Location to pre-fill in create form
+ * - focusField: string - Field to focus on ('device' | 'shelf' | 'rack' | 'position')
+ * - onCreateFormOpened: function - Callback when create form is opened
  */
 const LocationSearchAndCreate = ({
   onLocationChange,
@@ -26,6 +30,10 @@ const LocationSearchAndCreate = ({
   showCreateButton = true,
   searchPlaceholder,
   isActive = false,
+  autoOpenCreateForm = false,
+  prefillLocation = null,
+  focusField = null,
+  onCreateFormOpened = null,
 }) => {
   const intl = useIntl();
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -36,6 +44,21 @@ const LocationSearchAndCreate = ({
   // When in create form, internal state is independent until "Add" is clicked
   // CRITICAL: Don't sync when form just closed - parent might not have updated yet
   const justClosedFormRef = useRef(false);
+
+  // Auto-open create form when autoOpenCreateForm is true
+  useEffect(() => {
+    if (autoOpenCreateForm && !showCreateForm) {
+      setShowCreateForm(true);
+      // Pre-fill location if provided
+      if (prefillLocation) {
+        setInternalSelectedLocation(prefillLocation);
+      }
+      // Notify parent that form is opened
+      if (onCreateFormOpened) {
+        onCreateFormOpened();
+      }
+    }
+  }, [autoOpenCreateForm, prefillLocation, onCreateFormOpened, showCreateForm]);
 
   useEffect(() => {
     // CRITICAL: When form closes, we need to preserve the location that was just selected
@@ -740,7 +763,10 @@ const LocationSearchAndCreate = ({
         >
           <EnhancedCascadingMode
             onLocationChange={handleCreateSelect}
-            selectedLocation={internalSelectedLocation || null}
+            selectedLocation={
+              internalSelectedLocation || prefillLocation || null
+            }
+            focusField={focusField}
           />
           <div className="location-create-actions">
             <Button

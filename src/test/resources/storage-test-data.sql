@@ -7,32 +7,32 @@
 DELETE FROM result WHERE analysis_id IN (
   SELECT id FROM analysis WHERE sampitem_id IN (
     SELECT id FROM sample_item WHERE samp_id IN (
-      SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+      SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
     )
   )
 );
 DELETE FROM analysis WHERE sampitem_id IN (
   SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+    SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
   )
 );
 DELETE FROM sample_storage_movement WHERE sample_item_id IN (
   SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+    SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
   )
 );
 DELETE FROM sample_storage_assignment WHERE sample_item_id IN (
   SELECT id FROM sample_item WHERE samp_id IN (
-    SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+    SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
   )
 );
 DELETE FROM sample_item WHERE samp_id IN (
-  SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+  SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
 );
 DELETE FROM sample_human WHERE samp_id IN (
-  SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%'
+  SELECT id FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%'
 );
-DELETE FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%';
+DELETE FROM sample WHERE accession_number LIKE 'DEV0100%' OR accession_number LIKE 'TEST-%';
 DELETE FROM patient_identity WHERE patient_id IN (
   SELECT id FROM patient WHERE external_id LIKE 'E2E-%'
 );
@@ -49,6 +49,12 @@ DELETE FROM storage_shelf WHERE id BETWEEN 20 AND 100;
 DELETE FROM storage_device WHERE id BETWEEN 10 AND 100;
 DELETE FROM storage_room WHERE id BETWEEN 1 AND 100;
 
+-- =============================================================================
+-- STORAGE HIERARCHY
+-- Note: Foundational data (providers, organizations) is loaded separately
+-- from e2e-foundational-data.sql via load-test-fixtures.sh
+-- =============================================================================
+
 -- Insert Test Rooms
 INSERT INTO storage_room (id, fhir_uuid, name, code, description, active, sys_user_id, last_updated) VALUES
 (1, gen_random_uuid(), 'Main Laboratory', 'MAIN', 'Primary laboratory storage facility', true, 1, CURRENT_TIMESTAMP),
@@ -57,44 +63,47 @@ INSERT INTO storage_room (id, fhir_uuid, name, code, description, active, sys_us
 
 -- Insert Test Devices
 -- Each room has unique devices with descriptive names
+-- Note: code column is VARCHAR(10) max
 INSERT INTO storage_device (id, fhir_uuid, name, code, type, temperature_setting, capacity_limit, active, parent_room_id, sys_user_id, last_updated) VALUES
 -- Main Laboratory devices
-(10, gen_random_uuid(), 'Main Lab Freezer Unit 1', 'MAIN-FRZ01', 'freezer', -80.0, 500, true, 1, 1, CURRENT_TIMESTAMP),
-(11, gen_random_uuid(), 'Main Lab Refrigerator Unit 1', 'MAIN-REF01', 'refrigerator', 4.0, 300, true, 1, 1, CURRENT_TIMESTAMP),
+(10, gen_random_uuid(), 'Main Lab Freezer Unit 1', 'MN-FRZ01', 'freezer', -80.0, 500, true, 1, 1, CURRENT_TIMESTAMP),
+(11, gen_random_uuid(), 'Main Lab Refrigerator Unit 1', 'MN-REF01', 'refrigerator', 4.0, 300, true, 1, 1, CURRENT_TIMESTAMP),
 -- Secondary Laboratory devices
-(12, gen_random_uuid(), 'Secondary Lab Cabinet Unit 1', 'SEC-CAB01', 'cabinet', NULL, NULL, true, 2, 1, CURRENT_TIMESTAMP),
-(14, gen_random_uuid(), 'Secondary Lab Freezer Unit 1', 'SEC-FRZ01', 'freezer', -20.0, 200, true, 2, 1, CURRENT_TIMESTAMP),
+(12, gen_random_uuid(), 'Secondary Lab Cabinet Unit 1', 'SC-CAB01', 'cabinet', NULL, NULL, true, 2, 1, CURRENT_TIMESTAMP),
+(14, gen_random_uuid(), 'Secondary Lab Freezer Unit 1', 'SC-FRZ01', 'freezer', -20.0, 200, true, 2, 1, CURRENT_TIMESTAMP),
 -- Inactive Room device
-(13, gen_random_uuid(), 'Inactive Freezer', 'INACTIVE-FRZ', 'freezer', NULL, NULL, false, 3, 1, CURRENT_TIMESTAMP);
+(13, gen_random_uuid(), 'Inactive Freezer', 'IN-FRZ01', 'freezer', NULL, NULL, false, 3, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Shelves
 -- Each device has uniquely named shelves
-INSERT INTO storage_shelf (id, fhir_uuid, label, capacity_limit, active, parent_device_id, sys_user_id, last_updated) VALUES
+-- Note: code column is VARCHAR(10) max
+INSERT INTO storage_shelf (id, fhir_uuid, label, code, capacity_limit, active, parent_device_id, sys_user_id, last_updated) VALUES
 -- Main Lab Freezer Unit 1 shelves
-(20, gen_random_uuid(), 'Main Freezer Shelf-A', 50, true, 10, 1, CURRENT_TIMESTAMP),
-(21, gen_random_uuid(), 'Main Freezer Shelf-B', 50, true, 10, 1, CURRENT_TIMESTAMP),
+(20, gen_random_uuid(), 'Main Freezer Shelf-A', 'SH-A', 50, true, 10, 1, CURRENT_TIMESTAMP),
+(21, gen_random_uuid(), 'Main Freezer Shelf-B', 'SH-B', 50, true, 10, 1, CURRENT_TIMESTAMP),
 -- Main Lab Refrigerator Unit 1 shelves
-(22, gen_random_uuid(), 'Main Refrigerator Shelf-1', 30, true, 11, 1, CURRENT_TIMESTAMP),
-(24, gen_random_uuid(), 'Main Refrigerator Shelf-2', 30, true, 11, 1, CURRENT_TIMESTAMP),
+(22, gen_random_uuid(), 'Main Refrigerator Shelf-1', 'SH-1', 30, true, 11, 1, CURRENT_TIMESTAMP),
+(24, gen_random_uuid(), 'Main Refrigerator Shelf-2', 'SH-2', 30, true, 11, 1, CURRENT_TIMESTAMP),
 -- Secondary Lab Cabinet Unit 1 shelves
-(23, gen_random_uuid(), 'Secondary Cabinet Shelf-1', 40, true, 12, 1, CURRENT_TIMESTAMP),
+(23, gen_random_uuid(), 'Secondary Cabinet Shelf-1', 'SH-1', 40, true, 12, 1, CURRENT_TIMESTAMP),
 -- Secondary Lab Freezer Unit 1 shelves
-(25, gen_random_uuid(), 'Secondary Freezer Shelf-A', 25, true, 14, 1, CURRENT_TIMESTAMP);
+(25, gen_random_uuid(), 'Secondary Freezer Shelf-A', 'SH-A', 25, true, 14, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Racks
 -- Each shelf has uniquely named racks
-INSERT INTO storage_rack (id, fhir_uuid, label, rows, columns, position_schema_hint, active, parent_shelf_id, sys_user_id, last_updated) VALUES
+-- Note: code column is VARCHAR(10) max
+INSERT INTO storage_rack (id, fhir_uuid, label, code, rows, columns, position_schema_hint, active, parent_shelf_id, sys_user_id, last_updated) VALUES
 -- Main Freezer Shelf-A racks
-(30, gen_random_uuid(), 'Main Freezer Shelf-A Rack 1', 8, 12, 'A1', true, 20, 1, CURRENT_TIMESTAMP),
-(31, gen_random_uuid(), 'Main Freezer Shelf-A Rack 2', 10, 10, '1-1', true, 20, 1, CURRENT_TIMESTAMP),
+(30, gen_random_uuid(), 'Main Freezer Shelf-A Rack 1', 'RK-1', 8, 12, 'A1', true, 20, 1, CURRENT_TIMESTAMP),
+(31, gen_random_uuid(), 'Main Freezer Shelf-A Rack 2', 'RK-2', 10, 10, '1-1', true, 20, 1, CURRENT_TIMESTAMP),
 -- Main Freezer Shelf-B racks
-(32, gen_random_uuid(), 'Main Freezer Shelf-B Rack 1', 0, 0, NULL, true, 21, 1, CURRENT_TIMESTAMP),
+(32, gen_random_uuid(), 'Main Freezer Shelf-B Rack 1', 'RK-1', 0, 0, NULL, true, 21, 1, CURRENT_TIMESTAMP),
 -- Main Refrigerator Shelf-1 racks
-(33, gen_random_uuid(), 'Main Refrigerator Shelf-1 Rack 1', 8, 12, NULL, true, 22, 1, CURRENT_TIMESTAMP),
+(33, gen_random_uuid(), 'Main Refrigerator Shelf-1 Rack 1', 'RK-1', 8, 12, NULL, true, 22, 1, CURRENT_TIMESTAMP),
 -- Secondary Cabinet Shelf-1 racks
-(34, gen_random_uuid(), 'Secondary Cabinet Shelf-1 Rack 1', 8, 12, 'A1', true, 23, 1, CURRENT_TIMESTAMP),
+(34, gen_random_uuid(), 'Secondary Cabinet Shelf-1 Rack 1', 'RK-1', 8, 12, 'A1', true, 23, 1, CURRENT_TIMESTAMP),
 -- Secondary Freezer Shelf-A racks
-(35, gen_random_uuid(), 'Secondary Freezer Shelf-A Rack 1', 6, 8, 'A1', true, 25, 1, CURRENT_TIMESTAMP);
+(35, gen_random_uuid(), 'Secondary Freezer Shelf-A Rack 1', 'RK-1', 6, 8, 'A1', true, 25, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Positions
 -- Each rack has unique positions
@@ -277,7 +286,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date, 
                        received_date, lastupdated, is_confirmation)
   VALUES 
-  (1000, 'E2E-001', gen_random_uuid(), 'H', status_id_val,
+  (1000, 'DEV01000000000000001', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -297,7 +306,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1001, 'E2E-002', gen_random_uuid(), 'H', status_id_val,
+  (1001, 'DEV01000000000000002', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -316,7 +325,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1002, 'E2E-003', gen_random_uuid(), 'H', status_id_val,
+  (1002, 'DEV01000000000000003', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -337,7 +346,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1003, 'E2E-004', gen_random_uuid(), 'H', status_id_val,
+  (1003, 'DEV01000000000000004', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -356,7 +365,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1004, 'E2E-005', gen_random_uuid(), 'H', status_id_val,
+  (1004, 'DEV01000000000000005', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -487,7 +496,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1005, 'E2E-006', gen_random_uuid(), 'H', status_id_val,
+  (1005, 'DEV01000000000000006', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -508,7 +517,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1006, 'E2E-007', gen_random_uuid(), 'H', status_id_val,
+  (1006, 'DEV01000000000000007', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -527,7 +536,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1007, 'E2E-008', gen_random_uuid(), 'H', status_id_val,
+  (1007, 'DEV01000000000000008', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -547,7 +556,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1008, 'E2E-009', gen_random_uuid(), 'H', status_id_val,
+  (1008, 'DEV01000000000000009', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -567,7 +576,7 @@ BEGIN
   INSERT INTO sample (id, accession_number, fhir_uuid, domain, status_id, entered_date,
                        received_date, lastupdated, is_confirmation)
   VALUES
-  (1009, 'E2E-010', gen_random_uuid(), 'H', status_id_val,
+  (1009, 'DEV01000000000000010', gen_random_uuid(), 'H', status_id_val,
    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, false)
   ON CONFLICT (id) DO UPDATE SET
     accession_number = EXCLUDED.accession_number,
@@ -820,7 +829,7 @@ SELECT setval('result_seq', 30000, false);
 \echo 'E2E Test Fixtures Summary:'
 SELECT 'Patients' AS entity, COUNT(*) AS count FROM patient WHERE external_id LIKE 'E2E-%'
 UNION ALL
-SELECT 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'E2E-%'
+SELECT 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'DEV0100%'
 UNION ALL
 SELECT 'SampleItems', COUNT(*) FROM sample_item WHERE id BETWEEN 10000 AND 20000
 UNION ALL
@@ -870,7 +879,7 @@ LEFT JOIN storage_shelf sh ON
   (ssa.location_type = 'shelf' AND sh.id = ssa.location_id)
   OR (ssa.location_type = 'rack' AND sh.id IN (SELECT parent_shelf_id FROM storage_rack WHERE id = ssa.location_id))
 LEFT JOIN storage_rack k ON ssa.location_type = 'rack' AND k.id = ssa.location_id
-WHERE s.accession_number LIKE 'E2E-%'
+WHERE s.accession_number LIKE 'DEV0100%'
 ORDER BY s.accession_number, si.sort_order;
 
 \echo ''
@@ -884,7 +893,7 @@ ORDER BY s.accession_number, si.sort_order;
 \echo ''
 \echo '   E2E Test Data:'
 \echo '   - 3 test patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams)'
-\echo '   - 10 test samples (E2E-001 through E2E-010)'
+\echo '   - 10 test samples (DEV01000000000000001 through DEV01000000000000010)'
 \echo '   - 20+ test SampleItems (multiple items per sample, various types)'
 \echo '   - 15+ SampleItems with storage assignments'
 \echo '   - 1 unassigned SampleItem (ID: 10031 from E2E-004) for testing assignment workflow'
@@ -896,7 +905,7 @@ ORDER BY s.accession_number, si.sort_order;
 \echo '   - External ID: E2E-PAT-001, E2E-PAT-002, E2E-PAT-003'
 \echo ''
 \echo 'Test samples can be found by accession number:'
-\echo '   - E2E-001 through E2E-010'
+\echo '   - DEV01000000000000001 through DEV01000000000000010 (year 2000 format, no clash with auto-gen)'
 \echo ''
 \echo 'Test SampleItems can be found by:'
 \echo '   - SampleItem ID: 10001, 10002, 10011, etc. (numeric IDs)'
@@ -904,8 +913,8 @@ ORDER BY s.accession_number, si.sort_order;
 \echo '   - Parent Sample accession: E2E-001, E2E-002, etc.'
 \echo ''
 \echo 'SampleItem Variety:'
-\echo '   - Blood samples: tubes (E2E-002, E2E-005, E2E-007, E2E-010)'
-\echo '   - Serum samples: tubes and aliquots (E2E-001, E2E-006, E2E-009)'
-\echo '   - Urine samples: containers and aliquots (E2E-003, E2E-008)'
-\echo '   - Multiple items per sample: E2E-001 (2 items), E2E-003 (3 items), E2E-005 (2 items), etc.'
+\echo '   - Blood samples: tubes (samples 002, 005, 007, 010)'
+\echo '   - Serum samples: tubes and aliquots (samples 001, 006, 009)'
+\echo '   - Urine samples: containers and aliquots (samples 003, 008)'
+\echo '   - Multiple items per sample: 001 (2 items), 003 (3 items), 005 (2 items), etc.'
 

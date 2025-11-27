@@ -537,4 +537,125 @@ public class BarcodeValidationServiceTest {
         assertTrue("Error message should include format error",
                 errorMessage.contains("Invalid barcode format") || errorMessage.contains("Invalid barcode format."));
     }
+
+    /**
+     * Test progressive validation identifies first missing level Expected: Returns
+     * first missing level when partial hierarchy is valid
+     */
+    @Test
+    public void testProgressiveValidationIdentifiesFirstMissingLevel() {
+        // Arrange - Barcode with valid room/device/shelf but missing rack
+        String barcode = "MAIN-FRZ01-SHA-RKR1";
+        ParsedBarcode parsedBarcode = new ParsedBarcode();
+        parsedBarcode.setValid(true);
+        parsedBarcode.setRoomCode("MAIN");
+        parsedBarcode.setDeviceCode("FRZ01");
+        parsedBarcode.setShelfCode("SHA");
+        parsedBarcode.setRackCode("RKR1");
+
+        when(barcodeParsingService.parseBarcode(barcode)).thenReturn(parsedBarcode);
+        when(storageRoomDAO.findByCode("MAIN")).thenReturn(testRoom);
+        when(storageDeviceDAO.findByCode("FRZ01")).thenReturn(testDevice);
+        when(storageDeviceDAO.findByCodeAndParentRoom("FRZ01", testRoom)).thenReturn(testDevice);
+        when(storageShelfDAO.findByLabel("SHA")).thenReturn(testShelf);
+        when(storageShelfDAO.findByLabelAndParentDevice("SHA", testDevice)).thenReturn(testShelf);
+        when(storageRackDAO.findByLabel("RKR1")).thenReturn(null); // Rack doesn't exist
+
+        // Act
+        BarcodeValidationResponse response = barcodeValidationService.validateBarcode(barcode);
+
+        // Assert
+        assertNotNull("Response should not be null", response);
+        assertFalse("Validation should fail when rack is missing", response.isValid());
+        assertEquals("First missing level should be 'rack'", "rack", response.getFirstMissingLevel());
+        assertNotNull("Valid components should be populated", response.getValidComponents());
+        assertEquals("Should have 3 valid components (room, device, shelf)", 3, response.getValidComponents().size());
+    }
+
+    /**
+     * Test returns valid hierarchy portion Expected: Returns all valid components
+     * up to first missing level
+     */
+    @Test
+    public void testReturnsValidHierarchyPortion() {
+        // Arrange - Barcode with valid room/device but missing shelf
+        String barcode = "MAIN-FRZ01-SHA";
+        ParsedBarcode parsedBarcode = new ParsedBarcode();
+        parsedBarcode.setValid(true);
+        parsedBarcode.setRoomCode("MAIN");
+        parsedBarcode.setDeviceCode("FRZ01");
+        parsedBarcode.setShelfCode("SHA");
+
+        when(barcodeParsingService.parseBarcode(barcode)).thenReturn(parsedBarcode);
+        when(storageRoomDAO.findByCode("MAIN")).thenReturn(testRoom);
+        when(storageDeviceDAO.findByCode("FRZ01")).thenReturn(testDevice);
+        when(storageDeviceDAO.findByCodeAndParentRoom("FRZ01", testRoom)).thenReturn(testDevice);
+        when(storageShelfDAO.findByLabel("SHA")).thenReturn(null); // Shelf doesn't exist
+
+        // Act
+        BarcodeValidationResponse response = barcodeValidationService.validateBarcode(barcode);
+
+        // Assert
+        assertNotNull("Response should not be null", response);
+        assertFalse("Validation should fail when shelf is missing", response.isValid());
+        assertEquals("First missing level should be 'shelf'", "shelf", response.getFirstMissingLevel());
+        assertTrue("Should include valid room", response.getValidComponents().containsKey("room"));
+        assertTrue("Should include valid device", response.getValidComponents().containsKey("device"));
+        assertFalse("Should not include invalid shelf", response.getValidComponents().containsKey("shelf"));
+    }
+
+    /**
+     * Test returns first missing level Expected: Identifies correct first missing
+     * level
+     */
+    @Test
+    public void testReturnsFirstMissingLevel() {
+        // Arrange - Barcode with valid room but missing device
+        String barcode = "MAIN-FRZ01";
+        ParsedBarcode parsedBarcode = new ParsedBarcode();
+        parsedBarcode.setValid(true);
+        parsedBarcode.setRoomCode("MAIN");
+        parsedBarcode.setDeviceCode("FRZ01");
+
+        when(barcodeParsingService.parseBarcode(barcode)).thenReturn(parsedBarcode);
+        when(storageRoomDAO.findByCode("MAIN")).thenReturn(testRoom);
+        when(storageDeviceDAO.findByCode("FRZ01")).thenReturn(null); // Device doesn't exist
+
+        // Act
+        BarcodeValidationResponse response = barcodeValidationService.validateBarcode(barcode);
+
+        // Assert
+        assertNotNull("Response should not be null", response);
+        assertFalse("Validation should fail when device is missing", response.isValid());
+        assertEquals("First missing level should be 'device'", "device", response.getFirstMissingLevel());
+        assertTrue("Should include valid room", response.getValidComponents().containsKey("room"));
+        assertFalse("Should not include invalid device", response.getValidComponents().containsKey("device"));
+    }
+
+    /**
+     * Test completely invalid barcode returns error Expected: Returns error when no
+     * valid levels exist
+     */
+    @Test
+    public void testCompletelyInvalidBarcodeReturnsError() {
+        // Arrange - Barcode with invalid room (no valid levels)
+        String barcode = "INVALID-FRZ01";
+        ParsedBarcode parsedBarcode = new ParsedBarcode();
+        parsedBarcode.setValid(true);
+        parsedBarcode.setRoomCode("INVALID");
+        parsedBarcode.setDeviceCode("FRZ01");
+
+        when(barcodeParsingService.parseBarcode(barcode)).thenReturn(parsedBarcode);
+        when(storageRoomDAO.findByCode("INVALID")).thenReturn(null); // Room doesn't exist
+
+        // Act
+        BarcodeValidationResponse response = barcodeValidationService.validateBarcode(barcode);
+
+        // Assert
+        assertNotNull("Response should not be null", response);
+        assertFalse("Validation should fail when room doesn't exist", response.isValid());
+        assertNull("First missing level should be null when no valid levels exist", response.getFirstMissingLevel());
+        assertTrue("Valid components should be empty", response.getValidComponents().isEmpty());
+        assertNotNull("Error message should be present", response.getErrorMessage());
+    }
 }

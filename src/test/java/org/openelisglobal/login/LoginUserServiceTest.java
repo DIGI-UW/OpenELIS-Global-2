@@ -23,7 +23,7 @@ public class LoginUserServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
-        String hashedPassword = "$2a$10$C3tY6/gZxjALzvEOkV1N/.DQyKMOoq/voG91Of3lh1t3X.iZ/O9qC";
+        String hashedPassword = "$2a$10$uhFDEbHodC1Fv/nFQ3pCe.AbPxJqThyanWtC117EvdFrwEAQry0Wa";
 
         Assert.assertTrue(BCRYPT_PATTERN.matcher(hashedPassword).matches());
 
@@ -63,7 +63,7 @@ public class LoginUserServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getValidatedLogin_validCredentials_shouldReturnUser() {
-        Optional<LoginUser> result = lUserService.getValidatedLogin("admin", "admin@123!");
+        Optional<LoginUser> result = lUserService.getValidatedLogin("admin", "adminADMIN!");
 
         Assert.assertTrue(result.isPresent());
         Assert.assertEquals("admin", result.get().getLoginName());
@@ -85,6 +85,6 @@ public class LoginUserServiceTest extends BaseWebContextSensitiveTest {
     public void isHashedPassword_shouldConfirmIfHashedPassword() {
 
         Assert.assertTrue(
-                lUserService.isHashedPassword("$2a$10$C3tY6/gZxjALzvEOkV1N/.DQyKMOoq/voG91Of3lh1t3X.iZ/O9qC"));
+                lUserService.isHashedPassword("$2a$10$uhFDEbHodC1Fv/nFQ3pCe.AbPxJqThyanWtC117EvdFrwEAQry0Wa"));
     }
 }

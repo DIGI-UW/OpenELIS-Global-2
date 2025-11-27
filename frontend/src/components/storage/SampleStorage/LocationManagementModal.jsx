@@ -7,6 +7,7 @@ import {
   Button,
   TextArea,
   TextInput,
+  InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ArrowDown } from "@carbon/icons-react";
@@ -31,6 +32,10 @@ import "./LocationManagementModal.css";
  * - onClose: function - Callback when modal closes
  * - onConfirm: function - Callback when location is confirmed with { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
  *   - The sample object should include sampleItemId for API calls
+ * - autoSave: boolean - Whether to auto-save when a valid location is selected (default: false)
+ *   - When true, automatically calls onConfirm after a 500ms delay when a valid location is selected
+ *   - Valid location = minimum device level selected
+ *   - Default false: user must click confirm button to submit
  */
 const LocationManagementModal = ({
   open,
@@ -38,8 +43,21 @@ const LocationManagementModal = ({
   currentLocation,
   onClose,
   onConfirm,
+  autoSave = false, // Disabled by default - user must click confirm button
 }) => {
   const intl = useIntl();
+
+  // Map status codes to human-readable labels
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      20: "Sample Entered",
+      21: "Entered",
+      active: "Active",
+      disposed: "Disposed",
+    };
+    return statusMap[String(status)] || status || "Unknown";
+  };
+
   const [selectedLocation, setSelectedLocation] = useState(null);
   const selectedLocationRef = useRef(null);
   const [selectedLocationPath, setSelectedLocationPath] = useState("");
@@ -51,14 +69,56 @@ const LocationManagementModal = ({
   const [barcodeErrorMessage, setBarcodeErrorMessage] = useState("");
   const [lastModifiedMethod, setLastModifiedMethod] = useState(null); // null | 'dropdown' | 'barcode'
   const [lastModifiedTimestamp, setLastModifiedTimestamp] = useState(null);
+  const [autoOpenCreateForm, setAutoOpenCreateForm] = useState(false);
+  const [prefillLocation, setPrefillLocation] = useState(null);
+  const [focusField, setFocusField] = useState(null); // 'device' | 'shelf' | 'rack' | 'position'
+  const [showAdditionalInvalidWarning, setShowAdditionalInvalidWarning] =
+    useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false); // Track auto-save in progress
+  const [showAutoSaved, setShowAutoSaved] = useState(false); // Show "autosaved" indicator
+  const autoSaveTimeoutRef = useRef(null); // Ref to store auto-save timeout
 
   // Determine modal mode: assignment (no location) or movement (location exists)
   const isMovementMode = !!currentLocation;
 
-  // Pre-populate position if current location exists
+  // Track initial values for position and notes to detect changes
+  const [initialPositionCoordinate, setInitialPositionCoordinate] =
+    useState("");
+  const [initialConditionNotes, setInitialConditionNotes] = useState("");
+
+  // Pre-populate position and notes if current location exists
   useEffect(() => {
-    if (currentLocation && currentLocation.position) {
-      setPositionCoordinate(currentLocation.position.coordinate || "");
+    console.log(
+      "[LocationManagementModal] Pre-populating from currentLocation:",
+      {
+        currentLocation,
+        hasPosition: !!currentLocation?.position,
+        positionCoordinate: currentLocation?.position?.coordinate,
+        notes: currentLocation?.notes,
+      },
+    );
+
+    if (currentLocation) {
+      // Pre-populate position if available, otherwise reset to empty
+      const initialPosition = currentLocation.position?.coordinate || "";
+      console.log(
+        "[LocationManagementModal] Setting position to:",
+        initialPosition,
+      );
+      setPositionCoordinate(initialPosition);
+      setInitialPositionCoordinate(initialPosition);
+
+      // Pre-populate notes if available, otherwise reset to empty
+      const initialNotes = currentLocation.notes || "";
+      console.log("[LocationManagementModal] Setting notes to:", initialNotes);
+      setConditionNotes(initialNotes);
+      setInitialConditionNotes(initialNotes);
+    } else {
+      // Reset to empty when no current location
+      setPositionCoordinate("");
+      setInitialPositionCoordinate("");
+      setConditionNotes("");
+      setInitialConditionNotes("");
     }
   }, [currentLocation]);
 
@@ -76,8 +136,100 @@ const LocationManagementModal = ({
       setBarcodeErrorMessage("");
       setLastModifiedMethod(null);
       setLastModifiedTimestamp(null);
+      setAutoOpenCreateForm(false);
+      setPrefillLocation(null);
+      setFocusField(null);
+      setShowAdditionalInvalidWarning(false);
+      setIsAutoSaving(false);
+      setShowAutoSaved(false);
+      // Clear any pending auto-save timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
+      }
     }
   }, [open]);
+
+  // OGC-71: Auto-save effect - triggers handleConfirm when a valid location is selected
+  // Uses a debounced approach with 500ms delay to allow user to continue making changes
+  useEffect(() => {
+    // Only auto-save if enabled and modal is open
+    if (!autoSave || !open || isAutoSaving) {
+      return;
+    }
+
+    // Clear any existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+    }
+
+    // Check if we have a valid location (minimum: device selected)
+    const locationToCheck = selectedLocation || selectedLocationRef.current;
+    const hasValidLocation =
+      locationToCheck &&
+      (locationToCheck.device?.id ||
+        (locationToCheck.type === "device" && locationToCheck.id) ||
+        locationToCheck.shelf?.id ||
+        locationToCheck.rack?.id);
+
+    if (hasValidLocation && onConfirm) {
+      // Set auto-saving state and trigger save after delay
+      autoSaveTimeoutRef.current = setTimeout(async () => {
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "[LocationManagementModal] Auto-save triggered for location:",
+            locationToCheck,
+          );
+        }
+        setIsAutoSaving(true);
+        try {
+          const result = onConfirm({
+            sample,
+            newLocation: locationToCheck,
+            reason: isMovementMode ? reason : undefined,
+            conditionNotes: conditionNotes || undefined,
+            positionCoordinate: positionCoordinate || undefined,
+          });
+          // If onConfirm returns a promise, await it
+          if (result && typeof result.then === "function") {
+            await result;
+          }
+          if (process.env.NODE_ENV === "development") {
+            console.log("[LocationManagementModal] Auto-save completed");
+          }
+          // Show autosaved indicator (don't close modal - user must click confirm to close)
+          setShowAutoSaved(true);
+          setIsAutoSaving(false);
+          // Hide the indicator after 3 seconds
+          setTimeout(() => setShowAutoSaved(false), 3000);
+        } catch (error) {
+          console.error("[LocationManagementModal] Auto-save error:", error);
+          // Don't close modal on error, reset auto-saving state
+          setIsAutoSaving(false);
+        }
+      }, 500); // 500ms delay for debouncing
+    }
+
+    // Cleanup function
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
+      }
+    };
+  }, [
+    selectedLocation,
+    autoSave,
+    open,
+    isAutoSaving,
+    onConfirm,
+    sample,
+    isMovementMode,
+    reason,
+    conditionNotes,
+    positionCoordinate,
+  ]);
 
   const handleLocationChange = useCallback(
     (location) => {
@@ -179,9 +331,15 @@ const LocationManagementModal = ({
   const handleConfirm = async () => {
     const locationToUse = selectedLocation || selectedLocationRef.current;
 
-    if (!locationToUse) {
+    // Allow submission when:
+    // 1. Location is selected (normal case)
+    // 2. No location but metadata changed in movement mode (metadata-only update)
+    if (
+      !locationToUse &&
+      !(isMovementMode && (positionCoordinate || conditionNotes))
+    ) {
       console.error(
-        "[LocationManagementModal] handleConfirm: No location selected",
+        "[LocationManagementModal] handleConfirm: No location selected and no metadata to update",
       );
       return;
     }
@@ -201,13 +359,14 @@ const LocationManagementModal = ({
           hasNewLocation: !!locationToUse,
           reason: isMovementMode ? reason : undefined,
           positionCoordinate: positionCoordinate || undefined,
+          conditionNotes: conditionNotes || undefined,
         },
       );
 
       // Ensure onConfirm returns a promise
       const result = onConfirm({
         sample,
-        newLocation: locationToUse,
+        newLocation: locationToUse || null, // null if only metadata changed
         reason: isMovementMode ? reason : undefined,
         conditionNotes: conditionNotes || undefined,
         positionCoordinate: positionCoordinate || undefined,
@@ -234,7 +393,9 @@ const LocationManagementModal = ({
 
   const handleBarcodeScan = (barcode) => {
     // Barcode scan detected - validation will be triggered automatically
-    console.log("Barcode scanned:", barcode);
+    console.log("[LocationManagementModal] handleBarcodeScan called", {
+      barcode,
+    });
   };
 
   const handleSampleScan = (sampleData) => {
@@ -244,21 +405,47 @@ const LocationManagementModal = ({
   };
 
   const handleBarcodeValidationResult = (result) => {
+    console.log(
+      "[LocationManagementModal] handleBarcodeValidationResult called",
+      {
+        success: result.success,
+        hasData: !!result.data,
+        error: result.error,
+        result,
+      },
+    );
     if (result.success && result.data) {
       // Successful barcode validation
+      console.log(
+        "[LocationManagementModal] Setting validation state to success",
+      );
       setBarcodeValidationState("success");
       setBarcodeErrorMessage("");
 
       // Auto-populate location from barcode validation
+      // Backend returns location data in validComponents map when valid=true
       const locationData = result.data;
+      const validComponents = locationData.validComponents || {};
+
+      // Extract location components from validComponents map (backend structure)
+      // or use direct properties if available (for backward compatibility)
       const location = {
-        room: locationData.room,
-        device: locationData.device,
-        shelf: locationData.shelf,
-        rack: locationData.rack,
-        position: locationData.position,
-        hierarchicalPath: locationData.hierarchicalPath,
+        room: locationData.room || validComponents.room || null,
+        device: locationData.device || validComponents.device || null,
+        shelf: locationData.shelf || validComponents.shelf || null,
+        rack: locationData.rack || validComponents.rack || null,
+        position: locationData.position || validComponents.position || null,
+        hierarchicalPath: locationData.hierarchicalPath || null,
       };
+
+      console.log(
+        "[LocationManagementModal] Extracted location from validation result",
+        {
+          hasValidComponents: !!locationData.validComponents,
+          validComponentsKeys: Object.keys(validComponents),
+          extractedLocation: location,
+        },
+      );
 
       // Implement "last-modified wins" logic: only overwrite if barcode is newer
       const timestamp = Date.now();
@@ -297,31 +484,77 @@ const LocationManagementModal = ({
         setLocationUpdateTrigger((prev) => prev + 1);
       }
     } else {
-      // Validation failed
-      setBarcodeValidationState("error");
+      // Validation failed - check for partial valid hierarchy
+      const firstMissingLevel = result.firstMissingLevel || null;
+      const validComponents = result.validComponents || {};
+      const hasAdditionalInvalid = result.hasAdditionalInvalidLevels || false;
 
-      // Handle partial validation (some components valid)
-      if (result.error && result.error.validComponents) {
-        const partialData = result.error.validComponents;
-        const errorMsg =
-          result.error.errorMessage ||
-          intl.formatMessage({
-            id: "barcode.partialMatch",
-            defaultMessage:
-              "Partial match - some location components not found",
-          });
-        setBarcodeErrorMessage(errorMsg);
+      if (firstMissingLevel && Object.keys(validComponents).length > 0) {
+        // Partial valid hierarchy - auto-open create form
+        console.log(
+          "[LocationManagementModal] Partial valid hierarchy detected, setting error state but auto-opening form",
+        );
+        setBarcodeValidationState("error");
+        setBarcodeErrorMessage("");
 
-        // Auto-populate partial location data
-        const location = {
-          room: partialData.room,
-          device: partialData.device,
-          shelf: partialData.shelf,
-          rack: partialData.rack,
-          position: partialData.position,
+        // Convert validComponents to location format for pre-filling
+        // validComponents is a Map<String, Object> where each value is { id, name, code } or { id, label, label }
+        // Ensure all required fields are present for proper selection (not creation mode)
+        const prefillLoc = {
+          room: validComponents.room
+            ? {
+                id: validComponents.room.id,
+                name: validComponents.room.name,
+                code: validComponents.room.code,
+                active: validComponents.room.active !== false, // Default to true if not specified
+              }
+            : null,
+          device: validComponents.device
+            ? {
+                id: validComponents.device.id,
+                name: validComponents.device.name,
+                code: validComponents.device.code,
+              }
+            : null,
+          shelf: validComponents.shelf
+            ? {
+                id: validComponents.shelf.id,
+                label:
+                  validComponents.shelf.label || validComponents.shelf.name,
+                name: validComponents.shelf.name || validComponents.shelf.label,
+              }
+            : null,
+          rack: validComponents.rack
+            ? {
+                id: validComponents.rack.id,
+                label: validComponents.rack.label || validComponents.rack.name,
+                name: validComponents.rack.name || validComponents.rack.label,
+              }
+            : null,
+          position: validComponents.position
+            ? {
+                id: validComponents.position.id,
+                coordinate: validComponents.position.coordinate,
+              }
+            : null,
         };
 
-        // Implement "last-modified wins" logic for partial validation
+        console.log(
+          "[LocationManagementModal] Pre-fill location from validComponents",
+          {
+            firstMissingLevel,
+            validComponentsKeys: Object.keys(validComponents),
+            prefillLoc,
+          },
+        );
+
+        // Set auto-open state
+        setAutoOpenCreateForm(true);
+        setPrefillLocation(prefillLoc);
+        setFocusField(firstMissingLevel);
+        setShowAdditionalInvalidWarning(hasAdditionalInvalid);
+
+        // Pre-fill selected location with valid components
         const timestamp = Date.now();
         if (
           lastModifiedTimestamp === null ||
@@ -329,11 +562,19 @@ const LocationManagementModal = ({
         ) {
           setLastModifiedMethod("barcode");
           setLastModifiedTimestamp(timestamp);
-
-          setSelectedLocation(location);
+          setSelectedLocation(prefillLoc);
         }
       } else {
-        // Complete validation failure
+        // Complete validation failure - no valid levels
+        console.log(
+          "[LocationManagementModal] Complete validation failure, setting error state",
+        );
+        setBarcodeValidationState("error");
+        setAutoOpenCreateForm(false);
+        setPrefillLocation(null);
+        setFocusField(null);
+        setShowAdditionalInvalidWarning(false);
+
         const errorMsg =
           result.error?.errorMessage ||
           result.error?.message ||
@@ -343,12 +584,12 @@ const LocationManagementModal = ({
             defaultMessage: "Invalid barcode",
           });
         setBarcodeErrorMessage(errorMsg);
-      }
 
-      // Reset to ready state after 3 seconds
-      setTimeout(() => {
-        setBarcodeValidationState("ready");
-      }, 3000);
+        // Reset to ready state after 3 seconds
+        setTimeout(() => {
+          setBarcodeValidationState("ready");
+        }, 3000);
+      }
     }
   };
 
@@ -366,6 +607,23 @@ const LocationManagementModal = ({
     setLastModifiedTimestamp(null);
     onClose();
   };
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && open) {
+        handleClose();
+      }
+    };
+
+    if (open) {
+      document.addEventListener("keydown", handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open, handleClose]);
 
   const selectedLocationForValidation =
     selectedLocationRef.current || selectedLocation;
@@ -418,7 +676,32 @@ const LocationManagementModal = ({
   }
 
   const meetsMinimumLevels = (hasRoom && hasDevice) || hasLocationId;
-  const canConfirm = meetsMinimumLevels && canExtractLocationId;
+
+  // Check if position or notes have changed from initial values
+  const positionChanged = positionCoordinate !== initialPositionCoordinate;
+  const notesChanged = conditionNotes !== initialConditionNotes;
+  const metadataChanged = positionChanged || notesChanged;
+
+  // Enable button if:
+  // 1. Location is selected (original behavior), OR
+  // 2. Metadata changed AND we're in movement mode with existing location (can update metadata only)
+  const canConfirmLocation =
+    (meetsMinimumLevels && canExtractLocationId) ||
+    (isMovementMode && metadataChanged);
+
+  // Handle Enter key to submit form (except in textarea)
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      // Don't submit if focus is in textarea
+      if (event.target.tagName === "TEXTAREA") {
+        return;
+      }
+      event.preventDefault();
+      if (canConfirmLocation) {
+        handleConfirm();
+      }
+    }
+  };
 
   // Determine if Reason for Move should be visible
   // Show only when: location exists AND different location selected
@@ -492,7 +775,7 @@ const LocationManagementModal = ({
               )
         }
       />
-      <ModalBody>
+      <ModalBody onKeyDown={handleKeyDown}>
         {/* Comprehensive Sample Information Section */}
         {sample && (
           <div
@@ -546,7 +829,9 @@ const LocationManagementModal = ({
                   />
                   :
                 </span>
-                <span className="info-value">{sample.status}</span>
+                <span className="info-value">
+                  {getStatusLabel(sample.status)}
+                </span>
               </div>
               {sample.dateCollected && (
                 <div className="info-row">
@@ -656,12 +941,37 @@ const LocationManagementModal = ({
                 <span className="required-indicator">*</span>
               </label>
               <div className="location-management-location-selector">
+                {showAdditionalInvalidWarning && (
+                  <div style={{ marginBottom: "1rem" }}>
+                    <InlineNotification
+                      kind="warning"
+                      title={intl.formatMessage({
+                        id: "barcode.additionalInvalidLevels.warning",
+                        defaultMessage: "Additional invalid levels detected",
+                      })}
+                      subtitle={intl.formatMessage({
+                        id: "barcode.additionalInvalidLevels.message",
+                        defaultMessage:
+                          "The barcode contains levels beyond the valid portion. Only valid levels are pre-filled.",
+                      })}
+                      lowContrast
+                      hideCloseButton
+                    />
+                  </div>
+                )}
                 <LocationSearchAndCreate
                   onLocationChange={handleLocationChange}
                   selectedLocation={selectedLocationForValidation}
                   allowInactive={false}
                   showCreateButton={true}
                   isActive={lastModifiedMethod === "dropdown"}
+                  autoOpenCreateForm={autoOpenCreateForm}
+                  prefillLocation={prefillLocation}
+                  focusField={focusField}
+                  onCreateFormOpened={() => {
+                    // Reset auto-open flag after form is opened
+                    setAutoOpenCreateForm(false);
+                  }}
                 />
               </div>
             </div>
@@ -683,6 +993,18 @@ const LocationManagementModal = ({
                 </div>
                 <div className="location-path">{selectedLocationPath}</div>
               </div>
+              {/* Unobtrusive autosaved indicator */}
+              {showAutoSaved && (
+                <div
+                  className="autosaved-indicator"
+                  data-testid="autosaved-indicator"
+                >
+                  <FormattedMessage
+                    id="storage.autosaved"
+                    defaultMessage="✓ Autosaved"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -786,7 +1108,7 @@ const LocationManagementModal = ({
         <Button
           kind="primary"
           onClick={handleConfirm}
-          disabled={!canConfirm}
+          disabled={!canConfirmLocation}
           data-testid={isMovementMode ? "confirm-move-button" : "assign-button"}
         >
           {buttonText}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ComposedModal,
   ModalHeader,
@@ -76,7 +76,38 @@ const DisposeSampleModal = ({
     onClose();
   };
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && open) {
+        handleClose();
+      }
+    };
+
+    if (open) {
+      document.addEventListener("keydown", handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open, handleClose]);
+
   const canConfirm = reason && method && confirmed;
+
+  // Handle Enter key to submit form (except in textarea)
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      // Don't submit if focus is in textarea
+      if (event.target.tagName === "TEXTAREA") {
+        return;
+      }
+      event.preventDefault();
+      if (canConfirm) {
+        handleConfirm();
+      }
+    }
+  };
 
   return (
     <ComposedModal
@@ -98,7 +129,7 @@ const DisposeSampleModal = ({
           { sampleId: sample?.sampleId || "" },
         )}
       />
-      <ModalBody>
+      <ModalBody onKeyDown={handleKeyDown}>
         {/* Red Warning Alert */}
         <div className="dispose-modal-alert" data-testid="warning-alert">
           <InlineNotification

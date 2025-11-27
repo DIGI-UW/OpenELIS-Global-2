@@ -1155,15 +1155,15 @@ library.
 ```java
 // Example: OrderLabel extends Label
 public class StorageLocationLabel extends Label {
-    public StorageLocationLabel(StorageDevice device, String shortCode) {
+    public StorageLocationLabel(StorageDevice device) {
         // Set dimensions from ConfigurationProperties
         width = Float.parseFloat(ConfigurationProperties.getInstance()
             .getPropertyValue(Property.STORAGE_LOCATION_BARCODE_WIDTH));
         height = Float.parseFloat(ConfigurationProperties.getInstance()
             .getPropertyValue(Property.STORAGE_LOCATION_BARCODE_HEIGHT));
 
-        // Set barcode code (hierarchical path or short code)
-        setCode(shortCode != null ? shortCode : buildHierarchicalPath(device));
+        // Set barcode code (uses code field from location entity, ≤10 chars)
+        setCode(device.getCode());
 
         // Add fields above/below barcode
         aboveFields = new ArrayList<>();
@@ -1177,8 +1177,7 @@ public class StorageLocationLabel extends Label {
 
 1. **Create StorageLocationLabel class** extending `Label`:
 
-   - Use hierarchical path (`ROOM-DEVICE-SHELF-RACK`) or short code for barcode
-     value
+   - Use code field from location entity (≤10 chars) for barcode value
    - Read dimensions from `ConfigurationProperties` (add new properties:
      `STORAGE_LOCATION_BARCODE_HEIGHT`, `STORAGE_LOCATION_BARCODE_WIDTH`)
    - Display location name, code, hierarchical path on label
@@ -1201,8 +1200,8 @@ public class StorageLocationLabel extends Label {
 4. **Print History Tracking**:
    - Reuse existing `BarcodeLabelInfo` entity or create new
      `StorageLocationPrintHistory` entity
-   - Track: location entity ID, short code (if used), printed by (user ID),
-     printed date, print count
+   - Track: location entity ID, code (≤10 chars), printed by (user ID), printed
+     date, print count
    - Store in database for audit trail
 
 **Rationale**: Leveraging existing infrastructure reduces development effort and
@@ -1308,14 +1307,31 @@ pattern. Additional hardware testing recommended during implementation phase.
    - Create REST endpoint for label printing (or extend LabelMakerServlet)
    - Create `StorageLocationPrintHistory` entity and DAO/Service
 
-2. **Frontend Changes**:
+2. **Frontend Changes** (Updated 2025-11-16 per spec clarifications):
 
-   - Label Management modal calls REST endpoint
+   - **Simplified Approach**: Replace "Label Management" modal with "Print
+     Label" button in overflow menu
+   - Code field (≤10 chars) stored in location entities (Room, Device, Shelf,
+     Rack) as database field
+   - Code auto-generated from name on create (uppercase, remove
+     non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append
+     numeric suffix if conflict)
+   - Code editable in create and edit modals
+   - Code does NOT regenerate when name changes
+   - Print Label button shows simple confirmation dialog: "Print label for
+     [Location Name] ([Location Code])?"
    - PDF opens in new tab (browser handles printing)
-   - Display print history from `StorageLocationPrintHistory` entity
+   - Print history tracked in database but NOT displayed in UI (compliance only)
+   - Error message if code missing or > 10 chars: "Code is required for label
+     printing. Please set code in Edit form."
 
-3. **Database Changes**:
+3. **Database Changes** (Updated 2025-11-16 per spec clarifications):
 
+   - Update `code` column to VARCHAR(10) for all location tables (Room, Device,
+     Shelf, Rack) (Liquibase changeset)
+   - Remove `short_code` column from `STORAGE_DEVICE`, `STORAGE_SHELF`,
+     `STORAGE_RACK` tables (Liquibase changeset)
+   - Migrate existing codes > 10 chars to ≤10 chars (Liquibase changeset)
    - Add `storage_location_print_history` table (Liquibase changeset)
    - Add configuration properties to `site_information` table (via system admin
      UI)
@@ -2345,7 +2361,7 @@ await waitFor(() => {
 
 ```javascript
 // ✅ CORRECT: Use invalid format, wait for error
-const input = screen.getByTestId("short-code-input");
+const input = screen.getByTestId("code-input");
 const invalidValue = "-INVALID"; // Invalid format (starts with hyphen)
 
 fireEvent.change(input, {
@@ -2355,7 +2371,7 @@ fireEvent.change(input, {
 // Wait for validation error (appears in InlineNotification)
 await waitFor(
   () => {
-    const errorMessage = screen.queryByTestId("short-code-error");
+    const errorMessage = screen.queryByTestId("code-error");
     // Fallback to text query if testid not working
     const errorText =
       screen.queryByText(/must start with/i) ||

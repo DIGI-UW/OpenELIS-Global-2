@@ -45,5 +45,8 @@ volume/database/data*/*
 volume/logs/*
 volume/ocl/*
 volume/odoo/*
+.specify/temp/
 .cursor/
 .specify/temp/
+**/*checksum*.properties
+**/*checksums*.properties

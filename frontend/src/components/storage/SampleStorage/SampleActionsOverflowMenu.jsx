@@ -15,25 +15,10 @@ import "./SampleActionsOverflowMenu.css";
 const SampleActionsOverflowMenu = ({ sample, onManageLocation, onDispose }) => {
   const intl = useIntl();
 
-  // Debug: Log component props on mount and when they change
-  useEffect(() => {
-    console.log("SampleActionsOverflowMenu: Component mounted/updated", {
-      sampleId: sample?.sampleId,
-      hasOnManageLocation: !!onManageLocation,
-      hasOnDispose: !!onDispose,
-      sample: sample,
-    });
-  }, [sample, onManageLocation, onDispose]);
-
   // Use useCallback to ensure stable function references
   // Carbon OverflowMenuItem onClick receives an event object
   const handleManageLocation = useCallback(
     (event) => {
-      console.log("SampleActionsOverflowMenu: handleManageLocation called", {
-        sample,
-        event,
-        hasOnManageLocation: !!onManageLocation,
-      });
       // Prevent default behavior and stop propagation
       if (event) {
         event.preventDefault?.();
@@ -41,22 +26,7 @@ const SampleActionsOverflowMenu = ({ sample, onManageLocation, onDispose }) => {
       }
       // Execute callback if provided
       if (onManageLocation) {
-        console.log(
-          "SampleActionsOverflowMenu: executing onManageLocation callback",
-        );
-        try {
-          onManageLocation(sample);
-        } catch (error) {
-          console.error(
-            "SampleActionsOverflowMenu: error in onManageLocation callback",
-            error,
-          );
-        }
-      } else {
-        console.warn(
-          "SampleActionsOverflowMenu: onManageLocation callback not provided for sample",
-          sample?.sampleId,
-        );
+        onManageLocation(sample);
       }
     },
     [sample, onManageLocation],
@@ -64,25 +34,12 @@ const SampleActionsOverflowMenu = ({ sample, onManageLocation, onDispose }) => {
 
   const handleDispose = useCallback(
     (event) => {
-      console.log("SampleActionsOverflowMenu: handleDispose called", {
-        sample,
-        event,
-        hasOnDispose: !!onDispose,
-      });
       if (event) {
         event.preventDefault?.();
         event.stopPropagation?.();
       }
       if (onDispose) {
-        console.log("SampleActionsOverflowMenu: executing onDispose callback");
-        try {
-          onDispose(sample);
-        } catch (error) {
-          console.error(
-            "SampleActionsOverflowMenu: error in onDispose callback",
-            error,
-          );
-        }
+        onDispose(sample);
       } else {
         console.warn(
           "SampleActionsOverflowMenu: onDispose callback not provided for sample",

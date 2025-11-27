@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="FreezerExcursionReport"
+              pageWidth="842"
+              pageHeight="595"
+              orientation="Landscape"
+              columnWidth="802"
+              leftMargin="20"
+              rightMargin="20"
+              topMargin="20"
+              bottomMargin="20"
+              uuid="freezer-excursion-report">
+
+    <!-- Parameters -->
+    <parameter name="reportTitle" class="java.lang.String"/>
+    <parameter name="labName" class="java.lang.String"/>
+    <parameter name="startDate" class="java.lang.String"/>
+    <parameter name="endDate" class="java.lang.String"/>
+    <parameter name="complianceFooter" class="java.lang.String"/>
+
+    <!-- Fields from FreezerExcursionReportData bean -->
+    <field name="excursionId" class="java.lang.String"/>
+    <field name="freezerName" class="java.lang.String"/>
+    <field name="location" class="java.lang.String"/>
+    <field name="startTime" class="java.lang.String"/>
+    <field name="endTime" class="java.lang.String"/>
+    <field name="duration" class="java.lang.String"/>
+    <field name="temperatureRange" class="java.lang.String"/>
+    <field name="severity" class="java.lang.String"/>
+    <field name="status" class="java.lang.String"/>
+
+    <!-- Page Header -->
+    <pageHeader>
+        <band height="100">
+            <textField>
+                <reportElement x="0" y="0" width="802" height="20" uuid="lab-name"/>
+                <textElement textAlignment="Center">
+                    <font size="14" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{labName}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="25" width="802" height="20" uuid="report-title"/>
+                <textElement textAlignment="Center">
+                    <font size="12" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{reportTitle}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="50" width="802" height="20" uuid="date-range"/>
+                <textElement textAlignment="Center"/>
+                <textFieldExpression><![CDATA["Date Range: " + $P{startDate} + " to " + $P{endDate}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="650" y="75" width="150" height="20" uuid="print-date"/>
+                <textElement textAlignment="Right"/>
+                <textFieldExpression><![CDATA["Printed: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date())]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageHeader>
+
+    <!-- Column Header -->
+    <columnHeader>
+        <band height="30">
+            <staticText>
+                <reportElement x="0" y="0" width="100" height="30" uuid="header-excursion-id"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Excursion ID]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="100" y="0" width="120" height="30" uuid="header-freezer"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Freezer]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="220" y="0" width="100" height="30" uuid="header-location"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Location]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="320" y="0" width="120" height="30" uuid="header-start-time"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Start Time]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="440" y="0" width="100" height="30" uuid="header-duration"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Duration]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="540" y="0" width="120" height="30" uuid="header-temp-range"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Temp Range]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="660" y="0" width="70" height="30" uuid="header-severity"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Severity]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="730" y="0" width="72" height="30" uuid="header-status"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Status]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <!-- Detail Band -->
+    <detail>
+        <band height="20">
+            <textField isStretchWithOverflow="true">
+                <reportElement x="0" y="0" width="100" height="20" uuid="data-excursion-id"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{excursionId}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true">
+                <reportElement x="100" y="0" width="120" height="20" uuid="data-freezer"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Left" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{freezerName}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true">
+                <reportElement x="220" y="0" width="100" height="20" uuid="data-location"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Left" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{location}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true">
+                <reportElement x="320" y="0" width="120" height="20" uuid="data-start-time"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{startTime}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true">
+                <reportElement x="440" y="0" width="100" height="20" uuid="data-duration"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{duration}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true">
+                <reportElement x="540" y="0" width="120" height="20" uuid="data-temp-range"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{temperatureRange}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true">
+                <reportElement x="660" y="0" width="70" height="20" uuid="data-severity"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{severity}]]></textFieldExpression>
+            </textField>
+            <textField isStretchWithOverflow="true">
+                <reportElement x="730" y="0" width="72" height="20" uuid="data-status"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{status}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+    <!-- Page Footer -->
+    <pageFooter>
+        <band height="40">
+            <textField>
+                <reportElement x="0" y="0" width="802" height="20" uuid="compliance-footer"/>
+                <textElement textAlignment="Center">
+                    <font size="8" isItalic="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{complianceFooter}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="20" width="200" height="20" uuid="page-number"/>
+                <textElement textAlignment="Left"/>
+                <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+</jasperReport>

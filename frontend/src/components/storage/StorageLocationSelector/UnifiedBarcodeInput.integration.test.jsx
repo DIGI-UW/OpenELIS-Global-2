@@ -3,16 +3,18 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import "@testing-library/jest-dom";
 import UnifiedBarcodeInput from "./UnifiedBarcodeInput";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 
 // Mock the API utility
 jest.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),
+  postToOpenElisServerJsonResponse: jest.fn(),
 }));
 
 // Mock translations
 const messages = {
   "barcode.scanOrType": "Scan barcode or type location",
+  "barcode.scan": "Scan barcode",
   "barcode.ready": "Ready to scan",
   "barcode.success": "Location found",
   "barcode.error": "Invalid barcode",
@@ -29,14 +31,15 @@ const renderWithIntl = (component) => {
 
 describe("UnifiedBarcodeInput Integration Tests", () => {
   let mockOnScan;
-  let mockOnTypeAhead;
   let mockOnValidationResult;
+  let mockOnSampleScan;
 
   beforeEach(() => {
     mockOnScan = jest.fn();
-    mockOnTypeAhead = jest.fn();
     mockOnValidationResult = jest.fn();
+    mockOnSampleScan = jest.fn();
     jest.clearAllMocks();
+    postToOpenElisServerJsonResponse.mockClear();
   });
 
   afterEach(() => {
@@ -54,14 +57,15 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
         rack: { id: "4", label: "RKR1" },
       };
 
-      getFromOpenElisServer.mockImplementation((url, onSuccess) => {
-        onSuccess(mockResponse);
-      });
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockResponse);
+        },
+      );
 
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -73,9 +77,9 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       fireEvent.change(input, { target: { value: barcode } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
-      expect(getFromOpenElisServer).toHaveBeenCalledWith(
-        `/rest/storage/barcode/validate?barcode=${encodeURIComponent(barcode)}`,
-        expect.any(Function),
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
+        `/rest/storage/barcode/validate`,
+        JSON.stringify({ barcode: barcode }),
         expect.any(Function),
       );
     });
@@ -83,14 +87,15 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
     it("should include correct query parameters in API call", () => {
       const barcode = "ROOM-DEVICE";
 
-      getFromOpenElisServer.mockImplementation((url, onSuccess) => {
-        onSuccess({ valid: true });
-      });
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess({ valid: true });
+        },
+      );
 
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -100,9 +105,10 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       fireEvent.change(input, { target: { value: barcode } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
-      const callUrl = getFromOpenElisServer.mock.calls[0][0];
-      expect(callUrl).toContain("/rest/storage/barcode/validate");
-      expect(callUrl).toContain(`barcode=${encodeURIComponent(barcode)}`);
+      const callUrl = postToOpenElisServerJsonResponse.mock.calls[0][0];
+      const callPayload = postToOpenElisServerJsonResponse.mock.calls[0][1];
+      expect(callUrl).toBe("/rest/storage/barcode/validate");
+      expect(JSON.parse(callPayload)).toEqual({ barcode: barcode });
     });
   });
 
@@ -114,7 +120,6 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -123,7 +128,7 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       const input = screen.getByRole("textbox");
       fireEvent.blur(input);
 
-      expect(getFromOpenElisServer).not.toHaveBeenCalled();
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
     });
   });
 
@@ -139,14 +144,15 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
         hierarchicalPath: "Main Laboratory > Freezer Unit 1 > SHA > RKR1",
       };
 
-      getFromOpenElisServer.mockImplementation((url, onSuccess) => {
-        onSuccess(mockResponse);
-      });
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockResponse);
+        },
+      );
 
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -161,6 +167,9 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
         success: true,
         data: mockResponse,
         error: null, // UnifiedBarcodeInput includes error: null when valid
+        firstMissingLevel: null,
+        hasAdditionalInvalidLevels: false,
+        validComponents: {},
       });
     });
 
@@ -168,14 +177,15 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       const barcode = "MAIN-FRZ01";
       const mockResponse = { valid: true };
 
-      getFromOpenElisServer.mockImplementation((url, onSuccess) => {
-        onSuccess(mockResponse);
-      });
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockResponse);
+        },
+      );
 
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -199,14 +209,15 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
         errorType: "LOCATION_NOT_FOUND",
       };
 
-      getFromOpenElisServer.mockImplementation((url, onSuccess, onError) => {
-        onError(mockError);
-      });
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockError);
+        },
+      );
 
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -217,9 +228,18 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       fireEvent.change(input, { target: { value: barcode } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
+      // UnifiedBarcodeInput wraps validation errors when barcodeType is "location" and valid is false
       expect(mockOnValidationResult).toHaveBeenCalledWith({
         success: false,
-        error: mockError,
+        data: mockError,
+        firstMissingLevel: mockError.firstMissingLevel || null,
+        validComponents: mockError.validComponents || {},
+        hasAdditionalInvalidLevels:
+          mockError.hasAdditionalInvalidLevels || false,
+        error: {
+          errorMessage: mockError.errorMessage,
+          message: mockError.errorMessage,
+        },
       });
     });
 
@@ -227,14 +247,20 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       const barcode = "MAIN-FRZ01";
       const networkError = new Error("Network error");
 
-      getFromOpenElisServer.mockImplementation((url, onSuccess, onError) => {
-        onError(networkError);
-      });
+      // postToOpenElisServerJsonResponse passes errors in response object
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess({
+            error: networkError.message || "Network error",
+            message: networkError.message || "Network error",
+            status: 0,
+          });
+        },
+      );
 
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -245,9 +271,12 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       fireEvent.change(input, { target: { value: barcode } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
+      // Network errors are passed directly - component checks response.error || response.status >= 400
+      // Returns: { success: false, error: response.error || { message: "Validation failed" } }
+      // If response.error is a string, it uses it directly; if it's an object, it uses the object
       expect(mockOnValidationResult).toHaveBeenCalledWith({
         success: false,
-        error: networkError,
+        error: networkError.message || "Network error", // Component uses response.error directly if it's a string
       });
     });
 
@@ -259,14 +288,16 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
         errorType: "INVALID_FORMAT",
       };
 
-      getFromOpenElisServer.mockImplementation((url, onSuccess, onError) => {
-        onError(validationError);
-      });
+      // postToOpenElisServerJsonResponse passes errors in response object
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(validationError);
+        },
+      );
 
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -277,9 +308,18 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       fireEvent.change(input, { target: { value: barcode } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
+      // UnifiedBarcodeInput wraps validation errors in error object when valid is false
       expect(mockOnValidationResult).toHaveBeenCalledWith({
         success: false,
-        error: validationError,
+        data: validationError,
+        firstMissingLevel: validationError.firstMissingLevel || null,
+        validComponents: validationError.validComponents || {},
+        hasAdditionalInvalidLevels:
+          validationError.hasAdditionalInvalidLevels || false,
+        error: {
+          errorMessage: validationError.errorMessage,
+          message: validationError.errorMessage,
+        },
       });
     });
   });
@@ -296,14 +336,16 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
         errorMessage: "Shelf not found",
       };
 
-      getFromOpenElisServer.mockImplementation((url, onSuccess, onError) => {
-        onError(mockResponse);
-      });
+      // postToOpenElisServerJsonResponse passes errors in response object
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockResponse);
+        },
+      );
 
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -314,9 +356,18 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       fireEvent.change(input, { target: { value: barcode } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
+      // UnifiedBarcodeInput wraps validation errors in error object when valid is false
       expect(mockOnValidationResult).toHaveBeenCalledWith({
         success: false,
-        error: mockResponse,
+        data: mockResponse,
+        firstMissingLevel: mockResponse.firstMissingLevel || null,
+        validComponents: mockResponse.validComponents || {},
+        hasAdditionalInvalidLevels:
+          mockResponse.hasAdditionalInvalidLevels || false,
+        error: {
+          errorMessage: mockResponse.errorMessage,
+          message: mockResponse.errorMessage,
+        },
       });
     });
 
@@ -328,14 +379,16 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
         errorMessage: "No matching locations found",
       };
 
-      getFromOpenElisServer.mockImplementation((url, onSuccess, onError) => {
-        onError(mockResponse);
-      });
+      // postToOpenElisServerJsonResponse passes errors in response object
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockResponse);
+        },
+      );
 
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -346,9 +399,18 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       fireEvent.change(input, { target: { value: barcode } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
+      // UnifiedBarcodeInput wraps validation errors in error object when valid is false
       expect(mockOnValidationResult).toHaveBeenCalledWith({
         success: false,
-        error: mockResponse,
+        data: mockResponse,
+        firstMissingLevel: mockResponse.firstMissingLevel || null,
+        validComponents: mockResponse.validComponents || {},
+        hasAdditionalInvalidLevels:
+          mockResponse.hasAdditionalInvalidLevels || false,
+        error: {
+          errorMessage: mockResponse.errorMessage,
+          message: mockResponse.errorMessage,
+        },
       });
     });
   });
@@ -358,14 +420,15 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       jest.useFakeTimers();
 
       const barcode = "MAIN-FRZ01";
-      getFromOpenElisServer.mockImplementation((url, onSuccess) => {
-        onSuccess({ valid: true });
-      });
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess({ valid: true });
+        },
+      );
 
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
           onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
@@ -377,9 +440,224 @@ describe("UnifiedBarcodeInput Integration Tests", () => {
       fireEvent.change(input, { target: { value: barcode } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
-      expect(getFromOpenElisServer).toHaveBeenCalledTimes(1);
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
 
       jest.useRealTimers();
+    });
+  });
+
+  describe("Comprehensive Validation Scenarios", () => {
+    it("should validate invalid format (no hyphens) and return error", () => {
+      const invalidFormat = "234";
+      const mockResponse = {
+        valid: false,
+        barcodeType: "location",
+        errorMessage:
+          "Invalid barcode format. Expected format: ROOM-DEVICE or ROOM-DEVICE-SHELF-RACK-POSITION",
+        failedStep: "FORMAT_VALIDATION",
+        firstMissingLevel: null,
+        validComponents: {},
+      };
+
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockResponse);
+        },
+      );
+
+      renderWithIntl(
+        <UnifiedBarcodeInput
+          onScan={mockOnScan}
+          onValidationResult={mockOnValidationResult}
+          validationState="ready"
+        />,
+      );
+
+      const input = screen.getByRole("textbox");
+      fireEvent.change(input, { target: { value: invalidFormat } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+      expect(mockOnScan).toHaveBeenCalledWith(invalidFormat);
+      expect(mockOnValidationResult).toHaveBeenCalledWith({
+        success: false,
+        data: mockResponse,
+        firstMissingLevel: null,
+        validComponents: {},
+        hasAdditionalInvalidLevels: false,
+        error: {
+          errorMessage: mockResponse.errorMessage,
+          message: mockResponse.errorMessage,
+        },
+      });
+    });
+
+    it("should validate invalid barcode (hyphens but invalid location) and return error", () => {
+      const invalidBarcode = "INVALID-CODE";
+      const mockResponse = {
+        valid: false,
+        barcodeType: "location",
+        errorMessage: "Location not found: INVALID-CODE",
+        failedStep: "LOCATION_EXISTENCE",
+        firstMissingLevel: null,
+        validComponents: {},
+      };
+
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockResponse);
+        },
+      );
+
+      renderWithIntl(
+        <UnifiedBarcodeInput
+          onScan={mockOnScan}
+          onValidationResult={mockOnValidationResult}
+          validationState="ready"
+        />,
+      );
+
+      const input = screen.getByRole("textbox");
+      fireEvent.change(input, { target: { value: invalidBarcode } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+      expect(mockOnScan).toHaveBeenCalledWith(invalidBarcode);
+      expect(mockOnValidationResult).toHaveBeenCalledWith({
+        success: false,
+        data: mockResponse,
+        firstMissingLevel: null,
+        validComponents: {},
+        hasAdditionalInvalidLevels: false,
+        error: {
+          errorMessage: mockResponse.errorMessage,
+          message: mockResponse.errorMessage,
+        },
+      });
+    });
+
+    it("should detect sample barcode and call onSampleScan", () => {
+      const sampleBarcode = "25-00001";
+      const mockResponse = {
+        valid: false,
+        barcodeType: "sample",
+        errorMessage:
+          "Scanned barcode appears to be a sample accession number, not a location barcode",
+      };
+
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockResponse);
+        },
+      );
+
+      renderWithIntl(
+        <UnifiedBarcodeInput
+          onScan={mockOnScan}
+          onValidationResult={mockOnValidationResult}
+          onSampleScan={mockOnSampleScan}
+          validationState="ready"
+        />,
+      );
+
+      const input = screen.getByRole("textbox");
+      fireEvent.change(input, { target: { value: sampleBarcode } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+      expect(mockOnScan).toHaveBeenCalledWith(sampleBarcode);
+      expect(mockOnSampleScan).toHaveBeenCalledWith({
+        barcode: sampleBarcode,
+        type: "sample",
+        data: mockResponse,
+      });
+      expect(mockOnValidationResult).not.toHaveBeenCalled();
+    });
+
+    it("should handle complete validation failure (no valid components)", () => {
+      const barcode = "NOTFOUND-INVALID";
+      const mockResponse = {
+        valid: false,
+        barcodeType: "location",
+        errorMessage: "No matching locations found",
+        failedStep: "LOCATION_EXISTENCE",
+        firstMissingLevel: null,
+        validComponents: {},
+        hasAdditionalInvalidLevels: false,
+      };
+
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockResponse);
+        },
+      );
+
+      renderWithIntl(
+        <UnifiedBarcodeInput
+          onScan={mockOnScan}
+          onValidationResult={mockOnValidationResult}
+          validationState="ready"
+        />,
+      );
+
+      const input = screen.getByRole("textbox");
+      fireEvent.change(input, { target: { value: barcode } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+      expect(mockOnValidationResult).toHaveBeenCalledWith({
+        success: false,
+        data: mockResponse,
+        firstMissingLevel: null,
+        validComponents: {},
+        hasAdditionalInvalidLevels: false,
+        error: {
+          errorMessage: mockResponse.errorMessage,
+          message: mockResponse.errorMessage,
+        },
+      });
+    });
+
+    it("should handle partial validation (some components valid)", () => {
+      const barcode = "MAIN-FRZ01-INVALID";
+      const mockResponse = {
+        valid: false,
+        barcodeType: "location",
+        errorMessage: "Shelf not found",
+        failedStep: "LOCATION_EXISTENCE",
+        firstMissingLevel: "shelf",
+        validComponents: {
+          room: { id: "1", code: "MAIN", name: "Main Laboratory" },
+          device: { id: "2", code: "FRZ01", name: "Freezer Unit 1" },
+        },
+        hasAdditionalInvalidLevels: false,
+      };
+
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess(mockResponse);
+        },
+      );
+
+      renderWithIntl(
+        <UnifiedBarcodeInput
+          onScan={mockOnScan}
+          onValidationResult={mockOnValidationResult}
+          validationState="ready"
+        />,
+      );
+
+      const input = screen.getByRole("textbox");
+      fireEvent.change(input, { target: { value: barcode } });
+      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+      expect(mockOnValidationResult).toHaveBeenCalledWith({
+        success: false,
+        data: mockResponse,
+        firstMissingLevel: "shelf",
+        validComponents: mockResponse.validComponents,
+        hasAdditionalInvalidLevels: false,
+        error: {
+          errorMessage: mockResponse.errorMessage,
+          message: mockResponse.errorMessage,
+        },
+      });
     });
   });
 });

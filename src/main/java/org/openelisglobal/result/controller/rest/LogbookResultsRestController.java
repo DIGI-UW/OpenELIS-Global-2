@@ -315,16 +315,26 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                             upperRangeAccessionNumber, doRange, finished);
                 } else {
                     resultsLoadUtility.setLockCurrentResults(modifyResultsRoleBased() && userNotInRole(request));
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                            "Searching for sample with labNumber: " + labNumber);
                     Sample sample = sampleService.getSampleByAccessionNumber(labNumber);
                     if (sample != null) {
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults", "Found sample: id="
+                                + sample.getId() + ", accessionNumber=" + sample.getAccessionNumber());
                         if (!GenericValidator.isBlankOrNull(sample.getId())) {
                             patient = getPatient(sample);
 
                             tests = resultsLoadUtility.getGroupedTestsForSample(sample, patient);
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                                    "getGroupedTestsForSample returned " + tests.size() + " tests for sample "
+                                            + sample.getId());
                             patientName = patientService.getLastFirstName(patient);
                             patientInfo = patient.getNationalId() + ", " + patient.getGender() + ", "
                                     + patient.getBirthDateForDisplay();
                         }
+                    } else {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "getLogbookResults",
+                                "No sample found for labNumber: " + labNumber);
                     }
                 }
 
@@ -349,6 +359,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                        "After filterResultsByLabUnitRoles: tests.size()=" + tests.size() + ", filteredTests.size()="
+                                + filteredTests.size());
 
                 int count = resultsLoadUtility.getTotalCountAnalysisByAccessionAndStatus(form.getAccessionNumber());
 
@@ -375,6 +388,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             }
 
             paging.setDatabaseResults(request, form, filteredTests);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                    "After setDatabaseResults: form.getTestResult() size="
+                            + (form.getTestResult() != null ? form.getTestResult().size() : 0));
 
         } else {
             int requestedPageNumber = Integer.parseInt(requestedPage);
@@ -398,6 +414,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         addFlashMsgsToRequest(request);
 
         for (TestResultItem resultItem : filteredTests) {
+            AddPatientIdToResult(patient, resultItem);
             if (patientName != "")
                 resultItem.setPatientName(patientName);
             if (patientInfo != "")
@@ -405,6 +422,21 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         return (form);
+    }
+
+    private void AddPatientIdToResult(Patient patient, TestResultItem resultItem) {
+        if (patient != null) {
+            resultItem.setPatientId(patient.getId());
+        } else if (resultItem.getAccessionNumber() != null) {
+            // Si le patient n'est pas défini globalement, le récupérer via l'échantillon
+            Sample sample = sampleService.getSampleByAccessionNumber(resultItem.getAccessionNumber());
+            if (sample != null) {
+                Patient itemPatient = sampleHumanService.getPatientForSample(sample);
+                if (itemPatient != null) {
+                    resultItem.setPatientId(itemPatient.getId());
+                }
+            }
+        }
     }
 
     private String getCurrentDate() {

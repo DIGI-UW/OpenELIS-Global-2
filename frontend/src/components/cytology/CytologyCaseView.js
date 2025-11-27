@@ -382,7 +382,7 @@ function CytologyCaseView() {
           <Section>
             <Section>
               <PatientHeader
-                id={pathologySampleInfo.labNumber}
+                id={pathologySampleInfo.patientPK}
                 lastName={pathologySampleInfo.lastName}
                 firstName={pathologySampleInfo.firstName}
                 gender={pathologySampleInfo.sex}

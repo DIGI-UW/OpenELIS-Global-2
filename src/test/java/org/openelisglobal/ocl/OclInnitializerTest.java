@@ -31,6 +31,9 @@ public class OclInnitializerTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
+        // Load role data first (required for OCL import - needs "Results" and
+        // "Validation" roles)
+        executeDataSetWithStateManagement("testdata/role.xml");
         executeDataSetWithStateManagement("testdata/ocl-import.xml");
         executeDataSetWithStateManagement("testdata/type-of-testresult.xml");
         if (oclZipImporter == null) {

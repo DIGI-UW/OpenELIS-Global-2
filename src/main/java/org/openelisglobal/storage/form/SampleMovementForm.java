@@ -25,6 +25,9 @@ public class SampleMovementForm {
     @Size(max = 1000, message = "Reason must not exceed 1000 characters")
     private String reason;
 
+    @Size(max = 1000, message = "Notes must not exceed 1000 characters")
+    private String notes;
+
     // Getters and Setters
 
     public String getSampleItemId() {
@@ -65,5 +68,13 @@ public class SampleMovementForm {
 
     public void setReason(String reason) {
         this.reason = reason;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 }

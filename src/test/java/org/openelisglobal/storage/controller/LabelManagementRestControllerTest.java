@@ -3,6 +3,7 @@ package org.openelisglobal.storage.controller;
 import static org.junit.Assert.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
@@ -11,9 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
-import org.openelisglobal.storage.form.ShortCodeUpdateForm;
 import org.openelisglobal.storage.service.LabelManagementService;
-import org.openelisglobal.storage.service.ShortCodeValidationService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,9 +41,6 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
 
     @Autowired
     private LabelManagementService labelManagementService;
-
-    @Autowired
-    private ShortCodeValidationService shortCodeValidationService;
 
     @Autowired
     private StorageDeviceDAO storageDeviceDAO;
@@ -109,139 +105,180 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         // Create a test room first (following pattern from other storage tests)
         long timestamp = System.currentTimeMillis() % 9000;
         Integer roomId = 1000 + (int) timestamp;
+        // Room code must be ≤10 chars: "TESTROOM" + 2 digits = 9 chars
+        String roomCode = "TESTROOM" + (timestamp % 100);
         jdbcTemplate.update("INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
                 + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
-                roomId, "Test Room", "TEST-ROOM-" + timestamp, true, 1);
+                roomId, "Test Room", roomCode, true, 1);
 
-        // Create device with proper room relationship
+        // Create device with proper room relationship (code must be ≤10 chars)
+        // Use unique code per test run to avoid conflicts: "FRZ01" + 2 digits = 7 chars
+        // max
+        String deviceCode = "FRZ01" + String.format("%02d", timestamp % 100);
         StorageDevice device = new StorageDevice();
-        device.setCode("TEST-DEVICE-" + timestamp);
+        device.setCode(deviceCode);
         device.setName("Test Device");
         device.setActive(true);
 
+        Integer deviceId = 2000 + (int) timestamp;
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
-                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                device.getName(), device.getCode(), roomId, device.getActive(), 1);
+                        + "VALUES (?, ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) "
+                        + "ON CONFLICT (id) DO NOTHING",
+                deviceId, device.getName(), device.getCode(), roomId, device.getActive(), 1);
+        // Get the actual ID (may be different if conflict occurred)
         Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE code = ?", Integer.class,
                 device.getCode());
         return String.valueOf(id);
     }
 
     /**
-     * Test: PUT /rest/storage/{type}/{id}/short-code with valid short code
-     * Expected: 200 OK with updated short code
+     * Helper: Create a test device with NULL code to test validation Note: Since
+     * codes must always be ≤10 chars and NOT NULL, we can't create devices with
+     * invalid codes. This helper creates a device with a valid code but tests can
+     * manually set code to NULL via UPDATE to test validation scenarios.
      */
-    @Test
-    public void testPutShortCodeEndpoint_ValidCode_Returns200() throws Exception {
-        // Given: Test device exists
-        String deviceId = createTestDevice();
-        ShortCodeUpdateForm form = new ShortCodeUpdateForm();
-        form.setShortCode("FRZ01");
+    private String createTestDeviceWithoutShortCode() throws Exception {
+        // Create a test room first
+        long timestamp = System.currentTimeMillis() % 9000;
+        Integer roomId = 1000 + (int) timestamp;
+        // Room code must be ≤10 chars: "TESTROOM" + 2 digits = 9 chars
+        String roomCode = "TESTROOM" + (timestamp % 100);
+        jdbcTemplate.update("INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
+                + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
+                roomId, "Test Room No SC", roomCode, true, 1);
 
-        // When: PUT /rest/storage/device/{id}/short-code
-        // Then: Expect 200 OK with short code in response
-        mockMvc.perform(put("/rest/storage/device/" + deviceId + "/short-code").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(form))).andExpect(status().isOk())
-                .andExpect(jsonPath("$.shortCode").value("FRZ01")).andExpect(jsonPath("$.message").exists());
+        // Create device with empty code to test validation
+        // Note: We can't set code to NULL due to NOT NULL constraint, but we can test
+        // empty string
+        // The validation checks for null or empty, so empty string will trigger the
+        // error
+        String deviceCode = ""; // Empty string to test validation
+        jdbcTemplate.update(
+                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                "Test Device No SC", deviceCode, roomId, true, 1);
+        Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE name = ? AND code = ?",
+                Integer.class, "Test Device No SC", deviceCode);
+
+        return String.valueOf(id);
     }
 
     /**
-     * Test: PUT /rest/storage/{type}/{id}/short-code with invalid format Expected:
-     * 400 Bad Request with error message
+     * Helper: Create a test device with code ≤10 chars (should work)
      */
-    @Test
-    public void testPutShortCodeEndpoint_InvalidFormat_Returns400() throws Exception {
-        // Given: Test device exists
-        String deviceId = createTestDevice();
-        ShortCodeUpdateForm form = new ShortCodeUpdateForm();
-        form.setShortCode("INVALID-CODE-TOO-LONG"); // Exceeds 10 characters
+    private String createTestDeviceWithCodeLeq10Chars() throws Exception {
+        // Create a test room first
+        long timestamp = System.currentTimeMillis() % 9000;
+        Integer roomId = 1000 + (int) timestamp;
+        // Room code must be ≤10 chars: "TESTROOM" + 2 digits = 9 chars
+        String roomCode = "TESTROOM" + (timestamp % 100);
+        jdbcTemplate.update("INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
+                + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid()) " + "ON CONFLICT (id) DO NOTHING",
+                roomId, "Test Room Short", roomCode, true, 1);
 
-        // When: PUT /rest/storage/device/{id}/short-code
-        // Then: Expect 400 Bad Request
-        mockMvc.perform(put("/rest/storage/device/" + deviceId + "/short-code").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(form))).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+        // Create device with code ≤10 chars (should work - code will be used for
+        // labels)
+        jdbcTemplate.update(
+                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                "Test Device Short", "TEST-DEV01", roomId, true, 1);
+        Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE code = ?", Integer.class,
+                "TEST-DEV01");
+        return String.valueOf(id);
     }
 
     /**
-     * Test: PUT /rest/storage/{type}/{id}/short-code with location not found
-     * Expected: 404 Not Found
-     */
-    @Test
-    public void testPutShortCodeEndpoint_LocationNotFound_Returns404() throws Exception {
-        // Given: Non-existent device ID
-        ShortCodeUpdateForm form = new ShortCodeUpdateForm();
-        form.setShortCode("FRZ01");
-
-        // When: PUT /rest/storage/device/99999/short-code
-        // Then: Expect 404 Not Found
-        mockMvc.perform(put("/rest/storage/device/99999/short-code").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(form))).andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("Location not found"));
-    }
-
-    /**
-     * Test: POST /rest/storage/{type}/{id}/print-label generates PDF Expected: 200
-     * OK with PDF content type
+     * T285: Test POST /rest/storage/{type}/{id}/print-label generates PDF Expected:
+     * 200 OK with PDF content type (code from entity)
      */
     @Test
     public void testPostPrintLabelEndpoint_GeneratesPdf_Returns200() throws Exception {
-        // Given: Test device exists with proper room relationship
+        // Given: Test device exists with code set in entity
         String deviceId = createTestDevice();
 
-        // Verify device was created correctly with code and parentRoom
+        // Verify device was created correctly with code, parentRoom
         StorageDevice device = storageDeviceDAO.get(Integer.parseInt(deviceId)).orElse(null);
         assertNotNull("Device should exist", device);
         assertNotNull("Device should have code", device.getCode());
         assertNotNull("Device should have parentRoom", device.getParentRoom());
         assertNotNull("ParentRoom should have code", device.getParentRoom().getCode());
+        assertTrue("Device code should start with FRZ01", device.getCode().startsWith("FRZ01"));
 
-        // When: POST /rest/storage/device/{id}/print-label?shortCode=FRZ01
+        // When: POST /rest/storage/device/{id}/print-label (uses code from entity)
         // Then: Expect 200 OK with PDF content
-        MvcResult result = mockMvc
-                .perform(post("/rest/storage/device/" + deviceId + "/print-label").param("shortCode", "FRZ01"))
-                .andReturn();
-
-        // Debug: Print response details if not 200
-        if (result.getResponse().getStatus() != 200) {
-            Exception exception = result.getResolvedException();
-            try {
-                java.io.FileWriter fw = new java.io.FileWriter("/tmp/test-response-error.log");
-                fw.write("Status: " + result.getResponse().getStatus() + "\n");
-                fw.write("Body: " + result.getResponse().getContentAsString() + "\n");
-                fw.write("Headers: " + result.getResponse().getHeaderNames() + "\n");
-                if (exception != null) {
-                    fw.write("Exception: " + exception.getClass().getName() + "\n");
-                    fw.write("Exception Message: " + exception.getMessage() + "\n");
-                    java.io.StringWriter sw = new java.io.StringWriter();
-                    java.io.PrintWriter pw = new java.io.PrintWriter(sw);
-                    exception.printStackTrace(pw);
-                    fw.write("Stack Trace:\n" + sw.toString() + "\n");
-                }
-                fw.close();
-            } catch (Exception e) {
-                // Ignore
-            }
-        }
-
-        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label").param("shortCode", "FRZ01"))
-                .andExpect(status().isOk()).andExpect(header().string("Content-Type", "application/pdf"))
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().exists("Content-Disposition"));
     }
 
     /**
-     * Test: POST /rest/storage/{type}/{id}/print-label tracks print history
+     * T285: Test POST /rest/storage/{type}/{id}/print-label with missing code
+     * Expected: 400 Bad Request with error message
+     */
+    @Test
+    public void testPrintValidationChecksCodeExists_MissingCode_Returns400() throws Exception {
+        // Given: Test device exists with NULL code (simulating missing code scenario)
+        String deviceId = createTestDeviceWithoutShortCode();
+
+        // When: POST /rest/storage/device/{id}/print-label
+        // Then: Expect 400 Bad Request with error message about missing code
+        MvcResult result = mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
+                .andExpect(status().isBadRequest()).andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").exists()).andReturn();
+
+        // Verify error message contains "code"
+        String errorMessage = objectMapper.readTree(result.getResponse().getContentAsString()).get("error").asText();
+        assertTrue("Error message should mention code", errorMessage.toLowerCase().contains("code"));
+    }
+
+    /**
+     * T285: Test POST /rest/storage/{type}/{id}/print-label with code ≤10 chars
+     * Expected: 200 OK with PDF (code will be used for labels)
+     */
+    @Test
+    public void testPostPrintLabelEndpoint_CodeLeq10Chars_GeneratesPdf_Returns200() throws Exception {
+        // Given: Test device exists with code ≤10 chars
+        String deviceId = createTestDeviceWithCodeLeq10Chars();
+
+        // When: POST /rest/storage/device/{id}/print-label (code ≤10 chars)
+        // Then: Expect 200 OK with PDF content (code will be used for labels)
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().exists("Content-Disposition"));
+    }
+
+    /**
+     * T285: Test error response if code is missing Expected: JSON error response
+     * with specific message
+     */
+    @Test
+    public void testErrorResponseIfCodeMissing_ReturnsJsonError() throws Exception {
+        // Given: Test device exists with NULL code (simulating missing code scenario)
+        String deviceId = createTestDeviceWithoutShortCode();
+
+        // When: POST /rest/storage/device/{id}/print-label
+        // Then: Expect JSON error response (not PDF)
+        MvcResult result = mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
+                .andExpect(status().isBadRequest()).andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        // Verify error message contains "code"
+        String errorMessage = objectMapper.readTree(result.getResponse().getContentAsString()).get("error").asText();
+        assertTrue("Error message should mention code", errorMessage.toLowerCase().contains("code"));
+    }
+
+    /**
+     * T285: Test POST /rest/storage/{type}/{id}/print-label tracks print history
      * Expected: Print history is recorded after label generation
      */
     @Test
     public void testPrintHistoryTracking_AfterLabelGeneration_Recorded() throws Exception {
-        // Given: Test device exists
+        // Given: Test device exists with code
         String deviceId = createTestDevice();
 
         // When: POST /rest/storage/device/{id}/print-label
-        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label").param("shortCode", "FRZ01"))
-                .andExpect(status().isOk());
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk());
 
         // Then: Print history record exists in database
         Integer count = jdbcTemplate.queryForObject(
@@ -275,7 +312,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         String deviceId = createTestDevice();
         // Create print history record
         jdbcTemplate.update(
-                "INSERT INTO storage_location_print_history (id, location_type, location_id, short_code, printed_by, printed_date, print_count) "
+                "INSERT INTO storage_location_print_history (id, location_type, location_id, location_code, printed_by, printed_date, print_count) "
                         + "VALUES (gen_random_uuid(), 'device', ?, 'FRZ01', '1', CURRENT_TIMESTAMP, 1)",
                 Integer.parseInt(deviceId));
 
@@ -286,21 +323,24 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: PDF generation uses system admin settings for dimensions Expected:
-     * Label service uses ConfigurationProperties dimensions Note: This test
-     * verifies integration with configuration, actual dimension values are tested
-     * in LabelManagementService unit tests
+     * T285: Test PDF generation with code from entity Expected: PDF is generated
+     * using code from entity Note: This test verifies the endpoint works, actual
+     * dimension testing is in service layer
      */
     @Test
-    public void testPdfGenerationWithSystemAdminSettings_UsesConfigDimensions() throws Exception {
-        // Given: Test device exists
+    public void testPdfGenerationWithCode_FromEntity() throws Exception {
+        // Given: Test device exists with code
         String deviceId = createTestDevice();
 
+        // Verify device has code
+        StorageDevice device = storageDeviceDAO.get(Integer.parseInt(deviceId)).orElse(null);
+        assertNotNull("Device should exist", device);
+        assertNotNull("Device should have code", device.getCode());
+        assertTrue("Device code should start with FRZ01", device.getCode().startsWith("FRZ01"));
+
         // When: POST /rest/storage/device/{id}/print-label
-        // Then: PDF is generated (dimensions are handled by LabelManagementService)
-        // This test verifies the endpoint works, actual dimension testing is in service
-        // layer
-        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label").param("shortCode", "FRZ01"))
-                .andExpect(status().isOk()).andExpect(header().string("Content-Type", "application/pdf"));
+        // Then: PDF is generated using code from entity
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"));
     }
 }

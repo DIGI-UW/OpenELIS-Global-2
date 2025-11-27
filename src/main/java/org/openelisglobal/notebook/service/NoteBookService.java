@@ -16,6 +16,9 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
     List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
             Date fromDate, Date toDate, Integer noteBookId);
 
+    List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags, Date fromDate,
+            Date toDate);
+
     List<NoteBook> getAllTemplateNoteBooks();
 
     List<NoteBook> getNoteBookEntries(Integer templateId);
@@ -37,4 +40,6 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
     Long getTotalCount();
 
     List<SampleDisplayBean> searchSampleItems(String accession);
+
+    List<NoteBook> getAllActiveNotebooks();
 }

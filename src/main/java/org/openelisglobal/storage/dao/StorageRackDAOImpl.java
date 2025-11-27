@@ -91,18 +91,4 @@ public class StorageRackDAOImpl extends BaseDAOImpl<StorageRack, Integer> implem
         }
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public StorageRack findByShortCode(String shortCode) {
-        try {
-            String hql = "FROM StorageRack r WHERE r.shortCode = :shortCode";
-            Query<StorageRack> query = entityManager.unwrap(Session.class).createQuery(hql, StorageRack.class);
-            query.setParameter("shortCode", shortCode);
-            query.setMaxResults(1);
-            List<StorageRack> results = query.list();
-            return results.isEmpty() ? null : results.get(0);
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error finding StorageRack by short code", e);
-        }
-    }
 }
