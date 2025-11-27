@@ -5,19 +5,19 @@ import "../SampleStorage/SampleActionsOverflowMenu.css";
 
 /**
  * Overflow menu for location row actions (Rooms, Devices, Shelves, Racks)
- * Displays menu items: Edit, Delete, Label Management (for devices, shelves, racks only)
+ * Displays menu items: Edit, Delete, Print Label (for devices, shelves, racks only)
  *
  * Props:
  * - location: object - Location entity data { id, name, code, type, ... }
  * - onEdit: function - Callback when Edit clicked
  * - onDelete: function - Callback when Delete clicked
- * - onLabelManagement: function - Callback when Label Management clicked
+ * - onPrintLabel: function - Callback when Print Label clicked
  */
 const LocationActionsOverflowMenu = ({
   location,
   onEdit,
   onDelete,
-  onLabelManagement,
+  onPrintLabel,
 }) => {
   const intl = useIntl();
 
@@ -48,17 +48,17 @@ const LocationActionsOverflowMenu = ({
     [location, onDelete],
   );
 
-  const handleLabelManagement = useCallback(
+  const handlePrintLabel = useCallback(
     (event) => {
       if (event) {
         event.preventDefault?.();
         event.stopPropagation?.();
       }
-      if (onLabelManagement) {
-        onLabelManagement(location);
+      if (onPrintLabel) {
+        onPrintLabel(location);
       }
     },
-    [location, onLabelManagement],
+    [location, onPrintLabel],
   );
 
   return (
@@ -86,7 +86,7 @@ const LocationActionsOverflowMenu = ({
           onClick={handleDelete}
           data-testid="delete-location-menu-item"
         />
-        {/* Label Management only for devices, shelves, and racks (not rooms) */}
+        {/* Print Label only for devices, shelves, and racks (not rooms) */}
         {location &&
           location.type !== "room" &&
           (location.type === "device" ||
@@ -94,11 +94,11 @@ const LocationActionsOverflowMenu = ({
             location.type === "rack") && (
             <OverflowMenuItem
               itemText={intl.formatMessage({
-                id: "label.management.title",
-                defaultMessage: "Label Management",
+                id: "label.printLabel",
+                defaultMessage: "Print Label",
               })}
-              onClick={handleLabelManagement}
-              data-testid="label-management-menu-item"
+              onClick={handlePrintLabel}
+              data-testid="print-label-menu-item"
             />
           )}
       </OverflowMenu>

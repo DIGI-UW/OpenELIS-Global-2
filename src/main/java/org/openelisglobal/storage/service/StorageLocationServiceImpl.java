@@ -4,8 +4,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.valueholder.*;
@@ -38,6 +40,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
 
+    @Autowired
+    private CodeGenerationService codeGenerationService;
+
+    @Autowired
+    private CodeValidationService codeValidationService;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -53,10 +61,37 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public StorageRoom createRoom(StorageRoom room) {
-        // Check for duplicate code
-        StorageRoom existing = storageRoomDAO.findByCode(room.getCode());
-        if (existing != null) {
-            throw new LIMSRuntimeException("Room with code " + room.getCode() + " already exists");
+        // Auto-generate code from name if not provided
+        if (room.getCode() == null || room.getCode().trim().isEmpty()) {
+            String generatedCode = codeGenerationService.generateCodeFromName(room.getName(), "room");
+            // Check for conflicts and resolve if needed
+            Set<String> existingCodes = new HashSet<>();
+            List<StorageRoom> allRooms = storageRoomDAO.getAll();
+            for (StorageRoom r : allRooms) {
+                if (r.getCode() != null) {
+                    existingCodes.add(r.getCode().toUpperCase());
+                }
+            }
+            String finalCode = codeGenerationService.generateCodeWithConflictResolution(room.getName(), "room",
+                    existingCodes);
+            room.setCode(finalCode);
+        } else {
+            // Validate provided code
+            String normalizedCode = codeValidationService.autoUppercase(room.getCode());
+            CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+            if (!formatResult.isValid()) {
+                throw new LIMSRuntimeException(formatResult.getErrorMessage());
+            }
+            CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+            if (!lengthResult.isValid()) {
+                throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+            }
+            CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "room",
+                    null, null);
+            if (!uniquenessResult.isValid()) {
+                throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+            }
+            room.setCode(normalizedCode);
         }
         Integer id = storageRoomDAO.insert(room);
         room.setId(id);
@@ -69,11 +104,32 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (existingRoom == null) {
             return null;
         }
-        // Update only editable fields - code is read-only (ignored if provided)
+        // Update editable fields
         existingRoom.setName(room.getName());
-        // existingRoom.setCode(room.getCode()); // Code is read-only - do not update
         existingRoom.setDescription(room.getDescription());
         existingRoom.setActive(room.getActive());
+
+        // Code is editable - validate if provided
+        if (room.getCode() != null && !room.getCode().equals(existingRoom.getCode())) {
+            String normalizedCode = codeValidationService.autoUppercase(room.getCode());
+            CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+            if (!formatResult.isValid()) {
+                throw new LIMSRuntimeException(formatResult.getErrorMessage());
+            }
+            CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+            if (!lengthResult.isValid()) {
+                throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+            }
+            CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "room",
+                    String.valueOf(id), null);
+            if (!uniquenessResult.isValid()) {
+                throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+            }
+            existingRoom.setCode(normalizedCode);
+        }
+        // Note: Code does NOT regenerate when name changes - only updates if explicitly
+        // provided
+
         storageRoomDAO.update(existingRoom);
         return existingRoom;
     }
@@ -198,21 +254,128 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return storageRoomDAO.insert(room);
         } else if (entity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) entity;
+
+            // Auto-generate code from name if not provided
+            if (device.getCode() == null || device.getCode().trim().isEmpty()) {
+                String generatedCode = codeGenerationService.generateCodeFromName(device.getName(), "device");
+                // Check for conflicts within parent room
+                Set<String> existingCodes = new HashSet<>();
+                List<StorageDevice> devicesInRoom = storageDeviceDAO.findByParentRoomId(device.getParentRoom().getId());
+                for (StorageDevice d : devicesInRoom) {
+                    if (d.getCode() != null) {
+                        existingCodes.add(d.getCode().toUpperCase());
+                    }
+                }
+                String finalCode = codeGenerationService.generateCodeWithConflictResolution(device.getName(), "device",
+                        existingCodes);
+                device.setCode(finalCode);
+            } else {
+                // Validate provided code
+                String normalizedCode = codeValidationService.autoUppercase(device.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode,
+                        "device", null, String.valueOf(device.getParentRoom().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                device.setCode(normalizedCode);
+            }
+
             // Check for duplicate code in same room
             StorageDevice existing = storageDeviceDAO.findByParentRoomIdAndCode(device.getParentRoom().getId(),
                     device.getCode());
             if (existing != null) {
                 throw new LIMSRuntimeException("Device with code " + device.getCode() + " already exists in this room");
             }
+
             return storageDeviceDAO.insert(device);
         } else if (entity instanceof StorageShelf) {
-            return storageShelfDAO.insert((StorageShelf) entity);
+            StorageShelf shelf = (StorageShelf) entity;
+
+            // Auto-generate code from label/name if not provided
+            String shelfName = shelf.getLabel() != null ? shelf.getLabel() : "";
+            if (shelf.getCode() == null || shelf.getCode().trim().isEmpty()) {
+                String generatedCode = codeGenerationService.generateCodeFromName(shelfName, "shelf");
+                // Check for conflicts within parent device
+                Set<String> existingCodes = new HashSet<>();
+                List<StorageShelf> shelvesInDevice = storageShelfDAO
+                        .findByParentDeviceId(shelf.getParentDevice().getId());
+                for (StorageShelf s : shelvesInDevice) {
+                    if (s.getCode() != null) {
+                        existingCodes.add(s.getCode().toUpperCase());
+                    }
+                }
+                String finalCode = codeGenerationService.generateCodeWithConflictResolution(shelfName, "shelf",
+                        existingCodes);
+                shelf.setCode(finalCode);
+            } else {
+                // Validate provided code
+                String normalizedCode = codeValidationService.autoUppercase(shelf.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode,
+                        "shelf", null, String.valueOf(shelf.getParentDevice().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                shelf.setCode(normalizedCode);
+            }
+
+            return storageShelfDAO.insert(shelf);
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
             // Validate grid dimensions
             if (rack.getRows() < 0 || rack.getColumns() < 0) {
                 throw new IllegalArgumentException("Grid dimensions cannot be negative");
             }
+
+            // Auto-generate code from label/name if not provided
+            String rackName = rack.getLabel() != null ? rack.getLabel() : "";
+            if (rack.getCode() == null || rack.getCode().trim().isEmpty()) {
+                String generatedCode = codeGenerationService.generateCodeFromName(rackName, "rack");
+                // Check for conflicts within parent shelf
+                Set<String> existingCodes = new HashSet<>();
+                List<StorageRack> racksInShelf = storageRackDAO.findByParentShelfId(rack.getParentShelf().getId());
+                for (StorageRack r : racksInShelf) {
+                    if (r.getCode() != null) {
+                        existingCodes.add(r.getCode().toUpperCase());
+                    }
+                }
+                String finalCode = codeGenerationService.generateCodeWithConflictResolution(rackName, "rack",
+                        existingCodes);
+                rack.setCode(finalCode);
+            } else {
+                // Validate provided code
+                String normalizedCode = codeValidationService.autoUppercase(rack.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "rack",
+                        null, String.valueOf(rack.getParentShelf().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                rack.setCode(normalizedCode);
+            }
+
             return storageRackDAO.insert(rack);
         } else if (entity instanceof StoragePosition) {
             return storagePositionDAO.insert((StoragePosition) entity);
@@ -242,12 +405,35 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existingDevice == null) {
                 throw new LIMSRuntimeException("Device not found: " + device.getId());
             }
-            // Update only editable fields - code and parentRoom are read-only
+            // Update editable fields
             existingDevice.setName(device.getName());
             existingDevice.setType(device.getType());
             existingDevice.setTemperatureSetting(device.getTemperatureSetting());
             existingDevice.setCapacityLimit(device.getCapacityLimit());
             existingDevice.setActive(device.getActive());
+
+            // Code is editable - validate if provided
+            if (device.getCode() != null && !device.getCode().equals(existingDevice.getCode())) {
+                String normalizedCode = codeValidationService.autoUppercase(device.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode,
+                        "device", String.valueOf(device.getId()),
+                        String.valueOf(existingDevice.getParentRoom().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                existingDevice.setCode(normalizedCode);
+            }
+            // Note: Code does NOT regenerate when name changes - only updates if explicitly
+            // provided
+
             // Check for active samples when deactivating (null-safe check)
             if (existingDevice.getActive() != null && !existingDevice.getActive()) {
                 int occupiedCount = storagePositionDAO.countOccupiedInDevice(existingDevice.getId());
@@ -265,10 +451,33 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existingShelf == null) {
                 throw new LIMSRuntimeException("Shelf not found: " + shelf.getId());
             }
-            // Update only editable fields - parentDevice is read-only
+            // Update editable fields
             existingShelf.setLabel(shelf.getLabel());
             existingShelf.setCapacityLimit(shelf.getCapacityLimit());
             existingShelf.setActive(shelf.getActive());
+
+            // Code is editable - validate if provided
+            if (shelf.getCode() != null && !shelf.getCode().equals(existingShelf.getCode())) {
+                String normalizedCode = codeValidationService.autoUppercase(shelf.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode,
+                        "shelf", String.valueOf(shelf.getId()),
+                        String.valueOf(existingShelf.getParentDevice().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                existingShelf.setCode(normalizedCode);
+            }
+            // Note: Code does NOT regenerate when label changes - only updates if
+            // explicitly provided
+
             storageShelfDAO.update(existingShelf);
             return null;
         } else if (entity instanceof StorageRack) {
@@ -278,12 +487,34 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existingRack == null) {
                 throw new LIMSRuntimeException("Rack not found: " + rack.getId());
             }
-            // Update only editable fields - parentShelf is read-only
+            // Update editable fields
             existingRack.setLabel(rack.getLabel());
             existingRack.setRows(rack.getRows());
             existingRack.setColumns(rack.getColumns());
             existingRack.setPositionSchemaHint(rack.getPositionSchemaHint());
             existingRack.setActive(rack.getActive());
+
+            // Code is editable - validate if provided
+            if (rack.getCode() != null && !rack.getCode().equals(existingRack.getCode())) {
+                String normalizedCode = codeValidationService.autoUppercase(rack.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "rack",
+                        String.valueOf(rack.getId()), String.valueOf(existingRack.getParentShelf().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                existingRack.setCode(normalizedCode);
+            }
+            // Note: Code does NOT regenerate when label changes - only updates if
+            // explicitly provided
+
             storageRackDAO.update(existingRack);
             return null;
         } else if (entity instanceof StoragePosition) {

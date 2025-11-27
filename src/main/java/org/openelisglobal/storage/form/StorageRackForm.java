@@ -16,6 +16,9 @@ public class StorageRackForm {
     @Size(max = 100, message = "Rack label must not exceed 100 characters")
     private String label;
 
+    @Size(max = 10, message = "Rack code must not exceed 10 characters")
+    private String code; // Optional - will be auto-generated if not provided
+
     @NotNull(message = "Rows value is required")
     @Min(value = 0, message = "Rows must be non-negative")
     private Integer rows = 0;
@@ -48,6 +51,14 @@ public class StorageRackForm {
 
     public void setLabel(String label) {
         this.label = label;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public Integer getRows() {

@@ -33,12 +33,4 @@ public interface StorageRackDAO extends BaseDAO<StorageRack, Integer> {
      */
     int countByShelfId(Integer shelfId);
 
-    /**
-     * Find rack by short code (for label management) TODO: Add shortCode field to
-     * StorageRack entity in Phase 5.4
-     *
-     * @param shortCode Short code
-     * @return StorageRack or null if not found
-     */
-    StorageRack findByShortCode(String shortCode);
 }

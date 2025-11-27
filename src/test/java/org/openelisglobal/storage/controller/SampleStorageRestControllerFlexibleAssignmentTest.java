@@ -43,6 +43,10 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         super.setUp();
         objectMapper = new ObjectMapper();
         jdbcTemplate = new JdbcTemplate(dataSource);
+
+        // Load user data (required for assigned_by_user_id foreign key)
+        executeDataSetWithStateManagement("testdata/user-role.xml");
+
         cleanStorageTestData();
     }
 
@@ -174,8 +178,8 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     public void testAssignSample_WithLocationIdAndType_Returns201() throws Exception {
         // Setup
         String sampleItemId = createSampleItemAndGetId();
-        String roomId = createRoomAndGetId("Test Room", "TEST-ROOM-" + System.currentTimeMillis());
-        String deviceId = createDeviceAndGetId("Test Device", "TEST-DEV-" + System.currentTimeMillis(), "freezer",
+        String roomId = createRoomAndGetId("Test Room", "TESTROOM" + (System.currentTimeMillis() % 100));
+        String deviceId = createDeviceAndGetId("Test Device", "TESTDEV" + (System.currentTimeMillis() % 100), "freezer",
                 roomId);
 
         SampleAssignmentForm form = new SampleAssignmentForm();
@@ -194,8 +198,11 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     public void testAssignSample_WithLocationIdAndType_DeviceLevel_Valid() throws Exception {
         // Setup
         String sampleItemId = createSampleItemAndGetId();
-        String roomId = createRoomAndGetId("Main Lab", "MAIN-" + System.currentTimeMillis());
-        String deviceId = createDeviceAndGetId("Freezer 1", "FRZ1-" + System.currentTimeMillis(), "freezer", roomId);
+        String roomId = createRoomAndGetId("Main Lab", "MAIN" + (System.currentTimeMillis() % 100));
+        // Ensure unique code ≤10 chars: "FRZ1" + 2 digits = 6 chars max
+        long timestamp = System.currentTimeMillis() % 100;
+        String deviceId = createDeviceAndGetId("Freezer 1", "FRZ1" + String.format("%02d", timestamp), "freezer",
+                roomId);
 
         SampleAssignmentForm form = new SampleAssignmentForm();
         form.setSampleItemId(sampleItemId);
@@ -222,8 +229,8 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     public void testAssignSample_WithLocationIdAndType_WithCoordinate_Valid() throws Exception {
         // Setup
         String sampleItemId = createSampleItemAndGetId();
-        String roomId = createRoomAndGetId("Test Room", "TEST-ROOM-" + System.currentTimeMillis());
-        String deviceId = createDeviceAndGetId("Test Device", "TEST-DEV-" + System.currentTimeMillis(), "freezer",
+        String roomId = createRoomAndGetId("Test Room", "TESTROOM" + (System.currentTimeMillis() % 100));
+        String deviceId = createDeviceAndGetId("Test Device", "TESTDEV" + (System.currentTimeMillis() % 100), "freezer",
                 roomId);
         String shelfId = createShelfAndGetId("Shelf-A", deviceId);
         String rackId = createRackAndGetId("Rack-1", 8, 12, shelfId);
@@ -274,8 +281,8 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     public void testMoveSample_WithLocationIdAndType_Returns200() throws Exception {
         // Setup - create assignment first
         String sampleItemId = createSampleItemAndGetId();
-        String roomId = createRoomAndGetId("Test Room", "TEST-ROOM-" + System.currentTimeMillis());
-        String deviceId = createDeviceAndGetId("Test Device", "TEST-DEV-" + System.currentTimeMillis(), "freezer",
+        String roomId = createRoomAndGetId("Test Room", "TESTROOM" + (System.currentTimeMillis() % 100));
+        String deviceId = createDeviceAndGetId("Test Device", "TESTDEV" + (System.currentTimeMillis() % 100), "freezer",
                 roomId);
         String shelfId = createShelfAndGetId("Shelf-A", deviceId);
 
@@ -317,8 +324,8 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         // Verify sampleItemId is a String
         assertNotNull("SampleItem ID should not be null", sampleItemId);
 
-        String roomId = createRoomAndGetId("Test Room", "TEST-ROOM-" + System.currentTimeMillis());
-        String deviceId = createDeviceAndGetId("Test Device", "TEST-DEV-" + System.currentTimeMillis(), "freezer",
+        String roomId = createRoomAndGetId("Test Room", "TESTROOM" + (System.currentTimeMillis() % 100));
+        String deviceId = createDeviceAndGetId("Test Device", "TESTDEV" + (System.currentTimeMillis() % 100), "freezer",
                 roomId);
         String shelfId = createShelfAndGetId("Shelf-A", deviceId);
 
@@ -357,8 +364,8 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     public void testMoveSample_DeviceToRack_EndToEnd() throws Exception {
         // Setup - create sample and locations
         String sampleItemId = createSampleItemAndGetId();
-        String roomId = createRoomAndGetId("Test Room", "TEST-ROOM-" + System.currentTimeMillis());
-        String deviceId = createDeviceAndGetId("Test Device", "TEST-DEV-" + System.currentTimeMillis(), "freezer",
+        String roomId = createRoomAndGetId("Test Room", "TESTROOM" + (System.currentTimeMillis() % 100));
+        String deviceId = createDeviceAndGetId("Test Device", "TESTDEV" + (System.currentTimeMillis() % 100), "freezer",
                 roomId);
         String shelfId = createShelfAndGetId("Shelf-A", deviceId);
         String rackId = createRackAndGetId("Rack-1", 8, 12, shelfId);
@@ -424,8 +431,11 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     public void testMoveSample_WithLocationIdAndType_DeviceToRack_Valid() throws Exception {
         // Setup
         String sampleItemId = createSampleItemAndGetId();
-        String roomId = createRoomAndGetId("Main Lab", "MAIN-" + System.currentTimeMillis());
-        String deviceId = createDeviceAndGetId("Freezer 1", "FRZ1-" + System.currentTimeMillis(), "freezer", roomId);
+        String roomId = createRoomAndGetId("Main Lab", "MAIN" + (System.currentTimeMillis() % 100));
+        // Ensure unique code ≤10 chars: "FRZ1" + 2 digits = 6 chars max
+        long timestamp = System.currentTimeMillis() % 100;
+        String deviceId = createDeviceAndGetId("Freezer 1", "FRZ1" + String.format("%02d", timestamp), "freezer",
+                roomId);
         String shelfId = createShelfAndGetId("Shelf-A", deviceId);
         String rackId = createRackAndGetId("Rack-1", 8, 12, shelfId);
 
@@ -482,8 +492,8 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     public void testAssignSample_WithPositionCoordinate_SavesToDatabase() throws Exception {
         // Setup
         String sampleItemId = createSampleItemAndGetId();
-        String roomId = createRoomAndGetId("Test Room", "TEST-ROOM-" + System.currentTimeMillis());
-        String deviceId = createDeviceAndGetId("Test Device", "TEST-DEV-" + System.currentTimeMillis(), "freezer",
+        String roomId = createRoomAndGetId("Test Room", "TESTROOM" + (System.currentTimeMillis() % 100));
+        String deviceId = createDeviceAndGetId("Test Device", "TESTDEV" + (System.currentTimeMillis() % 100), "freezer",
                 roomId);
 
         // Assign to device with position coordinate
@@ -518,8 +528,8 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     public void testMoveSample_WithPositionCoordinate_SavesToDatabase() throws Exception {
         // Setup - create assignment first
         String sampleItemId = createSampleItemAndGetId();
-        String roomId = createRoomAndGetId("Test Room", "TEST-ROOM-" + System.currentTimeMillis());
-        String deviceId = createDeviceAndGetId("Test Device", "TEST-DEV-" + System.currentTimeMillis(), "freezer",
+        String roomId = createRoomAndGetId("Test Room", "TESTROOM" + (System.currentTimeMillis() % 100));
+        String deviceId = createDeviceAndGetId("Test Device", "TESTDEV" + (System.currentTimeMillis() % 100), "freezer",
                 roomId);
         String shelfId = createShelfAndGetId("Shelf-A", deviceId);
 

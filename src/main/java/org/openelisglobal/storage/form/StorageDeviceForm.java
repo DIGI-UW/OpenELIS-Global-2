@@ -17,7 +17,7 @@ public class StorageDeviceForm {
     @Size(max = 255, message = "Device name must not exceed 255 characters")
     private String name;
 
-    @Size(max = 50, message = "Device code must not exceed 50 characters")
+    @Size(max = 10, message = "Device code must not exceed 10 characters")
     private String code; // Optional - will be auto-generated if not provided
 
     @NotBlank(message = "Device type is required")
@@ -30,7 +30,8 @@ public class StorageDeviceForm {
 
     private Boolean active = true;
 
-    @NotBlank(message = "Parent room ID is required")
+    // Note: parentRoomId is required for creation but optional for updates
+    // (parent cannot be changed after creation, backend ignores this field on PUT)
     private String parentRoomId;
 
     // Getters and Setters
