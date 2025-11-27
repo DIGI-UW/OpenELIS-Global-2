@@ -38,7 +38,7 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
     @Override
     public PatientPhoto savePhoto(String patientId, String photoBase64) throws LIMSRuntimeException {
 
-        if (!photoBase64.isEmpty()) {
+        if (photoBase64 != null && !photoBase64.isEmpty()) {
             String photoType = extractPhotoType(photoBase64);
             String cleanBase64 = cleanBase64Data(photoBase64);
             String thumbnail = createThumbnail(cleanBase64);

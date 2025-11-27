@@ -214,6 +214,9 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
     }
 
     private void persistContact(PatientManagementInfo patientInfo, Patient patient) {
+        if (patientInfo.getPatientContact() == null) {
+            return; // No patient contact to persist
+        }
         if (GenericValidator.isBlankOrNull(patientInfo.getPatientContact().getId())) {
             PatientContact contact = patientInfo.getPatientContact();
             Person contactPerson = patientInfo.getPatientContact().getPerson();
@@ -226,13 +229,18 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         } else {
             Person newContactPerson = patientInfo.getPatientContact().getPerson();
             PatientContact contact = patientContactService.get(patientInfo.getPatientContact().getId());
-            Person oldContactPerson = contact.getPerson();
+            // Reload person from database to get latest version (avoids stale state
+            // exception)
+            // The person may have been updated by audit trail, changing its version
+            Person oldContactPerson = personService.get(contact.getPerson().getId());
             oldContactPerson.setEmail(newContactPerson.getEmail());
             oldContactPerson.setLastName(newContactPerson.getLastName());
             oldContactPerson.setFirstName(newContactPerson.getFirstName());
             oldContactPerson.setPrimaryPhone(newContactPerson.getPrimaryPhone());
             contact.setSysUserId(patient.getSysUserId());
             oldContactPerson.setSysUserId(patient.getSysUserId());
+            personService.update(oldContactPerson);
+            patientContactService.update(contact);
         }
     }
 

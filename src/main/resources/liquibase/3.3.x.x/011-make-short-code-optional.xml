@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Make short_code nullable for storage_device (use code if <=10 chars) -->
+    <changeSet id="storage-010b-make-device-short-code-optional" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_device" columnName="short_code"/>
+            <sqlCheck expectedResult="NO">
+                SELECT is_nullable FROM information_schema.columns
+                WHERE table_name = 'storage_device' AND column_name = 'short_code'
+            </sqlCheck>
+        </preConditions>
+        <dropNotNullConstraint tableName="storage_device" columnName="short_code" columnDataType="VARCHAR(10)"/>
+        <sql><![CDATA[
+            -- Set short_code to NULL for devices where code is 10 chars or less (code can be used for labels)
+            -- Keep short_code for devices where code is greater than 10 chars (short_code required for labels)
+            UPDATE clinlims.storage_device
+            SET short_code = NULL
+            WHERE LENGTH(code) <= 10;
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                -- Restore short_code for devices where it was set to NULL
+                -- Use code as short_code if code is 10 chars or less
+                UPDATE clinlims.storage_device
+                SET short_code = code
+                WHERE short_code IS NULL AND LENGTH(code) <= 10;
+
+                -- For devices with code greater than 10 chars, set temporary value if NULL
+                UPDATE clinlims.storage_device
+                SET short_code = 'TMP' || LPAD(id::text, 7, '0')
+                WHERE short_code IS NULL;
+            ]]></sql>
+            <addNotNullConstraint tableName="storage_device" columnName="short_code" columnDataType="VARCHAR(10)"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Make short_code nullable for storage_shelf (use code/label if <=10 chars) -->
+    <changeSet id="storage-010b-make-shelf-short-code-optional" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_shelf" columnName="short_code"/>
+            <sqlCheck expectedResult="NO">
+                SELECT is_nullable FROM information_schema.columns
+                WHERE table_name = 'storage_shelf' AND column_name = 'short_code'
+            </sqlCheck>
+        </preConditions>
+        <dropNotNullConstraint tableName="storage_shelf" columnName="short_code" columnDataType="VARCHAR(10)"/>
+        <sql><![CDATA[
+            -- Set short_code to NULL for shelves where label is 10 chars or less (label can be used for labels)
+            UPDATE clinlims.storage_shelf
+            SET short_code = NULL
+            WHERE LENGTH(label) <= 10;
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                -- Restore short_code for shelves where it was set to NULL
+                UPDATE clinlims.storage_shelf
+                SET short_code = label
+                WHERE short_code IS NULL AND LENGTH(label) <= 10;
+
+                UPDATE clinlims.storage_shelf
+                SET short_code = 'TMP' || LPAD(id::text, 7, '0')
+                WHERE short_code IS NULL;
+            ]]></sql>
+            <addNotNullConstraint tableName="storage_shelf" columnName="short_code" columnDataType="VARCHAR(10)"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Make short_code nullable for storage_rack (use label if <=10 chars) -->
+    <changeSet id="storage-010b-make-rack-short-code-optional" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_rack" columnName="short_code"/>
+            <sqlCheck expectedResult="NO">
+                SELECT is_nullable FROM information_schema.columns
+                WHERE table_name = 'storage_rack' AND column_name = 'short_code'
+            </sqlCheck>
+        </preConditions>
+        <dropNotNullConstraint tableName="storage_rack" columnName="short_code" columnDataType="VARCHAR(10)"/>
+        <sql><![CDATA[
+            -- Set short_code to NULL for racks where label is 10 chars or less (label can be used for labels)
+            UPDATE clinlims.storage_rack
+            SET short_code = NULL
+            WHERE LENGTH(label) <= 10;
+        ]]></sql>
+        <rollback>
+            <sql><![CDATA[
+                -- Restore short_code for racks where it was set to NULL
+                UPDATE clinlims.storage_rack
+                SET short_code = label
+                WHERE short_code IS NULL AND LENGTH(label) <= 10;
+
+                UPDATE clinlims.storage_rack
+                SET short_code = 'TMP' || LPAD(id::text, 7, '0')
+                WHERE short_code IS NULL;
+            ]]></sql>
+            <addNotNullConstraint tableName="storage_rack" columnName="short_code" columnDataType="VARCHAR(10)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

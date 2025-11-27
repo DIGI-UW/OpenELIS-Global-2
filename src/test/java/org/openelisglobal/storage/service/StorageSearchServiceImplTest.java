@@ -221,6 +221,95 @@ public class StorageSearchServiceImplTest {
         assertTrue("Should match by location path", resultsByLocation.size() >= 1);
     }
 
+    /**
+     * T-OGC-72: Test substring matching for accession numbers and external IDs.
+     * Searching "12345" should find any sample where accession number or external
+     * ID contains the substring "12345" anywhere in the field.
+     */
+    @Test
+    public void testSearchSamples_SubstringMatchingForAccessionAndExternalId() throws Exception {
+        // Create test data with various accession number patterns
+        List<Map<String, Object>> testSamples = new ArrayList<>();
+
+        // Sample with exact accession match
+        Map<String, Object> exactMatch = new HashMap<>();
+        exactMatch.put("id", "1");
+        exactMatch.put("sampleItemId", "1");
+        exactMatch.put("sampleItemExternalId", "EXT-99");
+        exactMatch.put("sampleAccessionNumber", "12345");
+        exactMatch.put("location", "Room A");
+        testSamples.add(exactMatch);
+
+        // Sample with accession having dot suffix (child sample)
+        Map<String, Object> dotSuffix = new HashMap<>();
+        dotSuffix.put("id", "2");
+        dotSuffix.put("sampleItemId", "2");
+        dotSuffix.put("sampleItemExternalId", "12345.1"); // External ID with prefix
+        dotSuffix.put("sampleAccessionNumber", "OTHER-001");
+        dotSuffix.put("location", "Room B");
+        testSamples.add(dotSuffix);
+
+        // Sample with accession having numeric suffix
+        Map<String, Object> numericSuffix = new HashMap<>();
+        numericSuffix.put("id", "3");
+        numericSuffix.put("sampleItemId", "3");
+        numericSuffix.put("sampleItemExternalId", "EXT-33");
+        numericSuffix.put("sampleAccessionNumber", "123456");
+        numericSuffix.put("location", "Room C");
+        testSamples.add(numericSuffix);
+
+        // Sample that should NOT match (completely different accession number)
+        Map<String, Object> noMatch = new HashMap<>();
+        noMatch.put("id", "4");
+        noMatch.put("sampleItemId", "4");
+        noMatch.put("sampleItemExternalId", "EXT-44");
+        noMatch.put("sampleAccessionNumber", "999888777"); // Completely different, does not contain "12345"
+        noMatch.put("location", "Room D");
+        testSamples.add(noMatch);
+
+        // Sample that should NOT match (no field contains the search term)
+        Map<String, Object> containsButNotPrefix = new HashMap<>();
+        containsButNotPrefix.put("id", "5");
+        containsButNotPrefix.put("sampleItemId", "5");
+        containsButNotPrefix.put("sampleItemExternalId", "ABC-XYZ"); // Does not contain "12345"
+        containsButNotPrefix.put("sampleAccessionNumber", "ABC-001");
+        containsButNotPrefix.put("location", "Room E");
+        testSamples.add(containsButNotPrefix);
+
+        when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(testSamples);
+
+        // Search for "12345"
+        List<Map<String, Object>> results = searchService.searchSamples("12345");
+
+        assertNotNull("Results should not be null", results);
+        assertEquals("Should return 3 samples matching substring '12345'", 3, results.size());
+
+        // Verify the specific samples that should be returned
+        boolean foundExact = false;
+        boolean foundDotSuffix = false;
+        boolean foundNumericSuffix = false;
+        for (Map<String, Object> result : results) {
+            String id = String.valueOf(result.get("id"));
+            if ("1".equals(id))
+                foundExact = true;
+            if ("2".equals(id))
+                foundDotSuffix = true;
+            if ("3".equals(id))
+                foundNumericSuffix = true;
+        }
+
+        assertTrue("Should find exact accession match (12345)", foundExact);
+        assertTrue("Should find external ID with dot suffix (12345.1)", foundDotSuffix);
+        assertTrue("Should find accession with numeric suffix (123456)", foundNumericSuffix);
+
+        // Verify samples that should NOT be in results
+        for (Map<String, Object> result : results) {
+            String id = String.valueOf(result.get("id"));
+            assertNotEquals("Should NOT find 0012345 (doesn't start with 12345)", "4", id);
+            assertNotEquals("Should NOT find ABC12345 (contains but doesn't start with)", "5", id);
+        }
+    }
+
     @Test
     public void testSearchSamples_CaseInsensitive() throws Exception {
         // Case-insensitive matching

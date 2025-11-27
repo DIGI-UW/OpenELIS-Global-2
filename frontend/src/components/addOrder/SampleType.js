@@ -115,10 +115,13 @@ const SampleType = (props) => {
     });
   }
 
-  function handleStorageLocationChange(location, sampleIndex) {
+  function handleStorageLocationChange(location, positionCoordinate) {
     setSampleXml({
       ...sampleXml,
-      storageLocation: location,
+      storageLocation: {
+        ...location,
+        positionCoordinate: positionCoordinate || "",
+      },
       storagePositionId: location?.position?.id || null,
     });
   }
@@ -596,12 +599,14 @@ const SampleType = (props) => {
               type: selectedSampleType?.name || sampleXml?.sampleTypeName || "",
               status: sampleXml?.rejected ? "Rejected" : "Active",
             }}
+            initialLocation={sampleXml?.storageLocation || null}
             onLocationChange={(locationData) => {
               // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
-              // Extract newLocation from locationData for backward compatibility
+              // Extract newLocation and positionCoordinate from locationData
               // Store location preference - will be assigned to SampleItem after SampleItems are created
               const location = locationData?.newLocation || locationData;
-              handleStorageLocationChange(location, index);
+              const positionCoordinate = locationData?.positionCoordinate || "";
+              handleStorageLocationChange(location, positionCoordinate);
             }}
           />
         </div>

@@ -297,6 +297,7 @@ public class StorageLocationRestController extends BaseRestController {
                             : null);
             deviceToUpdate.setCapacityLimit(form.getCapacityLimit());
             deviceToUpdate.setActive(form.getActive());
+            deviceToUpdate.setCode(form.getCode());
 
             // Get existing device to preserve ID
             StorageDevice existingDevice = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
@@ -436,6 +437,7 @@ public class StorageLocationRestController extends BaseRestController {
             // parentDevice is read-only - ignored if provided
             shelfToUpdate.setCapacityLimit(form.getCapacityLimit());
             shelfToUpdate.setActive(form.getActive());
+            shelfToUpdate.setCode(form.getCode());
 
             // Get existing shelf to preserve ID
             StorageShelf existingShelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
@@ -579,6 +581,7 @@ public class StorageLocationRestController extends BaseRestController {
             rackToUpdate.setPositionSchemaHint(form.getPositionSchemaHint());
             // parentShelf is read-only - ignored if provided
             rackToUpdate.setActive(form.getActive());
+            rackToUpdate.setCode(form.getCode());
 
             // Get existing rack to preserve ID
             StorageRack existingRack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
@@ -832,6 +835,7 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("label", shelf.getLabel());
             map.put("capacityLimit", shelf.getCapacityLimit());
             map.put("active", shelf.getActive());
+            map.put("code", shelf.getCode());
             map.put("fhirUuid", shelf.getFhirUuidAsString());
             // Add parent relationships for filtering (FR-065: filter by device and room)
             // and display
@@ -860,6 +864,7 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("columns", rack.getColumns());
             map.put("positionSchemaHint", rack.getPositionSchemaHint());
             map.put("active", rack.getActive());
+            map.put("code", rack.getCode());
             map.put("fhirUuid", rack.getFhirUuidAsString());
 
             // Add parent relationships for filtering (FR-065: filter by room, shelf,

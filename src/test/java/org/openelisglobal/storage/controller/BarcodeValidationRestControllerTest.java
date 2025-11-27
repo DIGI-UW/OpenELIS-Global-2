@@ -59,29 +59,35 @@ public class BarcodeValidationRestControllerTest extends BaseWebContextSensitive
      * hyphens for barcode compatibility
      */
     private void createTestStorageHierarchy() throws Exception {
-        // Create room - use simple code without hyphens
+        // Create room - use simple code without hyphens (max 10 chars: "TESTROOM" + 2
+        // digits = 9 chars)
+        String roomCode = "TESTROOM" + (timestamp % 100);
         jdbcTemplate.update(
                 "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Barcode Test Room", "TESTROOM" + timestamp, true, 1);
+                baseId, "Barcode Test Room", roomCode, true, 1);
 
-        // Create device - use simple code without hyphens
+        // Create device - use simple code without hyphens (max 10 chars: "TESTDEV" + 2
+        // digits = 8 chars)
+        String deviceCode = "TESTDEV" + (timestamp % 100);
         jdbcTemplate.update(
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId + 1, "Barcode Test Freezer", "TESTDEV" + timestamp, "freezer", baseId, true, 1);
+                baseId + 1, "Barcode Test Freezer", deviceCode, "freezer", baseId, true, 1);
 
-        // Create shelf - use simple label without hyphens
+        // Create shelf - use simple label without hyphens (code must be ≤10 chars)
+        String shelfCode = "SHELF" + (timestamp % 100);
         jdbcTemplate.update(
-                "INSERT INTO storage_shelf (id, label, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) "
-                        + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId + 2, "SHELF" + timestamp, baseId + 1, true, 1);
+                "INSERT INTO storage_shelf (id, label, code, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                baseId + 2, "SHELF" + (timestamp % 100), shelfCode, baseId + 1, true, 1);
 
-        // Create rack - use simple label without hyphens
+        // Create rack - use simple label without hyphens (code must be ≤10 chars)
+        String rackCode = "RACK" + (timestamp % 100);
         jdbcTemplate.update(
-                "INSERT INTO storage_rack (id, label, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) "
-                        + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId + 3, "RACK" + timestamp, baseId + 2, true, 1);
+                "INSERT INTO storage_rack (id, label, code, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                baseId + 3, "RACK" + (timestamp % 100), rackCode, baseId + 2, true, 1);
 
         // Create position (Note: coordinate is singular, no active column)
         jdbcTemplate.update(
@@ -112,8 +118,10 @@ public class BarcodeValidationRestControllerTest extends BaseWebContextSensitive
      */
     @Test
     public void testPostBarcodeValidateEndpoint() throws Exception {
-        // Arrange
-        String validBarcode = String.format("TESTROOM%d-TESTDEV%d", timestamp, timestamp);
+        // Arrange - Use same code format as createTestStorageHierarchy()
+        String roomCode = "TESTROOM" + (timestamp % 100);
+        String deviceCode = "TESTDEV" + (timestamp % 100);
+        String validBarcode = String.format("%s-%s", roomCode, deviceCode);
         String requestBody = String.format("{\"barcode\": \"%s\"}", validBarcode);
 
         // Act
@@ -138,8 +146,10 @@ public class BarcodeValidationRestControllerTest extends BaseWebContextSensitive
      */
     @Test
     public void testRequestResponseFormatMatchesContract() throws Exception {
-        // Arrange
-        String validBarcode = String.format("BT-ROOM-%d-BT-FRZ-%d", timestamp, timestamp);
+        // Arrange - Use same code format as createTestStorageHierarchy()
+        String roomCode = "TESTROOM" + (timestamp % 100);
+        String deviceCode = "TESTDEV" + (timestamp % 100);
+        String validBarcode = String.format("%s-%s", roomCode, deviceCode);
         String requestBody = String.format("{\"barcode\": \"%s\"}", validBarcode);
 
         // Act
@@ -255,9 +265,12 @@ public class BarcodeValidationRestControllerTest extends BaseWebContextSensitive
      */
     @Test
     public void testValidate5LevelBarcode() throws Exception {
-        // Arrange
-        String barcode = String.format("TESTROOM%d-TESTDEV%d-SHELF%d-RACK%d-A1", timestamp, timestamp, timestamp,
-                timestamp);
+        // Arrange - Use same code format as createTestStorageHierarchy()
+        String roomCode = "TESTROOM" + (timestamp % 100);
+        String deviceCode = "TESTDEV" + (timestamp % 100);
+        String shelfCode = "SHELF" + (timestamp % 100);
+        String rackCode = "RACK" + (timestamp % 100);
+        String barcode = String.format("%s-%s-%s-%s-A1", roomCode, deviceCode, shelfCode, rackCode);
         String requestBody = String.format("{\"barcode\": \"%s\"}", barcode);
 
         // Act
@@ -287,7 +300,10 @@ public class BarcodeValidationRestControllerTest extends BaseWebContextSensitive
         // Arrange - Make device inactive
         jdbcTemplate.update("UPDATE storage_device SET active = false WHERE id = ?", baseId + 1);
 
-        String barcode = String.format("TESTROOM%d-TESTDEV%d", timestamp, timestamp);
+        // Use same code format as createTestStorageHierarchy()
+        String roomCode = "TESTROOM" + (timestamp % 100);
+        String deviceCode = "TESTDEV" + (timestamp % 100);
+        String barcode = String.format("%s-%s", roomCode, deviceCode);
         String requestBody = String.format("{\"barcode\": \"%s\"}", barcode);
 
         // Act
@@ -314,8 +330,11 @@ public class BarcodeValidationRestControllerTest extends BaseWebContextSensitive
      */
     @Test
     public void testValidatePartialBarcode() throws Exception {
-        // Arrange - Barcode with valid room/device but non-existent shelf
-        String barcode = String.format("TESTROOM%d-TESTDEV%d-NONEXISTENT", timestamp, timestamp);
+        // Arrange - Use same code format as createTestStorageHierarchy(), but with
+        // non-existent shelf
+        String roomCode = "TESTROOM" + (timestamp % 100);
+        String deviceCode = "TESTDEV" + (timestamp % 100);
+        String barcode = String.format("%s-%s-NONEXISTENT", roomCode, deviceCode);
         String requestBody = String.format("{\"barcode\": \"%s\"}", barcode);
 
         // Act

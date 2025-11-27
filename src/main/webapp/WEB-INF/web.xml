@@ -57,6 +57,8 @@
             <http-method-omission>GET</http-method-omission>
             <http-method-omission>POST</http-method-omission>
             <http-method-omission>PUT</http-method-omission>
+            <http-method-omission>PATCH</http-method-omission>
+            <http-method-omission>DELETE</http-method-omission>
         </web-resource-collection>
         <auth-constraint />
     </security-constraint>

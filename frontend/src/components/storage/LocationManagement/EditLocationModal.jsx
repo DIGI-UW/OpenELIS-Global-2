@@ -10,6 +10,7 @@ import {
   Dropdown,
   Toggle,
   InlineNotification,
+  Checkbox,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -54,6 +55,9 @@ const EditLocationModal = ({
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // Track original code to detect changes and show warning
+  const [originalCode, setOriginalCode] = useState("");
+  const [codeChangeAcknowledged, setCodeChangeAcknowledged] = useState(false);
 
   // Helper function to normalize active value to boolean
   const normalizeActive = (value) => {
@@ -108,6 +112,7 @@ const EditLocationModal = ({
     if (open && location && location.id && locationType) {
       // Initialize immediately from location prop to avoid undefined values
       setFormData(initializeFormDataFromLocation(location));
+      setOriginalCode(location.code || "");
       setIsLoading(true);
       setError(null);
 
@@ -133,6 +138,8 @@ const EditLocationModal = ({
               columns: fullLocation.columns || "",
               positionSchemaHint: fullLocation.positionSchemaHint || "",
             });
+            // Store original code from full data
+            setOriginalCode(fullLocation.code || "");
             setError(null);
             setIsLoading(false);
           } else {
@@ -183,12 +190,43 @@ const EditLocationModal = ({
       setFormData({});
       setError(null);
       setIsSubmitting(false);
+      setOriginalCode("");
+      setCodeChangeAcknowledged(false);
     }
   }, [open]);
+
+  // Check if code has been changed from original
+  const hasCodeChanged = () => {
+    return originalCode !== "" && formData.code !== originalCode;
+  };
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setError(null);
+  };
+
+  // Handle Enter key to submit form
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      // Check if form is valid before submitting
+      const isValid =
+        (locationType === "room" && formData.name) ||
+        (locationType === "device" && formData.name) ||
+        (locationType === "shelf" && formData.label) ||
+        (locationType === "rack" &&
+          formData.label &&
+          formData.rows &&
+          formData.columns);
+      if (isValid && !isSubmitting && !isSaveDisabledDueToCodeChange()) {
+        handleSave();
+      }
+    }
+  };
+
+  // Check if save should be disabled due to unacknowledged code change
+  const isSaveDisabledDueToCodeChange = () => {
+    return hasCodeChanged() && !codeChangeAcknowledged;
   };
 
   const handleSave = async () => {
@@ -203,20 +241,28 @@ const EditLocationModal = ({
       const payload = {};
       if (locationType === "room") {
         payload.name = formData.name;
+        payload.code = formData.code || null;
         payload.description = formData.description || null;
         payload.active = formData.active;
       } else if (locationType === "device") {
         payload.name = formData.name;
+        payload.code = formData.code || null;
         payload.type = formData.type;
         payload.temperatureSetting = formData.temperatureSetting || null;
-        payload.capacityLimit = formData.capacityLimit || null;
+        payload.capacityLimit = formData.capacityLimit
+          ? parseInt(formData.capacityLimit, 10)
+          : null;
         payload.active = formData.active;
       } else if (locationType === "shelf") {
         payload.label = formData.label;
-        payload.capacityLimit = formData.capacityLimit || null;
+        payload.code = formData.code || null;
+        payload.capacityLimit = formData.capacityLimit
+          ? parseInt(formData.capacityLimit, 10)
+          : null;
         payload.active = formData.active;
       } else if (locationType === "rack") {
         payload.label = formData.label;
+        payload.code = formData.code || null;
         payload.rows = formData.rows;
         payload.columns = formData.columns;
         payload.positionSchemaHint = formData.positionSchemaHint || null;
@@ -304,7 +350,7 @@ const EditLocationModal = ({
           />
         )}
 
-        <div className="edit-location-form">
+        <div className="edit-location-form" onKeyDown={handleKeyDown}>
           {/* Room fields */}
           {locationType === "room" && (
             <>
@@ -327,8 +373,17 @@ const EditLocationModal = ({
                   defaultMessage: "Code",
                 })}
                 value={formData.code || ""}
-                disabled
-                readOnly
+                onChange={(e) => {
+                  // Auto-uppercase on input and limit to 10 chars
+                  const value = e.target.value.toUpperCase().slice(0, 10);
+                  handleFieldChange("code", value);
+                }}
+                maxLength={10}
+                helperText={intl.formatMessage({
+                  id: "storage.location.code.helper",
+                  defaultMessage:
+                    "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
               />
               <TextArea
                 id="room-description"
@@ -378,8 +433,17 @@ const EditLocationModal = ({
                   defaultMessage: "Code",
                 })}
                 value={formData.code || ""}
-                disabled
-                readOnly
+                onChange={(e) => {
+                  // Auto-uppercase on input and limit to 10 chars
+                  const value = e.target.value.toUpperCase().slice(0, 10);
+                  handleFieldChange("code", value);
+                }}
+                maxLength={10}
+                helperText={intl.formatMessage({
+                  id: "storage.location.code.helper",
+                  defaultMessage:
+                    "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
               />
               <TextInput
                 id="device-parent-room"
@@ -499,6 +563,26 @@ const EditLocationModal = ({
                 }
                 type="number"
               />
+              <TextInput
+                id="shelf-code"
+                data-testid="edit-location-shelf-code"
+                labelText={intl.formatMessage({
+                  id: "storage.location.code",
+                  defaultMessage: "Code",
+                })}
+                value={formData.code || ""}
+                onChange={(e) => {
+                  // Auto-uppercase on input and limit to 10 chars
+                  const value = e.target.value.toUpperCase().slice(0, 10);
+                  handleFieldChange("code", value);
+                }}
+                maxLength={10}
+                helperText={intl.formatMessage({
+                  id: "storage.location.code.helper",
+                  defaultMessage:
+                    "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
+              />
               <Toggle
                 id="shelf-active"
                 data-testid="edit-location-shelf-active"
@@ -584,6 +668,26 @@ const EditLocationModal = ({
                   handleFieldChange("positionSchemaHint", e.target.value)
                 }
               />
+              <TextInput
+                id="rack-code"
+                data-testid="edit-location-rack-code"
+                labelText={intl.formatMessage({
+                  id: "storage.location.code",
+                  defaultMessage: "Code",
+                })}
+                value={formData.code || ""}
+                onChange={(e) => {
+                  // Auto-uppercase on input and limit to 10 chars
+                  const value = e.target.value.toUpperCase().slice(0, 10);
+                  handleFieldChange("code", value);
+                }}
+                maxLength={10}
+                helperText={intl.formatMessage({
+                  id: "storage.location.code.helper",
+                  defaultMessage:
+                    "Max 10 characters, alphanumeric with hyphens/underscores",
+                })}
+              />
               <Toggle
                 id="rack-active"
                 data-testid="edit-location-rack-active"
@@ -595,6 +699,40 @@ const EditLocationModal = ({
                 onToggle={(checked) => handleFieldChange("active", checked)}
               />
             </>
+          )}
+
+          {/* Inline warning when code has been changed */}
+          {hasCodeChanged() && (
+            <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+              <InlineNotification
+                kind="error"
+                title={intl.formatMessage({
+                  id: "storage.code.change.warning",
+                  defaultMessage: "Warning",
+                })}
+                subtitle={intl.formatMessage({
+                  id: "storage.code.change.warning.message",
+                  defaultMessage:
+                    "Changing the code will invalidate any previously printed labels for this location.",
+                })}
+                lowContrast
+                hideCloseButton
+              />
+              <Checkbox
+                id="code-change-acknowledge"
+                data-testid="code-change-acknowledge-checkbox"
+                labelText={intl.formatMessage({
+                  id: "storage.code.change.acknowledge",
+                  defaultMessage:
+                    "I understand and want to proceed with the code change",
+                })}
+                checked={codeChangeAcknowledged}
+                onChange={(_, { checked }) =>
+                  setCodeChangeAcknowledged(checked)
+                }
+                style={{ marginTop: "0.5rem" }}
+              />
+            </div>
           )}
         </div>
       </ModalBody>
@@ -612,6 +750,7 @@ const EditLocationModal = ({
           onClick={handleSave}
           disabled={
             isSubmitting ||
+            isSaveDisabledDueToCodeChange() ||
             (locationType === "room" && !formData.name) ||
             (locationType === "device" && !formData.name) ||
             (locationType === "shelf" && !formData.label) ||
