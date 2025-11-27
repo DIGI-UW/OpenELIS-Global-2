@@ -42,7 +42,7 @@ This allows you to:
 ## Configuration Properties
 
 - `org.openelisglobal.configuration.dir` - Base configuration directory
-  (default: `/var/lib/openelis-global/configuration`)
+  (default: `/var/lib/openelis-global/configuration/backend`)
 - `org.openelisglobal.configuration.autocreate` - Enable/disable
   auto-initialization (default: `true`)
 
