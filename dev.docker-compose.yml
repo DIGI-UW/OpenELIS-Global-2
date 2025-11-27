@@ -70,7 +70,7 @@ services:
             -  lucene_index-vol:/var/lib/lucene_index
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
             - ./volume/ocl:/var/lib/openelis-global/ocl
-            - ./configuration:/var/lib/openelis-global/configuration
+            - ./volume/configuration:/var/lib/openelis-global/configuration
         secrets:
             - source: datasource.password
             - source: common.properties
