@@ -57,6 +57,9 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
         super.setUp();
         jdbcTemplate = new JdbcTemplate(dataSource);
 
+        // Load user data first (required for assigned_by_user_id foreign key)
+        executeDataSetWithStateManagement("testdata/user-role.xml");
+
         // Load E2E test data via DBUnit (foundation data loaded by Liquibase)
         // Foundation data (storage hierarchy) is automatically loaded by Liquibase with
         // context="test"

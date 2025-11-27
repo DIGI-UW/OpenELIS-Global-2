@@ -43,6 +43,10 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         super.setUp();
         objectMapper = new ObjectMapper();
         jdbcTemplate = new JdbcTemplate(dataSource);
+
+        // Load user data (required for assigned_by_user_id foreign key)
+        executeDataSetWithStateManagement("testdata/user-role.xml");
+
         cleanStorageTestData();
     }
 

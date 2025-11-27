@@ -45,6 +45,10 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
     public void setUp() throws Exception {
         super.setUp();
         jdbcTemplate = new JdbcTemplate(dataSource);
+
+        // Load user data (required for assigned_by_user_id foreign key)
+        executeDataSetWithStateManagement("testdata/user-role.xml");
+
         cleanStorageTestData();
         createTestStorageHierarchyWithSamples();
     }
