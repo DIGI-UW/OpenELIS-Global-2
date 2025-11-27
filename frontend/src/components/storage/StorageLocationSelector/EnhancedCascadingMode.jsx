@@ -1910,39 +1910,6 @@ const EnhancedCascadingMode = ({
           </div>
         </div>
       </div>
-
-      {/* Position - Simple text input (optional) */}
-      <div className="enhanced-cascading-row">
-        <div className="enhanced-cascading-column enhanced-cascading-column-full">
-          <TextInput
-            id="position-input"
-            data-testid="position-input"
-            labelText={
-              <>
-                <FormattedMessage
-                  id="storage.position.label"
-                  defaultMessage="Position"
-                />{" "}
-                <span className="optional-text">
-                  (
-                  <FormattedMessage
-                    id="label.optional"
-                    defaultMessage="optional"
-                  />
-                  )
-                </span>
-              </>
-            }
-            value={positionInput}
-            onChange={(e) => setPositionInput(e.target.value)}
-            disabled={!selectedRack || !selectedRack.id}
-            placeholder={intl.formatMessage({
-              id: "storage.position.placeholder",
-              defaultMessage: "e.g., A5, 1-1, RED-12",
-            })}
-          />
-        </div>
-      </div>
     </div>
   );
 };

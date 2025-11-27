@@ -66,6 +66,7 @@ const StorageDashboard = () => {
   const {
     assignSampleItem,
     moveSampleItem,
+    updateSampleItemMetadata,
     isSubmitting: isMovingSample,
   } = useSampleStorage();
 
@@ -419,7 +420,59 @@ const StorageDashboard = () => {
     // Determine if this is assignment (no current location) or movement (location exists)
     const isAssignment = !sample.location || !sample.location.trim();
 
+    // Check if only metadata is being updated (no location change)
+    // This happens when newLocation is null/undefined but position or notes are provided
+    // Note: check for !== undefined to handle empty strings
+    const hasPositionUpdate =
+      positionCoordinate !== undefined && positionCoordinate !== null;
+    const hasNotesUpdate =
+      conditionNotes !== undefined && conditionNotes !== null;
+    const isMetadataOnlyUpdate =
+      !isAssignment && !newLocation && (hasPositionUpdate || hasNotesUpdate);
+
+    console.log("[StorageDashboard] handleLocationModalConfirm", {
+      isAssignment,
+      hasNewLocation: !!newLocation,
+      hasPositionUpdate,
+      hasNotesUpdate,
+      isMetadataOnlyUpdate,
+      positionCoordinate,
+      conditionNotes,
+    });
+
     try {
+      // Handle metadata-only update
+      if (isMetadataOnlyUpdate) {
+        const updates = {};
+        if (positionCoordinate !== undefined && positionCoordinate !== null) {
+          updates.positionCoordinate = positionCoordinate;
+        }
+        if (conditionNotes !== undefined && conditionNotes !== null) {
+          updates.notes = conditionNotes;
+        }
+
+        const response = await updateSampleItemMetadata(
+          sample.sampleItemId || sample.id,
+          updates,
+        );
+
+        loadSamples();
+        loadMetrics();
+
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "storage.update.success",
+            defaultMessage: "Storage metadata updated successfully",
+          }),
+          kind: "success",
+        });
+        setNotificationVisible(true);
+
+        // Close modal on success
+        handleLocationModalClose();
+        return;
+      }
       let locationId = null;
       let locationType = null;
       let finalPositionCoordinate = positionCoordinate;
@@ -531,6 +584,7 @@ const StorageDashboard = () => {
           locationType: locationType,
           positionCoordinate: finalPositionCoordinate || null,
           reason: reason || null,
+          notes: conditionNotes || null,
         };
         const response = await moveSampleItem(locationPayload);
 
@@ -1232,6 +1286,16 @@ const StorageDashboard = () => {
           );
           if (response && Array.isArray(response)) {
             console.log("Sample Items loaded:", response.length, response);
+            // Debug: Log first sample's fields to verify positionCoordinate and notes
+            if (response.length > 0) {
+              console.log("[StorageDashboard] First sample fields:", {
+                id: response[0].id,
+                location: response[0].location,
+                positionCoordinate: response[0].positionCoordinate,
+                notes: response[0].notes,
+                allFields: Object.keys(response[0]),
+              });
+            }
             setSamples(response);
             if (response.length === 0) {
               console.warn(
@@ -2352,6 +2416,8 @@ const StorageDashboard = () => {
               status: sampleItem.status || "Active",
               location:
                 sampleItem.location || sampleItem.hierarchicalPath || "",
+              positionCoordinate: sampleItem.positionCoordinate || "",
+              notes: sampleItem.notes || "",
             }}
             onManageLocation={handleManageLocation}
             onDispose={handleDispose}
@@ -3792,11 +3858,32 @@ const StorageDashboard = () => {
       <LocationManagementModal
         open={locationModalOpen && !!selectedSample}
         sample={selectedSample}
-        currentLocation={
-          selectedSample?.location
-            ? { path: selectedSample.location, position: null }
-            : null
-        }
+        currentLocation={(() => {
+          const currentLoc = selectedSample?.location
+            ? {
+                path: selectedSample.location,
+                position: selectedSample.positionCoordinate
+                  ? { coordinate: selectedSample.positionCoordinate }
+                  : null,
+                notes: selectedSample.notes || "",
+              }
+            : null;
+          if (locationModalOpen && selectedSample) {
+            console.log(
+              "[StorageDashboard] Passing currentLocation to modal:",
+              {
+                selectedSample: {
+                  id: selectedSample.id,
+                  location: selectedSample.location,
+                  positionCoordinate: selectedSample.positionCoordinate,
+                  notes: selectedSample.notes,
+                },
+                currentLoc,
+              },
+            );
+          }
+          return currentLoc;
+        })()}
         onClose={handleLocationModalClose}
         onConfirm={handleLocationModalConfirm}
       />

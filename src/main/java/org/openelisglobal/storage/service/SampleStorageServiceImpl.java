@@ -65,95 +65,32 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Override
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getAllSamplesWithAssignments() {
-        // DAO.getAll() now eagerly fetches entire hierarchy (Sample, Position, Rack,
-        // Shelf, Device, Room)
-        // All data is loaded within this transaction, so no lazy loading issues
+        // Get ALL sample items first, then LEFT JOIN with assignments
+        List<SampleItem> allSampleItems = sampleItemDAO.getAllSampleItems();
+        logger.info("getAllSamplesWithAssignments: Found {} total sample items", allSampleItems.size());
+
+        // Get all assignments and build a map by sampleItemId for efficient lookup
         List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.getAll();
+        java.util.Map<String, SampleStorageAssignment> assignmentsBySampleItemId = new java.util.HashMap<>();
+        for (SampleStorageAssignment assignment : assignments) {
+            if (assignment.getSampleItem() != null && assignment.getSampleItem().getId() != null) {
+                assignmentsBySampleItemId.put(assignment.getSampleItem().getId(), assignment);
+            }
+        }
         logger.info("getAllSamplesWithAssignments: Found {} total assignments", assignments.size());
+
         List<Map<String, Object>> response = new java.util.ArrayList<>();
 
-        for (SampleStorageAssignment assignment : assignments) {
-            // Skip assignments without SampleItems (data integrity issue)
-            if (assignment.getSampleItem() == null) {
-                logger.debug("Skipping assignment {} - null SampleItem", assignment.getId());
-                continue;
-            }
-
-            // Skip assignments without location (invalid state)
-            if (assignment.getLocationId() == null || assignment.getLocationType() == null) {
-                logger.debug("Skipping assignment {} - null location", assignment.getId());
-                continue;
-            }
-
-            // Build hierarchical path based on locationType
-            String hierarchicalPath = null;
-            StorageRoom room = null;
-            StorageDevice device = null;
-            StorageShelf shelf = null;
-            StorageRack rack = null;
-
-            switch (assignment.getLocationType()) {
-            case "device":
-                device = (StorageDevice) storageLocationService.get(assignment.getLocationId(), StorageDevice.class);
-                if (device != null) {
-                    room = device.getParentRoom();
-                    if (room != null && device != null) {
-                        hierarchicalPath = room.getName() + " > " + device.getName();
-                        if (assignment.getPositionCoordinate() != null
-                                && !assignment.getPositionCoordinate().trim().isEmpty()) {
-                            hierarchicalPath += " > " + assignment.getPositionCoordinate();
-                        }
-                    }
-                }
-                break;
-            case "shelf":
-                shelf = (StorageShelf) storageLocationService.get(assignment.getLocationId(), StorageShelf.class);
-                if (shelf != null) {
-                    device = shelf.getParentDevice();
-                    if (device != null) {
-                        room = device.getParentRoom();
-                    }
-                    if (room != null && device != null && shelf != null) {
-                        hierarchicalPath = room.getName() + " > " + device.getName() + " > " + shelf.getLabel();
-                        if (assignment.getPositionCoordinate() != null
-                                && !assignment.getPositionCoordinate().trim().isEmpty()) {
-                            hierarchicalPath += " > " + assignment.getPositionCoordinate();
-                        }
-                    }
-                }
-                break;
-            case "rack":
-                rack = (StorageRack) storageLocationService.get(assignment.getLocationId(), StorageRack.class);
-                if (rack != null) {
-                    shelf = rack.getParentShelf();
-                    if (shelf != null) {
-                        device = shelf.getParentDevice();
-                        if (device != null) {
-                            room = device.getParentRoom();
-                        }
-                    }
-                    if (room != null && device != null && shelf != null && rack != null) {
-                        hierarchicalPath = room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > "
-                                + rack.getLabel();
-                        if (assignment.getPositionCoordinate() != null
-                                && !assignment.getPositionCoordinate().trim().isEmpty()) {
-                            hierarchicalPath += " > " + assignment.getPositionCoordinate();
-                        }
-                    }
-                }
-                break;
-            }
-
-            if (hierarchicalPath == null) {
-                logger.debug("Skipping assignment {} - could not build hierarchical path", assignment.getId());
+        for (SampleItem sampleItem : allSampleItems) {
+            if (sampleItem == null || sampleItem.getId() == null) {
                 continue;
             }
 
             Map<String, Object> map = new java.util.HashMap<>();
-            SampleItem sampleItem = assignment.getSampleItem();
             map.put("id", sampleItem.getId());
             map.put("sampleItemId", sampleItem.getId());
             map.put("sampleItemExternalId", sampleItem.getExternalId() != null ? sampleItem.getExternalId() : "");
+
             // Get parent Sample accession number for context
             if (sampleItem.getSample() != null) {
                 map.put("sampleAccessionNumber",
@@ -168,16 +105,155 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
             map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
-            map.put("location", hierarchicalPath);
-            map.put("assignedBy", assignment.getAssignedByUserId());
-            map.put("date", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+
+            // Check if this sample item has an assignment
+            SampleStorageAssignment assignment = assignmentsBySampleItemId.get(sampleItem.getId());
+            if (assignment != null && assignment.getLocationId() != null && assignment.getLocationType() != null) {
+                // Build hierarchical path based on locationType
+                String hierarchicalPath = buildHierarchicalPathForAssignment(assignment);
+
+                map.put("location", hierarchicalPath != null ? hierarchicalPath : "");
+                map.put("assignedBy", assignment.getAssignedByUserId());
+                map.put("date", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+                // Include position coordinate and notes as separate fields for editing
+                String posCoord = assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "";
+                String notesVal = assignment.getNotes() != null ? assignment.getNotes() : "";
+                map.put("positionCoordinate", posCoord);
+                map.put("notes", notesVal);
+
+                // Debug: Log first 3 samples with assignments
+                if (response.size() < 3) {
+                    logger.info(
+                            "DEBUG getAllSamplesWithAssignments - Sample #{}: ID={}, positionCoordinate='{}', notes='{}', mapKeys={}",
+                            response.size() + 1, sampleItem.getId(), posCoord, notesVal, map.keySet());
+                }
+            } else {
+                // No assignment - sample is unassigned
+                map.put("location", "");
+                map.put("assignedBy", null);
+                map.put("date", "");
+                map.put("positionCoordinate", "");
+                map.put("notes", "");
+            }
 
             response.add(map);
         }
 
-        logger.info("getAllSamplesWithAssignments: Returning {} SampleItems after processing {} assignments",
-                response.size(), assignments.size());
+        // Sort by location: assigned samples first (alphabetically by location), then
+        // unassigned
+        response.sort((a, b) -> {
+            String locA = (String) a.get("location");
+            String locB = (String) b.get("location");
+            boolean aEmpty = locA == null || locA.isEmpty();
+            boolean bEmpty = locB == null || locB.isEmpty();
+
+            // Both empty - sort by sample ID
+            if (aEmpty && bEmpty) {
+                return String.valueOf(a.get("id")).compareTo(String.valueOf(b.get("id")));
+            }
+            // Empty locations go to the end
+            if (aEmpty)
+                return 1;
+            if (bEmpty)
+                return -1;
+            // Both have locations - sort alphabetically
+            return locA.compareTo(locB);
+        });
+
+        logger.info("getAllSamplesWithAssignments: Returning {} SampleItems (assigned and unassigned)",
+                response.size());
+
+        // DEBUG: Print first map keys and sample 10001 data
+        if (!response.isEmpty()) {
+            System.out.println("====== DEBUG getAllSamplesWithAssignments ======");
+            System.out.println("First map ID: " + response.get(0).get("id"));
+            System.out.println("First map positionCoordinate: '" + response.get(0).get("positionCoordinate") + "'");
+
+            // Find and log sample 10001 specifically
+            for (Map<String, Object> map : response) {
+                if ("10001".equals(String.valueOf(map.get("id")))) {
+                    System.out.println("--- Sample 10001 ---");
+                    System.out.println("ID: " + map.get("id"));
+                    System.out.println("location: " + map.get("location"));
+                    System.out.println("positionCoordinate: '" + map.get("positionCoordinate") + "'");
+                    System.out.println("notes: '" + map.get("notes") + "'");
+                    break;
+                }
+            }
+            System.out.println("Total samples: " + response.size());
+            System.out.println("===============================================");
+        }
+
         return response;
+    }
+
+    /**
+     * Build hierarchical path for an assignment based on its locationType.
+     */
+    private String buildHierarchicalPathForAssignment(SampleStorageAssignment assignment) {
+        if (assignment == null || assignment.getLocationId() == null || assignment.getLocationType() == null) {
+            return null;
+        }
+
+        String hierarchicalPath = null;
+        StorageRoom room = null;
+        StorageDevice device = null;
+        StorageShelf shelf = null;
+        StorageRack rack = null;
+
+        switch (assignment.getLocationType()) {
+        case "device":
+            device = (StorageDevice) storageLocationService.get(assignment.getLocationId(), StorageDevice.class);
+            if (device != null) {
+                room = device.getParentRoom();
+                if (room != null) {
+                    hierarchicalPath = room.getName() + " > " + device.getName();
+                    if (assignment.getPositionCoordinate() != null
+                            && !assignment.getPositionCoordinate().trim().isEmpty()) {
+                        hierarchicalPath += " > " + assignment.getPositionCoordinate();
+                    }
+                }
+            }
+            break;
+        case "shelf":
+            shelf = (StorageShelf) storageLocationService.get(assignment.getLocationId(), StorageShelf.class);
+            if (shelf != null) {
+                device = shelf.getParentDevice();
+                if (device != null) {
+                    room = device.getParentRoom();
+                }
+                if (room != null && device != null) {
+                    hierarchicalPath = room.getName() + " > " + device.getName() + " > " + shelf.getLabel();
+                    if (assignment.getPositionCoordinate() != null
+                            && !assignment.getPositionCoordinate().trim().isEmpty()) {
+                        hierarchicalPath += " > " + assignment.getPositionCoordinate();
+                    }
+                }
+            }
+            break;
+        case "rack":
+            rack = (StorageRack) storageLocationService.get(assignment.getLocationId(), StorageRack.class);
+            if (rack != null) {
+                shelf = rack.getParentShelf();
+                if (shelf != null) {
+                    device = shelf.getParentDevice();
+                    if (device != null) {
+                        room = device.getParentRoom();
+                    }
+                }
+                if (room != null && device != null && shelf != null) {
+                    hierarchicalPath = room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > "
+                            + rack.getLabel();
+                    if (assignment.getPositionCoordinate() != null
+                            && !assignment.getPositionCoordinate().trim().isEmpty()) {
+                        hierarchicalPath += " > " + assignment.getPositionCoordinate();
+                    }
+                }
+            }
+            break;
+        }
+
+        return hierarchicalPath;
     }
 
     /**
@@ -376,7 +452,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Override
     @Transactional
     public String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
-            String positionCoordinate, String reason) {
+            String positionCoordinate, String reason, String notes) {
         try {
             // Validate inputs
             if (locationId == null || locationId.trim().isEmpty()) {
@@ -486,7 +562,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     existingAssignment.setPositionCoordinate(null);
                 }
                 existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-                existingAssignment.setNotes(reason);
+                if (notes != null) {
+                    existingAssignment.setNotes(notes);
+                }
                 sampleStorageAssignmentDAO.update(existingAssignment);
 
                 // Log new state for debugging
@@ -506,7 +584,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     assignment.setPositionCoordinate(positionCoordinate.trim());
                 }
                 assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-                assignment.setNotes(reason);
+                if (notes != null) {
+                    assignment.setNotes(notes);
+                }
                 assignment.setAssignedByUserId(1); // Default to system user for tests
                 sampleStorageAssignmentDAO.insert(assignment);
 
@@ -749,5 +829,59 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
 
         return null;
+    }
+
+    @Override
+    @Transactional
+    public java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
+            String notes) {
+        // Validate SampleItem exists
+        if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+            throw new LIMSRuntimeException("SampleItem ID is required");
+        }
+
+        // Find existing assignment for SampleItem
+        SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItemId);
+        if (existingAssignment == null) {
+            throw new LIMSRuntimeException("No storage assignment found for SampleItem: " + sampleItemId);
+        }
+
+        // Update position coordinate if provided (empty string clears it, null keeps
+        // existing)
+        if (positionCoordinate != null) {
+            if (positionCoordinate.trim().isEmpty()) {
+                existingAssignment.setPositionCoordinate(null);
+            } else {
+                existingAssignment.setPositionCoordinate(positionCoordinate.trim());
+            }
+        }
+
+        // Update notes if provided (empty string clears it, null keeps existing)
+        if (notes != null) {
+            if (notes.trim().isEmpty()) {
+                existingAssignment.setNotes(null);
+            } else {
+                existingAssignment.setNotes(notes.trim());
+            }
+        }
+
+        sampleStorageAssignmentDAO.update(existingAssignment);
+
+        // Build response with current assignment state
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("assignmentId", existingAssignment.getId());
+        response.put("sampleItemId", sampleItemId);
+        response.put("positionCoordinate", existingAssignment.getPositionCoordinate());
+        response.put("notes", existingAssignment.getNotes());
+        response.put("updatedDate", new Timestamp(System.currentTimeMillis()).toString());
+
+        // Build hierarchical path for location
+        String hierarchicalPath = buildHierarchicalPathForAssignment(existingAssignment);
+        response.put("hierarchicalPath", hierarchicalPath);
+
+        logger.info("Updated metadata for SampleItem {}: positionCoordinate={}, notes={}", sampleItemId,
+                existingAssignment.getPositionCoordinate(), existingAssignment.getNotes() != null ? "updated" : "null");
+
+        return response;
     }
 }

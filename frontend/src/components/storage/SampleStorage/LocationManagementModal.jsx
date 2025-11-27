@@ -32,6 +32,10 @@ import "./LocationManagementModal.css";
  * - onClose: function - Callback when modal closes
  * - onConfirm: function - Callback when location is confirmed with { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
  *   - The sample object should include sampleItemId for API calls
+ * - autoSave: boolean - Whether to auto-save when a valid location is selected (default: false)
+ *   - When true, automatically calls onConfirm after a 500ms delay when a valid location is selected
+ *   - Valid location = minimum device level selected
+ *   - Default false: user must click confirm button to submit
  */
 const LocationManagementModal = ({
   open,
@@ -39,8 +43,21 @@ const LocationManagementModal = ({
   currentLocation,
   onClose,
   onConfirm,
+  autoSave = false, // Disabled by default - user must click confirm button
 }) => {
   const intl = useIntl();
+
+  // Map status codes to human-readable labels
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      20: "Sample Entered",
+      21: "Entered",
+      active: "Active",
+      disposed: "Disposed",
+    };
+    return statusMap[String(status)] || status || "Unknown";
+  };
+
   const [selectedLocation, setSelectedLocation] = useState(null);
   const selectedLocationRef = useRef(null);
   const [selectedLocationPath, setSelectedLocationPath] = useState("");
@@ -57,14 +74,51 @@ const LocationManagementModal = ({
   const [focusField, setFocusField] = useState(null); // 'device' | 'shelf' | 'rack' | 'position'
   const [showAdditionalInvalidWarning, setShowAdditionalInvalidWarning] =
     useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false); // Track auto-save in progress
+  const [showAutoSaved, setShowAutoSaved] = useState(false); // Show "autosaved" indicator
+  const autoSaveTimeoutRef = useRef(null); // Ref to store auto-save timeout
 
   // Determine modal mode: assignment (no location) or movement (location exists)
   const isMovementMode = !!currentLocation;
 
-  // Pre-populate position if current location exists
+  // Track initial values for position and notes to detect changes
+  const [initialPositionCoordinate, setInitialPositionCoordinate] =
+    useState("");
+  const [initialConditionNotes, setInitialConditionNotes] = useState("");
+
+  // Pre-populate position and notes if current location exists
   useEffect(() => {
-    if (currentLocation && currentLocation.position) {
-      setPositionCoordinate(currentLocation.position.coordinate || "");
+    console.log(
+      "[LocationManagementModal] Pre-populating from currentLocation:",
+      {
+        currentLocation,
+        hasPosition: !!currentLocation?.position,
+        positionCoordinate: currentLocation?.position?.coordinate,
+        notes: currentLocation?.notes,
+      },
+    );
+
+    if (currentLocation) {
+      // Pre-populate position if available, otherwise reset to empty
+      const initialPosition = currentLocation.position?.coordinate || "";
+      console.log(
+        "[LocationManagementModal] Setting position to:",
+        initialPosition,
+      );
+      setPositionCoordinate(initialPosition);
+      setInitialPositionCoordinate(initialPosition);
+
+      // Pre-populate notes if available, otherwise reset to empty
+      const initialNotes = currentLocation.notes || "";
+      console.log("[LocationManagementModal] Setting notes to:", initialNotes);
+      setConditionNotes(initialNotes);
+      setInitialConditionNotes(initialNotes);
+    } else {
+      // Reset to empty when no current location
+      setPositionCoordinate("");
+      setInitialPositionCoordinate("");
+      setConditionNotes("");
+      setInitialConditionNotes("");
     }
   }, [currentLocation]);
 
@@ -86,8 +140,96 @@ const LocationManagementModal = ({
       setPrefillLocation(null);
       setFocusField(null);
       setShowAdditionalInvalidWarning(false);
+      setIsAutoSaving(false);
+      setShowAutoSaved(false);
+      // Clear any pending auto-save timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
+      }
     }
   }, [open]);
+
+  // OGC-71: Auto-save effect - triggers handleConfirm when a valid location is selected
+  // Uses a debounced approach with 500ms delay to allow user to continue making changes
+  useEffect(() => {
+    // Only auto-save if enabled and modal is open
+    if (!autoSave || !open || isAutoSaving) {
+      return;
+    }
+
+    // Clear any existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+    }
+
+    // Check if we have a valid location (minimum: device selected)
+    const locationToCheck = selectedLocation || selectedLocationRef.current;
+    const hasValidLocation =
+      locationToCheck &&
+      (locationToCheck.device?.id ||
+        (locationToCheck.type === "device" && locationToCheck.id) ||
+        locationToCheck.shelf?.id ||
+        locationToCheck.rack?.id);
+
+    if (hasValidLocation && onConfirm) {
+      // Set auto-saving state and trigger save after delay
+      autoSaveTimeoutRef.current = setTimeout(async () => {
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "[LocationManagementModal] Auto-save triggered for location:",
+            locationToCheck,
+          );
+        }
+        setIsAutoSaving(true);
+        try {
+          const result = onConfirm({
+            sample,
+            newLocation: locationToCheck,
+            reason: isMovementMode ? reason : undefined,
+            conditionNotes: conditionNotes || undefined,
+            positionCoordinate: positionCoordinate || undefined,
+          });
+          // If onConfirm returns a promise, await it
+          if (result && typeof result.then === "function") {
+            await result;
+          }
+          if (process.env.NODE_ENV === "development") {
+            console.log("[LocationManagementModal] Auto-save completed");
+          }
+          // Show autosaved indicator (don't close modal - user must click confirm to close)
+          setShowAutoSaved(true);
+          setIsAutoSaving(false);
+          // Hide the indicator after 3 seconds
+          setTimeout(() => setShowAutoSaved(false), 3000);
+        } catch (error) {
+          console.error("[LocationManagementModal] Auto-save error:", error);
+          // Don't close modal on error, reset auto-saving state
+          setIsAutoSaving(false);
+        }
+      }, 500); // 500ms delay for debouncing
+    }
+
+    // Cleanup function
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
+      }
+    };
+  }, [
+    selectedLocation,
+    autoSave,
+    open,
+    isAutoSaving,
+    onConfirm,
+    sample,
+    isMovementMode,
+    reason,
+    conditionNotes,
+    positionCoordinate,
+  ]);
 
   const handleLocationChange = useCallback(
     (location) => {
@@ -189,9 +331,15 @@ const LocationManagementModal = ({
   const handleConfirm = async () => {
     const locationToUse = selectedLocation || selectedLocationRef.current;
 
-    if (!locationToUse) {
+    // Allow submission when:
+    // 1. Location is selected (normal case)
+    // 2. No location but metadata changed in movement mode (metadata-only update)
+    if (
+      !locationToUse &&
+      !(isMovementMode && (positionCoordinate || conditionNotes))
+    ) {
       console.error(
-        "[LocationManagementModal] handleConfirm: No location selected",
+        "[LocationManagementModal] handleConfirm: No location selected and no metadata to update",
       );
       return;
     }
@@ -211,13 +359,14 @@ const LocationManagementModal = ({
           hasNewLocation: !!locationToUse,
           reason: isMovementMode ? reason : undefined,
           positionCoordinate: positionCoordinate || undefined,
+          conditionNotes: conditionNotes || undefined,
         },
       );
 
       // Ensure onConfirm returns a promise
       const result = onConfirm({
         sample,
-        newLocation: locationToUse,
+        newLocation: locationToUse || null, // null if only metadata changed
         reason: isMovementMode ? reason : undefined,
         conditionNotes: conditionNotes || undefined,
         positionCoordinate: positionCoordinate || undefined,
@@ -459,6 +608,23 @@ const LocationManagementModal = ({
     onClose();
   };
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && open) {
+        handleClose();
+      }
+    };
+
+    if (open) {
+      document.addEventListener("keydown", handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open, handleClose]);
+
   const selectedLocationForValidation =
     selectedLocationRef.current || selectedLocation;
 
@@ -510,7 +676,18 @@ const LocationManagementModal = ({
   }
 
   const meetsMinimumLevels = (hasRoom && hasDevice) || hasLocationId;
-  const canConfirmLocation = meetsMinimumLevels && canExtractLocationId;
+
+  // Check if position or notes have changed from initial values
+  const positionChanged = positionCoordinate !== initialPositionCoordinate;
+  const notesChanged = conditionNotes !== initialConditionNotes;
+  const metadataChanged = positionChanged || notesChanged;
+
+  // Enable button if:
+  // 1. Location is selected (original behavior), OR
+  // 2. Metadata changed AND we're in movement mode with existing location (can update metadata only)
+  const canConfirmLocation =
+    (meetsMinimumLevels && canExtractLocationId) ||
+    (isMovementMode && metadataChanged);
 
   // Handle Enter key to submit form (except in textarea)
   const handleKeyDown = (event) => {
@@ -652,7 +829,9 @@ const LocationManagementModal = ({
                   />
                   :
                 </span>
-                <span className="info-value">{sample.status}</span>
+                <span className="info-value">
+                  {getStatusLabel(sample.status)}
+                </span>
               </div>
               {sample.dateCollected && (
                 <div className="info-row">
@@ -814,6 +993,18 @@ const LocationManagementModal = ({
                 </div>
                 <div className="location-path">{selectedLocationPath}</div>
               </div>
+              {/* Unobtrusive autosaved indicator */}
+              {showAutoSaved && (
+                <div
+                  className="autosaved-indicator"
+                  data-testid="autosaved-indicator"
+                >
+                  <FormattedMessage
+                    id="storage.autosaved"
+                    defaultMessage="✓ Autosaved"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

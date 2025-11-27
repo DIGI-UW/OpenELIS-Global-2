@@ -666,18 +666,18 @@ describe("EditLocationModal", () => {
     fireEvent.change(inputElement, { target: { value: "" } });
     await userEvent.type(inputElement, "FRZ02", { delay: 0 });
 
-    // Click save
-    const saveButton = screen.getByTestId("edit-location-save-button");
-    await userEvent.click(saveButton);
-
-    // Code was changed from FRZ01 to FRZ02, so warning dialog appears
-    // Wait for and confirm the code change warning dialog
-    const confirmButton = await screen.findByTestId(
-      "code-change-confirm-button",
+    // Code was changed from FRZ01 to FRZ02, so warning and acknowledge checkbox appears
+    // Find and check the acknowledge checkbox
+    const acknowledgeCheckbox = await screen.findByTestId(
+      "code-change-acknowledge-checkbox",
       {},
       { timeout: 3000 },
     );
-    await userEvent.click(confirmButton);
+    await userEvent.click(acknowledgeCheckbox);
+
+    // Click save after acknowledging
+    const saveButton = screen.getByTestId("edit-location-save-button");
+    await userEvent.click(saveButton);
 
     // Wait for API call
     await waitFor(() => {

@@ -44,15 +44,28 @@ public interface SampleStorageService {
      * Move a SampleItem to a new location using simplified polymorphic relationship
      * (locationId + locationType). Supports movement to device, shelf, or rack
      * level with optional text-based position coordinate.
-     * 
+     *
      * @param sampleItemId       SampleItem ID
      * @param locationId         Target location ID (device, shelf, or rack ID)
      * @param locationType       Target location type: 'device', 'shelf', or 'rack'
      * @param positionCoordinate Optional text-based coordinate (max 50 chars) - can
      *                           be set for any location_type
      * @param reason             Optional reason for movement
+     * @param notes              Optional condition notes
      * @return Movement ID
      */
     String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
-            String positionCoordinate, String reason);
+            String positionCoordinate, String reason, String notes);
+
+    /**
+     * Update position coordinate and/or notes for an existing assignment without
+     * changing the location. Useful when user wants to update metadata only.
+     *
+     * @param sampleItemId       SampleItem ID
+     * @param positionCoordinate New position coordinate (null to keep existing)
+     * @param notes              New notes (null to keep existing)
+     * @return Updated assignment info
+     */
+    java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
+            String notes);
 }

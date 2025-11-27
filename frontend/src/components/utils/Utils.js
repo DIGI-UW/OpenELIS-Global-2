@@ -235,6 +235,40 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
     });
 };
 
+export const patchToOpenElisServerJsonResponse = (
+  endPoint,
+  payLoad,
+  callback,
+  extraParams,
+) => {
+  fetch(
+    config.serverBaseUrl + endPoint,
+
+    {
+      //includes the browser sessionId in the Header for Authentication on the backend server
+      credentials: "include",
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      body: payLoad,
+    },
+  )
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then((json) => {
+      callback(json, extraParams);
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+};
+
 export const hasRole = (userSessionDetails, role) => {
   return userSessionDetails.roles && userSessionDetails.roles.includes(role);
 };

@@ -1,14 +1,19 @@
 #!/bin/bash
 
 # Load Test Fixtures for OpenELIS Global
-# Single unified script for loading storage + E2E test fixtures
+# Single unified script for loading ALL E2E test fixtures
 # Supports both Docker and direct psql connections
 # Usage: ./load-test-fixtures.sh [--reset] [--no-verify]
+#
+# Files loaded (in order):
+#   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
+#   2. storage-test-data.sql - Storage hierarchy + sample data
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SQL_FILE="$SCRIPT_DIR/storage-test-data.sql"
+FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
+STORAGE_SQL_FILE="$SCRIPT_DIR/storage-test-data.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
@@ -37,7 +42,8 @@ echo "======================================"
 echo "Loading Test Fixtures"
 echo "======================================"
 echo ""
-echo "SQL File: $SQL_FILE"
+echo "Foundational SQL: $FOUNDATIONAL_SQL_FILE"
+echo "Storage SQL: $STORAGE_SQL_FILE"
 if [ "$RESET" = true ]; then
     echo "Reset: Enabled (will reset test data before loading)"
 fi
@@ -46,9 +52,13 @@ if [ "$VERIFY" = true ]; then
 fi
 echo ""
 
-# Check if SQL file exists
-if [ ! -f "$SQL_FILE" ]; then
-    echo "ERROR: SQL file not found: $SQL_FILE"
+# Check if SQL files exist
+if [ ! -f "$FOUNDATIONAL_SQL_FILE" ]; then
+    echo "ERROR: Foundational SQL file not found: $FOUNDATIONAL_SQL_FILE"
+    exit 1
+fi
+if [ ! -f "$STORAGE_SQL_FILE" ]; then
+    echo "ERROR: Storage SQL file not found: $STORAGE_SQL_FILE"
     exit 1
 fi
 
@@ -173,7 +183,7 @@ verify_fixtures() {
                 'E2E Test Data' AS category,
                 'Patients' AS type, COUNT(*) AS count FROM patient WHERE external_id LIKE 'E2E-%'
             UNION ALL
-            SELECT '', 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'E2E%'
+            SELECT '', 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'DEV0100%'
             UNION ALL
             SELECT '', 'Sample Items', COUNT(*) FROM sample_item WHERE id BETWEEN 10000 AND 20000
             UNION ALL
@@ -186,7 +196,7 @@ verify_fixtures() {
 
         # Check specific counts
         ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" | tr -d '[:space:]')
-        SAMPLE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E%';" | tr -d '[:space:]')
+        SAMPLE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'DEV0100%';" | tr -d '[:space:]')
         PATIENT_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%';" | tr -d '[:space:]')
     else
         # Verify storage hierarchy
@@ -212,7 +222,7 @@ verify_fixtures() {
                 'E2E Test Data' AS category,
                 'Patients' AS type, COUNT(*) AS count FROM patient WHERE external_id LIKE 'E2E-%'
             UNION ALL
-            SELECT '', 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'E2E%'
+            SELECT '', 'Samples', COUNT(*) FROM sample WHERE accession_number LIKE 'DEV0100%'
             UNION ALL
             SELECT '', 'Sample Items', COUNT(*) FROM sample_item WHERE id BETWEEN 10000 AND 20000
             UNION ALL
@@ -225,7 +235,7 @@ verify_fixtures() {
 
         # Check specific counts
         ROOM_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" | tr -d '[:space:]')
-        SAMPLE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'E2E%';" | tr -d '[:space:]')
+        SAMPLE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM sample WHERE accession_number LIKE 'DEV0100%';" | tr -d '[:space:]')
         PATIENT_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM patient WHERE external_id LIKE 'E2E-%';" | tr -d '[:space:]')
     fi
 
@@ -256,13 +266,28 @@ if [ "$USE_DOCKER" = true ]; then
     # Check dependencies before loading
     check_dependencies true "" "" "" ""
 
-    # Load via Docker
-    echo "Loading fixtures via Docker..."
-    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$SQL_FILE"
+    # Load foundational data first (providers, organizations)
+    echo "Loading foundational fixtures via Docker..."
+    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$FOUNDATIONAL_SQL_FILE"
+
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "======================================"
+        echo "❌ Error loading foundational fixtures"
+        echo "======================================"
+        exit 1
+    fi
+
+    echo "✅ Foundational data loaded (providers, organizations)"
+    echo ""
+
+    # Load storage and sample data
+    echo "Loading storage fixtures via Docker..."
+    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$STORAGE_SQL_FILE"
 
     if [ $? -eq 0 ]; then
         echo ""
-        echo "✅ Fixtures loaded successfully!"
+        echo "✅ All fixtures loaded successfully!"
         echo ""
 
         if [ "$VERIFY" = true ]; then
@@ -281,7 +306,7 @@ if [ "$USE_DOCKER" = true ]; then
     else
         echo ""
         echo "======================================"
-        echo "❌ Error loading fixtures"
+        echo "❌ Error loading storage fixtures"
         echo "======================================"
         exit 1
     fi
@@ -307,16 +332,31 @@ else
     # Check dependencies before loading
     check_dependencies false "$DB_USER" "$DB_NAME" "$DB_HOST" "$DB_PORT"
 
-    echo "Loading test data..."
+    # Load foundational data first
+    echo "Loading foundational test data..."
+    echo ""
+    psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$FOUNDATIONAL_SQL_FILE"
+
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "======================================"
+        echo "❌ Error loading foundational data"
+        echo "======================================"
+        exit 1
+    fi
+
+    echo "✅ Foundational data loaded (providers, organizations)"
     echo ""
 
-    # Execute SQL script
-    psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$SQL_FILE"
+    # Load storage and sample data
+    echo "Loading storage test data..."
+    echo ""
+    psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$STORAGE_SQL_FILE"
 
     if [ $? -eq 0 ]; then
         echo ""
         echo "======================================"
-        echo "✅ Test data loaded successfully!"
+        echo "✅ All test data loaded successfully!"
         echo "======================================"
         echo ""
 
@@ -329,7 +369,7 @@ else
     else
         echo ""
         echo "======================================"
-        echo "❌ Error loading test data"
+        echo "❌ Error loading storage test data"
         echo "======================================"
         echo ""
         echo "Troubleshooting:"

@@ -51,12 +51,14 @@ public class StorageSearchServiceImpl implements StorageSearchService {
                 matchesSampleItemId = sampleItemIdStr.toLowerCase().contains(normalizedQuery);
             }
 
-            // Search by SampleItem External ID
+            // Search by SampleItem External ID - use substring matching (contains)
+            // This ensures "21" finds "DEV01250000000000021-1", "21-1", etc.
             String sampleItemExternalId = (String) sampleItem.get("sampleItemExternalId");
             boolean matchesExternalId = sampleItemExternalId != null && !sampleItemExternalId.isEmpty()
                     && sampleItemExternalId.toLowerCase().contains(normalizedQuery);
 
-            // Search by parent Sample accession number
+            // Search by parent Sample accession number - use substring matching (contains)
+            // This ensures "21" finds "DEV01250000000000021", etc.
             String sampleAccessionNumber = (String) sampleItem.get("sampleAccessionNumber");
             boolean matchesAccessionNumber = sampleAccessionNumber != null && !sampleAccessionNumber.isEmpty()
                     && sampleAccessionNumber.toLowerCase().contains(normalizedQuery);
