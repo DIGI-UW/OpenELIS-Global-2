@@ -1,0 +1,48 @@
+.storage-location-selector {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.selector-header h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.optional-indicator {
+  font-weight: normal;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.cascading-dropdown-container > * {
+  margin-bottom: 1rem;
+}
+
+.hierarchical-path {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+
+.path-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.path-value {
+  font-family: monospace;
+  color: #0f62fe;
+}
+
+.inline-creation-buttons {
+  margin-top: 0.5rem;
+}
+
+.inline-creation-buttons button {
+  margin-right: 0.5rem;
+  margin-top: 0.5rem;
+}

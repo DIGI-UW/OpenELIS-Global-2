@@ -97,6 +97,9 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             hist.setActivity(IActionConstants.AUDIT_TRAIL_INSERT);
             hist.setReferenceTable(referenceTable.getId());
             insertData(hist);
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), "saveNewHistory",
+                    "Created INSERT history record for table: " + tableName + ", referenceId: " + referenceId);
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error occurred logging INSERT", e);
@@ -145,17 +148,27 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         }
 
         try {
+            String referenceId = null;
+            if (newObject != null && event.equals(IActionConstants.AUDIT_TRAIL_UPDATE)) {
+                referenceId = newObject.getStringId();
+            } else if (event.equals(IActionConstants.AUDIT_TRAIL_DELETE)) {
+                referenceId = existingObject.getStringId();
+            }
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), "saveHistory", "Starting getChanges() for table: "
+                    + tableName + ", referenceId: " + referenceId + ", activity: " + event + ", newObject class: "
+                    + (newObject != null ? newObject.getClass().getSimpleName() : "null") + ", existingObject class: "
+                    + (existingObject != null ? existingObject.getClass().getSimpleName() : "null"));
+
             String xml = getChanges(newObject, existingObject, tableName);
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), "saveHistory",
+                    "getChanges() returned XML length: " + (xml != null ? xml.length() : 0) + " for table: " + tableName
+                            + ", referenceId: " + referenceId + ", activity: " + event);
 
             if ((xml != null) && (xml.length() > 0)) {
                 History hist = new History();
 
-                String referenceId = null;
-                if (newObject != null && event.equals(IActionConstants.AUDIT_TRAIL_UPDATE)) {
-                    referenceId = newObject.getStringId();
-                } else if (event.equals(IActionConstants.AUDIT_TRAIL_DELETE)) {
-                    referenceId = existingObject.getStringId();
-                }
                 hist.setReferenceId(referenceId);
                 hist.setSysUserId(sysUserId);
 
@@ -174,6 +187,15 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 hist.setActivity(event);
                 hist.setReferenceTable(rt.getId());
                 insertData(hist);
+
+                LogEvent.logInfo(this.getClass().getSimpleName(), "saveHistory",
+                        "Created history record for table: " + tableName + ", referenceId: " + referenceId
+                                + ", activity: " + event + ", changes length: " + xml.length());
+            } else {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "saveHistory",
+                        "No changes detected for table: " + tableName + ", referenceId: " + referenceId + ", activity: "
+                                + event + " - skipping history record creation. XML was: "
+                                + (xml != null ? "empty" : "null"));
             }
         } catch (RuntimeException e) {
             // buzilla 2154
@@ -418,28 +440,44 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     // propertyNewState);
                     // LogEvent.logInfo("","","\n");
 
-                    LogEvent.logTrace(this.getClass().getName(), "getChanges",
-                            "field compare: " + fields[ii].getName() + " propertyNewState: " + propertyNewState);
-                    LogEvent.logTrace(this.getClass().getName(), "getChanges", "field compare: " + fields[ii].getName()
-                            + " propertyPreUpdateState: " + propertyPreUpdateState);
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges",
+                            "Comparing field: " + fields[ii].getName() + ", newValue: [" + propertyNewState
+                                    + "], oldValue: [" + propertyPreUpdateState + "]");
 
                     // Now we have the two property values - compare them
                     if (propertyNewState.equals(propertyPreUpdateState)) {
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges",
+                                "Field " + fields[ii].getName() + " values are equal, skipping");
                         continue; // Values haven't changed so loop to next property
                     } else {
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges",
+                                "Field " + fields[ii].getName() + " values differ, processing change");
                         LabelValuePair lvb = processLabelValue(fieldName, propertyPreUpdateState, existingObject,
                                 newObject);
                         if (lvb != null) {
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges",
+                                    "Added change for field: " + fields[ii].getName() + ", label: " + lvb.getLabel()
+                                            + ", value: " + lvb.getValue());
                             optionList.add(new LabelValuePair(lvb.getLabel(), lvb.getValue()));
+                        } else {
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges",
+                                    "processLabelValue returned null for field: " + fields[ii].getName());
                         }
                     }
                 }
             }
         }
 
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges",
+                "Finished comparing fields. optionList size: " + optionList.size() + " for table: " + tableName);
+
         String xml = null;
         if (optionList.size() > 0) {
             xml = getXMLFormat(optionList);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges",
+                    "Generated XML with length: " + xml.length());
+        } else {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges", "No changes found, returning null XML");
         }
 
         return xml;

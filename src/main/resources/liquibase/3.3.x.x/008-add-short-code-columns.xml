@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add short_code column to storage_device -->
+    <changeSet id="storage-008-add-short-code-to-device" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="storage_device" columnName="short_code"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="storage_device">
+            <column name="short_code" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="storage_device" columnName="short_code"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Make short_code NOT NULL and add unique constraint for storage_device -->
+    <changeSet id="storage-008a-make-device-short-code-required" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_device" columnName="short_code"/>
+            <not>
+                <indexExists tableName="storage_device" indexName="uk_device_parent_short_code"/>
+            </not>
+        </preConditions>
+        <sql>
+            -- Update existing NULL values to unique temporary values based on ID
+            -- This ensures no duplicates when we add the unique constraint
+            -- Users must update these via Edit form to set proper short codes
+            UPDATE clinlims.storage_device
+            SET short_code = 'TMP' || LPAD(id::text, 7, '0')
+            WHERE short_code IS NULL;
+        </sql>
+        <addUniqueConstraint tableName="storage_device"
+                              constraintName="uk_device_parent_short_code"
+                              columnNames="parent_room_id, short_code"/>
+        <addNotNullConstraint tableName="storage_device" columnName="short_code" columnDataType="VARCHAR(10)"/>
+        <rollback>
+            <dropUniqueConstraint tableName="storage_device" constraintName="uk_device_parent_short_code"/>
+            <dropNotNullConstraint tableName="storage_device" columnName="short_code"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add short_code column to storage_shelf -->
+    <changeSet id="storage-009-add-short-code-to-shelf" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="storage_shelf" columnName="short_code"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="storage_shelf">
+            <column name="short_code" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="storage_shelf" columnName="short_code"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Make short_code NOT NULL and add unique constraint for storage_shelf -->
+    <changeSet id="storage-009a-make-shelf-short-code-required" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_shelf" columnName="short_code"/>
+            <not>
+                <indexExists tableName="storage_shelf" indexName="uk_shelf_parent_short_code"/>
+            </not>
+        </preConditions>
+        <sql>
+            -- Update existing NULL values to unique temporary values based on ID
+            -- Users must update these via Edit form to set proper short codes
+            UPDATE clinlims.storage_shelf
+            SET short_code = 'TMP' || LPAD(id::text, 7, '0')
+            WHERE short_code IS NULL;
+        </sql>
+        <addUniqueConstraint tableName="storage_shelf"
+                              constraintName="uk_shelf_parent_short_code"
+                              columnNames="parent_device_id, short_code"/>
+        <addNotNullConstraint tableName="storage_shelf" columnName="short_code" columnDataType="VARCHAR(10)"/>
+        <rollback>
+            <dropUniqueConstraint tableName="storage_shelf" constraintName="uk_shelf_parent_short_code"/>
+            <dropNotNullConstraint tableName="storage_shelf" columnName="short_code"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add short_code column to storage_rack -->
+    <changeSet id="storage-010-add-short-code-to-rack" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="storage_rack" columnName="short_code"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="storage_rack">
+            <column name="short_code" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="storage_rack" columnName="short_code"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Make short_code NOT NULL and add unique constraint for storage_rack -->
+    <changeSet id="storage-010a-make-rack-short-code-required" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_rack" columnName="short_code"/>
+            <not>
+                <indexExists tableName="storage_rack" indexName="uk_rack_parent_short_code"/>
+            </not>
+        </preConditions>
+        <sql>
+            -- Update existing NULL values to unique temporary values based on ID
+            -- Users must update these via Edit form to set proper short codes
+            UPDATE clinlims.storage_rack
+            SET short_code = 'TMP' || LPAD(id::text, 7, '0')
+            WHERE short_code IS NULL;
+        </sql>
+        <addUniqueConstraint tableName="storage_rack"
+                              constraintName="uk_rack_parent_short_code"
+                              columnNames="parent_shelf_id, short_code"/>
+        <addNotNullConstraint tableName="storage_rack" columnName="short_code" columnDataType="VARCHAR(10)"/>
+        <rollback>
+            <dropUniqueConstraint tableName="storage_rack" constraintName="uk_rack_parent_short_code"/>
+            <dropNotNullConstraint tableName="storage_rack" columnName="short_code"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

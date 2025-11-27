@@ -1,0 +1,141 @@
+.enhanced-cascading-container {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Row layout - uses flexbox for horizontal alignment, stacks on narrow screens */
+.enhanced-cascading-row {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  align-items: flex-end;
+}
+
+/* Stack vertically on narrow screens */
+@media (max-width: 672px) {
+  .enhanced-cascading-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .enhanced-cascading-column-button {
+    align-self: flex-start;
+  }
+}
+
+/* Column for input - takes most of the width */
+.enhanced-cascading-column-input {
+  flex: 1;
+  min-width: 0; /* Allow shrinking */
+}
+
+/* Column for button - fixed width */
+.enhanced-cascading-column-button {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+/* Column for full-width inputs (Position) */
+.enhanced-cascading-column-full {
+  flex: 1 1 100%;
+  width: 100%;
+}
+
+.optional-text {
+  color: var(--cds-text-secondary);
+  font-weight: normal;
+}
+
+.add-new-link-container {
+  margin-top: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+.add-new-link {
+  background: none;
+  border: none;
+  color: var(--cds-link-primary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.add-new-link:hover {
+  color: var(--cds-link-primary-hover);
+}
+
+.add-new-link:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+
+/* Inline Add button wrapper - minimal wrapper for spacing */
+.inline-add-button-wrapper {
+  display: flex;
+  align-items: center;
+  padding-left: 0.5rem;
+}
+
+/* On narrow screens, adjust button wrapper */
+@media (max-width: 672px) {
+  .inline-add-button-wrapper {
+    padding-left: 0;
+    padding-top: 0.5rem;
+    align-items: flex-start;
+  }
+}
+
+/* Enhance button styling - Carbon buttons should match input height with size="md" */
+/* Override ghost button to have visible border/background - important to override Carbon defaults */
+.enhanced-cascading-column-button .cds--btn.cds--btn--ghost {
+  min-width: auto !important;
+  width: auto !important;
+  height: 2.5rem !important;
+  border: 1px solid var(--cds-border-subtle) !important;
+  background-color: var(--cds-layer) !important;
+  color: var(--cds-icon-secondary) !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.enhanced-cascading-column-button
+  .cds--btn.cds--btn--ghost:hover:not(:disabled) {
+  background-color: var(--cds-layer-hover) !important;
+  border-color: var(--cds-border-strong) !important;
+  color: var(--cds-icon-primary) !important;
+}
+
+.enhanced-cascading-column-button .cds--btn.cds--btn--ghost:focus {
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: 2px !important;
+}
+
+/* Disabled state - must override Carbon's transparent disabled ghost button */
+.enhanced-cascading-column-button .cds--btn.cds--btn--ghost.cds--btn--disabled,
+.enhanced-cascading-column-button .cds--btn.cds--btn--ghost[disabled] {
+  border: 1px solid var(--cds-border-subtle) !important;
+  background-color: var(--cds-layer) !important;
+  color: var(--cds-icon-disabled) !important;
+  opacity: 1 !important; /* Override Carbon's opacity reduction */
+  cursor: not-allowed !important;
+}
+
+/* Ensure icon is visible in disabled state */
+.enhanced-cascading-column-button
+  .cds--btn.cds--btn--ghost.cds--btn--disabled
+  svg,
+.enhanced-cascading-column-button .cds--btn.cds--btn--ghost[disabled] svg {
+  fill: var(--cds-icon-disabled) !important;
+  opacity: 1 !important;
+}

@@ -34,6 +34,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
+import AsyncAvatar from "./photoManagement/photoAvatar/AyncAvatar";
 
 function SearchPatientForm(props) {
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -226,6 +227,14 @@ function SearchPatientForm(props) {
   };
 
   const fetchPatientDetails = (patientDetails) => {
+    getFromOpenElisServer(
+      `/rest/patient-photos/${patientDetails.patientPK}/${false}`,
+      (response) => {
+        if (response && response.data) {
+          patientDetails.photo = response.data;
+        }
+      },
+    );
     props.getSelectedPatient(patientDetails);
   };
 
@@ -578,18 +587,35 @@ function SearchPatientForm(props) {
                     const dataSourceName = row.cells.find(
                       (cell) => cell.info.header === "dataSourceName",
                     )?.value;
+                    const firstName =
+                      row.cells.find((cell) => cell.info.header === "firstName")
+                        ?.value || "";
+                    const lastName =
+                      row.cells.find((cell) => cell.info.header === "lastName")
+                        ?.value || "";
+                    const patientName =
+                      `${firstName} ${lastName}`.trim() || "Patient";
 
                     return (
                       <TableRow key={row.id}>
                         <TableCell>
                           {dataSourceName === "OpenElis" ? (
-                            <RadioButton
-                              data-cy="radioButton"
-                              name="radio-group"
-                              onClick={patientSelected}
-                              labelText=""
-                              id={row.id}
-                            />
+                            <div
+                              style={{ display: "flex", flexDirection: "row" }}
+                            >
+                              <RadioButton
+                                data-cy="radioButton"
+                                name="radio-group"
+                                onClick={patientSelected}
+                                labelText=""
+                                id={row.id}
+                              />
+                              <AsyncAvatar
+                                patientId={row.id}
+                                hasPhoto={true}
+                                patientName={patientName}
+                              />
+                            </div>
                           ) : (
                             <span></span>
                           )}

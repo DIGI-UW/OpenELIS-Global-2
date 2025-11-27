@@ -44,7 +44,7 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 ARG SKIP_SPOTLESS="false"
 COPY ./src /build/src
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn clean install -DskipTests -Dspotless.check.skip=${SKIP_SPOTLESS}
+    mvn clean install -Dmaven.test.skip=true -DskipITs=true -Dspotless.check.skip=${SKIP_SPOTLESS}
 
 ##
 # Run Stage
@@ -98,7 +98,9 @@ RUN groupadd tomcat; \
     mkdir -p /var/lib/openelis-global/logs/; \
     chown -R tomcat_admin:tomcat /var/lib/openelis-global/logs/;\
     mkdir -p /var/lib/openelis-global/properties/; \
-    chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/;
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/; \
+    mkdir -p /var/lib/openelis-global/configuration/; \
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/configuration/;
 
 
 COPY install/openelis_healthcheck.sh /healthcheck.sh
@@ -113,6 +115,7 @@ RUN mkdir -p /var/lib/lucene_index; \
     chown -R tomcat_admin:tomcat /var/lib/lucene_index; \
     chmod -R 770 /var/lib/lucene_index;
 
+COPY ./tomcat/oe_server.xml /usr/local/tomcat/conf/server.xml    
 USER tomcat_admin
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]

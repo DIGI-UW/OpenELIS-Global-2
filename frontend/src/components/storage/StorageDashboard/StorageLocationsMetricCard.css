@@ -1,0 +1,65 @@
+/* StorageLocationsMetricCard component styles */
+/* Color-coding using Carbon Design System tokens per FR-057a */
+
+.storage-locations-metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.location-counts-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Pill/highlight styling for each location count */
+.location-count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 1rem;
+  background-color: var(--cds-layer-01, #f4f4f4);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* Count number - normal font size, not bold */
+.location-count-number {
+  font-weight: 400;
+  font-size: inherit;
+}
+
+/* Count label */
+.location-count-label {
+  font-weight: 400;
+  font-size: inherit;
+}
+
+/* Carbon Design System color tokens for location types */
+/* FR-057a: blue-70 for rooms, teal-70 for devices, purple-70 for shelves, orange-70 for racks */
+.location-count-rooms {
+  color: var(--cds-blue-70, #0043ce);
+  background-color: rgba(0, 67, 206, 0.1);
+  border: 1px solid rgba(0, 67, 206, 0.2);
+}
+
+.location-count-devices {
+  color: var(--cds-teal-70, #007d79);
+  background-color: rgba(0, 125, 121, 0.1);
+  border: 1px solid rgba(0, 125, 121, 0.2);
+}
+
+.location-count-shelves {
+  color: var(--cds-purple-70, #8a3ffc);
+  background-color: rgba(138, 63, 252, 0.1);
+  border: 1px solid rgba(138, 63, 252, 0.2);
+}
+
+.location-count-racks {
+  color: var(--cds-orange-70, #ff832b);
+  background-color: rgba(255, 131, 43, 0.1);
+  border: 1px solid rgba(255, 131, 43, 0.2);
+}

@@ -633,6 +633,21 @@ public class ResultsLoadUtility {
 
         TestService testService = SpringContext.getBean(TestService.class);
         Test test = analysisService.getTest(analysis);
+
+        // Guard against null test - this can happen if analysis has null test_id or
+        // test relationship isn't loaded
+        if (test == null) {
+            LogEvent.logError(this.getClass().getSimpleName(), "createTestResultItem",
+                    "Analysis " + analysis.getId() + " has null test. Cannot create TestResultItem.");
+            // Return a minimal TestResultItem with error indication
+            TestResultItem errorItem = new TestResultItem();
+            errorItem.setAccessionNumber(accessionNumber);
+            errorItem.setAnalysisId(analysis.getId());
+            errorItem.setSequenceNumber(sequenceNumber);
+            errorItem.setTestName("ERROR: Test not found for analysis");
+            return errorItem;
+        }
+
         ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(test,
                 currentPatient);
 
@@ -1044,10 +1059,21 @@ public class ResultsLoadUtility {
     }
 
     public List<TestResultItem> getUnfinishedTestResultItemsByAccession(String accessionNumber) {
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getUnfinishedTestResultItemsByAccession",
+                "Searching for unfinished tests with accessionNumber: " + accessionNumber + ", "
+                        + "analysisStatusList size: " + (analysisStatusList != null ? analysisStatusList.size() : 0)
+                        + ", " + "sampleStatusList size: " + (sampleStatusList != null ? sampleStatusList.size() : 0));
         List<Analysis> analysisList = analysisService.getPageAnalysisByStatusFromAccession(analysisStatusList,
                 sampleStatusList, accessionNumber);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getUnfinishedTestResultItemsByAccession",
+                "Found " + (analysisList != null ? analysisList.size() : 0) + " analyses for accessionNumber: "
+                        + accessionNumber);
 
-        return getGroupedTestsForAnalysisList(analysisList, SORT_FORWARD);
+        List<TestResultItem> result = getGroupedTestsForAnalysisList(analysisList, SORT_FORWARD);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getUnfinishedTestResultItemsByAccession",
+                "getGroupedTestsForAnalysisList returned " + (result != null ? result.size() : 0)
+                        + " test result items");
+        return result;
     }
 
     public List<TestResultItem> getUnfinishedTestResultItemsByAccession(String accessionNumber,

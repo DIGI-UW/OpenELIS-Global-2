@@ -713,11 +713,22 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     public List<Analysis> getPageAnalysisByStatusFromAccession(List<Integer> analysisStatusList,
             List<Integer> sampleStatusList, String accessionNumber) {
+        String originalAccessionNumber = accessionNumber;
         if (accessionNumber != null && accessionNumber.contains(".")) {
             accessionNumber = accessionNumber.substring(0, accessionNumber.indexOf('.'));
         }
-        return baseObjectDAO.getPageAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList,
-                accessionNumber);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
+                "getPageAnalysisByStatusFromAccession",
+                "Searching analyses for accessionNumber: " + accessionNumber + " (original: " + originalAccessionNumber
+                        + "), " + "analysisStatusList size: "
+                        + (analysisStatusList != null ? analysisStatusList.size() : 0) + ", "
+                        + "sampleStatusList size: " + (sampleStatusList != null ? sampleStatusList.size() : 0));
+        List<Analysis> results = baseObjectDAO.getPageAnalysisByStatusFromAccession(analysisStatusList,
+                sampleStatusList, accessionNumber);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
+                "getPageAnalysisByStatusFromAccession", "Found " + (results != null ? results.size() : 0)
+                        + " analyses for accessionNumber: " + accessionNumber);
+        return results;
     }
 
     @Override
