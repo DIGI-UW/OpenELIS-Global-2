@@ -67,6 +67,20 @@
         <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
 
+        <!-- Cold Storage/Freezer Monitoring entities -->
+        <class>org.openelisglobal.coldstorage.valueholder.Freezer</class>
+        <class>org.openelisglobal.coldstorage.valueholder.FreezerReading</class>
+        <class>org.openelisglobal.coldstorage.valueholder.ThresholdProfile</class>
+        <class>org.openelisglobal.coldstorage.valueholder.FreezerThresholdProfile</class>
+
+        <!-- Alert entities -->
+        <class>org.openelisglobal.alert.valueholder.Alert</class>
+        <class>org.openelisglobal.coldstorage.valueholder.CorrectiveAction</class>
+
+        <!-- Notification entities -->
+        <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
+        <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />

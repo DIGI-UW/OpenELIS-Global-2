@@ -49,6 +49,7 @@ import ReferredOutTests from "./components/resultPage/resultsReferredOut/Referre
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
+import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
 
 export default function App() {
   let i18nConfig = {
@@ -331,6 +332,12 @@ export default function App() {
                   component={() => <CytologyDashboard />}
                   role=""
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/FreezerMonitoring"
+                  exact
+                  component={() => <FreezerMonitoringDashboard />}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/NoteBookDashboard"

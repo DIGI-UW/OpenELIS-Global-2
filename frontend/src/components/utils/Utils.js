@@ -177,6 +177,43 @@ export const getFromOpenElisServerSync = (endPoint, callback) => {
   return callback(JSON.parse(request.response));
 };
 
+export const postToOpenElisServerForBlob = (
+  endPoint,
+  payLoad,
+  callback,
+  errorCallback,
+) => {
+  fetch(
+    config.serverBaseUrl + endPoint,
+
+    {
+      //includes the browser sessionId in the Header for Authentication on the backend server
+      credentials: "include",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      body: payLoad,
+    },
+  )
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.blob().then((blob) => ({ blob, response }));
+    })
+    .then(({ blob, response }) => {
+      callback(blob, response);
+    })
+    .catch((error) => {
+      console.error(error);
+      if (errorCallback) {
+        errorCallback(error);
+      }
+    });
+};
+
 export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
   fetch(
     config.serverBaseUrl + endPoint,
@@ -226,6 +263,25 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
   }
 
   fetch(config.serverBaseUrl + endPoint, options)
+    .then((response) => response.status)
+    .then((status) => {
+      callback(status);
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+};
+
+export const deleteFromOpenElisServer = (endPoint, callback) => {
+  fetch(config.serverBaseUrl + endPoint, {
+    // includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+  })
     .then((response) => response.status)
     .then((status) => {
       callback(status);
