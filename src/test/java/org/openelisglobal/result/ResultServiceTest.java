@@ -59,6 +59,20 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/result.xml");
 
+        // Ensure TestService maps are initialized before tests that use static methods
+        // The TestServiceImpl constructor calls initializeGlobalVariables(), but in
+        // test context
+        // we need to ensure maps are refreshed after test data is loaded
+        org.openelisglobal.test.service.TestService testServiceBean = org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.test.service.TestService.class);
+
+        // Force initialization by calling a static method that triggers
+        // ensureEntityMapInitialized
+        // This ensures entityToMap is created if it doesn't exist
+        org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedReportingTestName("1");
+
+        // Now refresh the maps to include the test data we just loaded
+        testServiceBean.refreshTestNames();
     }
 
     @Test

@@ -184,8 +184,6 @@
         significant_digits="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
-    <!-- analysis -->
-    <!-- analysis -->
     <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"
         revision="1" status="1" started_date="2023-11-15 12:00:00"
         completed_date="2023-11-15 14:00:00"
@@ -213,7 +211,7 @@
         so_send_entry_by="Dr. Smith" so_send_entry_date="2023-11-16 13:45:00"
         analysis_type="CONFIRM" lastupdated="2023-12-01 12:00:00"
         parent_analysis_id="1" reflex_trigger="false" status_id="2"
-        entry_date="2023-11-16 12:00:00" panel_id="2" referred_out="true"
+        entry_date="2023-11-16 12:00:00" referred_out="true"
         type_of_sample_name="Urine Sample" corrected="false"
         fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02"
         result_calculated="false" method_id="2" />

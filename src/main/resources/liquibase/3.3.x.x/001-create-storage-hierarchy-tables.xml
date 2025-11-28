@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Storage Room Table -->
+    <changeSet id="storage-001-create-storage-room-table" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="storage_room"/>
+            </not>
+        </preConditions>
+        <createTable tableName="storage_room">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createSequence sequenceName="storage_room_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="storage_room_seq"/>
+            <dropTable tableName="storage_room"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Storage Device Table -->
+    <changeSet id="storage-002-create-storage-device-table" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="storage_device"/>
+            </not>
+        </preConditions>
+        <createTable tableName="storage_device">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="temperature_setting" type="DECIMAL(5,2)"/>
+            <column name="capacity_limit" type="INT"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parent_room_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_device_room"
+                    references="storage_room(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="storage_device"
+            columnNames="parent_room_id, code"
+            constraintName="uk_device_code_in_room"/>
+        <sql>
+            ALTER TABLE clinlims.storage_device
+            ADD CONSTRAINT chk_device_type
+            CHECK (type IN ('freezer', 'refrigerator', 'cabinet', 'other'));
+        </sql>
+        <createSequence sequenceName="storage_device_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="storage_device_seq"/>
+            <dropTable tableName="storage_device"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Storage Shelf Table -->
+    <changeSet id="storage-003-create-storage-shelf-table" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="storage_shelf"/>
+            </not>
+        </preConditions>
+        <createTable tableName="storage_shelf">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="label" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="capacity_limit" type="INT"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parent_device_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_shelf_device"
+                    references="storage_device(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="storage_shelf"
+            columnNames="parent_device_id, label"
+            constraintName="uk_shelf_label_in_device"/>
+        <createSequence sequenceName="storage_shelf_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="storage_shelf_seq"/>
+            <dropTable tableName="storage_shelf"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Storage Rack Table -->
+    <changeSet id="storage-004-create-storage-rack-table" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="storage_rack"/>
+            </not>
+        </preConditions>
+        <createTable tableName="storage_rack">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="label" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rows" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="columns" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="position_schema_hint" type="VARCHAR(50)"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parent_shelf_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_rack_shelf"
+                    references="storage_shelf(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="storage_rack"
+            columnNames="parent_shelf_id, label"
+            constraintName="uk_rack_label_in_shelf"/>
+        <sql>
+            ALTER TABLE clinlims.storage_rack
+            ADD CONSTRAINT chk_rack_dimensions
+            CHECK (rows >= 0 AND columns >= 0);
+        </sql>
+        <createSequence sequenceName="storage_rack_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="storage_rack_seq"/>
+            <dropTable tableName="storage_rack"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Storage Position Table (with flexible hierarchy support) -->
+    <changeSet id="storage-005-create-storage-position-table" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="storage_position"/>
+            </not>
+        </preConditions>
+        <createTable tableName="storage_position">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="coordinate" type="VARCHAR(50)"/>
+            <column name="row_index" type="INT"/>
+            <column name="column_index" type="INT"/>
+            <column name="parent_device_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_position_device"
+                    references="storage_device(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="parent_shelf_id" type="numeric(10,0)">
+                <constraints nullable="true"
+                    foreignKeyName="fk_position_shelf"
+                    references="storage_shelf(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="parent_rack_id" type="numeric(10,0)">
+                <constraints nullable="true"
+                    foreignKeyName="fk_position_rack"
+                    references="storage_rack(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE storage_position
+            ADD CONSTRAINT chk_position_rack_requires_shelf
+            CHECK ((parent_rack_id IS NULL) OR (parent_shelf_id IS NOT NULL));
+        </sql>
+        <sql>
+            ALTER TABLE storage_position
+            ADD CONSTRAINT chk_position_coordinate_requires_rack
+            CHECK ((coordinate IS NULL) OR (parent_rack_id IS NOT NULL));
+        </sql>
+        <createSequence sequenceName="storage_position_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="storage_position_seq"/>
+            <dropTable tableName="storage_position"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

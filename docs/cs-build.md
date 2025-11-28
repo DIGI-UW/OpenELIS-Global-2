@@ -113,7 +113,7 @@ Choose one or the other
 
 ### Configure OpenHIM Core:
 
-- sudo docker-compose -f docker-compose-production.yml up -d --build
+- sudo docker compose -f docker-compose-production.yml up -d --build
 - Log into OpenHIM-console Login to
   [root@openhim.org](mailto:root@openhim.org):openhim-password
 - Make note of the password you change to

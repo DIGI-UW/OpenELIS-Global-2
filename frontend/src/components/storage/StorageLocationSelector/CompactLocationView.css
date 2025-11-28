@@ -1,0 +1,30 @@
+.compact-location-view {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem;
+  border: 1px solid var(--cds-border-subtle);
+  border-radius: 4px;
+  background-color: var(--cds-layer-01);
+}
+
+.location-path-display {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.path-label {
+  font-weight: 600;
+  color: var(--cds-text-secondary);
+}
+
+.path-value {
+  color: var(--cds-text-primary);
+}
+
+.quick-find-container {
+  flex: 1;
+  max-width: 300px;
+}

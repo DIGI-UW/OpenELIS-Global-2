@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Map;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.StaleObjectStateException;
@@ -15,6 +16,7 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationExceptio
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
+import org.openelisglobal.patient.service.PatientPhotoService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -25,11 +27,14 @@ import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.search.service.SearchResultsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,13 +51,14 @@ public class PatientManagementRestController extends BaseRestController {
     PatientService patientService;
     @Autowired
     FhirTransformService fhirTransformService;
+    @Autowired
+    PatientPhotoService photoService;
 
     @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public void savepatient(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody PatientManagementInfo patientInfo,
-            BindingResult bindingResult)
-            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+            BindingResult bindingResult) throws Exception {
 
         if (StringUtils.isNotBlank(patientInfo.getPatientPK())) {
             patientInfo.setPatientUpdateStatus(PatientUpdateStatus.UPDATE);
@@ -74,6 +80,7 @@ public class PatientManagementRestController extends BaseRestController {
                 patientService.persistPatientData(patientInfo, patient, getSysUserId(request));
                 fhirTransformService.transformPersistPatient(patientInfo,
                         (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
+                photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
             } catch (LIMSRuntimeException e) {
 
                 if (e.getCause() instanceof StaleObjectStateException) {
@@ -87,6 +94,13 @@ public class PatientManagementRestController extends BaseRestController {
                 LogEvent.logError(e);
             }
         }
+    }
+
+    @GetMapping("patient-photos/{id}/{isThumbnail}")
+    public ResponseEntity<Map<String, String>> getPhoto(@PathVariable String id, @PathVariable boolean isThumbnail)
+            throws LIMSRuntimeException {
+        String photo = photoService.getPhotoByPatientId(id, isThumbnail);
+        return ResponseEntity.ok(Map.of("data", photo));
     }
 
     private void preparePatientData(Errors errors, HttpServletRequest request, PatientManagementInfo patientInfo,

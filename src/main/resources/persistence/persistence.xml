@@ -27,6 +27,26 @@
         <class>org.itech.fhir.dataexport.core.model.DataExportTask</class>
 
         <class>org.ozeki.sms.valueholder.OzekiMessageOut</class>
+
+        <!-- Sample Storage Management entities (001-sample-storage) -->
+        <class>org.openelisglobal.storage.valueholder.StorageRoom</class>
+        <class>org.openelisglobal.storage.valueholder.StorageDevice</class>
+        <class>org.openelisglobal.storage.valueholder.StorageShelf</class>
+        <class>org.openelisglobal.storage.valueholder.StorageRack</class>
+        <class>org.openelisglobal.storage.valueholder.StoragePosition</class>
+        <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
+        <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
+
+        <!-- Alert System entities (003-freezer-monitoring) -->
+        <class>org.openelisglobal.alert.valueholder.Alert</class>
+        <class>org.openelisglobal.coldstorage.valueholder.CorrectiveAction</class>
+
+        <!-- Cold Storage Management entities (003-freezer-monitoring) -->
+        <class>org.openelisglobal.coldstorage.valueholder.Freezer</class>
+        <class>org.openelisglobal.coldstorage.valueholder.FreezerReading</class>
+        <class>org.openelisglobal.coldstorage.valueholder.ThresholdProfile</class>
+        <class>org.openelisglobal.coldstorage.valueholder.FreezerThresholdProfile</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

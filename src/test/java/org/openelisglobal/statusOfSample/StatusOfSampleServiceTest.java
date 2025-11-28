@@ -41,9 +41,15 @@ public class StatusOfSampleServiceTest extends BaseWebContextSensitiveTest {
     public void getAllStatusOfSamples() {
         List<StatusOfSample> statusOfSamples = statusOfSampleService.getAllStatusOfSamples();
         assertTrue(statusOfSamples.size() > 0);
-        assertEquals("Status 1", statusOfSamples.get(0).getStatusOfSampleName());
-        assertEquals("Status 2", statusOfSamples.get(1).getStatusOfSampleName());
 
+        // Find records by name rather than assuming position (order may vary)
+        StatusOfSample status1 = statusOfSamples.stream().filter(s -> "Status 1".equals(s.getStatusOfSampleName()))
+                .findFirst().orElse(null);
+        StatusOfSample status2 = statusOfSamples.stream().filter(s -> "Status 2".equals(s.getStatusOfSampleName()))
+                .findFirst().orElse(null);
+
+        assertTrue("Status 1 should be in the list", status1 != null);
+        assertTrue("Status 2 should be in the list", status2 != null);
     }
 
     @Test
