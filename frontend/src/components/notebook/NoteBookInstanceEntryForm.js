@@ -88,6 +88,7 @@ const NoteBookInstanceEntryForm = () => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [statuses, setStatuses] = useState([]);
   const [types, setTypes] = useState([]);
+  const [technicianUsers, setTechnicianUsers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingSample, setIsSubmittingSample] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -100,6 +101,8 @@ const NoteBookInstanceEntryForm = () => {
   const [accession, setAccesiion] = useState("");
   const [initialMount, setInitialMount] = useState(false);
   const [allTests, setAllTests] = useState([]);
+  const [allPanels, setAllPanels] = useState([]);
+  const [sampleTypes, setSampleTypes] = useState([]);
   const [samples, setSamples] = useState([sampleObject]);
   const [orderFormValues, setOrderFormValues] = useState(ModifyOrderFormValues);
   const [errors, setErrors] = useState([]);
@@ -113,13 +116,12 @@ const NoteBookInstanceEntryForm = () => {
   const [resultsAccession, setResultsAccession] = useState("");
   const [results, setResults] = useState({ testResult: [] });
   const [resultsLoading, setResultsLoading] = useState(false);
+  const [projectTitle, setProjectTitle] = useState("");
+  const [questionnaires, setQuestionnaires] = useState([]);
 
-  const handleSubmit = (status) => {
+  const handleSubmit = () => {
     if (isSubmitting) {
       return;
-    }
-    if (mode === MODES.CREATE) {
-      noteBookData.status = status ? status : noteBookData.status;
     }
     setIsSubmitting(true);
     noteBookForm.id = noteBookData.id;
@@ -127,11 +129,10 @@ const NoteBookInstanceEntryForm = () => {
     noteBookForm.templateId = notebookid;
     noteBookForm.title = noteBookData.title;
     noteBookForm.type = noteBookData.type;
-    noteBookForm.project = noteBookData.project;
     noteBookForm.objective = noteBookData.objective;
     noteBookForm.protocol = noteBookData.protocol;
     noteBookForm.content = noteBookData.content;
-    noteBookForm.status = getNextStatus(noteBookData.status).id;
+    noteBookForm.status = noteBookData.status;
     noteBookForm.technicianId = noteBookData.technicianId;
     noteBookForm.sampleIds = noteBookData.samples.map((entry) =>
       Number(entry.id),
@@ -455,6 +456,10 @@ const NoteBookInstanceEntryForm = () => {
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
     getFromOpenElisServer("/rest/displayList/ANALYZER_LIST", setAnalyzerList);
     getFromOpenElisServer("/rest/displayList/ALL_TESTS", setAllTests);
+    getFromOpenElisServer("/rest/users", setTechnicianUsers);
+    getFromOpenElisServer("/rest/panels", setAllPanels);
+    getFromOpenElisServer("/rest/user-sample-types", setSampleTypes);
+    getFromOpenElisServer("/rest/notebook/questionnaires", setQuestionnaires);
     return () => {
       componentMounted.current = false;
     };
@@ -486,10 +491,12 @@ const NoteBookInstanceEntryForm = () => {
   const loadInitialProjectData = (data) => {
     if (componentMounted.current) {
       if (data && data.id) {
+        // Store the project/template title before resetting
+        setProjectTitle(data.title || "");
         data.id = null;
         data.isTemplate = false;
         data.dateCreated = null;
-        data.status = "NEW";
+        data.status = "DRAFT";
         setNoteBookData(data);
         setLoading(false);
       }
@@ -603,30 +610,6 @@ const NoteBookInstanceEntryForm = () => {
     });
   };
 
-  const statusMap = [
-    { id: "DRAFT", value: "Save Draft" },
-    { id: "SUBMITTED", value: "Submit for Review" },
-    { id: "FINALIZED", value: "Finalize Entry" },
-    { id: "LOCKED", value: "Lock Entry" },
-    { id: "ARCHIVED", value: "Archive Entry" },
-  ];
-
-  const statusFlow = {
-    NEW: "DRAFT",
-    DRAFT: "SUBMITTED",
-    SUBMITTED: "FINALIZED",
-    FINALIZED: "LOCKED",
-    LOCKED: "ARCHIVED",
-    ARCHIVED: "ARCHIVED",
-  };
-
-  function getNextStatus(currentStatus) {
-    const nextStatus = currentStatus
-      ? statusFlow[currentStatus]
-      : statusFlow["NEW"];
-    return statusMap.find((s) => s.id === nextStatus);
-  }
-
   const statusColors = {
     DRAFT: "gray",
     SUBMITTED: "cyan",
@@ -654,8 +637,7 @@ const NoteBookInstanceEntryForm = () => {
           <Section>
             <Section>
               <Heading>
-                <FormattedMessage id="notebook.page.modal.title.label" /> :
-                {noteBookData.title}
+                <FormattedMessage id="notebook.project.entry.form.title" />
               </Heading>
             </Section>
           </Section>
@@ -686,6 +668,42 @@ const NoteBookInstanceEntryForm = () => {
               )}
             </div>
             <Grid fullWidth={true} className="gridBoundary">
+              {projectTitle && (
+                <>
+                  <Column lg={8} md={8} sm={4}>
+                    <p style={{ margin: 0 }}>
+                      <strong>
+                        {intl.formatMessage({
+                          id: "notebook.label.project",
+                        })}
+                        :{" "}
+                      </strong>
+                      {projectTitle}
+                    </p>
+                  </Column>
+                  <Column lg={16} md={8} sm={4}>
+                    <br />
+                  </Column>
+                </>
+              )}
+              {noteBookData.title && (
+                <>
+                  <Column lg={8} md={8} sm={4}>
+                    <p style={{ margin: 0 }}>
+                      <strong>
+                        {intl.formatMessage({
+                          id: "notebook.label.project.title",
+                        })}
+                        :{" "}
+                      </strong>
+                      {noteBookData.title}
+                    </p>
+                  </Column>
+                  <Column lg={16} md={8} sm={4}>
+                    <br />
+                  </Column>
+                </>
+              )}
               <Column lg={8} md={8} sm={4}>
                 <p style={{ margin: 0 }}>
                   <strong>
@@ -698,15 +716,53 @@ const NoteBookInstanceEntryForm = () => {
                     intl.formatMessage({ id: "not.available" })}
                 </p>
               </Column>
-              <Column lg={8} md={8} sm={4}>
-                <p style={{ margin: 0 }}>
-                  <strong>
-                    {intl.formatMessage({ id: "notebook.label.project" })}:{" "}
-                  </strong>
-                  {noteBookData.project ||
-                    intl.formatMessage({ id: "not.available" })}
-                </p>
+              <Column lg={16} md={8} sm={4}>
+                <br />
               </Column>
+              {noteBookData.protocol && (
+                <>
+                  <Column lg={8} md={8} sm={4}>
+                    <p style={{ margin: 0 }}>
+                      <strong>
+                        {intl.formatMessage({
+                          id: "notebook.label.protocol",
+                        })}
+                        :{" "}
+                      </strong>
+                      {noteBookData.protocol ||
+                        intl.formatMessage({ id: "not.available" })}
+                    </p>
+                  </Column>
+                  <Column lg={16} md={8} sm={4}>
+                    <br />
+                  </Column>
+                </>
+              )}
+              {noteBookData.questionnaireFhirUuid && (
+                <>
+                  <Column lg={8} md={8} sm={4}>
+                    <p style={{ margin: 0 }}>
+                      <strong>
+                        {intl.formatMessage({
+                          id: "notebook.label.questionnaire",
+                        })}
+                        :{" "}
+                      </strong>
+                      {(() => {
+                        const questionnaire = questionnaires.find(
+                          (q) => q.id === noteBookData.questionnaireFhirUuid,
+                        );
+                        return questionnaire
+                          ? questionnaire.value
+                          : noteBookData.questionnaireFhirUuid;
+                      })()}
+                    </p>
+                  </Column>
+                  <Column lg={16} md={8} sm={4}>
+                    <br />
+                  </Column>
+                </>
+              )}
               <Column lg={16} md={8} sm={4}>
                 <br />
               </Column>
@@ -858,6 +914,32 @@ const NoteBookInstanceEntryForm = () => {
               <Column lg={16} md={8} sm={4}>
                 <br />
               </Column>
+              {noteBookData.protocol && (
+                <>
+                  <Column lg={16} md={8} sm={4}>
+                    <h5>
+                      {intl.formatMessage({ id: "notebook.label.protocol" })}
+                    </h5>
+                  </Column>
+                  <Column lg={16} md={8} sm={4}>
+                    <Tile style={{ padding: "1.5rem" }}>
+                      <p
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          margin: 0,
+                          lineHeight: "1.5",
+                        }}
+                      >
+                        {noteBookData.protocol ||
+                          intl.formatMessage({ id: "not.available" })}
+                      </p>
+                    </Tile>
+                  </Column>
+                  <Column lg={16} md={8} sm={4}>
+                    <br />
+                  </Column>
+                </>
+              )}
               <Column lg={16} md={8} sm={4}>
                 <h5>
                   <FormattedMessage id="notebook.instruments.title" />
@@ -1365,6 +1447,86 @@ const NoteBookInstanceEntryForm = () => {
                           <Column lg={14} md={8} sm={4}>
                             {page.content}
                           </Column>
+                          {page.sampleTypeId && (
+                            <>
+                              <Column lg={2} md={8} sm={4}>
+                                <h6>
+                                  {intl.formatMessage({
+                                    id: "sample.type",
+                                  })}
+                                </h6>
+                              </Column>
+                              <Column lg={14} md={8} sm={4}>
+                                <div>
+                                  <span style={{ marginRight: "0.5rem" }}>
+                                    {intl.formatMessage({ id: "sample.type" })}
+                                    :{" "}
+                                  </span>
+                                  {(() => {
+                                    const sampleType = sampleTypes.find(
+                                      (st) => st.id == page.sampleTypeId,
+                                    );
+                                    return sampleType ? (
+                                      <Tag type="blue" size="sm">
+                                        {sampleType.value}
+                                      </Tag>
+                                    ) : (
+                                      <></>
+                                    );
+                                  })()}
+                                </div>
+                              </Column>
+                            </>
+                          )}
+                          {page.panels &&
+                            Array.isArray(page.panels) &&
+                            page.panels.length > 0 && (
+                              <>
+                                <Column lg={2} md={8} sm={4}>
+                                  <h6>
+                                    <FormattedMessage id="sample.label.orderpanel" />
+                                  </h6>
+                                </Column>
+                                <Column lg={14} md={8} sm={4}>
+                                  <div>
+                                    <span style={{ marginRight: "0.5rem" }}>
+                                      <FormattedMessage id="sample.label.orderpanel" />
+                                      :{" "}
+                                    </span>
+                                    {page.panels
+                                      .filter((panelId) => panelId != null)
+                                      .map((panelId, panelIndex) => {
+                                        // Try to find panel by ID (handle both string and number)
+                                        const panel = allPanels.find((p) => {
+                                          if (!p || p.id == null) return false;
+                                          // Normalize both to strings for comparison
+                                          const pId = String(p.id).trim();
+                                          const pagePanelId =
+                                            String(panelId).trim();
+                                          // Compare as both string and number
+                                          return (
+                                            pId === pagePanelId ||
+                                            Number(p.id) === Number(panelId) ||
+                                            p.id == panelId
+                                          );
+                                        });
+                                        // Only show panel if found (don't show ID fallback)
+                                        return panel ? (
+                                          <Tag
+                                            key={panelIndex}
+                                            type="green"
+                                            size="sm"
+                                            style={{ marginRight: "0.5rem" }}
+                                          >
+                                            {panel.value}
+                                          </Tag>
+                                        ) : null;
+                                      })
+                                      .filter((tag) => tag !== null)}
+                                  </div>
+                                </Column>
+                              </>
+                            )}
                           {page.tests &&
                             Array.isArray(page.tests) &&
                             page.tests.length > 0 && (
@@ -1477,7 +1639,10 @@ const NoteBookInstanceEntryForm = () => {
                     >
                       <p>{comment.text}</p>
                       <p style={{ fontSize: "0.875rem", color: "#525252" }}>
-                        {comment.author || "Unknown"} -{" "}
+                        {comment.author ||
+                          userSessionDetails.firstName +
+                            " " +
+                            userSessionDetails.lastName}
                         {comment.dateCreated
                           ? new Date(comment.dateCreated).toLocaleString()
                           : "Just now"}
@@ -1728,32 +1893,79 @@ const NoteBookInstanceEntryForm = () => {
           required
         />
       </Modal>
+      {/* Status and Technician Section */}
       <Grid fullWidth={true} className="orderLegendBody">
         <Column lg={16} md={8} sm={4}>
           <Grid fullWidth={true} className="gridBoundary">
             <Column lg={8} md={8} sm={4}>
+              <Select
+                id="status"
+                name="status"
+                labelText={intl.formatMessage({ id: "notebook.label.status" })}
+                value={noteBookData.status || ""}
+                onChange={(event) => {
+                  setNoteBookData({
+                    ...noteBookData,
+                    status: event.target.value,
+                  });
+                }}
+                disabled={noteBookData.status === "ARCHIVED"}
+              >
+                <SelectItem />
+                {statuses.map((status, index) => {
+                  return (
+                    <SelectItem
+                      key={index}
+                      text={status.value}
+                      value={status.id}
+                    />
+                  );
+                })}
+              </Select>
+            </Column>
+            <Column lg={8} md={8} sm={4}>
+              <Select
+                id="technician"
+                name="technician"
+                labelText={intl.formatMessage({
+                  id: "label.button.select.technician",
+                })}
+                value={noteBookData.technicianId || ""}
+                onChange={(event) => {
+                  const selectedUser = technicianUsers.find(
+                    (user) => user.id === event.target.value,
+                  );
+                  setNoteBookData({
+                    ...noteBookData,
+                    technicianId: event.target.value,
+                    technicianName: selectedUser ? selectedUser.value : "",
+                  });
+                }}
+              >
+                <SelectItem />
+                {technicianUsers.map((user, index) => {
+                  return (
+                    <SelectItem key={index} text={user.value} value={user.id} />
+                  );
+                })}
+              </Select>
+            </Column>
+          </Grid>
+        </Column>
+        <Column lg={16} md={8} sm={4}>
+          <br />
+        </Column>
+        <Column lg={16} md={8} sm={4}>
+          <Grid fullWidth={true} className="gridBoundary">
+            <Column lg={8} md={8} sm={4}>
               <Button
-                kind="danger--tertiary"
+                kind="primary"
                 disabled={isSubmitting || noteBookData.status === "ARCHIVED"}
                 onClick={() => handleSubmit()}
               >
-                {intl.formatMessage({
-                  id: `notebook.status.${getNextStatus(noteBookData.status).id.toLowerCase()}`,
-                })}
+                <FormattedMessage id="label.button.save" />
               </Button>
             </Column>
-            {noteBookData.status == "NEW" && (
-              <Column lg={8} md={8} sm={4}>
-                <Button
-                  kind="danger--tertiary"
-                  onClick={() => handleSubmit("DRAFT")}
-                >
-                  {intl.formatMessage({
-                    id: `notebook.status.${getNextStatus("DRAFT").id.toLowerCase()}`,
-                  })}
-                </Button>
-              </Column>
-            )}
           </Grid>
         </Column>
       </Grid>

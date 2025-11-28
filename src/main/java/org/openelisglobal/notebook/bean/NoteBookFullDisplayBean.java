@@ -11,7 +11,6 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
     private String protocol;
     private String objective;
     private List<IdValuePair> analyzers;
-    private String project;
     private String content;
     private List<NoteBookPage> pages;
     private List<NoteBookFile> files;
@@ -34,14 +33,6 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
 
     public void setObjective(String objective) {
         this.objective = objective;
-    }
-
-    public String getProject() {
-        return project;
-    }
-
-    public void setProject(String project) {
-        this.project = project;
     }
 
     public String getContent() {

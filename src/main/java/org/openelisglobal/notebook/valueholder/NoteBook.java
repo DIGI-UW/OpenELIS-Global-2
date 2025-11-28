@@ -65,9 +65,6 @@ public class NoteBook extends BaseObject<Integer> {
     @JoinColumn(name = "type", referencedColumnName = "id")
     private Dictionary type;
 
-    @Column(name = "project")
-    private String project;
-
     @Column(name = "objective")
     private String objective;
 
@@ -91,7 +88,7 @@ public class NoteBook extends BaseObject<Integer> {
     private SystemUser technician;
 
     @OneToMany
-    @JoinTable(name = "notebook_samples", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "sample_item_id"))
+    @JoinTable(name = "notebook_samples_list", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "sample_item_id"))
     private List<SampleItem> samples;
 
     @OneToMany
@@ -142,14 +139,6 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setType(Dictionary type) {
         this.type = type;
-    }
-
-    public String getProject() {
-        return project;
-    }
-
-    public void setProject(String project) {
-        this.project = project;
     }
 
     public String getObjective() {

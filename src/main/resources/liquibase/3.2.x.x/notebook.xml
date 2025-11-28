@@ -25,7 +25,6 @@
                 <constraints nullable="true" foreignKeyName="fk_notebook_type_dictionary"
                              referencedTableName="dictionary" referencedColumnNames="id"/>
             </column>
-            <column name="project" type="VARCHAR(255)"/>
             <column name="objective" type="VARCHAR(255)"/>
             <column name="protocol" type="VARCHAR(255)"/>
             <column name="content" type="TEXT"/>
@@ -34,6 +33,9 @@
             <column name="technician_id" type="NUMERIC(10)">
                 <constraints nullable="true" foreignKeyName="fk_notebook_technician"
                              referencedTableName="system_user" referencedColumnNames="id"/>
+            </column>
+            <column name="questionnaire_fhir_uuid" type="UUID">
+                <constraints nullable="true"/>
             </column>
             <column name="last_updated" type="datetime" valueComputed="${now}" />
             <column name="date_created" type="datetime" valueComputed="${now}" />
@@ -60,6 +62,10 @@
             <column name="content" type="TEXT"/>
             <column name="page_order" type="INTEGER"/>
              <column name="completed" type="boolean" defaultValueBoolean="false"/>
+            <column name="sample_type_id" type="NUMERIC(10)">
+                <constraints nullable="true" foreignKeyName="fk_page_sample_type"
+                             referencedTableName="type_of_sample" referencedColumnNames="id"/>
+            </column>
             <column name="notebook_id" type="INTEGER">
                 <constraints nullable="false" foreignKeyName="fk_page_notebook"
                              referencedTableName="notebook" referencedColumnNames="id"/>
@@ -148,20 +154,20 @@
     <!-- ======================================================== -->
     <!-- NOTEBOOK_SAMPLES TABLE -->
     <!-- ======================================================== -->
-    <changeSet id="create-notebook-samples-table" author="mozzymutesa">
+    <changeSet id="create-notebook-samples-list-table" author="mozzymutesa">
         <preConditions onFail="MARK_RAN">
             <not>
-                <tableExists tableName="notebook_samples" schemaName="clinlims" />
+                <tableExists tableName="notebook_samples_list" schemaName="clinlims" />
             </not>
         </preConditions>
         <comment>Creating NOTEBOOK_SAMPLES join table linking notebooks to SampleItem entities.</comment>
-        <createTable tableName="notebook_samples">
+        <createTable tableName="notebook_samples_list">
             <column name="notebook_id" type="INTEGER">
-                <constraints nullable="false" foreignKeyName="fk_samples_notebook"
+                <constraints nullable="false" foreignKeyName="fk_samples_list_notebook"
                              referencedTableName="notebook" referencedColumnNames="id"/>
             </column>
             <column name="sample_item_id" type="INTEGER">
-                <constraints nullable="false" foreignKeyName="fk_samples_sampleitem"
+                <constraints nullable="false" foreignKeyName="fk_samples_list_sampleitem"
                              referencedTableName="sample_item" referencedColumnNames="id"/>
             </column>
         </createTable>
@@ -206,6 +212,28 @@
             <column name="entry_id" type="INTEGER">
                 <constraints nullable="false" foreignKeyName="fk_entries_entry"
                              referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_PAGE_PANELS TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-page-panels-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_page_panels" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_PAGE_PANELS table to store panels associated with each notebook page.</comment>
+        <createTable tableName="notebook_page_panels">
+            <column name="notebook_page_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_panels_notebook_page"
+                             referencedTableName="notebook_page" referencedColumnNames="id"/>
+            </column>
+            <column name="panel" type="NUMERIC(10)">
+                <constraints nullable="false" foreignKeyName="fk_panel_id"
+                             referencedTableName="panel" referencedColumnNames="id"/>
             </column>
         </createTable>
     </changeSet>
@@ -285,62 +313,34 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- ADD QUESTIONNAIRE UUID COLUMNS -->
+    <!-- NOTEBOOK_SAMPLES TABLE - Created as full entity table -->
     <!-- ======================================================== -->
-    <changeSet id="add-questionnaire-fhir-uuid-to-notebook" author="system">
+    <changeSet id="create-notebook-samples-table-full" author="mozzymutesa">
         <preConditions onFail="MARK_RAN">
             <not>
-                <columnExists tableName="notebook" columnName="questionnaire_fhir_uuid" schemaName="clinlims"/>
+                <tableExists tableName="notebook_samples" schemaName="clinlims" />
             </not>
         </preConditions>
-        <comment>Add questionnaire_fhir_uuid column to notebook table to store FHIR Questionnaire UUID reference</comment>
-        <addColumn tableName="notebook" schemaName="clinlims">
-            <column name="questionnaire_fhir_uuid" type="UUID">
-                <constraints nullable="true"/>
-            </column>
-        </addColumn>
-    </changeSet>
-
-    <changeSet id="add-id-column-to-notebook-samples" author="system">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <columnExists tableName="notebook_samples" columnName="id" schemaName="clinlims"/>
-            </not>
-        </preConditions>
-        <comment>Add id column to notebook_samples table to convert it from join table to entity table</comment>
-        <addColumn tableName="notebook_samples" schemaName="clinlims">
-            <column name="id" type="INTEGER">
+        <comment>Creating NOTEBOOK_SAMPLES table as entity table (not join table) to store notebook sample relationships with questionnaire responses.</comment>
+        <createTable tableName="notebook_samples">
+            <column name="id" type="INTEGER" valueSequenceNext="notebook_samples_seq">
                 <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook_samples"/>
             </column>
-        </addColumn>
-        <createSequence sequenceName="notebook_samples_seq" startValue="1" incrementBy="1"/>
-    </changeSet>
-
-    <changeSet id="add-questionnaire-response-uuid-to-notebook-samples" author="system">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <columnExists tableName="notebook_samples" columnName="questionnaire_response_uuid" schemaName="clinlims"/>
-            </not>
-        </preConditions>
-        <comment>Add questionnaire_response_uuid column to notebook_samples table to store FHIR QuestionnaireResponse UUID for each sample</comment>
-        <addColumn tableName="notebook_samples" schemaName="clinlims">
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_samples_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_item_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_samples_sampleitem"
+                             referencedTableName="sample_item" referencedColumnNames="id"/>
+            </column>
             <column name="questionnaire_response_uuid" type="UUID">
                 <constraints nullable="true"/>
             </column>
-        </addColumn>
-    </changeSet>
-
-    <changeSet id="add-last-updated-to-notebook-samples" author="system">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <columnExists tableName="notebook_samples" columnName="last_updated" schemaName="clinlims"/>
-            </not>
-        </preConditions>
-        <comment>Add last_updated column to notebook_samples table required by BaseObject entity</comment>
-        <addColumn tableName="notebook_samples" schemaName="clinlims">
             <column name="last_updated" type="datetime" valueComputed="${now}">
                 <constraints nullable="true"/>
             </column>
-        </addColumn>
+        </createTable>
+        <createSequence sequenceName="notebook_samples_seq" startValue="1" incrementBy="1"/>
     </changeSet>
 </databaseChangeLog>
