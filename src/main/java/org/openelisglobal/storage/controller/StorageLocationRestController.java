@@ -153,6 +153,35 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
+    /**
+     * OGC-75: Check if a room can be deleted (pre-flight check for frontend)
+     */
+    @GetMapping("/rooms/{id}/can-delete")
+    public ResponseEntity<Map<String, Object>> canDeleteRoom(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageRoom room = storageLocationService.getRoom(idInt);
+            if (room == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            if (storageLocationService.canDeleteLocation(room)) {
+                response.put("canDelete", true);
+                return ResponseEntity.ok(response);
+            } else {
+                String message = storageLocationService.getDeleteConstraintMessage(room);
+                response.put("canDelete", false);
+                response.put("error", "Cannot delete room");
+                response.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error checking room delete constraints", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @DeleteMapping("/rooms/{id}")
     public ResponseEntity<Map<String, Object>> deleteRoom(@PathVariable String id) {
         try {
@@ -320,6 +349,35 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
+    /**
+     * OGC-75: Check if a device can be deleted (pre-flight check for frontend)
+     */
+    @GetMapping("/devices/{id}/can-delete")
+    public ResponseEntity<Map<String, Object>> canDeleteDevice(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
+            if (device == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            if (storageLocationService.canDeleteLocation(device)) {
+                response.put("canDelete", true);
+                return ResponseEntity.ok(response);
+            } else {
+                String message = storageLocationService.getDeleteConstraintMessage(device);
+                response.put("canDelete", false);
+                response.put("error", "Cannot delete device");
+                response.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error checking device delete constraints", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @DeleteMapping("/devices/{id}")
     public ResponseEntity<Map<String, Object>> deleteDevice(@PathVariable String id) {
         try {
@@ -457,6 +515,35 @@ public class StorageLocationRestController extends BaseRestController {
         } catch (Exception e) {
             logger.error("Error updating shelf", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    /**
+     * OGC-75: Check if a shelf can be deleted (pre-flight check for frontend)
+     */
+    @GetMapping("/shelves/{id}/can-delete")
+    public ResponseEntity<Map<String, Object>> canDeleteShelf(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
+            if (shelf == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            if (storageLocationService.canDeleteLocation(shelf)) {
+                response.put("canDelete", true);
+                return ResponseEntity.ok(response);
+            } else {
+                String message = storageLocationService.getDeleteConstraintMessage(shelf);
+                response.put("canDelete", false);
+                response.put("error", "Cannot delete shelf");
+                response.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error checking shelf delete constraints", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -601,6 +688,35 @@ public class StorageLocationRestController extends BaseRestController {
         } catch (Exception e) {
             logger.error("Error updating rack", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    /**
+     * OGC-75: Check if a rack can be deleted (pre-flight check for frontend)
+     */
+    @GetMapping("/racks/{id}/can-delete")
+    public ResponseEntity<Map<String, Object>> canDeleteRack(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
+            if (rack == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            if (storageLocationService.canDeleteLocation(rack)) {
+                response.put("canDelete", true);
+                return ResponseEntity.ok(response);
+            } else {
+                String message = storageLocationService.getDeleteConstraintMessage(rack);
+                response.put("canDelete", false);
+                response.put("error", "Cannot delete rack");
+                response.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error checking rack delete constraints", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
