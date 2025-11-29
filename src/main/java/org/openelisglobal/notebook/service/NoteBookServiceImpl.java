@@ -185,6 +185,14 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         Hibernate.initialize(noteBook.getSamples());
         Hibernate.initialize(noteBook.getAnalysers());
         Hibernate.initialize(noteBook.getPages());
+        // Initialize panels and tests for each page (panels is LAZY to avoid
+        // MultipleBagFetchException)
+        if (noteBook.getPages() != null) {
+            for (NoteBookPage page : noteBook.getPages()) {
+                Hibernate.initialize(page.getPanels());
+                Hibernate.initialize(page.getTests());
+            }
+        }
         Hibernate.initialize(noteBook.getFiles());
         Hibernate.initialize(noteBook.getComments());
         Hibernate.initialize(noteBook.getEntries());
@@ -230,6 +238,14 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getAnalysers());
             Hibernate.initialize(noteBook.getSamples());
             Hibernate.initialize(noteBook.getPages());
+            // Initialize panels and tests for each page (panels is LAZY to avoid
+            // MultipleBagFetchException)
+            if (noteBook.getPages() != null) {
+                for (NoteBookPage page : noteBook.getPages()) {
+                    Hibernate.initialize(page.getPanels());
+                    Hibernate.initialize(page.getTests());
+                }
+            }
             Hibernate.initialize(noteBook.getFiles());
             Hibernate.initialize(noteBook.getComments());
             Hibernate.initialize(noteBook.getTags());
@@ -246,7 +262,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             fullDisplayBean.setContent(noteBook.getContent());
             fullDisplayBean.setObjective(noteBook.getObjective());
             fullDisplayBean.setProtocol(noteBook.getProtocol());
-            fullDisplayBean.setProject(noteBook.getProject());
             List<IdValuePair> analyzers = noteBook.getAnalysers().stream()
                     .map(analyzer -> new IdValuePair(analyzer.getId(), analyzer.getName())).toList();
             fullDisplayBean.setAnalyzers(analyzers);
@@ -261,6 +276,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             fullDisplayBean.setTechnicianId(Integer.valueOf(noteBook.getTechnician().getId()));
             fullDisplayBean.setIsTemplate(noteBook.getIsTemplate());
             fullDisplayBean.setEntriesCount(noteBook.getEntries().size());
+            fullDisplayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
 
             List<SampleDisplayBean> sampleDisplayBeans = new ArrayList<>();
 
@@ -319,12 +335,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (!GenericValidator.isBlankOrNull(form.getProtocol())) {
             noteBook.setProtocol(form.getProtocol());
         }
-        if (!GenericValidator.isBlankOrNull(form.getProject())) {
-            noteBook.setProject(form.getProject());
-        }
         noteBook.setIsTemplate(form.getIsTemplate());
         if (form.getStatus() != null) {
             noteBook.setStatus(form.getStatus());
+        }
+
+        if (form.getQuestionnaireFhirUuid() != null) {
+            noteBook.setQuestionnaireFhirUuid(form.getQuestionnaireFhirUuid());
         }
         // Set sysUserId for audit trail tracking
         if (form.getSystemUserId() != null) {
@@ -332,10 +349,18 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
         if (noteBook.getId() == null) {
             noteBook.setDateCreated(new Date());
-            noteBook.setTechnician(systemUserService.get(form.getSystemUserId().toString()));
+            // Only set technician from systemUserId if technicianId is not provided in form
+            if (form.getTechnicianId() != null) {
+                noteBook.setTechnician(systemUserService.get(form.getTechnicianId().toString()));
+            } else if (form.getSystemUserId() != null) {
+                noteBook.setTechnician(systemUserService.get(form.getSystemUserId().toString()));
+            }
         } else {
             noteBook.setDateCreated(noteBook.getDateCreated());
-            noteBook.setTechnician(systemUserService.get(form.getTechnicianId().toString()));
+            // Only update technician if provided in form, otherwise keep existing
+            if (form.getTechnicianId() != null) {
+                noteBook.setTechnician(systemUserService.get(form.getTechnicianId().toString()));
+            }
         }
 
         noteBook.getAnalysers().clear();

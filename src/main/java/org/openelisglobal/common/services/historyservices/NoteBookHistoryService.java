@@ -77,7 +77,6 @@ public class NoteBookHistoryService extends AbstractHistoryService {
         newValueMap = new HashMap<>();
         newValueMap.put(TITLE_ATTRIBUTE, noteBook.getTitle());
         newValueMap.put(TYPE_ATTRIBUTE, noteBook.getType() != null ? noteBook.getType().getDictEntry() : "");
-        newValueMap.put(PROJECT_ATTRIBUTE, noteBook.getProject());
         newValueMap.put(OBJECTIVE_ATTRIBUTE, noteBook.getObjective());
         newValueMap.put(PROTOCOL_ATTRIBUTE, noteBook.getProtocol());
         newValueMap.put(CONTENT_ATTRIBUTE, noteBook.getContent());

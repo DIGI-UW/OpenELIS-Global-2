@@ -14,8 +14,6 @@ public class NoteBookForm {
     private String title;
     private Integer type;
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String project;
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String objective;
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String protocol;
@@ -32,6 +30,7 @@ public class NoteBookForm {
     private List<Integer> analyzerIds;
     private Integer templateId;
     private Boolean isTemplate;
+    private java.util.UUID questionnaireFhirUuid;
 
     public String getTitle() {
         return title;
@@ -47,14 +46,6 @@ public class NoteBookForm {
 
     public void setType(Integer type) {
         this.type = type;
-    }
-
-    public String getProject() {
-        return project;
-    }
-
-    public void setProject(String project) {
-        this.project = project;
     }
 
     public String getObjective() {
@@ -175,6 +166,14 @@ public class NoteBookForm {
 
     public void setComments(List<NoteBookCommentForm> comments) {
         this.comments = comments;
+    }
+
+    public java.util.UUID getQuestionnaireFhirUuid() {
+        return questionnaireFhirUuid;
+    }
+
+    public void setQuestionnaireFhirUuid(java.util.UUID questionnaireFhirUuid) {
+        this.questionnaireFhirUuid = questionnaireFhirUuid;
     }
 
     public static class NoteBookFileForm extends NoteBookFile {

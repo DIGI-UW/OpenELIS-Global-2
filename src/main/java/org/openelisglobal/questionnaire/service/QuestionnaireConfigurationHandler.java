@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.InputStream;
 import java.util.UUID;
 import liquibase.repackaged.org.apache.commons.lang3.StringUtils;
+import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
@@ -45,6 +46,10 @@ public class QuestionnaireConfigurationHandler implements DomainConfigurationHan
             String uuid = generateUUIDFromFilename(fileName);
             questionnaire.setId(uuid);
         }
+        questionnaire.addIdentifier(new Identifier().setSystem(fhirConfig.getOeFhirSystem() + "/notebook_questionare")
+                .setValue(questionnaire.getTitle() != null ? questionnaire.getTitle()
+                        : questionnaire.getName() != null ? questionnaire.getName()
+                                : questionnaire.getIdElement().getIdPart()));
 
         // Save to FHIR store
         fhirPersistanceService.updateFhirResourceInFhirStore(questionnaire);
