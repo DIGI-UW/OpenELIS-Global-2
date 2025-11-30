@@ -141,12 +141,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return;
         }
 
-        // Validate constraints before deletion
-        if (!canDeleteRoom(room)) {
-            String message = getDeleteConstraintMessage(room);
-            throw new LIMSRuntimeException(message);
-        }
-
+        // Note: Constraint validation is done in the controller before calling this
+        // method
+        // This method assumes constraints have been validated
         delete(room);
     }
 

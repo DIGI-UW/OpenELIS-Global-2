@@ -10,7 +10,12 @@ import {
   Tooltip,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, hasRole, Roles } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  hasRole,
+  Roles,
+  deleteFromOpenElisServerFullResponse,
+} from "../../utils/Utils";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import "./DeleteLocationModal.css";
 
@@ -148,16 +153,9 @@ const DeleteLocationModal = ({
 
     const endpoint = `/rest/storage/${getLocationTypePlural(locationType)}/${location.id}`;
 
-    // Use fetch directly for DELETE
-    fetch(`${window.location.origin}${endpoint}`, {
-      credentials: "include",
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
-    })
-      .then(async (response) => {
+    deleteFromOpenElisServerFullResponse(
+      endpoint,
+      async (response) => {
         setIsDeleting(false);
 
         if (response.ok) {
@@ -201,16 +199,9 @@ const DeleteLocationModal = ({
               }),
           );
         }
-      })
-      .catch((error) => {
-        setIsDeleting(false);
-        setError(
-          intl.formatMessage({
-            id: "storage.delete.error",
-            defaultMessage: "Failed to delete location",
-          }),
-        );
-      });
+      },
+      null,
+    );
   };
 
   const handleClose = () => {

@@ -10,6 +10,7 @@ import { NotificationContext } from "../../layout/Layout";
 
 // Mock the API utilities
 jest.mock("../../utils/Utils", () => ({
+  ...jest.requireActual("../../utils/Utils"),
   getFromOpenElisServer: jest.fn(),
 }));
 

@@ -5,20 +5,37 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import DeleteLocationModal from "../LocationManagement/DeleteLocationModal";
 import messages from "../../../languages/en.json";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 
 // Mock the API utilities
 const mockGetFromOpenElisServer = jest.fn();
 const mockPostToOpenElisServer = jest.fn();
 
 jest.mock("../../utils/Utils", () => ({
+  ...jest.requireActual("../../utils/Utils"),
   getFromOpenElisServer: (...args) => mockGetFromOpenElisServer(...args),
   postToOpenElisServer: (...args) => mockPostToOpenElisServer(...args),
 }));
 
-const renderWithIntl = (component) => {
+const mockUserSessionDetailsAdmin = {
+  roles: ["Global Administrator"],
+};
+
+const mockUserSessionDetailsNonAdmin = {
+  roles: [],
+};
+
+const renderWithIntl = (component, isAdmin = true) => {
+  const userSessionDetails = isAdmin
+    ? mockUserSessionDetailsAdmin
+    : mockUserSessionDetailsNonAdmin;
   return render(
     <IntlProvider locale="en" messages={messages}>
-      {component}
+      <UserSessionDetailsContext.Provider
+        value={{ userSessionDetails: userSessionDetails }}
+      >
+        {component}
+      </UserSessionDetailsContext.Provider>
     </IntlProvider>,
   );
 };
@@ -59,6 +76,7 @@ describe("DeleteLocationModal", () => {
       }, 0);
     });
 
+    // Use non-admin user to test error message display
     renderWithIntl(
       <DeleteLocationModal
         open={true}
@@ -67,6 +85,7 @@ describe("DeleteLocationModal", () => {
         onClose={mockOnClose}
         onDelete={mockOnDelete}
       />,
+      false, // isAdmin = false
     );
 
     // Wait for constraint check to complete
