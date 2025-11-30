@@ -302,23 +302,6 @@ const LocationSearchAndCreate = ({
           null,
       };
 
-              ),
-              hierarchicalPath: locationWithFlexibleFields?.hierarchicalPath,
-              hierarchical_path: locationWithFlexibleFields?.hierarchical_path,
-              type: locationWithFlexibleFields?.type,
-              locationId: locationWithFlexibleFields?.locationId,
-              locationType: locationWithFlexibleFields?.locationType,
-              positionCoordinate:
-                locationWithFlexibleFields?.positionCoordinate,
-              hasRoom: !!locationWithFlexibleFields?.room,
-              hasDevice: !!locationWithFlexibleFields?.device,
-              hasShelf: !!locationWithFlexibleFields?.shelf,
-            },
-            null,
-            2,
-          ),
-        );
-      }
       onLocationChange(locationWithFlexibleFields);
     }
     setShowCreateForm(false);
@@ -466,21 +449,6 @@ const LocationSearchAndCreate = ({
         }
       }
 
-              device: locationToPass.device
-                ? {
-                    id: locationToPass.device.id,
-                    name: locationToPass.device.name,
-                  }
-                : null,
-              hierarchical_path: locationToPass.hierarchical_path,
-              selectedCount,
-            },
-            null,
-            2,
-          ),
-        );
-      }
-
       // CRITICAL: Call onLocationChange FIRST (synchronously) - this updates parent's ref immediately
       // Then close form synchronously (like handleSearchSelect does)
       if (onLocationChange) {
@@ -522,7 +490,6 @@ const LocationSearchAndCreate = ({
     Boolean,
   ).length;
   const canAddLocation = selectedCount >= 2;
-
 
   return (
     <div

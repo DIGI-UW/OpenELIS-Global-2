@@ -54,7 +54,14 @@
         active_begin="2013-11-01" active_end="2013-12-01"
         lastupdated="2023-10-01 12:00:00" />
 
-    <!-- status_of_sample entries removed - reference table managed by Liquibase -->
+    <status_of_sample id="1"
+        description="Sample Description 1" code="1" status_type="SampleType1"
+        lastupdated="2025-03-18" name="Status 1"
+        display_key="sample_display_key_1" is_active="Y" />
+    <status_of_sample id="2"
+        description="Sample Description 2" code="1" status_type="SampleType2"
+        lastupdated="2025-03-18" name="Status 2"
+        display_key="sample_display_key_2" is_active="Y" />
 
     <!-- type_of_sample -->
     <type_of_sample id="1" description="Blood Sample"

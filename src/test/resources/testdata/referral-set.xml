@@ -10,7 +10,15 @@
     <type_of_sample id="902" description="Urine Sample"
         name_localization_id="2" lastupdated="2023-12-01 12:00:00" />
 
-    <!-- status_of_sample entries removed - reference table managed by Liquibase -->
+    <status_of_sample id="1"
+        description="Sample is currently being processed" code="100"
+        status_type="EXTERNAL_ORDER" lastupdated="2024-01-01 10:00:00"
+        name="Entered" display_key="status.inprogress" is_active="Y" />
+
+    <status_of_sample id="2"
+        description="Sample analysis is finalized and ready for reporting"
+        code="200" status_type="ANALYSIS" lastupdated="2024-01-01 12:30:00"
+        name="Finalized" display_key="status.finalized" is_active="Y" />
 
     <organization id="401" lastupdated="2024-06-03 12:00:00.0"
         name="Global Health Org" city="New York" zip_code="10001"

@@ -1,5 +1,12 @@
 <dataset>
-    <!-- status_of_sample entries removed - reference table managed by Liquibase -->
+    <status_of_sample id="7001"
+        description="Sample Description 1" code="1" status_type="SampleType1"
+        lastupdated="2025-03-18" name="Status 1"
+        display_key="sample_display_key_1" is_active="Y" />
+    <status_of_sample id="7002"
+        description="Sample Description 2" code="1" status_type="SampleType2"
+        lastupdated="2025-03-18" name="Status 2"
+        display_key="sample_display_key_2" is_active="Y" />
 
     <test id="4001" description="Blood Test" loinc="123456"
         reporting_description="Complete Blood Count" sticker_req_flag="Y"

@@ -269,6 +269,11 @@ public class StatusService implements IStatusService {
             return;
         }
 
+        // Defensive check: can't persist status for entities without IDs
+        if (sample.getId() == null || patient.getId() == null) {
+            return;
+        }
+
         List<ObservationHistory> observationList = observationHistoryService.getAll(patient, sample);
 
         ObservationHistory sampleRecord = null;

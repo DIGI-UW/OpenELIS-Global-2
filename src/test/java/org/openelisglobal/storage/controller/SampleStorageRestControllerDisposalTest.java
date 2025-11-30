@@ -36,11 +36,17 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         objectMapper = new ObjectMapper();
         jdbcTemplate = new JdbcTemplate(dataSource);
         cleanStorageTestData();
+        // Ensure SampleDisposed status exists (insert if missing, e.g., if
+        // status_of_sample was truncated)
         Integer disposedCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM status_of_sample WHERE name = 'SampleDisposed' AND status_type = 'SAMPLE'",
                 Integer.class);
-        assertTrue("SampleDisposed status must be pre-seeded for disposal tests",
-                disposedCount != null && disposedCount.intValue() > 0);
+        if (disposedCount == null || disposedCount.intValue() == 0) {
+            jdbcTemplate.update(
+                    "INSERT INTO status_of_sample (id, description, code, status_type, lastupdated, name, display_key, is_active) "
+                            + "VALUES (24, 'Sample has been physically disposed', 1, 'SAMPLE', CURRENT_TIMESTAMP, 'SampleDisposed', 'status.sample.disposed', 'Y') "
+                            + "ON CONFLICT (id) DO UPDATE SET name = 'SampleDisposed'");
+        }
     }
 
     @After
