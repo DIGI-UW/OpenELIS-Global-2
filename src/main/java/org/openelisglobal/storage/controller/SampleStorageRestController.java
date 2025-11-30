@@ -113,6 +113,33 @@ public class SampleStorageRestController extends BaseRestController {
     }
 
     /**
+     * Get storage location for a specific SampleItem by ID GET
+     * /rest/storage/sample-items/{sampleItemId}
+     */
+    @GetMapping("/{sampleItemId}")
+    public ResponseEntity<Map<String, Object>> getSampleItemLocation(@PathVariable String sampleItemId) {
+        try {
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItemId);
+            if (location == null || location.isEmpty()) {
+                // Return empty location (not assigned yet)
+                Map<String, Object> response = new HashMap<>();
+                response.put("sampleItemId", sampleItemId);
+                response.put("location", "");
+                response.put("hierarchicalPath", "");
+                return ResponseEntity.ok(response);
+            }
+            return ResponseEntity.ok(location);
+        } catch (Exception e) {
+            logger.error("Error getting location for SampleItem: " + sampleItemId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Assign SampleItem to storage position POST /rest/storage/sample-items/assign
      */
     @PostMapping("/assign")

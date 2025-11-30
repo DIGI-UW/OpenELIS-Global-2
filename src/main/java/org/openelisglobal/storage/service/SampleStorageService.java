@@ -79,4 +79,13 @@ public interface SampleStorageService {
      * @return Map containing disposalId, disposedDate, and previous location info
      */
     java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes);
+
+    /**
+     * Get storage location for a specific SampleItem
+     * 
+     * @param sampleItemId SampleItem ID
+     * @return Map with location details including hierarchicalPath, or empty map if
+     *         not assigned
+     */
+    java.util.Map<String, Object> getSampleItemLocation(String sampleItemId);
 }

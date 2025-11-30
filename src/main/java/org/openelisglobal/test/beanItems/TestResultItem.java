@@ -136,6 +136,9 @@ public class TestResultItem implements ResultItem, Serializable {
 
     private String patientId;
 
+    @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
+    private String sampleItemId;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { WorkplanForm.PrintWorkplan.class })
     private String patientInfo;
 
@@ -988,6 +991,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setPatientId(String patientId) {
         this.patientId = patientId;
+    }
+
+    public String getSampleItemId() {
+        return sampleItemId;
+    }
+
+    public void setSampleItemId(String sampleItemId) {
+        this.sampleItemId = sampleItemId;
     }
 
     public ResultFileForm getResultFile() {

@@ -172,6 +172,33 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         return response;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getSampleItemLocation(String sampleItemId) {
+        if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+            return new HashMap<>();
+        }
+
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItemId);
+        if (assignment == null) {
+            return new HashMap<>();
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("sampleItemId", sampleItemId);
+
+        String hierarchicalPath = buildHierarchicalPathForAssignment(assignment);
+        result.put("location", hierarchicalPath != null ? hierarchicalPath : "");
+        result.put("hierarchicalPath", hierarchicalPath != null ? hierarchicalPath : "");
+        result.put("assignedBy", assignment.getAssignedByUserId());
+        result.put("assignedDate", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+        result.put("positionCoordinate",
+                assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "");
+        result.put("notes", assignment.getNotes() != null ? assignment.getNotes() : "");
+
+        return result;
+    }
+
     /**
      * Build hierarchical path for an assignment based on its locationType.
      */

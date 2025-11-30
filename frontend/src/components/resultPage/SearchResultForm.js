@@ -787,7 +787,7 @@ export function SearchResults(props) {
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sampleLocations, setSampleLocations] = useState({}); // Track location for each sample by accessionNumber
+  const [sampleLocations, setSampleLocations] = useState({}); // Track location by analysisId
 
   const componentMounted = useRef(false);
 
@@ -1273,62 +1273,66 @@ export function SearchResults(props) {
     }
   };
 
-  // Fetch location for a sample when expanded
-  // Search by parent Sample accession number to find SampleItems
-  const fetchSampleLocation = (accessionNumber) => {
-    if (!accessionNumber || sampleLocations[accessionNumber]) {
-      return; // Already fetched or no accession number
+  // Fetch location for a SampleItem when analysis row is expanded
+  const fetchSampleLocation = (analysisId, sampleItemId) => {
+    // Skip if already fetched or no sampleItemId
+    if (!sampleItemId || sampleLocations[analysisId]) {
+      return;
     }
+
     getFromOpenElisServer(
-      `/rest/storage/sample-items/search?q=${encodeURIComponent(accessionNumber)}`,
+      `/rest/storage/sample-items/${encodeURIComponent(sampleItemId)}`,
       (response) => {
-        if (response && response.length > 0) {
-          // Get first SampleItem (or could allow user to select which SampleItem if multiple)
-          const sampleItem = response[0];
+        if (response) {
           const locationPath =
-            sampleItem.hierarchicalPath || sampleItem.location || "";
-          // Store SampleItem data for later use in assignment
+            response.hierarchicalPath || response.location || "";
           setSampleLocations((prev) => ({
             ...prev,
-            [accessionNumber]: {
+            [analysisId]: {
               locationPath,
-              sampleItemId: sampleItem.sampleItemId || sampleItem.id,
-              sampleItemExternalId: sampleItem.sampleItemExternalId || null,
-              sampleAccessionNumber:
-                sampleItem.sampleAccessionNumber || accessionNumber,
+              sampleItemId: sampleItemId,
+              sampleItemExternalId: response.sampleItemExternalId || null,
+              sampleAccessionNumber: response.sampleAccessionNumber || "",
             },
           }));
         }
       },
       (error) => {
-        // Sample may not have location assigned yet
-        console.debug("No location found for sample:", accessionNumber);
+        // SampleItem may not have location assigned yet
+        console.debug("No location found for SampleItem:", sampleItemId);
+        // Store empty location to prevent repeated calls
+        setSampleLocations((prev) => ({
+          ...prev,
+          [analysisId]: { locationPath: "", sampleItemId: sampleItemId },
+        }));
       },
     );
   };
 
   // Handle location assignment
   // Uses SampleItem ID from stored location data or from locationData
-  const handleLocationAssignment = async (locationData, accessionNumber) => {
+  const handleLocationAssignment = async (
+    locationData,
+    analysisId,
+    sampleItemId,
+  ) => {
     // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
     const newLocation = locationData?.newLocation || locationData;
 
-    // Get SampleItem ID from stored location data (from fetchSampleLocation) or from locationData
-    const storedLocationData = sampleLocations[accessionNumber];
-    const sampleItemId =
+    // Use sampleItemId from parameter or stored location data
+    const actualSampleItemId =
       locationData?.sample?.sampleItemId ||
       locationData?.sample?.id ||
-      locationData?.sample?.sampleId ||
-      (storedLocationData && typeof storedLocationData === "object"
-        ? storedLocationData.sampleItemId
-        : null) ||
-      null;
+      sampleItemId ||
+      (sampleLocations[analysisId] &&
+      typeof sampleLocations[analysisId] === "object"
+        ? sampleLocations[analysisId].sampleItemId
+        : null);
 
-    if (!sampleItemId || !newLocation) {
+    if (!actualSampleItemId || !newLocation) {
       console.error("Missing SampleItem ID or location for assignment", {
-        sampleItemId,
+        sampleItemId: actualSampleItemId,
         newLocation,
-        locationData,
       });
       return;
     }
@@ -1336,7 +1340,7 @@ export function SearchResults(props) {
     try {
       // Call assignment API with SampleItem ID
       const assignmentData = {
-        sampleItemId: sampleItemId,
+        sampleItemId: actualSampleItemId,
         locationId:
           newLocation.rack?.id ||
           newLocation.shelf?.id ||
@@ -1360,10 +1364,10 @@ export function SearchResults(props) {
           if (response && response.success) {
             // Update local state with location path
             const locationPath = response.hierarchicalPath || "";
-            const storedData = sampleLocations[accessionNumber];
+            const storedData = sampleLocations[analysisId];
             setSampleLocations((prev) => ({
               ...prev,
-              [accessionNumber]:
+              [analysisId]:
                 storedData && typeof storedData === "object"
                   ? { ...storedData, locationPath }
                   : locationPath,
@@ -1406,14 +1410,16 @@ export function SearchResults(props) {
   };
 
   const renderReferral = ({ data }) => {
-    // Fetch location when row is expanded
-    const accessionNumber = data.accessionNumber;
-    if (accessionNumber && !sampleLocations[accessionNumber]) {
-      fetchSampleLocation(accessionNumber);
+    // Fetch location when row is expanded using sampleItemId
+    const analysisId = data.id;
+    const sampleItemId = data.sampleItemId;
+
+    if (sampleItemId && !sampleLocations[analysisId]) {
+      fetchSampleLocation(analysisId, sampleItemId);
     }
 
-    // Get location path from stored data (can be string or object)
-    const locationData = sampleLocations[accessionNumber];
+    // Get location path from stored data (keyed by analysisId)
+    const locationData = sampleLocations[analysisId];
     const currentLocationPath =
       typeof locationData === "object"
         ? locationData.locationPath || ""
@@ -1557,29 +1563,23 @@ export function SearchResults(props) {
               workflow="results"
               showQuickFind={true}
               sampleInfo={{
-                // Use SampleItem data if available, otherwise fall back to Sample accession number
-                sampleItemId:
-                  locationData && typeof locationData === "object"
-                    ? locationData.sampleItemId
-                    : null,
+                sampleItemId: sampleItemId || null,
                 sampleItemExternalId:
                   locationData && typeof locationData === "object"
                     ? locationData.sampleItemExternalId
                     : null,
-                sampleAccessionNumber:
-                  locationData && typeof locationData === "object"
-                    ? locationData.sampleAccessionNumber
-                    : accessionNumber,
-                sampleId:
-                  locationData && typeof locationData === "object"
-                    ? locationData.sampleItemId
-                    : accessionNumber, // Legacy fallback
+                sampleAccessionNumber: data.accessionNumber,
+                sampleId: sampleItemId || data.accessionNumber, // Use sampleItemId
                 type: data.sampleType || "",
                 status: data.sampleStatus || "Active",
               }}
               hierarchicalPath={currentLocationPath}
               onLocationChange={(locationData) => {
-                handleLocationAssignment(locationData, accessionNumber);
+                handleLocationAssignment(
+                  locationData,
+                  analysisId,
+                  sampleItemId,
+                );
               }}
             />
           </Column>

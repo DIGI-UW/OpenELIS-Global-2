@@ -94,7 +94,7 @@ public class SampleStorageServiceDisposalTest {
         // Arrange
         when(sampleItemDAO.get("sample-item-123")).thenReturn(Optional.of(testSampleItem));
         when(sampleStorageAssignmentDAO.findBySampleItemId("sample-item-123")).thenReturn(null);
-        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
+        // No movement record created when there's no previous assignment (no previous location)
 
         // Act
         Map<String, Object> result = sampleStorageService.disposeSampleItem("sample-item-123", "expired", "autoclave",
@@ -105,6 +105,8 @@ public class SampleStorageServiceDisposalTest {
         assertEquals("Status ID should be set to disposed status ID", DISPOSED_STATUS_ID, testSampleItem.getStatusId());
         assertEquals("sample-item-123", result.get("sampleItemId"));
         assertEquals("disposed", result.get("status"));
+        // Verify no movement record was created (no previous location to track)
+        verify(sampleStorageMovementDAO, never()).insert(any(SampleStorageMovement.class));
     }
 
     @Test
