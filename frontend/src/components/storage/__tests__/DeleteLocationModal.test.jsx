@@ -246,4 +246,90 @@ describe("DeleteLocationModal", () => {
     expect(mockOnClose).toHaveBeenCalledTimes(1);
     expect(mockOnDelete).not.toHaveBeenCalled();
   });
+
+  /**
+   * OGC-75: Test shelf deletion calls correct endpoint with "shelves" (not "shelfs")
+   */
+  test("testDeleteModal_ShelfType_UsesCorrectPlural", async () => {
+    const mockShelfLocation = {
+      id: "20",
+      name: "Shelf A",
+      code: "SHELF-A",
+      type: "shelf",
+    };
+
+    let capturedEndpoint = null;
+    mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
+      capturedEndpoint = endpoint;
+      setTimeout(() => {
+        callback({
+          status: 200,
+          data: { canDelete: true },
+        });
+      }, 0);
+    });
+
+    renderWithIntl(
+      <DeleteLocationModal
+        open={true}
+        location={mockShelfLocation}
+        locationType="shelf"
+        onClose={mockOnClose}
+        onDelete={mockOnDelete}
+      />,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Verify endpoint uses "shelves" not "shelfs"
+    expect(capturedEndpoint).toBe("/rest/storage/shelves/20/can-delete");
+  });
+
+  /**
+   * OGC-75: Test all location types generate correct plural URLs
+   */
+  test("testDeleteModal_AllLocationTypes_GenerateCorrectPlurals", async () => {
+    const locationTypes = [
+      { type: "room", expected: "rooms" },
+      { type: "device", expected: "devices" },
+      { type: "shelf", expected: "shelves" },
+      { type: "rack", expected: "racks" },
+    ];
+
+    for (const { type, expected } of locationTypes) {
+      jest.clearAllMocks();
+      let capturedEndpoint = null;
+
+      const mockLocation = {
+        id: "1",
+        name: `Test ${type}`,
+        code: `TEST-${type.toUpperCase()}`,
+        type: type,
+      };
+
+      mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
+        capturedEndpoint = endpoint;
+        setTimeout(() => {
+          callback({
+            status: 200,
+            data: { canDelete: true },
+          });
+        }, 0);
+      });
+
+      renderWithIntl(
+        <DeleteLocationModal
+          open={true}
+          location={mockLocation}
+          locationType={type}
+          onClose={mockOnClose}
+          onDelete={mockOnDelete}
+        />,
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(capturedEndpoint).toBe(`/rest/storage/${expected}/1/can-delete`);
+    }
+  });
 });

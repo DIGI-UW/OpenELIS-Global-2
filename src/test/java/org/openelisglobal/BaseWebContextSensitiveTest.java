@@ -6,8 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashSet;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
@@ -112,6 +115,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     /**
      * Helper method to clear out all rows in specified tables within the given
      * dataset in the current connection.
+     * 
+     * Reference data tables (as defined in reference_tables) are NOT truncated to
+     * preserve Liquibase-created reference data.
      *
      * @param tableNames The names of the tables to truncate.
      * @throws SQLException If an error occurs during truncation.
@@ -119,7 +125,21 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     protected void cleanRowsInCurrentConnection(String[] tableNames) throws SQLException, DatabaseUnitException {
         IDatabaseConnection connection = new DatabaseConnection(dataSource.getConnection());
         try (Connection conn = connection.getConnection(); Statement stmt = conn.createStatement()) {
+            // Get list of reference data tables that should NOT be truncated
+            Set<String> referenceTables = new HashSet<>();
+            try (ResultSet rs = stmt
+                    .executeQuery("SELECT UPPER(name) FROM clinlims.reference_tables WHERE name IS NOT NULL")) {
+                while (rs.next()) {
+                    referenceTables.add(rs.getString(1));
+                }
+            }
+
             for (String tableName : tableNames) {
+                // Skip reference data tables - they are managed by Liquibase
+                if (referenceTables.contains(tableName.toUpperCase())) {
+                    logger.info("Skipping reference data table: {} (managed by Liquibase)", tableName);
+                    continue;
+                }
                 String truncateQuery = "TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE";
                 logger.info("Truncating table: {}", tableName);
                 stmt.execute(truncateQuery);

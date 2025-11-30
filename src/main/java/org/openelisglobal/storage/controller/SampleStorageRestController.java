@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.form.SampleDisposalForm;
@@ -46,6 +48,9 @@ public class SampleStorageRestController extends BaseRestController {
     @Autowired
     private StorageDashboardService storageDashboardService;
 
+    @Autowired
+    private IStatusService statusService;
+
     /**
      * Get all SampleItems with storage assignments GET /rest/storage/sample-items
      * Supports filtering by location and status (FR-065)
@@ -65,10 +70,11 @@ public class SampleStorageRestController extends BaseRestController {
                 long totalSampleItems = allAssignments.size();
                 long active = allAssignments.stream()
                         .filter(a -> a.getSampleItem() != null && (a.getSampleItem().getStatusId() == null
-                                || !"disposed".equalsIgnoreCase(a.getSampleItem().getStatusId())))
+                                || !statusService.matches(a.getSampleItem().getStatusId(), SampleStatus.Disposed)))
                         .count();
-                long disposed = allAssignments.stream().filter(
-                        a -> a.getSampleItem() != null && "disposed".equalsIgnoreCase(a.getSampleItem().getStatusId()))
+                long disposed = allAssignments.stream()
+                        .filter(a -> a.getSampleItem() != null
+                                && statusService.matches(a.getSampleItem().getStatusId(), SampleStatus.Disposed))
                         .count();
 
                 // Count unique storage locations (rooms, devices, shelves, racks)
@@ -97,15 +103,6 @@ public class SampleStorageRestController extends BaseRestController {
                     // No filters - return all SampleItems
                     response = sampleStorageService.getAllSamplesWithAssignments();
                     logger.info("Returning {} SampleItems with storage assignments", response.size());
-
-                    // DEBUG: Check if response has positionCoordinate for sample 10001
-                    for (Map<String, Object> map : response) {
-                        if ("10001".equals(String.valueOf(map.get("id")))) {
-                            System.out.println("[CONTROLLER] Sample 10001 before JSON: positionCoordinate='"
-                                    + map.get("positionCoordinate") + "', keys=" + map.keySet());
-                            break;
-                        }
-                    }
                 }
                 return ResponseEntity.ok(response);
             }
@@ -384,25 +381,6 @@ public class SampleStorageRestController extends BaseRestController {
     @PostMapping("/dispose")
     public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form) {
         try {
-            // Validate required fields
-            if (form.getSampleItemId() == null || form.getSampleItemId().trim().isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("message", "SampleItem ID is required");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-            }
-
-            if (form.getReason() == null || form.getReason().trim().isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("message", "Disposal reason is required");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-            }
-
-            if (form.getMethod() == null || form.getMethod().trim().isEmpty()) {
-                Map<String, Object> error = new HashMap<>();
-                error.put("message", "Disposal method is required");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-            }
-
             // Log incoming request for debugging
             if (logger.isDebugEnabled()) {
                 logger.debug("Disposing SampleItem {}: reason={}, method={}", form.getSampleItemId(), form.getReason(),

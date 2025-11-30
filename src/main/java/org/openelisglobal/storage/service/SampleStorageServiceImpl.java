@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.*;
@@ -37,6 +39,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Autowired
     private StorageLocationService storageLocationService;
+
+    @Autowired
+    private IStatusService statusService;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
@@ -163,27 +168,6 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
         logger.info("getAllSamplesWithAssignments: Returning {} SampleItems (assigned and unassigned)",
                 response.size());
-
-        // DEBUG: Print first map keys and sample 10001 data
-        if (!response.isEmpty()) {
-            System.out.println("====== DEBUG getAllSamplesWithAssignments ======");
-            System.out.println("First map ID: " + response.get(0).get("id"));
-            System.out.println("First map positionCoordinate: '" + response.get(0).get("positionCoordinate") + "'");
-
-            // Find and log sample 10001 specifically
-            for (Map<String, Object> map : response) {
-                if ("10001".equals(String.valueOf(map.get("id")))) {
-                    System.out.println("--- Sample 10001 ---");
-                    System.out.println("ID: " + map.get("id"));
-                    System.out.println("location: " + map.get("location"));
-                    System.out.println("positionCoordinate: '" + map.get("positionCoordinate") + "'");
-                    System.out.println("notes: '" + map.get("notes") + "'");
-                    break;
-                }
-            }
-            System.out.println("Total samples: " + response.size());
-            System.out.println("===============================================");
-        }
 
         return response;
     }
@@ -909,7 +893,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     .orElseThrow(() -> new LIMSRuntimeException("SampleItem not found: " + sampleItemId));
 
             // Check if already disposed
-            if ("disposed".equalsIgnoreCase(sampleItem.getStatusId())) {
+            if (sampleItem.getStatusId() != null
+                    && statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {
                 throw new LIMSRuntimeException("SampleItem is already disposed");
             }
 
@@ -948,24 +933,32 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             // Update SampleItem status to "disposed"
-            sampleItem.setStatusId("disposed");
+            String disposedId = statusService.getStatusID(SampleStatus.Disposed);
+            logger.info("Resolved disposed status ID: {}", disposedId);
+            sampleItem.setStatusId(disposedId);
             sampleItemDAO.update(sampleItem);
 
             // Create audit movement record for disposal
-            SampleStorageMovement movement = new SampleStorageMovement();
-            movement.setSampleItem(sampleItem);
-            movement.setPreviousLocationId(previousLocationId);
-            movement.setPreviousLocationType(previousLocationType);
-            movement.setPreviousPositionCoordinate(previousPositionCoordinate);
-            movement.setNewLocationId(null); // No new location - disposed
-            movement.setNewLocationType("disposed");
-            movement.setNewPositionCoordinate(null);
-            movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
-            movement.setReason(
-                    "Disposal: " + reason + " | Method: " + method + (notes != null ? " | Notes: " + notes : ""));
-            movement.setMovedByUserId(1); // Default to system user
+            // Only create movement record if there was a previous location (constraint
+            // requires at least one location)
+            Integer movementIdInt = null;
+            if (previousLocationId != null && previousLocationType != null) {
+                SampleStorageMovement movement = new SampleStorageMovement();
+                movement.setSampleItem(sampleItem);
+                movement.setPreviousLocationId(previousLocationId);
+                movement.setPreviousLocationType(previousLocationType);
+                movement.setPreviousPositionCoordinate(previousPositionCoordinate);
+                // For disposal, new_location is NULL (no new location)
+                movement.setNewLocationId(null);
+                movement.setNewLocationType(null);
+                movement.setNewPositionCoordinate(null);
+                movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
+                movement.setReason(
+                        "Disposal: " + reason + " | Method: " + method + (notes != null ? " | Notes: " + notes : ""));
+                movement.setMovedByUserId(1); // Default to system user
 
-            Integer movementIdInt = sampleStorageMovementDAO.insert(movement);
+                movementIdInt = sampleStorageMovementDAO.insert(movement);
+            }
             String movementId = movementIdInt != null ? movementIdInt.toString() : null;
 
             // Log successful disposal

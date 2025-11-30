@@ -33,10 +33,7 @@
         notify_results="true" name_localization_id="2" />
 
     <!-- Status of Sample Entries -->
-    <status_of_sample id="1" code="1" is_active="1"
-        status_type="Pending" description="Awaiting testing"
-        lastupdated="2024-01-01 00:00:00" name="Pending"
-        display_key="status.pending" />
+    <!-- status_of_sample entries removed - reference table managed by Liquibase -->
 
     <!-- Sample Entries -->
     <sample id="1" accession_number="TEST001" domain="H"

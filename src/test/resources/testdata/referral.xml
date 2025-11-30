@@ -58,10 +58,7 @@
         name_localization_id="2" lastupdated="2023-12-01 12:00:00" />
 
     <!-- Status of Sample -->
-    <status_of_sample id="1" code="100"
-        status_type="Received" lastupdated="2023-12-01 12:00:00" />
-    <status_of_sample id="2" code="200"
-        status_type="In Progress" lastupdated="2023-12-01 12:00:00" />
+    <!-- status_of_sample entries removed - reference table managed by Liquibase -->
 
     <!-- Test Section -->
     <test_section id="1" name="Chemistry"

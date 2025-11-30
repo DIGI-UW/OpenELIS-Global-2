@@ -267,16 +267,8 @@ const StorageDashboard = () => {
     const locationName = name || label || "";
     const locationCode = code || label || "";
 
-    console.log("[StorageDashboard] handlePrintLabelConfirm called", {
-      printLabelLocationData,
-      type,
-      id,
-      serverBaseUrl: config.serverBaseUrl,
-    });
-
     try {
       const endpoint = `${config.serverBaseUrl}/rest/storage/${type}/${id}/print-label`;
-      console.log("[StorageDashboard] Print label endpoint:", endpoint);
 
       // Fetch PDF using POST request
       const response = await fetch(endpoint, {
@@ -429,16 +421,6 @@ const StorageDashboard = () => {
       conditionNotes !== undefined && conditionNotes !== null;
     const isMetadataOnlyUpdate =
       !isAssignment && !newLocation && (hasPositionUpdate || hasNotesUpdate);
-
-    console.log("[StorageDashboard] handleLocationModalConfirm", {
-      isAssignment,
-      hasNewLocation: !!newLocation,
-      hasPositionUpdate,
-      hasNotesUpdate,
-      isMetadataOnlyUpdate,
-      positionCoordinate,
-      conditionNotes,
-    });
 
     try {
       // Handle metadata-only update
@@ -649,7 +631,6 @@ const StorageDashboard = () => {
   // Handle Dispose Modal confirm (OGC-73: Call API to dispose sample)
   const handleDisposeModalConfirm = async (disposalData) => {
     const { sample, reason, method, notes } = disposalData;
-    console.log("Dispose sample confirmed", { sample, reason, method, notes });
 
     try {
       // Call disposal API
@@ -795,13 +776,6 @@ const StorageDashboard = () => {
       // For samples tab with search, debounced search effect will handle reload with filters
       return;
     }
-
-    console.log(
-      "Filters changed, reloading data for tab:",
-      tabName,
-      "with filters:",
-      { filterRoom, filterDevice, filterStatus },
-    );
 
     switch (tabName) {
       case "samples":
@@ -1311,30 +1285,9 @@ const StorageDashboard = () => {
       const queryString = params.toString();
       const url = `/rest/storage/sample-items${queryString ? "?" + queryString : ""}`;
 
-      console.log("Loading Sample Items from", url, "with filters:", {
-        locationFilter,
-        filterStatus,
-      });
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current) {
-          console.log(
-            "Sample Items API response received:",
-            response,
-            "Type:",
-            typeof response,
-          );
           if (response && Array.isArray(response)) {
-            console.log("Sample Items loaded:", response.length, response);
-            // Debug: Log first sample's fields to verify positionCoordinate and notes
-            if (response.length > 0) {
-              console.log("[StorageDashboard] First sample fields:", {
-                id: response[0].id,
-                location: response[0].location,
-                positionCoordinate: response[0].positionCoordinate,
-                notes: response[0].notes,
-                allFields: Object.keys(response[0]),
-              });
-            }
             setSamples(response);
             if (response.length === 0) {
               console.warn(
@@ -3907,20 +3860,6 @@ const StorageDashboard = () => {
                 notes: selectedSample.notes || "",
               }
             : null;
-          if (locationModalOpen && selectedSample) {
-            console.log(
-              "[StorageDashboard] Passing currentLocation to modal:",
-              {
-                selectedSample: {
-                  id: selectedSample.id,
-                  location: selectedSample.location,
-                  positionCoordinate: selectedSample.positionCoordinate,
-                  notes: selectedSample.notes,
-                },
-                currentLoc,
-              },
-            );
-          }
           return currentLoc;
         })()}
         onClose={handleLocationModalClose}
