@@ -85,7 +85,7 @@ const ValidationDashboard = ({ analyzerId, status }) => {
     // This would call a validation endpoint that tests all configured mappings
     const endpoint = `${config.serverBaseUrl}/rest/analyzer/analyzers/${analyzerId}/validate-all-mappings`;
 
-    postToOpenElisServer(endpoint, {}, (data) => {
+    postToOpenElisServerJsonResponse(endpoint, JSON.stringify({}), (data) => {
       if (data && !data.error) {
         // Reload metrics after validation
         loadValidationMetrics();

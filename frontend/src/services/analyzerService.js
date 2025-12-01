@@ -555,7 +555,7 @@ export const updateCustomFieldType = (
 ) => {
   const endpoint = `/rest/analyzer/custom-field-types/${id}`;
   const payload = JSON.stringify(fieldTypeData);
-  fetch(`${config.serverUrl}${endpoint}`, {
+  fetch(`${config.serverBaseUrl}${endpoint}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -591,7 +591,7 @@ export const updateCustomFieldType = (
  */
 export const deleteCustomFieldType = (id, callback, extraParams) => {
   const endpoint = `/rest/analyzer/custom-field-types/${id}`;
-  fetch(`${config.serverUrl}${endpoint}`, {
+  fetch(`${config.serverBaseUrl}${endpoint}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -664,7 +664,7 @@ export const updateValidationRule = (
 ) => {
   const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules/${ruleId}`;
   const payload = JSON.stringify(ruleData);
-  fetch(`${config.serverUrl}${endpoint}`, {
+  fetch(`${config.serverBaseUrl}${endpoint}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -726,7 +726,7 @@ export const deleteValidationRule = (
   extraParams,
 ) => {
   const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules/${ruleId}`;
-  fetch(`${config.serverUrl}${endpoint}`, {
+  fetch(`${config.serverBaseUrl}${endpoint}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

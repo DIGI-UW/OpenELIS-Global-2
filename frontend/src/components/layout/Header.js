@@ -534,18 +534,12 @@ function OEHeader(props) {
                     !analyzerSidebarInitialized &&
                     !isSideNavExpanded
                   ) {
-                    console.log(
-                      "[AnalyzerNav] Initializing analyzer sidebar to expanded",
-                    );
                     onClickSideNavExpand();
                     setAnalyzerSidebarInitialized(true);
                     setLastRouteType(true);
                   } else if (!isAnalyzerRoute && !analyzerSidebarInitialized) {
                     // Collapse sidebar on non-analyzer routes if it's expanded
                     if (isSideNavExpanded) {
-                      console.log(
-                        "[AnalyzerNav] Collapsing sidebar on non-analyzer route",
-                      );
                       onClickSideNavExpand();
                     }
                     setAnalyzerSidebarInitialized(true);
@@ -589,37 +583,8 @@ function OEHeader(props) {
                   }
                 }, [isAnalyzerRoute, isSideNavExpanded]);
 
-                console.log("[AnalyzerNav] Render", {
-                  isAnalyzerRoute,
-                  isSideNavExpanded,
-                  analyzerSidebarInitialized,
-                  currentPath,
-                });
-
                 const handleToggle = () => {
-                  console.log("[AnalyzerNav] Toggle clicked BEFORE", {
-                    isAnalyzerRoute,
-                    currentPath,
-                    wasSideNavExpanded: isSideNavExpanded,
-                  });
                   onClickSideNavExpand();
-                  // Use setTimeout to log state after Carbon updates it
-                  setTimeout(() => {
-                    const sideNav = document.querySelector(".cds--side-nav");
-                    console.log("[AnalyzerNav] Toggle clicked AFTER", {
-                      isSideNavExpanded,
-                      sideNavClasses: sideNav?.className,
-                      ariaExpanded: sideNav?.getAttribute("aria-expanded"),
-                      isExpanded: sideNav?.classList.contains(
-                        "cds--side-nav--expanded",
-                      ),
-                      computedDisplay: window.getComputedStyle(sideNav).display,
-                      computedVisibility:
-                        window.getComputedStyle(sideNav).visibility,
-                      computedTransform:
-                        window.getComputedStyle(sideNav).transform,
-                    });
-                  }, 100);
                 };
 
                 return (
