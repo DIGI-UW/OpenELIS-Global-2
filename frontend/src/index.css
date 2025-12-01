@@ -160,17 +160,17 @@ code {
 }
 
 /* Remove overflow-y: auto on Carbon modal-content to allow dropdown overflow */
-/* Needed globally since Carbon modals render in portals */
-.cds--modal-content {
+/* Only apply to field-mappings-modal to avoid breaking scrolling in other modals */
+.field-mappings-modal .cds--modal-content {
   overflow: visible !important;
   overflow-y: visible !important;
 }
 
-.cds--modal-scroll-content {
+.field-mappings-modal .cds--modal-scroll-content {
   overflow: visible !important;
 }
 
-.cds--modal-container {
+.field-mappings-modal .cds--modal-container {
   overflow: visible !important;
 }
 
