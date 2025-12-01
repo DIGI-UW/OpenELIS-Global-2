@@ -1,0 +1,21 @@
+# ASTM-HTTP Bridge Configuration
+# Reference: https://github.com/DIGI-UW/astm-http-bridge
+
+openelis:
+  url: https://oe.openelis.org:8443/api/OpenELIS-Global/analyzer/astm
+  timeout: 30000
+  ssl:
+    verify: false  # Development only - uses self-signed certs
+
+astm:
+  port: 5001
+  bind: 0.0.0.0
+  timeout: 30000
+
+logging:
+  level: DEBUG
+
+
+
+
+
