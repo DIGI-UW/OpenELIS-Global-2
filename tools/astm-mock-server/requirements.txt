@@ -1,0 +1,17 @@
+# ASTM Mock Server Dependencies
+# For testing analyzer integration with OpenELIS
+# Reference: specs/004-astm-analyzer-mapping/plan.md
+
+# Testing
+pytest>=7.0.0
+
+# No additional runtime dependencies required
+# Server uses only Python standard library (socket, threading, json)
+
+
+
+
+
+
+
+

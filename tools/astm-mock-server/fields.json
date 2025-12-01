@@ -1,0 +1,291 @@
+{
+  "HEMATOLOGY": [
+    {
+      "name": "WBC",
+      "displayName": "White Blood Cell Count",
+      "astmRef": "^^^WBC",
+      "type": "NUMERIC",
+      "unit": "10^3/μL",
+      "normalRange": "4.5-11.0"
+    },
+    {
+      "name": "RBC",
+      "displayName": "Red Blood Cell Count",
+      "astmRef": "^^^RBC",
+      "type": "NUMERIC",
+      "unit": "10^6/μL",
+      "normalRange": "4.5-5.5"
+    },
+    {
+      "name": "HGB",
+      "displayName": "Hemoglobin",
+      "astmRef": "^^^HGB",
+      "type": "NUMERIC",
+      "unit": "g/dL",
+      "normalRange": "13.5-17.5"
+    },
+    {
+      "name": "HCT",
+      "displayName": "Hematocrit",
+      "astmRef": "^^^HCT",
+      "type": "NUMERIC",
+      "unit": "%",
+      "normalRange": "40-54"
+    },
+    {
+      "name": "MCV",
+      "displayName": "Mean Corpuscular Volume",
+      "astmRef": "^^^MCV",
+      "type": "NUMERIC",
+      "unit": "fL",
+      "normalRange": "80-100"
+    },
+    {
+      "name": "MCH",
+      "displayName": "Mean Corpuscular Hemoglobin",
+      "astmRef": "^^^MCH",
+      "type": "NUMERIC",
+      "unit": "pg",
+      "normalRange": "27-33"
+    },
+    {
+      "name": "MCHC",
+      "displayName": "Mean Corpuscular Hemoglobin Concentration",
+      "astmRef": "^^^MCHC",
+      "type": "NUMERIC",
+      "unit": "g/dL",
+      "normalRange": "32-36"
+    },
+    {
+      "name": "PLT",
+      "displayName": "Platelet Count",
+      "astmRef": "^^^PLT",
+      "type": "NUMERIC",
+      "unit": "10^3/μL",
+      "normalRange": "150-400"
+    },
+    {
+      "name": "RDW",
+      "displayName": "Red Cell Distribution Width",
+      "astmRef": "^^^RDW",
+      "type": "NUMERIC",
+      "unit": "%",
+      "normalRange": "11.5-14.5"
+    },
+    {
+      "name": "MPV",
+      "displayName": "Mean Platelet Volume",
+      "astmRef": "^^^MPV",
+      "type": "NUMERIC",
+      "unit": "fL",
+      "normalRange": "7.5-11.5"
+    }
+  ],
+  "CHEMISTRY": [
+    {
+      "name": "GLUCOSE",
+      "displayName": "Glucose",
+      "astmRef": "^^^GLUCOSE",
+      "type": "NUMERIC",
+      "unit": "mg/dL",
+      "normalRange": "70-100"
+    },
+    {
+      "name": "CREATININE",
+      "displayName": "Creatinine",
+      "astmRef": "^^^CREATININE",
+      "type": "NUMERIC",
+      "unit": "mg/dL",
+      "normalRange": "0.6-1.2"
+    },
+    {
+      "name": "UREA",
+      "displayName": "Blood Urea Nitrogen",
+      "astmRef": "^^^UREA",
+      "type": "NUMERIC",
+      "unit": "mg/dL",
+      "normalRange": "7-20"
+    },
+    {
+      "name": "CHOLESTEROL",
+      "displayName": "Total Cholesterol",
+      "astmRef": "^^^CHOLESTEROL",
+      "type": "NUMERIC",
+      "unit": "mg/dL",
+      "normalRange": "<200"
+    },
+    {
+      "name": "TRIGLYCERIDES",
+      "displayName": "Triglycerides",
+      "astmRef": "^^^TRIGLYCERIDES",
+      "type": "NUMERIC",
+      "unit": "mg/dL",
+      "normalRange": "<150"
+    },
+    {
+      "name": "HDL",
+      "displayName": "HDL Cholesterol",
+      "astmRef": "^^^HDL",
+      "type": "NUMERIC",
+      "unit": "mg/dL",
+      "normalRange": ">40"
+    },
+    {
+      "name": "LDL",
+      "displayName": "LDL Cholesterol",
+      "astmRef": "^^^LDL",
+      "type": "NUMERIC",
+      "unit": "mg/dL",
+      "normalRange": "<100"
+    },
+    {
+      "name": "ALT",
+      "displayName": "Alanine Aminotransferase",
+      "astmRef": "^^^ALT",
+      "type": "NUMERIC",
+      "unit": "IU/L",
+      "normalRange": "7-56"
+    },
+    {
+      "name": "AST",
+      "displayName": "Aspartate Aminotransferase",
+      "astmRef": "^^^AST",
+      "type": "NUMERIC",
+      "unit": "IU/L",
+      "normalRange": "10-40"
+    },
+    {
+      "name": "ALP",
+      "displayName": "Alkaline Phosphatase",
+      "astmRef": "^^^ALP",
+      "type": "NUMERIC",
+      "unit": "IU/L",
+      "normalRange": "44-147"
+    },
+    {
+      "name": "BILIRUBIN",
+      "displayName": "Total Bilirubin",
+      "astmRef": "^^^BILIRUBIN",
+      "type": "NUMERIC",
+      "unit": "mg/dL",
+      "normalRange": "0.1-1.2"
+    },
+    {
+      "name": "SODIUM",
+      "displayName": "Sodium",
+      "astmRef": "^^^SODIUM",
+      "type": "NUMERIC",
+      "unit": "mEq/L",
+      "normalRange": "136-145"
+    },
+    {
+      "name": "POTASSIUM",
+      "displayName": "Potassium",
+      "astmRef": "^^^POTASSIUM",
+      "type": "NUMERIC",
+      "unit": "mEq/L",
+      "normalRange": "3.5-5.0"
+    },
+    {
+      "name": "CALCIUM",
+      "displayName": "Calcium",
+      "astmRef": "^^^CALCIUM",
+      "type": "NUMERIC",
+      "unit": "mg/dL",
+      "normalRange": "8.6-10.2"
+    }
+  ],
+  "IMMUNOLOGY": [
+    {
+      "name": "HIV",
+      "displayName": "HIV 1/2 Antibody",
+      "astmRef": "^^^HIV",
+      "type": "QUALITATIVE",
+      "unit": null,
+      "possibleValues": ["REACTIVE", "NON-REACTIVE", "POSITIVE", "NEGATIVE", "POS", "NEG", "INDETERMINATE"]
+    },
+    {
+      "name": "HBSAG",
+      "displayName": "Hepatitis B Surface Antigen",
+      "astmRef": "^^^HBSAG",
+      "type": "QUALITATIVE",
+      "unit": null,
+      "possibleValues": ["REACTIVE", "NON-REACTIVE", "POSITIVE", "NEGATIVE", "POS", "NEG"]
+    },
+    {
+      "name": "HCV",
+      "displayName": "Hepatitis C Antibody",
+      "astmRef": "^^^HCV",
+      "type": "QUALITATIVE",
+      "unit": null,
+      "possibleValues": ["REACTIVE", "NON-REACTIVE", "POSITIVE", "NEGATIVE", "POS", "NEG"]
+    },
+    {
+      "name": "SYPHILIS",
+      "displayName": "Syphilis RPR",
+      "astmRef": "^^^SYPHILIS",
+      "type": "QUALITATIVE",
+      "unit": null,
+      "possibleValues": ["REACTIVE", "NON-REACTIVE", "WEAKLY REACTIVE", "POSITIVE", "NEGATIVE"]
+    },
+    {
+      "name": "CD4",
+      "displayName": "CD4+ T-Cell Count",
+      "astmRef": "^^^CD4",
+      "type": "NUMERIC",
+      "unit": "cells/μL",
+      "normalRange": "500-1500"
+    },
+    {
+      "name": "CD8",
+      "displayName": "CD8+ T-Cell Count",
+      "astmRef": "^^^CD8",
+      "type": "NUMERIC",
+      "unit": "cells/μL",
+      "normalRange": "150-1000"
+    },
+    {
+      "name": "CD4CD8",
+      "displayName": "CD4/CD8 Ratio",
+      "astmRef": "^^^CD4CD8",
+      "type": "NUMERIC",
+      "unit": null,
+      "normalRange": ">1.0"
+    }
+  ],
+  "MICROBIOLOGY": [
+    {
+      "name": "CULTURE",
+      "displayName": "Culture Result",
+      "astmRef": "^^^CULTURE",
+      "type": "TEXT",
+      "unit": null
+    },
+    {
+      "name": "ORGANISM",
+      "displayName": "Organism Identification",
+      "astmRef": "^^^ORGANISM",
+      "type": "TEXT",
+      "unit": null
+    },
+    {
+      "name": "SENSITIVITY",
+      "displayName": "Antibiotic Sensitivity",
+      "astmRef": "^^^SENSITIVITY",
+      "type": "TEXT",
+      "unit": null
+    },
+    {
+      "name": "GRAM_STAIN",
+      "displayName": "Gram Stain",
+      "astmRef": "^^^GRAM_STAIN",
+      "type": "QUALITATIVE",
+      "unit": null,
+      "possibleValues": ["GRAM_POSITIVE", "GRAM_NEGATIVE", "MIXED", "NO_ORGANISMS_SEEN"]
+    }
+  ]
+}
+
+
+
+
