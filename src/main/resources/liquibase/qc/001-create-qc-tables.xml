@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- QC Control Lot Table -->
+    <changeSet id="qc-001-create-control-lot" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="qc_control_lot"/>
+            </not>
+        </preConditions>
+        <comment>Create QC control lot table for managing quality control material batches</comment>
+        <createTable tableName="qc_control_lot">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="product_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lot_number" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="manufacturer" type="VARCHAR(255)"/>
+            <column name="control_level" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="instrument_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="calculation_method" type="VARCHAR(50)" defaultValue="INITIAL_RUNS">
+                <constraints nullable="false"/>
+            </column>
+            <column name="initial_runs_count" type="INT" defaultValue="20"/>
+            <column name="manufacturer_mean" type="NUMERIC(15,5)"/>
+            <column name="manufacturer_std_dev" type="NUMERIC(15,5)"/>
+            <column name="activation_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiration_date" type="TIMESTAMP"/>
+            <column name="status" type="VARCHAR(50)" defaultValue="ESTABLISHMENT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="qc_control_lot"
+            baseColumnNames="test_id"
+            constraintName="fk_qc_control_lot_test"
+            referencedTableName="test"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_control_lot"
+            baseColumnNames="sys_user_id"
+            constraintName="fk_qc_control_lot_user"
+            referencedTableName="system_user"
+            referencedColumnNames="id"/>
+        <createIndex tableName="qc_control_lot" indexName="idx_qc_control_lot_test_instrument">
+            <column name="test_id"/>
+            <column name="instrument_id"/>
+        </createIndex>
+        <createIndex tableName="qc_control_lot" indexName="idx_qc_control_lot_status">
+            <column name="status"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="qc_control_lot"/>
+        </rollback>
+    </changeSet>
+
+    <!-- QC Result Table -->
+    <changeSet id="qc-002-create-qc-result" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="qc_result"/>
+            </not>
+        </preConditions>
+        <comment>Create QC result table for storing quality control measurements</comment>
+        <createTable tableName="qc_result">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="control_lot_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="instrument_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_value" type="NUMERIC(15,5)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit_of_measure" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="z_score" type="NUMERIC(10,4)"/>
+            <column name="run_date_time" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="technician_id" type="INT"/>
+            <column name="result_status" type="VARCHAR(50)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="non_conformity_flag" type="BOOLEAN" defaultValue="false"/>
+            <column name="external_notes" type="TEXT"/>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="qc_result"
+            baseColumnNames="control_lot_id"
+            constraintName="fk_qc_result_control_lot"
+            referencedTableName="qc_control_lot"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_result"
+            baseColumnNames="test_id"
+            constraintName="fk_qc_result_test"
+            referencedTableName="test"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_result"
+            baseColumnNames="sys_user_id"
+            constraintName="fk_qc_result_user"
+            referencedTableName="system_user"
+            referencedColumnNames="id"/>
+        <createIndex tableName="qc_result" indexName="idx_qc_result_control_lot_date">
+            <column name="control_lot_id"/>
+            <column name="run_date_time" descending="true"/>
+        </createIndex>
+        <createIndex tableName="qc_result" indexName="idx_qc_result_instrument_date">
+            <column name="instrument_id"/>
+            <column name="run_date_time" descending="true"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="qc_result"/>
+        </rollback>
+    </changeSet>
+
+    <!-- QC Statistics Table -->
+    <changeSet id="qc-003-create-qc-statistics" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="qc_statistics"/>
+            </not>
+        </preConditions>
+        <comment>Create QC statistics table for caching calculated statistical parameters</comment>
+        <createTable tableName="qc_statistics">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="control_lot_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="calculation_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mean" type="NUMERIC(15,5)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="standard_deviation" type="NUMERIC(15,5)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="num_values" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="calculation_method" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="validity_start" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="validity_end" type="TIMESTAMP"/>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="qc_statistics"
+            baseColumnNames="control_lot_id"
+            constraintName="fk_qc_statistics_control_lot"
+            referencedTableName="qc_control_lot"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_statistics"
+            baseColumnNames="sys_user_id"
+            constraintName="fk_qc_statistics_user"
+            referencedTableName="system_user"
+            referencedColumnNames="id"/>
+        <createIndex tableName="qc_statistics" indexName="idx_qc_statistics_lot_date">
+            <column name="control_lot_id"/>
+            <column name="calculation_date" descending="true"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="qc_statistics"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

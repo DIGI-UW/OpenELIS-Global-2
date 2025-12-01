@@ -148,27 +148,27 @@ statistics).
 ### Functional Requirements
 
 - **FR-001**: System MUST provide an Analyzers List page with a searchable,
-  filterable data table displaying all analyzers (navigation integration
-  specified in FR-020). The page MUST include: a page header with "Analyzers"
-  title and "Add Analyzer" primary action button, a statistics section with
-  3-column grid displaying cards for Total Analyzers, Active Analyzers, and
-  Inactive Analyzers. The statistics cards MUST span the same width as the
-  table/content below, using a single-row layout with equal-width cards (3
-  columns), aligned with table edges for visual consistency. Each card MUST use
-  color-coding and thematic icons: Total Analyzers (blue Carbon token +
-  Analytics icon from @carbon/icons-react), Active (green Carbon token +
-  CheckmarkFilled icon), Inactive (gray Carbon token + WarningAlt icon). A
-  search bar with filter dropdowns (Status, Test Unit, Analyzer Type) with 300ms
-  debounce, active filter pills (dismissible tags) below the search bar,
-  sortable columns (Name, Type, Connection (IP:Port), Test Units, Status, Last
-  Modified, Actions), default sort by Last Modified (descending), inline status
-  toggle controls, overflow menu for row actions (Field Mappings, Test
-  Connection, Copy Mappings, Edit, Delete), and pagination controls (25, 50, 100
-  items per page). **Test Unit Filter**: The Test Unit filter MUST be a
-  multi-select dropdown showing test unit names (loaded from existing test unit
-  configuration). The filter MUST operate on test unit IDs (not names) - filters
-  analyzers where any selected test unit ID matches any value in the analyzer's
-  `test_unit_ids` array using PostgreSQL array overlap operator
+  filterable data table displaying all analyzers. The page MUST include: a page
+  header with "Analyzers" title and "Add Analyzer" primary action button, a
+  statistics section with 3-column grid displaying cards for Total Analyzers,
+  Active Analyzers, and Inactive Analyzers. The statistics cards MUST span the
+  same width as the table/content below, using a single-row layout with
+  equal-width cards (3 columns), aligned with table edges for visual
+  consistency. Each card MUST use color-coding and thematic icons: Total
+  Analyzers (blue Carbon token + Analytics icon from @carbon/icons-react),
+  Active (green Carbon token + CheckmarkFilled icon), Inactive (gray Carbon
+  token + WarningAlt icon). A search bar with filter dropdowns (Status, Test
+  Unit, Analyzer Type) with 300ms debounce, active filter pills (dismissible
+  tags) below the search bar, sortable columns (Name, Type, Connection
+  (IP:Port), Test Units, Status, Last Modified, Actions), default sort by Last
+  Modified (descending), inline status toggle controls, overflow menu for row
+  actions (Field Mappings, Test Connection, Copy Mappings, Edit, Delete), and
+  pagination controls (25, 50, 100 items per page). **Test Unit Filter**: The
+  Test Unit filter MUST be a multi-select dropdown showing test unit names
+  (loaded from existing test unit configuration). The filter MUST operate on
+  test unit IDs (not names) - filters analyzers where any selected test unit ID
+  matches any value in the analyzer's `test_unit_ids` array using PostgreSQL
+  array overlap operator
   (`WHERE analyzer.test_unit_ids && ARRAY[selected_unit_ids]`). The UI displays
   test unit names for user selection, but filtering logic uses IDs for database
   queries. System MUST allow authorized users to register and manage ASTM
@@ -273,51 +273,18 @@ statistics).
   users to specify a default OpenELIS code for unmapped qualitative values.
 - **FR-006**: System MUST provide a Copy Mappings modal (ComposedModal, small
   size ~400-480px) that allows users to copy all field mappings from a source
-  analyzer to a target analyzer. The modal MUST include: dialog header with
+  analyzer to the current analyzer. The modal MUST include: dialog header with
   title "Copy Field Mappings" and subtitle "Copy field mappings from {source
   analyzer} to {target analyzer}", source analyzer section (read-only display
   showing analyzer name and type), target analyzer section with label "Target
   Analyzer \*" (required) and dropdown selector with placeholder "Select target
-  analyzer" (searchable, filters to analyzers with active mappings only),
-  mapping summary section displaying "X mappings will be copied" with breakdown
-  by type (field mappings, unit conversions, qualitative mappings), warning note
-  section displaying "This will copy all field mappings including unit
-  conversions and qualitative value mappings. Existing mappings will be
-  overwritten.", and dialog footer with Cancel button and "Copy Mappings" button
-  (with Copy icon from @carbon/icons-react). **Copy Operation Workflow**: (1)
-  User selects source analyzer from dropdown (auto-populated based on context or
-  user selection), (2) System validates source analyzer has active mappings
-  (displays error if none exist: "Source analyzer has no active mappings to
-  copy"), (3) User selects target analyzer from filtered dropdown (excludes
-  source analyzer and analyzers with incompatible types), (4) System displays
-  mapping count summary showing total mappings to be copied, (5) User clicks
-  "Copy Mappings" button, (6) System displays confirmation dialog "Are you sure
-  you want to copy X mappings? Existing mappings will be overwritten." with
-  Confirm/Cancel buttons, (7) User confirms action, (8) System performs copy
-  operation with conflict resolution (see below), (9) System displays success
-  notification "Successfully copied X mappings" or error notification with
-  details. **Conflict Resolution Rules**: (1) **Existing mapping overwrite**: If
-  target analyzer has existing mapping with same analyzerFieldId (e.g., both
-  analyzers have "GLU" test code), the source mapping overwrites the target
-  mapping completely (including unit conversions and qualitative mappings), (2)
-  **Type incompatibility handling**: If source field type is incompatible with
-  target field type (e.g., NUMERIC source → QUALITATIVE target), system
-  generates warning "Mapping skipped for field '{fieldName}' due to type
-  incompatibility" and user can choose: Skip (exclude from copy), Force (copy
-  anyway with warning badge on resulting mapping, mark as
-  `type_incompatible=true` in database, exclude from automatic processing until
-  manually reviewed), Cancel (abort entire operation), (3) **Qualitative value
-  merging**: For qualitative mappings, if target already has qualitative value
-  mappings for the same OpenELIS field, system merges values (does not
-  replace) - source values added to existing target values, duplicate values
-  deduplicated, (4) **Partial failure rollback**: If any error occurs during
-  copy (database constraint violation, validation failure), entire operation
-  rolls back - no partial state left in database. **Success/Error States**:
-  Success state displays notification "Successfully copied X field mappings, Y
-  unit conversions, Z qualitative mappings" with option to "View Target
-  Analyzer" (navigates to target analyzer field mapping page); Error state
-  displays notification with specific error details and "View Error Log" button
-  (opens modal with detailed error information and affected mappings).
+  analyzer", warning note section displaying "This will copy all field mappings
+  including unit conversions and qualitative value mappings. Existing mappings
+  will be overwritten.", and dialog footer with Cancel button and "Copy
+  Mappings" button (with icon). The modal MUST display a searchable list of
+  analyzers with active mappings, show a confirmation dialog before overwriting
+  existing mappings, generate warnings for type incompatibilities, and allow
+  users to review and adjust differences after copying.
 - **FR-007**: System MUST provide an inline "test mapping" capability accessible
   from the mapping interface that lets users submit sample ASTM messages or
   example field/value combinations and see a preview of how they would be

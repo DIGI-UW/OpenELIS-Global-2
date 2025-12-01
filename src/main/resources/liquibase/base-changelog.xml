@@ -16,4 +16,10 @@
   <include file="liquibase/3.1.x.x/base.xml" />
   <include file="liquibase/3.2.x.x/base.xml" />
   <include file="liquibase/3.3.x.x/base.xml" />
+  <!-- QC (Quality Control) Westgard Rules Feature -->
+  <include file="liquibase/qc/001-create-qc-tables.xml" />
+  <include file="liquibase/qc/002-create-westgard-rule-config.xml" />
+  <include file="liquibase/qc/003-create-qc-violation-tables.xml" />
+  <include file="liquibase/qc/004-create-qc-corrective-action.xml" />
+  <include file="liquibase/qc/005-create-qc-alert.xml" />
 </databaseChangeLog>

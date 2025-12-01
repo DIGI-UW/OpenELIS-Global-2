@@ -1,11 +1,13 @@
 # Tasks: Westgard Rules Quality Control Compliance
 
-**Input**: Design documents from `/specs/003-westgard-qc/`
-**Prerequisites**: plan.md, spec.md
+**Input**: Design documents from `/specs/003-westgard-qc/` **Prerequisites**:
+plan.md, spec.md
 
-**Tests**: Following TDD approach per AGENTS.md and testing-roadmap.md. Test tasks appear BEFORE implementation tasks to enforce Red-Green-Refactor workflow.
+**Tests**: Following TDD approach per AGENTS.md and testing-roadmap.md. Test
+tasks appear BEFORE implementation tasks to enforce Red-Green-Refactor workflow.
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+**Organization**: Tasks are grouped by user story to enable independent
+implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -26,42 +28,86 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create QC package structure in backend: `src/main/java/org/openelisglobal/qc/` with subdirectories: valueholder/, dao/, service/, controller/, form/
-- [ ] T002 [P] Create QC test package structure in `src/test/java/org/openelisglobal/qc/` with subdirectories: service/, dao/, controller/, service/evaluator/, service/calculator/
-- [ ] T003 [P] Create QC frontend component structure in `frontend/src/components/qc/` with subdirectories: dashboard/, charts/, violations/, correctiveActions/, controlLots/, alerts/, ruleConfig/
-- [ ] T004 [P] Create Cypress E2E test structure in `frontend/cypress/e2e/qc/` for QC feature tests
-- [ ] T005 [P] Add QC internationalization keys to `frontend/src/languages/en.json` (base structure: qc.dashboard.*, qc.charts.*, qc.violations.*, qc.correctiveActions.*, qc.alerts.*, qc.rules.*)
-- [ ] T006 [P] Add QC internationalization keys to `frontend/src/languages/fr.json` (French translations for all en.json keys)
+- [x] T001 Create QC package structure in backend:
+      `src/main/java/org/openelisglobal/qc/` with subdirectories: valueholder/,
+      dao/, service/, controller/, form/
+- [x] T002 [P] Create QC test package structure in
+      `src/test/java/org/openelisglobal/qc/` with subdirectories: service/,
+      dao/, controller/, service/evaluator/, service/calculator/
+- [x] T003 [P] Create QC frontend component structure in
+      `frontend/src/components/qc/` with subdirectories: dashboard/, charts/,
+      violations/, correctiveActions/, controlLots/, alerts/, ruleConfig/
+- [x] T004 [P] Create Cypress E2E test structure in `frontend/cypress/e2e/qc/`
+      for QC feature tests
+- [x] T005 [P] Add QC internationalization keys to
+      `frontend/src/languages/en.json` (base structure: qc.dashboard._,
+      qc.charts._, qc.violations._, qc.correctiveActions._, qc.alerts._,
+      qc.rules._)
+- [x] T006 [P] Add QC internationalization keys to
+      `frontend/src/languages/fr.json` (French translations for all en.json
+      keys)
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
+**Purpose**: Core infrastructure that MUST be complete before ANY user story can
+be implemented
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
 ### Liquibase Schema Setup
 
-- [ ] T007 Create Liquibase changeset `src/main/resources/liquibase/qc/001-create-qc-tables.xml` with tables: qc_control_lot, qc_result, qc_statistics (with rollback support)
-- [ ] T008 Create Liquibase changeset `src/main/resources/liquibase/qc/002-create-westgard-rule-config.xml` with table: westgard_rule_config and default rule definitions (with rollback support)
-- [ ] T009 Create Liquibase changeset `src/main/resources/liquibase/qc/003-create-qc-violation-tables.xml` with table: qc_rule_violation (with rollback support)
-- [ ] T010 Create Liquibase changeset `src/main/resources/liquibase/qc/004-create-qc-corrective-action.xml` with table: qc_corrective_action (with rollback support)
-- [ ] T011 Create Liquibase changeset `src/main/resources/liquibase/qc/005-create-qc-alert.xml` with table: qc_alert (with rollback support)
+- [x] T007 Create Liquibase changeset
+      `src/main/resources/liquibase/qc/001-create-qc-tables.xml` with tables:
+      qc_control_lot, qc_result, qc_statistics (with rollback support)
+- [x] T008 Create Liquibase changeset
+      `src/main/resources/liquibase/qc/002-create-westgard-rule-config.xml` with
+      table: westgard_rule_config and default rule definitions (with rollback
+      support)
+- [x] T009 Create Liquibase changeset
+      `src/main/resources/liquibase/qc/003-create-qc-violation-tables.xml` with
+      table: qc_rule_violation (with rollback support)
+- [x] T010 Create Liquibase changeset
+      `src/main/resources/liquibase/qc/004-create-qc-corrective-action.xml` with
+      table: qc_corrective_action (with rollback support)
+- [x] T011 Create Liquibase changeset
+      `src/main/resources/liquibase/qc/005-create-qc-alert.xml` with table:
+      qc_alert (with rollback support)
 
 ### Core Entities (Layer 1 - Valueholders)
 
-- [ ] T012 [P] Create QCControlLot entity in `src/main/java/org/openelisglobal/qc/valueholder/QCControlLot.java` extending BaseObject<String> with JPA annotations
-- [ ] T013 [P] Create QCResult entity in `src/main/java/org/openelisglobal/qc/valueholder/QCResult.java` extending BaseObject<String> with JPA annotations
-- [ ] T014 [P] Create QCStatistics entity in `src/main/java/org/openelisglobal/qc/valueholder/QCStatistics.java` extending BaseObject<String> with JPA annotations
-- [ ] T015 [P] Create WestgardRuleConfig entity in `src/main/java/org/openelisglobal/qc/valueholder/WestgardRuleConfig.java` extending BaseObject<String> with JPA annotations
-- [ ] T016 [P] Create QCRuleViolation entity in `src/main/java/org/openelisglobal/qc/valueholder/QCRuleViolation.java` extending BaseObject<String> with JPA annotations
-- [ ] T017 [P] Create QCCorrectiveAction entity in `src/main/java/org/openelisglobal/qc/valueholder/QCCorrectiveAction.java` extending BaseObject<String> with JPA annotations
-- [ ] T018 [P] Create QCAlert entity in `src/main/java/org/openelisglobal/qc/valueholder/QCAlert.java` extending BaseObject<String> with JPA annotations
+- [x] T012 [P] Create QCControlLot entity in
+      `src/main/java/org/openelisglobal/qc/valueholder/QCControlLot.java`
+      extending BaseObject<String> with JPA annotations
+- [x] T013 [P] Create QCResult entity in
+      `src/main/java/org/openelisglobal/qc/valueholder/QCResult.java` extending
+      BaseObject<String> with JPA annotations
+- [x] T014 [P] Create QCStatistics entity in
+      `src/main/java/org/openelisglobal/qc/valueholder/QCStatistics.java`
+      extending BaseObject<String> with JPA annotations
+- [x] T015 [P] Create WestgardRuleConfig entity in
+      `src/main/java/org/openelisglobal/qc/valueholder/WestgardRuleConfig.java`
+      extending BaseObject<String> with JPA annotations
+- [x] T016 [P] Create QCRuleViolation entity in
+      `src/main/java/org/openelisglobal/qc/valueholder/QCRuleViolation.java`
+      extending BaseObject<String> with JPA annotations
+- [x] T017 [P] Create QCCorrectiveAction entity in
+      `src/main/java/org/openelisglobal/qc/valueholder/QCCorrectiveAction.java`
+      extending BaseObject<String> with JPA annotations
+- [x] T018 [P] Create QCAlert entity in
+      `src/main/java/org/openelisglobal/qc/valueholder/QCAlert.java` extending
+      BaseObject<String> with JPA annotations
 
 ### ORM Validation Test (Constitution V.4 - TDD Checkpoint)
 
-- [ ] T019 ORM validation test in `src/test/java/org/openelisglobal/qc/HibernateMappingValidationTest.java` - Build SessionFactory with all 7 QC entities (QCControlLot, QCResult, QCStatistics, WestgardRuleConfig, QCRuleViolation, QCCorrectiveAction, QCAlert) - Validate all mappings load without errors - MUST execute in <5 seconds (per Constitution V.4) - MUST NOT require database connection - **SDD Checkpoint**: Must pass before proceeding to DAO layer
+- [x] T019 ORM validation test in
+      `src/test/java/org/openelisglobal/qc/QCHibernateMappingValidationTest.java` -
+      Build SessionFactory with all 7 QC entities (QCControlLot, QCResult,
+      QCStatistics, WestgardRuleConfig, QCRuleViolation, QCCorrectiveAction,
+      QCAlert) - Validate all mappings load without errors - MUST execute in <5
+      seconds (per Constitution V.4) - MUST NOT require database connection -
+      **SDD Checkpoint**: Must pass before proceeding to DAO layer
 
 ### Core DAOs (Layer 2 - Data Access)
 
@@ -75,29 +121,46 @@
 
 ### Test Data Builders (for all subsequent tests)
 
-- [ ] T027 [P] Create QCControlLotBuilder in `src/test/java/org/openelisglobal/qc/builder/QCControlLotBuilder.java` with fluent API for test data creation
-- [ ] T028 [P] Create QCResultBuilder in `src/test/java/org/openelisglobal/qc/builder/QCResultBuilder.java` with fluent API for test data creation
-- [ ] T029 [P] Create QCStatisticsBuilder in `src/test/java/org/openelisglobal/qc/builder/QCStatisticsBuilder.java` with fluent API for test data creation
-- [ ] T030 [P] Create WestgardRuleConfigBuilder in `src/test/java/org/openelisglobal/qc/builder/WestgardRuleConfigBuilder.java` with fluent API for test data creation
-- [ ] T031 [P] Create QCRuleViolationBuilder in `src/test/java/org/openelisglobal/qc/builder/QCRuleViolationBuilder.java` with fluent API for test data creation
+- [x] T027 [P] Create QCControlLotBuilder in
+      `src/test/java/org/openelisglobal/qc/builder/QCControlLotBuilder.java`
+      with fluent API for test data creation
+- [x] T028 [P] Create QCResultBuilder in
+      `src/test/java/org/openelisglobal/qc/builder/QCResultBuilder.java` with
+      fluent API for test data creation
+- [x] T029 [P] Create QCStatisticsBuilder in
+      `src/test/java/org/openelisglobal/qc/builder/QCStatisticsBuilder.java`
+      with fluent API for test data creation
+- [x] T030 [P] Create WestgardRuleConfigBuilder in
+      `src/test/java/org/openelisglobal/qc/builder/WestgardRuleConfigBuilder.java`
+      with fluent API for test data creation
+- [x] T031 [P] Create QCRuleViolationBuilder in
+      `src/test/java/org/openelisglobal/qc/builder/QCRuleViolationBuilder.java`
+      with fluent API for test data creation
 
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+**Checkpoint**: Foundation ready - user story implementation can now begin in
+parallel
 
 ---
 
 ## Phase 3: User Story 6 - Manage QC Control Lots (Priority: P2) 🏗️ FOUNDATIONAL FOR OTHER STORIES
 
-**Goal**: Enable lab supervisors to set up QC control lots with statistical parameters so the system can evaluate QC results accurately.
+**Goal**: Enable lab supervisors to set up QC control lots with statistical
+parameters so the system can evaluate QC results accurately.
 
-**Why First**: Control lot management is foundational - all other stories require control lots to exist before QC results can be captured and evaluated.
+**Why First**: Control lot management is foundational - all other stories
+require control lots to exist before QC results can be captured and evaluated.
 
-**Independent Test**: Create a new control lot with manufacturer fixed values, verify it's immediately active and ready for QC result evaluation. Create another lot with initial establishment method, verify it enters "establishment" status and doesn't evaluate rules until sufficient results collected.
+**Independent Test**: Create a new control lot with manufacturer fixed values,
+verify it's immediately active and ready for QC result evaluation. Create
+another lot with initial establishment method, verify it enters "establishment"
+status and doesn't evaluate rules until sufficient results collected.
 
 ### Tests for User Story 6 (MANDATORY - TDD Enforcement)
 
 > **CRITICAL: Write these tests FIRST, ensure they FAIL before implementation**
 >
-> Reference: [OpenELIS Testing Roadmap](../../.specify/guides/testing-roadmap.md)
+> Reference:
+> [OpenELIS Testing Roadmap](../../.specify/guides/testing-roadmap.md)
 > Templates: `.specify/templates/testing/`
 
 - [ ] T032 [P] [US6] Unit test for QCControlLotService in `src/test/java/org/openelisglobal/qc/service/QCControlLotServiceTest.java` (Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`) - Reference: [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](../../.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito) for detailed patterns - Reference: [Backend Testing Best Practices](../../.specify/guides/backend-testing-best-practices.md) for quick reference - **TDD Workflow**: Write test FIRST (RED), then implement (GREEN), then refactor - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit tests (NOT `@SpringBootTest`) - **Mocking**: Use `@Mock` (NOT `@MockBean`) for DAOs - **Test Cases**: Test lot creation with all 3 calculation methods (initial/rolling/manufacturer), test lot activation/deactivation, test establishment status transitions - **Coverage Goal**: >80% (measured via JaCoCo)
@@ -114,7 +177,8 @@
 
 ### Implementation for User Story 6
 
-> **CRITICAL: Implementation tasks depend on test tasks. Tests must pass before proceeding to next phase checkpoint.**
+> **CRITICAL: Implementation tasks depend on test tasks. Tests must pass before
+> proceeding to next phase checkpoint.**
 
 - [ ] T043 [US6] Create StatisticsCalculator interface in `src/main/java/org/openelisglobal/qc/service/calculator/StatisticsCalculator.java` with methods: supports(CalculationMethod), calculate(QCControlLot, List<QCResult>)
 - [ ] T044 [P] [US6] Create InitialRunsCalculator implementation in `src/main/java/org/openelisglobal/qc/service/calculator/InitialRunsCalculator.java` with @Component annotation - Calculate mean/SD from first N runs (default 20) - Annotate with @Service
@@ -130,7 +194,10 @@
 - [ ] T054 [US6] Add QC control lot menu items to database menu structure: MENU_QC_CONTROL_LOTS under MENU_QC parent - Update menu SQL in Liquibase changeset
 - [ ] T055 [US6] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
 
-**Checkpoint Validation**: At this point, User Story 6 should be fully functional and testable independently. Lab supervisors can create control lots with all 3 calculation methods, deactivate lots, and see establishment status. ALL tests from T032-T042 MUST pass.
+**Checkpoint Validation**: At this point, User Story 6 should be fully
+functional and testable independently. Lab supervisors can create control lots
+with all 3 calculation methods, deactivate lots, and see establishment status.
+ALL tests from T032-T042 MUST pass.
 
 ---
 
@@ -156,9 +223,11 @@
 
 ## Phase 5: User Story 5 - Configure Westgard Rules (Priority: P2)
 
-**Goal**: Enable lab managers to configure which Westgard rules are enabled and their parameters so the system can customize QC strategy per laboratory needs.
+**Goal**: Enable lab managers to configure which Westgard rules are enabled and
+their parameters so the system can customize QC strategy per laboratory needs.
 
-**Why Next**: Rule configuration must be in place before rule evaluation can be implemented.
+**Why Next**: Rule configuration must be in place before rule evaluation can be
+implemented.
 
 **Independent Test**: Configure rule set for test analyzer, enable/disable specific rules, verify only enabled rules are marked for evaluation.
 
@@ -185,54 +254,168 @@
 
 ## Phase 6: Westgard Rule Evaluators (CRITICAL - Enables US1, US2, US3, US4)
 
-**Goal**: Implement all 8 Westgard rule evaluation algorithms with TDD using reference datasets.
+**Goal**: Implement all 8 Westgard rule evaluation algorithms with TDD using
+reference datasets.
 
-**Why Next**: Rule evaluators are the core QC logic that powers compliance monitoring, alerts, and corrective actions.
+**Why Next**: Rule evaluators are the core QC logic that powers compliance
+monitoring, alerts, and corrective actions.
 
-**Independent Test**: Each rule evaluator can be tested independently with reference datasets from Westgard literature.
+**Independent Test**: Each rule evaluator can be tested independently with
+reference datasets from Westgard literature.
 
 ### Tests for Rule Evaluators (MANDATORY - TDD with Reference Datasets)
 
-> **CRITICAL: Use reference datasets from Westgard literature for each rule test**
+> **CRITICAL: Use reference datasets from Westgard literature for each rule
+> test**
 
-- [ ] T077 [P] [RULES] Unit test for Rule1_2sEvaluator in `src/test/java/org/openelisglobal/qc/service/evaluator/Rule1_2sEvaluatorTest.java` - Test single result exceeding +2SD (violation), test single result exceeding -2SD (violation), test result within ±2SD (no violation), test edge case (exactly 2.0 SD - should violate), test with reference dataset - Use `@RunWith(MockitoJUnitRunner.class)` - Verify severity = WARNING
-- [ ] T078 [P] [RULES] Unit test for Rule1_3sEvaluator in `src/test/java/org/openelisglobal/qc/service/evaluator/Rule1_3sEvaluatorTest.java` - Test single result exceeding +3SD (violation), test single result exceeding -3SD (violation), test result within ±3SD (no violation), test edge case (exactly 3.0 SD - should violate), test with reference dataset - Verify severity = REJECTION
-- [ ] T079 [P] [RULES] Unit test for Rule2_2sEvaluator in `src/test/java/org/openelisglobal/qc/service/evaluator/Rule2_2sEvaluatorTest.java` - Test two consecutive results exceeding same +2SD (violation), test two consecutive results exceeding same -2SD (violation), test two consecutive on opposite sides (no violation), test insufficient data (<2 results - cannot evaluate), test with reference dataset - Verify severity = REJECTION
-- [ ] T080 [P] [RULES] Unit test for RuleR_4sEvaluator in `src/test/java/org/openelisglobal/qc/service/evaluator/RuleR_4sEvaluatorTest.java` - Test range between consecutive results >4SD (violation), test range <4SD (no violation), test edge case (exactly 4.0 SD range - should violate), test insufficient data, test with reference dataset - Verify severity = REJECTION
-- [ ] T081 [P] [RULES] Unit test for Rule4_1sEvaluator in `src/test/java/org/openelisglobal/qc/service/evaluator/Rule4_1sEvaluatorTest.java` - Test 4 consecutive results exceeding same +1SD (violation), test 4 consecutive results exceeding same -1SD (violation), test 3 consecutive (no violation - need 4), test insufficient data (<4 results), test with reference dataset - Verify severity = REJECTION
-- [ ] T082 [P] [RULES] Unit test for Rule10_xEvaluator in `src/test/java/org/openelisglobal/qc/service/evaluator/Rule10_xEvaluatorTest.java` - Test 10 consecutive results on same side of mean (violation), test 9 consecutive (no violation - need 10), test alternating sides (no violation), test insufficient data (<10 results), test with reference dataset - Verify severity = REJECTION
-- [ ] T083 [P] [RULES] Unit test for Rule3_1sEvaluator in `src/test/java/org/openelisglobal/qc/service/evaluator/Rule3_1sEvaluatorTest.java` - Test 3 consecutive results exceeding same +1SD (violation), test 3 consecutive results exceeding same -1SD (violation), test 2 consecutive (no violation - need 3), test with reference dataset - Verify severity = WARNING
-- [ ] T084 [P] [RULES] Unit test for Rule7_tEvaluator in `src/test/java/org/openelisglobal/qc/service/evaluator/Rule7_tEvaluatorTest.java` - Test 7 consecutive results showing consistent increasing trend (violation), test 7 consecutive results showing consistent decreasing trend (violation), test inconsistent trend (no violation), test insufficient data (<7 results), test with reference dataset - Verify severity = WARNING
-- [ ] T085 [US8] Unit test for WestgardRuleEvaluationService in `src/test/java/org/openelisglobal/qc/service/WestgardRuleEvaluationServiceTest.java` - Test evaluateAll with multiple enabled rules, test rule filtering (only enabled), test sequential evaluation, test insufficient data handling (skip unevaluable rules), test performance (<5 seconds for full evaluation) - Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAOs and evaluators
-- [ ] T086 [US8] Unit test for QCResultCreatedEventListener in `src/test/java/org/openelisglobal/qc/event/QCResultCreatedEventListenerTest.java` - Test async event handling, test rule evaluation triggered, test violation creation for detected violations, test transaction boundaries - Use `@RunWith(MockitoJUnitRunner.class)`
+- [ ] T077 [P] [RULES] Unit test for Rule1_2sEvaluator in
+      `src/test/java/org/openelisglobal/qc/service/evaluator/Rule1_2sEvaluatorTest.java` -
+      Test single result exceeding +2SD (violation), test single result
+      exceeding -2SD (violation), test result within ±2SD (no violation), test
+      edge case (exactly 2.0 SD - should violate), test with reference dataset -
+      Use `@RunWith(MockitoJUnitRunner.class)` - Verify severity = WARNING
+- [ ] T078 [P] [RULES] Unit test for Rule1_3sEvaluator in
+      `src/test/java/org/openelisglobal/qc/service/evaluator/Rule1_3sEvaluatorTest.java` -
+      Test single result exceeding +3SD (violation), test single result
+      exceeding -3SD (violation), test result within ±3SD (no violation), test
+      edge case (exactly 3.0 SD - should violate), test with reference dataset -
+      Verify severity = REJECTION
+- [ ] T079 [P] [RULES] Unit test for Rule2_2sEvaluator in
+      `src/test/java/org/openelisglobal/qc/service/evaluator/Rule2_2sEvaluatorTest.java` -
+      Test two consecutive results exceeding same +2SD (violation), test two
+      consecutive results exceeding same -2SD (violation), test two consecutive
+      on opposite sides (no violation), test insufficient data (<2 results -
+      cannot evaluate), test with reference dataset - Verify severity =
+      REJECTION
+- [ ] T080 [P] [RULES] Unit test for RuleR_4sEvaluator in
+      `src/test/java/org/openelisglobal/qc/service/evaluator/RuleR_4sEvaluatorTest.java` -
+      Test range between consecutive results >4SD (violation), test range <4SD
+      (no violation), test edge case (exactly 4.0 SD range - should violate),
+      test insufficient data, test with reference dataset - Verify severity =
+      REJECTION
+- [ ] T081 [P] [RULES] Unit test for Rule4_1sEvaluator in
+      `src/test/java/org/openelisglobal/qc/service/evaluator/Rule4_1sEvaluatorTest.java` -
+      Test 4 consecutive results exceeding same +1SD (violation), test 4
+      consecutive results exceeding same -1SD (violation), test 3 consecutive
+      (no violation - need 4), test insufficient data (<4 results), test with
+      reference dataset - Verify severity = REJECTION
+- [ ] T082 [P] [RULES] Unit test for Rule10_xEvaluator in
+      `src/test/java/org/openelisglobal/qc/service/evaluator/Rule10_xEvaluatorTest.java` -
+      Test 10 consecutive results on same side of mean (violation), test 9
+      consecutive (no violation - need 10), test alternating sides (no
+      violation), test insufficient data (<10 results), test with reference
+      dataset - Verify severity = REJECTION
+- [ ] T083 [P] [RULES] Unit test for Rule3_1sEvaluator in
+      `src/test/java/org/openelisglobal/qc/service/evaluator/Rule3_1sEvaluatorTest.java` -
+      Test 3 consecutive results exceeding same +1SD (violation), test 3
+      consecutive results exceeding same -1SD (violation), test 2 consecutive
+      (no violation - need 3), test with reference dataset - Verify severity =
+      WARNING
+- [ ] T084 [P] [RULES] Unit test for Rule7_tEvaluator in
+      `src/test/java/org/openelisglobal/qc/service/evaluator/Rule7_tEvaluatorTest.java` -
+      Test 7 consecutive results showing consistent increasing trend
+      (violation), test 7 consecutive results showing consistent decreasing
+      trend (violation), test inconsistent trend (no violation), test
+      insufficient data (<7 results), test with reference dataset - Verify
+      severity = WARNING
+- [ ] T085 [US8] Unit test for WestgardRuleEvaluationService in
+      `src/test/java/org/openelisglobal/qc/service/WestgardRuleEvaluationServiceTest.java` -
+      Test evaluateAll with multiple enabled rules, test rule filtering (only
+      enabled), test sequential evaluation, test insufficient data handling
+      (skip unevaluable rules), test performance (<5 seconds for full
+      evaluation) - Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAOs
+      and evaluators
+- [ ] T086 [US8] Unit test for QCResultCreatedEventListener in
+      `src/test/java/org/openelisglobal/qc/event/QCResultCreatedEventListenerTest.java` -
+      Test async event handling, test rule evaluation triggered, test violation
+      creation for detected violations, test transaction boundaries - Use
+      `@RunWith(MockitoJUnitRunner.class)`
 
 ### Implementation for Rule Evaluators
 
-- [ ] T087 [US8] Create WestgardRuleEvaluator interface in `src/main/java/org/openelisglobal/qc/service/evaluator/WestgardRuleEvaluator.java` with methods: canEvaluate(WestgardRuleConfig), evaluate(QCResult, List<QCResult>, QCStatistics) returning RuleEvaluationResult
-- [ ] T088 [US8] Create RuleEvaluationResult class in `src/main/java/org/openelisglobal/qc/service/evaluator/RuleEvaluationResult.java` with fields: ruleCode, isViolated, severity, affectedResults, message
-- [ ] T089 [P] [US8] Create Rule1_2sEvaluator in `src/main/java/org/openelisglobal/qc/service/evaluator/Rule1_2sEvaluator.java` implementing WestgardRuleEvaluator with @Component - Algorithm: Check if abs(zScore) > 2.0 - Return severity WARNING if violated (depends on T087)
-- [ ] T090 [P] [US8] Create Rule1_3sEvaluator in `src/main/java/org/openelisglobal/qc/service/evaluator/Rule1_3sEvaluator.java` implementing WestgardRuleEvaluator with @Component - Algorithm: Check if abs(zScore) > 3.0 - Return severity REJECTION if violated (depends on T087)
-- [ ] T091 [P] [US8] Create Rule2_2sEvaluator in `src/main/java/org/openelisglobal/qc/service/evaluator/Rule2_2sEvaluator.java` implementing WestgardRuleEvaluator with @Component - Algorithm: Check if current AND previous both exceed same ±2SD - Return severity REJECTION if violated (depends on T087)
-- [ ] T092 [P] [US8] Create RuleR_4sEvaluator in `src/main/java/org/openelisglobal/qc/service/evaluator/RuleR_4sEvaluator.java` implementing WestgardRuleEvaluator with @Component - Algorithm: Check if range between consecutive results > 4SD - Return severity REJECTION if violated (depends on T087)
-- [ ] T093 [P] [US8] Create Rule4_1sEvaluator in `src/main/java/org/openelisglobal/qc/service/evaluator/Rule4_1sEvaluator.java` implementing WestgardRuleEvaluator with @Component - Algorithm: Check if 4 consecutive results exceed same ±1SD - Return severity REJECTION if violated (depends on T087)
-- [ ] T094 [P] [US8] Create Rule10_xEvaluator in `src/main/java/org/openelisglobal/qc/service/evaluator/Rule10_xEvaluator.java` implementing WestgardRuleEvaluator with @Component - Algorithm: Check if 10 consecutive results on same side of mean - Return severity REJECTION if violated (depends on T087)
-- [ ] T095 [P] [US8] Create Rule3_1sEvaluator in `src/main/java/org/openelisglobal/qc/service/evaluator/Rule3_1sEvaluator.java` implementing WestgardRuleEvaluator with @Component - Algorithm: Check if 3 consecutive results exceed same ±1SD - Return severity WARNING if violated (depends on T087)
-- [ ] T096 [P] [US8] Create Rule7_tEvaluator in `src/main/java/org/openelisglobal/qc/service/evaluator/Rule7_tEvaluator.java` implementing WestgardRuleEvaluator with @Component - Algorithm: Check if 7 consecutive results show consistent trend (all increasing or all decreasing) - Return severity WARNING if violated (depends on T087)
-- [ ] T097 [US8] Create WestgardRuleEvaluationService interface and implementation in `src/main/java/org/openelisglobal/qc/service/WestgardRuleEvaluationService.java` and `WestgardRuleEvaluationServiceImpl.java` with @Service - Inject List<WestgardRuleEvaluator> via @Autowired - Method evaluateAll: Get enabled rules, get historical results (up to 10), get statistics, evaluate each rule using strategy pattern - Method evaluateAll must complete in <5 seconds (FR-028) (depends on T089-T096)
-- [ ] T098 [US8] Create QCResultCreatedEventListener in `src/main/java/org/openelisglobal/qc/event/QCResultCreatedEventListener.java` with @Component - Use @EventListener and @Async for async processing - Use @Transactional for evaluation workflow - Inject WestgardRuleEvaluationService - Handle QCResultCreatedEvent: load result, evaluate all rules, create violations for detected violations (depends on T097)
-- [ ] T099 [US8] Run formatting: `mvn spotless:apply` for backend (MANDATORY before commit)
+- [ ] T087 [US8] Create WestgardRuleEvaluator interface in
+      `src/main/java/org/openelisglobal/qc/service/evaluator/WestgardRuleEvaluator.java`
+      with methods: canEvaluate(WestgardRuleConfig), evaluate(QCResult,
+      List<QCResult>, QCStatistics) returning RuleEvaluationResult
+- [ ] T088 [US8] Create RuleEvaluationResult class in
+      `src/main/java/org/openelisglobal/qc/service/evaluator/RuleEvaluationResult.java`
+      with fields: ruleCode, isViolated, severity, affectedResults, message
+- [ ] T089 [P] [US8] Create Rule1_2sEvaluator in
+      `src/main/java/org/openelisglobal/qc/service/evaluator/Rule1_2sEvaluator.java`
+      implementing WestgardRuleEvaluator with @Component - Algorithm: Check if
+      abs(zScore) > 2.0 - Return severity WARNING if violated (depends on T087)
+- [ ] T090 [P] [US8] Create Rule1_3sEvaluator in
+      `src/main/java/org/openelisglobal/qc/service/evaluator/Rule1_3sEvaluator.java`
+      implementing WestgardRuleEvaluator with @Component - Algorithm: Check if
+      abs(zScore) > 3.0 - Return severity REJECTION if violated (depends on
+      T087)
+- [ ] T091 [P] [US8] Create Rule2_2sEvaluator in
+      `src/main/java/org/openelisglobal/qc/service/evaluator/Rule2_2sEvaluator.java`
+      implementing WestgardRuleEvaluator with @Component - Algorithm: Check if
+      current AND previous both exceed same ±2SD - Return severity REJECTION if
+      violated (depends on T087)
+- [ ] T092 [P] [US8] Create RuleR_4sEvaluator in
+      `src/main/java/org/openelisglobal/qc/service/evaluator/RuleR_4sEvaluator.java`
+      implementing WestgardRuleEvaluator with @Component - Algorithm: Check if
+      range between consecutive results > 4SD - Return severity REJECTION if
+      violated (depends on T087)
+- [ ] T093 [P] [US8] Create Rule4_1sEvaluator in
+      `src/main/java/org/openelisglobal/qc/service/evaluator/Rule4_1sEvaluator.java`
+      implementing WestgardRuleEvaluator with @Component - Algorithm: Check if 4
+      consecutive results exceed same ±1SD - Return severity REJECTION if
+      violated (depends on T087)
+- [ ] T094 [P] [US8] Create Rule10_xEvaluator in
+      `src/main/java/org/openelisglobal/qc/service/evaluator/Rule10_xEvaluator.java`
+      implementing WestgardRuleEvaluator with @Component - Algorithm: Check if
+      10 consecutive results on same side of mean - Return severity REJECTION if
+      violated (depends on T087)
+- [ ] T095 [P] [US8] Create Rule3_1sEvaluator in
+      `src/main/java/org/openelisglobal/qc/service/evaluator/Rule3_1sEvaluator.java`
+      implementing WestgardRuleEvaluator with @Component - Algorithm: Check if 3
+      consecutive results exceed same ±1SD - Return severity WARNING if violated
+      (depends on T087)
+- [ ] T096 [P] [US8] Create Rule7_tEvaluator in
+      `src/main/java/org/openelisglobal/qc/service/evaluator/Rule7_tEvaluator.java`
+      implementing WestgardRuleEvaluator with @Component - Algorithm: Check if 7
+      consecutive results show consistent trend (all increasing or all
+      decreasing) - Return severity WARNING if violated (depends on T087)
+- [ ] T097 [US8] Create WestgardRuleEvaluationService interface and
+      implementation in
+      `src/main/java/org/openelisglobal/qc/service/WestgardRuleEvaluationService.java`
+      and `WestgardRuleEvaluationServiceImpl.java` with @Service - Inject
+      List<WestgardRuleEvaluator> via @Autowired - Method evaluateAll: Get
+      enabled rules, get historical results (up to 10), get statistics, evaluate
+      each rule using strategy pattern - Method evaluateAll must complete in <5
+      seconds (FR-028) (depends on T089-T096)
+- [ ] T098 [US8] Create QCResultCreatedEventListener in
+      `src/main/java/org/openelisglobal/qc/event/QCResultCreatedEventListener.java`
+      with @Component - Use @EventListener and @Async for async processing - Use
+      @Transactional for evaluation workflow - Inject
+      WestgardRuleEvaluationService - Handle QCResultCreatedEvent: load result,
+      evaluate all rules, create violations for detected violations (depends on
+      T097)
+- [ ] T099 [US8] Run formatting: `mvn spotless:apply` for backend (MANDATORY
+      before commit)
 
-**Checkpoint Validation**: At this point, all 8 Westgard rule evaluators are implemented and tested. QC results trigger automatic rule evaluation asynchronously. Violations are detected correctly. ALL tests from T077-T086 MUST pass with >80% coverage.
+**Checkpoint Validation**: At this point, all 8 Westgard rule evaluators are
+implemented and tested. QC results trigger automatic rule evaluation
+asynchronously. Violations are detected correctly. ALL tests from T077-T086 MUST
+pass with >80% coverage.
 
 ---
 
 ## Phase 7: User Story 3 - Receive Automated Alerts (Priority: P1)
 
-**Goal**: Enable lab managers to receive automated email and system notifications when Westgard rules are violated so they can take immediate corrective actions.
+**Goal**: Enable lab managers to receive automated email and system
+notifications when Westgard rules are violated so they can take immediate
+corrective actions.
 
-**Why Next**: Alerts enable timely response to QC failures, critical for patient safety.
+**Why Next**: Alerts enable timely response to QC failures, critical for patient
+safety.
 
-**Independent Test**: Trigger a 1₃ₛ violation (result >3SD), verify immediate email sent to lab managers. Trigger multiple 1₂ₛ violations within 15 min, verify batched notification.
+**Independent Test**: Trigger a 1₃ₛ violation (result >3SD), verify immediate
+email sent to lab managers. Trigger multiple 1₂ₛ violations within 15 min,
+verify batched notification.
 
 ### Tests for User Story 3 (MANDATORY - TDD Enforcement)
 
@@ -255,7 +438,10 @@
 - [ ] T113 [US3] Add AlertFeed to QCDashboard component (placeholder component - will be implemented in US1) - Display in top-right corner of dashboard
 - [ ] T114 [US3] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
 
-**Checkpoint Validation**: At this point, User Story 3 should be fully functional. Violations trigger automated alerts via email and system notifications. Batching prevents alert fatigue. 1₃ₛ violations get immediate alerts. ALL tests from T100-T106 MUST pass.
+**Checkpoint Validation**: At this point, User Story 3 should be fully
+functional. Violations trigger automated alerts via email and system
+notifications. Batching prevents alert fatigue. 1₃ₛ violations get immediate
+alerts. ALL tests from T100-T106 MUST pass.
 
 ---
 
@@ -263,7 +449,8 @@
 
 **Goal**: Enable laboratory technicians to see a clear compliance overview with visual indicators so they can quickly assess which analyzers require attention.
 
-**Why MVP**: This is the foundational user-facing capability that provides immediate value by showing compliance at a glance.
+**Why MVP**: This is the foundational user-facing capability that provides
+immediate value by showing compliance at a glance.
 
 **Independent Test**: Display dashboard with multiple analyzers showing color-coded status (green/yellow/red) based on QC data, and verify technicians can identify non-compliant analyzers within 10 seconds.
 
@@ -291,9 +478,12 @@
 
 ## Phase 9: User Story 2 - Monitor QC Data with Control Charts (Priority: P1)
 
-**Goal**: Enable laboratory technicians to view interactive Levey-Jennings charts with Westgard rule overlays so they can visually identify patterns and violations in QC data.
+**Goal**: Enable laboratory technicians to view interactive Levey-Jennings
+charts with Westgard rule overlays so they can visually identify patterns and
+violations in QC data.
 
-**Why Next**: Control charts are essential diagnostic tools for understanding QC violations and determining corrective actions.
+**Why Next**: Control charts are essential diagnostic tools for understanding QC
+violations and determining corrective actions.
 
 **Independent Test**: Display Levey-Jennings chart for single analyzer with plotted QC results, SD lines (±1SD, ±2SD, ±3SD), and highlighted violation points.
 
@@ -313,48 +503,122 @@
 - [ ] T135 [US2] Update ComplianceStatusTile click handler to navigate to /analyzers/qc/charts/:analyzerId (link dashboard to chart detail view)
 - [ ] T136 [US2] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
 
-**Checkpoint Validation**: At this point, User Story 2 should be fully functional. Technicians can view Levey-Jennings charts with SD lines, see violation points highlighted, hover for details, filter by date/level, and export charts. ALL tests from T127-T130 MUST pass.
+**Checkpoint Validation**: At this point, User Story 2 should be fully
+functional. Technicians can view Levey-Jennings charts with SD lines, see
+violation points highlighted, hover for details, filter by date/level, and
+export charts. ALL tests from T127-T130 MUST pass.
 
 ---
 
 ## Phase 10: User Story 4 - Manage Corrective Actions (Priority: P2)
 
-**Goal**: Enable laboratory supervisors to log corrective actions for QC violations and assign follow-up tasks so they maintain a complete audit trail and ensure violations are properly resolved.
+**Goal**: Enable laboratory supervisors to log corrective actions for QC
+violations and assign follow-up tasks so they maintain a complete audit trail
+and ensure violations are properly resolved.
 
-**Why Next**: Corrective action management is required for regulatory compliance and operational closure of QC issues.
+**Why Next**: Corrective action management is required for regulatory compliance
+and operational closure of QC issues.
 
-**Independent Test**: Create corrective action for known violation, assign to user, track status changes, verify violation resolved when action completed.
+**Independent Test**: Create corrective action for known violation, assign to
+user, track status changes, verify violation resolved when action completed.
 
 ### Tests for User Story 4 (MANDATORY - TDD Enforcement)
 
-- [ ] T137 [P] [US4] Unit test for QCCorrectiveActionService in `src/test/java/org/openelisglobal/qc/service/QCCorrectiveActionServiceTest.java` - Test corrective action state machine (PENDING → ASSIGNED → IN_PROGRESS → COMPLETED → RESOLVED), test validation guards (cannot complete without resolution notes, cannot assign to non-BIOLOGIST), test violation resolution on action completion, test patient result release blocking - Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAOs
-- [ ] T138 [P] [US4] DAO test for QCCorrectiveActionDAO in `src/test/java/org/openelisglobal/qc/dao/QCCorrectiveActionDAOTest.java` - Test findByViolation, test findByAssignedUser, test findByStatus, test state transition persistence - Use `@DataJpaTest` and `TestEntityManager`
-- [ ] T139 [P] [US4] Controller test for QCCorrectiveActionRestController in `src/test/java/org/openelisglobal/qc/controller/QCCorrectiveActionRestControllerTest.java` - Test POST /rest/qc/corrective-actions (create), test PUT /{id}/assign, test PUT /{id}/start, test PUT /{id}/complete, test validation errors - Use `@WebMvcTest`, `@MockBean`, `MockMvc`
-- [ ] T140 [P] [US4] Frontend unit test for CorrectiveActionForm in `frontend/src/components/qc/correctiveActions/CorrectiveActionForm.test.jsx` - Test action type selection (Recalibration, Maintenance, Repeat Control, Reagent Change, Other), test user assignment, test description input, test form submission - Use `userEvent` and `waitFor`
-- [ ] T141 [P] [US4] Frontend unit test for CorrectiveActionList in `frontend/src/components/qc/correctiveActions/CorrectiveActionList.test.jsx` - Test task list rendering, test status filtering, test mark as in progress, test mark as completed (with resolution notes modal) - Use `userEvent` for interactions
-- [ ] T142 [P] [US4] Cypress E2E test in `frontend/cypress/e2e/qc/correctiveActions.cy.js` - Test AS-001 (create corrective action with type selection, description, user assignment), test AS-002 (view task list with pending actions), test AS-003 (complete action with resolution notes - violation auto-resolved), test AS-004 (patient results held until violation resolved) - Use data-testid selectors, cy.request() for test data
+- [ ] T137 [P] [US4] Unit test for QCCorrectiveActionService in
+      `src/test/java/org/openelisglobal/qc/service/QCCorrectiveActionServiceTest.java` -
+      Test corrective action state machine (PENDING → ASSIGNED → IN_PROGRESS →
+      COMPLETED → RESOLVED), test validation guards (cannot complete without
+      resolution notes, cannot assign to non-BIOLOGIST), test violation
+      resolution on action completion, test patient result release blocking -
+      Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAOs
+- [ ] T138 [P] [US4] DAO test for QCCorrectiveActionDAO in
+      `src/test/java/org/openelisglobal/qc/dao/QCCorrectiveActionDAOTest.java` -
+      Test findByViolation, test findByAssignedUser, test findByStatus, test
+      state transition persistence - Use `@DataJpaTest` and `TestEntityManager`
+- [ ] T139 [P] [US4] Controller test for QCCorrectiveActionRestController in
+      `src/test/java/org/openelisglobal/qc/controller/QCCorrectiveActionRestControllerTest.java` -
+      Test POST /rest/qc/corrective-actions (create), test PUT /{id}/assign,
+      test PUT /{id}/start, test PUT /{id}/complete, test validation errors -
+      Use `@WebMvcTest`, `@MockBean`, `MockMvc`
+- [ ] T140 [P] [US4] Frontend unit test for CorrectiveActionForm in
+      `frontend/src/components/qc/correctiveActions/CorrectiveActionForm.test.jsx` -
+      Test action type selection (Recalibration, Maintenance, Repeat Control,
+      Reagent Change, Other), test user assignment, test description input, test
+      form submission - Use `userEvent` and `waitFor`
+- [ ] T141 [P] [US4] Frontend unit test for CorrectiveActionList in
+      `frontend/src/components/qc/correctiveActions/CorrectiveActionList.test.jsx` -
+      Test task list rendering, test status filtering, test mark as in progress,
+      test mark as completed (with resolution notes modal) - Use `userEvent` for
+      interactions
+- [ ] T142 [P] [US4] Cypress E2E test in
+      `frontend/cypress/e2e/qc/correctiveActions.cy.js` - Test AS-001 (create
+      corrective action with type selection, description, user assignment), test
+      AS-002 (view task list with pending actions), test AS-003 (complete action
+      with resolution notes - violation auto-resolved), test AS-004 (patient
+      results held until violation resolved) - Use data-testid selectors,
+      cy.request() for test data
 
 ### Implementation for User Story 4
 
-- [ ] T143 [US4] Create QCCorrectiveActionService interface and implementation in `src/main/java/org/openelisglobal/qc/service/QCCorrectiveActionService.java` and `QCCorrectiveActionServiceImpl.java` with @Service and @Transactional - Methods: createAction, assignAction, startAction, completeAction (with state machine validation), findByUser, findByStatus - State machine: PENDING → ASSIGNED → IN_PROGRESS → COMPLETED → RESOLVED - Validation guards: cannot complete without resolution notes, cannot assign to non-BIOLOGIST user, cannot skip states - On completion: annotate QC result with corrective action summary, resolve linked violation - Inject QCRuleViolationService to resolve violations
-- [ ] T144 [US4] Create QCCorrectiveActionForm DTO in `src/main/java/org/openelisglobal/qc/form/QCCorrectiveActionForm.java` with validation annotations (actionType, description required; resolutionNotes required for completion)
-- [ ] T145 [US4] Create QCCorrectiveActionRestController in `src/main/java/org/openelisglobal/qc/controller/QCCorrectiveActionRestController.java` extending BaseRestController with @RestController and @RequestMapping("/rest/qc/corrective-actions") - Endpoints: POST / (create), GET /{id}, GET /by-user/{userId}, PUT /{id}/assign, PUT /{id}/start, PUT /{id}/complete - NO @Transactional (depends on T143)
-- [ ] T146 [US4] Create CorrectiveActionForm React component in `frontend/src/components/qc/correctiveActions/CorrectiveActionForm.jsx` using Carbon ComboBox (action type), TextArea (description), ComboBox (user assignment), Button - Use Formik for form management, Yup for validation - Use React Intl for all strings (depends on T145)
-- [ ] T147 [US4] Create CorrectiveActionList React component in `frontend/src/components/qc/correctiveActions/CorrectiveActionList.jsx` using Carbon DataTable, Tag (status indicators), OverflowMenu (row actions: start, complete) - Display pending actions with priority, due status - Modal for completion with resolution notes TextArea - Use SWR for data fetching - Use React Intl for all strings (depends on T145)
-- [ ] T148 [US4] Add corrective action routes to `frontend/src/App.js`: /analyzers/qc/corrective-actions (list), /analyzers/qc/corrective-actions/new (create form)
-- [ ] T149 [US4] Add corrective action menu item to database menu structure: MENU_QC_ACTIONS under MENU_QC parent - Update menu SQL in Liquibase changeset
-- [ ] T150 [US4] Update QCViolationRestController to add endpoint POST /{id}/create-corrective-action (create action from violation detail view)
-- [ ] T151 [US4] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
+- [ ] T143 [US4] Create QCCorrectiveActionService interface and implementation
+      in
+      `src/main/java/org/openelisglobal/qc/service/QCCorrectiveActionService.java`
+      and `QCCorrectiveActionServiceImpl.java` with @Service and
+      @Transactional - Methods: createAction, assignAction, startAction,
+      completeAction (with state machine validation), findByUser, findByStatus -
+      State machine: PENDING → ASSIGNED → IN_PROGRESS → COMPLETED → RESOLVED -
+      Validation guards: cannot complete without resolution notes, cannot assign
+      to non-BIOLOGIST user, cannot skip states - On completion: annotate QC
+      result with corrective action summary, resolve linked violation - Inject
+      QCRuleViolationService to resolve violations
+- [ ] T144 [US4] Create QCCorrectiveActionForm DTO in
+      `src/main/java/org/openelisglobal/qc/form/QCCorrectiveActionForm.java`
+      with validation annotations (actionType, description required;
+      resolutionNotes required for completion)
+- [ ] T145 [US4] Create QCCorrectiveActionRestController in
+      `src/main/java/org/openelisglobal/qc/controller/QCCorrectiveActionRestController.java`
+      extending BaseRestController with @RestController and
+      @RequestMapping("/rest/qc/corrective-actions") - Endpoints: POST /
+      (create), GET /{id}, GET /by-user/{userId}, PUT /{id}/assign, PUT
+      /{id}/start, PUT /{id}/complete - NO @Transactional (depends on T143)
+- [ ] T146 [US4] Create CorrectiveActionForm React component in
+      `frontend/src/components/qc/correctiveActions/CorrectiveActionForm.jsx`
+      using Carbon ComboBox (action type), TextArea (description), ComboBox
+      (user assignment), Button - Use Formik for form management, Yup for
+      validation - Use React Intl for all strings (depends on T145)
+- [ ] T147 [US4] Create CorrectiveActionList React component in
+      `frontend/src/components/qc/correctiveActions/CorrectiveActionList.jsx`
+      using Carbon DataTable, Tag (status indicators), OverflowMenu (row
+      actions: start, complete) - Display pending actions with priority, due
+      status - Modal for completion with resolution notes TextArea - Use SWR for
+      data fetching - Use React Intl for all strings (depends on T145)
+- [ ] T148 [US4] Add corrective action routes to `frontend/src/App.js`:
+      /analyzers/qc/corrective-actions (list),
+      /analyzers/qc/corrective-actions/new (create form)
+- [ ] T149 [US4] Add corrective action menu item to database menu structure:
+      MENU_QC_ACTIONS under MENU_QC parent - Update menu SQL in Liquibase
+      changeset
+- [ ] T150 [US4] Update QCViolationRestController to add endpoint POST
+      /{id}/create-corrective-action (create action from violation detail view)
+- [ ] T151 [US4] Run formatting: `mvn spotless:apply` for backend,
+      `npm run format` for frontend (MANDATORY before commit)
 
-**Checkpoint Validation**: At this point, User Story 4 should be fully functional. Supervisors can create corrective actions for violations, assign to users, track status through workflow, and violations are auto-resolved on completion. Patient results are held until violations resolved. ALL tests from T137-T142 MUST pass.
+**Checkpoint Validation**: At this point, User Story 4 should be fully
+functional. Supervisors can create corrective actions for violations, assign to
+users, track status through workflow, and violations are auto-resolved on
+completion. Patient results are held until violations resolved. ALL tests from
+T137-T142 MUST pass.
 
 ---
 
 ## Phase 11: User Story 7 - Analyze Compliance Trends (Priority: P3)
 
-**Goal**: Enable laboratory managers to view trend graphs showing compliance over time so they can identify recurring issues, track improvements, and prepare for regulatory audits.
+**Goal**: Enable laboratory managers to view trend graphs showing compliance
+over time so they can identify recurring issues, track improvements, and prepare
+for regulatory audits.
 
-**Why Next**: Trend analysis provides strategic insights for quality improvement. Implemented after core operational features.
+**Why Next**: Trend analysis provides strategic insights for quality
+improvement. Implemented after core operational features.
 
 **Independent Test**: Generate trend reports for date range showing violation frequency by analyzer, rule type, and severity, with filtering and export capabilities.
 
@@ -377,7 +641,10 @@
 - [ ] T163 [US7] Add trend analysis menu item to database menu structure: MENU_QC_TRENDS under MENU_QC parent - Update menu SQL in Liquibase changeset
 - [ ] T164 [US7] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
 
-**Checkpoint Validation**: At this point, User Story 7 should be fully functional. Managers can view compliance trends, violation distributions, identify recurring issues, and export reports for audits. ALL tests from T152-T156 MUST pass.
+**Checkpoint Validation**: At this point, User Story 7 should be fully
+functional. Managers can view compliance trends, violation distributions,
+identify recurring issues, and export reports for audits. ALL tests from
+T152-T156 MUST pass.
 
 ---
 
@@ -403,14 +670,53 @@
 
 **Reference**: `.specify/memory/constitution.md`
 
-- [ ] T174 **Configuration-Driven**: Verify no country-specific code branches introduced - Audit all service classes for hardcoded logic - Confirm rule configurations are database-driven (westgard_rule_config table) - Confirm calculation methods are configurable (not hardcoded)
-- [ ] T175 **Carbon Design System**: Audit UI - confirm @carbon/react used exclusively (NO Bootstrap/Tailwind) - Search frontend codebase for prohibited imports: `grep -r "bootstrap\|tailwind" frontend/src/components/qc/` - Verify all components use Carbon: Tile, DataTable, LineChart, ComposedModal, Tag, OverflowMenu, Button, TextInput, ComboBox, DatePicker
-- [ ] T176 **FHIR/IHE Compliance**: QC results are internal quality control and do not require FHIR exposure per Constitution III - No FHIR implementation required for this feature - Confirm no fhir_uuid columns added to QC entities (not patient-facing data)
-- [ ] T177 **Layered Architecture**: Verify 5-layer pattern followed (Valueholder→DAO→Service→Controller→Form) - Audit: Confirm NO controllers call DAOs directly (must go through services) - Audit: Confirm NO business logic in DAOs (only CRUD + HQL queries) - Audit: Confirm NO native SQL in Java code (all HQL) - Audit: Confirm NO class-level variables in controllers (thread safety violation) - Audit: Confirm NO @Transactional in controllers (must be in services only) - Audit: Confirm services compile all data within transaction (JOIN FETCH used, no lazy loading in controllers)
-- [ ] T178 **Test Coverage**: Run coverage report - confirm >80% backend, >70% frontend - Backend: `mvn verify` → Check `target/site/jacoco/index.html` for >80% - Frontend: `npm test -- --coverage` → Check coverage report for >70% - Critical paths MUST have 100% coverage: All 8 rule evaluators, statistics calculators, alert batching, corrective action state machine
-- [ ] T179 **Schema Management**: Verify ALL database changes use Liquibase changesets (NO direct SQL) - Audit: Confirm all tables created via Liquibase XML in `src/main/resources/liquibase/qc/` - Audit: Confirm all 5 changesets have rollback scripts - Verify: Run `mvn liquibase:rollback` to test rollback functionality
-- [ ] T180 **Internationalization**: Audit UI strings - confirm React Intl used for ALL text (no hardcoded strings) - Search for hardcoded strings: `grep -r '"[A-Z]' frontend/src/components/qc/` (should only find intl message IDs) - Verify: All en.json keys have corresponding fr.json translations - Verify: Date/time formatting uses intl.formatDate(), intl.formatTime() - Verify: Number formatting uses intl.formatNumber()
-- [ ] T181 **Security & Compliance**: Verify RBAC, audit trail (sys_user_id + lastupdated), input validation - Audit: Confirm all QC entities extend BaseObject<String> (provides sys_user_id + lastupdated) - Audit: Confirm role checks in controllers (Results, Biologist, Global Admin roles enforced) - Audit: Confirm input validation on all forms (Hibernate Validator annotations, Formik validation) - Audit: Confirm audit trail captures all violations, corrective actions, status changes - Verify: Test patient result release blocking when unresolved violations exist
+- [ ] T174 **Configuration-Driven**: Verify no country-specific code branches
+      introduced - Audit all service classes for hardcoded logic - Confirm rule
+      configurations are database-driven (westgard_rule_config table) - Confirm
+      calculation methods are configurable (not hardcoded)
+- [ ] T175 **Carbon Design System**: Audit UI - confirm @carbon/react used
+      exclusively (NO Bootstrap/Tailwind) - Search frontend codebase for
+      prohibited imports:
+      `grep -r "bootstrap\|tailwind" frontend/src/components/qc/` - Verify all
+      components use Carbon: Tile, DataTable, LineChart, ComposedModal, Tag,
+      OverflowMenu, Button, TextInput, ComboBox, DatePicker
+- [ ] T176 **FHIR/IHE Compliance**: QC results are internal quality control and
+      do not require FHIR exposure per Constitution III - No FHIR implementation
+      required for this feature - Confirm no fhir_uuid columns added to QC
+      entities (not patient-facing data)
+- [ ] T177 **Layered Architecture**: Verify 5-layer pattern followed
+      (Valueholder→DAO→Service→Controller→Form) - Audit: Confirm NO controllers
+      call DAOs directly (must go through services) - Audit: Confirm NO business
+      logic in DAOs (only CRUD + HQL queries) - Audit: Confirm NO native SQL in
+      Java code (all HQL) - Audit: Confirm NO class-level variables in
+      controllers (thread safety violation) - Audit: Confirm NO @Transactional
+      in controllers (must be in services only) - Audit: Confirm services
+      compile all data within transaction (JOIN FETCH used, no lazy loading in
+      controllers)
+- [ ] T178 **Test Coverage**: Run coverage report - confirm >80% backend, >70%
+      frontend - Backend: `mvn verify` → Check `target/site/jacoco/index.html`
+      for >80% - Frontend: `npm test -- --coverage` → Check coverage report
+      for >70% - Critical paths MUST have 100% coverage: All 8 rule evaluators,
+      statistics calculators, alert batching, corrective action state machine
+- [ ] T179 **Schema Management**: Verify ALL database changes use Liquibase
+      changesets (NO direct SQL) - Audit: Confirm all tables created via
+      Liquibase XML in `src/main/resources/liquibase/qc/` - Audit: Confirm all 5
+      changesets have rollback scripts - Verify: Run `mvn liquibase:rollback` to
+      test rollback functionality
+- [ ] T180 **Internationalization**: Audit UI strings - confirm React Intl used
+      for ALL text (no hardcoded strings) - Search for hardcoded strings:
+      `grep -r '"[A-Z]' frontend/src/components/qc/` (should only find intl
+      message IDs) - Verify: All en.json keys have corresponding fr.json
+      translations - Verify: Date/time formatting uses intl.formatDate(),
+      intl.formatTime() - Verify: Number formatting uses intl.formatNumber()
+- [ ] T181 **Security & Compliance**: Verify RBAC, audit trail (sys_user_id +
+      lastupdated), input validation - Audit: Confirm all QC entities extend
+      BaseObject<String> (provides sys_user_id + lastupdated) - Audit: Confirm
+      role checks in controllers (Results, Biologist, Global Admin roles
+      enforced) - Audit: Confirm input validation on all forms (Hibernate
+      Validator annotations, Formik validation) - Audit: Confirm audit trail
+      captures all violations, corrective actions, status changes - Verify: Test
+      patient result release blocking when unresolved violations exist
 
 **Verification Commands**:
 
@@ -477,8 +783,10 @@ cd frontend && npm test -- --coverage  # Jest coverage
 - **US5 (Rule Config)**: Independent - Can start after Foundational
 - **Rule Evaluators**: Depend on US5, Phase 4 (need config + results from 004)
 - **US3 (Alerts)**: Depends on Rule Evaluators (violations trigger alerts)
-- **US1 (Dashboard)**: Depends on Rule Evaluators, US3 (displays compliance + alerts) 🎯 **MVP**
-- **US2 (Charts)**: Depends on US1, Rule Evaluators (extends dashboard with charts)
+- **US1 (Dashboard)**: Depends on Rule Evaluators, US3 (displays compliance +
+  alerts) 🎯 **MVP**
+- **US2 (Charts)**: Depends on US1, Rule Evaluators (extends dashboard with
+  charts)
 - **US4 (Corrective Actions)**: Depends on US3 (actions resolve violations)
 - **US7 (Trends)**: Depends on all previous (requires historical data)
 
@@ -495,10 +803,14 @@ cd frontend && npm test -- --coverage  # Jest coverage
 ### Parallel Opportunities
 
 - **Phase 1 (Setup)**: All tasks (T001-T006) can run in parallel
-- **Phase 2 (Foundational)**: Liquibase tasks (T007-T011) can run in parallel, entities (T012-T018) can run in parallel after Liquibase, DAOs (T020-T026) can run in parallel after entities, builders (T027-T031) can run in parallel
-- **Within User Stories**: All test tasks marked [P] can run in parallel (different test files), entity/model tasks marked [P] can run in parallel
+- **Phase 2 (Foundational)**: Liquibase tasks (T007-T011) can run in parallel,
+  entities (T012-T018) can run in parallel after Liquibase, DAOs (T020-T026) can
+  run in parallel after entities, builders (T027-T031) can run in parallel
+- **Within User Stories**: All test tasks marked [P] can run in parallel
+  (different test files), entity/model tasks marked [P] can run in parallel
 - **User Stories in Parallel** (if team capacity):
-  - After Phase 6 (Rule Evaluators) complete: US1, US2, US4 can proceed in parallel
+  - After Phase 6 (Rule Evaluators) complete: US1, US2, US4 can proceed in
+    parallel
   - US3 must complete before US1 (alerts integrated into dashboard)
 
 ---
@@ -559,9 +871,11 @@ T052: Create StatisticsConfigModal component
 4. Add US5 (Rule Config) → Test independently → Lab can configure rules per analyzer
 5. Add Rule Evaluators → Test independently → QC results automatically evaluated
 6. Add US3 (Alerts) → Test independently → Violations trigger automated alerts
-7. Add US1 (Dashboard) → Test independently → **MVP!** Dashboard shows compliance status
+7. Add US1 (Dashboard) → Test independently → **MVP!** Dashboard shows
+   compliance status
 8. Add US2 (Charts) → Test independently → Levey-Jennings charts available
-9. Add US4 (Corrective Actions) → Test independently → Corrective action workflow operational
+9. Add US4 (Corrective Actions) → Test independently → Corrective action
+   workflow operational
 10. Add US7 (Trends) → Test independently → Trend analysis for audits
 11. Each story adds value without breaking previous stories
 
@@ -583,9 +897,11 @@ With multiple developers:
 ## Notes
 
 - **[P] tasks** = different files, no dependencies, can run in parallel
-- **[Story] label** (US1, US2, etc.) maps task to specific user story for traceability
+- **[Story] label** (US1, US2, etc.) maps task to specific user story for
+  traceability
 - **Each user story** should be independently completable and testable
-- **TDD Workflow**: Verify tests FAIL before implementing (RED), then implement (GREEN), then refactor
+- **TDD Workflow**: Verify tests FAIL before implementing (RED), then implement
+  (GREEN), then refactor
 - **Commit frequently**: After each task or logical group
 - **Stop at checkpoints**: Validate story independently before proceeding
 - **Avoid**: Vague tasks, same file conflicts, cross-story dependencies that break independence
@@ -597,6 +913,7 @@ With multiple developers:
 **Total Tasks**: 181 tasks
 
 **Tasks by Phase**:
+
 - Phase 1 (Setup): 6 tasks
 - Phase 2 (Foundational): 25 tasks
 - Phase 3 (US6 - Control Lots): 23 tasks
@@ -613,8 +930,11 @@ With multiple developers:
 
 **Test Tasks**: 77 tasks (42.5% of total - strong TDD emphasis)
 
-**Parallel Opportunities**: 98 tasks marked [P] (54% can run in parallel within constraints)
+**Parallel Opportunities**: 98 tasks marked [P] (54% can run in parallel within
+constraints)
 
-**MVP Scope**: Phases 1-8 (92 tasks) = Core QC compliance monitoring with dashboard, alerts, automated evaluation
+**MVP Scope**: Phases 1-8 (92 tasks) = Core QC compliance monitoring with
+dashboard, alerts, automated evaluation
 
-**Suggested Execution**: Follow critical path for MVP (Phases 1-8), then add US2, US4, US7 incrementally based on priority.
+**Suggested Execution**: Follow critical path for MVP (Phases 1-8), then add
+US2, US4, US7 incrementally based on priority.
