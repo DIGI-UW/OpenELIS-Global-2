@@ -13,20 +13,9 @@
  */
 package org.openelisglobal.sampleitem.valueholder;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.UUID;
-import org.hibernate.annotations.CreationTimestamp;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
@@ -46,8 +35,9 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * compliance and troubleshooting.
  *
  * <p>
- * Constitution Compliance: Full annotation-based entity (Constitution III.2) -
- * no XML mappings.
+ * Constitution Compliance: Uses XML mapping
+ * (SampleItemAliquotRelationship.hbm.xml) to maintain consistency with
+ * SampleItem which also uses XML mapping.
  *
  * <p>
  * Related: Feature 001-sample-management
@@ -57,33 +47,22 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * @see <a href="../../../../specs/001-sample-management/data-model.md">Data
  *      Model Specification</a>
  */
-@Entity
-@Table(name = "sample_item_aliquot_relationship", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_aliquot_parent_sequence", columnNames = { "parent_sample_item_id",
-                "sequence_number" }) })
 public class SampleItemAliquotRelationship extends BaseObject<Long> {
 
     private static final long serialVersionUID = 1L;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
     private Long id;
 
     /**
      * Parent sample item from which the aliquot was created. Never null - every
      * aliquot relationship must have a parent.
      */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "parent_sample_item_id", referencedColumnName = "id", nullable = false)
     private SampleItem parentSampleItem;
 
     /**
      * Child sample item (the aliquot) created from the parent. Never null - every
      * aliquot relationship must have a child.
      */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "child_sample_item_id", referencedColumnName = "id", nullable = false)
     private SampleItem childSampleItem;
 
     /**
@@ -91,14 +70,12 @@ public class SampleItemAliquotRelationship extends BaseObject<Long> {
      * suffix in external ID (e.g., .1, .2, .3). Unique constraint:
      * (parent_sample_item_id, sequence_number).
      */
-    @Column(name = "sequence_number", nullable = false)
     private Integer sequenceNumber;
 
     /**
      * Quantity transferred from parent to this aliquot. Must match the aliquot's
      * original_quantity. Precision 10,3 supports values like 123.456 mL.
      */
-    @Column(name = "quantity_transferred", nullable = false, precision = 10, scale = 3)
     private BigDecimal quantityTransferred;
 
     /**
@@ -106,7 +83,6 @@ public class SampleItemAliquotRelationship extends BaseObject<Long> {
      * "Sent to external lab", "Quality control sample". Max length: 1000
      * characters.
      */
-    @Column(name = "notes", length = 1000)
     private String notes;
 
     /**
@@ -114,14 +90,11 @@ public class SampleItemAliquotRelationship extends BaseObject<Long> {
      * FHIR Specimen resource representing this aliquot relationship. Unique across
      * all aliquot relationships.
      */
-    @Column(name = "fhir_uuid", unique = true, columnDefinition = "uuid")
     private UUID fhirUuid;
 
     /**
      * Timestamp when this relationship was created. Automatically set on insert.
      */
-    @CreationTimestamp
-    @Column(name = "lastupdated", nullable = false, updatable = false)
     private Timestamp createdDate;
 
     // ========== Constructors ==========

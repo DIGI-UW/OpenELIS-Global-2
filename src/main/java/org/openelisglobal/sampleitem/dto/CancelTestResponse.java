@@ -17,8 +17,8 @@ package org.openelisglobal.sampleitem.dto;
  * Response object for test cancellation operations.
  *
  * <p>
- * Returns the result of the cancellation, including the analysis ID
- * and a success message.
+ * Returns the result of the cancellation, including the analysis ID and a
+ * success message.
  *
  * <p>
  * Related: Feature 001-sample-management

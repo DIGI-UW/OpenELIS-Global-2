@@ -8,13 +8,14 @@ import {
   Button,
   Tag,
 } from "@carbon/react";
-import { Add, Chemistry, CheckboxChecked } from "@carbon/icons-react";
+import { Add, Chemistry, CheckboxChecked, Printer } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import SampleSearch from "./SampleSearch";
 import SampleResultsTable from "./SampleResultsTable";
 import CreateAliquotModal from "./CreateAliquotModal";
 import AddTestsModal from "./AddTestsModal";
+import config from "../../config.json";
 
 /**
  * SampleManagement - Main container component for Sample Management feature.
@@ -300,6 +301,19 @@ export default function SampleManagement() {
   };
 
   /**
+   * Handle printing barcode for the sample.
+   * Uses the accession number from the search response.
+   */
+  const handlePrintBarCode = () => {
+    if (searchResponse && searchResponse.accessionNumber) {
+      const barcodesPdf =
+        config.serverBaseUrl +
+        `/LabelMakerServlet?labNo=${searchResponse.accessionNumber}`;
+      window.open(barcodesPdf);
+    }
+  };
+
+  /**
    * Handle test removal/cancellation from expanded row.
    * Updates local state to remove the test from the sample item.
    */
@@ -577,6 +591,15 @@ export default function SampleManagement() {
                     id="sample.management.addTests.button"
                     defaultMessage="Add Tests"
                   />
+                </Button>
+
+                {/* Print Barcode Button */}
+                <Button
+                  kind="tertiary"
+                  renderIcon={Printer}
+                  onClick={handlePrintBarCode}
+                >
+                  <FormattedMessage id="print.barcode" />
                 </Button>
               </div>
             </Column>

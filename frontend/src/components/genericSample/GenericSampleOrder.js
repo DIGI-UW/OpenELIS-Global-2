@@ -6,8 +6,10 @@ import {
   Heading,
   TextInput,
   Button,
+  InlineNotification,
 } from "@carbon/react";
-import { FormattedMessage } from "react-intl";
+import { Printer } from "@carbon/icons-react";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomDatePicker from "../common/CustomDatePicker";
 import CustomTimePicker from "../common/CustomTimePicker";
@@ -18,8 +20,11 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
+import config from "../../config.json";
 
 export default function GenericSampleOrder() {
+  const intl = useIntl();
+
   // Default fields as specified
   const [defaultForm, setDefaultForm] = useState({
     labNo: "",
@@ -46,6 +51,9 @@ export default function GenericSampleOrder() {
   const [uoms, setUoms] = useState([]);
   const [labNoLoading, setLabNoLoading] = useState(false);
 
+  // Success state for showing success message with print barcode option
+  const [successData, setSuccessData] = useState(null);
+
   const breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "menu.genericSample" },
@@ -67,8 +75,7 @@ export default function GenericSampleOrder() {
       setNotebooks(Array.isArray(res) ? res : []);
     });
 
-    // Generate LabNo
-    handleLabNoGeneration();
+    // Note: Lab number is NOT auto-generated - user must click "Generate Lab Number" button
   }, []);
 
   // Load FHIR Questionnaire when notebook is selected
@@ -144,8 +151,60 @@ export default function GenericSampleOrder() {
     return fhirResponses[questionId] || "";
   };
 
+  /**
+   * Handle printing barcode for the created sample.
+   * Opens the LabelMakerServlet in a new window to generate and print the barcode PDF.
+   * For generic samples, passes sample type, quantity, and from fields to display on label.
+   */
+  const handlePrintBarCode = (sampleData) => {
+    const params = new URLSearchParams({
+      labNo: sampleData.accessionNumber,
+      type: "generic",
+      quantity: "1",
+      sampleType: sampleData.sampleType || "",
+      sampleQuantity: sampleData.quantity
+        ? `${sampleData.quantity}${sampleData.unitOfMeasure ? " " + sampleData.unitOfMeasure : ""}`
+        : "",
+      from: sampleData.from || "",
+    });
+    const barcodesPdf =
+      config.serverBaseUrl + `/LabelMakerServlet?${params.toString()}`;
+    window.open(barcodesPdf);
+  };
+
+  /**
+   * Reset form and start a new sample order.
+   */
+  const handleNewOrder = () => {
+    setSuccessData(null);
+    setDefaultForm({
+      labNo: "",
+      sampleTypeId: "",
+      quantity: "",
+      sampleUnitOfMeasure: "",
+      from: "",
+      collector: "",
+      collectionDate: "",
+      collectionTime: "",
+    });
+    setFhirResponses({});
+    setSelectedNotebookId(null);
+    // Note: Lab number is NOT auto-generated - user must click "Generate Lab Number" button
+  };
+
   const onSubmit = (e) => {
     e.preventDefault();
+
+    // Validate that lab number has been generated
+    if (!defaultForm.labNo || defaultForm.labNo.trim() === "") {
+      alert(
+        intl.formatMessage({
+          id: "genericSample.order.error.labNoRequired",
+          defaultMessage: "Please generate a Lab Number before saving.",
+        }),
+      );
+      return;
+    }
 
     const submissionData = {
       defaultFields: defaultForm,
@@ -154,26 +213,208 @@ export default function GenericSampleOrder() {
       fhirResponses: fhirResponses,
     };
 
+    // Find the sample type name for display
+    const selectedSampleType = sampleTypes.find(
+      (s) => s.id === defaultForm.sampleTypeId,
+    );
+    const selectedUom = uoms.find(
+      (u) => u.id === defaultForm.sampleUnitOfMeasure,
+    );
+
     // Post to backend
     postToOpenElisServerJsonResponse(
       "/rest/GenericSampleOrder",
       JSON.stringify(submissionData),
       (data) => {
         if (data && data.success) {
-          alert(
-            "Sample order saved successfully! Accession Number: " +
-              (data.accessionNumber || ""),
-          );
-          // Optionally redirect or reset form
-          // window.location.href = "/";
+          // Show success state with print barcode option and sample details
+          setSuccessData({
+            accessionNumber: data.accessionNumber || defaultForm.labNo,
+            sampleType: selectedSampleType?.value || "",
+            quantity: defaultForm.quantity,
+            unitOfMeasure: selectedUom?.value || "",
+            from: defaultForm.from,
+            collector: defaultForm.collector,
+            collectionDate: defaultForm.collectionDate,
+            collectionTime: defaultForm.collectionTime,
+          });
         } else {
           alert(
-            "Error saving sample order: " + (data?.error || "Unknown error"),
+            intl.formatMessage({ id: "error.save.sample" }) +
+              ": " +
+              (data?.error || "Unknown error"),
           );
         }
       },
     );
   };
+
+  // If sample was successfully created, show success message with print option
+  if (successData) {
+    return (
+      <>
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section>
+              <Heading>
+                <FormattedMessage
+                  id="genericSample.order.title"
+                  defaultMessage="Generic Sample - Order"
+                />
+              </Heading>
+            </Section>
+          </Column>
+        </Grid>
+
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "2rem",
+                marginTop: "2rem",
+              }}
+            >
+              <InlineNotification
+                kind="success"
+                title={intl.formatMessage({ id: "save.success" })}
+                subtitle={intl.formatMessage(
+                  { id: "genericSample.order.success.message" },
+                  { accessionNumber: successData.accessionNumber },
+                )}
+                lowContrast
+                hideCloseButton
+                style={{ maxWidth: "600px", marginBottom: "1.5rem" }}
+              />
+
+              {/* Sample Details Summary */}
+              <div
+                style={{
+                  backgroundColor: "#f4f4f4",
+                  padding: "1.5rem",
+                  borderRadius: "4px",
+                  width: "100%",
+                  maxWidth: "600px",
+                  marginBottom: "1.5rem",
+                }}
+              >
+                <h4 style={{ marginBottom: "1rem" }}>
+                  <FormattedMessage
+                    id="genericSample.order.success.details"
+                    defaultMessage="Sample Details"
+                  />
+                </h4>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <div>
+                    <strong>
+                      <FormattedMessage id="sample.label.labnumber" />:
+                    </strong>
+                  </div>
+                  <div>{successData.accessionNumber}</div>
+
+                  {successData.sampleType && (
+                    <>
+                      <div>
+                        <strong>
+                          <FormattedMessage id="sample.type" />:
+                        </strong>
+                      </div>
+                      <div>{successData.sampleType}</div>
+                    </>
+                  )}
+
+                  {successData.quantity && (
+                    <>
+                      <div>
+                        <strong>
+                          <FormattedMessage id="sample.quantity.label" />:
+                        </strong>
+                      </div>
+                      <div>
+                        {successData.quantity}
+                        {successData.unitOfMeasure &&
+                          ` ${successData.unitOfMeasure}`}
+                      </div>
+                    </>
+                  )}
+
+                  {successData.from && (
+                    <>
+                      <div>
+                        <strong>
+                          <FormattedMessage id="genericSample.field.from" />:
+                        </strong>
+                      </div>
+                      <div>{successData.from}</div>
+                    </>
+                  )}
+
+                  {successData.collector && (
+                    <>
+                      <div>
+                        <strong>
+                          <FormattedMessage id="collector.label" />:
+                        </strong>
+                      </div>
+                      <div>{successData.collector}</div>
+                    </>
+                  )}
+
+                  {successData.collectionDate && (
+                    <>
+                      <div>
+                        <strong>
+                          <FormattedMessage id="sample.collection.date" />:
+                        </strong>
+                      </div>
+                      <div>
+                        {successData.collectionDate}
+                        {successData.collectionTime &&
+                          ` ${successData.collectionTime}`}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div
+                style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}
+              >
+                <Button
+                  kind="primary"
+                  renderIcon={Printer}
+                  onClick={() => handlePrintBarCode(successData)}
+                >
+                  <FormattedMessage id="print.barcode" />
+                </Button>
+                <Button kind="secondary" onClick={handleNewOrder}>
+                  <FormattedMessage
+                    id="genericSample.order.newOrder"
+                    defaultMessage="Create Another Sample"
+                  />
+                </Button>
+                <Button
+                  kind="tertiary"
+                  onClick={() => (window.location.href = "/")}
+                >
+                  <FormattedMessage id="button.home" defaultMessage="Home" />
+                </Button>
+              </div>
+            </div>
+          </Column>
+        </Grid>
+      </>
+    );
+  }
 
   return (
     <>
@@ -251,22 +492,38 @@ export default function GenericSampleOrder() {
               id="labNo"
               name="labNo"
               labelText={
-                <FormattedMessage
-                  id="sample.label.labnumber"
-                  defaultMessage="Lab Number"
-                />
+                <>
+                  <FormattedMessage
+                    id="sample.label.labnumber"
+                    defaultMessage="Lab Number"
+                  />
+                  <span style={{ color: "red" }}> *</span>
+                </>
               }
               value={defaultForm.labNo}
               readOnly
+              placeholder={intl.formatMessage({
+                id: "genericSample.order.labNo.placeholder",
+                defaultMessage: "Click 'Generate Lab Number' to create",
+              })}
             />
             <Button
               type="button"
+              kind={defaultForm.labNo ? "tertiary" : "primary"}
               style={{ marginTop: 10 }}
               onClick={handleLabNoGeneration}
               disabled={labNoLoading}
               size="sm"
             >
-              {labNoLoading ? "Generating..." : "Regenerate Lab Number"}
+              {labNoLoading
+                ? intl.formatMessage({
+                    id: "generating",
+                    defaultMessage: "Generating...",
+                  })
+                : intl.formatMessage({
+                    id: "genericSample.order.generateLabNo",
+                    defaultMessage: "Generate Lab Number",
+                  })}
             </Button>
           </Column>
           <Column lg={8} md={8} sm={4}>

@@ -234,8 +234,8 @@ public class SampleManagementRestController extends BaseRestController {
             }
 
             LogEvent.logInfo(this.getClass().getName(), "cancelTest",
-                    String.format("Cancelling test - analysisId: %s, sampleItemId: %s",
-                            form.getAnalysisId(), form.getSampleItemId()));
+                    String.format("Cancelling test - analysisId: %s, sampleItemId: %s", form.getAnalysisId(),
+                            form.getSampleItemId()));
 
             CancelTestResponse response = sampleManagementService.cancelTest(form, sysUserId);
 
@@ -250,8 +250,7 @@ public class SampleManagementRestController extends BaseRestController {
             throw e;
 
         } catch (Exception e) {
-            LogEvent.logError(this.getClass().getName(), "cancelTest",
-                    "Error cancelling test: " + e.getMessage());
+            LogEvent.logError(this.getClass().getName(), "cancelTest", "Error cancelling test: " + e.getMessage());
             throw e;
         }
     }

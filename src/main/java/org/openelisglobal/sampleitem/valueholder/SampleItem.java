@@ -13,12 +13,6 @@
  */
 package org.openelisglobal.sampleitem.valueholder;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -65,14 +59,13 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     // ========== Aliquoting Support Fields (Feature 001-sample-management)
     // ==========
-    // New fields using JPA annotations (hybrid approach per Constitution III.2)
+    // These fields are mapped via SampleItem.hbm.xml
 
     /**
      * Remaining quantity available for aliquoting or testing. Decremented when
      * creating aliquots. Cannot be negative. If null, the quantity field should be
      * used as the remaining quantity (for legacy samples without aliquoting).
      */
-    @Column(name = "remaining_quantity", precision = 10, scale = 3)
     private BigDecimal remainingQuantity;
 
     /**
@@ -80,24 +73,19 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
      * references parent for aliquots. Enables recursive aliquoting (aliquots of
      * aliquots).
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_sample_item_id", referencedColumnName = "id")
     private SampleItem parentSampleItem;
 
     /**
      * Child aliquots created from this sample item. Empty for aliquots that haven't
      * been further divided. Enables querying sample hierarchy.
      */
-    @OneToMany(mappedBy = "parentSampleItem", fetch = FetchType.LAZY)
     private List<SampleItem> childAliquots = new ArrayList<>();
 
     /**
      * Optimistic locking version for concurrency control during aliquoting.
      * Prevents race conditions when multiple users aliquot the same sample
-     * concurrently.
+     * concurrently. Mapped via hbm.xml as 'lastupdated' column.
      */
-    @Version
-    @Column(name = "lastupdated", insertable = false, updatable = false)
     private Timestamp version;
 
     public SampleItem() {

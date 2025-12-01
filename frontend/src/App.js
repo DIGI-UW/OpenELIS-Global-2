@@ -51,7 +51,6 @@ import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
-import ResultEntry from "./components/resultEntry/ResultEntry";
 
 export default function App() {
   let i18nConfig = {
@@ -465,9 +464,13 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
-                  path="/ResultEntry"
+                  path="/GenericSample/Results"
                   exact
-                  component={() => <ResultEntry />}
+                  component={() => {
+                    const GenericSampleResults =
+                      require("./components/genericSample/GenericSampleResults").default;
+                    return <GenericSampleResults />;
+                  }}
                   role={[Roles.RESULTS]}
                 />
                 <SecureRoute

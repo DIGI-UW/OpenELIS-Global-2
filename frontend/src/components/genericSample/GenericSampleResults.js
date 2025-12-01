@@ -30,7 +30,7 @@ import { Formik } from "formik";
 import config from "../../config.json";
 
 /**
- * ResultEntry - Standalone Result Entry page for entering test results.
+ * GenericSampleResults - Result Entry page for Generic Sample menu.
  *
  * Features:
  * - Search by accession number
@@ -40,7 +40,7 @@ import config from "../../config.json";
  *
  * Related: Feature 001-sample-management
  */
-function ResultEntry() {
+function GenericSampleResults() {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -51,6 +51,7 @@ function ResultEntry() {
   // Breadcrumb navigation
   const breadcrumbs = [
     { label: "home.label", link: "/" },
+    { label: "sample.label.generic", link: "/GenericSample/Order" },
     { label: "result.entry.label" },
   ];
 
@@ -96,13 +97,13 @@ function ResultEntry() {
     setResults({ testResult: [] });
 
     // Use the full accession number as-is
+    // Note: We don't filter by finished status so users can see and edit results after saving
     const labNumber = accessionNumber.trim();
     const searchEndPoint =
       "/rest/LogbookResults?" +
       "labNumber=" +
       encodeURIComponent(labNumber) +
       "&doRange=false" +
-      "&finished=false" +
       "&patientPK=" +
       "&collectionDate=" +
       "&recievedDate=" +
@@ -142,6 +143,11 @@ function ResultEntry() {
     const form = { ...results };
     const jp = require("jsonpath");
     jp.value(form, name, value);
+    // Also update pastNotes when note changes for display
+    if (name.includes(".note")) {
+      const pastNotesPath = "testResult[" + rowId + "].pastNotes";
+      jp.value(form, pastNotesPath, value);
+    }
     const isModified = "testResult[" + rowId + "].isModified";
     jp.value(form, isModified, "true");
     setResults(form);
@@ -357,7 +363,22 @@ function ResultEntry() {
     {
       id: "currentResult",
       name: intl.formatMessage({ id: "column.name.currentResult" }),
-      selector: (row) => row.resultValue,
+      cell: (row) => {
+        // For dictionary/coded results, show the display text instead of the ID
+        if (
+          (row.resultType === "D" ||
+            row.resultType === "M" ||
+            row.resultType === "C") &&
+          row.resultValue &&
+          row.dictionaryResults
+        ) {
+          const dictItem = row.dictionaryResults.find(
+            (dict) => dict.id === row.resultValue,
+          );
+          return dictItem ? dictItem.value : row.resultValue;
+        }
+        return row.resultValue || "";
+      },
       width: "8rem",
     },
     {
@@ -419,7 +440,8 @@ function ResultEntry() {
               value={accessionNumber}
               onChange={(e, rawValue) => {
                 // rawValue is provided for ALPHANUM format, otherwise use e.target.value
-                const value = rawValue !== undefined ? rawValue : e.target.value;
+                const value =
+                  rawValue !== undefined ? rawValue : e.target.value;
                 setAccessionNumber(value);
               }}
             />
@@ -519,4 +541,4 @@ function ResultEntry() {
   );
 }
 
-export default injectIntl(ResultEntry);
+export default injectIntl(GenericSampleResults);

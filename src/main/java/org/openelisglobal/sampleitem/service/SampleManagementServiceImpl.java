@@ -284,8 +284,7 @@ public class SampleManagementServiceImpl implements SampleManagementService {
                 String cancelledStatusId = statusService.getStatusID(StatusService.AnalysisStatus.Canceled);
 
                 List<TestSummaryDTO> testDtos = analyses.stream()
-                        .filter(a -> !cancelledStatusId.equals(a.getStatusId()))
-                        .map(this::convertToTestSummary)
+                        .filter(a -> !cancelledStatusId.equals(a.getStatusId())).map(this::convertToTestSummary)
                         .collect(Collectors.toList());
                 dto.setOrderedTests(testDtos);
             }
@@ -431,10 +430,8 @@ public class SampleManagementServiceImpl implements SampleManagementService {
         }
 
         // Step 2: Validate analysis belongs to the specified sample item
-        if (analysis.getSampleItem() == null
-                || !analysis.getSampleItem().getId().equals(form.getSampleItemId())) {
-            throw new IllegalArgumentException(
-                    "Analysis does not belong to specified sample item");
+        if (analysis.getSampleItem() == null || !analysis.getSampleItem().getId().equals(form.getSampleItemId())) {
+            throw new IllegalArgumentException("Analysis does not belong to specified sample item");
         }
 
         // Step 3: Check if analysis can be cancelled (not already completed/finalized)
@@ -447,15 +444,13 @@ public class SampleManagementServiceImpl implements SampleManagementService {
 
         if (!canCancel) {
             String statusName = statusService.getStatusNameFromId(currentStatusId);
-            throw new IllegalStateException(
-                    String.format("Cannot cancel test: analysis is already %s",
-                            statusName != null ? statusName : "in a non-cancellable state"));
+            throw new IllegalStateException(String.format("Cannot cancel test: analysis is already %s",
+                    statusName != null ? statusName : "in a non-cancellable state"));
         }
 
         // Step 4: Get test name for response before updating
         String testName = analysis.getTest() != null
-                ? (analysis.getTest().getName() != null
-                        ? analysis.getTest().getName()
+                ? (analysis.getTest().getName() != null ? analysis.getTest().getName()
                         : analysis.getTest().getDescription())
                 : "Unknown Test";
 
@@ -468,10 +463,7 @@ public class SampleManagementServiceImpl implements SampleManagementService {
         analysisService.update(analysis);
 
         // Step 7: Return success response
-        return new CancelTestResponse(
-                analysis.getId(),
-                testName,
-                true,
+        return new CancelTestResponse(analysis.getId(), testName, true,
                 String.format("Test '%s' has been cancelled successfully", testName));
     }
 }

@@ -15,17 +15,51 @@ import {
   InlineNotification,
   InlineLoading,
 } from "@carbon/react";
-import { FormattedMessage } from "react-intl";
+import { Printer } from "@carbon/icons-react";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import config from "../../config.json";
 
 export default function GenericSampleOrderImport() {
+  const intl = useIntl();
   const [file, setFile] = useState(null);
   const [validating, setValidating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
   const [importResult, setImportResult] = useState(null);
   const [error, setError] = useState(null);
+
+  /**
+   * Handle printing barcode for a single sample.
+   * Opens the LabelMakerServlet in a new window to generate and print the barcode PDF.
+   */
+  const handlePrintBarCode = (accessionNumber) => {
+    const barcodesPdf =
+      config.serverBaseUrl +
+      `/LabelMakerServlet?labNo=${encodeURIComponent(accessionNumber)}&type=order&quantity=1`;
+    window.open(barcodesPdf);
+  };
+
+  /**
+   * Handle printing barcodes for all created samples.
+   * Opens a new window for each accession number.
+   */
+  const handlePrintAllBarcodes = (accessionNumbers) => {
+    if (!accessionNumbers || accessionNumbers.length === 0) return;
+
+    // Open first one immediately, then stagger the rest to avoid popup blockers
+    handlePrintBarCode(accessionNumbers[0]);
+
+    // For remaining samples, open with slight delay
+    accessionNumbers.slice(1).forEach((accNo, index) => {
+      setTimeout(
+        () => {
+          handlePrintBarCode(accNo);
+        },
+        (index + 1) * 500,
+      ); // 500ms delay between each
+    });
+  };
 
   const handleFileUpload = (event) => {
     const files = event.target.files;
@@ -356,6 +390,27 @@ export default function GenericSampleOrderImport() {
                       <FormattedMessage id="label.created.samples" />
                     </Heading>
                     <p>{importResult.createdAccessionNumbers.join(", ")}</p>
+
+                    {/* Print Barcode Button */}
+                    <div style={{ marginTop: "1rem" }}>
+                      <Button
+                        kind="primary"
+                        renderIcon={Printer}
+                        onClick={() =>
+                          handlePrintAllBarcodes(
+                            importResult.createdAccessionNumbers,
+                          )
+                        }
+                      >
+                        <FormattedMessage
+                          id="print.barcode.all"
+                          defaultMessage="Print All Barcodes ({count})"
+                          values={{
+                            count: importResult.createdAccessionNumbers.length,
+                          }}
+                        />
+                      </Button>
+                    </div>
                   </div>
                 )}
               {importResult.errors && importResult.errors.length > 0 && (

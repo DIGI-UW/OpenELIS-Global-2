@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { Search, Loading } from "@carbon/react";
+import { Search, Loading, Button } from "@carbon/react";
+import { Search as SearchIcon } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 
@@ -71,21 +72,33 @@ function SampleSearch({ onSearchResults, includeTests = false }) {
   );
 
   /**
-   * Handle search input change with debouncing.
+   * Handle search input change - no longer auto-triggers search.
    */
   const handleSearchChange = (event) => {
     const newValue = event.target.value;
     setSearchValue(newValue);
 
-    // Clear previous timer
+    // Clear any pending debounced search
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
+  };
 
-    // Set new timer for debounced search (300ms delay)
-    debounceTimerRef.current = setTimeout(() => {
-      performSearch(newValue);
-    }, 300);
+  /**
+   * Handle search button click or Enter key press.
+   */
+  const handleSearchSubmit = () => {
+    performSearch(searchValue);
+  };
+
+  /**
+   * Handle key press - trigger search on Enter.
+   */
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleSearchSubmit();
+    }
   };
 
   /**
@@ -105,39 +118,51 @@ function SampleSearch({ onSearchResults, includeTests = false }) {
   };
 
   return (
-    <div style={{ position: "relative" }}>
-      <Search
-        id="sample-search-input"
-        labelText={intl.formatMessage({
-          id: "sample.management.search.label",
-        })}
-        placeholder={intl.formatMessage({
-          id: "sample.management.search.placeholder",
-        })}
-        value={searchValue}
-        onChange={handleSearchChange}
-        onClear={handleClearSearch}
-        disabled={isLoading}
-        size="lg"
-      />
-      {isLoading && (
-        <div
-          style={{
-            position: "absolute",
-            right: "40px",
-            top: "50%",
-            transform: "translateY(-50%)",
-          }}
-        >
-          <Loading
-            small
-            withOverlay={false}
-            description={intl.formatMessage({
-              id: "sample.management.search.loading",
-            })}
-          />
-        </div>
-      )}
+    <div style={{ display: "flex", alignItems: "flex-end", gap: "0.5rem" }}>
+      <div style={{ position: "relative", flex: 1 }}>
+        <Search
+          id="sample-search-input"
+          labelText={intl.formatMessage({
+            id: "sample.management.search.label",
+          })}
+          placeholder={intl.formatMessage({
+            id: "sample.management.search.placeholder",
+          })}
+          value={searchValue}
+          onChange={handleSearchChange}
+          onKeyDown={handleKeyDown}
+          onClear={handleClearSearch}
+          disabled={isLoading}
+          size="lg"
+        />
+        {isLoading && (
+          <div
+            style={{
+              position: "absolute",
+              right: "40px",
+              top: "50%",
+              transform: "translateY(-50%)",
+            }}
+          >
+            <Loading
+              small
+              withOverlay={false}
+              description={intl.formatMessage({
+                id: "sample.management.search.loading",
+              })}
+            />
+          </div>
+        )}
+      </div>
+      <Button
+        kind="primary"
+        renderIcon={SearchIcon}
+        onClick={handleSearchSubmit}
+        disabled={isLoading || !searchValue.trim()}
+        style={{ minHeight: "48px" }}
+      >
+        {intl.formatMessage({ id: "label.button.search" })}
+      </Button>
     </div>
   );
 }

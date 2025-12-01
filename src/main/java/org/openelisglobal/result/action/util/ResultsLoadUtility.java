@@ -220,8 +220,10 @@ public class ResultsLoadUtility {
         }
 
         currentPatient = patient;
-        PersonService personService = SpringContext.getBean(PersonService.class);
-        personService.getData(patient.getPerson());
+        if (patient != null && patient.getPerson() != null) {
+            PersonService personService = SpringContext.getBean(PersonService.class);
+            personService.getData(patient.getPerson());
+        }
 
         return getGroupedTestsForSamples();
     }
