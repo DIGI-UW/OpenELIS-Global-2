@@ -239,13 +239,13 @@ describe("AnalyzersList", () => {
    * 2. Act: Render component
    * 3. Assert: Verify lifecycle stage badge is displayed with correct color
    */
-  test("testLifecycleStageBadge_DisplaysCorrectly", async () => {
-    // Arrange: Setup API mocks with analyzer data including lifecycleStage
+  test("testStatusBadge_DisplaysCorrectly", async () => {
+    // Arrange: Setup API mocks with analyzer data including status
     const mockAnalyzers = [
       createMockAnalyzer({
         id: "1",
         name: "Test Analyzer",
-        lifecycleStage: "VALIDATION",
+        status: "VALIDATION",
       }),
     ];
 
@@ -256,15 +256,15 @@ describe("AnalyzersList", () => {
     // Act: Render component
     renderWithIntl(<AnalyzersList />);
 
-    // Assert: Wait for lifecycle stage badge to appear
-    const lifecycleBadge = await screen.findByTestId(
-      "lifecycle-stage-badge-1",
+    // Assert: Wait for status badge to appear
+    const statusBadge = await screen.findByTestId(
+      "status-badge-1",
       {},
       { timeout: 3000 },
     );
-    expect(lifecycleBadge).not.toBeNull();
-    // Verify badge contains the lifecycle stage text
-    expect(lifecycleBadge.textContent).toMatch(/validation/i);
+    expect(statusBadge).not.toBeNull();
+    // Verify badge contains the status text
+    expect(statusBadge.textContent).toMatch(/validation/i);
   });
 
   /**
@@ -276,31 +276,31 @@ describe("AnalyzersList", () => {
    * 2. Act: Select lifecycle stage filter
    * 3. Assert: Verify only analyzers with matching lifecycle stage are displayed
    */
-  test("testLifecycleStageFilter_FiltersAnalyzers", async () => {
-    // Arrange: Setup API mocks with analyzers in different lifecycle stages
+  test("testStatusFilter_FiltersAnalyzers", async () => {
+    // Arrange: Setup API mocks with analyzers in different statuses
     const allAnalyzers = [
       createMockAnalyzer({
         id: "1",
         name: "Analyzer 1",
-        lifecycleStage: "SETUP",
+        status: "SETUP",
       }),
       createMockAnalyzer({
         id: "2",
         name: "Analyzer 2",
-        lifecycleStage: "VALIDATION",
+        status: "VALIDATION",
       }),
       createMockAnalyzer({
         id: "3",
         name: "Analyzer 3",
-        lifecycleStage: "GO_LIVE",
+        status: "ACTIVE",
       }),
     ];
 
-    // Mock getAnalyzers to filter based on lifecycleStage parameter
+    // Mock getAnalyzers to filter based on status parameter
     getAnalyzers.mockImplementation((filters, callback) => {
-      if (filters && filters.lifecycleStage) {
+      if (filters && filters.status) {
         const filtered = allAnalyzers.filter(
-          (analyzer) => analyzer.lifecycleStage === filters.lifecycleStage,
+          (analyzer) => analyzer.status === filters.status,
         );
         callback(filtered);
       } else {
@@ -314,15 +314,13 @@ describe("AnalyzersList", () => {
     // Wait for initial data load
     await screen.findByTestId("analyzer-name-1", {}, { timeout: 3000 });
 
-    // Find lifecycle stage filter dropdown
-    const lifecycleFilter = screen.getByTestId(
-      "analyzer-lifecycle-stage-filter",
-    );
-    expect(lifecycleFilter).not.toBeNull();
+    // Find status filter dropdown
+    const statusFilter = screen.getByTestId("analyzer-status-filter");
+    expect(statusFilter).not.toBeNull();
 
     // Act: Select VALIDATION filter
     // Note: Carbon Dropdown interaction may require specific approach
     // For now, verify the filter exists and can be interacted with
-    expect(lifecycleFilter).not.toBeNull();
+    expect(statusFilter).not.toBeNull();
   });
 });

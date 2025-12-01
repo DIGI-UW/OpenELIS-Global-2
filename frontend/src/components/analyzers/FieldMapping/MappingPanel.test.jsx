@@ -321,13 +321,8 @@ describe("MappingPanel", () => {
     const retireButton = screen.getByTestId("mapping-panel-retire-button");
 
     // Assert: Button should be disabled
-    expect(retireButton).toBeDisabled();
-
-    // Assert: Tooltip should be visible (Carbon Tooltip shows on hover)
-    // The tooltip content should include the pending messages count
-    // Note: Carbon Tooltip may require hover to show, but the disabled state
-    // and tooltip label are set correctly
-    expect(retireButton).toHaveAttribute("disabled");
+    expect(retireButton.getAttribute("disabled")).not.toBeNull();
+    expect(retireButton.disabled).toBe(true);
   });
 
   /**
@@ -357,7 +352,8 @@ describe("MappingPanel", () => {
 
     // Act: Click retire button
     const retireButton = screen.getByTestId("mapping-panel-retire-button");
-    expect(retireButton).not.toBeDisabled();
+    expect(retireButton.getAttribute("disabled")).toBeNull();
+    expect(retireButton.disabled).toBe(false);
     await userEvent.click(retireButton);
 
     // Assert: Retirement modal should be open
@@ -397,8 +393,8 @@ describe("MappingPanel", () => {
 
     // Assert: Retired badge should be visible
     const retiredBadge = screen.getByTestId("mapping-retired-badge");
-    expect(retiredBadge).toBeTruthy();
-    expect(retiredBadge).toHaveTextContent("Retired");
+    expect(retiredBadge).not.toBeNull();
+    expect(retiredBadge.textContent).toContain("Retired");
 
     // Assert: Retire button should NOT be visible for retired mappings
     const retireButton = screen.queryByTestId("mapping-panel-retire-button");
@@ -446,9 +442,10 @@ describe("MappingPanel", () => {
     await userEvent.type(reasonTextarea, retirementReason);
 
     // Find and click confirm button
-    const confirmButton = screen.getByRole("button", {
-      name: /retire mapping/i,
-    });
+    const confirmButton = screen.getByTestId(
+      "mapping-retirement-confirm-button",
+    );
+    expect(confirmButton).not.toBeNull();
     await userEvent.click(confirmButton);
 
     // Assert: onRetireMapping should be called with mapping ID and reason

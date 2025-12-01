@@ -41,7 +41,10 @@ import { BrowserRouter } from "react-router-dom";
 import ErrorDashboard from "./ErrorDashboard";
 
 // 8. Utilities
-import { getFromOpenElisServer } from "../../../components/utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
+} from "../../../components/utils/Utils";
 
 // 9. Messages/translations
 import messages from "../../../languages/en.json";
@@ -342,8 +345,17 @@ describe("ErrorDashboard", () => {
       });
     });
 
-    // Spy on console.log to verify acknowledge all is called
-    const consoleSpy = jest.spyOn(console, "log").mockImplementation();
+    // Mock postToOpenElisServerFullResponse for acknowledge all
+    postToOpenElisServerFullResponse.mockImplementation(
+      (endpoint, payload, callback) => {
+        // Simulate successful response
+        const mockResponse = {
+          ok: true,
+          json: async () => ({ status: "success", acknowledgedCount: 1 }),
+        };
+        callback(mockResponse);
+      },
+    );
 
     // Act: Render component
     renderWithIntl(<ErrorDashboard />);
@@ -356,13 +368,9 @@ describe("ErrorDashboard", () => {
     // Act: Click acknowledge all button
     await userEvent.click(acknowledgeAllButton);
 
-    // Assert: Verify handler was called (console.log for now, will be API call when implemented)
+    // Assert: Verify API was called
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Acknowledge all errors"),
-      );
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled();
     });
-
-    consoleSpy.mockRestore();
   });
 });
