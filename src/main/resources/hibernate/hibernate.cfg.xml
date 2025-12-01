@@ -166,6 +166,15 @@
         <!-- Moved to annotation-based mappings (JPA) - entities registered in
             persistence.xml -->
 
+        <!-- ASTM Analyzer Mapping mappings (004-astm-analyzer-mapping) -->
+        <!-- All analyzer data model entities use XML-only mapping to match legacy
+            pattern -->
+        <mapping resource="hibernate/hbm/AnalyzerField.hbm.xml" />
+        <mapping resource="hibernate/hbm/AnalyzerFieldMapping.hbm.xml" />
+        <mapping
+            resource="hibernate/hbm/QualitativeResultMapping.hbm.xml" />
+        <mapping resource="hibernate/hbm/UnitMapping.hbm.xml" />
+
     </session-factory>
 
 </hibernate-configuration>

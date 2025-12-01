@@ -28,7 +28,7 @@
         <log4j.version>2.17.1</log4j.version>
         <springframework.version>6.2.2</springframework.version>
         <springsecurity.version>6.0.4</springsecurity.version>
-        <testContainersVersion>1.15.3</testContainersVersion>
+        <testContainersVersion>1.21.3</testContainersVersion>
     </properties>
     <dependencies>
         <dependency>
@@ -299,24 +299,14 @@
             <version>4.0.2</version>
         </dependency>
         <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+            <version>4.0.5</version>
+        </dependency>
+        <dependency>
             <groupId>jakarta.xml.ws</groupId>
             <artifactId>jakarta.xml.ws-api</artifactId>
             <version>4.0.2</version>
-        </dependency>
-        <dependency>
-            <groupId>com.digitalpetri.modbus</groupId>
-            <artifactId>modbus-tcp</artifactId>
-            <version>2.1.3</version>
-        </dependency>
-        <dependency>
-            <groupId>com.digitalpetri.modbus</groupId>
-            <artifactId>modbus-serial</artifactId>
-            <version>2.1.3</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fazecast</groupId>
-            <artifactId>jSerialComm</artifactId>
-            <version>2.11.0</version>
         </dependency>
         <dependency>
             <groupId>jakarta.validation</groupId>
@@ -523,11 +513,58 @@
             <artifactId>postgresql</artifactId>
             <version>${testContainersVersion}</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.github.docker-java</groupId>
+                    <artifactId>docker-java-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.github.docker-java</groupId>
+                    <artifactId>docker-java-transport-zerodep</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
             <version>${testContainersVersion}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.github.docker-java</groupId>
+                    <artifactId>docker-java-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.github.docker-java</groupId>
+                    <artifactId>docker-java-transport-zerodep</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Override docker-java to 3.7.0+ for Docker API 1.44+ support -->
+        <!-- Reference: https://newreleases.io/project/github/docker-java/docker-java/release/3.7.0 -->
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java-api</artifactId>
+            <version>3.7.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java-transport-zerodep</artifactId>
+            <version>3.7.0</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Missing dependencies for docker-java 3.7.0 -->
+        <dependency>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+            <version>2.5.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.minidev</groupId>
+            <artifactId>accessors-smart</artifactId>
+            <version>2.5.1</version>
             <scope>test</scope>
         </dependency>
         <!-- ASSORTED DEPENDENCIES (Sorted by artifactId) -->
@@ -629,7 +666,7 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>${postgresql.version}</version>
-            <scope>scope</scope>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
@@ -915,11 +952,6 @@
                     <excludes>
                         <exclude>**/*.jar</exclude>
                         <exclude>naughty-dependency/**/*.class</exclude>
-                        <!-- Exclude only configuration classes that run at startup (not tested) -->
-                        <exclude>**/config/**/*Config.class</exclude>
-                        <exclude>**/liquibase/**</exclude>
-                        <!-- Exclude generated code if any -->
-                        <exclude>**/generated/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -931,7 +963,7 @@
                     </execution>
                     <execution>
                         <id>report</id>
-                        <phase>package</phase>
+                        <phase>verify</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
@@ -945,6 +977,37 @@
                         </rules> </configuration> </execution> -->
 
                 </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.5.3</version>
+                <executions>
+                    <execution>
+                        <id>integration-tests</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify-tests</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
+                    <!--Tempoaralily skip storage tests -->
+                    <excludes>
+                        <exclude>**/storage/**/*.java</exclude>
+                    </excludes>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

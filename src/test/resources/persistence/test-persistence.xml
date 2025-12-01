@@ -5,7 +5,8 @@
     version="2.2">
 
     <persistence-unit
-        name="OpenELIS-Global-persistence-unit">
+        name="OpenELIS-Global-persistence-unit"
+        exclude-unlisted-classes="true">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
         <!-- converters -->
@@ -67,23 +68,20 @@
         <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
 
-        <!-- Cold Storage/Freezer Monitoring entities -->
-        <class>org.openelisglobal.coldstorage.valueholder.Freezer</class>
-        <class>org.openelisglobal.coldstorage.valueholder.FreezerReading</class>
-        <class>org.openelisglobal.coldstorage.valueholder.ThresholdProfile</class>
-        <class>org.openelisglobal.coldstorage.valueholder.FreezerThresholdProfile</class>
-
-        <!-- Alert entities -->
-        <class>org.openelisglobal.alert.valueholder.Alert</class>
-        <class>org.openelisglobal.coldstorage.valueholder.CorrectiveAction</class>
-
-        <!-- Notification entities -->
-        <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
-        <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
-
+        <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
+        <!-- AnalyzerConfiguration, AnalyzerError, CustomFieldType: annotation-based
+            (no XML entity refs) -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
+        <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
+            <!-- Ensure XML mappings take precedence over annotations -->
+            <property name="hibernate.mapping.precedence"
+                value="hbm, class" />
+            <property name="hibernate.physical_naming_strategy"
+                value="org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy" />
             <property name="hibernate.search.backend.directory.type"
                 value="local-heap" />
             <property

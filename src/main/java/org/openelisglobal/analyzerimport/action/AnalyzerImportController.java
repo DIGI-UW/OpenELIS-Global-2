@@ -94,6 +94,21 @@ public class AnalyzerImportController implements IActionConstants {
         reader = (ASTMAnalyzerReader) AnalyzerReaderFactory.getReaderFor("astm");
 
         if (reader != null) {
+            // Extract client IP address for analyzer identification
+            String clientIp = request.getRemoteAddr();
+            // Handle proxy headers (X-Forwarded-For, X-Real-IP)
+            String forwardedFor = request.getHeader("X-Forwarded-For");
+            if (forwardedFor != null && !forwardedFor.isEmpty()) {
+                // Take first IP from comma-separated list
+                clientIp = forwardedFor.split(",")[0].trim();
+            } else {
+                String realIp = request.getHeader("X-Real-IP");
+                if (realIp != null && !realIp.isEmpty()) {
+                    clientIp = realIp;
+                }
+            }
+            reader.setClientIpAddress(clientIp);
+
             read = reader.readStream(stream);
             if (read) {
                 boolean success = reader.processData(getSysUserId(request));

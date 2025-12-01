@@ -37,19 +37,21 @@
         <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
 
-        <!-- Alert System entities (003-freezer-monitoring) -->
-        <class>org.openelisglobal.alert.valueholder.Alert</class>
-        <class>org.openelisglobal.coldstorage.valueholder.CorrectiveAction</class>
-
-        <!-- Cold Storage Management entities (003-freezer-monitoring) -->
-        <class>org.openelisglobal.coldstorage.valueholder.Freezer</class>
-        <class>org.openelisglobal.coldstorage.valueholder.FreezerReading</class>
-        <class>org.openelisglobal.coldstorage.valueholder.ThresholdProfile</class>
-        <class>org.openelisglobal.coldstorage.valueholder.FreezerThresholdProfile</class>
+        <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
+        <!-- AnalyzerConfiguration, AnalyzerError, CustomFieldType: annotation-based (no XML entity refs) -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
+        <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
+        <!-- AnalyzerField, AnalyzerFieldMapping, QualitativeResultMapping, UnitMapping: XML-only in hibernate.cfg.xml
+             (NOT registered here - matches legacy Analyzer entity pattern) -->
 
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
+            <!-- Ensure XML mappings take precedence over annotations for entities registered in both -->
+            <property name="hibernate.mapping.precedence" value="hbm, class" />
+            <property name="hibernate.physical_naming_strategy"
+                value="org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy" />
             <property name="hibernate.search.backend.directory.type" value="local-filesystem" />
             <property name="hibernate.search.backend.directory.root" value="/var/lib/lucene_index" />
             <property name="hibernate.search.backend.analysis.configurer" value="class:org.openelisglobal.hibernate.search.analysis.CustomLuceneAnalysisConfigurer"/>
