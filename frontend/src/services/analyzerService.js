@@ -11,7 +11,6 @@
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  deleteToOpenElisServer,
 } from "../components/utils/Utils";
 import config from "../config.json";
 
@@ -141,7 +140,6 @@ export const updateAnalyzer = (id, analyzerData, callback, extraParams) => {
       callback(json, extraParams);
     })
     .catch((error) => {
-      console.error("updateAnalyzer error:", error);
       callback(
         {
           error: error.message || "Network error",
@@ -164,10 +162,7 @@ export const updateAnalyzer = (id, analyzerData, callback, extraParams) => {
  */
 export const deleteAnalyzer = (id, callback) => {
   const endpoint = `/rest/analyzer/analyzers/${id}/delete`;
-
-  console.log("deleteAnalyzer called with id:", id);
   const csrfToken = localStorage.getItem("CSRF");
-  console.log("CSRF token present:", !!csrfToken);
 
   fetch(config.serverBaseUrl + endpoint, {
     credentials: "include",
@@ -178,38 +173,32 @@ export const deleteAnalyzer = (id, callback) => {
     },
   })
     .then(async (response) => {
-      console.log(
-        "deleteAnalyzer response status:",
-        response.status,
-        response.statusText,
-      );
-      console.log("deleteAnalyzer response ok:", response.ok);
-
-      // Always try to read response body first (required for fetch to complete)
+      // Read response body if present
       let responseData = null;
       try {
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") !== -1) {
           responseData = await response.json();
-          console.log("deleteAnalyzer response data:", responseData);
         } else if (response.status !== 204) {
-          // For non-204 responses, try to read as text if not JSON
-          const text = await response.text();
-          console.log("deleteAnalyzer response text:", text);
+          await response.text();
         }
       } catch (e) {
-        console.log("deleteAnalyzer: Could not parse response body", e);
+        // Response body could not be parsed
       }
 
       if (response.ok || response.status === 204 || response.status === 200) {
         callback(true, null);
       } else {
-        // Try to parse error response
+        // Parse error response
         let errorData;
         try {
           const contentType = response.headers.get("content-type");
           if (contentType && contentType.indexOf("application/json") !== -1) {
-            errorData = await response.json();
+            errorData = responseData || {
+              error: `HTTP ${response.status}: ${response.statusText}`,
+              status: response.status,
+              statusText: response.statusText,
+            };
           } else {
             errorData = {
               error: `HTTP ${response.status}: ${response.statusText}`,
@@ -224,12 +213,10 @@ export const deleteAnalyzer = (id, callback) => {
             statusText: response.statusText,
           };
         }
-        console.error("deleteAnalyzer error response:", errorData);
         callback(false, errorData);
       }
     })
     .catch((error) => {
-      console.error("deleteAnalyzer fetch error:", error);
       callback(false, { error: error.message || "Network error" });
     });
 };
@@ -259,42 +246,10 @@ export const testConnection = (id, callback, extraParams) => {
  */
 export const queryAnalyzer = (id, callback, extraParams) => {
   const endpoint = `/rest/analyzer/analyzers/${id}/query`;
-  console.log(`[ANALYZER_SERVICE] Querying analyzer ${id} for fields`);
-  console.log(`[ANALYZER_SERVICE] Endpoint: ${endpoint}`);
-
   postToOpenElisServerJsonResponse(
     endpoint,
     JSON.stringify({}),
-    (response, error) => {
-      if (error) {
-        console.error(`[ANALYZER_SERVICE] Query analyzer ${id} failed:`, error);
-      } else if (response?.error) {
-        console.error(
-          `[ANALYZER_SERVICE] Query analyzer ${id} returned error:`,
-          response.error,
-        );
-      } else {
-        console.log(`[ANALYZER_SERVICE] Query analyzer ${id} succeeded:`, {
-          jobId: response?.jobId,
-          fieldsCount: response?.fields?.length || 0,
-          hasFields:
-            Array.isArray(response?.fields) && response.fields.length > 0,
-        });
-        if (response?.fields && Array.isArray(response.fields)) {
-          console.log(
-            `[ANALYZER_SERVICE] Fields received:`,
-            response.fields.map((f) => ({
-              id: f.id,
-              fieldName: f.fieldName,
-              astmRef: f.astmRef,
-              unit: f.unit,
-              fieldType: f.fieldType,
-            })),
-          );
-        }
-      }
-      callback(response, error);
-    },
+    callback,
     extraParams,
   );
 };
@@ -317,32 +272,7 @@ export const getQueryStatus = (analyzerId, jobId, callback) => {
  */
 export const getFields = (analyzerId, callback) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/fields`;
-  console.log(`[ANALYZER_SERVICE] Fetching fields for analyzer ${analyzerId}`);
-  console.log(`[ANALYZER_SERVICE] Endpoint: ${endpoint}`);
-
-  getFromOpenElisServer(endpoint, (data) => {
-    if (data && Array.isArray(data)) {
-      console.log(
-        `[ANALYZER_SERVICE] Retrieved ${data.length} fields for analyzer ${analyzerId}`,
-      );
-      console.log(
-        `[ANALYZER_SERVICE] Fields:`,
-        data.map((f) => ({
-          id: f.id,
-          fieldName: f.fieldName,
-          astmRef: f.astmRef,
-          unit: f.unit,
-          fieldType: f.fieldType,
-        })),
-      );
-    } else {
-      console.warn(
-        `[ANALYZER_SERVICE] Unexpected fields data format for analyzer ${analyzerId}:`,
-        data,
-      );
-    }
-    callback(data);
-  });
+  getFromOpenElisServer(endpoint, callback);
 };
 
 /**
@@ -352,24 +282,7 @@ export const getFields = (analyzerId, callback) => {
  */
 export const getMappings = (analyzerId, callback) => {
   const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings`;
-  console.log(
-    `[ANALYZER_SERVICE] Fetching mappings for analyzer ${analyzerId}`,
-  );
-  console.log(`[ANALYZER_SERVICE] Endpoint: ${endpoint}`);
-
-  getFromOpenElisServer(endpoint, (data) => {
-    if (data && Array.isArray(data)) {
-      console.log(
-        `[ANALYZER_SERVICE] Retrieved ${data.length} mappings for analyzer ${analyzerId}`,
-      );
-    } else {
-      console.warn(
-        `[ANALYZER_SERVICE] Unexpected mappings data format for analyzer ${analyzerId}:`,
-        data,
-      );
-    }
-    callback(data);
-  });
+  getFromOpenElisServer(endpoint, callback);
 };
 
 /**
@@ -440,7 +353,6 @@ export const updateMapping = (
       callback(json, extraParams);
     })
     .catch((error) => {
-      console.error("updateMapping error:", error);
       callback(
         {
           error: error.message || "Network error",
@@ -480,7 +392,6 @@ export const deleteMapping = (analyzerId, mappingId, callback) => {
       }
     })
     .catch((error) => {
-      console.error("deleteMapping error:", error);
       callback(false, { error: error.message || "Network error" });
     });
 };
@@ -575,7 +486,6 @@ export const updateCustomFieldType = (
       }
     })
     .catch((error) => {
-      console.error("updateCustomFieldType error:", error);
       callback(null, {
         ...extraParams,
         error: error.message || "Network error",
@@ -609,7 +519,6 @@ export const deleteCustomFieldType = (id, callback, extraParams) => {
       }
     })
     .catch((error) => {
-      console.error("deleteCustomFieldType error:", error);
       callback(false, { error: error.message || "Network error" });
     });
 };
@@ -684,7 +593,6 @@ export const updateValidationRule = (
       }
     })
     .catch((error) => {
-      console.error("updateValidationRule error:", error);
       callback(null, {
         ...extraParams,
         error: error.message || "Network error",
@@ -744,7 +652,6 @@ export const deleteValidationRule = (
       }
     })
     .catch((error) => {
-      console.error("deleteValidationRule error:", error);
       callback(false, { error: error.message || "Network error" });
     });
 };

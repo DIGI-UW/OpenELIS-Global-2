@@ -48,16 +48,17 @@ const ValidationDashboard = ({ analyzerId, status }) => {
   const [testHistory, setTestHistory] = useState([]);
   const [testHistoryModalOpen, setTestHistoryModalOpen] = useState(false);
 
-  // Only display when lifecycle stage is VALIDATION
+  // Load validation metrics when component mounts (only if in VALIDATION status)
+  useEffect(() => {
+    if (status === "VALIDATION" && analyzerId) {
+      loadValidationMetrics();
+    }
+  }, [analyzerId, status]);
+
+  // Only display when lifecycle stage is VALIDATION (early return AFTER hooks)
   if (status !== "VALIDATION") {
     return null;
   }
-
-  useEffect(() => {
-    if (analyzerId) {
-      loadValidationMetrics();
-    }
-  }, [analyzerId]);
 
   const loadValidationMetrics = () => {
     setLoading(true);

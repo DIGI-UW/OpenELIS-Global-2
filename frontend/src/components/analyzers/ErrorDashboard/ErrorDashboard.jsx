@@ -270,12 +270,8 @@ const ErrorDashboard = () => {
           if (data.status === "success") {
             // Reload errors after acknowledgment
             loadErrors(filters);
-          } else {
-            console.error("Failed to acknowledge errors:", data.error);
           }
         });
-      } else {
-        console.error("Failed to acknowledge errors:", response.statusText);
       }
     });
   };
@@ -302,12 +298,8 @@ const ErrorDashboard = () => {
             if (selectedError && selectedError.id === errorId) {
               setErrorDetailsOpen(false);
             }
-          } else {
-            console.error("Failed to acknowledge error:", data.error);
           }
         });
-      } else {
-        console.error("Failed to acknowledge error:", response.statusText);
       }
     });
   };

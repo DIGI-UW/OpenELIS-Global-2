@@ -95,38 +95,16 @@ const FieldMapping = () => {
 
     setLoading(true);
 
-    console.log(
-      `[FIELD_MAPPING] Loading field mapping page for analyzer ${analyzerId}`,
-    );
-
     // Load analyzer
     analyzerService.getAnalyzer(analyzerId, (analyzerData) => {
       if (analyzerData) {
-        console.log(`[FIELD_MAPPING] Analyzer loaded:`, {
-          id: analyzerData.id,
-          name: analyzerData.name,
-          active: analyzerData.active,
-          status: analyzerData.status,
-        });
         setAnalyzer(analyzerData);
-      } else {
-        console.warn(
-          `[FIELD_MAPPING] No analyzer data received for analyzer ${analyzerId}`,
-        );
       }
     });
 
     // Load fields from database
     analyzerService.getFields(analyzerId, (fieldsData) => {
-      console.log(`[FIELD_MAPPING] Fields data received from database:`, {
-        count: fieldsData?.length || 0,
-        isArray: Array.isArray(fieldsData),
-        data: fieldsData,
-      });
       if (fieldsData && Array.isArray(fieldsData)) {
-        console.log(
-          `[FIELD_MAPPING] Setting ${fieldsData.length} fields in state`,
-        );
         setFields(fieldsData);
 
         // Restore selected field after fields are loaded
@@ -134,34 +112,15 @@ const FieldMapping = () => {
         if (fieldId) {
           const fieldToSelect = fieldsData.find((f) => f.id === fieldId);
           if (fieldToSelect) {
-            console.log(
-              `[FIELD_MAPPING] Restoring selected field from URL/session:`,
-              fieldToSelect.fieldName,
-            );
             setSelectedField(fieldToSelect);
-          } else {
-            console.warn(
-              `[FIELD_MAPPING] Field ${fieldId} not found in loaded fields`,
-            );
           }
         }
-      } else {
-        console.warn(`[FIELD_MAPPING] Invalid fields data format:`, fieldsData);
       }
     });
 
     // Load mappings
     analyzerService.getMappings(analyzerId, (mappingsData) => {
-      console.log(`[FIELD_MAPPING] Mappings data received:`, {
-        count: mappingsData?.length || 0,
-        isArray: Array.isArray(mappingsData),
-        data: mappingsData,
-      });
       const mappings = extractMappings(mappingsData);
-      console.log(
-        `[FIELD_MAPPING] Extracted ${mappings.length} mappings:`,
-        mappings,
-      );
       setMappings(mappings);
       setLoading(false);
     });
@@ -214,10 +173,7 @@ const FieldMapping = () => {
       analyzerId,
       mappingData,
       (response, error) => {
-        if (error || (response && response.error)) {
-          // Handle error
-          console.error("Failed to create mapping:", error || response?.error);
-        } else {
+        if (!error && !(response && response.error)) {
           // Reload mappings
           analyzerService.getMappings(analyzerId, (mappingsData) => {
             const mappings = extractMappings(mappingsData);
@@ -374,31 +330,13 @@ const FieldMapping = () => {
           kind="tertiary"
           data-testid="field-mapping-query-button"
           onClick={() => {
-            console.log(
-              `[FIELD_MAPPING] Query Analyzer button clicked for analyzer ${analyzerId}`,
-            );
             analyzerService.queryAnalyzer(analyzerId, (resp, error) => {
               if (error) {
-                console.error(
-                  `[FIELD_MAPPING] Query Analyzer button - error:`,
-                  error,
-                );
                 setQueryModalOpen(true);
                 return;
               }
 
-              console.log(`[FIELD_MAPPING] Query Analyzer button - response:`, {
-                hasResponse: !!resp,
-                jobId: resp?.jobId,
-                hasFields: Array.isArray(resp?.fields),
-                fieldsCount: resp?.fields?.length || 0,
-                response: resp,
-              });
-
               if (resp && resp.jobId) {
-                console.log(
-                  `[FIELD_MAPPING] Query job started with jobId: ${resp.jobId}`,
-                );
                 setQueryJobId(resp.jobId);
                 setQueryModalOpen(true);
               } else if (
@@ -406,15 +344,9 @@ const FieldMapping = () => {
                 Array.isArray(resp.fields) &&
                 resp.fields.length > 0
               ) {
-                console.log(
-                  `[FIELD_MAPPING] Query returned ${resp.fields.length} fields immediately`,
-                );
                 setFields(resp.fields);
                 setQueryModalOpen(true);
               } else {
-                console.log(
-                  `[FIELD_MAPPING] Query response received but no jobId or fields`,
-                );
                 setQueryModalOpen(true);
               }
             });
@@ -514,21 +446,9 @@ const FieldMapping = () => {
         analyzerId={analyzerId}
         jobId={queryJobId}
         onCompleted={(data) => {
-          console.log(`[FIELD_MAPPING] Query completed callback received:`, {
-            state: data?.state,
-            hasError: !!data?.error,
-            hasFields: Array.isArray(data?.fields),
-            fieldsCount: data?.fields?.length || 0,
-            data,
-          });
-
           if (data && data.state === "completed") {
             if (data.error) {
               // Query completed but with an error
-              console.error(
-                `[FIELD_MAPPING] Query completed with error:`,
-                data.error,
-              );
               setErrorNotification({
                 kind: "error",
                 title: "Query Failed",
@@ -536,11 +456,9 @@ const FieldMapping = () => {
                   data.error ||
                   "Failed to query analyzer fields. Please try again.",
               });
-              // Don't update fields - keep existing state
             } else {
               // Query completed successfully
-              // Backend now returns saved fields with IDs in the status response
-              // Use those fields directly, but also reload from database as safety measure
+              // Backend returns saved fields with IDs in the status response
               if (
                 data.fields &&
                 Array.isArray(data.fields) &&
@@ -551,27 +469,15 @@ const FieldMapping = () => {
 
                 if (hasIds) {
                   // Fields from status have IDs - use them directly
-                  console.log(
-                    `[FIELD_MAPPING] Query completed with ${data.fields.length} fields (with IDs) from status`,
-                  );
                   setFields(data.fields);
                   setErrorNotification(null);
                 } else {
                   // Fields don't have IDs - reload from database
-                  console.log(
-                    `[FIELD_MAPPING] Fields in status don't have IDs, reloading from database`,
-                  );
                   analyzerService.getFields(analyzerId, (fieldsData) => {
                     if (fieldsData && Array.isArray(fieldsData)) {
-                      console.log(
-                        `[FIELD_MAPPING] Reloaded ${fieldsData.length} fields from database`,
-                      );
                       setFields(fieldsData);
                       setErrorNotification(null);
                     } else {
-                      console.warn(
-                        `[FIELD_MAPPING] Invalid fields data format after reload`,
-                      );
                       setErrorNotification({
                         kind: "error",
                         title: "Failed to Load Fields",
@@ -583,13 +489,9 @@ const FieldMapping = () => {
                 }
               } else {
                 // No fields in status - reload from database to check
-                console.log(
-                  `[FIELD_MAPPING] No fields in status response, checking database`,
-                );
                 analyzerService.getFields(analyzerId, (fieldsData) => {
                   if (fieldsData && Array.isArray(fieldsData)) {
                     if (fieldsData.length === 0) {
-                      // No fields saved - show warning
                       setErrorNotification({
                         kind: "warning",
                         title: "No Fields Retrieved",
@@ -597,17 +499,10 @@ const FieldMapping = () => {
                           "The query completed but no fields were saved. Check backend logs for errors.",
                       });
                     } else {
-                      // Fields exist in database - use them
-                      console.log(
-                        `[FIELD_MAPPING] Found ${fieldsData.length} fields in database`,
-                      );
                       setFields(fieldsData);
                       setErrorNotification(null);
                     }
                   } else {
-                    console.warn(
-                      `[FIELD_MAPPING] Invalid fields data format from database`,
-                    );
                     setErrorNotification({
                       kind: "error",
                       title: "Failed to Load Fields",
@@ -619,7 +514,6 @@ const FieldMapping = () => {
             }
           } else if (data && data.state === "failed") {
             // Query failed
-            console.error(`[FIELD_MAPPING] Query failed:`, data.error);
             setErrorNotification({
               kind: "error",
               title: "Query Failed",

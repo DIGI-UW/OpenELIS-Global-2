@@ -80,14 +80,16 @@ function OEHeader(props) {
   const [searchBar, setSearchBar] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
-  // Check if we're on an analyzer route (for isPersistent and defaultExpanded)
+  // Check if we're on an analyzer route (for default expanded state)
   const isAnalyzerRoute =
     props.location?.pathname?.startsWith("/analyzers") ?? false;
 
-  // Track if we've initialized analyzer sidebar to expanded
-  const [analyzerSidebarInitialized, setAnalyzerSidebarInitialized] =
-    useState(false);
-  const [lastRouteType, setLastRouteType] = useState(null); // Track if last route was analyzer or not
+  // Refs to access HeaderContainer render callback values from component-level effects
+  const sideNavExpandedRef = useRef(false);
+  const toggleSideNavRef = useRef(null);
+
+  // Track if we've set the initial sidebar state for this route type
+  const [initializedForRoute, setInitializedForRoute] = useState(null);
 
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
@@ -181,6 +183,28 @@ function OEHeader(props) {
   useEffect(() => {
     getNotifications();
   }, []);
+
+  // Sidebar initialization effect - runs when route type changes
+  // Uses refs to access HeaderContainer values from outside the render callback
+  useEffect(() => {
+    // Only run if we have access to the toggle function
+    if (!toggleSideNavRef.current) return;
+
+    // Check if route type has changed
+    const currentRouteType = isAnalyzerRoute ? "analyzer" : "other";
+    if (initializedForRoute === currentRouteType) return;
+
+    // Set initial state based on route type
+    // Analyzer routes default to expanded, other routes default to collapsed
+    const shouldBeExpanded = isAnalyzerRoute;
+    const isCurrentlyExpanded = sideNavExpandedRef.current;
+
+    if (shouldBeExpanded !== isCurrentlyExpanded) {
+      toggleSideNavRef.current();
+    }
+
+    setInitializedForRoute(currentRouteType);
+  }, [isAnalyzerRoute, initializedForRoute]);
 
   const panelSwitchIcon = () => {
     return userSessionDetails.authenticated ? (
@@ -518,70 +542,9 @@ function OEHeader(props) {
           >
             <HeaderContainer
               render={({ isSideNavExpanded, onClickSideNavExpand }) => {
-                // On first render of analyzer route, expand the sidebar
-                // On non-analyzer routes, ensure it's collapsed
-                useEffect(() => {
-                  // Reset initialization state when route type changes
-                  if (
-                    lastRouteType !== null &&
-                    lastRouteType !== isAnalyzerRoute
-                  ) {
-                    setAnalyzerSidebarInitialized(false);
-                  }
-
-                  if (
-                    isAnalyzerRoute &&
-                    !analyzerSidebarInitialized &&
-                    !isSideNavExpanded
-                  ) {
-                    onClickSideNavExpand();
-                    setAnalyzerSidebarInitialized(true);
-                    setLastRouteType(true);
-                  } else if (!isAnalyzerRoute && !analyzerSidebarInitialized) {
-                    // Collapse sidebar on non-analyzer routes if it's expanded
-                    if (isSideNavExpanded) {
-                      onClickSideNavExpand();
-                    }
-                    setAnalyzerSidebarInitialized(true);
-                    setLastRouteType(false);
-                  } else if (lastRouteType === null) {
-                    // Initial load - set route type
-                    setLastRouteType(isAnalyzerRoute);
-                  }
-                }, [
-                  isAnalyzerRoute,
-                  isSideNavExpanded,
-                  analyzerSidebarInitialized,
-                  lastRouteType,
-                ]);
-
-                // Clean up stuck side nav overlay - analyzer routes use persistent sidebar, no overlay needed
-                // Note: CSS also handles this, but this is a backup for E2E tests
-                useEffect(() => {
-                  if (isAnalyzerRoute) {
-                    // On analyzer routes, overlay should never be active (sidebar is persistent)
-                    const checkAndFixOverlay = () => {
-                      const overlay = document.querySelector(
-                        ".cds--side-nav__overlay",
-                      );
-                      if (overlay) {
-                        overlay.classList.remove(
-                          "cds--side-nav__overlay-active",
-                        );
-                        overlay.style.display = "none";
-                        overlay.style.visibility = "hidden";
-                        overlay.style.opacity = "0";
-                        overlay.style.pointerEvents = "none";
-                      }
-                    };
-
-                    // Check immediately and once more after a short delay
-                    checkAndFixOverlay();
-                    const timeout = setTimeout(checkAndFixOverlay, 100);
-
-                    return () => clearTimeout(timeout);
-                  }
-                }, [isAnalyzerRoute, isSideNavExpanded]);
+                // Update refs so component-level effects can access these values
+                sideNavExpandedRef.current = isSideNavExpanded;
+                toggleSideNavRef.current = onClickSideNavExpand;
 
                 const handleToggle = () => {
                   onClickSideNavExpand();

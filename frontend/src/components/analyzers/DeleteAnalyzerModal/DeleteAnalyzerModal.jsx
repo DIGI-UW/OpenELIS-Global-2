@@ -28,10 +28,7 @@ const DeleteAnalyzerModal = ({ analyzer, open, onClose, onConfirm }) => {
   const [notification, setNotification] = useState(null);
 
   const handleDelete = () => {
-    console.log("DeleteAnalyzerModal handleDelete called", { analyzer });
-
     if (!analyzer || !analyzer.id) {
-      console.error("DeleteAnalyzerModal: No analyzer or analyzer.id");
       setNotification({
         kind: "error",
         title: intl.formatMessage({ id: "analyzer.delete.error" }),
@@ -44,22 +41,11 @@ const DeleteAnalyzerModal = ({ analyzer, open, onClose, onConfirm }) => {
 
     setIsDeleting(true);
     setNotification(null);
-    console.log(
-      "DeleteAnalyzerModal: Calling deleteAnalyzer with id:",
-      analyzer.id,
-    );
 
     deleteAnalyzer(analyzer.id, (success, error) => {
-      console.log("DeleteAnalyzerModal: deleteAnalyzer callback", {
-        success,
-        error,
-      });
       setIsDeleting(false);
 
       if (success) {
-        console.log(
-          "DeleteAnalyzerModal: Delete successful, calling callbacks",
-        );
         // Call onConfirm callback if provided
         if (onConfirm) {
           onConfirm(analyzer.id);
@@ -67,7 +53,6 @@ const DeleteAnalyzerModal = ({ analyzer, open, onClose, onConfirm }) => {
         // Close modal
         onClose();
       } else {
-        console.error("DeleteAnalyzerModal: Delete failed", error);
         setNotification({
           kind: "error",
           title: intl.formatMessage({ id: "analyzer.delete.error" }),

@@ -76,8 +76,6 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
     onClose && onClose();
   };
 
-  if (!error) return null;
-
   return (
     <ComposedModal
       open={open}
