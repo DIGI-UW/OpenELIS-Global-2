@@ -21,4 +21,7 @@
   <include relativeToChangelogFile="true" file="013-remove-short-code-columns.xml"/>
   <include relativeToChangelogFile="true" file="014-rename-print-history-short-code-to-location-code.xml"/>
   <include relativeToChangelogFile="true" file="011-freezer-monitoring-schema.xml"/>
+
+  <!-- ASTM Analyzer Field Mapping (004-astm-analyzer-mapping) -->
+  <include relativeToChangelogFile="true" file="../analyzer/base.xml"/>
 </databaseChangeLog>
