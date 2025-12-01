@@ -15,6 +15,7 @@ import {
   createAnalyzer,
   updateAnalyzer,
 } from "../../../services/analyzerService";
+import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import "./AnalyzerForm.css";
 
 const AnalyzerForm = ({ analyzer, open, onClose }) => {
@@ -34,6 +35,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [testConnectionModalOpen, setTestConnectionModalOpen] = useState(false);
 
   // Analyzer type options
   const analyzerTypeOptions = [
@@ -295,6 +297,14 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                 invalid={!!errors.port}
                 invalidText={errors.port}
               />
+
+              <Button
+                kind="tertiary"
+                onClick={() => setTestConnectionModalOpen(true)}
+                data-testid="analyzer-form-test-connection-button"
+              >
+                {intl.formatMessage({ id: "analyzer.form.testConnection" })}
+              </Button>
             </div>
 
             <Dropdown
@@ -341,6 +351,19 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           </Button>
         </ModalFooter>
       </ComposedModal>
+      <TestConnectionModal
+        analyzer={
+          formData.ipAddress && formData.port
+            ? {
+                id: analyzer?.id || "test",
+                ipAddress: formData.ipAddress,
+                port: parseInt(formData.port, 10),
+              }
+            : null
+        }
+        open={testConnectionModalOpen}
+        onClose={() => setTestConnectionModalOpen(false)}
+      />
     </>
   );
 };

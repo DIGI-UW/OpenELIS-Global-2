@@ -1,7 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import PageTitle from "./PageTitle";
@@ -27,10 +26,10 @@ describe("PageTitle Component", () => {
   it("should render simple breadcrumb without back arrow", () => {
     renderWithIntl(<PageTitle breadcrumbs={[{ label: "Analyzers" }]} />);
 
-    expect(screen.getByText("Analyzers")).toBeInTheDocument();
+    expect(screen.getByText("Analyzers")).not.toBeNull();
     expect(
       screen.queryByTestId("page-title-back-button"),
-    ).not.toBeInTheDocument();
+    ).toBeNull();
   });
 
   it("should render hierarchical breadcrumbs with separator", () => {
@@ -44,9 +43,9 @@ describe("PageTitle Component", () => {
       />,
     );
 
-    expect(screen.getByText("Analyzers")).toBeInTheDocument();
-    expect(screen.getByText("Field Mappings")).toBeInTheDocument();
-    expect(screen.getByText("Hematology Analyzer 1")).toBeInTheDocument();
+    expect(screen.getByText("Analyzers")).not.toBeNull();
+    expect(screen.getByText("Field Mappings")).not.toBeNull();
+    expect(screen.getByText("Hematology Analyzer 1")).not.toBeNull();
 
     // Check separators
     const separators = screen.getAllByText(">");
@@ -64,7 +63,7 @@ describe("PageTitle Component", () => {
       />,
     );
 
-    expect(screen.getByTestId("page-title-back-button")).toBeInTheDocument();
+    expect(screen.getByTestId("page-title-back-button")).not.toBeNull();
   });
 
   it("should render clickable breadcrumb links", async () => {
@@ -78,7 +77,7 @@ describe("PageTitle Component", () => {
     );
 
     const link = screen.getByTestId("breadcrumb-link-0");
-    expect(link).toBeInTheDocument();
+    expect(link).not.toBeNull();
     await userEvent.click(link);
     // Navigation verified by router (not tested here)
   });
@@ -91,7 +90,7 @@ describe("PageTitle Component", () => {
       />,
     );
 
-    expect(screen.getByText("Configure analyzer settings")).toBeInTheDocument();
+    expect(screen.getByText("Configure analyzer settings")).not.toBeNull();
   });
 
   it("should call custom onBack handler when provided", async () => {

@@ -44,7 +44,8 @@ jest.mock("./OpenELISFieldSelector", () => {
 import React from "react";
 
 // 2. Testing Library
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 
 // 3. userEvent (PREFERRED for user interactions)
 import userEvent from "@testing-library/user-event";

@@ -15,6 +15,7 @@
 
 jest.mock("../../../components/utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),
+  postToOpenElisServerFullResponse: jest.fn(),
 }));
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
