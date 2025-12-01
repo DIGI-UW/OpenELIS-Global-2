@@ -108,4 +108,24 @@ public interface StorageLocationService {
      *         'Main Laboratory' because it contains 8 devices")
      */
     String getDeleteConstraintMessage(Object locationEntity);
+
+    /**
+     * OGC-75: Get summary of what will be deleted in a cascade delete operation
+     * 
+     * @param locationEntity Location entity to get cascade delete summary for
+     * @return Map containing: childLocations (Map with counts by type), sampleCount
+     *         (int), childLocationType (String - type of child locations),
+     *         childLocationCount (int)
+     */
+    Map<String, Object> getCascadeDeleteSummary(Object locationEntity);
+
+    /**
+     * OGC-75: Delete location with cascade deletion of all child locations and
+     * unassignment of all samples
+     * 
+     * @param id            Location ID
+     * @param locationClass Location entity class (StorageRoom, StorageDevice,
+     *                      StorageShelf, or StorageRack)
+     */
+    void deleteLocationWithCascade(Integer id, Class<?> locationClass);
 }

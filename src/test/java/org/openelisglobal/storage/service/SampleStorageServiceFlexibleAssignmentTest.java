@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.Before;
@@ -297,5 +298,101 @@ public class SampleStorageServiceFlexibleAssignmentTest {
             return a.getLocationId().equals(30) && a.getLocationType().equals("rack")
                     && "C7".equals(a.getPositionCoordinate());
         }));
+    }
+
+    @Test
+    public void testGetSampleItemLocation_WithValidId_ReturnsLocationData() {
+        // Setup - existing assignment
+        SampleStorageAssignment assignment = new SampleStorageAssignment();
+        assignment.setId(100);
+        assignment.setSampleItem(testSampleItem);
+        assignment.setLocationId(10);
+        assignment.setLocationType("device");
+        assignment.setPositionCoordinate("A5");
+        assignment.setNotes("Test notes");
+        assignment.setAssignedByUserId(1);
+        assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+
+        when(sampleStorageAssignmentDAO.findBySampleItemId("sample-item-123")).thenReturn(assignment);
+        when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
+
+        // Execute
+        Map<String, Object> result = sampleStorageService.getSampleItemLocation("sample-item-123");
+
+        // Verify
+        assertNotNull("Result should not be null", result);
+        assertTrue("Result should contain sampleItemId", result.containsKey("sampleItemId"));
+        assertEquals("sample-item-123", result.get("sampleItemId"));
+        assertTrue("Result should contain hierarchicalPath", result.containsKey("hierarchicalPath"));
+        String path = (String) result.get("hierarchicalPath");
+        assertNotNull("HierarchicalPath should not be null", path);
+        assertTrue("Path should contain room name", path.contains("Main Laboratory"));
+        assertTrue("Path should contain device name", path.contains("Freezer Unit 1"));
+        assertTrue("Path should contain position coordinate", path.contains("A5"));
+        assertEquals(Integer.valueOf(1), result.get("assignedBy"));
+        assertEquals("A5", result.get("positionCoordinate"));
+        assertEquals("Test notes", result.get("notes"));
+    }
+
+    @Test
+    public void testGetSampleItemLocation_WithNoAssignment_ReturnsEmptyMap() {
+        // Setup - no assignment found
+        when(sampleStorageAssignmentDAO.findBySampleItemId("sample-item-999")).thenReturn(null);
+
+        // Execute
+        Map<String, Object> result = sampleStorageService.getSampleItemLocation("sample-item-999");
+
+        // Verify
+        assertNotNull("Result should not be null", result);
+        assertTrue("Result should be empty when no assignment exists", result.isEmpty());
+    }
+
+    @Test
+    public void testGetSampleItemLocation_WithNullId_ReturnsEmptyMap() {
+        // Execute
+        Map<String, Object> result = sampleStorageService.getSampleItemLocation(null);
+
+        // Verify
+        assertNotNull("Result should not be null", result);
+        assertTrue("Result should be empty for null ID", result.isEmpty());
+    }
+
+    @Test
+    public void testGetSampleItemLocation_WithEmptyId_ReturnsEmptyMap() {
+        // Execute
+        Map<String, Object> result = sampleStorageService.getSampleItemLocation("");
+
+        // Verify
+        assertNotNull("Result should not be null", result);
+        assertTrue("Result should be empty for empty ID", result.isEmpty());
+    }
+
+    @Test
+    public void testGetSampleItemLocation_WithRackLevel_ReturnsFullPath() {
+        // Setup - rack level assignment
+        SampleStorageAssignment assignment = new SampleStorageAssignment();
+        assignment.setId(100);
+        assignment.setSampleItem(testSampleItem);
+        assignment.setLocationId(30);
+        assignment.setLocationType("rack");
+        assignment.setPositionCoordinate("B3");
+        assignment.setAssignedByUserId(1);
+        assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+
+        when(sampleStorageAssignmentDAO.findBySampleItemId("sample-item-123")).thenReturn(assignment);
+        when(storageLocationService.get(30, StorageRack.class)).thenReturn(testRack);
+
+        // Execute
+        Map<String, Object> result = sampleStorageService.getSampleItemLocation("sample-item-123");
+
+        // Verify
+        assertNotNull("Result should not be null", result);
+        String path = (String) result.get("hierarchicalPath");
+        assertNotNull("HierarchicalPath should not be null", path);
+        assertTrue("Path should contain room", path.contains("Main Laboratory"));
+        assertTrue("Path should contain device", path.contains("Freezer Unit 1"));
+        assertTrue("Path should contain shelf", path.contains("Shelf-A"));
+        assertTrue("Path should contain rack", path.contains("Rack R1"));
+        assertTrue("Path should contain position coordinate", path.contains("B3"));
     }
 }

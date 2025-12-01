@@ -34,26 +34,10 @@ const LocationAutocomplete = ({
     getFromOpenElisServer(
       `/rest/storage/locations/search?q=${encodeURIComponent(term)}`,
       (results) => {
-        // DEBUG: Log raw API response
-        if (process.env.NODE_ENV === "development") {
-          console.log(
-            "[LocationAutocomplete] Raw API response:",
-            JSON.stringify((results || []).slice(0, 2), null, 2),
-          );
-        }
-
         // Filter out position-level locations (only Room/Device/Shelf/Rack allowed)
         const filteredResults = (results || []).filter(
           (location) => location.type !== "position",
         );
-
-        // DEBUG: Log filtered results
-        if (process.env.NODE_ENV === "development") {
-          console.log(
-            "[LocationAutocomplete] Filtered results:",
-            JSON.stringify(filteredResults.slice(0, 2), null, 2),
-          );
-        }
 
         setSearchResults(filteredResults);
         setIsLoading(false);
