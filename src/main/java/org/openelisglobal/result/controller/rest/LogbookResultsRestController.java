@@ -210,7 +210,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             @RequestParam(required = false) String selectedSampleStatus,
             @RequestParam(required = false) String selectedAnalysisStatus,
             @RequestParam(required = false) String upperRangeAccessionNumber,
-            @RequestParam(required = false) boolean doRange, @RequestParam(required = false, defaultValue = "false") boolean finished,
+            @RequestParam(required = false) boolean doRange,
+            @RequestParam(required = false, defaultValue = "false") boolean finished,
             @Validated(LogbookResults.class) @ModelAttribute("form") LogbookResultsForm form, BindingResult result)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 

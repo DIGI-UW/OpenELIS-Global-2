@@ -62,7 +62,8 @@ public class OrderLabel extends Label {
     }
 
     /**
-     * Constructor for generic samples with additional details (sample type, quantity, from)
+     * Constructor for generic samples with additional details (sample type,
+     * quantity, from)
      *
      * @param labNo      Code to include in bar code
      * @param sampleType Sample type description
@@ -116,7 +117,8 @@ public class OrderLabel extends Label {
     }
 
     /**
-     * @param patient Who to include on order label (can be null for generic samples)
+     * @param patient Who to include on order label (can be null for generic
+     *                samples)
      * @param sample  What to include on order label
      * @param labNo   Code to include in bar code
      */

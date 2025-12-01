@@ -29,7 +29,8 @@ public class ResultCalculationServiceImpl extends AuditableBaseObjectServiceImpl
 
     @Override
     public List<ResultCalculation> getResultCalculationByPatientAndTest(Patient patient, Test test) {
-        // Return empty list if patient is null (e.g., generic samples without patient info)
+        // Return empty list if patient is null (e.g., generic samples without patient
+        // info)
         if (patient == null) {
             return Collections.emptyList();
         }
@@ -44,7 +45,8 @@ public class ResultCalculationServiceImpl extends AuditableBaseObjectServiceImpl
     @Override
     public List<ResultCalculation> getResultCalculationByPatientAndCalculation(Patient patient,
             Calculation calculation) {
-        // Return empty list if patient is null (e.g., generic samples without patient info)
+        // Return empty list if patient is null (e.g., generic samples without patient
+        // info)
         if (patient == null) {
             return Collections.emptyList();
         }
