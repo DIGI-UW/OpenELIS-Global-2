@@ -158,3 +158,40 @@ code {
     opacity: 0.5;
   }
 }
+
+/* Remove overflow-y: auto on Carbon modal-content to allow dropdown overflow */
+/* Needed globally since Carbon modals render in portals */
+.cds--modal-content {
+  overflow: visible !important;
+  overflow-y: visible !important;
+}
+
+.cds--modal-scroll-content {
+  overflow: visible !important;
+}
+
+.cds--modal-container {
+  overflow: visible !important;
+}
+
+/* Fix stuck side nav overlay on analyzer routes - sidebar is persistent, no overlay needed */
+/* Hide overlay when analyzer-persistent-sidebar class is present (analyzer routes) */
+body:has(.analyzer-persistent-sidebar) .cds--side-nav__overlay,
+body:has(.analyzer-persistent-sidebar) .cds--side-nav__overlay-active {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+
+/* Also hide overlay when sidebar is expanded on desktop (viewport > 1056px) - overlay only needed on mobile */
+@media (min-width: 1057px) {
+  .cds--side-nav__overlay,
+  .cds--side-nav__overlay-active {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
