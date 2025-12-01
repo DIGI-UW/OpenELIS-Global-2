@@ -32,8 +32,7 @@ public class UnitMappingDAOImpl extends BaseDAOImpl<UnitMapping, String> impleme
             Session session = entityManager.unwrap(Session.class);
             @SuppressWarnings("unchecked")
             org.hibernate.query.NativeQuery<UnitMapping> query = (org.hibernate.query.NativeQuery<UnitMapping>) session
-                    .createNativeQuery(sql)
-                    .addEntity(UnitMapping.class);
+                    .createNativeQuery(sql).addEntity(UnitMapping.class);
             query.setParameter("analyzerFieldId", analyzerFieldId);
             return query.list();
         } catch (Exception e) {

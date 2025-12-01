@@ -33,8 +33,7 @@ public class QualitativeResultMappingDAOImpl extends BaseDAOImpl<QualitativeResu
             Session session = entityManager.unwrap(Session.class);
             @SuppressWarnings("unchecked")
             org.hibernate.query.NativeQuery<QualitativeResultMapping> query = (org.hibernate.query.NativeQuery<QualitativeResultMapping>) session
-                    .createNativeQuery(sql)
-                    .addEntity(QualitativeResultMapping.class);
+                    .createNativeQuery(sql).addEntity(QualitativeResultMapping.class);
             query.setParameter("analyzerFieldId", analyzerFieldId);
             return query.list();
         } catch (Exception e) {

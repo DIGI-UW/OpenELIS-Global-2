@@ -27,9 +27,7 @@ describe("PageTitle Component", () => {
     renderWithIntl(<PageTitle breadcrumbs={[{ label: "Analyzers" }]} />);
 
     expect(screen.getByText("Analyzers")).not.toBeNull();
-    expect(
-      screen.queryByTestId("page-title-back-button"),
-    ).toBeNull();
+    expect(screen.queryByTestId("page-title-back-button")).toBeNull();
   });
 
   it("should render hierarchical breadcrumbs with separator", () => {

@@ -18,8 +18,10 @@ public class UnitMappingColumnMappingTest extends BaseWebContextSensitiveTest {
     @Test
     public void testUnitMappingColumnName() {
         SessionFactoryImplementor sessionFactory = entityManagerFactory.unwrap(SessionFactoryImplementor.class);
-        // Use getEntityPersister() instead of getMetamodel().entity() for Hibernate 6 compatibility
-        AbstractEntityPersister persister = (AbstractEntityPersister) sessionFactory.getEntityPersister(UnitMapping.class.getName());
+        // Use getEntityPersister() instead of getMetamodel().entity() for Hibernate 6
+        // compatibility
+        AbstractEntityPersister persister = (AbstractEntityPersister) sessionFactory
+                .getEntityPersister(UnitMapping.class.getName());
         String[] columnNames = persister.getPropertyColumnNames("analyzerFieldId");
         assertArrayEquals(new String[] { "analyzer_field_id" }, columnNames);
     }
