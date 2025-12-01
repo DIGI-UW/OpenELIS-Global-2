@@ -21,18 +21,24 @@ import {
   SelectItem,
   Loading,
   Link,
+  Tag,
   FileUploader,
 } from "@carbon/react";
-import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
+import {
+  Copy,
+  ArrowLeft,
+  ArrowRight,
+  Add,
+  Subtract,
+} from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
 import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import SearchPatientForm from "../patient/SearchPatientForm";
 import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
-import { ConfigurationContext } from "../layout/Layout";
 import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
@@ -101,16 +107,16 @@ export function SearchResultForm(props) {
   const [url, setUrl] = useState("");
   const componentMounted = useRef(false);
 
+  const intl = useIntl();
+
   const setResultsWithId = (results) => {
     if (results.testResult) {
-      var i = 0;
-      if (results.testResult) {
-        results.testResult.forEach((item) => (item.id = "" + i++));
-      }
+      let i = 0;
+      results.testResult.forEach((item) => (item.id = "" + i++));
       props.setResults?.(results);
       setLoading(false);
       if (results.paging) {
-        var { totalPages, currentPage } = results.paging;
+        const { totalPages, currentPage } = results.paging;
         if (totalPages > 1) {
           setPagination(true);
           setCurrentApiPage(currentPage);
@@ -139,8 +145,6 @@ export function SearchResultForm(props) {
     }
   };
 
-  const intl = useIntl();
-
   const loadNextResultsPage = () => {
     setLoading(true);
     getFromOpenElisServer(url + "&page=" + nextPage, setResultsWithId);
@@ -157,8 +161,10 @@ export function SearchResultForm(props) {
     setPagination(false);
     setPatient(patient);
   };
+
   useEffect(() => {
     querySearch(searchFormValues);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patient]);
 
   const querySearch = (values) => {
@@ -228,6 +234,8 @@ export function SearchResultForm(props) {
           "&accessionNumber=" + labNo + "&upperAccessionNumber=" + endLabNo,
         );
         break;
+      default:
+        break;
     }
 
     getFromOpenElisServer(searchEndPoint, setResultsWithId);
@@ -266,12 +274,13 @@ export function SearchResultForm(props) {
     setNextPage(null);
     setPreviousPage(null);
     setPagination(false);
-    var values = { unitType: e.target.value };
+    const values = { unitType: e.target.value };
     handleSubmit(values);
   };
 
   useEffect(() => {
     componentMounted.current = true;
+
     let testId = new URLSearchParams(window.location.search).get(
       "selectedTest",
     );
@@ -339,24 +348,24 @@ export function SearchResultForm(props) {
       querySearch(values);
     }
 
-    var displayFormType = "";
-    var doRange = "";
-    if (window.location.pathname == "/result") {
+    let displayFormType = "";
+    let doRange = "";
+    if (window.location.pathname === "/result") {
       displayFormType = new URLSearchParams(window.location.search).get("type");
       doRange = new URLSearchParams(window.location.search).get("doRange");
-    } else if (window.location.pathname == "/LogbookResults") {
+    } else if (window.location.pathname === "/LogbookResults") {
       displayFormType = "unit";
       doRange = "false";
-    } else if (window.location.pathname == "/PatientResults") {
+    } else if (window.location.pathname === "/PatientResults") {
       displayFormType = "patient";
       doRange = "false";
-    } else if (window.location.pathname == "/AccessionResults") {
+    } else if (window.location.pathname === "/AccessionResults") {
       displayFormType = "order";
       doRange = "false";
-    } else if (window.location.pathname == "/StatusResults") {
+    } else if (window.location.pathname === "/StatusResults") {
       displayFormType = "date";
       doRange = "false";
-    } else if (window.location.pathname == "/RangeResults") {
+    } else if (window.location.pathname === "/RangeResults") {
       displayFormType = "range";
       doRange = "true";
     }
@@ -364,6 +373,7 @@ export function SearchResultForm(props) {
       type: displayFormType,
       doRange: doRange,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -399,9 +409,9 @@ export function SearchResultForm(props) {
     let selectedTest = new URLSearchParams(window.location.search).get(
       "selectedTest",
     );
-    let selectedSampleStatus = new URLSearchParams(window.location.search).get(
-      "selectedSampleStatus",
-    );
+    let selectedSampleStatus = new URLSearchParams(
+      window.location.search,
+    ).get("selectedSampleStatus");
     let selectedAnalysisStatus = new URLSearchParams(
       window.location.search,
     ).get("selectedAnalysisStatus");
@@ -427,6 +437,7 @@ export function SearchResultForm(props) {
     setNextPage(null);
     setPreviousPage(null);
     setPagination(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchBy]);
 
   return (
@@ -435,25 +446,12 @@ export function SearchResultForm(props) {
       {loading && <Loading></Loading>}
       <Formik
         initialValues={searchFormValues}
-        //validationSchema={}
         onSubmit={handleSubmit}
         onChange
         enableReinitialize={true}
       >
-        {({
-          values,
-          //   errors,
-          //   touched,
-          handleChange,
-          setFieldValue,
-          //   handleBlur,
-          handleSubmit,
-        }) => (
-          <Form
-            onSubmit={handleSubmit}
-            onChange={handleChange}
-            //onBlur={handleBlur}
-          >
+        {({ values, handleChange, setFieldValue, handleSubmit: formikSubmit }) => (
+          <Form onSubmit={formikSubmit} onChange={handleChange}>
             <Stack gap={2}>
               <Grid>
                 <Column lg={16} md={8} sm={4}>
@@ -677,6 +675,7 @@ export function SearchResultForm(props) {
           </Form>
         )}
       </Formik>
+
       {searchBy.type === "patient" && (
         <Grid>
           <Column lg={16} md={8} sm={4}>
@@ -725,7 +724,6 @@ export function SearchResultForm(props) {
         {pagination && (
           <Grid>
             <Column lg={16}>
-              {" "}
               <br /> <br />
             </Column>
             <Column lg={14} />
@@ -784,10 +782,13 @@ export function SearchResults(props) {
   const [rejectReasons, setRejectReasons] = useState([]);
   const [rejectedItems, setRejectedItems] = useState({});
   const [validationState, setValidationState] = useState({});
+
+  const [multiSelectResultValues, setMultiSelectResultValues] = useState([]);
+
   const saveStatus = "";
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sampleLocations, setSampleLocations] = useState({}); // Track location for each sample by accessionNumber
+  const [sampleLocations, setSampleLocations] = useState({});
 
   const componentMounted = useRef(false);
 
@@ -808,17 +809,20 @@ export function SearchResults(props) {
       loadRejectReasons,
     );
     if (props.results.testResult.length > 0) {
-      var defaultRejectedItems = {};
+      const defaultRejectedItems = {};
       props.results.testResult.forEach((result) => {
         defaultRejectedItems[result.id] = false;
       });
       setRejectedItems(defaultRejectedItems);
     }
+
     return () => {
       componentMounted.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // numeric validation
   useEffect(() => {
     if (props.results.testResult) {
       let newValidationState = { ...validationState };
@@ -839,18 +843,45 @@ export function SearchResults(props) {
             borderColor: validation.isCritical
               ? "orange"
               : validation.isInvalid
-                ? "red"
-                : "",
+              ? "red"
+              : "",
             background: validation.outsideValid
               ? "#ffa0a0"
               : validation.outsideNormal
-                ? "#ffffa0"
-                : "var(--cds-field)",
+              ? "#ffffa0"
+              : "var(--cds-field)",
           };
         }
       });
       setValidationState(newValidationState);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.results]);
+
+  // initialize multi-select tags from existing value
+  useEffect(() => {
+    if (!props.results?.testResult) return;
+
+    const initial = [];
+
+    props.results.testResult.forEach((row) => {
+      if (row.resultType === "M" && typeof row.resultValue === "string") {
+        const ids = row.resultValue.split(",").filter(Boolean);
+
+        ids.forEach((id) => {
+          const dict = row.dictionaryResults?.find((d) => d.id === id);
+          if (dict) {
+            initial.push({
+              id: dict.id,
+              result: dict.value,
+              testId: row.id,
+            });
+          }
+        });
+      }
+    });
+
+    setMultiSelectResultValues(initial);
   }, [props.results]);
 
   const loadReferalOrganizations = (values) => {
@@ -898,7 +929,7 @@ export function SearchResults(props) {
       width: "8rem",
     };
 
-    if (configurationProperties.allowResultRejection == "true") {
+    if (configurationProperties.allowResultRejection === "true") {
       if (columns) {
         const updatedList = [
           ...columns.slice(0, 8),
@@ -910,7 +941,7 @@ export function SearchResults(props) {
     }
   };
 
-  var columns = [
+  let columns = [
     {
       id: "sampleInfo",
       name: intl.formatMessage({ id: "column.name.sampleInfo" }),
@@ -987,17 +1018,44 @@ export function SearchResults(props) {
     },
   ];
 
+  const renderDictionarySelect = (resultType, row) => {
+    const handleSelectChange =
+      resultType === "M"
+        ? (e) => validateResults(e, row.id, "M")
+        : (e) => handleChange(e, row.id);
+
+    return (
+      <Select
+        className="result"
+        id={"resultValue" + row.id}
+        name={"testResult[" + row.id + "].resultValue"}
+        noLabel={true}
+        onChange={handleSelectChange}
+        value={row.resultValue}
+      >
+        <SelectItem text="" value="" />
+        {row.dictionaryResults?.map((dictionaryResult, index) => (
+          <SelectItem
+            text={dictionaryResult.value}
+            value={dictionaryResult.id}
+            key={index}
+          />
+        ))}
+      </Select>
+    );
+  };
+
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
-    const fullTestName = row.testName;
+    const fullTestName = row.testName || "";
     const splitIndex = fullTestName.lastIndexOf("(");
-    const testName = fullTestName.substring(0, splitIndex);
-    const sampleType = fullTestName.substring(splitIndex);
+    const testName =
+      splitIndex > 0 ? fullTestName.substring(0, splitIndex) : fullTestName;
+    const sampleType =
+      splitIndex > 0 ? fullTestName.substring(splitIndex) : "";
 
-    console.debug("renderCell: index: " + index + ", id: " + id);
     switch (column.id) {
       case "sampleInfo":
-        // return <input id={"results_" + id} type="text" size="6"></input>
         return (
           <>
             <div>
@@ -1024,17 +1082,17 @@ export function SearchResults(props) {
               />
             </div>
             <div className="sampleInfo">
-              <br></br>
+              <br />
               {(formatLabNum
                 ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
                 : row.accessionNumber) +
                 "-" +
                 row.sequenceNumber}
-              <br></br>
-              {row.patientName} <br></br>
+              <br />
+              {row.patientName} <br />
               {row.patientInfo}
-              <br></br>
-              <br></br>
+              <br />
+              <br />
             </div>
             <div>
               <AsyncAvatar
@@ -1055,32 +1113,30 @@ export function SearchResults(props) {
             )}
           </>
         );
+
       case "testName":
         return (
           <div className="sampleInfo">
-            <br></br>
+            <br />
             {testName}
-            <br></br>
+            <br />
             {sampleType}
           </div>
         );
 
       case "accept":
         return (
-          <>
-            <Field name="forceTechApproval">
-              {() => (
-                <Checkbox
-                  data-cy="checkTestResult"
-                  id={"testResult" + row.id + ".forceTechApproval"}
-                  name={"testResult[" + row.id + "].forceTechApproval"}
-                  labelText=""
-                  //defaultChecked={acceptAsIs}
-                  onChange={(e) => handleAcceptAsIsChange(e, row.id)}
-                />
-              )}
-            </Field>
-          </>
+          <Field name="forceTechApproval">
+            {() => (
+              <Checkbox
+                data-cy="checkTestResult"
+                id={"testResult" + row.id + ".forceTechApproval"}
+                name={"testResult[" + row.id + "].forceTechApproval"}
+                labelText=""
+                onChange={(e) => handleAcceptAsIsChange(e, row.id)}
+              />
+            )}
+          </Field>
         );
 
       case "reject":
@@ -1096,16 +1152,14 @@ export function SearchResults(props) {
                 />
               )}
             </Field>
-            <br></br>
-            {rejectedItems[row.id] == true && (
+            <br />
+            {rejectedItems[row.id] === true && (
               <Select
                 id={"rejectReasonId" + row.id}
                 name={"testResult[" + row.id + "].rejectReasonId"}
-                //noLabel={true}
-                labelText={"Reason"}
+                labelText="Reason"
                 onChange={(e) => handleChange(e, row.id)}
               >
-                {/* {...updateShadowResult(e, this, param.rowId)} */}
                 <SelectItem text="" value="" />
                 {rejectReasons.map((reason, reason_index) => (
                   <SelectItem
@@ -1121,53 +1175,51 @@ export function SearchResults(props) {
 
       case "notes":
         return (
-          <>
-            <div className="note">
-              <TextArea
-                id={"testResult" + row.id + ".note"}
-                name={"testResult[" + row.id + "].note"}
-                //value={props.results.testResult[row.id]?.pastNotes}
-                disabled={false}
-                type="text"
-                labelText=""
-                rows={1}
-                onChange={(e) => handleChange(e, row.id)}
-              ></TextArea>
-              <div
-                className="note"
-                dangerouslySetInnerHTML={{ __html: row.pastNotes }}
-              />
-            </div>
-          </>
+          <div className="note">
+            <TextArea
+              id={"testResult" + row.id + ".note"}
+              name={"testResult[" + row.id + "].note"}
+              disabled={false}
+              type="text"
+              labelText=""
+              rows={1}
+              onChange={(e) => handleChange(e, row.id)}
+            ></TextArea>
+            <div
+              className="note"
+              dangerouslySetInnerHTML={{ __html: row.pastNotes }}
+            />
+          </div>
         );
 
       case "result":
         switch (row.resultType) {
           case "M":
+            return (
+              <div className="resultOptionsDisplay">
+                <div className="resultSelectOption">
+                  {renderDictionarySelect("M", row)}
+                </div>
+                <div className="resultTagDisplay">
+                  {multiSelectResultValues
+                    .filter((tag) => tag.testId === row.id)
+                    .map((tag) => (
+                      <Tag
+                        key={tag.id}
+                        type="gray"
+                        filter
+                        onClose={() => handleTagClose(row.id, tag.id)}
+                      >
+                        {tag.result}
+                      </Tag>
+                    ))}
+                </div>
+              </div>
+            );
+
           case "C":
           case "D":
-            return (
-              <Select
-                className="result"
-                id={"resultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                noLabel={true}
-                onChange={(e) => validateResults(e, row.id)}
-                value={row.resultValue}
-              >
-                {/* {...updateShadowResult(e, this, param.rowId)} */}
-                <SelectItem text="" value="" />
-                {row.dictionaryResults.map(
-                  (dictionaryResult, dictionaryResult_index) => (
-                    <SelectItem
-                      text={dictionaryResult.value}
-                      value={dictionaryResult.id}
-                      key={dictionaryResult_index}
-                    />
-                  ),
-                )}
-              </Select>
-            );
+            return renderDictionarySelect(row.resultType, row);
 
           case "N":
             return (
@@ -1178,7 +1230,7 @@ export function SearchResults(props) {
                 type="number"
                 value={row.resultValue}
                 style={validationState[row.id]?.style}
-                onBlur={(e) => {
+                onBlur={() => {
                   if (
                     validationState[row.id]?.isInvalid &&
                     configurationProperties.ALERT_FOR_INVALID_RESULTS
@@ -1223,17 +1275,6 @@ export function SearchResults(props) {
             );
 
           case "R":
-            return (
-              <TextArea
-                id={"ResultValue" + row.id}
-                name={"testResult[" + row.id + "].resultValue"}
-                rows={1}
-                labelText=""
-                onChange={(e) => handleChange(e, row.id)}
-                value={row.resultValue}
-              />
-            );
-
           case "A":
             return (
               <TextArea
@@ -1258,36 +1299,55 @@ export function SearchResults(props) {
             return (
               <>
                 {
-                  row.dictionaryResults.find(
-                    (result) => result.id == row.shadowResultValue,
+                  row.dictionaryResults?.find(
+                    (result) => result.id === row.shadowResultValue,
                   )?.value
                 }
               </>
             );
-
           default:
             return row.shadowResultValue;
         }
+
       default:
-        return;
+        return null;
     }
   };
 
-  // Fetch location for a sample when expanded
-  // Search by parent Sample accession number to find SampleItems
+  const validateResults = (e, rowId, resultType) => {
+    const id = e.target.value;
+    const text = e.target.options[e.target.selectedIndex]?.text;
+    if (!id) return;
+
+    if (resultType === "M") {
+      setMultiSelectResultValues((prev) => {
+        const existingTagsForRow = prev.filter((item) => item.testId === rowId);
+        const exists = existingTagsForRow.some((item) => item.id === id);
+        if (exists) return prev;
+        return [...prev, { id, result: text, testId: rowId }];
+      });
+    }
+
+    handleChange(e, rowId);
+  };
+
+  const handleTagClose = (rowId, tagId) => {
+    setMultiSelectResultValues((prev) =>
+      prev.filter((tag) => !(tag.testId === rowId && tag.id === tagId)),
+    );
+  };
+
   const fetchSampleLocation = (accessionNumber) => {
     if (!accessionNumber || sampleLocations[accessionNumber]) {
-      return; // Already fetched or no accession number
+      return;
     }
     getFromOpenElisServer(
       `/rest/storage/sample-items/search?q=${encodeURIComponent(accessionNumber)}`,
       (response) => {
         if (response && response.length > 0) {
-          // Get first SampleItem (or could allow user to select which SampleItem if multiple)
           const sampleItem = response[0];
           const locationPath =
             sampleItem.hierarchicalPath || sampleItem.location || "";
-          // Store SampleItem data for later use in assignment
           setSampleLocations((prev) => ({
             ...prev,
             [accessionNumber]: {
@@ -1300,20 +1360,14 @@ export function SearchResults(props) {
           }));
         }
       },
-      (error) => {
-        // Sample may not have location assigned yet
+      () => {
         console.debug("No location found for sample:", accessionNumber);
       },
     );
   };
 
-  // Handle location assignment
-  // Uses SampleItem ID from stored location data or from locationData
   const handleLocationAssignment = async (locationData, accessionNumber) => {
-    // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
     const newLocation = locationData?.newLocation || locationData;
-
-    // Get SampleItem ID from stored location data (from fetchSampleLocation) or from locationData
     const storedLocationData = sampleLocations[accessionNumber];
     const sampleItemId =
       locationData?.sample?.sampleItemId ||
@@ -1334,7 +1388,6 @@ export function SearchResults(props) {
     }
 
     try {
-      // Call assignment API with SampleItem ID
       const assignmentData = {
         sampleItemId: sampleItemId,
         locationId:
@@ -1344,13 +1397,13 @@ export function SearchResults(props) {
         locationType: newLocation.rack
           ? "rack"
           : newLocation.shelf
-            ? "shelf"
-            : "device",
+          ? "shelf"
+          : "device",
         positionCoordinate:
           locationData.positionCoordinate ||
           newLocation.position?.coordinate ||
           "",
-        notes: locationData.conditionNotes || "", // Assignment form uses "notes" field
+        notes: locationData.conditionNotes || "",
       };
 
       postToOpenElisServerJsonResponse(
@@ -1358,7 +1411,6 @@ export function SearchResults(props) {
         JSON.stringify(assignmentData),
         (response) => {
           if (response && response.success) {
-            // Update local state with location path
             const locationPath = response.hierarchicalPath || "";
             const storedData = sampleLocations[accessionNumber];
             setSampleLocations((prev) => ({
@@ -1379,7 +1431,7 @@ export function SearchResults(props) {
             setNotificationVisible(true);
           }
         },
-        (error) => {
+        () => {
           addNotification({
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({
@@ -1406,13 +1458,11 @@ export function SearchResults(props) {
   };
 
   const renderReferral = ({ data }) => {
-    // Fetch location when row is expanded
     const accessionNumber = data.accessionNumber;
     if (accessionNumber && !sampleLocations[accessionNumber]) {
       fetchSampleLocation(accessionNumber);
     }
 
-    // Get location path from stored data (can be string or object)
     const locationData = sampleLocations[accessionNumber];
     const currentLocationPath =
       typeof locationData === "object"
@@ -1482,13 +1532,11 @@ export function SearchResults(props) {
             <Select
               id={"referralReason" + data.id}
               name={"testResult[" + data.id + "].referralItem.referralReasonId"}
-              // noLabel={true}
               labelText={intl.formatMessage({ id: "referral.label.reason" })}
               onChange={(e) => handleChange(e, data.id)}
               value={data?.referralItem?.referralReasonId}
               disabled={!referTest[data.id]}
             >
-              {/* {...updateShadowResult(e, this, param.rowId)} */}
               <SelectItem text="" value="" />
               {referralReasons.map((reason, reason_index) => (
                 <SelectItem
@@ -1505,14 +1553,11 @@ export function SearchResults(props) {
               name={
                 "testResult[" + data.id + "].referralItem.referredInstituteId"
               }
-              // noLabel={true}
               labelText={intl.formatMessage({ id: "referral.label.institute" })}
               onChange={(e) => handleChange(e, data.id)}
               value={data?.referralItem?.referredInstituteId}
               disabled={!referTest[data.id]}
             >
-              {/* {...updateShadowResult(e, this, param.rowId)} */}
-
               <SelectItem text="" value="" />
               {referalOrganizations.map((org, org_index) => (
                 <SelectItem text={org.value} value={org.id} key={org_index} />
@@ -1523,7 +1568,6 @@ export function SearchResults(props) {
             <Select
               id={"testToPerform" + data.id}
               name={"testResult[" + data.id + "].referralItem.referredTestId"}
-              // noLabel={true}
               labelText={intl.formatMessage({
                 id: "referral.label.testtoperform",
               })}
@@ -1531,8 +1575,6 @@ export function SearchResults(props) {
               value={data?.referralItem?.referredTestId}
               disabled={!referTest[data.id]}
             >
-              {/* {...updateShadowResult(e, this, param.rowId)} */}
-
               <SelectItem text={data.testName} value={data.id} />
             </Select>
           </Column>
@@ -1550,14 +1592,12 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
-        {/* Storage Location Widget - INT-002: Integration point */}
         <Grid style={{ marginTop: "1rem" }}>
           <Column lg={16}>
             <StorageLocationSelector
               workflow="results"
               showQuickFind={true}
               sampleInfo={{
-                // Use SampleItem data if available, otherwise fall back to Sample accession number
                 sampleItemId:
                   locationData && typeof locationData === "object"
                     ? locationData.sampleItemId
@@ -1573,13 +1613,13 @@ export function SearchResults(props) {
                 sampleId:
                   locationData && typeof locationData === "object"
                     ? locationData.sampleItemId
-                    : accessionNumber, // Legacy fallback
+                    : accessionNumber,
                 type: data.sampleType || "",
                 status: data.sampleStatus || "Active",
               }}
               hierarchicalPath={currentLocationPath}
-              onLocationChange={(locationData) => {
-                handleLocationAssignment(locationData, accessionNumber);
+              onLocationChange={(loc) => {
+                handleLocationAssignment(loc, accessionNumber);
               }}
             />
           </Column>
@@ -1587,14 +1627,8 @@ export function SearchResults(props) {
       </>
     );
   };
-  const validateResults = (e, rowId) => {
-    console.debug("validateResults:" + e.target.value);
-    // e.target.value;
-    handleChange(e, rowId);
-  };
 
   const validateNumericResults = (value, row) => {
-    //ignore < or > from the analyser on validation
     var greaterThanOrLessThan = "";
     if (("" + value).startsWith("<") || ("" + value).startsWith(">")) {
       greaterThanOrLessThan = value.charAt(0);
@@ -1609,20 +1643,9 @@ export function SearchResults(props) {
       outsideValid: false,
       newValue: value,
     };
-    //commented out for now
-    let isSpecialCase = "XXXX" == actualValue.toUpperCase();
+    let isSpecialCase = "XXXX" === actualValue.toUpperCase();
     validation = { ...validation, ...validateNumberFormat(value, row) };
 
-    // resultBox.style.borderColor = validFormat ? "" : "red";
-
-    // if( isSpecialCase ){
-    //   resultBox.title = "";
-    //   value = greaterThanOrLessThan + actualValue.toUpperCase();
-    //   resultBox.style.borderColor = "";
-    //   resultBox.style.background = "#ffffff";
-    //   $("valid_" + row).value = true;
-    //   return;
-    // }
     if (validation.isNaN) {
       return { ...validation };
     } else if (
@@ -1637,30 +1660,17 @@ export function SearchResults(props) {
         actualValue > row.upperAbnormalRange)
     ) {
       return { ...validation, isInvalid: true, outsideValid: true };
-      // resultBox.style.background = "#ffa0a0";
-      // resultBox.title = "En dehors de la plage valide"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
-      // $("valid_" + row).value = false;
-      // if( outOfValidRangeMsg ){
-      //   alert( outOfValidRangeMsg);
-      // }
     } else if (
       row.lowerNormalRange != row.upperNormalRange &&
       (actualValue < row.lowerNormalRange || actualValue > row.upperNormalRange)
     ) {
       return { ...validation, outsideNormal: true };
-      // resultBox.style.background = "#ffffa0";
-      // resultBox.title = "En dehors de la plage normale"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
-      // $("valid_" + row).value = true;
     } else {
       return { ...validation, outsideNormal: false };
-      // resultBox.style.background = "#ffffff";
-      // resultBox.title = "";
-      // $("valid_" + row).value = true;
     }
   };
 
   const validateNumberFormat = (value, row) => {
-    //ignore < or > from the analyser on validation
     var greaterThanOrLessThan = "";
     if (("" + value).startsWith("<") || ("" + value).startsWith(">")) {
       greaterThanOrLessThan = value.charAt(0);
@@ -1670,13 +1680,9 @@ export function SearchResults(props) {
     let validation = { isInvalid: false };
     if (!actualValue) {
       return { ...validation, isInvalid: true, isBlank: true };
-      // resultBox.title = "";
-      // resultBox.style.background = "#ffffff";
-      // $("valid_" + row).value = false;
-      // return true;
     }
 
-    if (actualValue.trim() == ".") {
+    if (actualValue.trim() === ".") {
       validation = {
         ...validation,
         newValue: greaterThanOrLessThan + "0.0",
@@ -1685,8 +1691,6 @@ export function SearchResults(props) {
 
     if (isNaN(actualValue)) {
       return { ...validation, isInvalid: true, isNaN: true };
-      // $("valid_" + row).value = false;
-      // return false;
     }
 
     if (!isNaN(row.significantDigits)) {
@@ -1711,17 +1715,15 @@ export function SearchResults(props) {
     console.debug(
       "handleChange:" + id + ":" + name + ":" + value + ":" + rowId,
     );
-    // setState({value: e.target.value})
-    console.debug("State updated to ", e.target.value);
-    var form = { ...props.results };
-    var jp = require("jsonpath");
+    let form = { ...props.results };
+    const jp = require("jsonpath");
     jp.value(form, name, value);
-    var refer = jp.query(form, "testResult[" + rowId + "].refer")[0];
-    var testId = jp.query(form, "testResult[" + rowId + "].testId")[0];
-    var referList = { ...referTest };
+    let refer = jp.query(form, "testResult[" + rowId + "].refer")[0];
+    let testId = jp.query(form, "testResult[" + rowId + "].testId")[0];
+    let referList = { ...referTest };
     referList[rowId] = refer === "true" ? true : false;
     setReferTest(referList);
-    if (refer == "true") {
+    if (refer === "true") {
       jp.value(
         form,
         "testResult[" + rowId + "].referralItem.referredTestId",
@@ -1744,22 +1746,22 @@ export function SearchResults(props) {
         "",
       );
     }
-    var isModified = "testResult[" + rowId + "].isModified";
+    let isModified = "testResult[" + rowId + "].isModified";
     jp.value(form, isModified, "true");
     props.setResultForm(form);
   };
 
   const handleRejectCheckBoxChange = (e, rowId) => {
     const { name, checked } = e.target;
-    var form = props.results;
-    var jp = require("jsonpath");
+    let form = props.results;
+    const jp = require("jsonpath");
     jp.value(form, name, checked);
-    var shadowRejected = "testResult[" + rowId + "].shadowRejected";
+    let shadowRejected = "testResult[" + rowId + "].shadowRejected";
     jp.value(form, shadowRejected, checked);
-    var isModified = "testResult[" + rowId + "].isModified";
+    let isModified = "testResult[" + rowId + "].isModified";
     jp.value(form, isModified, "true");
 
-    var allrejectedItems = { ...rejectedItems };
+    let allrejectedItems = { ...rejectedItems };
     allrejectedItems[rowId] = checked;
     setRejectedItems(allrejectedItems);
 
@@ -1774,17 +1776,17 @@ export function SearchResults(props) {
   };
 
   const handleDatePickerChange = (date, rowId) => {
-    var form = { ...props.results };
+    let form = { ...props.results };
     if (form.testResult[rowId].referralItem) {
-      if (form.testResult[rowId].referralItem.referredSendDate != date) {
+      if (form.testResult[rowId].referralItem.referredSendDate !== date) {
         console.debug("handleDatePickerChange:" + date);
-        var jp = require("jsonpath");
+        const jp = require("jsonpath");
         jp.value(
           form,
           "testResult[" + rowId + "].referralItem.referredSendDate",
           date,
         );
-        var isModified = "testResult[" + rowId + "].isModified";
+        let isModified = "testResult[" + rowId + "].isModified";
         jp.value(form, isModified, "true");
         props.setResultForm(form);
       }
@@ -1794,7 +1796,7 @@ export function SearchResults(props) {
   const handleAcceptAsIsChange = (e, rowId) => {
     console.debug("handleAcceptAsIsChange:" + acceptAsIs[rowId]);
     handleChange(e, rowId);
-    if (acceptAsIs[rowId] == undefined) {
+    if (acceptAsIs[rowId] === undefined) {
       alert(intl.formatMessage({ id: "result.acceptasis.warning" }));
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
@@ -1803,7 +1805,7 @@ export function SearchResults(props) {
       });
       setNotificationVisible(true);
     }
-    var newAcceptAsIs = acceptAsIs;
+    let newAcceptAsIs = [...acceptAsIs];
     newAcceptAsIs[rowId] = !acceptAsIs[rowId];
     setAcceptAsIs(newAcceptAsIs);
   };
@@ -1815,11 +1817,20 @@ export function SearchResults(props) {
     }
     setIsSubmitting(true);
     values.status = saveStatus;
-    var searchEndPoint = "/rest/LogbookResults";
+    const searchEndPoint = "/rest/LogbookResults";
+
     props.results.testResult.forEach((result) => {
+      const multiSelectTags = multiSelectResultValues.filter(
+        (tag) => tag.testId === result.id,
+      );
+      if (multiSelectTags.length > 0) {
+        result.resultValue = multiSelectTags.map((tag) => tag.id).join(",");
+      }
+
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
     });
+
     postToOpenElisServerJsonResponse(
       searchEndPoint,
       JSON.stringify(props.results),
@@ -1855,7 +1866,7 @@ export function SearchResults(props) {
   };
 
   const createMesssage = (resp) => {
-    var message = "";
+    let message = "";
     if (resp.reflex?.length > 0) {
       message +=
         intl.formatMessage({ id: "reflexTests" }) +
@@ -1875,10 +1886,10 @@ export function SearchResults(props) {
   };
 
   const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
+    if (page !== pageInfo.page) {
       setPage(pageInfo.page);
     }
-    if (pageSize != pageInfo.pageSize) {
+    if (pageSize !== pageInfo.pageSize) {
       setPageSize(pageInfo.pageSize);
     }
   };
@@ -1907,24 +1918,9 @@ export function SearchResults(props) {
             </Column>
           </Grid>
         )}
-        <Formik
-          initialValues={SearchResultFormValues}
-          //validationSchema={}
-          onSubmit
-          onChange
-        >
-          {({
-            // values,
-            // errors,
-            // touched,
-            handleChange,
-            //handleBlur,
-            // handleSubmit,
-          }) => (
-            <Form
-              onChange={handleChange}
-              //onBlur={handleBlur}
-            >
+        <Formik initialValues={SearchResultFormValues} onSubmit onChange>
+          {({ handleChange }) => (
+            <Form onChange={handleChange}>
               <DataTable
                 data={props.results?.testResult?.slice(
                   (page - 1) * pageSize,
