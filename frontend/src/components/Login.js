@@ -20,6 +20,7 @@ import { Formik } from "formik";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { getBranding } from "../services/siteBrandingService";
 
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
@@ -28,6 +29,7 @@ function Login(props) {
 
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
+  const [loginLogoUrl, setLoginLogoUrl] = useState(null);
   const firstInput = createRef();
 
   useEffect(() => {
@@ -38,6 +40,38 @@ function Login(props) {
     }, 1000 * 3);
 
     return () => clearInterval(interval); // clear your interval to prevent memory leaks.
+  }, []);
+
+  // Load branding configuration for login logo
+  // Task Reference: T080 - Fetch SiteBranding configuration on login page load
+  useEffect(() => {
+    getBranding((response) => {
+      if (response) {
+        // Task Reference: T041 - Check useHeaderLogoForLogin flag
+        if (response.useHeaderLogoForLogin && response.headerLogoUrl) {
+          // Use header logo for login page
+          setLoginLogoUrl(response.headerLogoUrl);
+        } else if (response.loginLogoUrl) {
+          // Use dedicated login logo
+          setLoginLogoUrl(response.loginLogoUrl);
+        }
+        // If neither exists, loginLogoUrl remains null and default logo will be used
+
+        // Task Reference: T080 - Apply custom primary color to login page UI elements
+        if (response.primaryColor) {
+          document.documentElement.style.setProperty('--cds-interactive-01', response.primaryColor);
+          document.documentElement.style.setProperty('--site-branding-primary', response.primaryColor);
+        }
+        if (response.secondaryColor) {
+          document.documentElement.style.setProperty('--cds-interactive-02', response.secondaryColor);
+          document.documentElement.style.setProperty('--site-branding-secondary', response.secondaryColor);
+        }
+        if (response.accentColor) {
+          document.documentElement.style.setProperty('--cds-support-01', response.accentColor);
+          document.documentElement.style.setProperty('--site-branding-accent', response.accentColor);
+        }
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -51,16 +85,26 @@ function Login(props) {
   };
 
   const loginMessage = () => {
+    // Task Reference: T041 - Use custom login logo if available, otherwise default
+    const logoSrc = loginLogoUrl 
+      ? `../api${loginLogoUrl}` 
+      : `images/openelis_logo_full.png`;
+    
     return (
       <>
         <Column lg={6} md={0} sm={0} />
         <Column lg={4} md={8} sm={4}>
           <picture>
             <img
-              src={`images/openelis_logo_full.png`}
+              src={logoSrc}
               alt="fullsize logo"
               width="300"
               height="56"
+              style={{ objectFit: "contain" }}
+              onError={(e) => {
+                // Fallback to default logo if custom logo fails to load
+                e.target.src = `images/openelis_logo_full.png`;
+              }}
             />
           </picture>
         </Column>

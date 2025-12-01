@@ -44,9 +44,12 @@ import {
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
 import SearchBar from "./search/searchBar";
+import { getBranding } from "../../services/siteBrandingService";
+
 function OEHeader(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
+  const [headerLogoUrl, setHeaderLogoUrl] = useState(null);
 
   const userSwitchRef = createRef();
   const headerPanelRef = createRef();
@@ -80,6 +83,34 @@ function OEHeader(props) {
           handleMenuItems("menu", res);
         })
       : console.log("User not authenticated, not getting menu");
+  }, [userSessionDetails.authenticated]);
+
+  // Load branding configuration for header logo and colors
+  // Task Reference: T085 - Apply branding to header component
+  useEffect(() => {
+    if (userSessionDetails.authenticated) {
+      getBranding((response) => {
+        if (response) {
+          if (response.headerLogoUrl) {
+            setHeaderLogoUrl(response.headerLogoUrl);
+          }
+
+          // Apply custom colors to header
+          if (response.primaryColor) {
+            document.documentElement.style.setProperty('--cds-interactive-01', response.primaryColor);
+            document.documentElement.style.setProperty('--site-branding-primary', response.primaryColor);
+          }
+          if (response.secondaryColor) {
+            document.documentElement.style.setProperty('--cds-interactive-02', response.secondaryColor);
+            document.documentElement.style.setProperty('--site-branding-secondary', response.secondaryColor);
+          }
+          if (response.accentColor) {
+            document.documentElement.style.setProperty('--cds-support-01', response.accentColor);
+            document.documentElement.style.setProperty('--site-branding-accent', response.accentColor);
+          }
+        }
+      });
+    }
   }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
@@ -171,13 +202,23 @@ function OEHeader(props) {
   };
 
   const logo = () => {
+    // Use custom header logo if available, otherwise use default
+    const logoSrc = headerLogoUrl 
+      ? `../api${headerLogoUrl}` 
+      : `../images/openelis_logo.png`;
+    
     return (
       <>
         <picture>
           <img
             className="logo"
-            src={`../images/openelis_logo.png`}
+            src={logoSrc}
             alt="logo"
+            style={{ objectFit: "contain", maxHeight: "71px" }}
+            onError={(e) => {
+              // Fallback to default logo if custom logo fails to load
+              e.target.src = `../images/openelis_logo.png`;
+            }}
           />
         </picture>
       </>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Site Branding Table (001-site-branding) -->
+    <changeSet id="001-create-site-branding-table" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="site_branding"/>
+            </not>
+        </preConditions>
+        <comment>Creating site_branding table for white labeling / site branding feature</comment>
+        <createTable tableName="site_branding">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="header_logo_path" type="VARCHAR(500)"/>
+            <column name="login_logo_path" type="VARCHAR(500)"/>
+            <column name="use_header_logo_for_login" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="favicon_path" type="VARCHAR(500)"/>
+            <column name="primary_color" type="VARCHAR(7)" defaultValue="'#1d4ed8'">
+                <constraints nullable="false"/>
+            </column>
+            <column name="secondary_color" type="VARCHAR(7)" defaultValue="'#64748b'">
+                <constraints nullable="false"/>
+            </column>
+            <column name="accent_color" type="VARCHAR(7)" defaultValue="'#0891b2'">
+                <constraints nullable="false"/>
+            </column>
+            <column name="color_mode" type="VARCHAR(10)" defaultValue="'light'">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <rollback>
+            <dropTable tableName="site_branding"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
+
