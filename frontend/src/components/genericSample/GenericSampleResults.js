@@ -243,11 +243,12 @@ function GenericSampleResults() {
               }}
             />
             <br />
-            {(formatLabNum
-              ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
-              : row.accessionNumber) +
-              "-" +
-              row.sequenceNumber}
+            {row.sampleItemExternalId ||
+              (formatLabNum
+                ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
+                : row.accessionNumber) +
+                "-" +
+                row.sequenceNumber}
             <br />
             {row.patientName}
             <br />
