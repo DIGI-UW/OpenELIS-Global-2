@@ -84,6 +84,9 @@ public class BaseTestConfig {
     }
 
     private void startPostgreSql() {
+        if (postgreSqlContainer != null && postgreSqlContainer.isRunning()) {
+            return;
+        }
         postgreSqlContainer.withCopyFileToContainer(MountableFile.forClasspathResource("postgre-db-init"),
                 "/docker-entrypoint-initdb.d");
         postgreSqlContainer.withEnv("POSTGRES_INITDB_ARGS", "--auth-host=md5");

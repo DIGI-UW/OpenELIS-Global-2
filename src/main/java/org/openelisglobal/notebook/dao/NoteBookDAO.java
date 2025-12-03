@@ -21,4 +21,6 @@ public interface NoteBookDAO extends BaseDAO<NoteBook, Integer> {
 
     Long getTotalCount();
 
+    NoteBook findParentTemplate(Integer entryId);
+
 }

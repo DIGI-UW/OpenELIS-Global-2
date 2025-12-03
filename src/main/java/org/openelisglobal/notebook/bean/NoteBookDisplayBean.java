@@ -14,6 +14,7 @@ public class NoteBookDisplayBean {
     private NoteBookStatus status;
     private Boolean isTemplate;
     private Integer entriesCount;
+    private Integer technicianId;
     private UUID questionnaireFhirUuid;
 
     public String getTitle() {
@@ -94,6 +95,14 @@ public class NoteBookDisplayBean {
 
     public void setQuestionnaireFhirUuid(UUID questionnaireFhirUuid) {
         this.questionnaireFhirUuid = questionnaireFhirUuid;
+    }
+
+    public Integer getTechnicianId() {
+        return technicianId;
+    }
+
+    public void setTechnicianId(Integer technicianId) {
+        this.technicianId = technicianId;
     }
 
 }

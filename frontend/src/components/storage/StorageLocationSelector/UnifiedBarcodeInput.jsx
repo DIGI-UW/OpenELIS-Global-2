@@ -55,18 +55,9 @@ const UnifiedBarcodeInput = ({
    */
   const { handleScan: debouncedHandleScan } = useBarcodeDebounce(
     (barcode) => {
-      console.log(
-        "[UnifiedBarcodeInput] debouncedHandleScan callback executed",
-        { barcode },
-      );
       // Process debounced barcode scan
       if (onScan) {
-        console.log("[UnifiedBarcodeInput] Calling onScan callback", {
-          barcode,
-        });
         onScan(barcode);
-      } else {
-        console.log("[UnifiedBarcodeInput] onScan callback not provided");
       }
       validateBarcode(barcode);
     },
@@ -91,24 +82,10 @@ const UnifiedBarcodeInput = ({
   const validateBarcode = (barcode) => {
     const url = `/rest/storage/barcode/validate`;
     const payload = JSON.stringify({ barcode: barcode });
-    console.log("[UnifiedBarcodeInput] validateBarcode called", {
-      barcode,
-      url,
-      payload,
-    });
 
     postToOpenElisServerJsonResponse(url, payload, (response) => {
-      console.log("[UnifiedBarcodeInput] validateBarcode response received", {
-        response,
-        hasError: !!response.error,
-        status: response.status,
-      });
-
       // Handle network/HTTP errors
       if (response.error || (response.status && response.status >= 400)) {
-        console.log("[UnifiedBarcodeInput] validateBarcode error response", {
-          response,
-        });
         if (onValidationResult) {
           onValidationResult({
             success: false,
@@ -122,11 +99,6 @@ const UnifiedBarcodeInput = ({
 
       // Check barcode type from response
       const barcodeType = response.barcodeType || "unknown";
-      console.log("[UnifiedBarcodeInput] Barcode type detected", {
-        barcodeType,
-        hasOnValidationResult: !!onValidationResult,
-        hasOnSampleScan: !!onSampleScan,
-      });
 
       if (barcodeType === "sample") {
         // Sample barcode detected - call onSampleScan callback
@@ -140,10 +112,6 @@ const UnifiedBarcodeInput = ({
       } else if (barcodeType === "location") {
         // Location barcode - proceed with existing validation result logic
         // Check if validation succeeded or failed
-        console.log(
-          "[UnifiedBarcodeInput] Location barcode type, calling onValidationResult",
-          { valid: response.valid },
-        );
         if (onValidationResult) {
           const validationResult = {
             success: response.valid || false,
@@ -161,22 +129,10 @@ const UnifiedBarcodeInput = ({
                   message: response.errorMessage,
                 },
           };
-          console.log(
-            "[UnifiedBarcodeInput] Calling onValidationResult with",
-            validationResult,
-          );
           onValidationResult(validationResult);
-        } else {
-          console.log(
-            "[UnifiedBarcodeInput] onValidationResult callback not provided",
-          );
         }
       } else {
         // Unknown type - still call validation result for error handling
-        console.log(
-          "[UnifiedBarcodeInput] Unknown barcode type, calling onValidationResult anyway",
-          { valid: response.valid },
-        );
         if (onValidationResult) {
           const validationResult = {
             success: response.valid || false,
@@ -194,15 +150,7 @@ const UnifiedBarcodeInput = ({
                   message: response.errorMessage,
                 },
           };
-          console.log(
-            "[UnifiedBarcodeInput] Calling onValidationResult with (unknown type)",
-            validationResult,
-          );
           onValidationResult(validationResult);
-        } else {
-          console.log(
-            "[UnifiedBarcodeInput] onValidationResult callback not provided (unknown type)",
-          );
         }
       }
     });
@@ -215,10 +163,6 @@ const UnifiedBarcodeInput = ({
    */
   const handleChange = (event) => {
     const value = event.target.value;
-    console.log("[UnifiedBarcodeInput] handleChange called", {
-      value,
-      inputValue,
-    });
     setInputValue(value);
     setLastInputTime(Date.now());
   };
@@ -234,32 +178,10 @@ const UnifiedBarcodeInput = ({
     const isEnterKey =
       event.key === "Enter" || event.keyCode === 13 || event.code === "Enter";
 
-    console.log("[UnifiedBarcodeInput] handleKeyDown called", {
-      key: event.key,
-      keyCode: event.keyCode,
-      code: event.code,
-      isEnterKey,
-      inputValue,
-      currentValue,
-      trimmedValue,
-    });
-
     if (isEnterKey && trimmedValue !== "") {
-      console.log(
-        "[UnifiedBarcodeInput] Enter key detected with non-empty input, calling processInput",
-      );
       event.preventDefault();
       event.stopPropagation();
       processInput(trimmedValue);
-    } else if (isEnterKey) {
-      console.log("[UnifiedBarcodeInput] Enter key ignored - empty input");
-    } else {
-      console.log("[UnifiedBarcodeInput] Enter key ignored", {
-        reason: "not Enter key",
-        key: event.key,
-        keyCode: event.keyCode,
-        code: event.code,
-      });
     }
   };
 
@@ -270,15 +192,7 @@ const UnifiedBarcodeInput = ({
   const handleBlur = (event) => {
     const currentValue = event?.target?.value || inputValue || "";
     const trimmedValue = currentValue.trim();
-    console.log("[UnifiedBarcodeInput] handleBlur called", {
-      inputValue,
-      currentValue,
-      trimmedValue,
-    });
     if (trimmedValue !== "") {
-      console.log(
-        "[UnifiedBarcodeInput] Blur with non-empty input, calling processInput",
-      );
       processInput(trimmedValue);
     }
   };
@@ -287,11 +201,7 @@ const UnifiedBarcodeInput = ({
    * Process input (always validate as barcode - backend handles format validation)
    */
   const processInput = (value) => {
-    console.log("[UnifiedBarcodeInput] processInput called", { value });
     // Always validate as barcode - backend will return appropriate error for invalid formats
-    console.log(
-      "[UnifiedBarcodeInput] Calling debouncedHandleScan for validation",
-    );
     debouncedHandleScan(value);
   };
 

@@ -141,12 +141,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return;
         }
 
-        // Validate constraints before deletion
-        if (!canDeleteRoom(room)) {
-            String message = getDeleteConstraintMessage(room);
-            throw new LIMSRuntimeException(message);
-        }
-
+        // Note: Constraint validation is done in the controller before calling this
+        // method
+        // This method assumes constraints have been validated
         delete(room);
     }
 
@@ -1216,14 +1213,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
-        // For now, we only check for child locations
         return true;
     }
 
     /**
      * Check if a device can be deleted (no child shelves, no active samples)
+     * OGC-75: Added sample count check
      */
     private boolean canDeleteDevice(StorageDevice device) {
         if (device == null || device.getId() == null) {
@@ -1236,13 +1231,18 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
+        // OGC-75: Check for active samples assigned to this device
+        int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("device", device.getId());
+        if (sampleCount > 0) {
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * Check if a shelf can be deleted (no child racks, no active samples)
+     * Check if a shelf can be deleted (no child racks, no active samples) OGC-75:
+     * Added sample count check
      */
     private boolean canDeleteShelf(StorageShelf shelf) {
         if (shelf == null || shelf.getId() == null) {
@@ -1255,26 +1255,36 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
+        // OGC-75: Check for active samples assigned to this shelf
+        int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("shelf", shelf.getId());
+        if (sampleCount > 0) {
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * Check if a rack can be deleted (no active samples)
+     * Check if a rack can be deleted (no active samples) OGC-75: Added sample count
+     * check
      */
     private boolean canDeleteRack(StorageRack rack) {
         if (rack == null || rack.getId() == null) {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
-        // For now, racks can be deleted if no constraints (sample check will be added
-        // later)
+        // OGC-75: Check for active samples assigned to this rack
+        int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rack.getId());
+        if (sampleCount > 0) {
+            return false;
+        }
+
         return true;
     }
 
+    /**
+     * OGC-75: Updated to include sample counts in error messages
+     */
     @Override
     @Transactional(readOnly = true)
     public String getDeleteConstraintMessage(Object locationEntity) {
@@ -1289,7 +1299,6 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 return String.format("Cannot delete Room '%s' because it contains %d device(s)", room.getName(),
                         deviceCount);
             }
-            // TODO: Add sample count check when available
             return "Cannot delete room: unknown constraint";
         } else if (locationEntity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) locationEntity;
@@ -1298,7 +1307,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 return String.format("Cannot delete Device '%s' because it contains %d shelf(s)", device.getName(),
                         shelfCount);
             }
-            // TODO: Add sample count check when available
+            // OGC-75: Check for assigned samples
+            int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("device", device.getId());
+            if (sampleCount > 0) {
+                return String.format("Cannot delete Device '%s' because it has %d sample(s) assigned", device.getName(),
+                        sampleCount);
+            }
             return "Cannot delete device: unknown constraint";
         } else if (locationEntity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) locationEntity;
@@ -1307,11 +1321,21 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 return String.format("Cannot delete Shelf '%s' because it contains %d rack(s)", shelf.getLabel(),
                         rackCount);
             }
-            // TODO: Add sample count check when available
+            // OGC-75: Check for assigned samples
+            int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("shelf", shelf.getId());
+            if (sampleCount > 0) {
+                return String.format("Cannot delete Shelf '%s' because it has %d sample(s) assigned", shelf.getLabel(),
+                        sampleCount);
+            }
             return "Cannot delete shelf: unknown constraint";
         } else if (locationEntity instanceof StorageRack) {
             StorageRack rack = (StorageRack) locationEntity;
-            // TODO: Add sample count check when available
+            // OGC-75: Check for assigned samples
+            int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rack.getId());
+            if (sampleCount > 0) {
+                return String.format("Cannot delete Rack '%s' because it has %d sample(s) assigned", rack.getLabel(),
+                        sampleCount);
+            }
             return "Cannot delete rack: unknown constraint";
         }
 
@@ -1390,5 +1414,303 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             // If query fails, return 0 (data will show but sample item count will be 0)
             return 0;
         }
+    }
+
+    /**
+     * OGC-75: Get summary of what will be deleted in a cascade delete operation
+     * Returns counts of child locations and samples that will be affected
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getCascadeDeleteSummary(Object locationEntity) {
+        Map<String, Object> summary = new HashMap<>();
+        Map<String, Integer> childLocations = new HashMap<>();
+        int totalSampleCount = 0;
+        String childLocationType = null;
+        int childLocationCount = 0;
+
+        if (locationEntity instanceof StorageRoom) {
+            StorageRoom room = (StorageRoom) locationEntity;
+            List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
+            childLocationCount = devices.size();
+            childLocationType = "device";
+            childLocations.put("devices", devices.size());
+
+            // Count samples in room hierarchy
+            totalSampleCount = countUniqueSamplesInRoom(room.getId(), devices);
+
+            // Count child shelves and racks
+            int shelfCount = 0;
+            int rackCount = 0;
+            for (StorageDevice device : devices) {
+                List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+                shelfCount += shelves.size();
+                childLocations.put("shelves", shelfCount);
+                for (StorageShelf shelf : shelves) {
+                    List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                    rackCount += racks.size();
+                }
+            }
+            childLocations.put("racks", rackCount);
+
+        } else if (locationEntity instanceof StorageDevice) {
+            StorageDevice device = (StorageDevice) locationEntity;
+            List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+            childLocationCount = shelves.size();
+            childLocationType = "shelf";
+            childLocations.put("shelves", shelves.size());
+
+            // Count samples in device hierarchy
+            totalSampleCount = countSamplesInDeviceHierarchy(device.getId());
+
+            // Count child racks
+            int rackCount = 0;
+            for (StorageShelf shelf : shelves) {
+                List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                rackCount += racks.size();
+            }
+            childLocations.put("racks", rackCount);
+
+        } else if (locationEntity instanceof StorageShelf) {
+            StorageShelf shelf = (StorageShelf) locationEntity;
+            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            childLocationCount = racks.size();
+            childLocationType = "rack";
+            childLocations.put("racks", racks.size());
+
+            // Count samples in shelf hierarchy
+            totalSampleCount = countSamplesInShelfHierarchy(shelf.getId());
+
+        } else if (locationEntity instanceof StorageRack) {
+            StorageRack rack = (StorageRack) locationEntity;
+            // Racks have no child locations, only samples
+            childLocationCount = 0;
+            childLocationType = null;
+
+            // Count samples assigned to this rack
+            totalSampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rack.getId());
+        }
+
+        summary.put("childLocations", childLocations);
+        summary.put("sampleCount", totalSampleCount);
+        summary.put("childLocationType", childLocationType);
+        summary.put("childLocationCount", childLocationCount);
+
+        return summary;
+    }
+
+    /**
+     * OGC-75: Count samples in device hierarchy (device + all shelves + all racks)
+     */
+    @Transactional(readOnly = true)
+    private int countSamplesInDeviceHierarchy(Integer deviceId) {
+        List<Integer> locationIds = new ArrayList<>();
+        locationIds.add(deviceId);
+
+        List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(deviceId);
+        for (StorageShelf shelf : shelves) {
+            locationIds.add(shelf.getId());
+            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            for (StorageRack rack : racks) {
+                locationIds.add(rack.getId());
+            }
+        }
+
+        if (locationIds.isEmpty()) {
+            return 0;
+        }
+
+        try {
+            String hql = "SELECT COUNT(DISTINCT ssa.sampleItem.id) FROM SampleStorageAssignment ssa "
+                    + "WHERE ssa.locationId IN :locationIds";
+            jakarta.persistence.Query query = entityManager.createQuery(hql);
+            query.setParameter("locationIds", locationIds);
+            Long count = (Long) query.getSingleResult();
+            return count != null ? count.intValue() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /**
+     * OGC-75: Count samples in shelf hierarchy (shelf + all racks)
+     */
+    @Transactional(readOnly = true)
+    private int countSamplesInShelfHierarchy(Integer shelfId) {
+        List<Integer> locationIds = new ArrayList<>();
+        locationIds.add(shelfId);
+
+        List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelfId);
+        for (StorageRack rack : racks) {
+            locationIds.add(rack.getId());
+        }
+
+        if (locationIds.isEmpty()) {
+            return 0;
+        }
+
+        try {
+            String hql = "SELECT COUNT(DISTINCT ssa.sampleItem.id) FROM SampleStorageAssignment ssa "
+                    + "WHERE ssa.locationId IN :locationIds";
+            jakarta.persistence.Query query = entityManager.createQuery(hql);
+            query.setParameter("locationIds", locationIds);
+            Long count = (Long) query.getSingleResult();
+            return count != null ? count.intValue() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /**
+     * OGC-75: Find all child locations recursively (for cascade deletion)
+     */
+    @Transactional(readOnly = true)
+    private List<Object> findAllChildLocations(Object locationEntity) {
+        List<Object> children = new ArrayList<>();
+
+        if (locationEntity instanceof StorageRoom) {
+            StorageRoom room = (StorageRoom) locationEntity;
+            List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
+            for (StorageDevice device : devices) {
+                children.add(device);
+                children.addAll(findAllChildLocations(device));
+            }
+        } else if (locationEntity instanceof StorageDevice) {
+            StorageDevice device = (StorageDevice) locationEntity;
+            List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+            for (StorageShelf shelf : shelves) {
+                children.add(shelf);
+                children.addAll(findAllChildLocations(shelf));
+            }
+        } else if (locationEntity instanceof StorageShelf) {
+            StorageShelf shelf = (StorageShelf) locationEntity;
+            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            for (StorageRack rack : racks) {
+                children.add(rack);
+                // Racks have no child locations
+            }
+        }
+        // StorageRack has no child locations
+
+        return children;
+    }
+
+    /**
+     * OGC-75: Unassign all samples from location and its children
+     */
+    @Transactional
+    private void unassignSamplesFromHierarchy(Object locationEntity) {
+        List<Integer> locationIds = new ArrayList<>();
+        String locationType = null;
+
+        if (locationEntity instanceof StorageRoom) {
+            StorageRoom room = (StorageRoom) locationEntity;
+            // Room-level assignments not currently supported, but include for completeness
+            List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
+            for (StorageDevice device : devices) {
+                locationIds.add(device.getId());
+                List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+                for (StorageShelf shelf : shelves) {
+                    locationIds.add(shelf.getId());
+                    List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                    for (StorageRack rack : racks) {
+                        locationIds.add(rack.getId());
+                    }
+                }
+            }
+        } else if (locationEntity instanceof StorageDevice) {
+            StorageDevice device = (StorageDevice) locationEntity;
+            locationIds.add(device.getId());
+            locationType = "device";
+            List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+            for (StorageShelf shelf : shelves) {
+                locationIds.add(shelf.getId());
+                List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                for (StorageRack rack : racks) {
+                    locationIds.add(rack.getId());
+                }
+            }
+        } else if (locationEntity instanceof StorageShelf) {
+            StorageShelf shelf = (StorageShelf) locationEntity;
+            locationIds.add(shelf.getId());
+            locationType = "shelf";
+            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            for (StorageRack rack : racks) {
+                locationIds.add(rack.getId());
+            }
+        } else if (locationEntity instanceof StorageRack) {
+            StorageRack rack = (StorageRack) locationEntity;
+            locationIds.add(rack.getId());
+            locationType = "rack";
+        }
+
+        if (locationIds.isEmpty()) {
+            return;
+        }
+
+        // Find and delete all assignments for these locations
+        try {
+            String hql = "SELECT ssa FROM SampleStorageAssignment ssa WHERE ssa.locationId IN :locationIds";
+            jakarta.persistence.Query query = entityManager.createQuery(hql);
+            query.setParameter("locationIds", locationIds);
+            @SuppressWarnings("unchecked")
+            List<org.openelisglobal.storage.valueholder.SampleStorageAssignment> assignments = query.getResultList();
+            for (org.openelisglobal.storage.valueholder.SampleStorageAssignment assignment : assignments) {
+                sampleStorageAssignmentDAO.delete(assignment);
+            }
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error unassigning samples from location hierarchy", e);
+        }
+    }
+
+    /**
+     * OGC-75: Delete location with cascade deletion of all child locations and
+     * unassignment of all samples Deletes children bottom-up (racks → shelves →
+     * devices → rooms) to maintain referential integrity
+     */
+    @Override
+    @Transactional
+    public void deleteLocationWithCascade(Integer id, Class<?> locationClass) {
+        Object locationEntity = get(id, locationClass);
+        if (locationEntity == null) {
+            throw new LIMSRuntimeException("Location not found: " + id);
+        }
+
+        // Step 1: Find all child locations (recursively)
+        List<Object> childLocations = findAllChildLocations(locationEntity);
+
+        // Step 2: Unassign all samples from location and its children
+        unassignSamplesFromHierarchy(locationEntity);
+
+        // Step 3: Delete child locations bottom-up (racks first, then shelves, then
+        // devices)
+        // Sort children by type: racks first, then shelves, then devices
+        List<StorageRack> racksToDelete = new ArrayList<>();
+        List<StorageShelf> shelvesToDelete = new ArrayList<>();
+        List<StorageDevice> devicesToDelete = new ArrayList<>();
+
+        for (Object child : childLocations) {
+            if (child instanceof StorageRack) {
+                racksToDelete.add((StorageRack) child);
+            } else if (child instanceof StorageShelf) {
+                shelvesToDelete.add((StorageShelf) child);
+            } else if (child instanceof StorageDevice) {
+                devicesToDelete.add((StorageDevice) child);
+            }
+        }
+
+        // Delete in order: racks → shelves → devices
+        for (StorageRack rack : racksToDelete) {
+            storageRackDAO.delete(rack);
+        }
+        for (StorageShelf shelf : shelvesToDelete) {
+            storageShelfDAO.delete(shelf);
+        }
+        for (StorageDevice device : devicesToDelete) {
+            storageDeviceDAO.delete(device);
+        }
+
+        // Step 4: Delete the location itself
+        delete(locationEntity);
     }
 }

@@ -68,4 +68,24 @@ public interface SampleStorageService {
      */
     java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
             String notes);
+
+    /**
+     * OGC-73: Dispose a SampleItem - marks status as disposed and clears location
+     *
+     * @param sampleItemId SampleItem ID
+     * @param reason       Disposal reason (required)
+     * @param method       Disposal method (required)
+     * @param notes        Optional additional notes
+     * @return Map containing disposalId, disposedDate, and previous location info
+     */
+    java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes);
+
+    /**
+     * Get storage location for a specific SampleItem
+     * 
+     * @param sampleItemId SampleItem ID
+     * @return Map with location details including hierarchicalPath, or empty map if
+     *         not assigned
+     */
+    java.util.Map<String, Object> getSampleItemLocation(String sampleItemId);
 }

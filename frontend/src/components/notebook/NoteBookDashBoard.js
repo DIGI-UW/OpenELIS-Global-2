@@ -181,7 +181,11 @@ function NoteBookDashBoard() {
   };
 
   const openNoteBookInstanceView = (id) => {
-    window.location.href = "/NoteBookInstanceEditForm/" + id;
+    window.location.href = "/NoteBookInstanceEditForm/" + id + "?mode=view";
+  };
+
+  const openNoteBookInstanceEdit = (id) => {
+    window.location.href = "/NoteBookInstanceEditForm/" + id + "?mode=edit";
   };
 
   useEffect(() => {
@@ -497,6 +501,10 @@ function NoteBookDashBoard() {
                   <Column lg={4} md={8} sm={4}>
                     <Button
                       size="sm"
+                      disabled={
+                        userSessionDetails.userId !=
+                        selectedNoteBook.technicianId
+                      }
                       onClick={() => {
                         openNoteBookInstanceEntryForm();
                       }}
@@ -522,10 +530,10 @@ function NoteBookDashBoard() {
             </Grid>
 
             <Grid fullWidth={true} className="gridBoundary">
-              <Column lg={16} md={4} sm={2}>
+              <Column lg={16} md={8} sm={4}>
                 <FormattedMessage id="filters.label" /> :
               </Column>
-              <Column lg={2} md={4} sm={2}>
+              <Column lg={2} md={16} sm={16}>
                 <FilterableMultiSelect
                   id="statuses"
                   titleText={intl.formatMessage({ id: "label.filters.status" })}
@@ -538,7 +546,7 @@ function NoteBookDashBoard() {
                   selectionFeedback="top-after-reopen"
                 />
               </Column>
-              <Column lg={3} md={4} sm={2}>
+              <Column lg={3} md={8} sm={8}>
                 <FilterableMultiSelect
                   id="types"
                   titleText={intl.formatMessage({
@@ -553,7 +561,7 @@ function NoteBookDashBoard() {
                   selectionFeedback="top-after-reopen"
                 />
               </Column>
-              <Column lg={2} md={4} sm={2}>
+              <Column lg={2} md={8} sm={8}>
                 <TextInput
                   id="title"
                   name="title"
@@ -570,7 +578,7 @@ function NoteBookDashBoard() {
                   required
                 />
               </Column>
-              <Column lg={3} md={8} sm={4}>
+              <Column lg={3} md={8} sm={8}>
                 <CustomDatePicker
                   key="startDate"
                   id={"startDate"}
@@ -586,7 +594,7 @@ function NoteBookDashBoard() {
                   }
                 />
               </Column>
-              <Column lg={3} md={8} sm={4}>
+              <Column lg={3} md={8} sm={8}>
                 <CustomDatePicker
                   key="endDate"
                   id={"endDate"}
@@ -671,6 +679,9 @@ function NoteBookDashBoard() {
                             <Button
                               kind="secondary"
                               size="sm"
+                              disabled={
+                                userSessionDetails.userId != entry.technicianId
+                              }
                               onClick={() => openNoteBookInstanceView(entry.id)}
                             >
                               <View size={13} />
@@ -678,12 +689,16 @@ function NoteBookDashBoard() {
                             </Button>
                           </Column>
                           <Column lg={8} md={8} sm={4}>
-                            {entry.status === "DRAFT" && (
+                            {entry.status != "ARCHIVED" && (
                               <Button
                                 kind="primary"
                                 size="sm"
+                                disabled={
+                                  userSessionDetails.userId !=
+                                  entry.technicianId
+                                }
                                 onClick={() =>
-                                  openNoteBookInstanceView(entry.id)
+                                  openNoteBookInstanceEdit(entry.id)
                                 }
                               >
                                 <Edit size={13} />

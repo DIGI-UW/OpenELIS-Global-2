@@ -5,20 +5,37 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import DeleteLocationModal from "../LocationManagement/DeleteLocationModal";
 import messages from "../../../languages/en.json";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 
 // Mock the API utilities
 const mockGetFromOpenElisServer = jest.fn();
 const mockPostToOpenElisServer = jest.fn();
 
 jest.mock("../../utils/Utils", () => ({
+  ...jest.requireActual("../../utils/Utils"),
   getFromOpenElisServer: (...args) => mockGetFromOpenElisServer(...args),
   postToOpenElisServer: (...args) => mockPostToOpenElisServer(...args),
 }));
 
-const renderWithIntl = (component) => {
+const mockUserSessionDetailsAdmin = {
+  roles: ["Global Administrator"],
+};
+
+const mockUserSessionDetailsNonAdmin = {
+  roles: [],
+};
+
+const renderWithIntl = (component, isAdmin = true) => {
+  const userSessionDetails = isAdmin
+    ? mockUserSessionDetailsAdmin
+    : mockUserSessionDetailsNonAdmin;
   return render(
     <IntlProvider locale="en" messages={messages}>
-      {component}
+      <UserSessionDetailsContext.Provider
+        value={{ userSessionDetails: userSessionDetails }}
+      >
+        {component}
+      </UserSessionDetailsContext.Provider>
     </IntlProvider>,
   );
 };
@@ -59,6 +76,7 @@ describe("DeleteLocationModal", () => {
       }, 0);
     });
 
+    // Use non-admin user to test error message display
     renderWithIntl(
       <DeleteLocationModal
         open={true}
@@ -67,6 +85,7 @@ describe("DeleteLocationModal", () => {
         onClose={mockOnClose}
         onDelete={mockOnDelete}
       />,
+      false, // isAdmin = false
     );
 
     // Wait for constraint check to complete
@@ -245,5 +264,91 @@ describe("DeleteLocationModal", () => {
 
     expect(mockOnClose).toHaveBeenCalledTimes(1);
     expect(mockOnDelete).not.toHaveBeenCalled();
+  });
+
+  /**
+   * OGC-75: Test shelf deletion calls correct endpoint with "shelves" (not "shelfs")
+   */
+  test("testDeleteModal_ShelfType_UsesCorrectPlural", async () => {
+    const mockShelfLocation = {
+      id: "20",
+      name: "Shelf A",
+      code: "SHELF-A",
+      type: "shelf",
+    };
+
+    let capturedEndpoint = null;
+    mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
+      capturedEndpoint = endpoint;
+      setTimeout(() => {
+        callback({
+          status: 200,
+          data: { canDelete: true },
+        });
+      }, 0);
+    });
+
+    renderWithIntl(
+      <DeleteLocationModal
+        open={true}
+        location={mockShelfLocation}
+        locationType="shelf"
+        onClose={mockOnClose}
+        onDelete={mockOnDelete}
+      />,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Verify endpoint uses "shelves" not "shelfs"
+    expect(capturedEndpoint).toBe("/rest/storage/shelves/20/can-delete");
+  });
+
+  /**
+   * OGC-75: Test all location types generate correct plural URLs
+   */
+  test("testDeleteModal_AllLocationTypes_GenerateCorrectPlurals", async () => {
+    const locationTypes = [
+      { type: "room", expected: "rooms" },
+      { type: "device", expected: "devices" },
+      { type: "shelf", expected: "shelves" },
+      { type: "rack", expected: "racks" },
+    ];
+
+    for (const { type, expected } of locationTypes) {
+      jest.clearAllMocks();
+      let capturedEndpoint = null;
+
+      const mockLocation = {
+        id: "1",
+        name: `Test ${type}`,
+        code: `TEST-${type.toUpperCase()}`,
+        type: type,
+      };
+
+      mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
+        capturedEndpoint = endpoint;
+        setTimeout(() => {
+          callback({
+            status: 200,
+            data: { canDelete: true },
+          });
+        }, 0);
+      });
+
+      renderWithIntl(
+        <DeleteLocationModal
+          open={true}
+          location={mockLocation}
+          locationType={type}
+          onClose={mockOnClose}
+          onDelete={mockOnDelete}
+        />,
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(capturedEndpoint).toBe(`/rest/storage/${expected}/1/can-delete`);
+    }
   });
 });
