@@ -208,6 +208,55 @@ public class PatientDashBoardProvider {
         return orderBeanList;
     }
 
+    private List<OrderDisplayBean> convertAnalysesToGroupedOrderBean(List<Analysis> analyses) {
+        List<OrderDisplayBean> groupedOrderBeans = new ArrayList<>();
+        if (analyses == null) {
+            return groupedOrderBeans;
+        }
+
+        Map<String, OrderDisplayBean> labNumberToBeanMap = new HashMap<>();
+        List<String> labNumberOrder = new ArrayList<>();
+
+        analyses.forEach(analysis -> {
+            if (analysis == null) {
+                return;
+            }
+
+            Sample sample = analysis.getSampleItem() != null ? analysis.getSampleItem().getSample() : null;
+            String labNumber = sample != null ? sample.getAccessionNumber() : null;
+
+            // Use analysis id as a fallback key when no lab number is available
+            String key = labNumber != null ? labNumber : analysis.getId();
+
+            OrderDisplayBean existingBean = labNumberToBeanMap.get(key);
+            if (existingBean == null) {
+                OrderDisplayBean orderBean = new OrderDisplayBean();
+                orderBean.setId(analysis.getId());
+
+                if (sample != null) {
+                    orderBean.setPriority(sample.getPriority() != null ? sample.getPriority().toString() : "");
+                    orderBean.setLabNumber(
+                            sample.getAccessionNumber() != null ? sample.getAccessionNumber() : "");
+                    orderBean.setPatientId(sampleHumanService.getPatientForSample(sample).getNationalId());
+                }
+
+                orderBean.setOrderDate(analysis.getStartedDateForDisplay());
+                orderBean.setTestSection(
+                        analysis.getTestSection() != null ? analysis.getTestSection().getId() : "");
+                orderBean.setTestCount(1);
+
+                labNumberToBeanMap.put(key, orderBean);
+                labNumberOrder.add(key);
+            } else {
+                existingBean.setTestCount(existingBean.getTestCount() + 1);
+            }
+        });
+
+        labNumberOrder.forEach(key -> groupedOrderBeans.add(labNumberToBeanMap.get(key)));
+
+        return groupedOrderBeans;
+    }
+
     private List<OrderDisplayBean> convertAnalysesToUserOrdersBean(List<Analysis> analyses) {
         List<OrderDisplayBean> userOrders = new ArrayList<>();
         Map<String, List<Analysis>> userOrdersMap = new HashMap<>();
@@ -394,6 +443,31 @@ public class PatientDashBoardProvider {
             int requestedPageNumber = Integer.parseInt(requestedPage);
 
             // Sets the requested page in the response.
+            paging.page(request, response, requestedPageNumber);
+        }
+
+        return response;
+    }
+
+    @GetMapping(value = "home-dashboard/ORDERS-Grouped", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public PatientDashBoardForm getGroupedOrders(HttpServletRequest request)
+            throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
+
+        PatientDashBoardForm response = new PatientDashBoardForm();
+        PatientDashBoardPaging paging = new PatientDashBoardPaging();
+        List<OrderDisplayBean> orderDisplayBeans = new ArrayList<>();
+
+        String requestedPage = request.getParameter("page");
+        if (GenericValidator.isBlankOrNull(requestedPage)) {
+            List<Analysis> analyses = analysisService
+                    .getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.NotStarted));
+            orderDisplayBeans = convertAnalysesToGroupedOrderBean(analyses);
+
+            paging.setDatabaseResults(request, response, orderDisplayBeans);
+        } else {
+            int requestedPageNumber = Integer.parseInt(requestedPage);
+
             paging.page(request, response, requestedPageNumber);
         }
 

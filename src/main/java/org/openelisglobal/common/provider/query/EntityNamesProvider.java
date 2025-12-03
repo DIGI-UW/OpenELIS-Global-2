@@ -27,6 +27,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.servlet.validation.AjaxServlet;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.renamemethod.service.RenameMethodService;
 import org.openelisglobal.renametestsection.service.RenameTestSectionService;
 import org.openelisglobal.spring.util.SpringContext;
@@ -90,6 +91,13 @@ public class EntityNamesProvider extends BaseQueryProvider {
 
         if (PANEL.equals(entityName)) {
             localization = getLocalizationForPanel(id);
+
+            Panel panel = panelService.getPanelById(id);
+            if (panel != null && panel.getPrice() != null) {
+                jsonResult.put("price", panel.getPrice().toPlainString());
+            } else {
+                jsonResult.put("price", "");
+            }
         } else if (SAMPLE_TYPE.equals(entityName)) {
             localization = getLocalizationForSampleType(id);
         } else if (TEST_SECTION.equals(entityName)) {

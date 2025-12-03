@@ -23,6 +23,8 @@ public class PanelRenameEntryForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String panelId = "";
 
+    private String panelPrice = "";
+
     public PanelRenameEntryForm() {
         setFormName("panelRenameEntryForm");
     }
@@ -57,5 +59,13 @@ public class PanelRenameEntryForm extends BaseForm {
 
     public void setPanelId(String panelId) {
         this.panelId = panelId;
+    }
+
+    public String getPanelPrice() {
+        return panelPrice;
+    }
+
+    public void setPanelPrice(String panelPrice) {
+        this.panelPrice = panelPrice;
     }
 }

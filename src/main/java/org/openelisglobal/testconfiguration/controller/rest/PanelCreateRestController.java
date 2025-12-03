@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import javax.validation.Valid;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -38,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PanelCreateRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "panelEnglishName", "panelFrenchName",
-            "sampleTypeId", };
+            "sampleTypeId", "panelPrice" };
 
     @Autowired
     private PanelService panelService;
@@ -118,11 +119,21 @@ public class PanelCreateRestController extends BaseController {
         String identifyingName = form.getPanelEnglishName();
         String sampleTypeId = form.getSampleTypeId();
         String loinc = form.getPanelLoinc();
+        String panelPriceStr = form.getPanelPrice();
+        java.math.BigDecimal panelPrice = null;
+        if (!GenericValidator.isBlankOrNull(panelPriceStr)) {
+            try {
+                panelPrice = new java.math.BigDecimal(panelPriceStr.trim());
+            } catch (NumberFormatException e) {
+                // leave price as null if parsing fails
+            }
+        }
         String systemUserId = getSysUserId(request);
 
         Localization localization = createLocalization(form.getPanelFrenchName(), identifyingName, systemUserId);
 
         Panel panel = createPanel(identifyingName, systemUserId, loinc);
+        panel.setPrice(panelPrice);
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, systemUserId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, systemUserId);
         SystemModule validationModule = createSystemModule("ResultValidation", identifyingName, systemUserId);

@@ -49,7 +49,7 @@ import ReferredOutTests from "./components/resultPage/resultsReferredOut/Referre
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
-import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
+import LabDashboard from "./components/home/LabDashboard.tsx";
 
 export default function App() {
   let i18nConfig = {
@@ -247,6 +247,12 @@ export default function App() {
                 <SecureRoute
                   path="/"
                   exact
+                  component={() => <LabDashboard />}
+                  role=""
+                />
+                <SecureRoute
+                  path="/HomeDashboard"
+                  exact
                   component={() => <Home />}
                   role=""
                 />
@@ -283,7 +289,7 @@ export default function App() {
                 <SecureRoute
                   path="/Dashboard"
                   exact
-                  component={() => <Home />}
+                  component={() => <LabDashboard />}
                   role=""
                 />
                 <SecureRoute
@@ -334,40 +340,38 @@ export default function App() {
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
-                  path="/FreezerMonitoring"
-                  exact
-                  component={() => <FreezerMonitoringDashboard />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
                   path="/NoteBookDashboard"
                   exact
                   component={() => <NoteBookDashBoard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookEntryForm />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role=""
+                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm"
                   exact
                   component={() => <NoteBookEntryForm />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role=""
+                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role={Roles.RESULTS}
+                  role=""
+                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role={Roles.RESULTS}
+                  role=""
+                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
                   path="/CytologyCaseView/:cytologySampleId"

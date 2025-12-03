@@ -22,6 +22,8 @@ public class OrderDisplayBean {
 
     private String testSection;
 
+    private int testCount;
+
     public String getUserFirstName() {
         return userFirstName;
     }
@@ -100,5 +102,13 @@ public class OrderDisplayBean {
 
     public void setTestSection(String testSection) {
         this.testSection = testSection;
+    }
+
+    public int getTestCount() {
+        return testCount;
+    }
+
+    public void setTestCount(int testCount) {
+        this.testCount = testCount;
     }
 }

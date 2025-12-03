@@ -2,6 +2,7 @@ package org.openelisglobal.testconfiguration.service;
 
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.panel.event.PanelCreatedOrUpdatedEvent;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.rolemodule.service.RoleModuleService;
@@ -11,6 +12,7 @@ import org.openelisglobal.systemusermodule.valueholder.RoleModule;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,9 @@ public class PanelCreateServiceImpl implements PanelCreateService {
     @Autowired
     private LocalizationService localizationService;
 
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
     @Override
     @Transactional
     public void insert(Localization localization, Panel panel, SystemModule workplanModule, SystemModule resultModule,
@@ -36,6 +41,9 @@ public class PanelCreateServiceImpl implements PanelCreateService {
         localizationService.insert(localization);
         panel.setLocalization(localization);
         panelService.insert(panel);
+
+        // Publish event so integrations (e.g. Odoo) can react to new panels
+        eventPublisher.publishEvent(new PanelCreatedOrUpdatedEvent(this, panel));
 
         TypeOfSamplePanel typeOfSamplePanel = createTypeOfSamplePanel(sampleTypeId, panel, systemUserId);
         typeOfSamplePanelService.insert(typeOfSamplePanel);

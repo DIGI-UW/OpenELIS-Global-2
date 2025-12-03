@@ -20,6 +20,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.json.simple.JSONObject;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.renamemethod.service.RenameMethodService;
 import org.openelisglobal.renametestsection.service.RenameTestSectionService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -93,6 +94,13 @@ public class EntityNamesProviderRestController {
 
         if (PANEL.equals(entityName)) {
             localization = getLocalizationForPanel(id);
+
+            Panel panel = panelService.getPanelById(id);
+            if (panel != null && panel.getPrice() != null) {
+                jsonResult.put("price", panel.getPrice().toPlainString());
+            } else {
+                jsonResult.put("price", "");
+            }
         } else if (SAMPLE_TYPE.equals(entityName)) {
             localization = getLocalizationForSampleType(id);
         } else if (TEST_SECTION.equals(entityName)) {

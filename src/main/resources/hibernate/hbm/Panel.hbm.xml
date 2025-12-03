@@ -21,6 +21,9 @@
         <property name="description" type="java.lang.String">
             <column name="DESCRIPTION" length="60" not-null="true" />
         </property>
+        <property name="guid" type="java.lang.String">
+            <column name="GUID" length="128" />
+        </property>
         <property name="loinc" type="java.lang.String">
             <column name="LOINC" length="10" />
         </property>
@@ -33,6 +36,10 @@
             type="integer" />
         <property name="isActive" column="is_active"
             type="java.lang.String" />
+
+        <property name="price" type="java.math.BigDecimal">
+            <column name="PRICE" precision="10" scale="2" />
+        </property>
 
     </class>
 </hibernate-mapping>

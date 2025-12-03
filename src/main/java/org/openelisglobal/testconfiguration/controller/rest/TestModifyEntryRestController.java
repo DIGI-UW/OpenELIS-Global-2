@@ -165,6 +165,7 @@ public class TestModifyEntryRestController extends BaseController {
             bean.setLoinc(test.getLoinc());
             bean.setActive(test.isActive() ? "Active" : "Not active");
             bean.setUom(testService.getUOM(test, false));
+            bean.setPrice(test.getPrice());
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(resultType)
                     && testResultService.getAllActiveTestResultsPerTest(test).size() != 0) {
                 bean.setSignificantDigits(
@@ -676,6 +677,7 @@ public class TestModifyEntryRestController extends BaseController {
             extractPanels(obj, parser, testAddParams);
             testAddParams.uomId = (String) obj.get("uom");
             testAddParams.loinc = (String) obj.get("loinc");
+            testAddParams.price = (String) obj.get("price");
             testAddParams.resultTypeId = (String) obj.get("resultType");
             extractSampleTypes(obj, parser, testAddParams);
             testAddParams.active = (String) obj.get("active");

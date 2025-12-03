@@ -1,6 +1,7 @@
 package org.openelisglobal.panel.service;
 
 import java.util.List;
+import java.util.UUID;
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -106,6 +107,9 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         if (getBaseObjectDAO().duplicatePanelDescriptionExists(panel)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for panel description");
         }
+        if (panel.getGuid() == null || panel.getGuid().trim().isEmpty()) {
+            panel.setGuid(UUID.randomUUID().toString());
+        }
         baseObjectDAO.clearIDMaps();
         return super.insert(panel);
     }
@@ -129,6 +133,9 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         }
         if (getBaseObjectDAO().duplicatePanelDescriptionExists(panel)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for panel description");
+        }
+        if (panel.getGuid() == null || panel.getGuid().trim().isEmpty()) {
+            panel.setGuid(UUID.randomUUID().toString());
         }
         baseObjectDAO.clearIDMaps();
         return super.update(panel);

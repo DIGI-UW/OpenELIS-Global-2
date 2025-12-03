@@ -663,6 +663,7 @@ public class TestModifyEntryController extends BaseController {
             extractPanels(obj, parser, testAddParams);
             testAddParams.uomId = (String) obj.get("uom");
             testAddParams.loinc = (String) obj.get("loinc");
+            testAddParams.price = (String) obj.get("price");
             testAddParams.resultTypeId = (String) obj.get("resultType");
             extractSampleTypes(obj, parser, testAddParams);
             testAddParams.active = (String) obj.get("active");
@@ -793,6 +794,7 @@ public class TestModifyEntryController extends BaseController {
         public ArrayList<String> panelList = new ArrayList<>();
         public String uomId;
         public String loinc;
+        public String price;
         public String resultTypeId;
         public ArrayList<SampleTypeListAndTestOrder> sampleList = new ArrayList<>();
         public String active;

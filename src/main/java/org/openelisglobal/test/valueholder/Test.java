@@ -14,6 +14,7 @@
 package org.openelisglobal.test.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.util.Objects;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -118,6 +119,8 @@ public class Test extends EnumValueItemImpl {
     private Boolean notifyResults;
 
     private Boolean antimicrobialResistance;
+
+    private BigDecimal price;
 
     @Override
     public String getSortOrder() {
@@ -514,6 +517,14 @@ public class Test extends EnumValueItemImpl {
 
     public Boolean getAntimicrobialResistance() {
         return antimicrobialResistance;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
     }
 
     @Override

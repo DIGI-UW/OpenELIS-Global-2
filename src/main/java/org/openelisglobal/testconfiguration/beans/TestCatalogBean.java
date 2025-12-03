@@ -17,6 +17,7 @@
 package org.openelisglobal.testconfiguration.beans;
 
 import java.util.List;
+import java.math.BigDecimal;
 import org.openelisglobal.localization.valueholder.Localization;
 
 public class TestCatalogBean {
@@ -32,6 +33,7 @@ public class TestCatalogBean {
     private String loinc;
     private String active;
     private String orderable;
+    private BigDecimal price;
     private Boolean notifyResults;
     private boolean hasDictionaryValues = false;
     private List<String> dictionaryValues;
@@ -122,6 +124,14 @@ public class TestCatalogBean {
 
     public void setOrderable(String orderable) {
         this.orderable = orderable;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
     }
 
     public String getLoinc() {

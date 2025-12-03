@@ -7,6 +7,7 @@ export const TestFormData = {
   panels: [],
   uom: "",
   loinc: "",
+  price: "",
   resultType: "",
   orderable: "Y",
   notifyResults: "N",
@@ -102,6 +103,10 @@ export const mapTestCatBeanToFormData = (test) => {
         : [],
     uom: test.uom || "",
     loinc: test.loinc || "",
+    price:
+      test.price !== undefined && test.price !== null
+        ? String(test.price)
+        : "",
     resultType: test.resultType || "",
     orderable: test.orderable === "Orderable" ? "Y" : "N",
     notifyResults: test.notifyResults ? "Y" : "N",

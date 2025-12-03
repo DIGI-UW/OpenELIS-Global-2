@@ -85,6 +85,7 @@ function PanelCreate() {
     frenchLangPost,
     selectedSampleTypeId,
     loincPost,
+    panelPrice,
   }) => {
     postToOpenElisServerJsonResponse(
       "/rest/PanelCreate",
@@ -93,6 +94,7 @@ function PanelCreate() {
         panelFrenchName: frenchLangPost,
         sampleTypeId: selectedSampleTypeId,
         panelLoinc: loincPost,
+        panelPrice: panelPrice,
       }),
       (res) => {
         handlePostPanelCreateListCallBack(res);
@@ -152,6 +154,11 @@ function PanelCreate() {
         /^(?!-)(?:\d+-)*\d+$/,
         "Invalid format. Use digits separated by single dashes (e.g. 1-2-3)",
       ),
+    panelPrice: Yup.string().test(
+      "is-valid-price",
+      "Price must be a number with up to 2 decimal places",
+      (value) => !value || /^[0-9]+(\.[0-9]{1,2})?$/.test(value),
+    ),
   });
 
   const allPanels = [
@@ -239,6 +246,7 @@ function PanelCreate() {
               frenchLangPost: "",
               selectedSampleTypeId: "",
               loincPost: "",
+              panelPrice: "",
             }}
             validationSchema={validationSchema}
             onSubmit={(values, actions) => {
@@ -368,6 +376,26 @@ function PanelCreate() {
                       required
                       //invalid={touched.loincPost && !!errors.loincPost}
                       //invalidText={touched.loincPost && errors.loincPost}
+                    />
+                  </Column>
+
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="field.price" /> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id={`panelPrice`}
+                      name="panelPrice"
+                      labelText=""
+                      hideLabel
+                      disabled={bothFilled}
+                      value={values.panelPrice}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      invalid={touched.panelPrice && !!errors.panelPrice}
+                      invalidText={touched.panelPrice && errors.panelPrice}
                     />
                   </Column>
                 </Grid>

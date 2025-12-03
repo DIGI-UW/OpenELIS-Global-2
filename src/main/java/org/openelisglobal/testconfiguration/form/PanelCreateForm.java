@@ -47,6 +47,8 @@ public class PanelCreateForm extends BaseForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String panelLoinc;
 
+    private String panelPrice;
+
     public PanelCreateForm() {
         setFormName("panelCreateForm");
     }
@@ -145,5 +147,13 @@ public class PanelCreateForm extends BaseForm {
 
     public void setPanelLoinc(String panelLoinc) {
         this.panelLoinc = panelLoinc;
+    }
+
+    public String getPanelPrice() {
+        return panelPrice;
+    }
+
+    public void setPanelPrice(String panelPrice) {
+        this.panelPrice = panelPrice;
     }
 }

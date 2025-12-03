@@ -98,6 +98,15 @@ public class TestAddControllerUtills {
             Test test = new Test();
             test.setUnitOfMeasure(uom);
             test.setLoinc(testAddParams.loinc);
+            java.math.BigDecimal price = null;
+            if (!GenericValidator.isBlankOrNull(testAddParams.price)) {
+                try {
+                    price = new java.math.BigDecimal(testAddParams.price.trim());
+                } catch (NumberFormatException e) {
+                    // leave price as null if parsing fails
+                }
+            }
+            test.setPrice(price);
             test.setDescription(testAddParams.testNameEnglish + "(" + typeOfSample.getDescription() + ")");
             // TODO remove test name if possible. Tests should be identified by LOINC and
             // use a localization
@@ -229,6 +238,7 @@ public class TestAddControllerUtills {
             extractPanels(obj, parser, testAddParams);
             testAddParams.uomId = (String) obj.get("uom");
             testAddParams.loinc = (String) obj.get("loinc");
+            testAddParams.price = (String) obj.get("price");
             testAddParams.resultTypeId = (String) obj.get("resultType");
             extractSampleTypes(obj, parser, testAddParams);
             testAddParams.active = (String) obj.get("active");
@@ -341,6 +351,7 @@ public class TestAddControllerUtills {
         ArrayList<String> panelList = new ArrayList<>();
         String uomId;
         public String loinc;
+        String price;
         String resultTypeId;
         ArrayList<SampleTypeListAndTestOrder> sampleList = new ArrayList<>();
         String active;

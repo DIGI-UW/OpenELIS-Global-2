@@ -7,12 +7,14 @@ import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.panel.event.PanelCreatedOrUpdatedEvent;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.dao.PanelItemDAO;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,8 @@ public class PanelItemServiceImpl extends AuditableBaseObjectServiceImpl<PanelIt
     protected PanelItemDAO baseObjectDAO;
     @Autowired
     private PanelService panelService;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     PanelItemServiceImpl() {
         super(PanelItem.class);
@@ -154,6 +158,9 @@ public class PanelItemServiceImpl extends AuditableBaseObjectServiceImpl<PanelIt
             panel.setSysUserId(currentUser);
             panelService.update(panel);
         }
+
+        // Publish event so integrations (e.g. Odoo) can react to panel membership changes
+        eventPublisher.publishEvent(new PanelCreatedOrUpdatedEvent(this, panel));
     }
 
     @Override

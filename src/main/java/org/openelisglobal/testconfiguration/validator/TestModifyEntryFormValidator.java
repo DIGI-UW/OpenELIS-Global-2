@@ -59,6 +59,9 @@ public class TestModifyEntryFormValidator implements Validator {
                 ValidationHelper.validateIdField(StringUtil.nullSafeToString(newTest.get("resultType")), "JsonWad",
                         "resultType", errors, true);
 
+                ValidationHelper.validateField(StringUtil.nullSafeToString(newTest.get("price")), "JsonWad", "price",
+                        errors, false, 255, "^[0-9]+(\\.[0-9]{1,2})?$");
+
                 ValidationHelper.validateYNField(StringUtil.nullSafeToString(newTest.get("orderable")), "JsonWad",
                         "orderable", errors);
 

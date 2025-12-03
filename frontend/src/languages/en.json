@@ -424,6 +424,7 @@
   "field.testUnit": "Test Unit",
   "field.uom": "Unit of measure",
   "field.validRange": "Valid range",
+  "field.price": "Price",
   "filters.label": "Filters",
   "french.current": "FRENCH current",
   "french.label": "French",

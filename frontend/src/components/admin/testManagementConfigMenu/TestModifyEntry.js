@@ -90,9 +90,16 @@ function TestModifyEntry() {
       }, 500);
     }
     setIsLoading(true);
+    const normalizedUom =
+      values && values.uom && values.uom !== "" ? values.uom : "0";
+
+    const payload = {
+      ...values,
+      uom: normalizedUom,
+    };
     postToOpenElisServerJsonResponse(
       `/rest/TestModifyEntry`,
-      JSON.stringify({ jsonWad: JSON.stringify(values) }),
+      JSON.stringify({ jsonWad: JSON.stringify(payload) }),
       (res) => {
         handleTestModifyEntryPostCallBack(res);
       },

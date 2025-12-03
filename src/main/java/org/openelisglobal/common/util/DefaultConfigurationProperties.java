@@ -246,7 +246,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.autoFillTechNameBox, "false");
         properties.setPropertyValue(Property.autoFillTechNameUser, "false");
         properties.setPropertyValue(Property.failedValidationMarker, "true");
-        properties.setPropertyValue(Property.SiteName, "");
+        properties.setPropertyValue(Property.SiteName, "Nidan Clinic");
         properties.setPropertyValue(Property.Addressline1label, "");
         properties.setPropertyValue(Property.Addressline2label, "");
         properties.setPropertyValue(Property.Addressline3label, "");

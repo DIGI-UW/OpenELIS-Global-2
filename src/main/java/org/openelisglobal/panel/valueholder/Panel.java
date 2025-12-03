@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.panel.valueholder;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
 import org.openelisglobal.common.valueholder.ValueHolder;
@@ -27,10 +28,13 @@ public class Panel extends EnumValueItemImpl {
     private String id;
     private String panelName;
     private String description;
+    private String guid;
     private String loinc;
 
     private int sortOrderInt;
     private ValueHolder localization = new ValueHolder();
+
+    private BigDecimal price;
 
     public Panel() {
         super();
@@ -62,6 +66,14 @@ public class Panel extends EnumValueItemImpl {
         this.description = description;
     }
 
+    public String getGuid() {
+        return guid;
+    }
+
+    public void setGuid(String guid) {
+        this.guid = guid;
+    }
+
     public String getLoinc() {
         return loinc;
     }
@@ -89,6 +101,14 @@ public class Panel extends EnumValueItemImpl {
 
     public void setLocalization(Localization localization) {
         this.localization.setValue(localization);
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
     }
 
     @Override

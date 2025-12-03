@@ -2,6 +2,7 @@ package org.openelisglobal.testconfiguration.service;
 
 import java.util.List;
 import java.util.Locale;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -11,6 +12,7 @@ import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.test.event.TestCreatedEvent;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -27,6 +29,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +58,8 @@ public class TestModifyServiceImpl implements TestModifyService {
     private PanelService panelService;
     @Autowired
     private TestSectionService testSectionService;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -104,7 +109,8 @@ public class TestModifyServiceImpl implements TestModifyService {
             updateTestNames(testAddParams.testId, nameLocalization, reportingNameLocalization, currentUserId);
             updateTestEntities(testAddParams.testId, testAddParams.loinc, currentUserId, testAddParams.uomId,
                     testAddParams.testSectionId, set.test.isNotifyResults(), set.test.isInLabOnly(),
-                    set.test.getAntimicrobialResistance(), set.test.getIsActive(), set.test.getOrderable());
+                    set.test.getAntimicrobialResistance(), set.test.getIsActive(), set.test.getOrderable(),
+                    testAddParams.price);
 
             set.sampleTypeTest.setSysUserId(currentUserId);
             set.sampleTypeTest.setTestId(set.test.getId());
@@ -149,6 +155,12 @@ public class TestModifyServiceImpl implements TestModifyService {
                 resultLimitService.insert(resultLimit);
             }
         }
+
+        // Publish event so integrations (e.g. Odoo) can react to test updates
+        Test updatedTest = testService.get(testAddParams.testId);
+        if (updatedTest != null) {
+            eventPublisher.publishEvent(new TestCreatedEvent(this, updatedTest));
+        }
     }
 
     private void updateTestSortOrder(String testId, String sortOrder, String currentUserId) {
@@ -173,14 +185,29 @@ public class TestModifyServiceImpl implements TestModifyService {
 
     private void updateTestEntities(String testId, String loinc, String userId, String uomId, String testSectionId,
             boolean notifyResults, boolean inLabOnly, boolean antimicrobialResistance, String isActive,
-            Boolean orderable) {
+            Boolean orderable, String priceStr) {
         Test test = testService.get(testId);
         TestSection testSection = testSectionService.get(testSectionId);
 
         if (test != null) {
             test.setSysUserId(userId);
             test.setLoinc(loinc);
-            test.setUnitOfMeasure(unitOfMeasureService.getUnitOfMeasureById(uomId));
+            // Align with controller logic: only resolve UOM when id is non-blank or "0"
+            // so that legacy and React can both represent "no UOM" safely.
+            if (!GenericValidator.isBlankOrNull(uomId) || "0".equals(uomId)) {
+                test.setUnitOfMeasure(unitOfMeasureService.getUnitOfMeasureById(uomId));
+            } else {
+                test.setUnitOfMeasure(null);
+            }
+            java.math.BigDecimal price = null;
+            if (!GenericValidator.isBlankOrNull(priceStr)) {
+                try {
+                    price = new java.math.BigDecimal(priceStr.trim());
+                } catch (NumberFormatException e) {
+                    // leave price unchanged if parsing fails
+                }
+            }
+            test.setPrice(price);
             test.setNotifyResults(notifyResults);
             test.setInLabOnly(inLabOnly);
             test.setAntimicrobialResistance(antimicrobialResistance);

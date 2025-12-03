@@ -109,7 +109,9 @@
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="SORT_ORDER" precision="22" scale="0" />
         </property>
-
+        <property name="price" type="java.math.BigDecimal">
+            <column name="PRICE" precision="10" scale="2" />
+        </property>
         <property name="orderable" type="java.lang.Boolean"
             column="orderable" />
         <property name="notifyResults" type="java.lang.Boolean"

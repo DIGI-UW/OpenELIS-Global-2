@@ -2,16 +2,19 @@ package org.openelisglobal.testconfiguration.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.panel.event.PanelCreatedOrUpdatedEvent;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.testconfiguration.form.PanelRenameEntryForm;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,12 +28,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest")
 public class PanelRenameEntryRestController extends BaseController {
 
-    private static final String[] ALLOWED_FIELDS = new String[] { "panelId", "nameEnglish", "nameFrench" };
+    private static final String[] ALLOWED_FIELDS = new String[] { "panelId", "nameEnglish", "nameFrench",
+            "panelPrice" };
 
     @Autowired
     PanelService panelService;
     @Autowired
     LocalizationService localizationService;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -72,15 +78,17 @@ public class PanelRenameEntryRestController extends BaseController {
         String panelId = form.getPanelId();
         String nameEnglish = form.getNameEnglish();
         String nameFrench = form.getNameFrench();
+        String panelPriceStr = form.getPanelPrice();
         String userId = getSysUserId(request);
 
-        updatePanelNames(panelId, nameEnglish, nameFrench, userId);
+        updatePanelNamesAndPrice(panelId, nameEnglish, nameFrench, panelPriceStr, userId);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
         return form;
     }
 
-    private void updatePanelNames(String panelId, String nameEnglish, String nameFrench, String userId) {
+    private void updatePanelNamesAndPrice(String panelId, String nameEnglish, String nameFrench, String panelPriceStr,
+            String userId) {
         Panel panel = panelService.getPanelById(panelId);
 
         if (panel != null) {
@@ -95,6 +103,21 @@ public class PanelRenameEntryRestController extends BaseController {
             } catch (LIMSRuntimeException e) {
                 LogEvent.logDebug(e);
             }
+
+            java.math.BigDecimal panelPrice = null;
+            if (!GenericValidator.isBlankOrNull(panelPriceStr)) {
+                try {
+                    panelPrice = new java.math.BigDecimal(panelPriceStr.trim());
+                } catch (NumberFormatException e) {
+                    // leave price as null if parsing fails
+                }
+            }
+
+            panel.setPrice(panelPrice);
+            panel.setSysUserId(userId);
+            panelService.update(panel);
+
+            eventPublisher.publishEvent(new PanelCreatedOrUpdatedEvent(this, panel));
         }
         DisplayListService.getInstance().getFreshList(DisplayListService.ListType.PANELS);
     }

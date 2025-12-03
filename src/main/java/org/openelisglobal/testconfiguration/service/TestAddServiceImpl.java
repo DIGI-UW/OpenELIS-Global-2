@@ -9,6 +9,7 @@ import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.test.event.TestCreatedEvent;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -19,6 +20,7 @@ import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +45,8 @@ public class TestAddServiceImpl implements TestAddService {
     private TypeOfSampleService typeOfSampleService;
     @Autowired
     private PanelService panelService;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -58,6 +62,9 @@ public class TestAddServiceImpl implements TestAddService {
             set.test.setLocalizedTestName(nameLocalization);
             set.test.setLocalizedReportingName(reportingNameLocalization);
             testService.insert(set.test);
+
+            // Publish event so that integrations (e.g. Odoo) can react asynchronously
+            eventPublisher.publishEvent(new TestCreatedEvent(this, set.test));
 
             TestSection testSection = set.test.getTestSection();
             if ("N".equals(testSection.getIsActive())) {
