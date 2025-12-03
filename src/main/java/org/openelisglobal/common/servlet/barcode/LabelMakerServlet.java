@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.BarcodeLabelMaker;
+import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.labeltype.OrderLabel;
+import org.openelisglobal.barcode.labeltype.SpecimenLabel;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
@@ -25,6 +27,9 @@ import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -112,18 +117,46 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
     private void printGenericSampleLabel(HttpServletRequest request, HttpServletResponse response, String labNo,
             String sampleType, String sampleQuantity, String from, String numLabels) throws IOException {
 
-        // Create OrderLabel with generic sample details
-        OrderLabel orderLabel = new OrderLabel(labNo, sampleType, sampleQuantity, from);
-        int labelCount = 1;
-        try {
-            labelCount = Integer.parseInt(numLabels);
-        } catch (NumberFormatException e) {
-            // default to 1
-        }
-        orderLabel.setNumLabels(labelCount);
+        ArrayList<Label> labels = new ArrayList<>();
 
-        // Create label maker and generate PDF
-        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker(orderLabel);
+        // Fetch sample and sample items to create specimen labels
+        SampleService sampleService = SpringContext.getBean(SampleService.class);
+        SampleItemService sampleItemService = SpringContext.getBean(SampleItemService.class);
+        Sample sample = sampleService.getSampleByAccessionNumber(labNo);
+
+        if (sample != null) {
+            LogEvent.logInfo("LabelMakerServlet", "printGenericSampleLabel",
+                    "Found sample with ID: " + sample.getId() + " for accession: " + labNo);
+
+            // Get all sample items for this sample
+            List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+            LogEvent.logInfo("LabelMakerServlet", "printGenericSampleLabel",
+                    "Found " + sampleItems.size() + " sample items for sample ID: " + sample.getId());
+
+            // Create a SpecimenLabel for each sample item (specimen labels come first)
+            for (SampleItem sampleItem : sampleItems) {
+                LogEvent.logInfo("LabelMakerServlet", "printGenericSampleLabel",
+                        "Creating specimen label for sample item: " + sampleItem.getId() + " externalId: "
+                                + sampleItem.getExternalId());
+                SpecimenLabel specimenLabel = new SpecimenLabel(sampleItem, labNo, sampleType, sampleQuantity, from);
+                specimenLabel.setNumLabels(1);
+                labels.add(specimenLabel);
+            }
+        } else {
+            LogEvent.logWarn("LabelMakerServlet", "printGenericSampleLabel",
+                    "No sample found for accession number: " + labNo);
+        }
+
+        // Create OrderLabel with generic sample details (1 copy) - order label comes after specimens
+        OrderLabel orderLabel = new OrderLabel(labNo, sampleType, sampleQuantity, from);
+        orderLabel.setNumLabels(1);
+        labels.add(orderLabel);
+
+        LogEvent.logInfo("LabelMakerServlet", "printGenericSampleLabel",
+                "Total labels to print: " + labels.size());
+
+        // Create label maker with all labels and generate PDF
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker(labels);
         UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
         labelMaker.setSysUserId(String.valueOf(usd.getSystemUserId()));
 
