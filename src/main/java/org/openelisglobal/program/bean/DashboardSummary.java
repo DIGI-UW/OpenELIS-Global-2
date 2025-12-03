@@ -1,22 +1,16 @@
 package org.openelisglobal.program.bean;
 
-import java.util.Map;
+import java.sql.Date;
+import java.util.List;
 
 public class DashboardSummary {
+
     private long totalEntries;
-    private long completedQuestionnaires;
-    private long pendingQuestionnaires;
-    private Map<String, Long> entriesByProgram;
+    private long inProgressEntries;
+    private long completedEntries;
 
-    public DashboardSummary(long totalEntries, long completedQuestionnaires, long pendingQuestionnaires,
-            Map<String, Long> entriesByProgram) {
-        this.totalEntries = totalEntries;
-        this.completedQuestionnaires = completedQuestionnaires;
-        this.pendingQuestionnaires = pendingQuestionnaires;
-        this.entriesByProgram = entriesByProgram;
-    }
+    private List<ViewItems> programSample;
 
-    // Getters and setters
     public long getTotalEntries() {
         return totalEntries;
     }
@@ -25,27 +19,75 @@ public class DashboardSummary {
         this.totalEntries = totalEntries;
     }
 
-    public long getCompletedQuestionnaires() {
-        return completedQuestionnaires;
+    public long getInProgressEntries() {
+        return inProgressEntries;
     }
 
-    public void setCompletedQuestionnaires(long completedQuestionnaires) {
-        this.completedQuestionnaires = completedQuestionnaires;
+    public void setInProgressEntries(long inProgressEntries) {
+        this.inProgressEntries = inProgressEntries;
     }
 
-    public long getPendingQuestionnaires() {
-        return pendingQuestionnaires;
+    public long getCompletedEntries() {
+        return completedEntries;
     }
 
-    public void setPendingQuestionnaires(long pendingQuestionnaires) {
-        this.pendingQuestionnaires = pendingQuestionnaires;
+    public void setCompletedEntries(long completedEntries) {
+        this.completedEntries = completedEntries;
     }
 
-    public Map<String, Long> getEntriesByProgram() {
-        return entriesByProgram;
+    public List<ViewItems> getProgramSample() {
+        return programSample;
     }
 
-    public void setEntriesByProgram(Map<String, Long> entriesByProgram) {
-        this.entriesByProgram = entriesByProgram;
+    public void setProgramSample(List<ViewItems> programSample) {
+        this.programSample = programSample;
+    }
+
+    public static class ViewItems {
+        private int programSampleId;
+        private String programName;
+        private String programCode;
+        private Date receivedDate;
+        private String accessionNumber;
+
+        public int getProgramSampleId() {
+            return programSampleId;
+        }
+
+        public void setProgramSampleId(int programSampleId) {
+            this.programSampleId = programSampleId;
+        }
+
+        public String getProgramName() {
+            return programName;
+        }
+
+        public void setProgramName(String programName) {
+            this.programName = programName;
+        }
+
+        public String getProgramCode() {
+            return programCode;
+        }
+
+        public void setProgramCode(String programCode) {
+            this.programCode = programCode;
+        }
+
+        public Date getReceivedDate() {
+            return receivedDate;
+        }
+
+        public void setReceivedDate(Date receivedDate) {
+            this.receivedDate = receivedDate;
+        }
+
+        public String getAccessionNumber() {
+            return accessionNumber;
+        }
+
+        public void setAccessionNumber(String accessionNumber) {
+            this.accessionNumber = accessionNumber;
+        }
     }
 }

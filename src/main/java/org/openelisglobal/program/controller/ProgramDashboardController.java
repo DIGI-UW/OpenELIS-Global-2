@@ -1,35 +1,34 @@
 package org.openelisglobal.program.controller;
 
-import java.util.List;
 import org.openelisglobal.program.bean.DashboardSummary;
-import org.openelisglobal.program.service.GenericProgramService;
-import org.openelisglobal.program.valueholder.ProgramUtil;
+import org.openelisglobal.program.service.GenericProgramDisplayService;
+import org.openelisglobal.program.valueholder.ProgramSampleDisplayItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/rest/programs")
+@RequestMapping("/rest")
 public class ProgramDashboardController {
 
     @Autowired
-    private GenericProgramService genericProgramService;
+    private GenericProgramDisplayService genericProgramDisplayService;
 
-    @GetMapping("/entries")
-    public ResponseEntity<List<ProgramUtil>> getAllProgramEntries() {
-        List<ProgramUtil> entries = genericProgramService.getAllProgramEntries();
-        return ResponseEntity.ok(entries);
-    }
-
-    @GetMapping("/entries/{programSampleId}")
-    public ResponseEntity<ProgramUtil> getProgramEntry(@PathVariable Integer programSampleId) {
-        ProgramUtil entry = genericProgramService.getProgramEntry(programSampleId);
-        return ResponseEntity.ok(entry);
-    }
-
-    @GetMapping("/summary")
-    public ResponseEntity<DashboardSummary> getDashboardSummary() {
-        DashboardSummary summary = genericProgramService.getDashboardSummary();
+    @GetMapping("/programSamplesList")
+    public ResponseEntity<DashboardSummary> getAllProgramSamples() {
+        DashboardSummary summary = genericProgramDisplayService.getAllProgramSamples();
         return ResponseEntity.ok(summary);
     }
+
+    @GetMapping(value = "/programSample/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ProgramSampleDisplayItem> getProgramSampleDisplayItem(@PathVariable int id) {
+        ProgramSampleDisplayItem psdi = genericProgramDisplayService.getProgramSampleById(id);
+
+        return ResponseEntity.ok(psdi);
+    }
+
 }

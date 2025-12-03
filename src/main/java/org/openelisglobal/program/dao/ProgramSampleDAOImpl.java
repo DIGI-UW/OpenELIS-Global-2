@@ -1,5 +1,6 @@
 package org.openelisglobal.program.dao;
 
+import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -40,4 +41,12 @@ public class ProgramSampleDAOImpl extends BaseDAOImpl<ProgramSample, Integer> im
     public String getTableName() {
         return "program_sample";
     }
+
+    @Override
+    public List<ProgramSample> fetchAllProgramSamples() {
+        String jpql = "SELECT ps FROM ProgramSample ps " + "JOIN FETCH ps.program " + "JOIN FETCH ps.sample";
+        Query<ProgramSample> query = entityManager.unwrap(Session.class).createQuery(jpql, ProgramSample.class);
+        return query.getResultList();
+    }
+
 }

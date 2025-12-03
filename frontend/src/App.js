@@ -50,6 +50,8 @@ import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
+import ProgramDashboard from "./components/program/programDashboard.jsx";
+import ProgramCaseView from "./components/program/programCaseView.jsx";
 
 export default function App() {
   let i18nConfig = {
@@ -331,7 +333,21 @@ export default function App() {
                   exact
                   component={() => <CytologyDashboard />}
                   role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                    
+                />
+                  <SecureRoute
+                  path="/genericProgram"
+                  exact
+                  component={() => <ProgramDashboard/>}
+                  role=""
+              
+                />
+                                  <SecureRoute
+                  path="/programView/:programSampleId"
+                  exact
+                  component={() => <ProgramCaseView/>}
+                  role=""
+              
                 />
                 <SecureRoute
                   path="/FreezerMonitoring"
