@@ -7,7 +7,7 @@
  */
 
 import { useEffect } from "react";
-import { getBranding } from "../../../services/siteBrandingService";
+import { getBranding } from "../../../../services/siteBrandingService";
 
 function BrandingStyles() {
   useEffect(() => {
