@@ -1,9 +1,12 @@
 package org.openelisglobal.sitebranding.controller.rest;
 
+import static org.junit.Assert.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
@@ -13,8 +16,10 @@ import org.openelisglobal.sitebranding.form.SiteBrandingForm;
 import org.openelisglobal.sitebranding.service.SiteBrandingService;
 import org.openelisglobal.sitebranding.valueholder.SiteBranding;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockMultipartFile;
 
 /**
  * Integration tests for SiteBrandingRestController
@@ -207,15 +212,21 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         branding.setSysUserId("1");
         siteBrandingService.saveBranding(branding);
 
-        // Arrange: Create mock MultipartFile
-        // Note: This will need adjustment based on actual MultipartFile mock implementation
-        // For now, this is a placeholder test structure
+        // Arrange: Create mock MultipartFile (valid PNG, < 2MB)
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test-header-logo.png",
+                "image/png",
+                "fake png content".getBytes()
+        );
 
         // Act: POST /rest/site-branding/logo/header with file
         // Then: Expect 200 OK with logo URL
-
-        // This test will be fully implemented when uploadLogo endpoint is added
-        assertTrue("Test placeholder for logo upload", true);
+        mockMvc.perform(multipart("/rest/site-branding/logo/header")
+                .file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.logoUrl").value("/rest/site-branding/logo/header"))
+                .andExpect(jsonPath("$.fileName").value("test-header-logo.png"));
     }
 
     /**
@@ -224,8 +235,26 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
      */
     @Test
     public void testUploadHeaderLogo_WithInvalidFormat_Returns400() throws Exception {
-        // This test will be implemented when uploadLogo endpoint is added
-        assertTrue("Test placeholder for invalid format validation", true);
+        // Arrange: Create test branding
+        SiteBranding branding = new SiteBranding();
+        branding.setPrimaryColor("#1d4ed8");
+        branding.setSysUserId("1");
+        siteBrandingService.saveBranding(branding);
+
+        // Arrange: Create mock MultipartFile with invalid format (TXT instead of image)
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.txt",
+                "text/plain",
+                "invalid file content".getBytes()
+        );
+
+        // Act: POST /rest/site-branding/logo/header with invalid file
+        // Then: Expect 400 Bad Request
+        mockMvc.perform(multipart("/rest/site-branding/logo/header")
+                .file(file))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
     }
 
     /**
@@ -234,8 +263,27 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
      */
     @Test
     public void testUploadHeaderLogo_WithExcessiveSize_Returns400() throws Exception {
-        // This test will be implemented when uploadLogo endpoint is added
-        assertTrue("Test placeholder for size validation", true);
+        // Arrange: Create test branding
+        SiteBranding branding = new SiteBranding();
+        branding.setPrimaryColor("#1d4ed8");
+        branding.setSysUserId("1");
+        siteBrandingService.saveBranding(branding);
+
+        // Arrange: Create mock MultipartFile exceeding 2MB limit
+        byte[] largeContent = new byte[3 * 1024 * 1024]; // 3MB
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "large-image.png",
+                "image/png",
+                largeContent
+        );
+
+        // Act: POST /rest/site-branding/logo/header with oversized file
+        // Then: Expect 400 Bad Request
+        mockMvc.perform(multipart("/rest/site-branding/logo/header")
+                .file(file))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
     }
 
     /**
@@ -244,8 +292,27 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
      */
     @Test
     public void testGetHeaderLogo_WithExistingLogo_ReturnsFile() throws Exception {
-        // This test will be implemented when logo serving endpoint is added
-        assertTrue("Test placeholder for logo serving", true);
+        // Arrange: Create test branding with header logo
+        String logoPath = "/var/lib/openelis-global/branding/header-test.png";
+        Files.createDirectories(Paths.get("/var/lib/openelis-global/branding/"));
+        Files.write(Paths.get(logoPath), "test image content".getBytes());
+
+        SiteBranding branding = new SiteBranding();
+        branding.setId("test-id");
+        branding.setHeaderLogoPath(logoPath);
+        branding.setPrimaryColor("#1d4ed8");
+        branding.setSysUserId("1");
+        siteBrandingService.saveBranding(branding);
+
+        // Act: GET /rest/site-branding/logo/header
+        // Then: Expect 200 OK with file content and caching headers
+        mockMvc.perform(get("/rest/site-branding/logo/header"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "public, max-age=3600"))
+                .andExpect(content().bytes("test image content".getBytes()));
+
+        // Cleanup
+        Files.deleteIfExists(Paths.get(logoPath));
     }
 
     /**
@@ -254,9 +321,27 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
      */
     @Test
     public void testUploadLoginLogo_WithValidFile_Returns200() throws Exception {
-        // Similar to header logo test
-        // This test will be fully implemented when uploadLogo endpoint is added
-        assertTrue("Test placeholder for login logo upload", true);
+        // Arrange: Create test branding
+        SiteBranding branding = new SiteBranding();
+        branding.setPrimaryColor("#1d4ed8");
+        branding.setSysUserId("1");
+        siteBrandingService.saveBranding(branding);
+
+        // Arrange: Create mock MultipartFile (valid PNG, < 2MB)
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test-login-logo.png",
+                "image/png",
+                "fake png content".getBytes()
+        );
+
+        // Act: POST /rest/site-branding/logo/login with file
+        // Then: Expect 200 OK with logo URL
+        mockMvc.perform(multipart("/rest/site-branding/logo/login")
+                .file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.logoUrl").value("/rest/site-branding/logo/login"))
+                .andExpect(jsonPath("$.fileName").value("test-login-logo.png"));
     }
 
     /**
@@ -265,8 +350,26 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
      */
     @Test
     public void testGetLoginLogo_WithExistingLogo_ReturnsFile() throws Exception {
-        // This test will be implemented when logo serving endpoint is added
-        assertTrue("Test placeholder for login logo serving", true);
+        // Arrange: Create test branding with login logo
+        String logoPath = "/var/lib/openelis-global/branding/login-test.png";
+        Files.createDirectories(Paths.get("/var/lib/openelis-global/branding/"));
+        Files.write(Paths.get(logoPath), "test login image content".getBytes());
+
+        SiteBranding branding = new SiteBranding();
+        branding.setId("test-id");
+        branding.setLoginLogoPath(logoPath);
+        branding.setPrimaryColor("#1d4ed8");
+        branding.setSysUserId("1");
+        siteBrandingService.saveBranding(branding);
+
+        // Act: GET /rest/site-branding/logo/login
+        // Then: Expect 200 OK with file content
+        mockMvc.perform(get("/rest/site-branding/logo/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes("test login image content".getBytes()));
+
+        // Cleanup
+        Files.deleteIfExists(Paths.get(logoPath));
     }
 
     /**
@@ -275,9 +378,27 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
      */
     @Test
     public void testUploadFavicon_WithValidFile_Returns200() throws Exception {
-        // Similar to header/login logo tests
-        // This test will be fully implemented when uploadLogo endpoint is added
-        assertTrue("Test placeholder for favicon upload", true);
+        // Arrange: Create test branding
+        SiteBranding branding = new SiteBranding();
+        branding.setPrimaryColor("#1d4ed8");
+        branding.setSysUserId("1");
+        siteBrandingService.saveBranding(branding);
+
+        // Arrange: Create mock MultipartFile (valid ICO, < 2MB)
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test-favicon.ico",
+                "image/x-icon",
+                "fake ico content".getBytes()
+        );
+
+        // Act: POST /rest/site-branding/logo/favicon with file
+        // Then: Expect 200 OK with logo URL
+        mockMvc.perform(multipart("/rest/site-branding/logo/favicon")
+                .file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.logoUrl").value("/rest/site-branding/logo/favicon"))
+                .andExpect(jsonPath("$.fileName").value("test-favicon.ico"));
     }
 
     /**
@@ -286,8 +407,26 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
      */
     @Test
     public void testGetFavicon_WithExistingFavicon_ReturnsFile() throws Exception {
-        // This test will be implemented when logo serving endpoint is added
-        assertTrue("Test placeholder for favicon serving", true);
+        // Arrange: Create test branding with favicon
+        String faviconPath = "/var/lib/openelis-global/branding/favicon-test.ico";
+        Files.createDirectories(Paths.get("/var/lib/openelis-global/branding/"));
+        Files.write(Paths.get(faviconPath), "test favicon content".getBytes());
+
+        SiteBranding branding = new SiteBranding();
+        branding.setId("test-id");
+        branding.setFaviconPath(faviconPath);
+        branding.setPrimaryColor("#1d4ed8");
+        branding.setSysUserId("1");
+        siteBrandingService.saveBranding(branding);
+
+        // Act: GET /rest/site-branding/logo/favicon
+        // Then: Expect 200 OK with file content
+        mockMvc.perform(get("/rest/site-branding/logo/favicon"))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes("test favicon content".getBytes()));
+
+        // Cleanup
+        Files.deleteIfExists(Paths.get(faviconPath));
     }
 
     /**
@@ -296,17 +435,25 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
      */
     @Test
     public void testDeleteLogo_WithExistingLogo_Returns200() throws Exception {
-        // Arrange: Create branding with header logo
+        // Arrange: Create branding with header logo file
+        String logoPath = "/var/lib/openelis-global/branding/header-1234567890.png";
+        Files.createDirectories(Paths.get("/var/lib/openelis-global/branding/"));
+        Files.write(Paths.get(logoPath), "test logo content".getBytes());
+
         SiteBranding branding = new SiteBranding();
-        branding.setHeaderLogoPath("/var/lib/openelis-global/branding/header-1234567890.png");
+        branding.setHeaderLogoPath(logoPath);
         branding.setPrimaryColor("#1d4ed8");
+        branding.setSysUserId("1");
         siteBrandingService.saveBranding(branding);
 
         // Act: DELETE /rest/site-branding/logo/header
-        // Then: Expect 200 OK, logo path set to null, file deleted
+        // Then: Expect 200 OK, logo path set to null
+        mockMvc.perform(delete("/rest/site-branding/logo/header"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.headerLogoUrl").isEmpty());
 
-        // This test will be fully implemented when removeLogo endpoint is added
-        assertTrue("Test placeholder for logo removal", true);
+        // Verify file was deleted
+        assertFalse("Logo file should be deleted", Files.exists(Paths.get(logoPath)));
     }
 
     /**
@@ -315,8 +462,17 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
      */
     @Test
     public void testDeleteLogo_WithInvalidType_Returns400() throws Exception {
-        // This test will be implemented when removeLogo endpoint is added
-        assertTrue("Test placeholder for invalid type validation", true);
+        // Arrange: Create test branding
+        SiteBranding branding = new SiteBranding();
+        branding.setPrimaryColor("#1d4ed8");
+        branding.setSysUserId("1");
+        siteBrandingService.saveBranding(branding);
+
+        // Act: DELETE /rest/site-branding/logo/invalid
+        // Then: Expect 400 Bad Request
+        mockMvc.perform(delete("/rest/site-branding/logo/invalid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
     }
 
     /**
@@ -325,21 +481,40 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
      */
     @Test
     public void testResetBranding_ResetsAllToDefaults() throws Exception {
-        // Arrange: Create branding with custom values
+        // Arrange: Create branding with custom values and logo files
+        String headerPath = "/var/lib/openelis-global/branding/header-123.png";
+        String loginPath = "/var/lib/openelis-global/branding/login-123.png";
+        String faviconPath = "/var/lib/openelis-global/branding/favicon-123.ico";
+        Files.createDirectories(Paths.get("/var/lib/openelis-global/branding/"));
+        Files.write(Paths.get(headerPath), "header content".getBytes());
+        Files.write(Paths.get(loginPath), "login content".getBytes());
+        Files.write(Paths.get(faviconPath), "favicon content".getBytes());
+
         SiteBranding branding = new SiteBranding();
-        branding.setHeaderLogoPath("/var/lib/openelis-global/branding/header-123.png");
-        branding.setLoginLogoPath("/var/lib/openelis-global/branding/login-123.png");
-        branding.setFaviconPath("/var/lib/openelis-global/branding/favicon-123.ico");
+        branding.setHeaderLogoPath(headerPath);
+        branding.setLoginLogoPath(loginPath);
+        branding.setFaviconPath(faviconPath);
         branding.setPrimaryColor("#ff0000");
         branding.setSecondaryColor("#00ff00");
         branding.setAccentColor("#0000ff");
+        branding.setSysUserId("1");
         siteBrandingService.saveBranding(branding);
 
         // Act: POST /rest/site-branding/reset
         // Then: Expect 200 OK, all logo paths set to null, colors reset to defaults
+        mockMvc.perform(post("/rest/site-branding/reset"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.headerLogoUrl").isEmpty())
+                .andExpect(jsonPath("$.loginLogoUrl").isEmpty())
+                .andExpect(jsonPath("$.faviconUrl").isEmpty())
+                .andExpect(jsonPath("$.primaryColor").value("#1d4ed8")) // Default primary color
+                .andExpect(jsonPath("$.secondaryColor").value("#64748b")) // Default secondary color
+                .andExpect(jsonPath("$.accentColor").value("#0891b2")); // Default accent color
 
-        // This test will be fully implemented when reset endpoint is added
-        assertTrue("Test placeholder for reset branding", true);
+        // Verify files were deleted
+        assertFalse("Header logo file should be deleted", Files.exists(Paths.get(headerPath)));
+        assertFalse("Login logo file should be deleted", Files.exists(Paths.get(loginPath)));
+        assertFalse("Favicon file should be deleted", Files.exists(Paths.get(faviconPath)));
     }
 }
 
