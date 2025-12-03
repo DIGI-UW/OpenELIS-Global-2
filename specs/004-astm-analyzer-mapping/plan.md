@@ -36,7 +36,19 @@ existing left-hand navigation bar using unified tab-navigation pattern (sub-nav
 items function as tabs, backend-driven via `/rest/menu` API, no separate Carbon
 Tabs components) while surfacing the future QC routes noted above.
 
-**QC Result Processing Integration**: Feature 004 MUST handle QC result processing as part of ASTM message ingestion. When ASTM messages contain Q-segments (Quality Control result segments), the system MUST: (1) Parse Q-segments using extended ASTMAnalyzerReader, (2) Extract QC data (instrument ID from message header, test code, control lot/level, result value, timestamp), (3) Apply configured QC field mappings (per FR-019) to map ASTM codes to OpenELIS entities, (4) Persist QC results via direct service call to QCResultService (003's service layer). Integration Pattern: Direct service call from 004's message processing service to 003's QCResultService.createQCResult() method. This ensures immediate consistency and follows the 5-layer architecture pattern (004's service calls 003's service). Error Handling: Unmapped QC messages are queued in 004's Error Dashboard (per FR-011). When mappings are resolved, queued QC messages are reprocessed automatically.
+**QC Result Processing Integration**: Feature 004 MUST handle QC result
+processing as part of ASTM message ingestion. When ASTM messages contain
+Q-segments (Quality Control result segments), the system MUST: (1) Parse
+Q-segments using extended ASTMAnalyzerReader, (2) Extract QC data (instrument ID
+from message header, test code, control lot/level, result value, timestamp), (3)
+Apply configured QC field mappings (per FR-019) to map ASTM codes to OpenELIS
+entities, (4) Persist QC results via direct service call to QCResultService
+(003's service layer). Integration Pattern: Direct service call from 004's
+message processing service to 003's QCResultService.createQCResult() method.
+This ensures immediate consistency and follows the 5-layer architecture pattern
+(004's service calls 003's service). Error Handling: Unmapped QC messages are
+queued in 004's Error Dashboard (per FR-011). When mappings are resolved, queued
+QC messages are reprocessed automatically.
 
 ## Technical Context
 

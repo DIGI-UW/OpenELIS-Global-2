@@ -10,9 +10,15 @@ import LandingPage from "./components/home/LandingPage";
 import AnalyzersPage from "./pages/AnalyzersPage";
 import FieldMapping from "./components/analyzers/FieldMapping/FieldMapping";
 import ErrorDashboardPage from "./pages/ErrorDashboardPage";
-import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
-import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
-import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
+import {
+  QCDashboard,
+  ViolationList,
+  CorrectiveActionList,
+  CorrectiveActionForm,
+  ControlChartDetail,
+  ControlLotSetup,
+  RuleConfigPanel,
+} from "./components/qc";
 import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
@@ -450,19 +456,55 @@ export default function App() {
                 <SecureRoute
                   path="/analyzers/qc"
                   exact
-                  component={() => <QCDashboardPlaceholder />}
+                  component={() => <QCDashboard />}
                   role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
                   path="/analyzers/qc/alerts"
                   exact
-                  component={() => <QCAlertsPlaceholder />}
+                  component={() => <ViolationList />}
                   role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
                   path="/analyzers/qc/corrective-actions"
                   exact
-                  component={() => <CorrectiveActionsPlaceholder />}
+                  component={() => <CorrectiveActionList />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/corrective-actions/new"
+                  exact
+                  component={() => <CorrectiveActionForm />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/corrective-actions/:id"
+                  exact
+                  component={() => <CorrectiveActionForm />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/charts/:analyzerId"
+                  exact
+                  component={() => <ControlChartDetail />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/control-lots/new"
+                  exact
+                  component={() => <ControlLotSetup />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/control-lots/:id"
+                  exact
+                  component={() => <ControlLotSetup />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/rule-config"
+                  exact
+                  component={() => <RuleConfigPanel />}
                   role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute

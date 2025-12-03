@@ -1,0 +1,35 @@
+/**
+ * StatisticsConfigModal Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.method-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.method-option-label {
+  font-weight: 500;
+  color: var(--cds-text-primary, #161616);
+}
+
+.method-option-description {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.statistics-config-options {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.statistics-config-inputs {
+  display: flex;
+  gap: 1rem;
+}
+
+.statistics-config-inputs > * {
+  flex: 1;
+}

@@ -1,0 +1,136 @@
+/**
+ * AlertFeed Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.alert-feed {
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.alert-feed-loading {
+  padding: 1rem;
+}
+
+.alert-feed-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.alert-feed-skeleton-item {
+  height: 60px;
+  background: var(--cds-skeleton-01, #e8e8e8);
+  border-radius: 4px;
+  animation: skeleton-pulse 1s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.alert-feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.alert-feed-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.alert-feed-list {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.alert-feed-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}
+
+.alert-feed-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  cursor: pointer;
+}
+
+.alert-feed-item:last-child {
+  border-bottom: none;
+}
+
+.alert-feed-item--unread {
+  background: var(--cds-layer-02, #f4f4f4);
+}
+
+.alert-feed-item-unread-indicator {
+  flex-shrink: 0;
+  color: var(--cds-link-primary, #0f62fe);
+}
+
+.alert-feed-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.alert-feed-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.alert-feed-item-time {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.alert-feed-item-message {
+  font-size: 0.875rem;
+  color: var(--cds-text-primary, #161616);
+  margin-bottom: 0.25rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.alert-feed-item-meta {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.alert-feed-item-mark-read {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.alert-feed-item:hover .alert-feed-item-mark-read {
+  opacity: 1;
+}
+
+.alert-feed-footer {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  text-align: center;
+}

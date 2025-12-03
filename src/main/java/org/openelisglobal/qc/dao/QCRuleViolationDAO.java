@@ -36,4 +36,9 @@ public interface QCRuleViolationDAO extends BaseDAO<QCRuleViolation, String> {
      * Get unresolved violations for a specific instrument.
      */
     List<QCRuleViolation> findUnresolvedByInstrument(Integer instrumentId) throws LIMSRuntimeException;
+
+    /**
+     * Get violations for a specific triggering QC result.
+     */
+    List<QCRuleViolation> findByTriggeringResultId(String triggeringResultId) throws LIMSRuntimeException;
 }

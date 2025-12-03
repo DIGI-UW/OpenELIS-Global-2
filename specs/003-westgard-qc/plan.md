@@ -15,9 +15,11 @@ requirements.
 
 **Technical Approach**: Greenfield implementation with service-oriented
 architecture using Strategy pattern for statistics calculation, Chain of
-Responsibility for rule evaluation. Feature 003 exposes QCResultService.createQCResult() method that feature 004 calls after parsing ASTM Q-segments (per 004:FR-021 and 004:plan.md QC Result Processing Integration section). Carbon Design System for
-dashboard/charting UI, and comprehensive TDD workflow with >80% backend coverage
-and >70% frontend coverage.
+Responsibility for rule evaluation. Feature 003 exposes
+QCResultService.createQCResult() method that feature 004 calls after parsing
+ASTM Q-segments (per 004:FR-021 and 004:plan.md QC Result Processing Integration
+section). Carbon Design System for dashboard/charting UI, and comprehensive TDD
+workflow with >80% backend coverage and >70% frontend coverage.
 
 ## Technical Context
 
@@ -182,8 +184,7 @@ mandates.
       reference datasets
     - Z-score calculation accuracy
     - Statistics calculation methods (initial, rolling, manufacturer)
-    - Alert batching logic (max 1 per analyzer per 15 min, except 1₃ₛ
-      immediate)
+    - Alert batching logic (max 1 per analyzer per 15 min, except 1₃ₛ immediate)
     - Corrective action workflow state transitions
 
 - [x] **DAO Tests**: Persistence layer testing (@DataJpaTest)
@@ -669,9 +670,12 @@ context.
 
 ## Navigation Integration (Feature 004 Analyzer Menu)
 
-**Dependency**: Feature 003's QC pages are nested UNDER feature 004's /analyzers parent menu per 004:FR-020. Feature 004 MANAGES the navigation hierarchy via `/rest/menu` API; feature 003 implements ONLY the page components.
+**Dependency**: Feature 003's QC pages are nested UNDER feature 004's /analyzers
+parent menu per 004:FR-020. Feature 004 MANAGES the navigation hierarchy via
+`/rest/menu` API; feature 003 implements ONLY the page components.
 
 **Routes Provided by 003**:
+
 - `/analyzers/qc` - Main QC Dashboard (Quality Control overview)
 - `/analyzers/qc/alerts` - QC Alerts & Violations (violation management)
 - `/analyzers/qc/corrective-actions` - Corrective Actions (workflow management)

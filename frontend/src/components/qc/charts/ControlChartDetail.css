@@ -1,0 +1,66 @@
+/**
+ * ControlChartDetail Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.control-chart-detail {
+  padding: 1rem;
+}
+
+.control-chart-detail-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.control-chart-detail-header {
+  margin-bottom: 1.5rem;
+}
+
+.control-chart-detail-filters {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+}
+
+.control-chart-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.control-chart-detail-chart {
+  margin-bottom: 1.5rem;
+  transition: transform 0.2s ease;
+  transform-origin: top left;
+  overflow: auto;
+}
+
+.control-chart-detail-stats {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}

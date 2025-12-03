@@ -1,0 +1,60 @@
+/**
+ * CorrectiveActionForm Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.corrective-action-form {
+  padding: 1rem;
+}
+
+.corrective-action-form-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.corrective-action-form-header {
+  margin-bottom: 1.5rem;
+}
+
+.corrective-action-form-violation-info {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+  border-left: 4px solid var(--cds-support-error, #da1e28);
+}
+
+.corrective-action-form-violation-info h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--cds-text-primary, #161616);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.info-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--cds-text-primary, #161616);
+}
+
+.corrective-action-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}

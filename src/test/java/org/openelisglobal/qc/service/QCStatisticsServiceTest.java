@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -45,8 +46,8 @@ public class QCStatisticsServiceTest {
 
     @Before
     public void setUp() {
-        testStatistics = QCStatisticsBuilder.create().withControlLotId(testControlLotId).withMean("100.0")
-                .withStandardDeviation("5.0").withNumValues(20).build();
+        testStatistics = QCStatisticsBuilder.create().withId("test-stats-1").withControlLotId(testControlLotId)
+                .withMean("100.0").withStandardDeviation("5.0").withNumValues(20).build();
     }
 
     /**
@@ -60,7 +61,8 @@ public class QCStatisticsServiceTest {
                 "97.0", "103.0", "100.0", "96.0", "104.0", "98.0", "102.0", "100.0", "99.0", "101.0", "97.0", "103.0",
                 "100.0");
         when(resultDAO.findByControlLot(testControlLotId)).thenReturn(initialResults);
-        when(statisticsDAO.insert(any(QCStatistics.class))).thenReturn(testStatistics);
+        when(statisticsDAO.insert(any(QCStatistics.class))).thenReturn("test-stats-1");
+        when(statisticsDAO.get("test-stats-1")).thenReturn(Optional.of(testStatistics));
 
         // Act
         QCStatistics result = statisticsService.calculateInitialRunsStatistics(testControlLotId, 20);
@@ -72,6 +74,7 @@ public class QCStatisticsServiceTest {
         assertEquals("Should use all 20 values", Integer.valueOf(20), result.getNumValues());
         assertEquals("Calculation method should be INITIAL_RUNS", "INITIAL_RUNS", result.getCalculationMethod());
         verify(statisticsDAO, times(1)).insert(any(QCStatistics.class));
+        verify(statisticsDAO, times(1)).get("test-stats-1");
     }
 
     /**
@@ -84,7 +87,10 @@ public class QCStatisticsServiceTest {
         List<QCResult> recentResults = createTestResults("98.0", "100.0", "102.0", "99.0", "101.0", "100.0", "97.0",
                 "103.0", "100.0", "99.0");
         when(resultDAO.findByControlLot(testControlLotId)).thenReturn(recentResults);
-        when(statisticsDAO.insert(any(QCStatistics.class))).thenReturn(testStatistics);
+        when(statisticsDAO.insert(any(QCStatistics.class))).thenReturn("test-stats-2");
+        QCStatistics rollingStats = QCStatisticsBuilder.create().withId("test-stats-2")
+                .withControlLotId(testControlLotId).withCalculationMethod("ROLLING").withNumValues(10).build();
+        when(statisticsDAO.get("test-stats-2")).thenReturn(Optional.of(rollingStats));
 
         // Act
         QCStatistics result = statisticsService.calculateRollingStatistics(testControlLotId, 10);
@@ -96,6 +102,7 @@ public class QCStatisticsServiceTest {
         assertEquals("Should use 10 most recent values", Integer.valueOf(10), result.getNumValues());
         assertEquals("Calculation method should be ROLLING", "ROLLING", result.getCalculationMethod());
         verify(statisticsDAO, times(1)).insert(any(QCStatistics.class));
+        verify(statisticsDAO, times(1)).get("test-stats-2");
     }
 
     /**

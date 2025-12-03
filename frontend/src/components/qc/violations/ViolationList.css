@@ -1,0 +1,26 @@
+/**
+ * ViolationList Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.violation-list {
+  padding: 1rem;
+}
+
+.violation-list-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.violation-list-header {
+  margin-bottom: 1.5rem;
+}
+
+.violation-list-filters {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+}

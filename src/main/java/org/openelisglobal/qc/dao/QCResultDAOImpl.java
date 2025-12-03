@@ -68,4 +68,45 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
     public List<QCResult> findLatestByControlLot(String controlLotId, int limit) throws LIMSRuntimeException {
         return findHistoricalForRule(controlLotId, limit);
     }
+
+    @Override
+    public List<QCResult> findByControlLotIdOrderByRunDateTime(String controlLotId) throws LIMSRuntimeException {
+        String hql = "FROM QCResult WHERE controlLotId = :controlLotId ORDER BY runDateTime ASC";
+        try {
+            Session session = entityManager.unwrap(Session.class);
+            Query<QCResult> query = session.createQuery(hql, QCResult.class);
+            query.setParameter("controlLotId", controlLotId);
+            return query.list();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error retrieving QC results by control lot ordered by date", e);
+        }
+    }
+
+    @Override
+    public List<QCResult> findByControlLotAndDateRange(String controlLotId, Timestamp startDate, Timestamp endDate)
+            throws LIMSRuntimeException {
+        StringBuilder hql = new StringBuilder("FROM QCResult WHERE controlLotId = :controlLotId");
+        if (startDate != null) {
+            hql.append(" AND runDateTime >= :startDate");
+        }
+        if (endDate != null) {
+            hql.append(" AND runDateTime <= :endDate");
+        }
+        hql.append(" ORDER BY runDateTime ASC");
+
+        try {
+            Session session = entityManager.unwrap(Session.class);
+            Query<QCResult> query = session.createQuery(hql.toString(), QCResult.class);
+            query.setParameter("controlLotId", controlLotId);
+            if (startDate != null) {
+                query.setParameter("startDate", startDate);
+            }
+            if (endDate != null) {
+                query.setParameter("endDate", endDate);
+            }
+            return query.list();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error retrieving QC results by control lot and date range", e);
+        }
+    }
 }

@@ -87,4 +87,17 @@ public class QCRuleViolationDAOImpl extends BaseDAOImpl<QCRuleViolation, String>
             throw new LIMSRuntimeException("Error retrieving unresolved QC violations by instrument", e);
         }
     }
+
+    @Override
+    public List<QCRuleViolation> findByTriggeringResultId(String triggeringResultId) throws LIMSRuntimeException {
+        String hql = "FROM QCRuleViolation WHERE triggeringResultId = :triggeringResultId ORDER BY violationDateTime DESC";
+        try {
+            Session session = entityManager.unwrap(Session.class);
+            Query<QCRuleViolation> query = session.createQuery(hql, QCRuleViolation.class);
+            query.setParameter("triggeringResultId", triggeringResultId);
+            return query.list();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error retrieving QC violations by triggering result ID", e);
+        }
+    }
 }

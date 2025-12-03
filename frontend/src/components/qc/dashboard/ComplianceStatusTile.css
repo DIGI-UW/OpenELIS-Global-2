@@ -1,0 +1,96 @@
+/**
+ * ComplianceStatusTile Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.compliance-tile {
+  padding: 1rem;
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+  min-height: 160px;
+}
+
+.compliance-tile:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.compliance-tile--compliant {
+  border-left-color: var(--cds-support-success, #24a148);
+}
+
+.compliance-tile--warning {
+  border-left-color: var(--cds-support-warning, #f1c21b);
+}
+
+.compliance-tile--non-compliant {
+  border-left-color: var(--cds-support-error, #da1e28);
+}
+
+.compliance-tile-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.compliance-tile-status-icon--green {
+  fill: var(--cds-support-success, #24a148);
+}
+
+.compliance-tile-status-icon--yellow {
+  fill: var(--cds-support-warning, #f1c21b);
+}
+
+.compliance-tile-status-icon--red {
+  fill: var(--cds-support-error, #da1e28);
+}
+
+.compliance-tile-status-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.compliance-tile-name {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--cds-text-primary, #161616);
+}
+
+.compliance-tile-rules {
+  margin-bottom: 0.5rem;
+}
+
+.compliance-tile-rules-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.compliance-tile-rules-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.compliance-tile-violations {
+  margin-bottom: 0.5rem;
+}
+
+.compliance-tile-last-result {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+  margin-top: auto;
+}
+
+.compliance-tile-last-result-label {
+  margin-right: 0.25rem;
+}
+
+.compliance-tile-last-result-time {
+  font-weight: 500;
+}

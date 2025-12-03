@@ -34,13 +34,14 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
     public QCControlLot createControlLot(QCControlLot controlLot) throws IllegalArgumentException {
         validateControlLot(controlLot);
         assignInitialStatus(controlLot);
-        return controlLotDAO.insert(controlLot);
+        String id = controlLotDAO.insert(controlLot);
+        return controlLotDAO.get(id).orElse(null);
     }
 
     @Override
     @Transactional
     public QCControlLot activateControlLot(String controlLotId) {
-        QCControlLot controlLot = controlLotDAO.get(controlLotId);
+        QCControlLot controlLot = controlLotDAO.get(controlLotId).orElse(null);
         if (controlLot != null) {
             controlLot.setStatus("ACTIVE");
             controlLotDAO.update(controlLot);
@@ -51,7 +52,7 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
     @Override
     @Transactional
     public QCControlLot deactivateControlLot(String controlLotId) {
-        QCControlLot controlLot = controlLotDAO.get(controlLotId);
+        QCControlLot controlLot = controlLotDAO.get(controlLotId).orElse(null);
         if (controlLot != null) {
             controlLot.setStatus("EXPIRED");
             controlLotDAO.update(controlLot);

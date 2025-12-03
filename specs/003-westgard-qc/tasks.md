@@ -111,13 +111,33 @@ be implemented
 
 ### Core DAOs (Layer 2 - Data Access)
 
-- [ ] T020 [P] Create QCControlLotDAO interface and implementation in `src/main/java/org/openelisglobal/qc/dao/QCControlLotDAO.java` and `QCControlLotDAOImpl.java` extending BaseDAOImpl
-- [ ] T021 [P] Create QCResultDAO interface and implementation in `src/main/java/org/openelisglobal/qc/dao/QCResultDAO.java` and `QCResultDAOImpl.java` with methods: findByControlLot, findHistoricalForRule, findByAnalyzerAndDateRange
-- [ ] T022 [P] Create QCStatisticsDAO interface and implementation in `src/main/java/org/openelisglobal/qc/dao/QCStatisticsDAO.java` and `QCStatisticsDAOImpl.java` with methods: findLatestByControlLot, findByCalculationMethod
-- [ ] T023 [P] Create WestgardRuleConfigDAO interface and implementation in `src/main/java/org/openelisglobal/qc/dao/WestgardRuleConfigDAO.java` and `WestgardRuleConfigDAOImpl.java` with methods: findEnabledByInstrument, findByTestAndInstrument
-- [ ] T024 [P] Create QCRuleViolationDAO interface and implementation in `src/main/java/org/openelisglobal/qc/dao/QCRuleViolationDAO.java` and `QCRuleViolationDAOImpl.java` with methods: findByAnalyzer, findUnresolved, findBySeverity
-- [ ] T025 [P] Create QCCorrectiveActionDAO interface and implementation in `src/main/java/org/openelisglobal/qc/dao/QCCorrectiveActionDAO.java` and `QCCorrectiveActionDAOImpl.java` with methods: findByViolation, findByAssignedUser, findByStatus
-- [ ] T026 [P] Create QCAlertDAO interface and implementation in `src/main/java/org/openelisglobal/qc/dao/QCAlertDAO.java` and `QCAlertDAOImpl.java` with methods: findMostRecentByInstrument, findUnread, findByRecipient
+- [ ] T020 [P] Create QCControlLotDAO interface and implementation in
+      `src/main/java/org/openelisglobal/qc/dao/QCControlLotDAO.java` and
+      `QCControlLotDAOImpl.java` extending BaseDAOImpl
+- [ ] T021 [P] Create QCResultDAO interface and implementation in
+      `src/main/java/org/openelisglobal/qc/dao/QCResultDAO.java` and
+      `QCResultDAOImpl.java` with methods: findByControlLot,
+      findHistoricalForRule, findByAnalyzerAndDateRange
+- [ ] T022 [P] Create QCStatisticsDAO interface and implementation in
+      `src/main/java/org/openelisglobal/qc/dao/QCStatisticsDAO.java` and
+      `QCStatisticsDAOImpl.java` with methods: findLatestByControlLot,
+      findByCalculationMethod
+- [ ] T023 [P] Create WestgardRuleConfigDAO interface and implementation in
+      `src/main/java/org/openelisglobal/qc/dao/WestgardRuleConfigDAO.java` and
+      `WestgardRuleConfigDAOImpl.java` with methods: findEnabledByInstrument,
+      findByTestAndInstrument
+- [ ] T024 [P] Create QCRuleViolationDAO interface and implementation in
+      `src/main/java/org/openelisglobal/qc/dao/QCRuleViolationDAO.java` and
+      `QCRuleViolationDAOImpl.java` with methods: findByAnalyzer,
+      findUnresolved, findBySeverity
+- [ ] T025 [P] Create QCCorrectiveActionDAO interface and implementation in
+      `src/main/java/org/openelisglobal/qc/dao/QCCorrectiveActionDAO.java` and
+      `QCCorrectiveActionDAOImpl.java` with methods: findByViolation,
+      findByAssignedUser, findByStatus
+- [ ] T026 [P] Create QCAlertDAO interface and implementation in
+      `src/main/java/org/openelisglobal/qc/dao/QCAlertDAO.java` and
+      `QCAlertDAOImpl.java` with methods: findMostRecentByInstrument,
+      findUnread, findByRecipient
 
 ### Test Data Builders (for all subsequent tests)
 
@@ -163,36 +183,156 @@ status and doesn't evaluate rules until sufficient results collected.
 > [OpenELIS Testing Roadmap](../../.specify/guides/testing-roadmap.md)
 > Templates: `.specify/templates/testing/`
 
-- [ ] T032 [P] [US6] Unit test for QCControlLotService in `src/test/java/org/openelisglobal/qc/service/QCControlLotServiceTest.java` (Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`) - Reference: [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](../../.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito) for detailed patterns - Reference: [Backend Testing Best Practices](../../.specify/guides/backend-testing-best-practices.md) for quick reference - **TDD Workflow**: Write test FIRST (RED), then implement (GREEN), then refactor - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit tests (NOT `@SpringBootTest`) - **Mocking**: Use `@Mock` (NOT `@MockBean`) for DAOs - **Test Cases**: Test lot creation with all 3 calculation methods (initial/rolling/manufacturer), test lot activation/deactivation, test establishment status transitions - **Coverage Goal**: >80% (measured via JaCoCo)
-- [ ] T033 [P] [US6] Unit test for QCStatisticsService in `src/test/java/org/openelisglobal/qc/service/QCStatisticsServiceTest.java` (Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`) - Test statistics calculation caching, test shouldRecalculate logic, test all 3 calculator strategies - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` - **Mocking**: Use `@Mock` for DAOs and calculators
-- [ ] T034 [P] [US6] Unit test for InitialRunsCalculator in `src/test/java/org/openelisglobal/qc/service/calculator/InitialRunsCalculatorTest.java` - Test mean/SD calculation with reference datasets (20 results), test insufficient data handling (<20 results), test accuracy against known values - Use builders for test data
-- [ ] T035 [P] [US6] Unit test for RollingCalculator in `src/test/java/org/openelisglobal/qc/service/calculator/RollingCalculatorTest.java` - Test rolling window calculation, test window size configuration, test edge cases (insufficient data) - Use builders for test data
-- [ ] T036 [P] [US6] Unit test for ManufacturerFixedCalculator in `src/test/java/org/openelisglobal/qc/service/calculator/ManufacturerFixedCalculatorTest.java` - Test fixed value usage (no calculation), test validation of manufacturer values - Use builders for test data
-- [ ] T037 [P] [US6] DAO test for QCControlLotDAO in `src/test/java/org/openelisglobal/qc/dao/QCControlLotDAOTest.java` (Template: `.specify/templates/testing/DataJpaTestDao.java.template`) - Reference: [Testing Roadmap - @DataJpaTest](../../.specify/guides/testing-roadmap.md#datajpatest-daorepository-layer) - **Test Slicing**: Use `@DataJpaTest` (NOT `@SpringBootTest` - faster execution) - **Test Data**: Use `TestEntityManager` (NOT JdbcTemplate) - **Transaction Management**: Automatic rollback - Test CRUD operations, test findByAnalyzerAndTest, test active lot queries, test expiration date filtering
-- [ ] T038 [P] [US6] DAO test for QCStatisticsDAO in `src/test/java/org/openelisglobal/qc/dao/QCStatisticsDAOTest.java` (Template: `.specify/templates/testing/DataJpaTestDao.java.template`) - Test findLatestByControlLot, test statistics history queries, test calculation method filtering - Use `TestEntityManager` for test data
-- [ ] T039 [P] [US6] Controller test for QCControlLotRestController in `src/test/java/org/openelisglobal/qc/controller/QCControlLotRestControllerTest.java` (Template: `.specify/templates/testing/WebMvcTestController.java.template`) - Reference: [Testing Roadmap - @WebMvcTest](../../.specify/guides/testing-roadmap.md#webmvctest-controller-layer) - **Test Slicing**: Use `@WebMvcTest` (NOT `@SpringBootTest`) - **Mocking**: Use `@MockBean` (NOT `@Mock`) for services - **HTTP Testing**: Use `MockMvc` for request/response testing - Test POST /rest/qc/control-lots (create lot), test GET /rest/qc/control-lots/{id}, test PUT /rest/qc/control-lots/{id}/deactivate, test validation errors (400), test not found errors (404)
-- [ ] T040 [P] [US6] Frontend unit test for ControlLotSetup in `frontend/src/components/qc/controlLots/ControlLotSetup.test.jsx` (Template: `.specify/templates/testing/JestComponent.test.jsx.template`) - Reference: [Testing Roadmap - Jest + React Testing Library](../../.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) - Reference: [Jest Best Practices](../../.specify/guides/jest-best-practices.md) - **Import Order**: React → Testing Library → userEvent → jest-dom → Intl → Router → Component → Utils → Messages - **userEvent PREFERRED**: Use `userEvent.type()`, `userEvent.click()` (NOT `fireEvent`) - **Async Testing**: Use `waitFor` with `queryBy*` or `findBy*` - Test form rendering, test calculation method selection, test manufacturer value input, test form submission, test validation errors
-- [ ] T041 [P] [US6] Frontend unit test for StatisticsConfigModal in `frontend/src/components/qc/controlLots/StatisticsConfigModal.test.jsx` - Test modal opening/closing, test method selection (initial/rolling/manufacturer), test parameter input, test save action - Use `userEvent` and `waitFor`
-- [ ] T042 [P] [US6] Cypress E2E test in `frontend/cypress/e2e/qc/controlLotSetup.cy.js` (Template: `.specify/templates/testing/CypressE2E.cy.js.template`) - Reference: [Constitution Section V.5](../../.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices) - Reference: [Testing Roadmap - Cypress](../../.specify/guides/testing-roadmap.md#cypress-e2e-testing) - Use data-testid selectors (PREFERRED), use cy.session() for login, use cy.request() for test data setup - Test AS-001 (create lot with manufacturer fixed values - immediately active), test AS-002 (create lot with initial establishment - enters establishment status), test AS-003 (deactivate expired lot - prompts for replacement)
+- [ ] T032 [P] [US6] Unit test for QCControlLotService in
+      `src/test/java/org/openelisglobal/qc/service/QCControlLotServiceTest.java`
+      (Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`) -
+      Reference:
+      [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](../../.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
+      for detailed patterns - Reference:
+      [Backend Testing Best Practices](../../.specify/guides/backend-testing-best-practices.md)
+      for quick reference - **TDD Workflow**: Write test FIRST (RED), then
+      implement (GREEN), then refactor - **Test Slicing**: Use
+      `@RunWith(MockitoJUnitRunner.class)` for isolated unit tests (NOT
+      `@SpringBootTest`) - **Mocking**: Use `@Mock` (NOT `@MockBean`) for DAOs -
+      **Test Cases**: Test lot creation with all 3 calculation methods
+      (initial/rolling/manufacturer), test lot activation/deactivation, test
+      establishment status transitions - **Coverage Goal**: >80% (measured via
+      JaCoCo)
+- [ ] T033 [P] [US6] Unit test for QCStatisticsService in
+      `src/test/java/org/openelisglobal/qc/service/QCStatisticsServiceTest.java`
+      (Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`) -
+      Test statistics calculation caching, test shouldRecalculate logic, test
+      all 3 calculator strategies - **Test Slicing**: Use
+      `@RunWith(MockitoJUnitRunner.class)` - **Mocking**: Use `@Mock` for DAOs
+      and calculators
+- [ ] T034 [P] [US6] Unit test for InitialRunsCalculator in
+      `src/test/java/org/openelisglobal/qc/service/calculator/InitialRunsCalculatorTest.java` -
+      Test mean/SD calculation with reference datasets (20 results), test
+      insufficient data handling (<20 results), test accuracy against known
+      values - Use builders for test data
+- [ ] T035 [P] [US6] Unit test for RollingCalculator in
+      `src/test/java/org/openelisglobal/qc/service/calculator/RollingCalculatorTest.java` -
+      Test rolling window calculation, test window size configuration, test edge
+      cases (insufficient data) - Use builders for test data
+- [ ] T036 [P] [US6] Unit test for ManufacturerFixedCalculator in
+      `src/test/java/org/openelisglobal/qc/service/calculator/ManufacturerFixedCalculatorTest.java` -
+      Test fixed value usage (no calculation), test validation of manufacturer
+      values - Use builders for test data
+- [ ] T037 [P] [US6] DAO test for QCControlLotDAO in
+      `src/test/java/org/openelisglobal/qc/dao/QCControlLotDAOTest.java`
+      (Template: `.specify/templates/testing/DataJpaTestDao.java.template`) -
+      Reference:
+      [Testing Roadmap - @DataJpaTest](../../.specify/guides/testing-roadmap.md#datajpatest-daorepository-layer) -
+      **Test Slicing**: Use `@DataJpaTest` (NOT `@SpringBootTest` - faster
+      execution) - **Test Data**: Use `TestEntityManager` (NOT JdbcTemplate) -
+      **Transaction Management**: Automatic rollback - Test CRUD operations,
+      test findByAnalyzerAndTest, test active lot queries, test expiration date
+      filtering
+- [ ] T038 [P] [US6] DAO test for QCStatisticsDAO in
+      `src/test/java/org/openelisglobal/qc/dao/QCStatisticsDAOTest.java`
+      (Template: `.specify/templates/testing/DataJpaTestDao.java.template`) -
+      Test findLatestByControlLot, test statistics history queries, test
+      calculation method filtering - Use `TestEntityManager` for test data
+- [ ] T039 [P] [US6] Controller test for QCControlLotRestController in
+      `src/test/java/org/openelisglobal/qc/controller/QCControlLotRestControllerTest.java`
+      (Template:
+      `.specify/templates/testing/WebMvcTestController.java.template`) -
+      Reference:
+      [Testing Roadmap - @WebMvcTest](../../.specify/guides/testing-roadmap.md#webmvctest-controller-layer) -
+      **Test Slicing**: Use `@WebMvcTest` (NOT `@SpringBootTest`) - **Mocking**:
+      Use `@MockBean` (NOT `@Mock`) for services - **HTTP Testing**: Use
+      `MockMvc` for request/response testing - Test POST /rest/qc/control-lots
+      (create lot), test GET /rest/qc/control-lots/{id}, test PUT
+      /rest/qc/control-lots/{id}/deactivate, test validation errors (400), test
+      not found errors (404)
+- [ ] T040 [P] [US6] Frontend unit test for ControlLotSetup in
+      `frontend/src/components/qc/controlLots/ControlLotSetup.test.jsx`
+      (Template: `.specify/templates/testing/JestComponent.test.jsx.template`) -
+      Reference:
+      [Testing Roadmap - Jest + React Testing Library](../../.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) -
+      Reference:
+      [Jest Best Practices](../../.specify/guides/jest-best-practices.md) -
+      **Import Order**: React → Testing Library → userEvent → jest-dom → Intl →
+      Router → Component → Utils → Messages - **userEvent PREFERRED**: Use
+      `userEvent.type()`, `userEvent.click()` (NOT `fireEvent`) - **Async
+      Testing**: Use `waitFor` with `queryBy*` or `findBy*` - Test form
+      rendering, test calculation method selection, test manufacturer value
+      input, test form submission, test validation errors
+- [ ] T041 [P] [US6] Frontend unit test for StatisticsConfigModal in
+      `frontend/src/components/qc/controlLots/StatisticsConfigModal.test.jsx` -
+      Test modal opening/closing, test method selection
+      (initial/rolling/manufacturer), test parameter input, test save action -
+      Use `userEvent` and `waitFor`
+- [ ] T042 [P] [US6] Cypress E2E test in
+      `frontend/cypress/e2e/qc/controlLotSetup.cy.js` (Template:
+      `.specify/templates/testing/CypressE2E.cy.js.template`) - Reference:
+      [Constitution Section V.5](../../.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices) -
+      Reference:
+      [Testing Roadmap - Cypress](../../.specify/guides/testing-roadmap.md#cypress-e2e-testing) -
+      Use data-testid selectors (PREFERRED), use cy.session() for login, use
+      cy.request() for test data setup - Test AS-001 (create lot with
+      manufacturer fixed values - immediately active), test AS-002 (create lot
+      with initial establishment - enters establishment status), test AS-003
+      (deactivate expired lot - prompts for replacement)
 
 ### Implementation for User Story 6
 
 > **CRITICAL: Implementation tasks depend on test tasks. Tests must pass before
 > proceeding to next phase checkpoint.**
 
-- [ ] T043 [US6] Create StatisticsCalculator interface in `src/main/java/org/openelisglobal/qc/service/calculator/StatisticsCalculator.java` with methods: supports(CalculationMethod), calculate(QCControlLot, List<QCResult>)
-- [ ] T044 [P] [US6] Create InitialRunsCalculator implementation in `src/main/java/org/openelisglobal/qc/service/calculator/InitialRunsCalculator.java` with @Component annotation - Calculate mean/SD from first N runs (default 20) - Annotate with @Service
-- [ ] T045 [P] [US6] Create RollingCalculator implementation in `src/main/java/org/openelisglobal/qc/service/calculator/RollingCalculator.java` with @Component annotation - Calculate mean/SD using moving window - Annotate with @Service
-- [ ] T046 [P] [US6] Create ManufacturerFixedCalculator implementation in `src/main/java/org/openelisglobal/qc/service/calculator/ManufacturerFixedCalculator.java` with @Component annotation - Use fixed manufacturer values - Annotate with @Service
-- [ ] T047 [US6] Create QCControlLotService interface and implementation in `src/main/java/org/openelisglobal/qc/service/QCControlLotService.java` and `QCControlLotServiceImpl.java` with @Service and @Transactional - Methods: insert, update, deactivate, findByAnalyzerAndTest, validateLotDates
-- [ ] T048 [US6] Create QCStatisticsService interface and implementation in `src/main/java/org/openelisglobal/qc/service/QCStatisticsService.java` and `QCStatisticsServiceImpl.java` with @Service and @Transactional - Methods: getOrCalculateStatistics, recalculateStatistics, shouldRecalculate - Inject List<StatisticsCalculator> for strategy pattern - Implement caching logic (depends on T047)
-- [ ] T049 [US6] Create QCControlLotForm DTO in `src/main/java/org/openelisglobal/qc/form/QCControlLotForm.java` with validation annotations
-- [ ] T050 [US6] Create QCControlLotRestController in `src/main/java/org/openelisglobal/qc/controller/QCControlLotRestController.java` extending BaseRestController with @RestController and @RequestMapping("/rest/qc/control-lots") - Endpoints: POST /, GET /{id}, PUT /{id}/deactivate, GET /by-analyzer/{analyzerId} - NO @Transactional (belongs in service layer) - Services compile all data within transaction (depends on T047, T048)
-- [ ] T051 [US6] Create ControlLotSetup React component in `frontend/src/components/qc/controlLots/ControlLotSetup.jsx` using Carbon Design System - Components: Form, TextInput, ComboBox, DatePicker, Button - Use React Intl for all strings - Use Formik for form management (depends on T050 for API)
-- [ ] T052 [US6] Create StatisticsConfigModal React component in `frontend/src/components/qc/controlLots/StatisticsConfigModal.jsx` using Carbon ComposedModal - Components: RadioButtonGroup (method selection), NumberInput (manufacturer values), Button - Use React Intl for all strings
-- [ ] T053 [US6] Add QC control lot routes to `frontend/src/App.js`: /analyzers/qc/control-lots, /analyzers/qc/control-lots/new, /analyzers/qc/control-lots/:id/edit
-- [ ] T054 [US6] Add QC control lot menu items to database menu structure: MENU_QC_CONTROL_LOTS under MENU_QC parent - Update menu SQL in Liquibase changeset
-- [ ] T055 [US6] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
+- [ ] T043 [US6] Create StatisticsCalculator interface in
+      `src/main/java/org/openelisglobal/qc/service/calculator/StatisticsCalculator.java`
+      with methods: supports(CalculationMethod), calculate(QCControlLot,
+      List<QCResult>)
+- [ ] T044 [P] [US6] Create InitialRunsCalculator implementation in
+      `src/main/java/org/openelisglobal/qc/service/calculator/InitialRunsCalculator.java`
+      with @Component annotation - Calculate mean/SD from first N runs
+      (default 20) - Annotate with @Service
+- [ ] T045 [P] [US6] Create RollingCalculator implementation in
+      `src/main/java/org/openelisglobal/qc/service/calculator/RollingCalculator.java`
+      with @Component annotation - Calculate mean/SD using moving window -
+      Annotate with @Service
+- [ ] T046 [P] [US6] Create ManufacturerFixedCalculator implementation in
+      `src/main/java/org/openelisglobal/qc/service/calculator/ManufacturerFixedCalculator.java`
+      with @Component annotation - Use fixed manufacturer values - Annotate with
+      @Service
+- [ ] T047 [US6] Create QCControlLotService interface and implementation in
+      `src/main/java/org/openelisglobal/qc/service/QCControlLotService.java` and
+      `QCControlLotServiceImpl.java` with @Service and @Transactional - Methods:
+      insert, update, deactivate, findByAnalyzerAndTest, validateLotDates
+- [ ] T048 [US6] Create QCStatisticsService interface and implementation in
+      `src/main/java/org/openelisglobal/qc/service/QCStatisticsService.java` and
+      `QCStatisticsServiceImpl.java` with @Service and @Transactional - Methods:
+      getOrCalculateStatistics, recalculateStatistics, shouldRecalculate -
+      Inject List<StatisticsCalculator> for strategy pattern - Implement caching
+      logic (depends on T047)
+- [ ] T049 [US6] Create QCControlLotForm DTO in
+      `src/main/java/org/openelisglobal/qc/form/QCControlLotForm.java` with
+      validation annotations
+- [ ] T050 [US6] Create QCControlLotRestController in
+      `src/main/java/org/openelisglobal/qc/controller/QCControlLotRestController.java`
+      extending BaseRestController with @RestController and
+      @RequestMapping("/rest/qc/control-lots") - Endpoints: POST /, GET /{id},
+      PUT /{id}/deactivate, GET /by-analyzer/{analyzerId} - NO @Transactional
+      (belongs in service layer) - Services compile all data within transaction
+      (depends on T047, T048)
+- [ ] T051 [US6] Create ControlLotSetup React component in
+      `frontend/src/components/qc/controlLots/ControlLotSetup.jsx` using Carbon
+      Design System - Components: Form, TextInput, ComboBox, DatePicker,
+      Button - Use React Intl for all strings - Use Formik for form management
+      (depends on T050 for API)
+- [ ] T052 [US6] Create StatisticsConfigModal React component in
+      `frontend/src/components/qc/controlLots/StatisticsConfigModal.jsx` using
+      Carbon ComposedModal - Components: RadioButtonGroup (method selection),
+      NumberInput (manufacturer values), Button - Use React Intl for all strings
+- [ ] T053 [US6] Add QC control lot routes to `frontend/src/App.js`:
+      /analyzers/qc/control-lots, /analyzers/qc/control-lots/new,
+      /analyzers/qc/control-lots/:id/edit
+- [ ] T054 [US6] Add QC control lot menu items to database menu structure:
+      MENU_QC_CONTROL_LOTS under MENU_QC parent - Update menu SQL in Liquibase
+      changeset
+- [ ] T055 [US6] Run formatting: `mvn spotless:apply` for backend,
+      `npm run format` for frontend (MANDATORY before commit)
 
 **Checkpoint Validation**: At this point, User Story 6 should be fully
 functional and testable independently. Lab supervisors can create control lots
@@ -203,21 +343,51 @@ ALL tests from T032-T042 MUST pass.
 
 ## Phase 4: Integration with Feature 004
 
-**Goal**: Implement service contract for receiving QC results from feature 004's ASTM message processing.
+**Goal**: Implement service contract for receiving QC results from feature 004's
+ASTM message processing.
 
 **Priority**: P1 - Required for automatic QC result capture
 
-**Independent Test**: Mock call to QCResultService.createQCResult() with test data, verify QCResult persisted, z-score calculated, event published, rule evaluation triggered.
+**Independent Test**: Mock call to QCResultService.createQCResult() with test
+data, verify QCResult persisted, z-score calculated, event published, rule
+evaluation triggered.
 
-**Prerequisites**: Phases 1-3 complete (QC entities, rule evaluation, dashboard), Feature 004 implementation (for end-to-end testing)
+**Prerequisites**: Phases 1-3 complete (QC entities, rule evaluation,
+dashboard), Feature 004 implementation (for end-to-end testing)
 
 **Tasks**:
 
-- [ ] T139 [INT] Unit test for QCResultService.createQCResult() in `src/test/java/org/openelisglobal/qc/service/QCResultServiceTest.java` - Test method accepts parameters (analyzer ID, test ID, control lot ID, control level, result value, unit, timestamp), test z-score calculation, test QCResult persistence, test QCResultCreatedEvent publishing, test validation (result within range) - Use @Mock for DAOs and ApplicationEventPublisher
-- [ ] T140 [INT] Implement QCResultService.createQCResult() method in `src/main/java/org/openelisglobal/qc/service/QCResultServiceImpl.java` - Accept parameters from 004, calculate z-score using control lot statistics, persist QCResult entity, publish QCResultCreatedEvent, return created entity - Method signature: `QCResult createQCResult(String analyzerId, String testId, String controlLotId, String controlLevel, BigDecimal resultValue, String unit, LocalDateTime timestamp)` - Annotate with @Transactional
-- [ ] T141 [INT] Integration test for 004-to-003 service call in `src/test/java/org/openelisglobal/qc/integration/Feature004IntegrationTest.java` (@SpringBootTest) - Test full workflow: Mock call from 004 → createQCResult() → QCResult persisted → Event published → Rule evaluation triggered - Verify async event processing completes - Use builders for test data
-- [ ] T142 [INT] Update QCResultRestController manual entry endpoint in `src/main/java/org/openelisglobal/qc/controller/QCResultRestController.java` - Endpoint POST /rest/qc/results (manual entry) calls QCResultService.createQCResult() - Map form data to service method parameters - NO ASTM-specific endpoints (004 calls service layer directly, not REST API)
-- [ ] T143 [INT] Cypress E2E test for manual QC result entry in `frontend/cypress/e2e/qc/manualQCEntry.cy.js` - Test manual entry form submission, verify result saved, verify rule evaluation triggered, verify alert if violation detected - Note: Automatic capture from analyzers is handled by feature 004 (not tested in 003's E2E suite)
+- [ ] T139 [INT] Unit test for QCResultService.createQCResult() in
+      `src/test/java/org/openelisglobal/qc/service/QCResultServiceTest.java` -
+      Test method accepts parameters (analyzer ID, test ID, control lot ID,
+      control level, result value, unit, timestamp), test z-score calculation,
+      test QCResult persistence, test QCResultCreatedEvent publishing, test
+      validation (result within range) - Use @Mock for DAOs and
+      ApplicationEventPublisher
+- [ ] T140 [INT] Implement QCResultService.createQCResult() method in
+      `src/main/java/org/openelisglobal/qc/service/QCResultServiceImpl.java` -
+      Accept parameters from 004, calculate z-score using control lot
+      statistics, persist QCResult entity, publish QCResultCreatedEvent, return
+      created entity - Method signature:
+      `QCResult createQCResult(String analyzerId, String testId, String controlLotId, String controlLevel, BigDecimal resultValue, String unit, LocalDateTime timestamp)` -
+      Annotate with @Transactional
+- [ ] T141 [INT] Integration test for 004-to-003 service call in
+      `src/test/java/org/openelisglobal/qc/integration/Feature004IntegrationTest.java`
+      (@SpringBootTest) - Test full workflow: Mock call from 004 →
+      createQCResult() → QCResult persisted → Event published → Rule evaluation
+      triggered - Verify async event processing completes - Use builders for
+      test data
+- [ ] T142 [INT] Update QCResultRestController manual entry endpoint in
+      `src/main/java/org/openelisglobal/qc/controller/QCResultRestController.java` -
+      Endpoint POST /rest/qc/results (manual entry) calls
+      QCResultService.createQCResult() - Map form data to service method
+      parameters - NO ASTM-specific endpoints (004 calls service layer directly,
+      not REST API)
+- [ ] T143 [INT] Cypress E2E test for manual QC result entry in
+      `frontend/cypress/e2e/qc/manualQCEntry.cy.js` - Test manual entry form
+      submission, verify result saved, verify rule evaluation triggered, verify
+      alert if violation detected - Note: Automatic capture from analyzers is
+      handled by feature 004 (not tested in 003's E2E suite)
 
 ---
 
@@ -229,26 +399,68 @@ their parameters so the system can customize QC strategy per laboratory needs.
 **Why Next**: Rule configuration must be in place before rule evaluation can be
 implemented.
 
-**Independent Test**: Configure rule set for test analyzer, enable/disable specific rules, verify only enabled rules are marked for evaluation.
+**Independent Test**: Configure rule set for test analyzer, enable/disable
+specific rules, verify only enabled rules are marked for evaluation.
 
 ### Tests for User Story 5 (MANDATORY - TDD Enforcement)
 
-- [ ] T066 [P] [US5] Unit test for WestgardRuleConfigService in `src/test/java/org/openelisglobal/qc/service/WestgardRuleConfigServiceTest.java` - Test rule enable/disable, test preset configurations (Basic/Standard/Comprehensive), test validation (at least one rejection rule required) - Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAOs
-- [ ] T067 [P] [US5] DAO test for WestgardRuleConfigDAO in `src/test/java/org/openelisglobal/qc/dao/WestgardRuleConfigDAOTest.java` - Test findEnabledByInstrument, test findByTestAndInstrument, test rule enable/disable persistence - Use `@DataJpaTest` and `TestEntityManager`
-- [ ] T068 [P] [US5] Controller test for WestgardRuleConfigRestController in `src/test/java/org/openelisglobal/qc/controller/WestgardRuleConfigRestControllerTest.java` - Test GET /rest/qc/rule-config/{analyzerId}, test PUT /rest/qc/rule-config (update), test validation errors - Use `@WebMvcTest`, `@MockBean`, `MockMvc`
-- [ ] T069 [P] [US5] Frontend unit test for RuleConfigPanel in `frontend/src/components/qc/ruleConfig/RuleConfigPanel.test.jsx` - Test rule list rendering, test enable/disable toggles, test preset selection, test validation (warning when no rejection rules enabled) - Use `userEvent` and `waitFor`
-- [ ] T070 [P] [US5] Cypress E2E test in `frontend/cypress/e2e/qc/ruleConfiguration.cy.js` - Test AS-001 (view all 8 rules with enable/disable), test AS-002 (select preset - rules auto-enabled), test AS-003 (disable all rejection rules - validation error) - Use data-testid selectors, cy.session() for login
+- [ ] T066 [P] [US5] Unit test for WestgardRuleConfigService in
+      `src/test/java/org/openelisglobal/qc/service/WestgardRuleConfigServiceTest.java` -
+      Test rule enable/disable, test preset configurations
+      (Basic/Standard/Comprehensive), test validation (at least one rejection
+      rule required) - Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for
+      DAOs
+- [ ] T067 [P] [US5] DAO test for WestgardRuleConfigDAO in
+      `src/test/java/org/openelisglobal/qc/dao/WestgardRuleConfigDAOTest.java` -
+      Test findEnabledByInstrument, test findByTestAndInstrument, test rule
+      enable/disable persistence - Use `@DataJpaTest` and `TestEntityManager`
+- [ ] T068 [P] [US5] Controller test for WestgardRuleConfigRestController in
+      `src/test/java/org/openelisglobal/qc/controller/WestgardRuleConfigRestControllerTest.java` -
+      Test GET /rest/qc/rule-config/{analyzerId}, test PUT /rest/qc/rule-config
+      (update), test validation errors - Use `@WebMvcTest`, `@MockBean`,
+      `MockMvc`
+- [ ] T069 [P] [US5] Frontend unit test for RuleConfigPanel in
+      `frontend/src/components/qc/ruleConfig/RuleConfigPanel.test.jsx` - Test
+      rule list rendering, test enable/disable toggles, test preset selection,
+      test validation (warning when no rejection rules enabled) - Use
+      `userEvent` and `waitFor`
+- [ ] T070 [P] [US5] Cypress E2E test in
+      `frontend/cypress/e2e/qc/ruleConfiguration.cy.js` - Test AS-001 (view all
+      8 rules with enable/disable), test AS-002 (select preset - rules
+      auto-enabled), test AS-003 (disable all rejection rules - validation
+      error) - Use data-testid selectors, cy.session() for login
 
 ### Implementation for User Story 5
 
-- [ ] T071 [US5] Create WestgardRuleConfigService interface and implementation in `src/main/java/org/openelisglobal/qc/service/WestgardRuleConfigService.java` and `WestgardRuleConfigServiceImpl.java` with @Service and @Transactional - Methods: findByAnalyzer, updateRuleConfig, applyPreset, validateRuleConfig
-- [ ] T072 [US5] Create WestgardRuleConfigForm DTO in `src/main/java/org/openelisglobal/qc/form/WestgardRuleConfigForm.java` with validation annotations
-- [ ] T073 [US5] Create WestgardRuleConfigRestController in `src/main/java/org/openelisglobal/qc/controller/WestgardRuleConfigRestController.java` extending BaseRestController with @RestController and @RequestMapping("/rest/qc/rule-config") - Endpoints: GET /{analyzerId}, PUT / (update config), GET /presets (list presets) - NO @Transactional (depends on T071)
-- [ ] T074 [US5] Create RuleConfigPanel React component in `frontend/src/components/qc/ruleConfig/RuleConfigPanel.jsx` using Carbon Toggle, Tile, Button - Display all 8 rules with severity indicators, enable/disable toggles, preset selection ComboBox - Use React Intl for all strings (depends on T073)
-- [ ] T075 [US5] Add rule configuration route to `frontend/src/App.js`: /analyzers/qc/rule-config/:analyzerId
-- [ ] T076 [US5] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
+- [ ] T071 [US5] Create WestgardRuleConfigService interface and implementation
+      in
+      `src/main/java/org/openelisglobal/qc/service/WestgardRuleConfigService.java`
+      and `WestgardRuleConfigServiceImpl.java` with @Service and
+      @Transactional - Methods: findByAnalyzer, updateRuleConfig, applyPreset,
+      validateRuleConfig
+- [ ] T072 [US5] Create WestgardRuleConfigForm DTO in
+      `src/main/java/org/openelisglobal/qc/form/WestgardRuleConfigForm.java`
+      with validation annotations
+- [ ] T073 [US5] Create WestgardRuleConfigRestController in
+      `src/main/java/org/openelisglobal/qc/controller/WestgardRuleConfigRestController.java`
+      extending BaseRestController with @RestController and
+      @RequestMapping("/rest/qc/rule-config") - Endpoints: GET /{analyzerId},
+      PUT / (update config), GET /presets (list presets) - NO @Transactional
+      (depends on T071)
+- [ ] T074 [US5] Create RuleConfigPanel React component in
+      `frontend/src/components/qc/ruleConfig/RuleConfigPanel.jsx` using Carbon
+      Toggle, Tile, Button - Display all 8 rules with severity indicators,
+      enable/disable toggles, preset selection ComboBox - Use React Intl for all
+      strings (depends on T073)
+- [ ] T075 [US5] Add rule configuration route to `frontend/src/App.js`:
+      /analyzers/qc/rule-config/:analyzerId
+- [ ] T076 [US5] Run formatting: `mvn spotless:apply` for backend,
+      `npm run format` for frontend (MANDATORY before commit)
 
-**Checkpoint Validation**: At this point, User Story 5 should be fully functional. Lab managers can configure which rules are enabled per analyzer, select presets, and validation prevents invalid configurations. ALL tests from T066-T070 MUST pass.
+**Checkpoint Validation**: At this point, User Story 5 should be fully
+functional. Lab managers can configure which rules are enabled per analyzer,
+select presets, and validation prevents invalid configurations. ALL tests from
+T066-T070 MUST pass.
 
 ---
 
@@ -419,24 +631,80 @@ verify batched notification.
 
 ### Tests for User Story 3 (MANDATORY - TDD Enforcement)
 
-- [ ] T100 [P] [US3] Unit test for QCAlertService in `src/test/java/org/openelisglobal/qc/service/QCAlertServiceTest.java` - Test immediate alert for 1₃ₛ (no batching), test batching logic (max 1 per 15 min), test alert recipient determination, test email formatting - Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAOs and email service
-- [ ] T101 [P] [US3] Unit test for QCRuleViolationService in `src/test/java/org/openelisglobal/qc/service/QCRuleViolationServiceTest.java` - Test violation creation with all affected results, test severity classification, test resolution status tracking, test violation-to-alert linking - Use `@RunWith(MockitoJUnitRunner.class)`
-- [ ] T102 [P] [US3] DAO test for QCRuleViolationDAO in `src/test/java/org/openelisglobal/qc/dao/QCRuleViolationDAOTest.java` - Test findByAnalyzer, test findUnresolved, test findBySeverity, test violation queries with filtering - Use `@DataJpaTest` and `TestEntityManager`
-- [ ] T103 [P] [US3] DAO test for QCAlertDAO in `src/test/java/org/openelisglobal/qc/dao/QCAlertDAOTest.java` - Test findMostRecentByInstrument, test findUnread, test findByRecipient, test read status tracking - Use `@DataJpaTest`
-- [ ] T104 [P] [US3] Frontend unit test for AlertFeed in `frontend/src/components/qc/alerts/AlertFeed.test.jsx` - Test alert list rendering, test unread indicators, test mark as read, test alert navigation links - Use `userEvent` and `waitFor`
-- [ ] T105 [P] [US3] Integration test for alert workflow in `src/test/java/org/openelisglobal/qc/QCAlertIntegrationTest.java` (@SpringBootTest with @Transactional) - Test full workflow: violation created → alert generated → email sent → alert recorded - Test batching behavior with multiple violations - Use builders for test data
-- [ ] T106 [P] [US3] Cypress E2E test in `frontend/cypress/e2e/qc/qcAlerts.cy.js` - Test AS-001 (1₃ₛ violation triggers immediate email), test AS-002 (multiple 1₂ₛ violations batched), test AS-003 (system notification appears in feed), test AS-004 (click notification - navigate to analyzer detail) - Use data-testid selectors, cy.intercept() for email verification
+- [ ] T100 [P] [US3] Unit test for QCAlertService in
+      `src/test/java/org/openelisglobal/qc/service/QCAlertServiceTest.java` -
+      Test immediate alert for 1₃ₛ (no batching), test batching logic (max 1 per
+      15 min), test alert recipient determination, test email formatting - Use
+      `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAOs and email service
+- [ ] T101 [P] [US3] Unit test for QCRuleViolationService in
+      `src/test/java/org/openelisglobal/qc/service/QCRuleViolationServiceTest.java` -
+      Test violation creation with all affected results, test severity
+      classification, test resolution status tracking, test violation-to-alert
+      linking - Use `@RunWith(MockitoJUnitRunner.class)`
+- [ ] T102 [P] [US3] DAO test for QCRuleViolationDAO in
+      `src/test/java/org/openelisglobal/qc/dao/QCRuleViolationDAOTest.java` -
+      Test findByAnalyzer, test findUnresolved, test findBySeverity, test
+      violation queries with filtering - Use `@DataJpaTest` and
+      `TestEntityManager`
+- [ ] T103 [P] [US3] DAO test for QCAlertDAO in
+      `src/test/java/org/openelisglobal/qc/dao/QCAlertDAOTest.java` - Test
+      findMostRecentByInstrument, test findUnread, test findByRecipient, test
+      read status tracking - Use `@DataJpaTest`
+- [ ] T104 [P] [US3] Frontend unit test for AlertFeed in
+      `frontend/src/components/qc/alerts/AlertFeed.test.jsx` - Test alert list
+      rendering, test unread indicators, test mark as read, test alert
+      navigation links - Use `userEvent` and `waitFor`
+- [ ] T105 [P] [US3] Integration test for alert workflow in
+      `src/test/java/org/openelisglobal/qc/QCAlertIntegrationTest.java`
+      (@SpringBootTest with @Transactional) - Test full workflow: violation
+      created → alert generated → email sent → alert recorded - Test batching
+      behavior with multiple violations - Use builders for test data
+- [ ] T106 [P] [US3] Cypress E2E test in
+      `frontend/cypress/e2e/qc/qcAlerts.cy.js` - Test AS-001 (1₃ₛ violation
+      triggers immediate email), test AS-002 (multiple 1₂ₛ violations batched),
+      test AS-003 (system notification appears in feed), test AS-004 (click
+      notification - navigate to analyzer detail) - Use data-testid selectors,
+      cy.intercept() for email verification
 
 ### Implementation for User Story 3
 
-- [ ] T107 [US3] Create QCRuleViolationService interface and implementation in `src/main/java/org/openelisglobal/qc/service/QCRuleViolationService.java` and `QCRuleViolationServiceImpl.java` with @Service and @Transactional - Methods: createViolation(RuleEvaluationResult), findByAnalyzer, findUnresolved, resolveViolation - Inject QCAlertService to trigger alerts after violation creation
-- [ ] T108 [US3] Create QCAlertService interface and implementation in `src/main/java/org/openelisglobal/qc/service/QCAlertService.java` and `QCAlertServiceImpl.java` with @Service and @Transactional - Methods: sendAlertForViolation (with batching logic), sendImmediateAlert (for 1₃ₛ), sendBatchedAlert, determineRecipients - Inject EmailNotificationService for email sending - Implement batching: max 1 per analyzer per 15 min, except 1₃ₛ immediate (FR-072, FR-073) (depends on T107)
-- [ ] T109 [US3] Update QCResultCreatedEventListener in `src/main/java/org/openelisglobal/qc/event/QCResultCreatedEventListener.java` - After rule evaluation, call QCRuleViolationService.createViolation for each detected violation - Violation creation triggers alert via QCAlertService (depends on T107, T108)
-- [ ] T110 [US3] Create QCViolationForm DTO in `src/main/java/org/openelisglobal/qc/form/QCViolationForm.java` with validation annotations
-- [ ] T111 [US3] Create QCViolationRestController in `src/main/java/org/openelisglobal/qc/controller/QCViolationRestController.java` extending BaseRestController with @RestController and @RequestMapping("/rest/qc/violations") - Endpoints: GET / (list with filtering), GET /{id}, POST /{id}/acknowledge (for warnings) - NO @Transactional (depends on T107)
-- [ ] T112 [US3] Create AlertFeed React component in `frontend/src/components/qc/alerts/AlertFeed.jsx` using Carbon InlineNotification, Button - Display recent violations with severity indicators, unread badges, navigation links to analyzer detail - Use React Intl for all strings - Use SWR for real-time updates every 30 seconds (depends on T111)
-- [ ] T113 [US3] Add AlertFeed to QCDashboard component (placeholder component - will be implemented in US1) - Display in top-right corner of dashboard
-- [ ] T114 [US3] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
+- [ ] T107 [US3] Create QCRuleViolationService interface and implementation in
+      `src/main/java/org/openelisglobal/qc/service/QCRuleViolationService.java`
+      and `QCRuleViolationServiceImpl.java` with @Service and @Transactional -
+      Methods: createViolation(RuleEvaluationResult), findByAnalyzer,
+      findUnresolved, resolveViolation - Inject QCAlertService to trigger alerts
+      after violation creation
+- [ ] T108 [US3] Create QCAlertService interface and implementation in
+      `src/main/java/org/openelisglobal/qc/service/QCAlertService.java` and
+      `QCAlertServiceImpl.java` with @Service and @Transactional - Methods:
+      sendAlertForViolation (with batching logic), sendImmediateAlert (for 1₃ₛ),
+      sendBatchedAlert, determineRecipients - Inject EmailNotificationService
+      for email sending - Implement batching: max 1 per analyzer per 15 min,
+      except 1₃ₛ immediate (FR-072, FR-073) (depends on T107)
+- [ ] T109 [US3] Update QCResultCreatedEventListener in
+      `src/main/java/org/openelisglobal/qc/event/QCResultCreatedEventListener.java` -
+      After rule evaluation, call QCRuleViolationService.createViolation for
+      each detected violation - Violation creation triggers alert via
+      QCAlertService (depends on T107, T108)
+- [ ] T110 [US3] Create QCViolationForm DTO in
+      `src/main/java/org/openelisglobal/qc/form/QCViolationForm.java` with
+      validation annotations
+- [ ] T111 [US3] Create QCViolationRestController in
+      `src/main/java/org/openelisglobal/qc/controller/QCViolationRestController.java`
+      extending BaseRestController with @RestController and
+      @RequestMapping("/rest/qc/violations") - Endpoints: GET / (list with
+      filtering), GET /{id}, POST /{id}/acknowledge (for warnings) - NO
+      @Transactional (depends on T107)
+- [ ] T112 [US3] Create AlertFeed React component in
+      `frontend/src/components/qc/alerts/AlertFeed.jsx` using Carbon
+      InlineNotification, Button - Display recent violations with severity
+      indicators, unread badges, navigation links to analyzer detail - Use React
+      Intl for all strings - Use SWR for real-time updates every 30 seconds
+      (depends on T111)
+- [ ] T113 [US3] Add AlertFeed to QCDashboard component (placeholder component -
+      will be implemented in US1) - Display in top-right corner of dashboard
+- [ ] T114 [US3] Run formatting: `mvn spotless:apply` for backend,
+      `npm run format` for frontend (MANDATORY before commit)
 
 **Checkpoint Validation**: At this point, User Story 3 should be fully
 functional. Violations trigger automated alerts via email and system
@@ -447,32 +715,86 @@ alerts. ALL tests from T100-T106 MUST pass.
 
 ## Phase 8: User Story 1 - View Analyzer Compliance Status (Priority: P1) 🎯 MVP
 
-**Goal**: Enable laboratory technicians to see a clear compliance overview with visual indicators so they can quickly assess which analyzers require attention.
+**Goal**: Enable laboratory technicians to see a clear compliance overview with
+visual indicators so they can quickly assess which analyzers require attention.
 
 **Why MVP**: This is the foundational user-facing capability that provides
 immediate value by showing compliance at a glance.
 
-**Independent Test**: Display dashboard with multiple analyzers showing color-coded status (green/yellow/red) based on QC data, and verify technicians can identify non-compliant analyzers within 10 seconds.
+**Independent Test**: Display dashboard with multiple analyzers showing
+color-coded status (green/yellow/red) based on QC data, and verify technicians
+can identify non-compliant analyzers within 10 seconds.
 
 ### Tests for User Story 1 (MANDATORY - TDD Enforcement)
 
-- [ ] T115 [P] [US1] Unit test for QCDashboardService in `src/test/java/org/openelisglobal/qc/service/QCDashboardServiceTest.java` - Test compliance status calculation (green if no violations, yellow if warnings, red if rejections), test analyzer card data compilation (within transaction), test last result timestamp tracking - Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAOs
-- [ ] T116 [P] [US1] Controller test for QCRestController in `src/test/java/org/openelisglobal/qc/controller/QCRestControllerTest.java` - Test GET /rest/qc/dashboard (all analyzers), test GET /rest/qc/dashboard/{analyzerId} (single analyzer detail), test data compilation (no lazy loading), test response format - Use `@WebMvcTest`, `@MockBean`, `MockMvc`
-- [ ] T117 [P] [US1] Frontend unit test for QCDashboard in `frontend/src/components/qc/dashboard/QCDashboard.test.jsx` - Test dashboard rendering, test analyzer card display, test auto-refresh (5 min interval), test loading states, test empty state (no analyzers) - Use `userEvent` and `waitFor`
-- [ ] T118 [P] [US1] Frontend unit test for ComplianceStatusTile in `frontend/src/components/qc/dashboard/ComplianceStatusTile.test.jsx` - Test green tile (compliant), test yellow tile (warning), test red tile (non-compliant), test click navigation to detail view - Use `userEvent` for click interactions
-- [ ] T119 [P] [US1] Cypress E2E test in `frontend/cypress/e2e/qc/qcDashboard.cy.js` - Test AS-001 (view dashboard with color-coded analyzer cards), test AS-002 (analyzer card shows status, triggered rules, last result time), test AS-003 (click card - navigate to detail view) - Use data-testid selectors, cy.request() for test data setup, cy.session() for login
+- [ ] T115 [P] [US1] Unit test for QCDashboardService in
+      `src/test/java/org/openelisglobal/qc/service/QCDashboardServiceTest.java` -
+      Test compliance status calculation (green if no violations, yellow if
+      warnings, red if rejections), test analyzer card data compilation (within
+      transaction), test last result timestamp tracking - Use
+      `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAOs
+- [ ] T116 [P] [US1] Controller test for QCRestController in
+      `src/test/java/org/openelisglobal/qc/controller/QCRestControllerTest.java` -
+      Test GET /rest/qc/dashboard (all analyzers), test GET
+      /rest/qc/dashboard/{analyzerId} (single analyzer detail), test data
+      compilation (no lazy loading), test response format - Use `@WebMvcTest`,
+      `@MockBean`, `MockMvc`
+- [ ] T117 [P] [US1] Frontend unit test for QCDashboard in
+      `frontend/src/components/qc/dashboard/QCDashboard.test.jsx` - Test
+      dashboard rendering, test analyzer card display, test auto-refresh (5 min
+      interval), test loading states, test empty state (no analyzers) - Use
+      `userEvent` and `waitFor`
+- [ ] T118 [P] [US1] Frontend unit test for ComplianceStatusTile in
+      `frontend/src/components/qc/dashboard/ComplianceStatusTile.test.jsx` -
+      Test green tile (compliant), test yellow tile (warning), test red tile
+      (non-compliant), test click navigation to detail view - Use `userEvent`
+      for click interactions
+- [ ] T119 [P] [US1] Cypress E2E test in
+      `frontend/cypress/e2e/qc/qcDashboard.cy.js` - Test AS-001 (view dashboard
+      with color-coded analyzer cards), test AS-002 (analyzer card shows status,
+      triggered rules, last result time), test AS-003 (click card - navigate to
+      detail view) - Use data-testid selectors, cy.request() for test data
+      setup, cy.session() for login
 
 ### Implementation for User Story 1
 
-- [ ] T120 [US1] Create QCDashboardService interface and implementation in `src/main/java/org/openelisglobal/qc/service/QCDashboardService.java` and `QCDashboardServiceImpl.java` with @Service and @Transactional - Methods: getInstrumentComplianceStatus (compile all data within transaction using JOIN FETCH), calculateComplianceColor, getRecentViolations - Prevent LazyInitializationException by eagerly fetching all data
-- [ ] T121 [US1] Create QCRestController in `src/main/java/org/openelisglobal/qc/controller/QCRestController.java` extending BaseRestController with @RestController and @RequestMapping("/rest/qc") - Endpoints: GET /dashboard (all analyzers), GET /dashboard/{analyzerId} (single analyzer) - NO @Transactional - Services compile all data (depends on T120)
-- [ ] T122 [US1] Create ComplianceStatusTile React component in `frontend/src/components/qc/dashboard/ComplianceStatusTile.jsx` using Carbon Tile - Props: status (green/yellow/red), instrumentName, triggeredRules[], lastResultTime - Use Carbon color tokens for status colors (success, warning, danger) - Use React Intl for all strings - Clickable with navigation to detail view
-- [ ] T123 [US1] Create QCDashboard React component in `frontend/src/components/qc/dashboard/QCDashboard.jsx` using Carbon Grid, Column - Display ComplianceStatusTile for each analyzer - Add AlertFeed in top-right corner - Use SWR for data fetching with 5-minute refresh interval (FR-050) - Display last update timestamp - Use React Intl for all strings (depends on T121, T122)
-- [ ] T124 [US1] Add QC dashboard route to `frontend/src/App.js`: /analyzers/qc (maps to QCDashboard component)
-- [ ] T125 [US1] Add QC dashboard menu item to database menu structure: MENU_QC under MENU_ANALYZERS parent with route /analyzers/qc - Update menu SQL in Liquibase changeset
-- [ ] T126 [US1] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
+- [ ] T120 [US1] Create QCDashboardService interface and implementation in
+      `src/main/java/org/openelisglobal/qc/service/QCDashboardService.java` and
+      `QCDashboardServiceImpl.java` with @Service and @Transactional - Methods:
+      getInstrumentComplianceStatus (compile all data within transaction using
+      JOIN FETCH), calculateComplianceColor, getRecentViolations - Prevent
+      LazyInitializationException by eagerly fetching all data
+- [ ] T121 [US1] Create QCRestController in
+      `src/main/java/org/openelisglobal/qc/controller/QCRestController.java`
+      extending BaseRestController with @RestController and
+      @RequestMapping("/rest/qc") - Endpoints: GET /dashboard (all analyzers),
+      GET /dashboard/{analyzerId} (single analyzer) - NO @Transactional -
+      Services compile all data (depends on T120)
+- [ ] T122 [US1] Create ComplianceStatusTile React component in
+      `frontend/src/components/qc/dashboard/ComplianceStatusTile.jsx` using
+      Carbon Tile - Props: status (green/yellow/red), instrumentName,
+      triggeredRules[], lastResultTime - Use Carbon color tokens for status
+      colors (success, warning, danger) - Use React Intl for all strings -
+      Clickable with navigation to detail view
+- [ ] T123 [US1] Create QCDashboard React component in
+      `frontend/src/components/qc/dashboard/QCDashboard.jsx` using Carbon Grid,
+      Column - Display ComplianceStatusTile for each analyzer - Add AlertFeed in
+      top-right corner - Use SWR for data fetching with 5-minute refresh
+      interval (FR-050) - Display last update timestamp - Use React Intl for all
+      strings (depends on T121, T122)
+- [ ] T124 [US1] Add QC dashboard route to `frontend/src/App.js`: /analyzers/qc
+      (maps to QCDashboard component)
+- [ ] T125 [US1] Add QC dashboard menu item to database menu structure: MENU_QC
+      under MENU_ANALYZERS parent with route /analyzers/qc - Update menu SQL in
+      Liquibase changeset
+- [ ] T126 [US1] Run formatting: `mvn spotless:apply` for backend,
+      `npm run format` for frontend (MANDATORY before commit)
 
-**Checkpoint Validation**: At this point, User Story 1 should be fully functional and testable independently. Technicians can view compliance dashboard, identify non-compliant analyzers by color within 10 seconds, and navigate to detail views. Dashboard auto-refreshes every 5 minutes. ALL tests from T115-T119 MUST pass. **THIS IS THE MVP - CAN DEPLOY/DEMO NOW.**
+**Checkpoint Validation**: At this point, User Story 1 should be fully
+functional and testable independently. Technicians can view compliance
+dashboard, identify non-compliant analyzers by color within 10 seconds, and
+navigate to detail views. Dashboard auto-refreshes every 5 minutes. ALL tests
+from T115-T119 MUST pass. **THIS IS THE MVP - CAN DEPLOY/DEMO NOW.**
 
 ---
 
@@ -485,23 +807,65 @@ violations in QC data.
 **Why Next**: Control charts are essential diagnostic tools for understanding QC
 violations and determining corrective actions.
 
-**Independent Test**: Display Levey-Jennings chart for single analyzer with plotted QC results, SD lines (±1SD, ±2SD, ±3SD), and highlighted violation points.
+**Independent Test**: Display Levey-Jennings chart for single analyzer with
+plotted QC results, SD lines (±1SD, ±2SD, ±3SD), and highlighted violation
+points.
 
 ### Tests for User Story 2 (MANDATORY - TDD Enforcement)
 
-- [ ] T127 [P] [US2] Controller test for QCChartDataRestController in `src/test/java/org/openelisglobal/qc/controller/QCChartDataRestControllerTest.java` - Test GET /rest/qc/charts/{analyzerId} (chart data with filtering), test date range filtering, test control level filtering, test data compilation (all relationships fetched) - Use `@WebMvcTest`, `@MockBean`, `MockMvc`
-- [ ] T128 [P] [US2] Frontend unit test for LeveyJenningsChart in `frontend/src/components/qc/charts/LeveyJenningsChart.test.jsx` - Test chart rendering with Carbon LineChart, test SD reference lines (mean, ±1SD, ±2SD, ±3SD), test violation point highlighting (color, size), test tooltip content (value, z-score, date, violations) - Mock @carbon/charts-react - Use `waitFor` for async chart rendering
-- [ ] T129 [P] [US2] Frontend unit test for ControlChartDetail in `frontend/src/components/qc/charts/ControlChartDetail.test.jsx` - Test date range filters, test control level filters, test zoom/pan functionality, test chart export button - Use `userEvent` for filter interactions
-- [ ] T130 [P] [US2] Cypress E2E test in `frontend/cypress/e2e/qc/controlCharts.cy.js` - Test AS-001 (view chart with QC values, SD limits displayed), test AS-002 (violation points highlighted with distinct colors), test AS-003 (hover data point - tooltip shows value, z-score, violations), test AS-004 (apply date range filter - chart updates) - Use data-testid selectors, cy.request() for chart data setup
+- [ ] T127 [P] [US2] Controller test for QCChartDataRestController in
+      `src/test/java/org/openelisglobal/qc/controller/QCChartDataRestControllerTest.java` -
+      Test GET /rest/qc/charts/{analyzerId} (chart data with filtering), test
+      date range filtering, test control level filtering, test data compilation
+      (all relationships fetched) - Use `@WebMvcTest`, `@MockBean`, `MockMvc`
+- [ ] T128 [P] [US2] Frontend unit test for LeveyJenningsChart in
+      `frontend/src/components/qc/charts/LeveyJenningsChart.test.jsx` - Test
+      chart rendering with Carbon LineChart, test SD reference lines (mean,
+      ±1SD, ±2SD, ±3SD), test violation point highlighting (color, size), test
+      tooltip content (value, z-score, date, violations) - Mock
+      @carbon/charts-react - Use `waitFor` for async chart rendering
+- [ ] T129 [P] [US2] Frontend unit test for ControlChartDetail in
+      `frontend/src/components/qc/charts/ControlChartDetail.test.jsx` - Test
+      date range filters, test control level filters, test zoom/pan
+      functionality, test chart export button - Use `userEvent` for filter
+      interactions
+- [ ] T130 [P] [US2] Cypress E2E test in
+      `frontend/cypress/e2e/qc/controlCharts.cy.js` - Test AS-001 (view chart
+      with QC values, SD limits displayed), test AS-002 (violation points
+      highlighted with distinct colors), test AS-003 (hover data point - tooltip
+      shows value, z-score, violations), test AS-004 (apply date range filter -
+      chart updates) - Use data-testid selectors, cy.request() for chart data
+      setup
 
 ### Implementation for User Story 2
 
-- [ ] T131 [US2] Create QCChartDataRestController in `src/main/java/org/openelisglobal/qc/controller/QCChartDataRestController.java` extending BaseRestController with @RestController and @RequestMapping("/rest/qc/charts") - Endpoints: GET /{analyzerId} (with date range, control level filters), GET /{analyzerId}/statistics (mean, SD for reference lines) - Use JOIN FETCH to compile all data (results + violations + statistics) - NO @Transactional - Services compile data (depends on T120 QCDashboardService for data compilation pattern)
-- [ ] T132 [US2] Create LeveyJenningsChart React component in `frontend/src/components/qc/charts/LeveyJenningsChart.jsx` using @carbon/charts-react LineChart - Configure chart options: SD reference lines (grid.y with mean, ±1/2/3 SD), point styling (color red for violations, size 6 for violations vs 4 normal), tooltip customHTML (value, z-score, date, violations) - Props: chartData[], statistics (mean, sd) - Use React Intl for axis labels
-- [ ] T133 [US2] Create ControlChartDetail React component in `frontend/src/components/qc/charts/ControlChartDetail.jsx` using Carbon DatePicker, ComboBox, Button - Display LeveyJenningsChart with date range and control level filters - Add export button (download chart as PNG) - Use SWR for data fetching with filter params - Use React Intl for all strings (depends on T131, T132)
-- [ ] T134 [US2] Add control chart route to `frontend/src/App.js`: /analyzers/qc/charts/:analyzerId
-- [ ] T135 [US2] Update ComplianceStatusTile click handler to navigate to /analyzers/qc/charts/:analyzerId (link dashboard to chart detail view)
-- [ ] T136 [US2] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
+- [ ] T131 [US2] Create QCChartDataRestController in
+      `src/main/java/org/openelisglobal/qc/controller/QCChartDataRestController.java`
+      extending BaseRestController with @RestController and
+      @RequestMapping("/rest/qc/charts") - Endpoints: GET /{analyzerId} (with
+      date range, control level filters), GET /{analyzerId}/statistics (mean, SD
+      for reference lines) - Use JOIN FETCH to compile all data (results +
+      violations + statistics) - NO @Transactional - Services compile data
+      (depends on T120 QCDashboardService for data compilation pattern)
+- [ ] T132 [US2] Create LeveyJenningsChart React component in
+      `frontend/src/components/qc/charts/LeveyJenningsChart.jsx` using
+      @carbon/charts-react LineChart - Configure chart options: SD reference
+      lines (grid.y with mean, ±1/2/3 SD), point styling (color red for
+      violations, size 6 for violations vs 4 normal), tooltip customHTML (value,
+      z-score, date, violations) - Props: chartData[], statistics (mean, sd) -
+      Use React Intl for axis labels
+- [ ] T133 [US2] Create ControlChartDetail React component in
+      `frontend/src/components/qc/charts/ControlChartDetail.jsx` using Carbon
+      DatePicker, ComboBox, Button - Display LeveyJenningsChart with date range
+      and control level filters - Add export button (download chart as PNG) -
+      Use SWR for data fetching with filter params - Use React Intl for all
+      strings (depends on T131, T132)
+- [ ] T134 [US2] Add control chart route to `frontend/src/App.js`:
+      /analyzers/qc/charts/:analyzerId
+- [ ] T135 [US2] Update ComplianceStatusTile click handler to navigate to
+      /analyzers/qc/charts/:analyzerId (link dashboard to chart detail view)
+- [ ] T136 [US2] Run formatting: `mvn spotless:apply` for backend,
+      `npm run format` for frontend (MANDATORY before commit)
 
 **Checkpoint Validation**: At this point, User Story 2 should be fully
 functional. Technicians can view Levey-Jennings charts with SD lines, see
@@ -620,26 +984,79 @@ for regulatory audits.
 **Why Next**: Trend analysis provides strategic insights for quality
 improvement. Implemented after core operational features.
 
-**Independent Test**: Generate trend reports for date range showing violation frequency by analyzer, rule type, and severity, with filtering and export capabilities.
+**Independent Test**: Generate trend reports for date range showing violation
+frequency by analyzer, rule type, and severity, with filtering and export
+capabilities.
 
 ### Tests for User Story 7 (MANDATORY - TDD Enforcement)
 
-- [ ] T152 [P] [US7] Unit test for QCTrendAnalysisService in `src/test/java/org/openelisglobal/qc/service/QCTrendAnalysisServiceTest.java` - Test compliance percentage calculation over time, test violation frequency distribution, test recurring violation detection, test mean time to resolution calculation - Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAOs
-- [ ] T153 [P] [US7] Controller test for QCTrendAnalysisRestController in `src/test/java/org/openelisglobal/qc/controller/QCTrendAnalysisRestControllerTest.java` - Test GET /rest/qc/trends/compliance (compliance over time), test GET /rest/qc/trends/violations (violation distribution), test filtering (date range, analyzer, test, rule type, severity) - Use `@WebMvcTest`, `@MockBean`, `MockMvc`
-- [ ] T154 [P] [US7] Frontend unit test for ComplianceTrendChart in `frontend/src/components/qc/trends/ComplianceTrendChart.test.jsx` - Test trend graph rendering, test filtering options, test export functionality - Use `waitFor` for async chart rendering
-- [ ] T155 [P] [US7] Frontend unit test for ViolationDistributionChart in `frontend/src/components/qc/trends/ViolationDistributionChart.test.jsx` - Test violation frequency bar chart, test rule type breakdown, test instrument comparison - Mock @carbon/charts-react
-- [ ] T156 [P] [US7] Cypress E2E test in `frontend/cypress/e2e/qc/trendAnalysis.cy.js` - Test AS-001 (view compliance percentage over time with date range filter), test AS-002 (view violation frequency distribution by rule type), test AS-003 (export compliance report - PDF download within 30s), test AS-004 (compare multiple analyzers - identify highest violation rates) - Use data-testid selectors, cy.intercept() for export
+- [ ] T152 [P] [US7] Unit test for QCTrendAnalysisService in
+      `src/test/java/org/openelisglobal/qc/service/QCTrendAnalysisServiceTest.java` -
+      Test compliance percentage calculation over time, test violation frequency
+      distribution, test recurring violation detection, test mean time to
+      resolution calculation - Use `@RunWith(MockitoJUnitRunner.class)`, `@Mock`
+      for DAOs
+- [ ] T153 [P] [US7] Controller test for QCTrendAnalysisRestController in
+      `src/test/java/org/openelisglobal/qc/controller/QCTrendAnalysisRestControllerTest.java` -
+      Test GET /rest/qc/trends/compliance (compliance over time), test GET
+      /rest/qc/trends/violations (violation distribution), test filtering (date
+      range, analyzer, test, rule type, severity) - Use `@WebMvcTest`,
+      `@MockBean`, `MockMvc`
+- [ ] T154 [P] [US7] Frontend unit test for ComplianceTrendChart in
+      `frontend/src/components/qc/trends/ComplianceTrendChart.test.jsx` - Test
+      trend graph rendering, test filtering options, test export functionality -
+      Use `waitFor` for async chart rendering
+- [ ] T155 [P] [US7] Frontend unit test for ViolationDistributionChart in
+      `frontend/src/components/qc/trends/ViolationDistributionChart.test.jsx` -
+      Test violation frequency bar chart, test rule type breakdown, test
+      instrument comparison - Mock @carbon/charts-react
+- [ ] T156 [P] [US7] Cypress E2E test in
+      `frontend/cypress/e2e/qc/trendAnalysis.cy.js` - Test AS-001 (view
+      compliance percentage over time with date range filter), test AS-002 (view
+      violation frequency distribution by rule type), test AS-003 (export
+      compliance report - PDF download within 30s), test AS-004 (compare
+      multiple analyzers - identify highest violation rates) - Use data-testid
+      selectors, cy.intercept() for export
 
 ### Implementation for User Story 7
 
-- [ ] T157 [US7] Create QCTrendAnalysisService interface and implementation in `src/main/java/org/openelisglobal/qc/service/QCTrendAnalysisService.java` and `QCTrendAnalysisServiceImpl.java` with @Service - Methods: calculateComplianceTrend (compliance % over time), getViolationFrequencyDistribution (by rule type, analyzer, time period), identifyRecurringViolations (configurable thresholds), calculateMeanTimeToResolution - Use complex HQL queries with aggregations and date grouping
-- [ ] T158 [US7] Create QCTrendAnalysisRestController in `src/main/java/org/openelisglobal/qc/controller/QCTrendAnalysisRestController.java` extending BaseRestController with @RestController and @RequestMapping("/rest/qc/trends") - Endpoints: GET /compliance (with date range, analyzer, test filters), GET /violations (violation distribution), GET /recurring (analyzers with recurring violations), GET /export (PDF report generation) - NO @Transactional (depends on T157)
-- [ ] T159 [US7] Create ComplianceTrendChart React component in `frontend/src/components/qc/trends/ComplianceTrendChart.jsx` using @carbon/charts-react LineChart - Display compliance percentage over time, date range filters, analyzer/test filters - Use SWR for data fetching - Use React Intl for all strings (depends on T158)
-- [ ] T160 [US7] Create ViolationDistributionChart React component in `frontend/src/components/qc/trends/ViolationDistributionChart.jsx` using @carbon/charts-react BarChart - Display violation frequency by rule type, analyzer comparison, severity breakdown - Use React Intl for all strings (depends on T158)
-- [ ] T161 [US7] Create TrendAnalysisDashboard React component in `frontend/src/components/qc/trends/TrendAnalysisDashboard.jsx` - Combine ComplianceTrendChart and ViolationDistributionChart, add export button (download PDF report) - Use Carbon Grid for layout - Use React Intl for all strings (depends on T159, T160)
-- [ ] T162 [US7] Add trend analysis route to `frontend/src/App.js`: /analyzers/qc/trends
-- [ ] T163 [US7] Add trend analysis menu item to database menu structure: MENU_QC_TRENDS under MENU_QC parent - Update menu SQL in Liquibase changeset
-- [ ] T164 [US7] Run formatting: `mvn spotless:apply` for backend, `npm run format` for frontend (MANDATORY before commit)
+- [ ] T157 [US7] Create QCTrendAnalysisService interface and implementation in
+      `src/main/java/org/openelisglobal/qc/service/QCTrendAnalysisService.java`
+      and `QCTrendAnalysisServiceImpl.java` with @Service - Methods:
+      calculateComplianceTrend (compliance % over time),
+      getViolationFrequencyDistribution (by rule type, analyzer, time period),
+      identifyRecurringViolations (configurable thresholds),
+      calculateMeanTimeToResolution - Use complex HQL queries with aggregations
+      and date grouping
+- [ ] T158 [US7] Create QCTrendAnalysisRestController in
+      `src/main/java/org/openelisglobal/qc/controller/QCTrendAnalysisRestController.java`
+      extending BaseRestController with @RestController and
+      @RequestMapping("/rest/qc/trends") - Endpoints: GET /compliance (with date
+      range, analyzer, test filters), GET /violations (violation distribution),
+      GET /recurring (analyzers with recurring violations), GET /export (PDF
+      report generation) - NO @Transactional (depends on T157)
+- [ ] T159 [US7] Create ComplianceTrendChart React component in
+      `frontend/src/components/qc/trends/ComplianceTrendChart.jsx` using
+      @carbon/charts-react LineChart - Display compliance percentage over time,
+      date range filters, analyzer/test filters - Use SWR for data fetching -
+      Use React Intl for all strings (depends on T158)
+- [ ] T160 [US7] Create ViolationDistributionChart React component in
+      `frontend/src/components/qc/trends/ViolationDistributionChart.jsx` using
+      @carbon/charts-react BarChart - Display violation frequency by rule type,
+      analyzer comparison, severity breakdown - Use React Intl for all strings
+      (depends on T158)
+- [ ] T161 [US7] Create TrendAnalysisDashboard React component in
+      `frontend/src/components/qc/trends/TrendAnalysisDashboard.jsx` - Combine
+      ComplianceTrendChart and ViolationDistributionChart, add export button
+      (download PDF report) - Use Carbon Grid for layout - Use React Intl for
+      all strings (depends on T159, T160)
+- [ ] T162 [US7] Add trend analysis route to `frontend/src/App.js`:
+      /analyzers/qc/trends
+- [ ] T163 [US7] Add trend analysis menu item to database menu structure:
+      MENU_QC_TRENDS under MENU_QC parent - Update menu SQL in Liquibase
+      changeset
+- [ ] T164 [US7] Run formatting: `mvn spotless:apply` for backend,
+      `npm run format` for frontend (MANDATORY before commit)
 
 **Checkpoint Validation**: At this point, User Story 7 should be fully
 functional. Managers can view compliance trends, violation distributions,
@@ -652,15 +1069,35 @@ T152-T156 MUST pass.
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T165 [P] Add comprehensive JavaDoc comments to all public methods in service layer (`src/main/java/org/openelisglobal/qc/service/`)
-- [ ] T166 [P] Add JSDoc comments to all exported React components (`frontend/src/components/qc/`)
-- [ ] T167 [P] Create quickstart.md in `specs/003-westgard-qc/quickstart.md` with step-by-step developer guide (local setup, database migration, test execution, troubleshooting)
-- [ ] T168 [P] Create data-model.md in `specs/003-westgard-qc/data-model.md` with entity relationship diagrams, table schemas, relationship cardinalities
-- [ ] T169 Performance optimization: Add database indexes for QC result queries - Index on (control_lot_id, run_date_time) in qc_result table - Index on (analyzer_id, created_at) in qc_rule_violation table - Update Liquibase changeset
-- [ ] T170 Security hardening: Add input validation for all QC result entry endpoints - Validate result values within reasonable range (mean ± 10 SD) - Prevent SQL injection in HQL queries (use parameterized queries) - Add CSRF protection for state-changing endpoints
-- [ ] T171 [P] Add monitoring metrics for QC evaluation performance - Analyzer rule evaluation duration (track p95 latency) - Alert generation latency (track time from violation to email sent) - Dashboard data retrieval time - Add logging to QC services for performance tracking
-- [ ] T172 [P] Update OpenAPI contracts in `specs/003-westgard-qc/contracts/` with actual endpoint documentation (qc-api.yaml, violation-api.yaml, corrective-action-api.yaml)
-- [ ] T173 Run full test suite verification - Backend: `mvn test && mvn verify` (verify JaCoCo >80% coverage) - Frontend: `npm test -- --coverage` (verify Jest >70% coverage) - E2E: Run all Cypress tests individually: `npm run cy:run -- --spec "cypress/e2e/qc/*.cy.js"`
+- [ ] T165 [P] Add comprehensive JavaDoc comments to all public methods in
+      service layer (`src/main/java/org/openelisglobal/qc/service/`)
+- [ ] T166 [P] Add JSDoc comments to all exported React components
+      (`frontend/src/components/qc/`)
+- [ ] T167 [P] Create quickstart.md in `specs/003-westgard-qc/quickstart.md`
+      with step-by-step developer guide (local setup, database migration, test
+      execution, troubleshooting)
+- [ ] T168 [P] Create data-model.md in `specs/003-westgard-qc/data-model.md`
+      with entity relationship diagrams, table schemas, relationship
+      cardinalities
+- [ ] T169 Performance optimization: Add database indexes for QC result
+      queries - Index on (control_lot_id, run_date_time) in qc_result table -
+      Index on (analyzer_id, created_at) in qc_rule_violation table - Update
+      Liquibase changeset
+- [ ] T170 Security hardening: Add input validation for all QC result entry
+      endpoints - Validate result values within reasonable range (mean ± 10
+      SD) - Prevent SQL injection in HQL queries (use parameterized queries) -
+      Add CSRF protection for state-changing endpoints
+- [ ] T171 [P] Add monitoring metrics for QC evaluation performance - Analyzer
+      rule evaluation duration (track p95 latency) - Alert generation latency
+      (track time from violation to email sent) - Dashboard data retrieval
+      time - Add logging to QC services for performance tracking
+- [ ] T172 [P] Update OpenAPI contracts in `specs/003-westgard-qc/contracts/`
+      with actual endpoint documentation (qc-api.yaml, violation-api.yaml,
+      corrective-action-api.yaml)
+- [ ] T173 Run full test suite verification - Backend: `mvn test && mvn verify`
+      (verify JaCoCo >80% coverage) - Frontend: `npm test -- --coverage` (verify
+      Jest >70% coverage) - E2E: Run all Cypress tests individually:
+      `npm run cy:run -- --spec "cypress/e2e/qc/*.cy.js"`
 
 ---
 
@@ -748,16 +1185,26 @@ cd frontend && npm test -- --coverage  # Jest coverage
 ### Phase Dependencies
 
 - **Setup (Phase 1)**: No dependencies - can start immediately
-- **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
-- **User Story 6 (Phase 3)**: Depends on Foundational - FOUNDATIONAL for other stories (control lots required)
-- **User Story 8 (Phase 4)**: Depends on US6 (control lots must exist) - Enables automated result capture
-- **User Story 5 (Phase 5)**: Depends on Foundational - Rule configuration required before evaluation
-- **Rule Evaluators (Phase 6)**: Depends on US5, Phase 4 - CRITICAL, enables US1, US2, US3, US4
-- **User Story 3 (Phase 7)**: Depends on Rule Evaluators - Alerts require violations
-- **User Story 1 (Phase 8)**: Depends on Rule Evaluators, US3 - Dashboard shows compliance + alerts 🎯 **MVP**
-- **User Story 2 (Phase 9)**: Depends on US1, Rule Evaluators - Charts extend dashboard
-- **User Story 4 (Phase 10)**: Depends on US3 - Corrective actions address violations
-- **User Story 7 (Phase 11)**: Depends on all previous stories - Trend analysis requires historical data
+- **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user
+  stories
+- **User Story 6 (Phase 3)**: Depends on Foundational - FOUNDATIONAL for other
+  stories (control lots required)
+- **User Story 8 (Phase 4)**: Depends on US6 (control lots must exist) - Enables
+  automated result capture
+- **User Story 5 (Phase 5)**: Depends on Foundational - Rule configuration
+  required before evaluation
+- **Rule Evaluators (Phase 6)**: Depends on US5, Phase 4 - CRITICAL, enables
+  US1, US2, US3, US4
+- **User Story 3 (Phase 7)**: Depends on Rule Evaluators - Alerts require
+  violations
+- **User Story 1 (Phase 8)**: Depends on Rule Evaluators, US3 - Dashboard shows
+  compliance + alerts 🎯 **MVP**
+- **User Story 2 (Phase 9)**: Depends on US1, Rule Evaluators - Charts extend
+  dashboard
+- **User Story 4 (Phase 10)**: Depends on US3 - Corrective actions address
+  violations
+- **User Story 7 (Phase 11)**: Depends on all previous stories - Trend analysis
+  requires historical data
 - **Polish (Phase 12)**: Depends on all desired user stories being complete
 - **Constitution Verification (Phase 13)**: Final validation
 
@@ -768,7 +1215,8 @@ cd frontend && npm test -- --coverage  # Jest coverage
 1. Phase 1: Setup
 2. Phase 2: Foundational (entities, DAOs, Liquibase, ORM validation)
 3. Phase 3: User Story 6 (Control Lots - required for QC results)
-4. Phase 4: Integration with Feature 004 (service contract for QC result reception)
+4. Phase 4: Integration with Feature 004 (service contract for QC result
+   reception)
 5. Phase 5: User Story 5 (Rule Configuration - required for evaluation)
 6. Phase 6: Rule Evaluators (8 rules + evaluation service - CRITICAL)
 7. Phase 7: User Story 3 (Alerts - violation notification)
@@ -779,7 +1227,8 @@ cd frontend && npm test -- --coverage  # Jest coverage
 ### User Story Dependencies
 
 - **US6 (Control Lots)**: Independent - Can start after Foundational
-- **Phase 4 (Feature 004 Integration)**: Depends on US6 (control lots must exist for QC results)
+- **Phase 4 (Feature 004 Integration)**: Depends on US6 (control lots must exist
+  for QC results)
 - **US5 (Rule Config)**: Independent - Can start after Foundational
 - **Rule Evaluators**: Depend on US5, Phase 4 (need config + results from 004)
 - **US3 (Alerts)**: Depends on Rule Evaluators (violations trigger alerts)
@@ -860,15 +1309,18 @@ T052: Create StatisticsConfigModal component
 6. Complete Phase 6: Rule Evaluators (8 rules - CRITICAL)
 7. Complete Phase 7: User Story 3 (Alerts)
 8. Complete Phase 8: User Story 1 (Dashboard) 🎯 **MVP COMPLETE**
-9. **STOP and VALIDATE**: Test User Story 1 independently - technicians can view compliance dashboard, identify non-compliant analyzers, receive alerts
+9. **STOP and VALIDATE**: Test User Story 1 independently - technicians can view
+   compliance dashboard, identify non-compliant analyzers, receive alerts
 10. Deploy/demo if ready
 
 ### Incremental Delivery
 
 1. Setup + Foundational → Foundation ready
 2. Add US6 (Control Lots) → Test independently → Lab can set up QC control lots
-3. Add Phase 4 (Feature 004 Integration) → Test independently → QC result service contract working
-4. Add US5 (Rule Config) → Test independently → Lab can configure rules per analyzer
+3. Add Phase 4 (Feature 004 Integration) → Test independently → QC result
+   service contract working
+4. Add US5 (Rule Config) → Test independently → Lab can configure rules per
+   analyzer
 5. Add Rule Evaluators → Test independently → QC results automatically evaluated
 6. Add US3 (Alerts) → Test independently → Violations trigger automated alerts
 7. Add US1 (Dashboard) → Test independently → **MVP!** Dashboard shows
@@ -885,11 +1337,14 @@ With multiple developers:
 
 1. Team completes Setup + Foundational together
 2. Developer A: User Story 6 (Control Lots)
-3. Developer B: Phase 4 (Feature 004 Integration) - can start after US6 entities created
+3. Developer B: Phase 4 (Feature 004 Integration) - can start after US6 entities
+   created
 4. Developer C: User Story 5 (Rule Configuration) - independent
 5. After US5, Phase 4 complete: Developer A: Rule Evaluators (critical path)
-6. After Rule Evaluators: Developer B: US3 (Alerts), Developer C: US1 (Dashboard)
-7. After US1: Developer A: US2 (Charts), Developer B: US4 (Corrective Actions), Developer C: US7 (Trends)
+6. After Rule Evaluators: Developer B: US3 (Alerts), Developer C: US1
+   (Dashboard)
+7. After US1: Developer A: US2 (Charts), Developer B: US4 (Corrective Actions),
+   Developer C: US7 (Trends)
 8. Stories complete and integrate independently
 
 ---
@@ -904,9 +1359,12 @@ With multiple developers:
   (GREEN), then refactor
 - **Commit frequently**: After each task or logical group
 - **Stop at checkpoints**: Validate story independently before proceeding
-- **Avoid**: Vague tasks, same file conflicts, cross-story dependencies that break independence
-- **MVP Strategy**: Implement critical path (US6 → Phase 4 → US5 → Rules → US3 → US1) to deliver value quickly
-- **Constitution Compliance**: Verify all 8 principles at Phase 13 before declaring feature complete
+- **Avoid**: Vague tasks, same file conflicts, cross-story dependencies that
+  break independence
+- **MVP Strategy**: Implement critical path (US6 → Phase 4 → US5 → Rules → US3 →
+  US1) to deliver value quickly
+- **Constitution Compliance**: Verify all 8 principles at Phase 13 before
+  declaring feature complete
 
 ---
 

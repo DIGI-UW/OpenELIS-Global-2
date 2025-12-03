@@ -1,0 +1,72 @@
+/**
+ * QCDashboard Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.qc-dashboard {
+  padding: 1rem;
+}
+
+.qc-dashboard-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.qc-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.qc-dashboard-header-title {
+  flex: 1;
+}
+
+.qc-dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.qc-dashboard-last-updated {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.qc-dashboard-content {
+  margin-top: 1rem;
+}
+
+.qc-dashboard-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--cds-text-primary, #161616);
+}
+
+.qc-dashboard-analyzers {
+  margin-bottom: 1.5rem;
+}
+
+.qc-dashboard-tiles {
+  gap: 1rem;
+}
+
+.qc-dashboard-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}
+
+.qc-dashboard-alerts {
+  position: sticky;
+  top: 1rem;
+}

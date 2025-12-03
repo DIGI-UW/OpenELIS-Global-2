@@ -1,0 +1,35 @@
+/**
+ * CorrectiveActionList Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.corrective-action-list {
+  padding: 1rem;
+}
+
+.corrective-action-list-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.corrective-action-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.corrective-action-list-header-title {
+  flex: 1;
+}
+
+.corrective-action-list-filters {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+}

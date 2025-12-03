@@ -417,7 +417,19 @@ statistics).
   (optional warning if last connection test failed).
 - **FR-011**: On receipt of ASTM messages that reference unmapped test codes,
   units, qualitative values, or QC fields, system MUST hold these messages in an
-  error queue and surface them in the Error Dashboard (per FR-016). The Error Dashboard MUST display unmapped items in a modal or detail view that provides sufficient context (raw analyzer code, analyzer name, message timestamp, affected segment type) to enable administrators to create the necessary mappings directly from the error context. **QC Message Reprocessing**: When QC mapping errors are resolved (missing Control Level, Instrument ID, Lot Number, Value, or Timestamp mappings are created), system MUST automatically reprocess all queued QC messages for the affected analyzer. Reprocessing MUST create QCResult entities if all required QC field mappings are now complete. Reprocessing MUST occur asynchronously to avoid blocking Error Dashboard operations. System MUST notify administrators when QC messages are successfully reprocessed (notification: "X QC messages reprocessed successfully for analyzer {name}").
+  error queue and surface them in the Error Dashboard (per FR-016). The Error
+  Dashboard MUST display unmapped items in a modal or detail view that provides
+  sufficient context (raw analyzer code, analyzer name, message timestamp,
+  affected segment type) to enable administrators to create the necessary
+  mappings directly from the error context. **QC Message Reprocessing**: When QC
+  mapping errors are resolved (missing Control Level, Instrument ID, Lot Number,
+  Value, or Timestamp mappings are created), system MUST automatically reprocess
+  all queued QC messages for the affected analyzer. Reprocessing MUST create
+  QCResult entities if all required QC field mappings are now complete.
+  Reprocessing MUST occur asynchronously to avoid blocking Error Dashboard
+  operations. System MUST notify administrators when QC messages are
+  successfully reprocessed (notification: "X QC messages reprocessed
+  successfully for analyzer {name}").
 - **FR-012**: System MUST allow users to identify which analyzer fields and
   values remain unmapped via visual indicators including: status badges showing
   "Unmapped" state, filter options to show only unmapped fields, counts in the
@@ -433,19 +445,22 @@ statistics).
   their changes.
 - **FR-015**: System MUST integrate mapping configuration into the overall
   analyzer interface lifecycle using data-availability-driven states.
-  **Terminology Note**: The term "Active" is synonymous with "Mapped and Configured" in this context. An analyzer in "Active" state MUST have active mappings configured and activated. **Lifecycle Stages**: The analyzer interface lifecycle consists of three
-  distinct states: (1) **Uninitialized Stage**: Analyzer is registered in the
-  system (setup phase), but has not yet received any data. No fields are
-  available for mapping. The analyzer status is inactive. User action required:
-  perform a "Test Run" (send sample data from analyzer). (2) **Unmapped Stage**:
-  First message received (test run complete), fields extracted and available in
-  UI, but mappings are not yet fully configured/active. The analyzer status
-  remains inactive. Messages accumulate in the queue but are not processed into
-  results. (3) **Active Stage (Mapped)**: Mappings are configured and activated.
-  The analyzer processes incoming messages into results. Transition to Active
-  requires explicit activation with valid mappings. **Message Processing**: Once
-  an analyzer transitions to Active state, all queued messages (from the
-  Unmapped stage) are automatically processed using the active mappings.
+  **Terminology Note**: The term "Active" is synonymous with "Mapped and
+  Configured" in this context. An analyzer in "Active" state MUST have active
+  mappings configured and activated. **Lifecycle Stages**: The analyzer
+  interface lifecycle consists of three distinct states: (1) **Uninitialized
+  Stage**: Analyzer is registered in the system (setup phase), but has not yet
+  received any data. No fields are available for mapping. The analyzer status is
+  inactive. User action required: perform a "Test Run" (send sample data from
+  analyzer). (2) **Unmapped Stage**: First message received (test run complete),
+  fields extracted and available in UI, but mappings are not yet fully
+  configured/active. The analyzer status remains inactive. Messages accumulate
+  in the queue but are not processed into results. (3) **Active Stage
+  (Mapped)**: Mappings are configured and activated. The analyzer processes
+  incoming messages into results. Transition to Active requires explicit
+  activation with valid mappings. **Message Processing**: Once an analyzer
+  transitions to Active state, all queued messages (from the Unmapped stage) are
+  automatically processed using the active mappings.
 - **FR-016**: System MUST provide an Error Dashboard page that displays all
   unmapped or failed analyzer messages. The page MUST include: a page header
   with title "Error Dashboard" and "Acknowledge All" primary action button (with
@@ -540,15 +555,21 @@ statistics).
   (1-100 chars); Optional: Container Type (dropdown), Collection Method;
   Validation: Code unique, uppercase letters/numbers/hyphens only. (6) **QC** -
   Required: Control Name (1-100 chars), Lot Number (1-50 chars, unique for this
-  control), Control Level (dropdown: Low, Normal, High, required), Instrument ID (extracted from ASTM message header, required), Result Value (numeric or qualitative, required), Timestamp (extracted from ASTM message, required); Optional: Expiration Date (future date), Target Range (min/max
-  values, if quantitative); Validation: Lot number unique for control name, Control level must be one of Low/Normal/High, Instrument ID must reference valid analyzer, Result value must match control type (numeric for quantitative, qualitative for qualitative controls), Timestamp must be valid ISO 8601 format,
-  Expiration date must be future if provided. (7) **METADATA** - Required: Field
-  Name (1-100 chars, unique), Data Type (dropdown: STRING, NUMBER, DATE,
-  BOOLEAN); Optional: Format Pattern (regex for STRING, date format for DATE);
-  Validation: Field name unique across metadata, Format pattern valid regex/date
-  format if provided. (8) **UNIT** - Required: Unit Code (1-20 chars, unique,
-  uppercase), Unit Name (1-50 chars); Optional: SI Equivalent (reference to SI
-  unit), Conversion Factor (decimal, default 1.0); Validation: Unit code unique,
+  control), Control Level (dropdown: Low, Normal, High, required), Instrument ID
+  (extracted from ASTM message header, required), Result Value (numeric or
+  qualitative, required), Timestamp (extracted from ASTM message, required);
+  Optional: Expiration Date (future date), Target Range (min/max values, if
+  quantitative); Validation: Lot number unique for control name, Control level
+  must be one of Low/Normal/High, Instrument ID must reference valid analyzer,
+  Result value must match control type (numeric for quantitative, qualitative
+  for qualitative controls), Timestamp must be valid ISO 8601 format, Expiration
+  date must be future if provided. (7) **METADATA** - Required: Field Name
+  (1-100 chars, unique), Data Type (dropdown: STRING, NUMBER, DATE, BOOLEAN);
+  Optional: Format Pattern (regex for STRING, date format for DATE); Validation:
+  Field name unique across metadata, Format pattern valid regex/date format if
+  provided. (8) **UNIT** - Required: Unit Code (1-20 chars, unique, uppercase),
+  Unit Name (1-50 chars); Optional: SI Equivalent (reference to SI unit),
+  Conversion Factor (decimal, default 1.0); Validation: Unit code unique,
   Conversion factor > 0 if provided. **Field Type Compatibility Matrix**:
   Analyzer field types that can map to each OpenELIS field type - NUMERIC
   analyzer fields → TEST (if result type = Numeric), RESULT (if data type =
@@ -614,7 +635,23 @@ statistics).
 
 #### QC Result Processing
 
-- **FR-021**: System MUST process QC results from ASTM analyzer messages automatically. **Q-Segment Parsing**: When ASTM messages contain Q-segments (Quality Control result segments), the system MUST parse these segments and extract QC data including: instrument ID (from message header), test code, control lot number, control level (Low/Normal/High), result value (numeric or qualitative), unit of measure, and timestamp. **Field Mapping Application**: System MUST apply configured QC field mappings (per FR-019) to map extracted ASTM codes to OpenELIS entities (control lot, test, instrument). **Persistence**: System MUST persist parsed QC results to the QCResult entity (003's data model) via direct service call to QCResultService. Persistence MUST occur within the same transaction as patient result processing. **Error Handling**: If QC field mappings are incomplete or missing, system MUST queue the unmapped QC message in the Error Dashboard (per FR-011) with error type "QC_MAPPING_INCOMPLETE" and severity "ERROR". **Reprocessing**: When QC mapping errors are resolved in Error Dashboard, system MUST automatically reprocess queued QC messages and create QCResult entities if mappings are now complete.
+- **FR-021**: System MUST process QC results from ASTM analyzer messages
+  automatically. **Q-Segment Parsing**: When ASTM messages contain Q-segments
+  (Quality Control result segments), the system MUST parse these segments and
+  extract QC data including: instrument ID (from message header), test code,
+  control lot number, control level (Low/Normal/High), result value (numeric or
+  qualitative), unit of measure, and timestamp. **Field Mapping Application**:
+  System MUST apply configured QC field mappings (per FR-019) to map extracted
+  ASTM codes to OpenELIS entities (control lot, test, instrument).
+  **Persistence**: System MUST persist parsed QC results to the QCResult entity
+  (003's data model) via direct service call to QCResultService. Persistence
+  MUST occur within the same transaction as patient result processing. **Error
+  Handling**: If QC field mappings are incomplete or missing, system MUST queue
+  the unmapped QC message in the Error Dashboard (per FR-011) with error type
+  "QC_MAPPING_INCOMPLETE" and severity "ERROR". **Reprocessing**: When QC
+  mapping errors are resolved in Error Dashboard, system MUST automatically
+  reprocess queued QC messages and create QCResult entities if mappings are now
+  complete.
 
 ### Constitution Compliance Requirements (OpenELIS Global 3.0)
 
@@ -897,37 +934,70 @@ analyzer mapping are listed:_
   processing and mapping configuration (including QC results); 003 focuses on QC
   analytics and visualization. 004 parses ASTM messages (Q-segments included),
   applies mappings, and persists the results using 003's data model/service. 004
-  is the single source of truth for analyzer data ingestion. **See FR-021 for detailed QC result processing requirements.**
-- Q: QC Field Mapping scope in 004 → A: 004 MUST support mapping all QC fields required by 003 (Control Level, Instrument ID, Lot Number, Value, Timestamp). The 004 spec's QC field type definition (FR-019) is updated to include these missing fields.
-- Q: Error handling for QC results → A: 004's Error Dashboard handles ALL unmapped messages, including QC results. There is no separate error queue for QC in 003. Resolving a mapping error in 004's dashboard reprocesses the message for both patient and QC results. **See FR-011 for QC message reprocessing requirements.**
-- Q: Analyzer Lifecycle States → A: Analyzer lifecycle stages are: (1) **Uninitialized**: Analyzer added but no data received. (2) **Unmapped**: First message (test run) received, fields extracted, but mapping not active. (3) **Active (Mapped)**: Mappings configured and activated; messages process automatically. This replaces the generic "Setup/Validation" phases with data-centric states. **See FR-015 for detailed lifecycle stage definitions.**
+  is the single source of truth for analyzer data ingestion. **See FR-021 for
+  detailed QC result processing requirements.**
+- Q: QC Field Mapping scope in 004 → A: 004 MUST support mapping all QC fields
+  required by 003 (Control Level, Instrument ID, Lot Number, Value, Timestamp).
+  The 004 spec's QC field type definition (FR-019) is updated to include these
+  missing fields.
+- Q: Error handling for QC results → A: 004's Error Dashboard handles ALL
+  unmapped messages, including QC results. There is no separate error queue for
+  QC in 003. Resolving a mapping error in 004's dashboard reprocesses the
+  message for both patient and QC results. **See FR-011 for QC message
+  reprocessing requirements.**
+- Q: Analyzer Lifecycle States → A: Analyzer lifecycle stages are: (1)
+  **Uninitialized**: Analyzer added but no data received. (2) **Unmapped**:
+  First message (test run) received, fields extracted, but mapping not active.
+  (3) **Active (Mapped)**: Mappings configured and activated; messages process
+  automatically. This replaces the generic "Setup/Validation" phases with
+  data-centric states. **See FR-015 for detailed lifecycle stage definitions.**
 
 ## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
-- **SC-001**: Laboratory technicians can identify non-compliant instruments within 10 seconds of viewing the dashboard
-- **SC-002**: All QC results from ASTM-enabled analyzers are automatically captured and evaluated within 5 seconds of transmission
-- **SC-003**: Lab managers receive automated alerts for rejection-level violations within 30 seconds of detection
-- **SC-004**: 95% of Westgard rule evaluations complete without errors when sufficient historical data is available
-- **SC-005**: Users can configure a complete rule set for a test-instrument combination in under 5 minutes
-- **SC-006**: System maintains 99.9% uptime for QC result capture and rule evaluation
-- **SC-007**: Levey-Jennings charts render within 3 seconds for up to 100 data points
-- **SC-008**: Dashboard supports at least 50 instruments without performance degradation
-- **SC-009**: System correctly identifies all 8 Westgard rule types with less than 1% false positive/negative rate when tested against validated reference datasets
-- **SC-010**: 100% of corrective actions are traceable to their originating violations in audit trails
-- **SC-011**: Users can export compliance reports for regulatory audits in under 30 seconds
-- **SC-012**: System prevents release of patient results from instruments with unresolved rejection-level violations in 100% of cases
-- **SC-013**: Alert batching reduces notification volume by at least 50% while maintaining all critical alerts as immediate
-- **SC-014**: System handles minimum 1,000 QC results per day with all automated evaluations completing successfully
-- **SC-015**: QC data is retained and accessible for minimum 2 years for regulatory compliance
+- **SC-001**: Laboratory technicians can identify non-compliant instruments
+  within 10 seconds of viewing the dashboard
+- **SC-002**: All QC results from ASTM-enabled analyzers are automatically
+  captured and evaluated within 5 seconds of transmission
+- **SC-003**: Lab managers receive automated alerts for rejection-level
+  violations within 30 seconds of detection
+- **SC-004**: 95% of Westgard rule evaluations complete without errors when
+  sufficient historical data is available
+- **SC-005**: Users can configure a complete rule set for a test-instrument
+  combination in under 5 minutes
+- **SC-006**: System maintains 99.9% uptime for QC result capture and rule
+  evaluation
+- **SC-007**: Levey-Jennings charts render within 3 seconds for up to 100 data
+  points
+- **SC-008**: Dashboard supports at least 50 instruments without performance
+  degradation
+- **SC-009**: System correctly identifies all 8 Westgard rule types with less
+  than 1% false positive/negative rate when tested against validated reference
+  datasets
+- **SC-010**: 100% of corrective actions are traceable to their originating
+  violations in audit trails
+- **SC-011**: Users can export compliance reports for regulatory audits in under
+  30 seconds
+- **SC-012**: System prevents release of patient results from instruments with
+  unresolved rejection-level violations in 100% of cases
+- **SC-013**: Alert batching reduces notification volume by at least 50% while
+  maintaining all critical alerts as immediate
+- **SC-014**: System handles minimum 1,000 QC results per day with all automated
+  evaluations completing successfully
+- **SC-015**: QC data is retained and accessible for minimum 2 years for
+  regulatory compliance
 
 ### Qualitative Outcomes
 
-- **SC-016**: Laboratory meets CLIA and CAP quality control documentation requirements as verified by successful audits
-- **SC-017**: Laboratory staff report increased confidence in instrument quality control compared to manual chart review
-- **SC-018**: Reduction in patient sample reruns due to earlier detection of instrument quality issues
-- **SC-019**: Time to identify and resolve quality control issues decreases compared to baseline manual processes
+- **SC-016**: Laboratory meets CLIA and CAP quality control documentation
+  requirements as verified by successful audits
+- **SC-017**: Laboratory staff report increased confidence in instrument quality
+  control compared to manual chart review
+- **SC-018**: Reduction in patient sample reruns due to earlier detection of
+  instrument quality issues
+- **SC-019**: Time to identify and resolve quality control issues decreases
+  compared to baseline manual processes
 
 ## Reference Documentation
 

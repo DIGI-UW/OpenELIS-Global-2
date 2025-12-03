@@ -63,7 +63,8 @@ public class QCStatisticsServiceImpl extends AuditableBaseObjectServiceImpl<QCSt
         statistics.setCalculationDate(new Timestamp(System.currentTimeMillis()));
         statistics.setValidityStart(new Timestamp(System.currentTimeMillis()));
 
-        return statisticsDAO.insert(statistics);
+        String id = statisticsDAO.insert(statistics);
+        return statisticsDAO.get(id).orElse(null);
     }
 
     @Override
@@ -89,7 +90,8 @@ public class QCStatisticsServiceImpl extends AuditableBaseObjectServiceImpl<QCSt
         statistics.setCalculationDate(new Timestamp(System.currentTimeMillis()));
         statistics.setValidityStart(new Timestamp(System.currentTimeMillis()));
 
-        return statisticsDAO.insert(statistics);
+        String id = statisticsDAO.insert(statistics);
+        return statisticsDAO.get(id).orElse(null);
     }
 
     @Override

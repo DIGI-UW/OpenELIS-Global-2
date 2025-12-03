@@ -1,0 +1,101 @@
+/**
+ * RuleConfigPanel Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.rule-config-panel {
+  padding: 1rem;
+}
+
+.rule-config-panel-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.rule-config-panel-header {
+  margin-bottom: 1.5rem;
+}
+
+.rule-config-panel-selectors {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+}
+
+.rule-config-panel-accordion {
+  margin-bottom: 1.5rem;
+}
+
+.rule-config-category-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rule-config-category-count {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.rule-config-item {
+  margin-bottom: 0.5rem;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.rule-config-item--enabled {
+  border-left: 3px solid var(--cds-link-primary, #0f62fe);
+}
+
+.rule-config-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.rule-config-item-info {
+  flex: 1;
+}
+
+.rule-config-item-name {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+  margin-bottom: 0.25rem;
+}
+
+.rule-config-item-description {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.rule-config-item-severity {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.rule-config-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.rule-config-panel-prompt {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+  background: var(--cds-layer-01, #ffffff);
+  border-radius: 4px;
+  padding: 2rem;
+}

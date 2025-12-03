@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,9 +49,10 @@ public class QCControlLotServiceTest {
     @Test
     public void testCreateControlLotWithManufacturerValues_ShouldBeActive() {
         // Arrange
-        QCControlLot lot = QCControlLotBuilder.create().withCalculationMethod("MANUFACTURER_FIXED")
+        QCControlLot lot = QCControlLotBuilder.create().withId("test-lot-1").withCalculationMethod("MANUFACTURER_FIXED")
                 .withManufacturerValues(100.0, 5.0).build();
-        when(controlLotDAO.insert(any(QCControlLot.class))).thenReturn(lot);
+        when(controlLotDAO.insert(any(QCControlLot.class))).thenReturn("test-lot-1");
+        when(controlLotDAO.get("test-lot-1")).thenReturn(Optional.of(lot));
 
         // Act
         QCControlLot result = controlLotService.createControlLot(lot);
@@ -61,6 +63,7 @@ public class QCControlLotServiceTest {
         assertNotNull("Manufacturer mean should be set", result.getManufacturerMean());
         assertNotNull("Manufacturer std dev should be set", result.getManufacturerStdDev());
         verify(controlLotDAO, times(1)).insert(any(QCControlLot.class));
+        verify(controlLotDAO, times(1)).get("test-lot-1");
     }
 
     /**
@@ -70,9 +73,10 @@ public class QCControlLotServiceTest {
     @Test
     public void testCreateControlLotWithInitialEstablishment_ShouldEnterEstablishmentStatus() {
         // Arrange
-        QCControlLot lot = QCControlLotBuilder.create().withCalculationMethod("INITIAL_RUNS").withInitialRunsCount(20)
-                .build();
-        when(controlLotDAO.insert(any(QCControlLot.class))).thenReturn(lot);
+        QCControlLot lot = QCControlLotBuilder.create().withId("test-lot-2").withCalculationMethod("INITIAL_RUNS")
+                .withInitialRunsCount(20).build();
+        when(controlLotDAO.insert(any(QCControlLot.class))).thenReturn("test-lot-2");
+        when(controlLotDAO.get("test-lot-2")).thenReturn(Optional.of(lot));
 
         // Act
         QCControlLot result = controlLotService.createControlLot(lot);
@@ -82,6 +86,7 @@ public class QCControlLotServiceTest {
         assertEquals("Status should be ESTABLISHMENT for initial runs", "ESTABLISHMENT", result.getStatus());
         assertEquals("Initial runs count should be 20", Integer.valueOf(20), result.getInitialRunsCount());
         verify(controlLotDAO, times(1)).insert(any(QCControlLot.class));
+        verify(controlLotDAO, times(1)).get("test-lot-2");
     }
 
     /**
@@ -91,8 +96,9 @@ public class QCControlLotServiceTest {
     @Test
     public void testCreateControlLotWithRollingWindow_ShouldEnterEstablishmentStatus() {
         // Arrange
-        QCControlLot lot = QCControlLotBuilder.create().withCalculationMethod("ROLLING").build();
-        when(controlLotDAO.insert(any(QCControlLot.class))).thenReturn(lot);
+        QCControlLot lot = QCControlLotBuilder.create().withId("test-lot-3").withCalculationMethod("ROLLING").build();
+        when(controlLotDAO.insert(any(QCControlLot.class))).thenReturn("test-lot-3");
+        when(controlLotDAO.get("test-lot-3")).thenReturn(Optional.of(lot));
 
         // Act
         QCControlLot result = controlLotService.createControlLot(lot);
@@ -101,6 +107,7 @@ public class QCControlLotServiceTest {
         assertNotNull("Created lot should not be null", result);
         assertEquals("Status should be ESTABLISHMENT for rolling window", "ESTABLISHMENT", result.getStatus());
         verify(controlLotDAO, times(1)).insert(any(QCControlLot.class));
+        verify(controlLotDAO, times(1)).get("test-lot-3");
     }
 
     /**
@@ -111,7 +118,7 @@ public class QCControlLotServiceTest {
     public void testActivateControlLot_ShouldTransitionToActive() {
         // Arrange
         testControlLot.setStatus("ESTABLISHMENT");
-        when(controlLotDAO.get(anyString())).thenReturn(testControlLot);
+        when(controlLotDAO.get(anyString())).thenReturn(Optional.of(testControlLot));
         when(controlLotDAO.update(any(QCControlLot.class))).thenReturn(testControlLot);
 
         // Act
@@ -132,7 +139,7 @@ public class QCControlLotServiceTest {
     public void testDeactivateControlLot_ShouldMarkAsExpired() {
         // Arrange
         testControlLot.setStatus("ACTIVE");
-        when(controlLotDAO.get(anyString())).thenReturn(testControlLot);
+        when(controlLotDAO.get(anyString())).thenReturn(Optional.of(testControlLot));
         when(controlLotDAO.update(any(QCControlLot.class))).thenReturn(testControlLot);
 
         // Act
