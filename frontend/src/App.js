@@ -343,35 +343,31 @@ export default function App() {
                   path="/NoteBookDashboard"
                   exact
                   component={() => <NoteBookDashBoard />}
-                  role={Roles.RECEPTION}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm"
                   exact
                   component={() => <NoteBookEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/CytologyCaseView/:cytologySampleId"

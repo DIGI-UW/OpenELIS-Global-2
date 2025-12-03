@@ -1,13 +1,13 @@
 package org.openelisglobal.notebook.service;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import java.util.List;
-import org.hibernate.Session;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.dao.NoteBookSampleDAO;
 import org.openelisglobal.notebook.valueholder.NoteBookSample;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,8 +19,8 @@ public class NoteBookSampleServiceImpl extends AuditableBaseObjectServiceImpl<No
     @Autowired
     private NoteBookSampleDAO baseObjectDAO;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    @Autowired
+    NoteBookService noteBookService;
 
     public NoteBookSampleServiceImpl() {
         super(NoteBookSample.class);
@@ -34,9 +34,16 @@ public class NoteBookSampleServiceImpl extends AuditableBaseObjectServiceImpl<No
     @Override
     @Transactional(readOnly = true)
     public List<NoteBookSample> getNotebookSamplesBySampleItemId(Integer sampleItemId) {
-        Session session = entityManager.unwrap(Session.class);
-        String hql = "FROM NoteBookSample nbs WHERE nbs.sampleItem.id = :sampleItemId";
-        return session.createQuery(hql, NoteBookSample.class).setParameter("sampleItemId", sampleItemId)
-                .getResultList();
+        return baseObjectDAO.getNotebookSamplesBySampleItemId(sampleItemId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleDisplayBean> getNotebookSamplesByNoteBookId(Integer noteBookId) {
+        List<NoteBookSample> noteBookSamples = baseObjectDAO.getNotebookSamplesByNoteBookId(noteBookId);
+
+        List<SampleItem> samples = noteBookSamples.stream().map(s -> s.getSampleItem()).collect(Collectors.toList());
+
+        return samples.stream().map(s -> noteBookService.convertSampleToDisplayBean(s)).collect(Collectors.toList());
     }
 }
