@@ -135,7 +135,7 @@ persistence
 - [ ] T009 [M1] Manual verification: Toggle works, preference persists across
       refresh (requires running app - deferred to PR review)
 - [x] T010 [M1] Format code: `cd frontend && npm run format` ✅
-- [ ] T011 [M1] Create PR for M1: `feat/OGC-009-sidenav/m1-core` → `develop`
+- [x] T011 [M1] Create PR for M1: `feat/OGC-009-sidenav/m1-core` → `develop` ✅ PR #2380
 
 **Checkpoint**: Milestone 1 PR ready for review. Jest tests passing, toggle and
 persistence working.
