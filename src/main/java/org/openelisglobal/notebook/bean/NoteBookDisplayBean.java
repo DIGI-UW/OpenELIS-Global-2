@@ -1,19 +1,21 @@
 package org.openelisglobal.notebook.bean;
 
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 
 public class NoteBookDisplayBean {
     private Integer id;
     private String title;
     private Integer type;
-    private String lastName;
-    private String firstName;
-    private String gender;
     private String dateCreated;
     private List<String> tags;
     private String typeName;
     private NoteBookStatus status;
+    private Boolean isTemplate;
+    private Integer entriesCount;
+    private Integer technicianId;
+    private UUID questionnaireFhirUuid;
 
     public String getTitle() {
         return title;
@@ -29,30 +31,6 @@ public class NoteBookDisplayBean {
 
     public void setType(Integer type) {
         this.type = type;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
-
-    public String getFirstName() {
-        return firstName;
-    }
-
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public String getGender() {
-        return gender;
-    }
-
-    public void setGender(String gender) {
-        this.gender = gender;
     }
 
     public String getDateCreated() {
@@ -93,6 +71,38 @@ public class NoteBookDisplayBean {
 
     public void setStatus(NoteBookStatus status) {
         this.status = status;
+    }
+
+    public Boolean getIsTemplate() {
+        return isTemplate;
+    }
+
+    public void setIsTemplate(Boolean isTemplate) {
+        this.isTemplate = isTemplate;
+    }
+
+    public Integer getEntriesCount() {
+        return entriesCount;
+    }
+
+    public void setEntriesCount(Integer entriesCount) {
+        this.entriesCount = entriesCount;
+    }
+
+    public UUID getQuestionnaireFhirUuid() {
+        return questionnaireFhirUuid;
+    }
+
+    public void setQuestionnaireFhirUuid(UUID questionnaireFhirUuid) {
+        this.questionnaireFhirUuid = questionnaireFhirUuid;
+    }
+
+    public Integer getTechnicianId() {
+        return technicianId;
+    }
+
+    public void setTechnicianId(Integer technicianId) {
+        this.technicianId = technicianId;
     }
 
 }

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="register-freezer-audit-trail" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'FREEZER';
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            Register freezer-related tables in reference_tables to enable automatic audit trailing
+            via OpenELIS history table. This allows tracking configuration changes, threshold updates,
+            and other freezer modifications for regulatory compliance.
+        </comment>
+
+        <!-- Register Freezer table -->
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="FREEZER"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+        </insert>
+
+        <!-- Register CorrectiveAction table -->
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="CORRECTIVE_ACTION"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+        </insert>
+
+        <!-- Register Alert table (if not already registered) -->
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="ALERT"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+        </insert>
+
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name IN ('FREEZER', 'CORRECTIVE_ACTION', 'ALERT')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

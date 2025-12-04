@@ -1,0 +1,16 @@
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+
+    <changeSet id="1" author="herbert">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.observation_history_type WHERE type_name = 'provisionalClinicalDiagnosis'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO clinlims.observation_history_type(id, type_name, description,lastupdated) VALUES
+            (nextval('observation_history_type_seq'),'provisionalClinicalDiagnosis','Tentative diagnosis made by a clinician',now());
+        </sql>
+    </changeSet>
+</databaseChangeLog>

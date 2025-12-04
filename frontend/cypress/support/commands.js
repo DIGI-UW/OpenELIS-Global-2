@@ -45,3 +45,51 @@ Cypress.Commands.add("enterText", (selector, value) => {
     .type(value)
     .should("have.value", value);
 });
+
+/**
+ * Wait for backend API to be ready before running tests
+ * Checks both login endpoint and optionally a specific REST endpoint
+ */
+Cypress.Commands.add("waitForBackend", (restEndpoint = null) => {
+  // Wait for login endpoint
+  cy.intercept("/api/OpenELIS-Global/LoginPage").as("backendReady");
+  cy.visit("/");
+  cy.wait("@backendReady", { timeout: 30000 });
+
+  // If a REST endpoint is specified, wait for it too
+  if (restEndpoint) {
+    cy.intercept("GET", restEndpoint).as("restApiReady");
+    cy.request({
+      method: "GET",
+      url: restEndpoint,
+      failOnStatusCode: false, // Don't fail if endpoint returns error, just check it responds
+    }).then((response) => {
+      // API is responding (even if 404/500, it means backend is up)
+      expect(response.status).to.be.a("number");
+    });
+  }
+});
+
+/**
+ * Load storage test fixtures (only if not already loaded)
+ * Usage: cy.loadStorageFixtures()
+ */
+Cypress.Commands.add("loadStorageFixtures", () => {
+  cy.task("loadStorageTestData");
+});
+
+/**
+ * Check if storage test fixtures already exist
+ * Usage: cy.checkStorageFixturesExist()
+ */
+Cypress.Commands.add("checkStorageFixturesExist", () => {
+  return cy.task("checkStorageFixturesExist");
+});
+
+/**
+ * Clean storage test fixtures
+ * Usage: cy.cleanStorageFixtures()
+ */
+Cypress.Commands.add("cleanStorageFixtures", () => {
+  cy.task("cleanStorageTestData");
+});

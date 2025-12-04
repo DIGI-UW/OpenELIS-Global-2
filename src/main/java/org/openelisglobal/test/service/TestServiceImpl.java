@@ -83,7 +83,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         }
     }
 
-    private synchronized void initializeGlobalVariables() {
+    synchronized void initializeGlobalVariables() {
         TypeOfSample variableTypeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain("Variable", "H");
         VARIABLE_TYPE_OF_SAMPLE_ID = variableTypeOfSample == null ? "-1" : variableTypeOfSample.getId();
 
@@ -249,8 +249,21 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     public static String getUserLocalizedReportingTestName(String testId) {
+        ensureEntityMapInitialized();
+        if (entityToMap == null || entityToMap.get(Entity.TEST_REPORTING_NAME) == null) {
+            return "";
+        }
         String name = entityToMap.get(Entity.TEST_REPORTING_NAME).get(testId);
         return name == null ? "" : name;
+    }
+
+    private static synchronized void ensureEntityMapInitialized() {
+        if (entityToMap == null) {
+            TestServiceImpl instance = SpringContext.getBean(TestServiceImpl.class);
+            if (instance != null) {
+                instance.initializeGlobalVariables();
+            }
+        }
     }
 
     public static String getUserLocalizedReportingTestName(Test test) {
@@ -293,6 +306,10 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
      * @return The test name or the augmented test name
      */
     public static String getLocalizedTestNameWithType(String testId) {
+        ensureEntityMapInitialized();
+        if (entityToMap == null || entityToMap.get(Entity.TEST_AUGMENTED_NAME) == null) {
+            return "";
+        }
         String description = entityToMap.get(Entity.TEST_AUGMENTED_NAME).get(testId);
         return description == null ? "" : description;
     }

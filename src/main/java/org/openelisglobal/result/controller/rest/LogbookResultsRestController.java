@@ -1,3 +1,4 @@
+
 package org.openelisglobal.result.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +22,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -134,10 +136,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.qualifiedResultValue", "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut",
             "testResult*.referredOut", "testResult*.referralReasonId", "testResult*.technician",
             "testResult*.shadowRejected", "testResult*.rejected", "testResult*.rejectReasonId", "testResult*.note",
-            "paging.currentPage", //
-            "testResult*.refer", "testResult*.referralItem.referralReasonId",
-            "testResult*.referralItem.referredInstituteId", "testResult*.referralItem.referredTestId",
-            "testResult*.referralItem.referredSendDate" };
+            "paging.currentPage", "testResult*.resultFile", "testResult*.resultFile.fileName",
+            "testResult*.resultFile.fileType", "testResult*.resultFile.base64Content", "testResult*.refer",
+            "testResult*.referralItem.referralReasonId", "testResult*.referralItem.referredInstituteId",
+            "testResult*.referralItem.referredTestId", "testResult*.referralItem.referredSendDate" };
 
     @Autowired
     private DictionaryService dictionaryService;
@@ -313,16 +315,26 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                             upperRangeAccessionNumber, doRange, finished);
                 } else {
                     resultsLoadUtility.setLockCurrentResults(modifyResultsRoleBased() && userNotInRole(request));
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                            "Searching for sample with labNumber: " + labNumber);
                     Sample sample = sampleService.getSampleByAccessionNumber(labNumber);
                     if (sample != null) {
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults", "Found sample: id="
+                                + sample.getId() + ", accessionNumber=" + sample.getAccessionNumber());
                         if (!GenericValidator.isBlankOrNull(sample.getId())) {
                             patient = getPatient(sample);
 
                             tests = resultsLoadUtility.getGroupedTestsForSample(sample, patient);
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                                    "getGroupedTestsForSample returned " + tests.size() + " tests for sample "
+                                            + sample.getId());
                             patientName = patientService.getLastFirstName(patient);
                             patientInfo = patient.getNationalId() + ", " + patient.getGender() + ", "
                                     + patient.getBirthDateForDisplay();
                         }
+                    } else {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "getLogbookResults",
+                                "No sample found for labNumber: " + labNumber);
                     }
                 }
 
@@ -347,6 +359,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                        "After filterResultsByLabUnitRoles: tests.size()=" + tests.size() + ", filteredTests.size()="
+                                + filteredTests.size());
 
                 int count = resultsLoadUtility.getTotalCountAnalysisByAccessionAndStatus(form.getAccessionNumber());
 
@@ -373,6 +388,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             }
 
             paging.setDatabaseResults(request, form, filteredTests);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                    "After setDatabaseResults: form.getTestResult() size="
+                            + (form.getTestResult() != null ? form.getTestResult().size() : 0));
 
         } else {
             int requestedPageNumber = Integer.parseInt(requestedPage);
@@ -396,6 +414,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         addFlashMsgsToRequest(request);
 
         for (TestResultItem resultItem : filteredTests) {
+            AddPatientIdToResult(patient, resultItem);
             if (patientName != "")
                 resultItem.setPatientName(patientName);
             if (patientInfo != "")
@@ -403,6 +422,21 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         return (form);
+    }
+
+    private void AddPatientIdToResult(Patient patient, TestResultItem resultItem) {
+        if (patient != null) {
+            resultItem.setPatientId(patient.getId());
+        } else if (resultItem.getAccessionNumber() != null) {
+            // Si le patient n'est pas défini globalement, le récupérer via l'échantillon
+            Sample sample = sampleService.getSampleByAccessionNumber(resultItem.getAccessionNumber());
+            if (sample != null) {
+                Patient itemPatient = sampleHumanService.getPatientForSample(sample);
+                if (itemPatient != null) {
+                    resultItem.setPatientId(itemPatient.getId());
+                }
+            }
+        }
     }
 
     private String getCurrentDate() {
@@ -558,6 +592,12 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
+            if (testResultItem.getResultFile() != null) {
+                ResultFile resultFile = createResultFile(testResultItem.getResultFile());
+                if (resultFile != null) {
+                    analysis.setResultFile(resultFile);
+                }
+            }
             actionDataSet.getModifiedAnalysis().add(analysis);
         }
     }
@@ -695,6 +735,12 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         ResultInventory testKit = createTestKitLinkIfNeeded(testResultItem, ResultsLoadUtility.TESTKIT);
+        if (testResultItem.getResultFile() != null) {
+            ResultFile resultFile = createResultFile(testResultItem.getResultFile());
+            if (resultFile != null) {
+                analysis.setResultFile(resultFile);
+            }
+        }
 
         analysis.setReferredOut(testResultItem.isReferredOut());
         analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
@@ -871,6 +917,24 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     private Patient getPatient(Sample sample) {
         return sampleHumanService.getPatientForSample(sample);
+    }
+
+    private ResultFile createResultFile(TestResultItem.ResultFileForm fileForm) {
+        if (fileForm == null || GenericValidator.isBlankOrNull(fileForm.getFileName())
+                || GenericValidator.isBlankOrNull(fileForm.getFileType()) || fileForm.getContent() == null
+                || fileForm.getContent().length == 0) {
+            return null;
+        }
+        ResultFile file = new ResultFile();
+        file.setFileName(fileForm.getFileName());
+        file.setFileType(fileForm.getFileType());
+        file.setContent(fileForm.getContent());
+
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        file.setUploadedAt(now);
+        file.setLastupdated(now);
+
+        return file;
     }
 
     private String findLogBookForward(String forward) {

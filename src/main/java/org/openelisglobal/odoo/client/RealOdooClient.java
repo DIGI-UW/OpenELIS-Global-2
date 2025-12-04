@@ -3,7 +3,6 @@ package org.openelisglobal.odoo.client;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
 public class RealOdooClient implements OdooConnection {
@@ -12,7 +11,6 @@ public class RealOdooClient implements OdooConnection {
 
     private boolean available = false;
 
-    @Autowired
     public RealOdooClient(OdooClient odooClient) {
         this.odooClient = odooClient;
         try {

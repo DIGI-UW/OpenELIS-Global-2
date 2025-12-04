@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Sample Storage Assignment Table (Flexible Assignment Model) -->
+    <changeSet id="storage-006-create-sample-storage-assignment-table" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_storage_assignment"/>
+            </not>
+        </preConditions>
+        <createTable tableName="sample_storage_assignment">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_item_id" type="numeric(10,0)">
+                <constraints nullable="false" unique="true"
+                    foreignKeyName="fk_assignment_sample_item"
+                    references="sample_item(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="location_id" type="numeric(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="position_coordinate" type="VARCHAR(50)"/>
+            <column name="assigned_by_user_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_assignment_user"
+                    references="system_user(id)"/>
+            </column>
+            <column name="assigned_date" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notes" type="TEXT"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            ADD CONSTRAINT chk_location_type_valid
+            CHECK (location_type IN ('device', 'shelf', 'rack'));
+        </sql>
+        <createSequence sequenceName="sample_storage_assignment_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="sample_storage_assignment_seq"/>
+            <dropTable tableName="sample_storage_assignment"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Sample Storage Movement Table (Flexible Assignment Model) -->
+    <changeSet id="storage-007-create-sample-storage-movement-table" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_storage_movement"/>
+            </not>
+        </preConditions>
+        <createTable tableName="sample_storage_movement">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_item_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_movement_sample_item"
+                    references="sample_item(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="previous_location_id" type="numeric(10,0)"/>
+            <column name="previous_location_type" type="VARCHAR(20)"/>
+            <column name="previous_position_coordinate" type="VARCHAR(50)"/>
+            <column name="new_location_id" type="numeric(10,0)"/>
+            <column name="new_location_type" type="VARCHAR(20)"/>
+            <column name="new_position_coordinate" type="VARCHAR(50)"/>
+            <column name="moved_by_user_id" type="numeric(10,0)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_movement_user"
+                    references="system_user(id)"/>
+            </column>
+            <column name="movement_date" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="TEXT"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_movement_has_location
+            CHECK (
+                (previous_location_id IS NOT NULL AND previous_location_type IS NOT NULL) OR
+                (new_location_id IS NOT NULL AND new_location_type IS NOT NULL)
+            );
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_previous_location_type_valid
+            CHECK (
+                previous_location_type IS NULL OR
+                previous_location_type IN ('device', 'shelf', 'rack')
+            );
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_new_location_type_valid
+            CHECK (
+                new_location_type IS NULL OR
+                new_location_type IN ('device', 'shelf', 'rack')
+            );
+        </sql>
+        <createSequence sequenceName="sample_storage_movement_seq" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="sample_storage_movement_seq"/>
+            <dropTable tableName="sample_storage_movement"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

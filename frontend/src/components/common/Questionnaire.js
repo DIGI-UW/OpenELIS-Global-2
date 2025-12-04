@@ -52,18 +52,42 @@ const Questionnaire = ({
           options.push({
             value: answerOption.valueString,
             text: answerOption.valueString,
-            id: index,
+            id: answerOption.valueString,
           });
         }
         if ("valueCoding" in answerOption) {
           options.push({
             value: answerOption.valueCoding.code,
             text: answerOption.valueCoding.display,
-            id: index,
+            id: answerOption.valueCoding.code,
           });
         }
       });
     }
+
+    // Get initial selected items for multi-select
+    const getInitialSelectedItems = (linkId) => {
+      const answer = getAnswer(linkId);
+      if (!answer) return [];
+
+      // If answer is an array, convert to items format
+      if (Array.isArray(answer)) {
+        return answer.map((val) => {
+          const option = options.find(
+            (opt) => opt.value === val || opt.value === val.value,
+          );
+          return option || { id: val, value: val, text: val };
+        });
+      }
+
+      // If answer is a single value wrapped in an object array
+      if (typeof answer === "object" && !Array.isArray(answer)) {
+        const option = options.find((opt) => opt.value === answer.value);
+        return option ? [option] : [];
+      }
+
+      return [];
+    };
 
     return (
       <>
@@ -133,7 +157,7 @@ const Questionnaire = ({
                 e.target.value = changes.selectedItems;
                 onAnswerChange(e);
               }}
-              value={getAnswer(item.linkId)}
+              initialSelectedItems={getInitialSelectedItems(item.linkId)}
               selectionFeedback="top-after-reopen"
             />
           )}
@@ -142,7 +166,7 @@ const Questionnaire = ({
               id={item.linkId}
               labelText={item.text}
               onChange={onAnswerChange}
-              value={getAnswer(item.linkId)}
+              value={getAnswer(item.linkId) || ""}
               type="number"
               step="1"
               pattern="\d+"
@@ -153,7 +177,7 @@ const Questionnaire = ({
               id={item.linkId}
               labelText={item.text}
               onChange={onAnswerChange}
-              value={getAnswer(item.linkId)}
+              value={getAnswer(item.linkId) || ""}
               type="number"
               step="0.01"
             />
@@ -163,7 +187,7 @@ const Questionnaire = ({
               id={item.linkId}
               labelText={item.text}
               onChange={onAnswerChange}
-              value={getAnswer(item.linkId)}
+              value={getAnswer(item.linkId) || ""}
               type="date"
             />
           )}
@@ -172,7 +196,7 @@ const Questionnaire = ({
               id={item.linkId}
               labelText={item.text}
               onChange={onAnswerChange}
-              value={getAnswer(item.linkId)}
+              value={getAnswer(item.linkId) || ""}
               type="time"
             />
           )}
@@ -181,7 +205,7 @@ const Questionnaire = ({
               id={item.linkId}
               labelText={item.text}
               onChange={onAnswerChange}
-              value={getAnswer(item.linkId)}
+              value={getAnswer(item.linkId) || ""}
               type="text"
             />
           )}
@@ -190,7 +214,7 @@ const Questionnaire = ({
               id={item.linkId}
               labelText={item.text}
               onChange={onAnswerChange}
-              value={getAnswer(item.linkId)}
+              value={getAnswer(item.linkId) || ""}
               type="text"
             />
           )}
@@ -199,7 +223,7 @@ const Questionnaire = ({
               id={item.linkId}
               labelText={item.text}
               onChange={onAnswerChange}
-              value={getAnswer(item.linkId)}
+              value={getAnswer(item.linkId) || ""}
               type="number"
             />
           )}

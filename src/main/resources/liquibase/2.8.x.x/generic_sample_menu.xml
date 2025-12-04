@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add Generic Sample Order parent menu item -->
+    <changeSet author="Generic Sample Developer" id="2025110701">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_generic_sample'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for Generic Sample as top-level menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueNumeric="null"/>
+            <column name="presentation_order" value="3"/>
+            <column name="element_id" value="menu_generic_sample"/>
+            <column name="display_key" value="banner.menu.generic.sample"/>
+            <column name="tool_tip_key" value="tooltip.banner.menu.generic.sample"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Add Generic Sample Order submenu item -->
+    <changeSet author="Generic Sample Developer" id="2025110702">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_generic_sample_order'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for Generic Sample Order</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_generic_sample')"/>
+            <column name="presentation_order" value="1"/>
+            <column name="element_id" value="menu_generic_sample_order"/>
+            <column name="action_url" value="/GenericSample/Order"/>
+            <column name="display_key" value="banner.menu.generic.sample.order"/>
+            <column name="tool_tip_key" value="tooltip.banner.menu.generic.sample.order"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Add Generic Sample Edit submenu item -->
+    <changeSet author="Generic Sample Developer" id="2025110703">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_generic_sample_edit'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for Generic Sample Edit</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_generic_sample')"/>
+            <column name="presentation_order" value="2"/>
+            <column name="element_id" value="menu_generic_sample_edit"/>
+            <column name="action_url" value="/GenericSample/Edit"/>
+            <column name="display_key" value="banner.menu.generic.sample.edit"/>
+            <column name="tool_tip_key" value="tooltip.banner.menu.generic.sample.edit"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Add Generic Sample Import submenu item -->
+    <changeSet author="Generic Sample Developer" id="2025110704">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_generic_sample_import'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for Generic Sample Import</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_generic_sample')"/>
+            <column name="presentation_order" value="3"/>
+            <column name="element_id" value="menu_generic_sample_import"/>
+            <column name="action_url" value="/GenericSample/Import"/>
+            <column name="display_key" value="banner.menu.generic.sample.import"/>
+            <column name="tool_tip_key" value="tooltip.banner.menu.generic.sample.import"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Add system module for Generic Sample -->
+    <changeSet author="Generic Sample Developer" id="2025110705">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'GenericSampleView'</sqlCheck>
+        </preConditions>
+        <comment>Add a module for Generic Sample</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="GenericSampleView"/>
+            <column name="description" value="Generic Sample Order Entry and Management"/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="Y"/>
+            <column name="has_update_flag" value="Y"/>
+            <column name="has_delete_flag" value="N"/>
+        </insert>
+    </changeSet>
+
+    <!-- Add system module URLs for Generic Sample -->
+    <changeSet author="Generic Sample Developer" id="2025110706">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module_url" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'GenericSampleView'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add URLs for Generic Sample module</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/GenericSampleOrder"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'GenericSampleView')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/GenericSampleOrderEdit"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'GenericSampleView')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/GenericSampleOrderImport"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'GenericSampleView')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/rest/GenericSampleOrder"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'GenericSampleView')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/rest/GenericSampleOrder/validate"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'GenericSampleView')"/>
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/rest/GenericSampleOrder/import"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'GenericSampleView')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Assign Generic Sample module to Reception role -->
+    <changeSet author="Generic Sample Developer" id="2025110707">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'GenericSampleView'
+            </sqlCheck>
+        </preConditions>
+        <comment>Assign Generic Sample module to Reception role</comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="has_delete" value="N"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reception')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'GenericSampleView')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Assign Generic Sample module to Results role -->
+    <changeSet author="Generic Sample Developer" id="2025110708">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Results'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'GenericSampleView'
+            </sqlCheck>
+        </preConditions>
+        <comment>Assign Generic Sample module to Results role</comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="has_delete" value="N"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Results')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'GenericSampleView')"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

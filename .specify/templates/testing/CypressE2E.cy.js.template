@@ -1,0 +1,345 @@
+/**
+ * E2E Tests for {Feature Name} - {User Story}
+ *
+ * Reference: OpenELIS Testing Roadmap (.specify/guides/testing-roadmap.md)
+ * Quick Reference: Cypress Best Practices (.specify/guides/cypress-best-practices.md)
+ * Template: Cypress E2E Test
+ *
+ * Constitution V.5 Compliance Checklist:
+ * - Video disabled by default (cypress.config.js)
+ * - Screenshots enabled on failure (cypress.config.js)
+ * - Browser console logging enabled and reviewed after each run
+ * - Tests run individually during development (not full suite)
+ * - Post-run review completed (console logs, screenshots, test output)
+ * - Intercepts set up BEFORE actions that trigger them
+ * - Uses .should() assertions for retry-ability (no arbitrary cy.wait())
+ * - Element readiness checks before all interactions
+ * - Focused on happy paths (user workflows, not implementation details)
+ * - data-testid selectors used (PREFERRED)
+ * - Viewport set before visit
+ * - Session management via cy.session() (10-20x faster)
+ * - API-based test data setup (10x faster than UI)
+ *
+ * Selector Priority (STRICT ORDER - per Testing Roadmap):
+ * 1. data-testid attributes (MOST STABLE - PREFERRED)
+ * 2. ARIA roles (ACCESSIBLE - SECOND CHOICE)
+ * 3. Semantic selectors with context (USE CAREFULLY)
+ * 4. CSS selectors (LAST RESORT - STRONGLY DISCOURAGED)
+ *
+ * Execution:
+ * - Development: npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"
+ * - CI/CD: npm run cy:run (full suite)
+ */
+
+/**
+ * Session Management (cy.session() - 10-20x faster)
+ *
+ * Login runs ONCE per test file, cached for all tests.
+ * Adapt authentication pattern to match OpenELIS implementation
+ * (may use cookies, tokens, or session storage).
+ */
+before("Login and setup session", () => {
+  // cy.session() is typically implemented in cypress/support/commands.js
+  // This example shows usage in test file
+  cy.login("admin", "password"); // Runs ONCE, cached for all tests
+
+  // Fast API-based test data setup (NOT UI interactions)
+  cy.request("POST", "/rest/{module}/{entities}", {
+    name: "Test {Entity}",
+    code: "TEST-CODE",
+  }).then((response) => {
+    cy.wrap(response.body.id).as("{entity}Id");
+  });
+
+  // Alternative: Use fixtures for consistent test data
+  // cy.intercept("GET", "/rest/{module}/{entities}", { fixture: "{entities}.json" }).as("get{Entities}");
+});
+
+/**
+ * Cleanup: Remove test data after all tests
+ */
+after("Cleanup {feature} tests", () => {
+  // Cleanup test data via API
+  cy.get("@{entity}Id").then((id) => {
+    cy.request("DELETE", `/rest/{module}/{entities}/${id}`);
+  });
+});
+
+describe("{Feature Name} - {User Story}", function () {
+  beforeEach(() => {
+    // Viewport management (profy.dev: set viewport before visit)
+    cy.viewport(1025, 900); // Desktop viewport
+
+    // Set up API intercepts BEFORE actions that trigger them (Constitution V.5)
+    // Official Cypress pattern: use aliases and cy.wait('@alias')
+    cy.intercept("GET", "**/rest/{module}/{entities}**").as("get{Entities}");
+    cy.intercept("POST", "**/rest/{module}/{entities}**").as("create{Entity}");
+    cy.intercept("PUT", "**/rest/{module}/{entities}**").as("update{Entity}");
+    cy.intercept("DELETE", "**/rest/{module}/{entities}**").as("delete{Entity}");
+
+    // Navigate to page (after viewport and intercepts are set)
+    cy.visit("/{feature}");
+  });
+
+  /**
+   * Test: {Test Description}
+   * Task Reference: T{###}
+   *
+   * Testing user workflow (happy path focus - profy.dev philosophy):
+   * - User actions (clicks, types, selects)
+   * - API interactions (intercepts, waits)
+   * - UI state changes (visibility, enabled/disabled)
+   * - Success/error messages
+   *
+   * DO NOT test implementation details (internal state, function calls, props)
+   */
+  it("should {user action} {expected outcome}", function () {
+    // Arrange: Page already visited in beforeEach
+    // Wait for page to load (use element readiness, not arbitrary wait)
+    cy.get('[data-testid="{feature}-page"]', { timeout: 10000 }).should("be.visible");
+
+    // Act: Perform user action
+    // Use data-testid (PREFERRED - most stable)
+    cy.get('[data-testid="{action-button}"]')
+      .should("be.visible") // Element readiness check
+      .should("not.be.disabled") // Element readiness check
+      .click();
+
+    // Wait for API call (intercept timing - set up in beforeEach)
+    cy.wait("@create{Entity}").its("response.statusCode").should("eq", 200);
+
+    // Assert: Verify expected outcome
+    // Use .should() for retry-ability (no arbitrary cy.wait())
+    cy.get('[data-testid="success-message"]')
+      .should("be.visible")
+      .should("contain.text", "Success");
+  });
+
+  /**
+   * Test: {Test Description for Form}
+   * Task Reference: T{###}
+   * 
+   * Testing form interactions:
+   * - Input fields (type, clear)
+   * - Dropdowns/selects
+   * - Checkboxes/radios
+   * - Form submission
+   */
+  it("should {form action} {expected outcome}", function () {
+    // Arrange
+    cy.visit("/{feature}");
+
+    // Act: Fill form
+    // Use data-testid or ARIA roles (PREFERRED)
+    cy.get('[data-testid="{field-name}-input"]')
+      .should("be.visible")
+      .clear()
+      .type("Test Value");
+
+    // Select from Carbon ComboBox (requires explicit selection - portal rendering)
+    cy.get('[data-testid="{field-name}-combobox"]')
+      .should("be.visible")
+      .click()
+      .type("Option 1");
+    // Wait for dropdown to open (Carbon renders in portal)
+    cy.get('[role="listbox"]').should("be.visible");
+    // Explicitly select option (Carbon doesn't auto-select)
+    cy.get('[role="option"]').contains("Option 1").click();
+
+    // Submit form
+    cy.get('[data-testid="submit-button"]')
+      .should("be.visible")
+      .should("not.be.disabled")
+      .click();
+
+    // Wait for API call
+    cy.wait("@create{Entity}").its("response.statusCode").should("eq", 201);
+
+    // Assert: Verify form submission result
+    cy.get('[data-testid="success-message"]').should("be.visible");
+  });
+
+  /**
+   * Test: {Test Description for Error Case}
+   * Task Reference: T{###}
+   * 
+   * Testing error handling:
+   * - Validation errors
+   * - API errors
+   * - Constraint violations
+   */
+  it("should {error scenario} {expected error}", function () {
+    // Arrange: Setup error condition
+    cy.intercept("POST", "**/rest/{module}/{entities}**", {
+      statusCode: 400,
+      body: { message: "Validation error" },
+    }).as("create{Entity}Error");
+
+    // Act: Trigger error
+    cy.visit("/{feature}");
+    cy.get('[data-testid="submit-button"]').click();
+
+    // Wait for error response
+    cy.wait("@create{Entity}Error");
+
+    // Assert: Verify error message displayed
+    cy.get('[data-testid="error-message"]')
+      .should("be.visible")
+      .should("contain.text", "Validation error");
+  });
+
+  /**
+   * Test: {Test Description for Search/Filter}
+   * Task Reference: T{###}
+   * 
+   * Testing search/filter functionality:
+   * - Search input
+   * - Filter dropdowns
+   * - Results display
+   */
+  it("should {search action} {expected results}", function () {
+    // Arrange: Page already visited in beforeEach
+
+    // Act: Perform search
+    // Scoped query pattern (profy.dev: start with container, then find children)
+    cy.get('[data-testid="{feature}-page"]')
+      .find('[data-testid="search-input"]')
+      .should("be.visible")
+      .type("search term");
+
+    // Wait for search API call (intercept set up in beforeEach)
+    cy.wait("@get{Entities}").its("response.statusCode").should("eq", 200);
+
+    // Assert: Verify search results
+    // Scoped query: container → find results
+    cy.get('[data-testid="results-list"]')
+      .should("be.visible")
+      .should("contain.text", "search term");
+  });
+
+  /**
+   * Test: {Test Description for DataTable}
+   * Task Reference: T{###}
+   *
+   * Testing Carbon DataTable interactions:
+   * - Use tbody to exclude header row (profy.dev pattern)
+   * - Find row by text content
+   * - Interact with row actions
+   */
+  it("should {table action} {expected outcome}", function () {
+    // Arrange: Page already visited in beforeEach
+
+    // Act: Interact with DataTable
+    // Use tbody to exclude header (profy.dev pattern)
+    cy.get('[data-testid="{feature}-table"]')
+      .find("tbody") // Exclude thead (profy.dev debugging pattern)
+      .find("tr")
+      .contains("Row-001") // Find row by text
+      .find('[data-testid="action-button"]')
+      .should("be.visible")
+      .click();
+
+    // Assert: Verify action result
+    cy.get('[data-testid="success-message"]').should("be.visible");
+  });
+
+  /**
+   * Test: {Test Description for Modal}
+   * Task Reference: T{###}
+   *
+   * Testing Carbon Modal/Dialog (portal pattern):
+   * - Wait for modal to be visible (Carbon uses portals)
+   * - Use data-testid for buttons in portal
+   */
+  it("should {modal action} {expected outcome}", function () {
+    // Arrange: Page already visited in beforeEach
+    cy.get('[data-testid="open-modal-button"]').click();
+
+    // Act: Interact with modal (Carbon portal pattern)
+    // Wait for modal to be visible (Carbon uses portals - renders outside normal DOM)
+    cy.get('[role="dialog"]').should("be.visible");
+    // Modal content is in portal, use data-testid for buttons
+    cy.get('[data-testid="modal-confirm-button"]')
+      .should("be.visible")
+      .should("not.be.disabled")
+      .click();
+
+    // Assert: Verify modal action result
+    cy.get('[data-testid="success-message"]').should("be.visible");
+  });
+
+  /**
+   * Test: {Test Description for OverflowMenu}
+   * Task Reference: T{###}
+   *
+   * Testing Carbon OverflowMenu (portal pattern):
+   * - Wait for menu items to render in portal
+   */
+  it("should {overflow menu action} {expected outcome}", function () {
+    // Arrange: Page already visited in beforeEach
+
+    // Act: Interact with OverflowMenu (Carbon portal pattern)
+    cy.get('[data-testid="overflow-menu-button"]')
+      .should("be.visible")
+      .click();
+    // Wait for menu items to render in portal
+    cy.get('[role="menu"]').should("be.visible");
+    cy.get('[role="menuitem"]').contains("Delete").click();
+
+    // Assert: Verify menu action result
+    cy.get('[data-testid="success-message"]').should("be.visible");
+  });
+
+  // Additional test cases:
+  // - Test navigation between pages
+  // - Test bulk operations
+  // - Test pagination
+  // - Test sorting/filtering combinations
+});
+
+/**
+ * Anti-Pattern Warnings (What NOT to do):
+ *
+ * ❌ WRONG: Arbitrary time delays
+ * cy.wait(5000); // Use .should() instead
+ *
+ * ❌ WRONG: Setting up intercepts after actions
+ * cy.get('[data-testid="button"]').click();
+ * cy.intercept('POST', '/rest/endpoint').as('request'); // Too late!
+ *
+ * ❌ WRONG: CSS selectors (use data-testid)
+ * cy.get('.button-class').click(); // Brittle, breaks with CSS changes
+ *
+ * ❌ WRONG: Querying by text without context
+ * cy.contains('Save').click(); // Ambiguous, may match multiple elements
+ *
+ * ❌ WRONG: Not setting viewport
+ * cy.visit('/page'); // May show mobile view, tests fail
+ *
+ * ❌ WRONG: Selecting table header rows
+ * cy.get('tr').each(...); // Includes header row, use tbody
+ *
+ * ❌ WRONG: UI-based test data setup
+ * beforeEach(() => {
+ *   cy.visit('/page');
+ *   cy.get('[data-testid="add-button"]').click();
+ *   // ... 10+ seconds of UI interactions
+ * }); // Use cy.request() instead
+ *
+ * ❌ WRONG: Testing implementation details
+ * it('should call onSubmit function', () => {
+ *   // Test user-visible outcome instead
+ * });
+ *
+ * ✅ CORRECT: See examples above for proper patterns
+ */
+
+/**
+ * Post-Run Review (MANDATORY - Constitution V.5):
+ * 
+ * After each test execution, review:
+ * 1. Console Logs: Check browser console in Cypress UI for errors, failed API requests, warnings
+ * 2. Screenshots: Review failure screenshots for UI state at failure point
+ * 3. Test Output: Review Cypress command log for execution order and timeouts
+ */
+

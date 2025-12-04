@@ -16,6 +16,7 @@
 
         <!-- entities -->
         <class>org.openelisglobal.testcalculated.valueholder.Operation</class>
+        <class>org.openelisglobal.analysis.valueholder.ResultFile</class>
         <class>org.openelisglobal.testcalculated.valueholder.ResultCalculation</class>
         <class>org.openelisglobal.testcalculated.valueholder.Calculation</class>
         <class>org.openelisglobal.testreflex.action.bean.ReflexRuleOptionsDisplayItem</class>
@@ -56,6 +57,29 @@
         <class>org.openelisglobal.program.valueholder.pathology.PathologyReport</class>
         <class>org.openelisglobal.program.valueholder.pathology.PathologyConclusion</class>
         <class>org.openelisglobal.program.valueholder.pathology.PathologyBlock</class>
+
+        <!-- Sample Storage Management entities (001-sample-storage) - annotation-based -->
+        <class>org.openelisglobal.storage.valueholder.StorageRoom</class>
+        <class>org.openelisglobal.storage.valueholder.StorageDevice</class>
+        <class>org.openelisglobal.storage.valueholder.StorageShelf</class>
+        <class>org.openelisglobal.storage.valueholder.StorageRack</class>
+        <class>org.openelisglobal.storage.valueholder.StoragePosition</class>
+        <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
+        <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
+
+        <!-- Cold Storage/Freezer Monitoring entities -->
+        <class>org.openelisglobal.coldstorage.valueholder.Freezer</class>
+        <class>org.openelisglobal.coldstorage.valueholder.FreezerReading</class>
+        <class>org.openelisglobal.coldstorage.valueholder.ThresholdProfile</class>
+        <class>org.openelisglobal.coldstorage.valueholder.FreezerThresholdProfile</class>
+
+        <!-- Alert entities -->
+        <class>org.openelisglobal.alert.valueholder.Alert</class>
+        <class>org.openelisglobal.coldstorage.valueholder.CorrectiveAction</class>
+
+        <!-- Notification entities -->
+        <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
+        <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
 
         <properties>
             <property name="hibernate.ejb.cfgfile"

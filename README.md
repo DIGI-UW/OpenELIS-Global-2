@@ -57,11 +57,11 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
-    docker-compose up -d
+    docker compose up -d
 
 #### Running OpenELIS Global2 using docker compose with docker images built directly from the source code
 
-    docker-compose -f build.docker-compose.yml up -d --build
+    docker compose -f build.docker-compose.yml up -d --build
 
 #### Running OpenELIS Global2 with docker compose For Development
 
@@ -89,11 +89,11 @@ speeds up the development process
 
 1.  Build the War file
 
-          mvn clean install -DskipTests
+          mvn clean install -DskipTests -Dmaven.test.skip=true
 
 1.  Start the containers to mount the locally compiled artifacts
 
-        docker-compose -f dev.docker-compose.yml up -d
+        docker compose -f dev.docker-compose.yml up -d
 
     Note : For Reflecting Local changes in the Running Containers ;
 
@@ -103,11 +103,11 @@ speeds up the development process
 
   - Run the maven build again to re-build the War file
 
-         mvn clean install -DskipTests
+         mvn clean install -DskipTests -Dmaven.test.skip=true
 
   - Recreate the Openelis webapp container
 
-        docker-compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
+        docker compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
 
 #### The Instances can be accessed at
 
@@ -137,7 +137,28 @@ accessing any of these links, simply follow these steps:
 
         mvn spotless:apply
 
-#### To ensure your code passes the same checks as the CI pipeline, you can run the following commands from your project directory
+#### To ensure your code passes the same checks as the CI pipeline
+
+**Recommended: Use the CI check scripts** (replicates exact CI workflow):
+
+```bash
+# Run backend CI checks (formatting + build + tests)
+./scripts/run-ci-checks.sh
+
+# Run frontend CI checks (formatting + unit tests + E2E tests)
+./scripts/run-frontend-ci-checks.sh
+
+# Run both (full CI simulation)
+./scripts/run-ci-checks.sh && ./scripts/run-frontend-ci-checks.sh
+```
+
+**Options:**
+
+- `--skip-submodules`: Skip submodule build (faster, for quick checks)
+- `--skip-tests`: Skip tests (formatting only)
+- `--skip-e2e`: Skip E2E tests (frontend only)
+
+**Manual commands** (if you prefer to run steps individually):
 
 1.  Run Code Formatting Check (Backend). This command checks code formatting and
     performs validation similar to the CI
@@ -161,6 +182,68 @@ accessing any of these links, simply follow these steps:
         npm install
         npm run build
         npm run cy:run # this will run e2e testing same CI
+
+### AI-Assisted Development (SpecKit)
+
+This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
+Spec-Driven Development (SDD). AI coding agents can use slash commands to create
+specifications, plans, and tasks.
+
+**Setup SpecKit Commands:**
+
+```bash
+# Install commands for all supported AI agents (Cursor + Claude Code)
+./.specify/scripts/bash/install-commands.sh
+
+# Or install for specific agent only
+./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
+./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
+```
+
+**Available Commands** (after installation):
+
+- `/speckit.specify` - Create feature specification
+- `/speckit.plan` - Generate implementation plan
+- `/speckit.tasks` - Generate task breakdown
+- `/speckit.implement` - Execute implementation
+- `/speckit.analyze` - Validate consistency
+
+**Reference Documentation:**
+
+- **AGENTS.md** - Comprehensive guide for AI coding agents
+- **Constitution**: `.specify/memory/constitution.md` - Governance principles
+- **Feature Example**: `specs/001-sample-storage/` - Complete SDD example
+
+### Testing Resources
+
+For comprehensive testing guidance, see:
+
+- **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Complete testing
+  guide for both agents and humans
+- **Test Templates**: `.specify/templates/testing/` - Standardized test
+  templates
+- **AGENTS.md**: Testing Strategy section - Overview of testing approach
+- **Test Data Strategy**: `.specify/guides/test-data-strategy.md` - Unified test
+  data management guide
+
+### Test Data Setup
+
+For E2E testing, integration testing, and manual testing, load test fixtures:
+
+```bash
+# Basic usage (loads and verifies automatically)
+./src/test/resources/load-test-fixtures.sh
+
+# Reset database before loading (clean state)
+./src/test/resources/load-test-fixtures.sh --reset
+
+# Load without verification (faster)
+./src/test/resources/load-test-fixtures.sh --no-verify
+```
+
+**Note**: The unified loader script provides dependency checks, verification,
+and reset capabilities. See
+[Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for details.
 
 ### Pull request guidelines
 
