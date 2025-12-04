@@ -12,6 +12,9 @@ COPY . ./
 # COPY ./tsconfig.json ./tsconfig.json
 # COPY ./.prettierrc.json ./.prettierrc.json
 # COPY ./.eslintrc.js ./.eslintrc.js
+
+# Disable ESLint during production build - linting happens in CI, not deployment
+ENV DISABLE_ESLINT_PLUGIN=true
 RUN npm run build
 
 # production env

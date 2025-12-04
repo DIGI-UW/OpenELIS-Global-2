@@ -26,7 +26,6 @@
     "geopattern": "1.2.3",
     "jsonpath": "^1.1.1",
     "lodash-es": "^4.17.15",
-    "prettier-eslint": "15.0.1",
     "qs": "6.11.0",
     "react": "^17.0.2",
     "react-avatar": "5.0.3",
@@ -46,9 +45,7 @@
     "styled-components": "^5.3.6",
     "swr": "2.0.3",
     "web-vitals": "^2.1.4",
-    "yup": "^0.29.2",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.0"
+    "yup": "^0.29.2"
   },
   "scripts": {
     "start": "GENERATE_SOURCEMAP=false HTTPS=true react-scripts start",
@@ -101,8 +98,11 @@
     "cypress": "^12.17.4",
     "cypress-xpath": "^2.0.1",
     "eslint": "^8.48.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "prettier": "^3.4.2"
+    "prettier": "^3.4.2",
+    "prettier-eslint": "15.0.1"
   }
 }

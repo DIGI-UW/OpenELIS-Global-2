@@ -34,6 +34,10 @@
                 <constraints nullable="true" foreignKeyName="fk_notebook_technician"
                              referencedTableName="system_user" referencedColumnNames="id"/>
             </column>
+            <column name="creator_id" type="NUMERIC(10)">
+                <constraints nullable="true" foreignKeyName="fk_notebook_creator"
+                             referencedTableName="system_user" referencedColumnNames="id"/>
+            </column>
             <column name="questionnaire_fhir_uuid" type="UUID">
                 <constraints nullable="true"/>
             </column>

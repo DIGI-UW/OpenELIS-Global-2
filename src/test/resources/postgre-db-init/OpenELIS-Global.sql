@@ -16247,6 +16247,7 @@ COPY clinlims.status_of_sample (id, description, code, status_type, lastupdated,
 3	All tests have been run on this order	1	ORDER	2011-02-16 12:45:57.196561	Testing finished	status.sample.finished	Y
 19	The sample has been canceled by the user	1	SAMPLE	2012-05-14 11:24:08.768263	SampleCanceled	status.sample.entered	Y
 20	The sample has been entered into the system	1	SAMPLE	2012-05-14 11:24:08.768263	SampleEntered	status.sample.entered	Y
+24	Sample has been physically disposed	1	SAMPLE	2012-05-14 11:24:08.768263	SampleDisposed	status.sample.disposed	Y
 12	The order is non-conforming	1	ORDER	2011-08-23 09:30:01.227121	NonConforming	status.sample.nonConforming	N
 13	The order is non-conforming	1	ANALYSIS	2011-08-23 09:30:01.227121	NonConforming	status.analysis.nonConforming	N
 21	The electronic order has been entered into OE	1	EXTERNAL_ORDER	2013-04-10 16:00:05.19233	Entered	status.sample.entered	Y
@@ -16259,7 +16260,7 @@ COPY clinlims.status_of_sample (id, description, code, status_type, lastupdated,
 -- Name: status_of_sample_seq; Type: SEQUENCE SET; Schema: clinlims; Owner: clinlims
 --
 
-SELECT pg_catalog.setval('clinlims.status_of_sample_seq', 23, true);
+SELECT pg_catalog.setval('clinlims.status_of_sample_seq', 24, true);
 
 
 --

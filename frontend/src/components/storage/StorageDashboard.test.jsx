@@ -11,6 +11,7 @@ import messages from "../../languages/en.json";
 
 // Mock the API utilities
 jest.mock("../utils/Utils", () => ({
+  ...jest.requireActual("../utils/Utils"),
   getFromOpenElisServer: jest.fn(),
 }));
 

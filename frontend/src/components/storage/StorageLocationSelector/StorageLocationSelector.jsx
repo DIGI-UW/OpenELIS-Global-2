@@ -118,7 +118,6 @@ const StorageLocationSelector = ({
 
   const handleBarcodeScanned = (barcode) => {
     // TODO: Parse barcode and fetch location
-    console.log("Barcode scanned:", barcode);
   };
 
   const handleExpand = () => {

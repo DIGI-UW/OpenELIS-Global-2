@@ -722,6 +722,10 @@ public class ResultsLoadUtility {
 
         testItem.setAccessionNumber(accessionNumber);
         testItem.setAnalysisId(analysis.getId());
+        // Set SampleItem ID for storage location lookup
+        if (analysis.getSampleItem() != null && analysis.getSampleItem().getId() != null) {
+            testItem.setSampleItemId(analysis.getSampleItem().getId());
+        }
         testItem.setSequenceNumber(sequenceNumber);
         testItem.setReceivedDate(receivedDate);
         testItem.setTestName(displayTestName);

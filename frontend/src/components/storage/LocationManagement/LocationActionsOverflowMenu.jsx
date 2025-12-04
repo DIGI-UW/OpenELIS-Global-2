@@ -1,6 +1,8 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useContext } from "react";
 import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { hasRole, Roles } from "../../utils/Utils";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import "../SampleStorage/SampleActionsOverflowMenu.css";
 
 /**
@@ -20,6 +22,8 @@ const LocationActionsOverflowMenu = ({
   onPrintLabel,
 }) => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const isAdmin = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
 
   // Use useCallback to ensure stable function references
   const handleEdit = useCallback(
@@ -84,6 +88,16 @@ const LocationActionsOverflowMenu = ({
             defaultMessage: "Delete",
           })}
           onClick={handleDelete}
+          disabled={!isAdmin}
+          title={
+            !isAdmin
+              ? intl.formatMessage({
+                  id: "storage.delete.admin.only",
+                  defaultMessage:
+                    "Only Global Administrators can delete locations",
+                })
+              : ""
+          }
           data-testid="delete-location-menu-item"
         />
         {/* Print Label only for devices, shelves, and racks (not rooms) */}

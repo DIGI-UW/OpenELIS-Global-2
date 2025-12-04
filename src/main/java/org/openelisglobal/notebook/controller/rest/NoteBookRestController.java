@@ -32,6 +32,7 @@ import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
 import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.form.NoteBookForm;
+import org.openelisglobal.notebook.service.NoteBookSampleService;
 import org.openelisglobal.notebook.service.NoteBookService;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
@@ -53,6 +54,9 @@ public class NoteBookRestController extends BaseRestController {
 
     @Autowired
     private NoteBookService noteBookService;
+
+    @Autowired
+    private NoteBookSampleService noteBookSampleService;
 
     @Autowired
     private FhirConfig fhirConfig;
@@ -170,8 +174,16 @@ public class NoteBookRestController extends BaseRestController {
 
     @GetMapping(value = "/samples", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<SampleDisplayBean>> searchSamples(@RequestParam(required = false) String accession) {
+    public ResponseEntity<List<SampleDisplayBean>> searchSamples(@RequestParam(required = true) String accession) {
         List<SampleDisplayBean> results = noteBookService.searchSampleItems(accession);
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping(value = "/notebooksamples", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<SampleDisplayBean>> getNoteBookSamples(
+            @RequestParam(required = true) Integer noteBookId) {
+        List<SampleDisplayBean> results = noteBookSampleService.getNotebookSamplesByNoteBookId(noteBookId);
         return ResponseEntity.ok(results);
     }
 

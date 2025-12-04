@@ -291,8 +291,31 @@ export const deleteFromOpenElisServer = (endPoint, callback) => {
     });
 };
 
+export const deleteFromOpenElisServerFullResponse = (
+  endPoint,
+  callback,
+  extraParams,
+) => {
+  fetch(config.serverBaseUrl + endPoint, {
+    // includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+  })
+    .then((response) => callback(response, extraParams))
+    .catch((error) => {
+      console.error(error);
+    });
+};
+
 export const hasRole = (userSessionDetails, role) => {
-  return userSessionDetails.roles && userSessionDetails.roles.includes(role);
+  if (!userSessionDetails || !userSessionDetails.roles) {
+    return false;
+  }
+  return userSessionDetails.roles.includes(role);
 };
 
 // this is complicated to enable it to format "smartly" as a person types

@@ -13,7 +13,6 @@ import org.mockito.Mockito;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.services.SampleOrderService;
@@ -54,33 +53,34 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-@ComponentScan(basePackages = { "org.openelisglobal.spring", "org.openelisglobal.patient",
-        "org.openelisglobal.patientidentity", "org.openelisglobal.gender", "org.openelisglobal.patientidentitytype",
-        "org.openelisglobal.patienttype", "org.openelisglobal.address", "org.openelisglobal.dictionary",
-        "org.openelisglobal.person", "org.openelisglobal.audittrail", "org.openelisglobal.referencetables",
-        "org.openelisglobal.history", "org.openelisglobal.menu", "org.openelisglobal.login",
-        "org.openelisglobal.systemusermodule", "org.openelisglobal.rolemodule", "org.openelisglobal.view",
-        "org.openelisglobal.search", "org.openelisglobal.common.util", "org.openelisglobal.sample",
-        "org.openelisglobal.sampleitem", "org.openelisglobal.analysis", "org.openelisglobal.result",
-        "org.openelisglobal.resultlimit", "org.openelisglobal.resultlimits", "org.openelisglobal.typeoftestresult",
-        "org.openelisglobal.samplehuman", "org.openelisglobal.provider", "org.openelisglobal.role",
-        "org.openelisglobal.organization", "org.openelisglobal.region", "org.openelisglobal.program",
-        "org.openelisglobal.note", "org.openelisglobal.requester", "org.openelisglobal.method",
-        "org.openelisglobal.sampleorganization", "org.openelisglobal.analyte", "org.openelisglobal.panel",
-        "org.openelisglobal.panelitem", "org.openelisglobal.reports", "org.openelisglobal.userrole",
-        "org.openelisglobal.unitofmeasure", "org.openelisglobal.testtrailer", "org.openelisglobal.scriptlet",
-        "org.openelisglobal.localization", "org.openelisglobal.systemuser", "org.openelisglobal.systemmodule",
-        "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory", "org.openelisglobal.sampledomain",
-        "org.openelisglobal.sampleproject", "org.openelisglobal.observationhistorytype",
-        "org.openelisglobal.statusofsample", "org.openelisglobal.test", "org.openelisglobal.analyzerimport",
-        "org.openelisglobal.analyzer", "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
-        "org.openelisglobal.systemusersection", "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample",
-        "org.openelisglobal.siteinformation", "org.openelisglobal.config", "org.openelisglobal.image",
-        "org.openelisglobal.testresult", "org.openelisglobal.barcode", "org.openelisglobal.referral",
-        "org.openelisglobal.qaevent", "org.openelisglobal.project", "org.openelisglobal.sampleqaevent",
-        "org.openelisglobal.patientrelation", "org.openelisglobal.inventory", "org.openelisglobal.testcodes",
-        "org.openelisglobal.datasubmission", "org.openelisglobal.label", "org.openelisglobal.renametestsection",
-        "org.openelisglobal.action", "org.openelisglobal.analysisqaevent", "org.openelisglobal.analysisqaeventaction",
+@ComponentScan(basePackages = { "org.openelisglobal.spring", "org.openelisglobal.common.services",
+        "org.openelisglobal.patient", "org.openelisglobal.patientidentity", "org.openelisglobal.gender",
+        "org.openelisglobal.patientidentitytype", "org.openelisglobal.patienttype", "org.openelisglobal.address",
+        "org.openelisglobal.dictionary", "org.openelisglobal.person", "org.openelisglobal.audittrail",
+        "org.openelisglobal.referencetables", "org.openelisglobal.history", "org.openelisglobal.menu",
+        "org.openelisglobal.login", "org.openelisglobal.systemusermodule", "org.openelisglobal.rolemodule",
+        "org.openelisglobal.view", "org.openelisglobal.search", "org.openelisglobal.common.util",
+        "org.openelisglobal.sample", "org.openelisglobal.sampleitem", "org.openelisglobal.analysis",
+        "org.openelisglobal.result", "org.openelisglobal.resultlimit", "org.openelisglobal.resultlimits",
+        "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman", "org.openelisglobal.provider",
+        "org.openelisglobal.role", "org.openelisglobal.organization", "org.openelisglobal.region",
+        "org.openelisglobal.program", "org.openelisglobal.note", "org.openelisglobal.requester",
+        "org.openelisglobal.method", "org.openelisglobal.sampleorganization", "org.openelisglobal.analyte",
+        "org.openelisglobal.panel", "org.openelisglobal.panelitem", "org.openelisglobal.reports",
+        "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure", "org.openelisglobal.testtrailer",
+        "org.openelisglobal.scriptlet", "org.openelisglobal.localization", "org.openelisglobal.systemuser",
+        "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory",
+        "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
+        "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
+        "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer", "org.openelisglobal.testanalyte",
+        "org.openelisglobal.observationhistory", "org.openelisglobal.systemusersection",
+        "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample", "org.openelisglobal.siteinformation",
+        "org.openelisglobal.config", "org.openelisglobal.image", "org.openelisglobal.testresult",
+        "org.openelisglobal.barcode", "org.openelisglobal.referral", "org.openelisglobal.qaevent",
+        "org.openelisglobal.project", "org.openelisglobal.sampleqaevent", "org.openelisglobal.patientrelation",
+        "org.openelisglobal.inventory", "org.openelisglobal.testcodes", "org.openelisglobal.datasubmission",
+        "org.openelisglobal.label", "org.openelisglobal.renametestsection", "org.openelisglobal.action",
+        "org.openelisglobal.analysisqaevent", "org.openelisglobal.analysisqaeventaction",
         "org.openelisglobal.dataexchange", "org.openelisglobal.samplepdf", "org.openelisglobal.samplenewborn",
         "org.openelisglobal.sampleqaeventaction", "org.openelisglobal.analyzerresults", "org.openelisglobal.testreflex",
         "org.openelisglobal.county", "org.openelisglobal.sampletracking", "org.openelisglobal.testresultsview",
@@ -259,11 +259,9 @@ public class AppTestConfig implements WebMvcConfigurer {
         return jsonConverter;
     }
 
-    @Bean()
-    @Profile("test")
-    public IStatusService iStatusService() {
-        return mock(IStatusService.class);
-    }
+    // Removed IStatusService mock - integration tests need the real StatusService
+    // to properly load status maps from the database. Unit tests use @Mock
+    // directly.
 
     @Bean
     @Profile("test")

@@ -550,15 +550,6 @@ const EnhancedCascadingMode = ({
           }
         } else {
           // New room - show "add new" link
-          if (process.env.NODE_ENV === "development") {
-            console.log(
-              "[EnhancedCascadingMode] handleRoomChange: Setting new room creation mode",
-              {
-                trimmedValue,
-                existingRooms: rooms.map((r) => r.name),
-              },
-            );
-          }
           setIsCreatingRoom(true);
           const newRoom = {
             name: trimmedValue,
@@ -689,18 +680,6 @@ const EnhancedCascadingMode = ({
       );
       return !matches && trimmed.length > 0;
     })();
-    if (process.env.NODE_ENV === "development") {
-      console.log("[EnhancedCascadingMode] canAddRoom:", {
-        currentInput,
-        trimmed,
-        isCreatingRoom,
-        pendingRoomCreation: !!pendingRoomCreation,
-        matchesExisting: !!rooms.find(
-          (r) => r.name?.toLowerCase() === trimmed.toLowerCase(),
-        ),
-        result,
-      });
-    }
     return result;
   }, [roomInput, rooms, isCreatingRoom, pendingRoomCreation]);
 
@@ -725,22 +704,6 @@ const EnhancedCascadingMode = ({
       );
       return !matches && trimmed.length > 0;
     })();
-    if (process.env.NODE_ENV === "development") {
-      console.log("[EnhancedCascadingMode] canAddDevice:", {
-        currentInput,
-        trimmed,
-        selectedRoom: selectedRoom
-          ? { id: selectedRoom.id, name: selectedRoom.name }
-          : null,
-        isCreatingRoom,
-        pendingRoomCreation: !!pendingRoomCreation,
-        isCreatingDevice,
-        matchesExisting: !!devices.find(
-          (d) => d.name?.toLowerCase() === trimmed.toLowerCase(),
-        ),
-        result,
-      });
-    }
     return result;
   }, [
     deviceInput,
@@ -769,21 +732,6 @@ const EnhancedCascadingMode = ({
       );
       return !matches && trimmed.length > 0;
     })();
-    if (process.env.NODE_ENV === "development") {
-      console.log("[EnhancedCascadingMode] canAddShelf:", {
-        currentInput,
-        trimmed,
-        selectedDevice: selectedDevice
-          ? { id: selectedDevice.id, name: selectedDevice.name }
-          : null,
-        isCreatingDevice,
-        isCreatingShelf,
-        matchesExisting: !!shelves.find(
-          (s) => (s.label || s.name)?.toLowerCase() === trimmed.toLowerCase(),
-        ),
-        result,
-      });
-    }
     return result;
   }, [shelfInput, shelves, selectedDevice, isCreatingDevice, isCreatingShelf]);
 
@@ -805,21 +753,6 @@ const EnhancedCascadingMode = ({
       );
       return !matches && trimmed.length > 0;
     })();
-    if (process.env.NODE_ENV === "development") {
-      console.log("[EnhancedCascadingMode] canAddRack:", {
-        currentInput,
-        trimmed,
-        selectedShelf: selectedShelf
-          ? { id: selectedShelf.id, label: selectedShelf.label }
-          : null,
-        isCreatingShelf,
-        isCreatingRack,
-        matchesExisting: !!racks.find(
-          (r) => (r.label || r.name)?.toLowerCase() === trimmed.toLowerCase(),
-        ),
-        result,
-      });
-    }
     return result;
   }, [rackInput, racks, selectedShelf, isCreatingShelf, isCreatingRack]);
 
