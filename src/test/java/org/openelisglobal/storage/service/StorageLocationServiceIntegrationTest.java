@@ -4,9 +4,7 @@ import static org.junit.Assert.*;
 
 import java.util.List;
 import java.util.Map;
-import javax.sql.DataSource;
 import org.hibernate.LazyInitializationException;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -18,16 +16,17 @@ import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.Rollback;
 
 /**
  * Integration tests for StorageLocationService that verify lazy loading and
  * transaction boundaries work correctly. These tests catch
  * LazyInitializationException issues that unit tests with mocks cannot detect.
- * 
+ *
  * Following OpenELIS test patterns: extends BaseWebContextSensitiveTest to load
  * full Spring context and hit real database with proper transaction management.
  */
+@Rollback
 public class StorageLocationServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final Logger logger = LoggerFactory.getLogger(StorageLocationServiceIntegrationTest.class);
@@ -35,50 +34,12 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
     @Autowired
     private StorageLocationService storageLocationService;
 
-    @Autowired
-    private DataSource dataSource;
-
-    private JdbcTemplate jdbcTemplate;
-
     @Before
+    @Override
     public void setUp() throws Exception {
         super.setUp();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-        // Clean up storage tables before each test to ensure atomicity
-        // Note: This preserves fixture data loaded by Liquibase (IDs 1-999), but cleans
-        // test-created data
-        cleanStorageTestData();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        // Clean up any test data created during this test
-        cleanStorageTestData();
-    }
-
-    /**
-     * Clean up storage-related test data to ensure tests don't pollute the
-     * database. This method deletes test-created entities but preserves fixture
-     * data. Fixture data has IDs 1-999, so we delete IDs >= 1000 or entities with
-     * TEST- prefix codes.
-     */
-    private void cleanStorageTestData() {
-        try {
-            // Delete test-created data (IDs >= 1000 or codes/names starting with TEST-)
-            // This preserves fixture data loaded by Liquibase (IDs 1-999)
-            // IDs are stored as VARCHAR, so we compare as strings
-            // Also clean up by code patterns used in tests (TEST- prefix)
-            jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000 OR coordinate LIKE 'TEST-%'");
-            jdbcTemplate.execute(
-                    "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
-            jdbcTemplate.execute(
-                    "DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
-        } catch (Exception e) {
-            // Log but don't fail - cleanup is best effort
-            logger.warn("Failed to clean storage test data: " + e.getMessage());
-        }
+        // Load test data from XML dataset
+        executeDataSetWithStateManagement("testdata/storage-location.xml");
     }
 
     /**
@@ -306,10 +267,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      */
     @Test
     public void testInsertDevice_WithShortCode_PersistsCorrectly() {
-        // Given: Get a room from fixtures to use as parent
-        List<StorageRoom> rooms = storageLocationService.getRooms();
-        assertFalse("Should have at least one room in fixtures", rooms.isEmpty());
-        StorageRoom parentRoom = rooms.get(0);
+        // Given: Use room from test data (ID 5000 = TEST-R01)
+        StorageRoom parentRoom = (StorageRoom) storageLocationService.get(5000, StorageRoom.class);
+        assertNotNull("Test room should exist in dataset", parentRoom);
 
         // Given: Create device with shortCode (using test-specific prefix)
         StorageDevice device = new StorageDevice();
@@ -339,10 +299,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      */
     @Test
     public void testInsertDevice_WithoutShortCode_CodeLeq10Chars_ShortCodeCanBeNull() {
-        // Given: Get a room from fixtures to use as parent
-        List<StorageRoom> rooms = storageLocationService.getRooms();
-        assertFalse("Should have at least one room in fixtures", rooms.isEmpty());
-        StorageRoom parentRoom = rooms.get(0);
+        // Given: Use room from test data (ID 5000 = TEST-R01)
+        StorageRoom parentRoom = (StorageRoom) storageLocationService.get(5000, StorageRoom.class);
+        assertNotNull("Test room should exist in dataset", parentRoom);
 
         // Given: Create device without shortCode, code ≤10 chars
         StorageDevice device = new StorageDevice();
@@ -374,10 +333,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      */
     @Test
     public void testInsertDevice_WithoutShortCode_CodeGt10Chars_ThrowsException() {
-        // Given: Get a room from fixtures to use as parent
-        List<StorageRoom> rooms = storageLocationService.getRooms();
-        assertFalse("Should have at least one room in fixtures", rooms.isEmpty());
-        StorageRoom parentRoom = rooms.get(0);
+        // Given: Use room from test data (ID 5000 = TEST-R01)
+        StorageRoom parentRoom = (StorageRoom) storageLocationService.get(5000, StorageRoom.class);
+        assertNotNull("Test room should exist in dataset", parentRoom);
 
         // Given: Create device without shortCode, code > 10 chars
         StorageDevice device = new StorageDevice();
@@ -409,10 +367,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      */
     @Test
     public void testInsertDevice_WithDuplicateShortCode_ThrowsException() {
-        // Given: Get a room from fixtures to use as parent
-        List<StorageRoom> rooms = storageLocationService.getRooms();
-        assertFalse("Should have at least one room in fixtures", rooms.isEmpty());
-        StorageRoom parentRoom = rooms.get(0);
+        // Given: Use room from test data (ID 5000 = TEST-R01)
+        StorageRoom parentRoom = (StorageRoom) storageLocationService.get(5000, StorageRoom.class);
+        assertNotNull("Test room should exist in dataset", parentRoom);
 
         // Given: Create first device with shortCode (using test-specific prefix)
         StorageDevice device1 = new StorageDevice();
@@ -459,10 +416,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      */
     @Test
     public void testUpdateDevice_WithShortCode_UpdatesCorrectly() {
-        // Given: Get a room from fixtures to use as parent
-        List<StorageRoom> rooms = storageLocationService.getRooms();
-        assertFalse("Should have at least one room in fixtures", rooms.isEmpty());
-        StorageRoom parentRoom = rooms.get(0);
+        // Given: Use room from test data (ID 5000 = TEST-R01)
+        StorageRoom parentRoom = (StorageRoom) storageLocationService.get(5000, StorageRoom.class);
+        assertNotNull("Test room should exist in dataset", parentRoom);
 
         // Given: Create device with initial shortCode
         StorageDevice device = new StorageDevice();
@@ -495,10 +451,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      */
     @Test
     public void testInsertShelf_WithShortCode_PersistsCorrectly() {
-        // Given: Get a device from fixtures to use as parent
-        List<StorageDevice> devices = storageLocationService.getAllDevices();
-        assertFalse("Should have at least one device in fixtures", devices.isEmpty());
-        StorageDevice parentDevice = devices.get(0);
+        // Given: Use device from test data (ID 5000 = TEST-F01 freezer)
+        StorageDevice parentDevice = (StorageDevice) storageLocationService.get(5000, StorageDevice.class);
+        assertNotNull("Test device should exist in dataset", parentDevice);
 
         // Given: Create shelf with shortCode (using test-specific prefix)
         StorageShelf shelf = new StorageShelf();
@@ -526,10 +481,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      */
     @Test
     public void testInsertRack_WithShortCode_PersistsCorrectly() {
-        // Given: Get a shelf from fixtures to use as parent
-        List<StorageShelf> shelves = storageLocationService.getAllShelves();
-        assertFalse("Should have at least one shelf in fixtures", shelves.isEmpty());
-        StorageShelf parentShelf = shelves.get(0);
+        // Given: Use shelf from test data (ID 5000 = Shelf A)
+        StorageShelf parentShelf = (StorageShelf) storageLocationService.get(5000, StorageShelf.class);
+        assertNotNull("Test shelf should exist in dataset", parentShelf);
 
         // Given: Create rack with shortCode (using test-specific prefix)
         StorageRack rack = new StorageRack();
@@ -559,10 +513,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      */
     @Test
     public void testUpdateShelf_WithShortCode_UpdatesCorrectly() {
-        // Given: Get a device from fixtures to use as parent
-        List<StorageDevice> devices = storageLocationService.getAllDevices();
-        assertFalse("Should have at least one device in fixtures", devices.isEmpty());
-        StorageDevice parentDevice = devices.get(0);
+        // Given: Use device from test data (ID 5000 = TEST-F01 freezer)
+        StorageDevice parentDevice = (StorageDevice) storageLocationService.get(5000, StorageDevice.class);
+        assertNotNull("Test device should exist in dataset", parentDevice);
 
         // Given: Create shelf with initial shortCode
         StorageShelf shelf = new StorageShelf();
@@ -593,10 +546,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      */
     @Test
     public void testUpdateRack_WithShortCode_UpdatesCorrectly() {
-        // Given: Get a shelf from fixtures to use as parent
-        List<StorageShelf> shelves = storageLocationService.getAllShelves();
-        assertFalse("Should have at least one shelf in fixtures", shelves.isEmpty());
-        StorageShelf parentShelf = shelves.get(0);
+        // Given: Use shelf from test data (ID 5000 = Shelf A)
+        StorageShelf parentShelf = (StorageShelf) storageLocationService.get(5000, StorageShelf.class);
+        assertNotNull("Test shelf should exist in dataset", parentShelf);
 
         // Given: Create rack with initial shortCode
         StorageRack rack = new StorageRack();

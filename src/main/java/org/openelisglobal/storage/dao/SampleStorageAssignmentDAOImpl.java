@@ -25,24 +25,25 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
     @Override
     @Transactional(readOnly = true)
     public SampleStorageAssignment findBySampleItemId(String sampleItemId) {
+        int parsedId;
         try {
-            // Note: SampleItem.id uses LIMSStringNumberUserType (String in Java, numeric in
-            // DB)
-            // When querying through relationships, we must parse String to Integer for the
-            // parameter
-            // This matches the pattern in SampleItemDAOImpl.getSampleItemsBySampleId()
+            parsedId = Integer.parseInt(sampleItemId);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid SampleItem ID format (must be numeric): {}", sampleItemId);
+            return null;
+        }
+
+        try {
             String hql = "FROM SampleStorageAssignment ssa WHERE ssa.sampleItem.id = :sampleItemId";
             Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     SampleStorageAssignment.class);
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", parsedId);
             query.setMaxResults(1);
+
             List<SampleStorageAssignment> results = query.list();
-            return results.isEmpty() ? null : results.get(0);
-        } catch (NumberFormatException e) {
-            logger.error("Invalid SampleItem ID format (must be numeric): " + sampleItemId, e);
-            return null;
+            return results.isEmpty() ? null : results.getFirst();
         } catch (Exception e) {
-            logger.error("Error finding SampleStorageAssignment by SampleItem ID: " + sampleItemId, e);
+            logger.error("Error finding SampleStorageAssignment by SampleItem ID: {}", sampleItemId, e);
             throw new LIMSRuntimeException("Error finding SampleStorageAssignment by SampleItem ID: " + sampleItemId,
                     e);
         }

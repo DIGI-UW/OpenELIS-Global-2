@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -194,10 +195,12 @@ public class StorageDevice extends BaseObject<Integer> {
     }
 
     // Helper methods for FHIR transform
+    @JsonIgnore
     public String getFhirUuidAsString() {
         return fhirUuid != null ? fhirUuid.toString() : null;
     }
 
+    @JsonIgnore
     public String getTypeAsString() {
         return type; // type is already a String
     }

@@ -26,6 +26,10 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  TableToolbar,
+  TableToolbarContent,
+  TableToolbarSearch,
+  Pagination,
 } from "@carbon/react";
 import "./Reports.scss";
 import {
@@ -36,13 +40,7 @@ import {
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 
-const REPORT_TYPES = [
-  "Daily Log",
-  "Weekly Log",
-  "Monthly Log",
-  "Excursion Summary",
-  "Audit Trail",
-];
+const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
 
 const EXPORT_FORMATS = ["PDF"]; // CSV, XML, and Excel to be implemented in Phase 2
 
@@ -50,8 +48,6 @@ const REPORT_TYPE_MAP = {
   "Daily Log": "freezerDailyLogReport",
   "Weekly Log": "freezerDailyLogReport",
   "Monthly Log": "freezerDailyLogReport",
-  "Excursion Summary": "freezerExcursionReport",
-  "Audit Trail": "freezerAuditTrailReport",
 };
 
 const EXCURSION_HEADERS = [
@@ -66,12 +62,11 @@ const EXCURSION_HEADERS = [
 ];
 
 const AUDIT_HEADERS = [
-  { key: "eventId", header: "Event ID" },
   { key: "timestamp", header: "Timestamp" },
-  { key: "freezer", header: "Freezer" },
+  { key: "performedBy", header: "User" },
   { key: "action", header: "Action" },
-  { key: "performedBy", header: "Performed By" },
-  { key: "comment", header: "Notes" },
+  { key: "comment", header: "Details" },
+  { key: "freezer", header: "Freezer ID" },
 ];
 
 const formatDateTime = (value) => {
@@ -146,23 +141,40 @@ const formatDuration = (seconds) => {
   return `${minutes} minutes`;
 };
 
-const formatActionLabel = (value) =>
-  value
-    ? value
-        .toLowerCase()
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (match) => match.toUpperCase())
-    : "";
+const formatActionLabel = (value) => {
+  const actionLabels = {
+    ALERT_ACKNOWLEDGED: "Alert acknowledged",
+    CRITICAL_ALERT_RESOLVED: "Critical alert resolved",
+    CORRECTIVE_ACTION_LOGGED: "Corrective action logged",
+    THRESHOLD_UPDATED: "Threshold updated",
+    FREEZER_RENAMED: "Freezer renamed",
+    FREEZER_STATUS_CHANGED: "Status changed",
+    CONFIGURATION_UPDATED: "Configuration updated",
+    ALERT: "Alert triggered",
+    CORRECTIVE_ACTION: "Corrective action",
+  };
+  return (
+    actionLabels[value] ||
+    (value
+      ? value
+          .toLowerCase()
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (match) => match.toUpperCase())
+      : "")
+  );
+};
 
 const mapAuditEvent = (event) => ({
-  id: `ACTION-${
-    event.id ?? Math.random().toString(36).substring(2, 10).toUpperCase()
-  }`,
+  id:
+    event.id ??
+    `ACTION-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
   freezerName: event.freezerName ?? `Freezer ${event.freezerId ?? ""}`.trim(),
+  freezerId: event.freezerId ?? "—",
   actionType: formatActionLabel(event.actionType),
   performedBy: event.performedBy ?? "System",
-  timestamp: formatDateTime(event.performedAt),
+  timestamp: event.performedAt || "—", // Backend already formats the date
   comment: event.comment || event.details || "—",
+  details: event.details || "",
 });
 
 function Reports({ devices = [] }) {
@@ -229,6 +241,11 @@ function Reports({ devices = [] }) {
 
   const [pendingDownload, setPendingDownload] = useState(null);
 
+  // Audit trail pagination and search
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize, setAuditPageSize] = useState(5);
+  const [auditSearchTerm, setAuditSearchTerm] = useState("");
+
   const excursionRows = useMemo(
     () =>
       excursions.map((item) => ({
@@ -250,14 +267,40 @@ function Reports({ devices = [] }) {
       auditTrail.map((event) => ({
         id: event.id,
         timestamp: event.timestamp,
-        freezer: event.freezerName,
-        action: event.actionType,
         performedBy: event.performedBy,
+        action: event.actionType,
         comment: event.comment,
+        freezer: event.freezerId || "—",
+        freezerName: event.freezerName,
         source: event,
       })),
     [auditTrail],
   );
+
+  // Filtered audit rows based on search term
+  const filteredAuditRows = useMemo(() => {
+    if (!auditSearchTerm.trim()) {
+      return auditRows;
+    }
+    const searchLower = auditSearchTerm.toLowerCase();
+    return auditRows.filter((row) => {
+      return (
+        row.timestamp?.toLowerCase().includes(searchLower) ||
+        row.performedBy?.toLowerCase().includes(searchLower) ||
+        row.action?.toLowerCase().includes(searchLower) ||
+        row.comment?.toLowerCase().includes(searchLower) ||
+        row.freezer?.toString().toLowerCase().includes(searchLower) ||
+        row.freezerName?.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [auditRows, auditSearchTerm]);
+
+  // Paginated audit rows
+  const paginatedAuditRows = useMemo(() => {
+    const startIndex = (auditPage - 1) * auditPageSize;
+    const endIndex = startIndex + auditPageSize;
+    return filteredAuditRows.slice(startIndex, endIndex);
+  }, [filteredAuditRows, auditPage, auditPageSize]);
 
   const [reportType, setReportType] = useState("Daily Log");
   const [freezer, setFreezer] = useState("All Freezers");
@@ -309,15 +352,11 @@ function Reports({ devices = [] }) {
   }, [rangeParams, selectedFreezerId, notify, normalizeArray]);
 
   const loadAuditTrail = useCallback(async () => {
-    if (!rangeParams) {
-      return;
-    }
     setAuditLoading(true);
     try {
+      // Fetch all audit trail data (no date filtering on backend)
       const data = await fetchAuditTrail({
         freezerId: selectedFreezerId,
-        start: rangeParams.start,
-        end: rangeParams.end,
       });
       const items = normalizeArray(data);
       setAuditTrail(items.map((event) => mapAuditEvent(event)));
@@ -331,15 +370,19 @@ function Reports({ devices = [] }) {
     } finally {
       setAuditLoading(false);
     }
-  }, [rangeParams, selectedFreezerId, notify, normalizeArray]);
+  }, [selectedFreezerId, notify, normalizeArray]);
 
   useEffect(() => {
     if (!rangeParams) {
       return;
     }
     loadExcursions();
+  }, [rangeParams, loadExcursions]);
+
+  // Load audit trail once when freezer changes (no date filtering)
+  useEffect(() => {
     loadAuditTrail();
-  }, [rangeParams, loadExcursions, loadAuditTrail]);
+  }, [loadAuditTrail]);
 
   const handleDateChange = (range) => {
     if (!Array.isArray(range) || range.length < 2) {
@@ -651,15 +694,29 @@ function Reports({ devices = [] }) {
               </TabPanel>
               <TabPanel>
                 <h4 className="exc-title">Audit Trail</h4>
-                <DataTable rows={auditRows} headers={AUDIT_HEADERS}>
+                <DataTable rows={paginatedAuditRows} headers={AUDIT_HEADERS}>
                   {({
                     rows,
                     headers,
                     getRowProps,
                     getHeaderProps,
                     getTableProps,
+                    getToolbarProps,
                   }) => (
                     <TableContainer>
+                      <TableToolbar {...getToolbarProps()}>
+                        <TableToolbarContent>
+                          <TableToolbarSearch
+                            persistent
+                            placeholder="Search audit trail..."
+                            value={auditSearchTerm}
+                            onChange={(e) => {
+                              setAuditSearchTerm(e.target.value);
+                              setAuditPage(1); // Reset to first page on search
+                            }}
+                          />
+                        </TableToolbarContent>
+                      </TableToolbar>
                       <Table {...getTableProps()}>
                         <TableHead>
                           <TableRow>
@@ -682,31 +739,41 @@ function Reports({ devices = [] }) {
                               >
                                 {auditLoading
                                   ? "Loading audit entries…"
-                                  : "No audit activity for the selected filters."}
+                                  : auditSearchTerm
+                                    ? "No audit entries match your search."
+                                    : "No audit activity for the selected filters."}
                               </TableCell>
                             </TableRow>
                           )}
-                          {rows.map((row) => {
-                            const event = row.source;
-                            if (!event) {
-                              return null;
-                            }
-                            return (
-                              <TableRow key={row.id} {...getRowProps({ row })}>
-                                <TableCell>{event.id}</TableCell>
-                                <TableCell>{event.timestamp}</TableCell>
-                                <TableCell>{event.freezerName}</TableCell>
-                                <TableCell>{event.actionType}</TableCell>
-                                <TableCell>{event.performedBy}</TableCell>
-                                <TableCell>{event.comment}</TableCell>
-                              </TableRow>
-                            );
-                          })}
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
                         </TableBody>
                       </Table>
                     </TableContainer>
                   )}
                 </DataTable>
+                {filteredAuditRows.length > 0 && (
+                  <Pagination
+                    backwardText="Previous page"
+                    forwardText="Next page"
+                    itemsPerPageText="Items per page:"
+                    page={auditPage}
+                    pageSize={auditPageSize}
+                    pageSizes={[5, 10, 20, 50]}
+                    totalItems={filteredAuditRows.length}
+                    onChange={({ page, pageSize }) => {
+                      setAuditPage(page);
+                      setAuditPageSize(pageSize);
+                    }}
+                  />
+                )}
               </TabPanel>
             </TabPanels>
           </Tabs>

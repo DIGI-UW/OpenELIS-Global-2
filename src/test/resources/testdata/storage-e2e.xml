@@ -14,7 +14,75 @@
     (Technical Acceptance ANALYSIS status) - canceled_status_id: References status_of_sample
     (Test Canceled ANALYSIS status) -->
 <dataset>
-    <!-- Reference Data: Localization entries for type_of_sample names -->
+    <storage_room id="1"
+        fhir_uuid="00000000-0000-0000-0000-000000000001"
+        name="Main Laboratory" code="MAIN"
+        description="Primary laboratory storage facility" active="true"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_room id="2"
+        fhir_uuid="00000000-0000-0000-0000-000000000002"
+        name="Secondary Laboratory" code="SEC"
+        description="Secondary laboratory storage facility" active="true"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_room id="3"
+        fhir_uuid="00000000-0000-0000-0000-000000000003" name="Inactive Room"
+        code="INACTIVE" description="Inactive storage room for testing"
+        active="false" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="10"
+        fhir_uuid="00000000-0000-0000-0000-00000000000a" name="Freezer Unit 1"
+        code="FRZ01" type="freezer" temperature_setting="-80.0"
+        capacity_limit="500" active="true" parent_room_id="1" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="11"
+        fhir_uuid="00000000-0000-0000-0000-00000000000b"
+        name="Refrigerator Unit 1" code="REF01" type="refrigerator"
+        temperature_setting="4.0" capacity_limit="200" active="true"
+        parent_room_id="1" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="20"
+        fhir_uuid="00000000-0000-0000-0000-000000000014" label="Shelf-A"
+        code="SHA" capacity_limit="100" active="true" parent_device_id="10"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="21"
+        fhir_uuid="00000000-0000-0000-0000-000000000015" label="Shelf-B"
+        code="SHB" capacity_limit="100" active="true" parent_device_id="10"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="30"
+        fhir_uuid="00000000-0000-0000-0000-00000000001e" label="Rack R1"
+        code="RR1" rows="8" columns="12" position_schema_hint="A1"
+        active="true" parent_shelf_id="20" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="31"
+        fhir_uuid="00000000-0000-0000-0000-00000000001f" label="Rack R2"
+        code="RR2" rows="10" columns="10" position_schema_hint="1-1"
+        active="true" parent_shelf_id="20" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_position id="100"
+        fhir_uuid="00000000-0000-0000-0000-000000000064" coordinate="A1"
+        row_index="1" column_index="1" parent_device_id="10"
+        parent_shelf_id="20" parent_rack_id="30" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_position id="101"
+        fhir_uuid="00000000-0000-0000-0000-000000000065" coordinate="A2"
+        row_index="1" column_index="2" parent_device_id="10"
+        parent_shelf_id="20" parent_rack_id="30" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_position id="102"
+        fhir_uuid="00000000-0000-0000-0000-000000000066" coordinate="A3"
+        row_index="1" column_index="3" parent_device_id="10"
+        parent_shelf_id="20" parent_rack_id="30" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
     <localization id="1"
         description="Serum Sample Localization" english="Serum" french="Sérum"
         lastupdated="2025-01-01 12:00:00" />

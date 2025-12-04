@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Grid, Column, Dropdown, Button } from "@carbon/react";
 import { ZoomIn, ZoomOut, Renew, Download } from "@carbon/icons-react";
-// If you don't have this yet, add @carbon/charts-react + @carbon/charts
 import { LineChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
 
@@ -56,6 +55,7 @@ export default function HistoricalTrends({
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   const freezerOptions = useMemo(() => {
     const uniqueDevices = devices.filter(
@@ -138,7 +138,6 @@ export default function HistoricalTrends({
     loadReadings();
   }, [loadReadings]);
 
-  // Handle initial selected freezer from parent (e.g., when clicking "Show History")
   useEffect(() => {
     if (
       initialSelectedFreezerId &&
@@ -163,7 +162,6 @@ export default function HistoricalTrends({
     }
   }, [devices, selectedFreezer, freezerNameToIdMap]);
 
-  // Simple stats from the currently selected series
   const stats = useMemo(() => {
     if (!chartData.length) {
       return { avg: "-", min: "-", max: "-", count: 0 };
@@ -181,32 +179,74 @@ export default function HistoricalTrends({
     };
   }, [chartData]);
 
-  const chartOptions = {
-    title: "",
-    axes: {
-      bottom: {
-        title: "",
-        mapsTo: "key",
-        scaleType: "labels",
+  const chartOptions = useMemo(
+    () => ({
+      title: "",
+      axes: {
+        bottom: {
+          title: "",
+          mapsTo: "key",
+          scaleType: "labels",
+        },
+        left: {
+          title: "Temperature (°C)",
+          mapsTo: "value",
+          scaleType: "linear",
+        },
       },
-      left: {
-        title: "Temperature (°C)",
-        mapsTo: "value",
-        scaleType: "linear",
+      legend: {
+        position: "bottom",
       },
-    },
-    legend: {
-      position: "bottom",
-    },
-    height: "400px",
-    tooltip: {
-      showTotal: false,
-    },
-  };
+      height: `${400 * zoomLevel}px`,
+      tooltip: {
+        showTotal: false,
+      },
+    }),
+    [zoomLevel],
+  );
 
-  const handleExportCsv = () => {
-    // TODO: Implement CSV export functionality
-  };
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel((prev) => Math.min(prev + 0.25, 3));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel((prev) => Math.max(prev - 0.25, 0.25));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setZoomLevel(1);
+    loadReadings();
+  }, [loadReadings]);
+
+  const handleExportCsv = useCallback(() => {
+    if (!chartData.length) {
+      return;
+    }
+
+    // Create CSV content
+    const headers = ["Freezer", "Timestamp", "Temperature (°C)"];
+    const rows = chartData.map((item) => [item.group, item.key, item.value]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+
+    const timestamp = new Date().toISOString().split("T")[0];
+    const filename = `freezer-temperature-data-${timestamp}.csv`;
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [chartData]);
 
   return (
     <div className="hist-trends-page">
@@ -244,17 +284,29 @@ export default function HistoricalTrends({
         </Column>
 
         <Column lg={6} md={5} sm={4} className="hist-toolbar">
-          <Button kind="ghost" size="sm" renderIcon={ZoomIn}>
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={ZoomIn}
+            onClick={handleZoomIn}
+            disabled={zoomLevel >= 3}
+          >
             Zoom In
           </Button>
-          <Button kind="ghost" size="sm" renderIcon={ZoomOut}>
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={ZoomOut}
+            onClick={handleZoomOut}
+            disabled={zoomLevel <= 0.25}
+          >
             Zoom Out
           </Button>
           <Button
             kind="ghost"
             size="sm"
             renderIcon={Renew}
-            onClick={loadReadings}
+            onClick={handleReset}
           >
             Reset
           </Button>
@@ -263,6 +315,7 @@ export default function HistoricalTrends({
             size="sm"
             renderIcon={Download}
             onClick={handleExportCsv}
+            disabled={!chartData.length}
           >
             Export CSV
           </Button>

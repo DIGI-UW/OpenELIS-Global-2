@@ -97,7 +97,7 @@ function DeviceManagement({ intl }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddRoomModalOpen, setIsAddRoomModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -544,7 +544,7 @@ function DeviceManagement({ intl }) {
               itemsPerPageText="Items per page:"
               page={currentPage}
               pageSize={pageSize}
-              pageSizes={[10, 20, 30, 40, 50]}
+              pageSizes={[5, 10, 20, 30, 40, 50]}
               totalItems={filteredDevices.length}
               onChange={({ page, pageSize }) => {
                 setCurrentPage(page);
