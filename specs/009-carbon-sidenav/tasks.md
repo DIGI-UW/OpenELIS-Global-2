@@ -57,7 +57,7 @@ persistence
 
 ### Branch Setup (MANDATORY - First Task)
 
-- [ ] T001 [M1] Verify on milestone branch: `feat/OGC-009-sidenav/m1-core`
+- [x] T001 [M1] Verify on milestone branch: `feat/OGC-009-sidenav/m1-core` ✅
 
 ### Tests for Milestone 1 (MANDATORY - TDD Enforcement)
 
@@ -71,9 +71,9 @@ persistence
 > Reference: [Jest Best Practices](../../.specify/guides/jest-best-practices.md)
 > Template: `.specify/templates/testing/JestComponent.test.jsx.template`
 
-- [ ] T002 [P] [M1] **[RED]** Create test file for useSideNavPreference hook in
+- [x] T002 [P] [M1] **[RED]** Create test file for useSideNavPreference hook in
       `frontend/src/components/layout/useSideNavPreference.test.js` → Run
-      `npm test`, verify FAILS before T008
+      `npm test`, verify FAILS before T008 ✅ VERIFIED FAILS
 
   - Test: returns defaultExpanded when no localStorage value
   - Test: returns stored value when localStorage has preference
@@ -81,9 +81,9 @@ persistence
   - Test: setExpanded() sets state and persists to localStorage
   - Test: handles localStorage unavailable gracefully
 
-- [ ] T003 [P] [M1] **[RED]** Create test file for TwoModeLayout component in
+- [x] T003 [P] [M1] **[RED]** Create test file for TwoModeLayout component in
       `frontend/src/components/layout/TwoModeLayout.test.js` → Run `npm test`,
-      verify FAILS before T009
+      verify FAILS before T009 ✅ VERIFIED FAILS
   - Test: renders with sidenav collapsed by default
   - Test: renders with sidenav expanded when defaultExpanded={true}
   - Test: toggle button changes sidenav state
@@ -97,26 +97,26 @@ persistence
 > implementation task, run related tests and verify they now PASS (Green
 > phase).**
 
-- [ ] T004 [M1] Create CSS file for TwoModeLayout in
-      `frontend/src/components/layout/TwoModeLayout.css`
+- [x] T004 [M1] Create CSS file for TwoModeLayout in
+      `frontend/src/components/layout/TwoModeLayout.css` ✅ CREATED
 
   - Add `.content-expanded` class (margin-left: 16rem)
   - Add `.content-collapsed` class (margin-left: 3rem)
   - Add Carbon transition timing (0.11s cubic-bezier)
   - Override `.cds--content` default margins
 
-- [ ] T005 [P] [M1] **[GREEN]** Create useSideNavPreference custom hook in
+- [x] T005 [P] [M1] **[GREEN]** Create useSideNavPreference custom hook in
       `frontend/src/components/layout/useSideNavPreference.js` → Run T002 -
-      verify it PASSES
+      verify it PASSES ✅ 15/15 tests pass
 
   - Implement useState with localStorage initialization
   - Implement toggle() function with persistence
   - Implement setExpanded() function with persistence
   - Handle localStorage unavailable (try/catch with fallback)
 
-- [ ] T006 [P] [M1] **[GREEN]** Create TwoModeLayout component in
+- [x] T006 [P] [M1] **[GREEN]** Create TwoModeLayout component in
       `frontend/src/components/layout/TwoModeLayout.js` → Run T003 - verify it
-      PASSES
+      PASSES ✅ 11/11 tests pass
 
   - Import Carbon components (Header, SideNav, SideNavItems, Content, Theme)
   - Use useSideNavPreference hook for state management
@@ -125,16 +125,16 @@ persistence
   - Render content wrapper with dynamic margin class
   - Accept children prop and render in Content
 
-- [ ] T007 [M1] Add export for TwoModeLayout in
-      `frontend/src/components/layout/index.js` (or create if needed)
+- [x] T007 [M1] Add export for TwoModeLayout in
+      `frontend/src/components/layout/index.js` (or create if needed) ✅ CREATED
 
 ### Milestone 1 Completion
 
-- [ ] T008 [M1] Run all M1 tests:
-      `cd frontend && npm test -- --testPathPattern="(useSideNavPreference|TwoModeLayout)"`
+- [x] T008 [M1] Run all M1 tests:
+      `cd frontend && npm test -- --testPathPattern="(useSideNavPreference|TwoModeLayout)"` ✅ 26/26 tests pass
 - [ ] T009 [M1] Manual verification: Toggle works, preference persists across
-      refresh
-- [ ] T010 [M1] Format code: `cd frontend && npm run format`
+      refresh (requires running app - deferred to PR review)
+- [x] T010 [M1] Format code: `cd frontend && npm run format` ✅
 - [ ] T011 [M1] Create PR for M1: `feat/OGC-009-sidenav/m1-core` → `develop`
 
 **Checkpoint**: Milestone 1 PR ready for review. Jest tests passing, toggle and

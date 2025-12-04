@@ -1,0 +1,62 @@
+/**
+ * TwoModeLayout Styles
+ *
+ * CSS for the two-mode sidenav layout component that:
+ * - Pushes content when sidenav is expanded (not overlay)
+ * - Uses Carbon Design System transition timing
+ * - Supports responsive behavior at Carbon lg breakpoint (1056px)
+ *
+ * @see spec.md FR-003: CSS transitions (110ms cubic-bezier timing)
+ * @see spec.md FR-007: Content pushing (not overlay) with isFixedNav
+ * @see research.md Appendix A2: CSS Styles for Content Pushing
+ */
+
+/* Content area when sidenav is expanded (256px / 16rem) */
+.content-expanded {
+  margin-left: 16rem !important; /* Width of expanded SideNav */
+  width: calc(100% - 16rem) !important;
+  transition:
+    margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9),
+    width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
+}
+
+/* Content area when sidenav is collapsed (48px / 3rem rail) */
+.content-collapsed {
+  margin-left: 3rem !important; /* Width of collapsed SideNav rail */
+  width: calc(100% - 3rem) !important;
+  transition:
+    margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9),
+    width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
+}
+
+/* Override Carbon Content's default margin when inside our wrapper */
+.content-expanded .cds--content,
+.content-collapsed .cds--content {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+
+/**
+ * Responsive adjustments - below Carbon lg breakpoint (1056px)
+ *
+ * On smaller screens:
+ * - Sidenav overlays content rather than pushing it
+ * - Content takes full width regardless of sidenav state
+ *
+ * @see spec.md US6: Responsive Behavior on Mobile (P3)
+ * @see research.md R6: Responsive Behavior
+ *
+ * Note: This responsive behavior will be fully implemented in M3.
+ * For M1, we establish the base styles; M3 will add the overlay behavior.
+ */
+@media (max-width: 1056px) {
+  .content-expanded {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .content-collapsed {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}
