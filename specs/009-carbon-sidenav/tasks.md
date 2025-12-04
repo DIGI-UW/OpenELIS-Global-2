@@ -131,11 +131,13 @@ persistence
 ### Milestone 1 Completion
 
 - [x] T008 [M1] Run all M1 tests:
-      `cd frontend && npm test -- --testPathPattern="(useSideNavPreference|TwoModeLayout)"` ✅ 26/26 tests pass
+      `cd frontend && npm test -- --testPathPattern="(useSideNavPreference|TwoModeLayout)"`
+      ✅ 26/26 tests pass
 - [ ] T009 [M1] Manual verification: Toggle works, preference persists across
       refresh (requires running app - deferred to PR review)
 - [x] T010 [M1] Format code: `cd frontend && npm run format` ✅
-- [x] T011 [M1] Create PR for M1: `feat/OGC-009-sidenav/m1-core` → `develop` ✅ PR #2380
+- [x] T011 [M1] Create PR for M1: `feat/OGC-009-sidenav/m1-core` → `develop` ✅
+      PR #2380
 
 **Checkpoint**: Milestone 1 PR ready for review. Jest tests passing, toggle and
 persistence working.
