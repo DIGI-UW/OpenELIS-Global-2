@@ -26,6 +26,17 @@ jest.mock("./useSideNavPreference", () => {
   };
 });
 
+// Mock API utility to prevent network calls during tests
+jest.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: jest.fn((url, callback) => {
+    // Provide empty menu structure by default
+    if (typeof callback === "function") {
+      callback({ menu: [] });
+    }
+  }),
+  putToOpenElisServer: jest.fn(),
+}));
+
 // Import after mock setup
 import TwoModeLayout from "./TwoModeLayout";
 import { useSideNavPreference } from "./useSideNavPreference";
@@ -50,6 +61,8 @@ const renderWithProviders = (ui, options = {}) => {
     "menu.analyzers.qc": "Quality Control",
     "menu.samples": "Samples",
     "menu.samples.search": "Sample Search",
+    // Header messages
+    "header.label.version": "Version",
   };
   return render(
     <BrowserRouter>
@@ -710,7 +723,8 @@ describe("TwoModeLayout", () => {
       );
 
       // Sidenav toggle should still work
-      const toggleButton = screen.getByRole("button", { name: /menu/i });
+      const toggleButton = document.querySelector(".cds--header__menu-toggle");
+      expect(toggleButton).toBeTruthy();
       fireEvent.click(toggleButton);
       expect(mockToggle).toHaveBeenCalledTimes(1);
 

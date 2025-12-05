@@ -4,15 +4,17 @@ import React, {
   useMemo,
   useRef,
   useCallback,
+  useContext,
 } from "react";
 import PropTypes from "prop-types";
-import { useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import {
   Header,
   HeaderContainer,
   HeaderMenuButton,
   HeaderName,
+  HeaderGlobalBar,
   SideNav,
   SideNavItems,
   SideNavMenu,
@@ -23,6 +25,9 @@ import {
 import { useSideNavPreference } from "./useSideNavPreference";
 import { useMenuAutoExpand } from "./useMenuAutoExpand";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { ConfigurationContext } from "./Layout";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import "../Style.css";
 import "./TwoModeLayout.css";
 
 /**
@@ -63,10 +68,26 @@ function TwoModeLayout({
   defaultMode,
   storageKeyPrefix = "default",
   menus: menusProp, // For testing - allows injecting menu data
+  headerActions,
 }) {
   const intl = useIntl();
   const location = useLocation();
   const sideNavRef = useRef(null);
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
+  const { userSessionDetails } = useContext(UserSessionDetailsContext) || {};
+
+  /**
+   * Logo component matching legacy Header.js
+   */
+  const logo = () => (
+    <picture>
+      <img
+        className="logo"
+        src={`../images/openelis_logo.png`}
+        alt="logo"
+      />
+    </picture>
+  );
 
   const normalizedDefaultMode = useMemo(() => {
     if (typeof defaultExpanded === "boolean") {
@@ -237,50 +258,63 @@ function TwoModeLayout({
   };
 
   return (
-    <HeaderContainer
-      render={({ isSideNavExpanded, onClickSideNavExpand }) => (
-        <Theme theme="g100">
-          {/* Header with menu toggle button */}
-          <Header aria-label="OpenELIS Global">
-            <HeaderMenuButton
-              aria-label={
-                mode === SIDENAV_MODES.CLOSE ? "Open menu" : "Cycle menu mode"
-              }
-              onClick={toggle}
-              isActive={isExpanded}
-              aria-expanded={isExpanded}
-            />
-            <HeaderName href="/" prefix="">
-              OpenELIS Global
-            </HeaderName>
-          </Header>
-
-          {/* Fixed sidenav that pushes content */}
-          <SideNav
-            aria-label="Side navigation"
-            isFixedNav={true}
-            isChildOfHeader={true}
-            expanded={isExpanded}
-            ref={sideNavRef}
-          >
-            <SideNavItems>
-              {menus.menu && menus.menu.length > 0 ? (
-                menus.menu.map((menuItem, index) =>
-                  generateMenuItems(menuItem, index, 0, `menu[${index}]`),
-                )
-              ) : (
-                <></>
-              )}
-            </SideNavItems>
-          </SideNav>
-
-          {/* Content wrapper with dynamic margin based on sidenav mode */}
-          <div data-testid="content-wrapper" className={contentClass}>
-            <Content>{children}</Content>
-          </div>
-        </Theme>
-      )}
-    />
+    <div className="container">
+      <Theme>
+        {/* Theme wrapper uses custom blue theme from index.scss */}
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <HeaderContainer
+            render={({ isSideNavExpanded, onClickSideNavExpand }) => (
+              <Header id="mainHeader" className="mainHeader" aria-label="OpenELIS Global">
+                {userSessionDetails?.authenticated && (
+                  <HeaderMenuButton
+                    data-cy="menuButton"
+                    aria-label={isSideNavExpanded ? "Close menu" : "Open menu"}
+                    onClick={onClickSideNavExpand}
+                    isActive={isSideNavExpanded}
+                    isCollapsible={true}
+                  />
+                )}
+                <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
+                  <span id="header-logo">{logo()}</span>
+                  <div className="banner">
+                    <h5>{configurationProperties?.BANNER_TEXT}</h5>
+                    <p>
+                      <FormattedMessage id="header.label.version" /> &nbsp;{" "}
+                      {configurationProperties?.releaseNumber}
+                    </p>
+                  </div>
+                </HeaderName>
+                <HeaderGlobalBar>
+                  {headerActions}
+                </HeaderGlobalBar>
+                {/* SideNav only shown when authenticated - matches develop Header.js */}
+                {userSessionDetails?.authenticated && (
+                  <SideNav
+                    aria-label="Side navigation"
+                    expanded={isSideNavExpanded}
+                    isPersistent={false}
+                  >
+                    <SideNavItems>
+                      {menus.menu && menus.menu.length > 0 ? (
+                        menus.menu.map((menuItem, index) =>
+                          generateMenuItems(menuItem, index, 0, `menu[${index}]`),
+                        )
+                      ) : (
+                        <></>
+                      )}
+                    </SideNavItems>
+                  </SideNav>
+                )}
+              </Header>
+            )}
+          />
+        </div>
+      </Theme>
+      {/* Content area - white theme for proper form styling */}
+      <Theme theme="white">
+        <Content data-testid="content-wrapper">{children}</Content>
+      </Theme>
+    </div>
   );
 }
 
@@ -318,6 +352,12 @@ TwoModeLayout.propTypes = {
   menus: PropTypes.shape({
     menu: PropTypes.arrayOf(PropTypes.object),
   }),
+
+  /**
+   * Header global actions (notifications, user menu, search, language, help)
+   * Rendered inside Carbon HeaderGlobalBar
+   */
+  headerActions: PropTypes.node,
 };
 
 TwoModeLayout.defaultProps = {
@@ -326,6 +366,7 @@ TwoModeLayout.defaultProps = {
   defaultMode: undefined,
   storageKeyPrefix: "default",
   menus: null,
+  headerActions: null,
 };
 
 export default TwoModeLayout;

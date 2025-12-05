@@ -33,30 +33,32 @@ header/layout functionality:
 
 ## Background & Analysis
 
-This feature refactors the existing `Layout.js` and `Header.js` components to
-follow Carbon design best practices while **preserving all existing
-functionality**. The refactor improves the sidenav behavior without removing
-any header actions.
+This feature improves the sidenav behavior while **preserving all existing
+functionality**. The current sidenav only supports overlay mode and loses state
+on navigation. Users need a persistent "locked" mode for complex workflows.
 
-### Current Implementation Issues (Header.js)
+### Current Limitations
 
-1. **Uses `HeaderContainer` render prop pattern** - This creates an inverted
-   control flow where Carbon manages sidenav state
-2. **SideNav uses `isPersistent={false}`** - This makes the sidenav overlay
-   content rather than push it
-3. **No state persistence** - Sidenav state is lost on navigation
-4. **Content positioned as child of Header** - Breaks Carbon's expected layout
-   structure
+1. **Single mode only** - Sidenav can only overlay content, not push it
+2. **No state persistence** - Sidenav state is lost on navigation/refresh
+3. **No auto-expansion** - Users must manually expand menus to find current page
+4. **No lock mode** - Users cannot keep sidenav persistently open while working
 
-### Refactor Goals
+### What This Feature Adds
 
-1. **Keep all header actions** - User menu, notifications, search, language,
-   logout remain intact
-2. **Improve sidenav control** - Tri-state (show/lock/close) with persistence
-3. **Proper Carbon structure** - `isFixedNav={true}` + content push in LOCK mode
-4. **Active styling** - Left-border indicator matching existing visual language
-5. **Auto-expansion of active menu branch** - Highlights current location in
-   navigation tree
+1. **Tri-state sidenav** - Three modes: SHOW (overlay), LOCK (push content),
+   CLOSE (collapsed rail)
+2. **Preference persistence** - User's preferred mode saved to localStorage
+3. **Auto-expansion** - Menu automatically expands to show current page location
+4. **Content push** - In LOCK mode, content shifts to accommodate sidenav
+
+### What This Feature Preserves (Non-Negotiable)
+
+All existing header functionality MUST continue to work identically:
+- User menu, notifications, search, language selector, logout
+- All panel interactions and state management
+- Configuration and notification contexts
+- Menu items and navigation behavior
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -95,8 +97,13 @@ accordingly.
 ## Clarifications
 
 ### Session 2025-12-05
-- Q: Should the new TwoModeLayout replace the legacy Layout/Header across all React pages (global shell), with storage (and multi-tab) pages defaulting to LOCK mode, while preserving per-page overrides and user preferences? → A: Yes. Apply TwoModeLayout globally; set storage (and similar multi-tab) pages to defaultMode=LOCK; user preference continues to override page defaults.
-- Q: Should this refactor preserve ALL existing header functionality (notifications, user menu, language selector, search, logout)? → A: Yes, absolutely. This is a refactor to improve sidenav behavior and Carbon compliance, NOT a rewrite. Zero loss of functionality is acceptable. All header actions must remain intact.
+- Q: Should the sidenav behavior apply globally to all authenticated routes?
+  → A: Yes. All authenticated pages use the enhanced sidenav. Storage and
+  multi-tab pages default to LOCK mode; user preference overrides page defaults.
+- Q: Should this refactor preserve ALL existing header functionality?
+  → A: Yes. This is a refactor, NOT a rewrite. Zero loss of functionality.
+  All header actions (notifications, user menu, language, search, logout)
+  must remain intact.
 
 ---
 
@@ -250,9 +257,9 @@ content rather than pushing it.
 - **FR-006**: System MUST allow pages to configure their default sidenav mode
   via props (defaultMode: 'show' | 'lock' | 'close').
 - **FR-007**: System MUST properly push content when sidenav is in LOCK mode
-  (not overlay) using `isFixedNav` + margin.
-- **FR-008**: System MUST render sidenav as a sibling to Content component (not
-  nested within Header) for proper Carbon layout structure.
+  (content shifts right, not overlaid).
+- **FR-008**: System MUST use proper Carbon layout structure for sidenav and
+  content positioning.
 - **FR-009**: System MUST support navigation items with both action URLs and
   child menus (dual-action items).
 - **FR-010**: System MUST highlight the currently active navigation item with a
@@ -282,18 +289,17 @@ content rather than pushing it.
 
 ### Key Entities
 
-- **Layout**: Wrapper component that provides sidenav mode and renders Header +
-  SideNav + Content structure. Accepts `headerActions` prop for rendering
-  extracted header global actions.
-- **SideNav State**: Tri-state mode enum (`'show'` | `'lock'` | `'close'`) with
-  localStorage persistence.
-  - `show`: Sidenav expanded, overlays content (no push)
-  - `lock`: Sidenav expanded, pushes content (margin-left: 16rem)
-  - `close`: Sidenav collapsed to rail (48px/3rem)
-- **Menu Structure**: Hierarchical tree of menu items with `menu` (metadata) and
-  `childMenus` (nested items).
-- **User Preference**: localStorage key-value pair storing user's mode
-  preference (one of `'show'`, `'lock'`, `'close'`).
+- **SideNav Mode**: Tri-state preference representing user's navigation display
+  choice:
+  - `show`: Sidenav expanded, overlays content (temporary view)
+  - `lock`: Sidenav expanded, pushes content aside (persistent workspace)
+  - `close`: Sidenav collapsed to icon rail (maximized content area)
+- **Menu Structure**: Hierarchical tree of navigation items supporting up to 4
+  levels of nesting, with automatic expansion to show current location.
+- **User Preference**: Persistent storage of user's preferred sidenav mode,
+  retained across page navigations and browser sessions.
+- **Content Area**: Main workspace that adapts based on sidenav mode (full width
+  when closed/show, reduced width when locked).
 
 ## Success Criteria _(mandatory)_
 
@@ -326,11 +332,7 @@ content rather than pushing it.
   menu structure without modification.
 - Carbon Design System v1.15+ is already installed and configured in the
   frontend.
-- The refactored layout will be applied **globally** to all authenticated routes
-  in a single rollout (no gradual rollout — full swap of Layout.js).
-- The existing `Header.js` header actions (user menu, notifications, search,
-  language selector, logout) will be **extracted and reused** in the new layout,
-  not removed or reimplemented.
+- All existing header functionality will remain intact after this enhancement.
 - User's localStorage is available and writable in typical deployment scenarios
   (graceful fallback for edge cases).
 - Storage pages and multi-tab pages will default to LOCK (expanded) mode while

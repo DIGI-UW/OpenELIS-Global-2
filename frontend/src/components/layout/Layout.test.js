@@ -29,6 +29,9 @@ jest.mock("../utils/Utils", () => ({
     }
   }),
   putToOpenElisServer: jest.fn(),
+  getFromOpenElisServerV2: jest.fn(async () => ({})),
+  postToOpenElisServer: jest.fn(async () => ({})),
+  deleteToOpenElisServer: jest.fn(async () => ({})),
 }));
 
 // Mock user session context value
@@ -62,6 +65,18 @@ const renderWithProviders = (
     "header.label.version": "Version",
     "header.label.logout": "Logout",
     "header.label.selectlocale": "Language",
+    "banner.menu.help.usermanual": "User Manual",
+    "banner.menu.help.about": "About",
+    "banner.menu.help.contact": "Contact",
+    "notification.slideover.button.reload": "Reload",
+    "notification.slideover.button.showread": "Show Read",
+    "notification.slideover.button.subscribe": "Subscribe",
+    "notification.slideover.button.markallasread": "Mark All As Read",
+    "notification.slideover.button.unsubscribe": "Unsubscribe",
+    "notification.slideover.button.hideread": "Hide Read",
+    "notification.slideover.button.markasread": "Mark As Read",
+    "notification.slideover.empty.header": "No notifications",
+    "notification.sliderover.empty.message": "You're all caught up",
   };
 
   return render(
@@ -76,6 +91,23 @@ const renderWithProviders = (
 };
 
 describe("Layout", () => {
+  beforeAll(() => {
+    // Minimal service worker mock to satisfy notification component
+    if (!navigator.serviceWorker) {
+      Object.defineProperty(global.navigator, "serviceWorker", {
+        value: {
+          ready: Promise.resolve({
+            pushManager: {
+              getSubscription: () => Promise.resolve(null),
+            },
+          }),
+          register: jest.fn().mockResolvedValue({}),
+        },
+        configurable: true,
+      });
+    }
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
