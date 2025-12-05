@@ -54,30 +54,53 @@ export function useSideNavPreference({
   const storageKey = `${storageKeyPrefix}SideNavMode`;
 
   const initialMode = () => {
+    let savedValue = null;
     try {
-      const saved = localStorage.getItem(storageKey);
+      savedValue = localStorage.getItem(storageKey);
+      console.log(`[useSideNavPreference] Reading from localStorage:`, {
+        storageKey,
+        savedValue,
+        defaultMode,
+      });
+
       if (
-        saved &&
+        savedValue &&
         [SIDENAV_MODES.SHOW, SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(
-          saved,
+          savedValue,
         )
       ) {
-        return saved;
+        console.log(`[useSideNavPreference] Using saved mode:`, savedValue);
+        return savedValue;
       }
     } catch (e) {
       console.warn("localStorage unavailable, using default sidenav mode");
     }
+
     if (
       defaultMode &&
       [SIDENAV_MODES.SHOW, SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(
         defaultMode,
       )
     ) {
+      console.log(
+        `[useSideNavPreference] Using defaultMode (no saved value):`,
+        defaultMode,
+      );
       return defaultMode;
     }
+
     if (typeof defaultExpanded === "boolean") {
-      return defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE;
+      const mode = defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE;
+      console.log(
+        `[useSideNavPreference] Using defaultExpanded:`,
+        defaultExpanded,
+        "=>",
+        mode,
+      );
+      return mode;
     }
+
+    console.log(`[useSideNavPreference] Using fallback CLOSE mode`);
     return SIDENAV_MODES.CLOSE;
   };
 
@@ -91,7 +114,16 @@ export function useSideNavPreference({
    * Reset state when storageKeyPrefix changes (e.g. switching between main and storage layouts)
    */
   useEffect(() => {
-    setModeState(initialMode());
+    const newMode = initialMode();
+    console.log(
+      `[useSideNavPreference] storageKeyPrefix changed, resetting mode:`,
+      {
+        storageKeyPrefix,
+        newMode,
+        previousMode: mode,
+      },
+    );
+    setModeState(newMode);
   }, [storageKeyPrefix]);
 
   /**
@@ -115,6 +147,12 @@ export function useSideNavPreference({
     setModeState((prev) => {
       const currentIndex = MODE_CYCLE.indexOf(prev);
       const nextMode = MODE_CYCLE[(currentIndex + 1) % MODE_CYCLE.length];
+      console.log(
+        `[useSideNavPreference] toggle() called:`,
+        prev,
+        "=>",
+        nextMode,
+      );
       persistMode(nextMode);
       return nextMode;
     });
@@ -125,10 +163,16 @@ export function useSideNavPreference({
    */
   const setMode = useCallback(
     (value) => {
+      console.log(
+        `[useSideNavPreference] setMode() called:`,
+        mode,
+        "=>",
+        value,
+      );
       setModeState(value);
       persistMode(value);
     },
-    [persistMode],
+    [persistMode, mode],
   );
 
   const isExpanded = mode !== SIDENAV_MODES.CLOSE;
