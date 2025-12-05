@@ -78,6 +78,24 @@ const StorageDashboard = () => {
     storageLocations: 0,
   });
 
+  // Callback for child components to refresh metrics (OGC-144: real-time updates per FR-057b, FR-057c)
+  const refreshMetrics = useCallback(() => {
+    getFromOpenElisServer(
+      "/rest/storage/sample-items?countOnly=true",
+      (response) => {
+        if (componentMounted.current && response) {
+          const metricsData = Array.isArray(response) ? response[0] : response;
+          setMetrics({
+            totalSamples: metricsData?.totalSampleItems || 0,
+            active: metricsData?.active || 0,
+            disposed: metricsData?.disposed || 0,
+            storageLocations: metricsData?.storageLocations || 0,
+          });
+        }
+      },
+    );
+  }, [componentMounted]);
+
   // Tab state - derive from URL
   const getTabFromUrl = () => {
     const pathParts = location.pathname.split("/");
@@ -439,7 +457,7 @@ const StorageDashboard = () => {
         );
 
         loadSamples();
-        loadMetrics();
+        refreshMetrics(); // OGC-144: Use refreshMetrics for optimistic update (FR-057b, FR-057c)
 
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
@@ -539,7 +557,7 @@ const StorageDashboard = () => {
         const response = await assignSampleItem(locationPayload);
 
         loadSamples();
-        loadMetrics();
+        refreshMetrics(); // OGC-144: Use refreshMetrics for optimistic update (FR-057b, FR-057c)
 
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
@@ -571,7 +589,7 @@ const StorageDashboard = () => {
         const response = await moveSampleItem(locationPayload);
 
         loadSamples();
-        loadMetrics();
+        refreshMetrics(); // OGC-144: Use refreshMetrics for optimistic update (FR-057b, FR-057c)
 
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
@@ -669,9 +687,9 @@ const StorageDashboard = () => {
       setNotificationVisible(true);
       handleDisposeModalClose();
 
-      // OGC-73: Refresh sample list and metrics to show updated status
+      // OGC-73 & OGC-144: Refresh sample list and metrics to show updated status (FR-057b, FR-057c)
       loadSamples();
-      loadMetrics();
+      refreshMetrics(); // OGC-144: Use refreshMetrics for optimistic update
     } catch (error) {
       console.error("Error disposing sample:", error);
       addNotification({
@@ -3864,6 +3882,7 @@ const StorageDashboard = () => {
         })()}
         onClose={handleLocationModalClose}
         onConfirm={handleLocationModalConfirm}
+        onAssignmentSuccess={refreshMetrics}
       />
       <DisposeSampleModal
         open={disposeModalOpen && !!selectedSampleForDispose}
@@ -3875,6 +3894,7 @@ const StorageDashboard = () => {
         }
         onClose={handleDisposeModalClose}
         onConfirm={handleDisposeModalConfirm}
+        onDisposalSuccess={refreshMetrics}
       />
     </div>
   );

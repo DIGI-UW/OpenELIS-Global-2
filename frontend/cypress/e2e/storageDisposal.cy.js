@@ -230,4 +230,113 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
         .and("have.class", "cds--btn--danger");
     });
   });
+
+  /**
+   * OGC-144: Test that Disposed counter increments immediately after disposal
+   * Per FR-057b, FR-057c: Metric cards MUST update automatically when operations complete
+   * without requiring page refresh (optimistic update pattern)
+   */
+  it("Should increment Disposed counter immediately after disposal without page refresh", function () {
+    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+      "be.visible",
+    );
+
+    cy.get("body").then(($body) => {
+      if ($body.find('[data-testid="sample-row"]').length === 0) {
+        cy.log("No samples available - skipping disposal counter test");
+        return;
+      }
+
+      // Get initial Disposed count from metric card
+      let initialDisposedCount;
+      cy.get('[data-testid="metric-disposed"]', { timeout: 10000 })
+        .should("be.visible")
+        .invoke("text")
+        .then((text) => {
+          // Extract number from text (e.g., "5" from "5 Disposed")
+          const match = text.match(/(\d+)/);
+          initialDisposedCount = match ? parseInt(match[1], 10) : 0;
+          cy.log(`Initial Disposed count: ${initialDisposedCount}`);
+        });
+
+      // Set up intercept for disposal API call BEFORE opening modal
+      cy.intercept("POST", "**/rest/storage/sample-items/dispose").as(
+        "disposeRequest",
+      );
+      cy.intercept("GET", "**/rest/storage/sample-items?countOnly=true").as(
+        "metricsRefresh",
+      );
+
+      // Open dispose modal
+      cy.get('[data-testid="sample-row"]')
+        .first()
+        .should("be.visible")
+        .within(() => {
+          cy.get('[data-testid="sample-actions-overflow-menu"]')
+            .should("be.visible")
+            .click();
+        });
+
+      // Click Dispose action
+      cy.contains("Dispose", { timeout: 5000 }).should("be.visible").click();
+
+      // Wait for modal to open
+      cy.contains("Dispose Sample", { timeout: 10000 }).should("be.visible");
+
+      // Fill out disposal form
+      // Select Reason dropdown
+      cy.get('[data-testid="disposal-reason-dropdown"]', { timeout: 5000 })
+        .should("be.visible")
+        .click();
+      cy.contains("Expired", { timeout: 5000 }).should("be.visible").click();
+
+      // Select Method dropdown
+      cy.get('[data-testid="disposal-method-dropdown"]', { timeout: 5000 })
+        .should("be.visible")
+        .click();
+      cy.contains("Biohazard Autoclave", { timeout: 5000 })
+        .should("be.visible")
+        .click();
+
+      // Check confirmation checkbox
+      cy.get('[data-testid="disposal-confirmation-checkbox"]', {
+        timeout: 5000,
+      })
+        .should("be.visible")
+        .check({ force: true }); // Force needed for Carbon checkbox styling
+
+      // Click Confirm Disposal button
+      cy.contains("Confirm Disposal", { timeout: 5000 })
+        .should("be.visible")
+        .closest("button")
+        .should("not.be.disabled")
+        .click();
+
+      // Wait for disposal API call to complete
+      cy.wait("@disposeRequest", { timeout: 10000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
+      // Wait for metrics refresh API call
+      cy.wait("@metricsRefresh", { timeout: 10000 })
+        .its("response.statusCode")
+        .should("eq", 200);
+
+      // Verify Disposed counter incremented by 1 WITHOUT page refresh
+      cy.get('[data-testid="metric-disposed"]', { timeout: 10000 })
+        .should("be.visible")
+        .invoke("text")
+        .then((text) => {
+          const match = text.match(/(\d+)/);
+          const newDisposedCount = match ? parseInt(match[1], 10) : 0;
+          cy.log(`New Disposed count: ${newDisposedCount}`);
+
+          // Assert counter incremented by exactly 1
+          expect(newDisposedCount).to.equal(initialDisposedCount + 1);
+        });
+
+      // Verify modal closed after successful disposal
+      cy.contains("Dispose Sample").should("not.exist");
+    });
+  });
 });
