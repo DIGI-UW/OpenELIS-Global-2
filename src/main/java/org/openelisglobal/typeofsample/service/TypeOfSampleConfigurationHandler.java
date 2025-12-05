@@ -21,20 +21,16 @@ import org.springframework.stereotype.Component;
  *
  * Expected CSV format:
  * description,localAbbreviation,domain,isActive,sortOrder,englishName,frenchName
- * Whole Blood,WB,H,Y,1,Whole Blood,Sang Total
- * Serum,SER,H,Y,2,Serum,Sérum
- * Plasma,PLS,H,Y,3,Plasma,Plasma
- * Urine,UR,H,Y,4,Urine,Urine
+ * Whole Blood,WB,H,Y,1,Whole Blood,Sang Total Serum,SER,H,Y,2,Serum,Sérum
+ * Plasma,PLS,H,Y,3,Plasma,Plasma Urine,UR,H,Y,4,Urine,Urine
  *
- * Notes:
- * - First line is the header (required)
- * - description and localAbbreviation are required fields
- * - domain defaults to "H" (Human) if not specified
- * - isActive defaults to "Y" if not specified
- * - sortOrder is optional (auto-assigned if not provided)
- * - englishName is used for localization (defaults to description if not provided)
- * - frenchName is used for French localization (defaults to englishName if not provided)
- * - Existing sample types with matching localAbbreviation and domain will be updated
+ * Notes: - First line is the header (required) - description and
+ * localAbbreviation are required fields - domain defaults to "H" (Human) if not
+ * specified - isActive defaults to "Y" if not specified - sortOrder is optional
+ * (auto-assigned if not provided) - englishName is used for localization
+ * (defaults to description if not provided) - frenchName is used for French
+ * localization (defaults to englishName if not provided) - Existing sample
+ * types with matching localAbbreviation and domain will be updated
  */
 @Component
 public class TypeOfSampleConfigurationHandler implements DomainConfigurationHandler {
@@ -55,6 +51,11 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
     @Override
     public String getFileExtension() {
         return "csv";
+    }
+
+    @Override
+    public int getLoadOrder() {
+        return 100; // Base entity - load early
     }
 
     @Override

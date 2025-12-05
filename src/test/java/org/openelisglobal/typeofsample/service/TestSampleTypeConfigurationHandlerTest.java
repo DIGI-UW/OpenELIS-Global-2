@@ -400,8 +400,7 @@ public class TestSampleTypeConfigurationHandlerTest {
     @Test
     public void testProcessConfiguration_MultipleTestsToSameSampleType() throws Exception {
         // Given
-        String csv = "testName,sampleType\n" + "Test 1,Whole Blood\n" + "Test 2,Whole Blood\n"
-                + "Test 3,Whole Blood\n";
+        String csv = "testName,sampleType\n" + "Test 1,Whole Blood\n" + "Test 2,Whole Blood\n" + "Test 3,Whole Blood\n";
 
         InputStream inputStream = new ByteArrayInputStream(csv.getBytes());
 

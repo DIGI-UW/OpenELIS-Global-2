@@ -20,21 +20,14 @@ import org.springframework.stereotype.Component;
  * Handler for loading test-sample type configuration files. Supports CSV format
  * for mapping tests to their valid sample types.
  *
- * Expected CSV format:
- * testName,sampleType
- * Complete Blood Count,Whole Blood
- * Hemoglobin,Whole Blood
- * Hemoglobin,Serum
- * Glucose,Serum
- * Glucose,Plasma
+ * Expected CSV format: testName,sampleType Complete Blood Count,Whole Blood
+ * Hemoglobin,Whole Blood Hemoglobin,Serum Glucose,Serum Glucose,Plasma
  *
- * Notes:
- * - First line is the header (required)
- * - testName and sampleType are required fields
- * - testName can be the localized test name or description
- * - sampleType is the localized name or description of the sample type
- * - Multiple rows can have the same testName with different sampleTypes
- * - Existing mappings are preserved, new mappings are added
+ * Notes: - First line is the header (required) - testName and sampleType are
+ * required fields - testName can be the localized test name or description -
+ * sampleType is the localized name or description of the sample type - Multiple
+ * rows can have the same testName with different sampleTypes - Existing
+ * mappings are preserved, new mappings are added
  */
 @Component
 public class TestSampleTypeConfigurationHandler implements DomainConfigurationHandler {
@@ -59,14 +52,18 @@ public class TestSampleTypeConfigurationHandler implements DomainConfigurationHa
     }
 
     @Override
+    public int getLoadOrder() {
+        return 210; // Depends on tests and sample types
+    }
+
+    @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
         // Read and validate header
         String headerLine = reader.readLine();
         if (headerLine == null) {
-            throw new IllegalArgumentException(
-                    "Test-sample type configuration file " + fileName + " is empty");
+            throw new IllegalArgumentException("Test-sample type configuration file " + fileName + " is empty");
         }
 
         String[] headers = parseCsvLine(headerLine);
@@ -191,17 +188,15 @@ public class TestSampleTypeConfigurationHandler implements DomainConfigurationHa
         // Find sample type by name
         TypeOfSample sampleType = findSampleTypeByName(sampleTypeName);
         if (sampleType == null) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                    "Sample type '" + sampleTypeName + "' not found in line " + lineNumber + " of " + fileName
-                            + ". Skipping.");
+            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Sample type '" + sampleTypeName
+                    + "' not found in line " + lineNumber + " of " + fileName + ". Skipping.");
             return null;
         }
 
         // Check if mapping already exists
         if (mappingExists(test.getId(), sampleType.getId())) {
-            LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
-                    "Mapping already exists for test '" + testName + "' and sample type '" + sampleTypeName
-                            + "'. Skipping.");
+            LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine", "Mapping already exists for test '"
+                    + testName + "' and sample type '" + sampleTypeName + "'. Skipping.");
             return null;
         }
 
