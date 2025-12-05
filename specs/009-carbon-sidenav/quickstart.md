@@ -13,20 +13,21 @@ localStorage.
 
 ## Milestone-Based Development (Principle IX)
 
-This feature is broken into 3 milestones per Constitution Principle IX:
+This feature is broken into 4 milestones per Constitution Principle IX:
 
-| Milestone | Branch                           | Scope                            | Can Start        |
-| --------- | -------------------------------- | -------------------------------- | ---------------- |
-| M1        | `feat/OGC-009-sidenav/m1-core`   | Core layout, toggle, persistence | Immediately      |
-| M2 [P]    | `feat/OGC-009-sidenav/m2-nav`    | Hierarchical nav, auto-expand    | Parallel with M1 |
-| M3        | `feat/OGC-009-sidenav/m3-polish` | Icons, responsive, E2E tests     | After M1 + M2    |
+| Milestone | Branch                              | Scope                                | Can Start    |
+| --------- | ----------------------------------- | ------------------------------------ | ------------ |
+| M1        | `feat/OGC-009-sidenav/m1-core`      | Core layout, tri-state toggle        | ✅ COMPLETE  |
+| M2a       | `feat/OGC-009-sidenav/m2a-nav`      | Hierarchical nav, auto-expand        | ✅ COMPLETE  |
+| M2b       | `feat/OGC-009-sidenav/m2b-rollout`  | Global rollout, header preservation  | After M2a    |
+| M3        | `feat/OGC-009-sidenav/m3-polish`    | Icons, responsive, E2E tests         | After M2b    |
 
 **Workflow**:
 
-1. Work on M1 and M2 in parallel (or sequentially)
-2. Create PR for each milestone when complete
-3. After M1 + M2 merged, start M3
-4. Final PR completes the feature
+1. M1 (Core Layout) - COMPLETE
+2. M2a (Navigation) - COMPLETE
+3. M2b (Global Rollout + Header Preservation) - IN PROGRESS
+4. M3 (Polish & E2E) - After M2b merged
 
 ## Prerequisites
 
@@ -44,11 +45,13 @@ git fetch origin
 git checkout develop
 git pull
 
-# For Milestone 1:
-git checkout -b feat/OGC-009-sidenav/m1-core
+# For Milestone 2b (Global Rollout - current work):
+git checkout feat/OGC-009-sidenav/m2a-nav
+git checkout -b feat/OGC-009-sidenav/m2b-rollout
 
-# For Milestone 2 (can be parallel):
-git checkout -b feat/OGC-009-sidenav/m2-nav
+# For Milestone 3 (after M2b merged):
+git checkout develop && git pull
+git checkout -b feat/OGC-009-sidenav/m3-polish
 ```
 
 ### 2. Install Dependencies (if needed)

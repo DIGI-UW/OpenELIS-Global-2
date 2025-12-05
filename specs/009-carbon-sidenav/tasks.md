@@ -28,21 +28,23 @@ parallel.
 
 ## User Story to Milestone Mapping
 
-| Milestone | User Stories                                      | Scope                                        |
-| --------- | ------------------------------------------------- | -------------------------------------------- |
-| M1        | P1-US1 (Toggle), P1-US2 (Persistence)             | Core layout, toggle, localStorage            |
-| M2 [P]    | P2-US3 (Hierarchical Nav), P2-US4 (Page Config)   | Hierarchical menus, auto-expand, page config |
-| M3        | P3-US5 (Icons/Tooltips), P3-US6 (Mobile Response) | Icons, responsive behavior, E2E tests        |
+| Milestone | User Stories                           | Scope                                            |
+| --------- | -------------------------------------- | ------------------------------------------------ |
+| M1        | P1-US1 (Toggle), P1-US2 (Persistence)  | Core layout, tri-state toggle, localStorage      |
+| M2a       | P2-US3 (Hierarchical Nav)              | Hierarchical menus, auto-expand, active styling  |
+| M2b       | P2-US4 (Page Config), FR-011/012/013   | Header extraction, global rollout, storage lock  |
+| M3        | P3-US5 (Icons/Tooltips), P3-US6 (Mobile) | Icons, responsive behavior, E2E tests          |
 
 ## Milestone Dependency Graph
 
 ```mermaid
 graph LR
-    M1[M1: Core Layout] --> M3[M3: Polish & E2E]
-    M2[M2: Navigation] --> M3
+    M1[M1: Core Layout] --> M2a[M2a: Navigation]
+    M2a --> M2b[M2b: Global Rollout]
+    M2b --> M3[M3: Polish & E2E]
 ```
 
-**Legend**: M1 and M2 can run in parallel. M3 depends on both M1 and M2.
+**Legend**: Sequential flow - M1 → M2a → M2b → M3. Each depends on previous.
 
 ---
 
@@ -144,23 +146,22 @@ persistence working.
 
 ---
 
-## [P] Milestone 2: Navigation (Branch: `feat/OGC-009-sidenav/m2-nav`)
+## Milestone 2a: Navigation (Branch: `feat/OGC-009-sidenav/m2a-nav`)
 
-**Type**: Parallel (can be developed alongside M1)  
+**Type**: Sequential (depends on M1)  
 **PR Target**: `develop`  
-**Scope**: Hierarchical menus, auto-expand active branch, page-level
-configuration  
-**Verification**: Jest tests pass, menu hierarchy displays correctly,
-auto-expand works  
-**User Stories**: P2-US3 (Hierarchical Navigation), P2-US4 (Page-Level Config)
+**Scope**: Hierarchical menus, auto-expand active branch, active styling  
+**Verification**: Jest tests pass, menu hierarchy displays correctly, auto-expand
+works  
+**User Stories**: P2-US3 (Hierarchical Navigation)
 
 ### Branch Setup (MANDATORY - First Task)
 
-- [x] T020 [M2] Create milestone branch from develop:
-      `git checkout develop && git pull && git checkout -b feat/OGC-009-sidenav/m2-nav` ✅
+- [x] T020 [M2a] Create milestone branch from develop:
+      `git checkout develop && git pull && git checkout -b feat/OGC-009-sidenav/m2a-nav` ✅
       (branched from M1)
 
-### Tests for Milestone 2 (MANDATORY - TDD Enforcement)
+### Tests for Milestone 2a (MANDATORY - TDD Enforcement)
 
 > **CRITICAL: Write these tests FIRST, run them, and verify they FAIL (Red
 > phase)**
@@ -168,7 +169,7 @@ auto-expand works
 > Reference: [Jest Best Practices](../../.specify/guides/jest-best-practices.md)
 > Template: `.specify/templates/testing/JestComponent.test.jsx.template`
 
-- [x] T021 [P] [M2] **[RED]** Create test for menu rendering in
+- [x] T021 [P] [M2a] **[RED]** Create test for menu rendering in
       `frontend/src/components/layout/TwoModeLayout.test.js` (add to existing) →
       Run `npm test`, verify FAILS before T025 ✅ VERIFIED FAILS (6 tests)
 
@@ -177,7 +178,7 @@ auto-expand works
   - Test: supports 4 levels of menu nesting
   - Test: applies correct indentation per level
 
-- [x] T022 [P] [M2] **[RED]** Create test for auto-expand in
+- [x] T022 [P] [M2a] **[RED]** Create test for auto-expand in
       `frontend/src/components/layout/useMenuAutoExpand.test.js` → Run
       `npm test`, verify FAILS before T026 ✅ VERIFIED FAILS
 
@@ -187,23 +188,23 @@ auto-expand works
     /analyzers/qc/alerts)
   - Test: does not expand unrelated branches
 
-- [x] T023 [P] [M2] **[RED]** Create test for page config in
+- [x] T023 [P] [M2a] **[RED]** Create test for page config in
       `frontend/src/components/layout/TwoModeLayout.test.js` (add to existing) →
       Run `npm test`, verify FAILS before T027 ✅ SKIPPED (covered by M1 tests)
   - Test: uses defaultExpanded prop when no stored preference
   - Test: stored preference overrides defaultExpanded prop
   - Test: different storageKeyPrefix creates separate preferences
 
-### Implementation for Milestone 2
+### Implementation for Milestone 2a
 
-- [x] T024 [M2] **[GREEN]** Add menu fetching to TwoModeLayout in
+- [x] T024 [M2a] **[GREEN]** Add menu fetching to TwoModeLayout in
       `frontend/src/components/layout/TwoModeLayout.js` ✅
 
   - Fetch menu from /rest/menu API
   - Store menu state with useState
   - Handle loading state
 
-- [x] T025 [M2] **[GREEN]** Add hierarchical menu rendering to TwoModeLayout in
+- [x] T025 [M2a] **[GREEN]** Add hierarchical menu rendering to TwoModeLayout in
       `frontend/src/components/layout/TwoModeLayout.js` → Run T021 - verify it
       PASSES ✅ 17/17 TwoModeLayout tests pass
 
@@ -213,7 +214,7 @@ auto-expand works
   - Support up to 4 levels of nesting
   - Use intl.formatMessage for menu labels
 
-- [x] T026 [P] [M2] **[GREEN]** Create useMenuAutoExpand custom hook in
+- [x] T026 [P] [M2a] **[GREEN]** Create useMenuAutoExpand custom hook in
       `frontend/src/components/layout/useMenuAutoExpand.js` → Run T022 - verify
       it PASSES ✅ 9/9 tests pass
 
@@ -222,31 +223,130 @@ auto-expand works
   - Expand parent items in path to active route
   - Trigger on location.pathname change via useEffect
 
-- [x] T027 [M2] **[GREEN]** Integrate auto-expand and page config in
+- [x] T027 [M2a] **[GREEN]** Integrate auto-expand and page config in
       TwoModeLayout in `frontend/src/components/layout/TwoModeLayout.js` → Run
       T023 - verify it PASSES ✅ Integrated
   - Use useMenuAutoExpand hook
   - Pass storageKeyPrefix to useSideNavPreference
   - Ensure defaultExpanded prop flows through correctly
 
-### Milestone 2 Completion
+### Milestone 2a Completion
 
-- [x] T028 [M2] Run all M2 tests:
+- [x] T028 [M2a] Run all M2a tests:
       `cd frontend && npm test -- --testPathPattern="(TwoModeLayout|useMenuAutoExpand)"`
       ✅ 26/26 tests pass
-- [ ] T029 [M2] Manual verification: Menu hierarchy renders, auto-expand works
+- [ ] T029 [M2a] Manual verification: Menu hierarchy renders, auto-expand works
       on navigation (requires running app - deferred to PR review)
-- [ ] T030 [M2] Format code: `cd frontend && npm run format`
-- [x] T031 [M2] Create PR for M2: `feat/OGC-009-sidenav/m2-nav` → `feat/OGC-009-sidenav/m1-core` ✅ PR #2382 created
+- [x] T030 [M2a] Format code: `cd frontend && npm run format` ✅
+- [x] T031 [M2a] Create PR for M2a: `feat/OGC-009-sidenav/m2a-nav` → `develop` ✅ PR #2382 created
 
-**Checkpoint**: Milestone 2 PR ready for review. Hierarchical menus and
+**Checkpoint**: Milestone 2a PR ready for review. Hierarchical menus and
 auto-expand working.
+
+---
+
+## Milestone 2b: Global Rollout (Branch: `feat/OGC-009-sidenav/m2b-rollout`)
+
+**Type**: Sequential (depends on M1, M2a)  
+**PR Target**: `develop`  
+**Scope**: Header action extraction, global Layout.js swap, context preservation,
+storage pages default to LOCK mode  
+**Verification**: Header functionality tests pass, no regression in login/logout/
+notifications  
+**User Stories**: P2-US4 (Page-Level Config), FR-011/012/013 (Header Preservation)
+
+### Branch Setup (MANDATORY - First Task)
+
+- [ ] T060 [M2b] Create milestone branch from M2a:
+      `git checkout feat/OGC-009-sidenav/m2a-nav && git checkout -b feat/OGC-009-sidenav/m2b-rollout`
+
+### Tests for Milestone 2b (MANDATORY - TDD Enforcement)
+
+> **CRITICAL: Write these tests FIRST, run them, and verify they FAIL (Red
+> phase)**
+>
+> Reference: [Jest Best Practices](../../.specify/guides/jest-best-practices.md)
+> Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+
+- [ ] T061 [P] [M2b] **[RED]** Add header action tests to
+      `frontend/src/components/layout/TwoModeLayout.test.js` → Run `npm test`,
+      verify FAILS before T064
+
+  - Test: renders headerActions prop content in header global bar
+  - Test: notifications panel opens/closes correctly
+  - Test: user panel opens/closes correctly
+  - Test: search bar toggles correctly
+  - Test: language selector changes language
+
+- [ ] T062 [P] [M2b] **[RED]** Add Layout.js integration test to
+      `frontend/src/components/layout/Layout.test.js` → Run `npm test`, verify
+      FAILS before T066
+
+  - Test: renders TwoModeLayout with header actions
+  - Test: ConfigurationContext available to children
+  - Test: NotificationContext available to children
+  - Test: onChangeLanguage prop wired correctly
+
+### Implementation for Milestone 2b
+
+- [ ] T063 [M2b] **[GREEN]** Add headerActions prop to TwoModeLayout in
+      `frontend/src/components/layout/TwoModeLayout.js` → Run T061 - verify it
+      PASSES
+
+  - Accept headerActions: ReactNode prop
+  - Render in HeaderGlobalBar position
+  - Maintain existing sidenav + toggle + content structure
+
+- [ ] T064 [M2b] **[GREEN]** Extract header actions from Header.js into reusable
+      component in `frontend/src/components/layout/HeaderActions.js`
+
+  - Create HeaderActions component
+  - Move: search toggle, notifications button, user panel button, help menu
+  - Keep all panel state management in this component
+  - Export for use by Layout.js
+
+- [ ] T065 [M2b] **[GREEN]** Update HeaderActions to include notification panel
+      and slide-over in `frontend/src/components/layout/HeaderActions.js`
+
+  - Include SlideOverNotifications component
+  - Include HeaderPanel for user details
+  - Wire onChangeLanguage callback
+  - Preserve all existing panel interactions
+
+- [ ] T066 [M2b] **[GREEN]** Update Layout.js to use TwoModeLayout in
+      `frontend/src/components/layout/Layout.js` → Run T062 - verify it PASSES
+
+  - Import TwoModeLayout, HeaderActions
+  - Wrap children with TwoModeLayout
+  - Pass HeaderActions via headerActions prop
+  - Pass onChangeLanguage to HeaderActions
+  - Preserve ConfigurationContext and NotificationContext providers
+
+- [ ] T067 [M2b] **[GREEN]** Wire storage pages to defaultMode="lock" in
+      `frontend/src/App.js`
+
+  - Update routes that render storage pages
+  - Pass defaultMode="lock" prop via route configuration
+  - User preference continues to override page defaults
+
+- [ ] T068 [M2b] Run all M2b tests after implementation:
+      `cd frontend && npm test -- --testPathPattern="(TwoModeLayout|Layout)" --watchAll=false`
+
+### Milestone 2b Completion
+
+- [ ] T069 [M2b] Manual verification: All header features work (login, logout,
+      notifications, search, language, help)
+- [ ] T070 [M2b] Format code: `cd frontend && npm run format`
+- [ ] T071 [M2b] Create PR for M2b: `feat/OGC-009-sidenav/m2b-rollout` → `develop`
+
+**Checkpoint**: Milestone 2b PR ready for review. Global rollout complete with
+header functionality preserved.
 
 ---
 
 ## Milestone 3: Polish & E2E (Branch: `feat/OGC-009-sidenav/m3-polish`)
 
-**Type**: Sequential (depends on M1, M2)  
+**Type**: Sequential (depends on M2b)  
 **PR Target**: `develop`  
 **Scope**: Icons/tooltips, responsive behavior, E2E tests, final polish  
 **Verification**: E2E tests pass, responsive behavior works, all user stories
@@ -255,7 +355,7 @@ complete
 
 ### Branch Setup (MANDATORY - First Task)
 
-- [ ] T040 [M3] Create milestone branch after M1 and M2 merged:
+- [ ] T080 [M3] Create milestone branch after M2b merged:
       `git checkout develop && git pull && git checkout -b feat/OGC-009-sidenav/m3-polish`
 
 ### Tests for Milestone 3 (MANDATORY - TDD Enforcement)
@@ -268,86 +368,87 @@ complete
 > - [Cypress Best Practices](../../.specify/guides/cypress-best-practices.md)
 > - [Constitution Section V.5](../../.specify/memory/constitution.md)
 
-- [ ] T041 [P] [M3] **[RED]** Create Cypress E2E test file in
+- [ ] T081 [P] [M3] **[RED]** Create Cypress E2E test file in
       `frontend/cypress/e2e/sidenavNavigation.cy.js` → Run
       `npm run cy:run -- --spec "cypress/e2e/sidenavNavigation.cy.js"`, verify
-      FAILS before T047
+      FAILS before T087
 
-  - Test: can toggle sidenav between expanded and collapsed
+  - Test: can toggle sidenav between three modes (show/lock/close)
   - Test: preference persists after page refresh
   - Test: hierarchical menu expands/collapses
   - Test: active page is highlighted in navigation
   - Test: auto-expands to show active page location
+  - Test: header actions work (notifications, user menu, search, language)
 
-- [ ] T042 [P] [M3] **[RED]** Add responsive behavior test in
+- [ ] T082 [P] [M3] **[RED]** Add responsive behavior test in
       `frontend/src/components/layout/TwoModeLayout.test.js` (add to existing) →
-      Run `npm test`, verify FAILS before T048
+      Run `npm test`, verify FAILS before T088
 
   - Test: content does not push when viewport < 1056px
 
-- [ ] T043 [P] [M3] **[RED]** Add icon/tooltip tests in
+- [ ] T083 [P] [M3] **[RED]** Add icon/tooltip tests in
       `frontend/src/components/layout/TwoModeLayout.test.js` (add to existing) →
-      Run `npm test`, verify FAILS before T049
+      Run `npm test`, verify FAILS before T089
   - Test: icons render in collapsed mode
   - Test: tooltips appear on hover in collapsed mode
 
 ### Implementation for Milestone 3
 
-- [ ] T044 [M3] Add responsive CSS to TwoModeLayout.css in
+- [ ] T084 [M3] Add responsive CSS to TwoModeLayout.css in
       `frontend/src/components/layout/TwoModeLayout.css`
 
   - Add @media query for max-width: 1056px
   - Set margin-left: 0 and width: 100% for mobile
   - Ensure sidenav overlays (not pushes) on mobile
 
-- [ ] T045 [M3] **[GREEN]** Add icon support to menu items in
-      `frontend/src/components/layout/TwoModeLayout.js` → Run T043 - verify it
+- [ ] T085 [M3] **[GREEN]** Add icon support to menu items in
+      `frontend/src/components/layout/TwoModeLayout.js` → Run T083 - verify it
       PASSES
 
   - Import Carbon icons (@carbon/icons-react)
   - Map menu items to appropriate icons
   - Render icons in SideNavMenuItem
 
-- [ ] T046 [M3] **[GREEN]** Add tooltip support for collapsed mode in
-      `frontend/src/components/layout/TwoModeLayout.js` → Run T043 - verify it
+- [ ] T086 [M3] **[GREEN]** Add tooltip support for collapsed mode in
+      `frontend/src/components/layout/TwoModeLayout.js` → Run T083 - verify it
       PASSES
 
   - Add title attribute or Carbon Tooltip component
   - Show full label on hover when collapsed
 
-- [ ] T047 [M3] **[GREEN]** Implement E2E test scenarios in
-      `frontend/cypress/e2e/sidenavNavigation.cy.js` → Run T041 - verify it
+- [ ] T087 [M3] **[GREEN]** Implement E2E test scenarios in
+      `frontend/cypress/e2e/sidenavNavigation.cy.js` → Run T081 - verify it
       PASSES
 
   - Use cy.session() for login state
   - Use data-testid selectors
   - Follow Cypress best practices (no arbitrary waits)
 
-- [ ] T048 [M3] **[GREEN]** Verify responsive behavior works → Run T042 - verify
+- [ ] T088 [M3] **[GREEN]** Verify responsive behavior works → Run T082 - verify
       it PASSES
 
 ### Constitution Compliance Verification
 
-- [ ] T049 [M3] **Configuration-Driven**: Verify defaultExpanded and
+- [ ] T089 [M3] **Configuration-Driven**: Verify defaultMode and
       storageKeyPrefix allow per-page configuration (no code branching)
-- [ ] T050 [M3] **Carbon Design System**: Audit - confirm @carbon/react
+- [ ] T090 [M3] **Carbon Design System**: Audit - confirm @carbon/react
       components used exclusively (Header, SideNav, SideNavItems, SideNavMenu,
       SideNavMenuItem, Content, Theme)
-- [ ] T051 [M3] **Internationalization**: Verify all menu labels use
+- [ ] T091 [M3] **Internationalization**: Verify all menu labels use
       intl.formatMessage (no hardcoded text)
-- [ ] T052 [M3] **Test Coverage**: Run coverage report - confirm >70% for new
+- [ ] T092 [M3] **Test Coverage**: Run coverage report - confirm >70% for new
       code `cd frontend && npm test -- --coverage`
-- [ ] T053 [M3] **Security**: Verify menu API filters by user permissions
+- [ ] T093 [M3] **Security**: Verify menu API filters by user permissions
       (existing behavior preserved)
 
 ### Milestone 3 Completion
 
-- [ ] T054 [M3] Run all unit tests: `cd frontend && npm test`
-- [ ] T055 [M3] Run E2E tests individually:
+- [ ] T094 [M3] Run all unit tests: `cd frontend && npm test`
+- [ ] T095 [M3] Run E2E tests individually:
       `npm run cy:run -- --spec "cypress/e2e/sidenavNavigation.cy.js"`
-- [ ] T056 [M3] Review browser console logs after E2E run (Constitution V.5)
-- [ ] T057 [M3] Format code: `cd frontend && npm run format`
-- [ ] T058 [M3] Create PR for M3: `feat/OGC-009-sidenav/m3-polish` → `develop`
+- [ ] T096 [M3] Review browser console logs after E2E run (Constitution V.5)
+- [ ] T097 [M3] Format code: `cd frontend && npm run format`
+- [ ] T098 [M3] Create PR for M3: `feat/OGC-009-sidenav/m3-polish` → `develop`
 
 **Checkpoint**: Milestone 3 PR ready for review. All tests passing, feature
 complete.
@@ -358,19 +459,21 @@ complete.
 
 ### Milestone Dependencies
 
-- **Milestone 1 (M1)**: Core Layout - No dependencies, starts immediately
-- **[P] Milestone 2 (M2)**: Navigation - Can run in parallel with M1
-- **Milestone 3 (M3)**: Polish & E2E - Depends on M1 AND M2 completion
+- **Milestone 1 (M1)**: Core Layout - No dependencies, COMPLETE ✅
+- **Milestone 2a (M2a)**: Navigation - Depends on M1, COMPLETE ✅
+- **Milestone 2b (M2b)**: Global Rollout - Depends on M1 AND M2a
+- **Milestone 3 (M3)**: Polish & E2E - Depends on M2b completion
 
 ### PR Flow
 
 ```
 develop
-  ├── spec/009-carbon-sidenav (Spec PR - already exists as 009-carbon-sidenav)
+  ├── spec/009-carbon-sidenav (Spec PR - already exists)
   │
-  ├── feat/OGC-009-sidenav/m1-core (Milestone PR #1) → develop
-  ├── feat/OGC-009-sidenav/m2-nav (Milestone PR #2) [P - parallel] → develop
-  └── feat/OGC-009-sidenav/m3-polish (Milestone PR #3) → develop
+  ├── feat/OGC-009-sidenav/m1-core (M1 PR) → develop ✅ COMPLETE
+  ├── feat/OGC-009-sidenav/m2a-nav (M2a PR) → develop ✅ COMPLETE
+  ├── feat/OGC-009-sidenav/m2b-rollout (M2b PR) → develop
+  └── feat/OGC-009-sidenav/m3-polish (M3 PR) → develop
 ```
 
 ### Within Each Milestone
@@ -381,34 +484,31 @@ develop
 - PR creation task is last
 - All tests must pass before creating milestone PR
 
-### Parallel Opportunities
+### Sequential Flow (No Parallelism)
 
-**At Milestone Level**:
+**Milestone Order**: M1 → M2a → M2b → M3
 
-- M1 (Core Layout) and M2 (Navigation) can be developed simultaneously
-- Different developers can work on M1 and M2 in parallel
-- M3 must wait for both M1 and M2 to merge
+Each milestone depends on the previous milestone being merged. This ensures:
+- M2a builds on M1's TwoModeLayout component
+- M2b integrates header extraction with M2a's navigation
+- M3 adds polish after global rollout is complete
 
-**At Task Level (within M1)**:
+**At Task Level (within M2b)**:
 
-- T002, T003 (test files) can be written in parallel
-- T005, T006 (hook and component) can be implemented in parallel
-
-**At Task Level (within M2)**:
-
-- T021, T022, T023 (test files) can be written in parallel
-- T025, T026 (menu rendering and auto-expand) can be implemented in parallel
+- T061, T062 (test files) can be written in parallel
+- T064, T065 (HeaderActions extraction) are sequential
 
 ---
 
 ## Task Summary
 
-| Milestone | Task Count | Test Tasks | Implementation Tasks | User Stories   |
-| --------- | ---------- | ---------- | -------------------- | -------------- |
-| M1        | 11         | 2          | 4                    | P1-US1, P1-US2 |
-| M2        | 12         | 3          | 4                    | P2-US3, P2-US4 |
-| M3        | 19         | 3          | 5                    | P3-US5, P3-US6 |
-| **Total** | **42**     | **8**      | **13**               | **6 stories**  |
+| Milestone | Task Count | Test Tasks | Implementation Tasks | User Stories              |
+| --------- | ---------- | ---------- | -------------------- | ------------------------- |
+| M1        | 11         | 2          | 4                    | P1-US1, P1-US2            |
+| M2a       | 12         | 3          | 4                    | P2-US3                    |
+| M2b       | 12         | 2          | 6                    | P2-US4, FR-011/012/013    |
+| M3        | 19         | 3          | 5                    | P3-US5, P3-US6            |
+| **Total** | **54**     | **10**     | **19**               | **6 stories + 3 FRs**     |
 
 ---
 
