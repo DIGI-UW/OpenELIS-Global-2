@@ -257,8 +257,8 @@ notifications
 
 ### Branch Setup (MANDATORY - First Task)
 
-- [ ] T060 [M2b] Create milestone branch from M2a:
-      `git checkout feat/OGC-009-sidenav/m2a-nav && git checkout -b feat/OGC-009-sidenav/m2b-rollout`
+- [x] T060 [M2b] Create milestone branch from M2a:
+      `git checkout feat/OGC-009-sidenav/m2a-nav && git checkout -b feat/OGC-009-sidenav/m2b-rollout` ✅
 
 ### Tests for Milestone 2b (MANDATORY - TDD Enforcement)
 
@@ -268,24 +268,28 @@ notifications
 > Reference: [Jest Best Practices](../../.specify/guides/jest-best-practices.md)
 > Template: `.specify/templates/testing/JestComponent.test.jsx.template`
 
-- [ ] T061 [P] [M2b] **[RED]** Add header action tests to
+- [x] T061 [P] [M2b] **[RED]** Add header action tests to
       `frontend/src/components/layout/TwoModeLayout.test.js` → Run `npm test`,
-      verify FAILS before T064
+      verify FAILS before T064 ✅ VERIFIED FAILS (6 tests)
 
   - Test: renders headerActions prop content in header global bar
-  - Test: notifications panel opens/closes correctly
-  - Test: user panel opens/closes correctly
-  - Test: search bar toggles correctly
-  - Test: language selector changes language
+  - Test: headerActions position inside HeaderGlobalBar
+  - Test: notification button can toggle panel
+  - Test: user panel button can toggle panel
+  - Test: search toggle can toggle search bar
+  - Test: headerActions works alongside sidenav toggle
+  - Test: no error when headerActions not provided
 
-- [ ] T062 [P] [M2b] **[RED]** Add Layout.js integration test to
+- [x] T062 [P] [M2b] **[RED]** Add Layout.js integration test to
       `frontend/src/components/layout/Layout.test.js` → Run `npm test`, verify
-      FAILS before T066
+      FAILS before T066 ✅ VERIFIED FAILS (2 tests)
 
-  - Test: renders TwoModeLayout with header actions
-  - Test: ConfigurationContext available to children
-  - Test: NotificationContext available to children
-  - Test: onChangeLanguage prop wired correctly
+  - Test: renders TwoModeLayout (passes)
+  - Test: passes headerActions to TwoModeLayout (FAILS - not implemented)
+  - Test: ConfigurationContext available to children (passes)
+  - Test: NotificationContext available to children (passes)
+  - Test: route-based configuration passes correct defaultMode (passes)
+  - Test: headerActions includes user icon (FAILS - not implemented)
 
 ### Implementation for Milestone 2b
 
