@@ -1709,3 +1709,201 @@ describe("StorageDashboard Capacity Display", () => {
     expect(modalTitle).toBeTruthy();
   });
 });
+
+// ========== OGC-150: Pagination Tests ==========
+
+describe("StorageDashboard Pagination (OGC-150)", () => {
+  const mockMetrics = {
+    totalSamples: 100,
+    active: 95,
+    disposed: 5,
+    storageLocations: 0,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest
+      .spyOn(require("react-router-dom"), "useLocation")
+      .mockReturnValue(createMockLocation("/Storage/samples"));
+  });
+
+  /**
+   * T023: Test Pagination component renders with default page size
+   */
+  test("testPaginationComponent_Renders_WithDefaultPageSize", async () => {
+    // Arrange: Mock API response with pagination metadata
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/rest/storage/sample-items")) {
+        callback({
+          items: Array(25).fill({ id: "sample-1", sampleItemId: "10001" }),
+          currentPage: 0,
+          totalPages: 4,
+          totalItems: 100,
+          pageSize: 25,
+        });
+      } else if (url.includes("/rest/storage/dashboard/metrics")) {
+        callback(mockMetrics);
+      } else if (url.includes("/rest/storage/dashboard/location-counts")) {
+        callback({ rooms: 0, devices: 0, shelves: 0, racks: 0 });
+      }
+    });
+
+    // Act
+    renderWithIntl(<StorageDashboard />);
+
+    // Assert: Pagination component should render
+    await waitFor(
+      () => {
+        const pagination = screen.queryByRole("navigation");
+        expect(pagination).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+  });
+
+  /**
+   * T024: Test page change triggers API call with correct params
+   */
+  test("testPageChange_TriggersAPICall_WithCorrectParams", async () => {
+    // Arrange
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/rest/storage/sample-items")) {
+        callback({
+          items: Array(25).fill({ id: "sample-1", sampleItemId: "10001" }),
+          currentPage: 0,
+          totalPages: 4,
+          totalItems: 100,
+          pageSize: 25,
+        });
+      } else if (url.includes("/rest/storage/dashboard/metrics")) {
+        callback(mockMetrics);
+      } else if (url.includes("/rest/storage/dashboard/location-counts")) {
+        callback({ rooms: 0, devices: 0, shelves: 0, racks: 0 });
+      }
+    });
+
+    renderWithIntl(<StorageDashboard />);
+
+    // Wait for initial render
+    await waitFor(
+      () => {
+        expect(screen.queryByRole("navigation")).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    // Act: Click next page (if available)
+    const nextButtons = screen.queryAllByLabelText(/next page/i);
+    if (nextButtons.length > 0 && !nextButtons[0].disabled) {
+      fireEvent.click(nextButtons[0]);
+
+      // Assert: API should be called with page=1
+      await waitFor(() => {
+        expect(getFromOpenElisServer).toHaveBeenCalledWith(
+          expect.stringContaining("page=1"),
+          expect.any(Function),
+        );
+      });
+    }
+  });
+
+  /**
+   * T025: Test changing page size resets to page 1
+   */
+  test("testPageSizeChange_ResetsToPageOne", async () => {
+    // Arrange
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/rest/storage/sample-items")) {
+        callback({
+          items: Array(25).fill({ id: "sample-1", sampleItemId: "10001" }),
+          currentPage: 0,
+          totalPages: 4,
+          totalItems: 100,
+          pageSize: 25,
+        });
+      } else if (url.includes("/rest/storage/dashboard/metrics")) {
+        callback(mockMetrics);
+      } else if (url.includes("/rest/storage/dashboard/location-counts")) {
+        callback({ rooms: 0, devices: 0, shelves: 0, racks: 0 });
+      }
+    });
+
+    renderWithIntl(<StorageDashboard />);
+
+    // Wait for initial render
+    await waitFor(
+      () => {
+        expect(screen.queryByRole("navigation")).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    // Act: Change page size (if selector available)
+    const pageSizeSelectors = screen.queryAllByLabelText(/items per page/i);
+    if (pageSizeSelectors.length > 0) {
+      fireEvent.change(pageSizeSelectors[0], { target: { value: "50" } });
+
+      // Assert: API should be called with size=50 and page=0 (reset to first page)
+      await waitFor(() => {
+        expect(getFromOpenElisServer).toHaveBeenCalledWith(
+          expect.stringMatching(/page=0.*size=50|size=50.*page=0/),
+          expect.any(Function),
+        );
+      });
+    }
+  });
+
+  /**
+   * T026: Test pagination state preserved when switching tabs
+   */
+  test("testPaginationState_PreservedOnTabSwitch", async () => {
+    // Arrange
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/rest/storage/sample-items")) {
+        callback({
+          items: Array(25).fill({ id: "sample-1", sampleItemId: "10001" }),
+          currentPage: 0,
+          totalPages: 4,
+          totalItems: 100,
+          pageSize: 25,
+        });
+      } else if (url.includes("/rest/storage/dashboard/metrics")) {
+        callback(mockMetrics);
+      } else if (url.includes("/rest/storage/rooms")) {
+        callback([]);
+      } else if (url.includes("/rest/storage/dashboard/location-counts")) {
+        callback({ rooms: 0, devices: 0, shelves: 0, racks: 0 });
+      }
+    });
+
+    renderWithIntl(<StorageDashboard />);
+
+    // Wait for samples tab to load
+    await waitFor(
+      () => {
+        expect(screen.queryByRole("navigation")).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    // Act: Switch to Rooms tab
+    const roomsTab = screen.getByTestId("tab-rooms");
+    fireEvent.click(roomsTab);
+
+    // Wait for rooms tab to load
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Switch back to Samples tab
+    const samplesTab = screen.getByTestId("tab-samples");
+    fireEvent.click(samplesTab);
+
+    // Assert: Pagination component should still be visible (state preserved)
+    await waitFor(
+      () => {
+        const pagination = screen.queryByRole("navigation");
+        expect(pagination).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+  });
+});

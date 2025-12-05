@@ -31,6 +31,7 @@ import {
   Dropdown,
   Button,
   Tooltip,
+  Pagination,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
@@ -95,9 +96,14 @@ const StorageDashboard = () => {
   const [racks, setRacks] = useState([]);
   const [samples, setSamples] = useState([]);
 
+  // OGC-150: Pagination state
+  const [page, setPage] = useState(1); // Carbon Pagination uses 1-based indexing
+  const [pageSize, setPageSize] = useState(25); // Default page size per OGC-150
+  const [totalItems, setTotalItems] = useState(0);
+
   // Filter state
   const [searchTerm, setSearchTerm] = useState("");
-  const [locationFilter, setLocationFilter] = useState(null); // { id, type, name } for single location dropdown (Samples tab)
+  const [locationFilter, setLocationFilter] = useState(null); // { id, type, name} for single location dropdown (Samples tab)
   const [filterRoom, setFilterRoom] = useState(""); // For other tabs (devices, shelves, racks)
   const [filterDevice, setFilterDevice] = useState(""); // For other tabs
   const [filterStatus, setFilterStatus] = useState("");
@@ -767,6 +773,7 @@ const StorageDashboard = () => {
 
   // Reload data when filters change (server-side filtering for all tabs)
   // Note: When searchTerm is present, filters are applied client-side on search results (AND logic)
+  // OGC-150: Also reload when page or pageSize changes for samples tab
   useEffect(() => {
     const tabName = TAB_ROUTES[selectedTab] || "samples";
 
@@ -794,7 +801,15 @@ const StorageDashboard = () => {
         loadRacks();
         break;
     }
-  }, [locationFilter, filterRoom, filterDevice, filterStatus, selectedTab]);
+  }, [
+    locationFilter,
+    filterRoom,
+    filterDevice,
+    filterStatus,
+    selectedTab,
+    page,
+    pageSize,
+  ]); // OGC-150: Added page, pageSize
 
   // Debounced search for samples tab (300-500ms delay after typing stops) - FR-064a
   // For other tabs, search triggers immediate reload
@@ -1282,25 +1297,46 @@ const StorageDashboard = () => {
         // If filterStatus is empty string, don't add status param (show all)
       }
 
+      // OGC-150: Add pagination parameters
+      params.append("page", String(page - 1)); // Convert 1-based to 0-based
+      params.append("size", String(pageSize));
+
       const queryString = params.toString();
       const url = `/rest/storage/sample-items${queryString ? "?" + queryString : ""}`;
 
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setSamples(response);
-            if (response.length === 0) {
-              console.warn(
-                "Sample Items API returned empty array - no sample item assignments found matching filters",
+          // OGC-150: Handle paginated response with metadata
+          if (response && typeof response === "object") {
+            if (Array.isArray(response)) {
+              // Backward compatibility: if response is array (old format without pagination)
+              setSamples(response);
+              if (response.length === 0) {
+                console.warn(
+                  "Sample Items API returned empty array - no sample item assignments found matching filters",
+                );
+              }
+            } else if (response.items && Array.isArray(response.items)) {
+              // New format with pagination metadata (OGC-150)
+              setSamples(response.items);
+              setTotalItems(response.totalItems || 0);
+              if (response.items.length === 0) {
+                console.warn(
+                  "Sample Items API returned empty items array - no sample item assignments found matching filters",
+                );
+              }
+            } else {
+              console.error(
+                "Sample Items API returned unexpected response format:",
+                response,
               );
+              setSamples([]);
             }
           } else {
             console.error(
-              "Sample Items API returned non-array response:",
+              "Sample Items API returned non-object response:",
               response,
             );
-            console.error("Expected array but got:", typeof response, response);
-            console.error("Response is:", JSON.stringify(response));
             setSamples([]);
           }
         }
@@ -2772,6 +2808,19 @@ const StorageDashboard = () => {
                         )}
                       </DataTable>
                     </div>
+                  </Column>
+                  {/* OGC-150: Pagination for Samples tab */}
+                  <Column lg={16} md={8} sm={4}>
+                    <Pagination
+                      page={page}
+                      pageSize={pageSize}
+                      pageSizes={[25, 50, 100]}
+                      totalItems={totalItems}
+                      onChange={({ page, pageSize }) => {
+                        setPage(page);
+                        setPageSize(pageSize);
+                      }}
+                    />
                   </Column>
                 </Grid>
               </TabPanel>

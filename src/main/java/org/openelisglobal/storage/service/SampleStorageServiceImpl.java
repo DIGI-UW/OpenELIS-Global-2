@@ -15,6 +15,8 @@ import org.openelisglobal.storage.valueholder.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -1009,5 +1011,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             throw new LIMSRuntimeException("Sample was just modified by another user. Please refresh and try again.",
                     e);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SampleStorageAssignment> getSampleAssignments(Pageable pageable) {
+        return sampleStorageAssignmentDAO.findAll(pageable);
     }
 }
