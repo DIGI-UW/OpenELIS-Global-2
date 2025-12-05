@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
+import { useIntl } from "react-intl";
 import {
   Header,
   HeaderContainer,
@@ -7,10 +8,14 @@ import {
   HeaderName,
   SideNav,
   SideNavItems,
+  SideNavMenu,
+  SideNavMenuItem,
   Content,
   Theme,
 } from "@carbon/react";
 import { useSideNavPreference } from "./useSideNavPreference";
+import { useMenuAutoExpand } from "./useMenuAutoExpand";
+import { getFromOpenElisServer } from "../utils/Utils";
 import "./TwoModeLayout.css";
 
 /**
@@ -43,12 +48,124 @@ function TwoModeLayout({
   children,
   defaultExpanded = false,
   storageKeyPrefix = "default",
+  menus: menusProp, // For testing - allows injecting menu data
 }) {
+  const intl = useIntl();
+
   // Use the custom hook for state management and persistence
   const { isExpanded, toggle } = useSideNavPreference({
     defaultExpanded,
     storageKeyPrefix,
   });
+
+  // Menu state
+  const [menusRaw, setMenusRaw] = useState(menusProp || { menu: [] });
+  const [loadingMenus, setLoadingMenus] = useState(!menusProp);
+
+  // Fetch menus from API (unless provided via props for testing)
+  useEffect(() => {
+    if (!menusProp) {
+      setLoadingMenus(true);
+      getFromOpenElisServer("/rest/menu", (response) => {
+        if (response) {
+          setMenusRaw(response);
+        }
+        setLoadingMenus(false);
+      });
+    }
+  }, [menusProp]);
+
+  // Auto-expand menu based on current route
+  const menusWithAutoExpand = useMenuAutoExpand(menusRaw.menu || []);
+
+  // Combine auto-expanded menus back into menu structure
+  const menus = { ...menusRaw, menu: menusWithAutoExpand };
+
+  /**
+   * Recursive menu item generator supporting:
+   * - Parent items with children (expandable)
+   * - Leaf items (navigable)
+   * - Up to 4 levels of nesting
+   * - Internationalized labels
+   *
+   * @see research.md A4: Menu Item Rendering with Hierarchical Support
+   */
+  const generateMenuItems = (menuItem, index, level, path) => {
+    if (!menuItem.menu.isActive) {
+      return null;
+    }
+
+    // Top-level item with children - render as expandable menu
+    if (level === 0 && menuItem.childMenus && menuItem.childMenus.length > 0) {
+      return (
+        <SideNavMenu
+          key={path}
+          aria-label={intl.formatMessage({ id: menuItem.menu.displayKey })}
+          title={intl.formatMessage({ id: menuItem.menu.displayKey })}
+          defaultExpanded={menuItem.expanded || false}
+        >
+          {menuItem.childMenus.map((child, idx) =>
+            generateMenuItems(
+              child,
+              idx,
+              level + 1,
+              `${path}.childMenus[${idx}]`,
+            ),
+          )}
+        </SideNavMenu>
+      );
+    }
+
+    // Top-level item without children - render as direct link
+    if (level === 0) {
+      return (
+        <SideNavMenuItem
+          key={path}
+          href={menuItem.menu.actionURL}
+          target={menuItem.menu.openInNewWindow ? "_blank" : undefined}
+          rel={
+            menuItem.menu.openInNewWindow ? "noopener noreferrer" : undefined
+          }
+        >
+          {intl.formatMessage({ id: menuItem.menu.displayKey })}
+        </SideNavMenuItem>
+      );
+    }
+
+    // Nested item with children - render as nested menu (up to level 3)
+    if (menuItem.childMenus && menuItem.childMenus.length > 0 && level < 3) {
+      return (
+        <SideNavMenu
+          key={path}
+          aria-label={intl.formatMessage({ id: menuItem.menu.displayKey })}
+          title={intl.formatMessage({ id: menuItem.menu.displayKey })}
+          defaultExpanded={menuItem.expanded || false}
+        >
+          {menuItem.childMenus.map((child, idx) =>
+            generateMenuItems(
+              child,
+              idx,
+              level + 1,
+              `${path}.childMenus[${idx}]`,
+            ),
+          )}
+        </SideNavMenu>
+      );
+    }
+
+    // Nested item (leaf or max depth reached) - render with indentation
+    return (
+      <SideNavMenuItem
+        key={path}
+        href={menuItem.menu.actionURL}
+        target={menuItem.menu.openInNewWindow ? "_blank" : undefined}
+        rel={menuItem.menu.openInNewWindow ? "noopener noreferrer" : undefined}
+        style={{ paddingLeft: `${level * 0.5 + 1}rem` }}
+      >
+        {intl.formatMessage({ id: menuItem.menu.displayKey })}
+      </SideNavMenuItem>
+    );
+  };
 
   return (
     <HeaderContainer
@@ -75,10 +192,13 @@ function TwoModeLayout({
             expanded={isExpanded}
           >
             <SideNavItems>
-              {/* Navigation items will be populated in M2 (Navigation milestone) */}
-              {/* This milestone (M1) focuses on the core layout and toggle functionality */}
-              {/* Empty placeholder required by Carbon SideNavItems */}
-              <></>
+              {menus.menu && menus.menu.length > 0 ? (
+                menus.menu.map((menuItem, index) =>
+                  generateMenuItems(menuItem, index, 0, `menu[${index}]`),
+                )
+              ) : (
+                <></>
+              )}
             </SideNavItems>
           </SideNav>
 
@@ -115,12 +235,21 @@ TwoModeLayout.propTypes = {
    * @see data-model.md localStorage Key Format
    */
   storageKeyPrefix: PropTypes.string,
+
+  /**
+   * Optional menu data (for testing). If provided, bypasses API fetch.
+   * @see data-model.md MenuStructure interface
+   */
+  menus: PropTypes.shape({
+    menu: PropTypes.arrayOf(PropTypes.object),
+  }),
 };
 
 TwoModeLayout.defaultProps = {
   children: null,
   defaultExpanded: false,
   storageKeyPrefix: "default",
+  menus: null,
 };
 
 export default TwoModeLayout;
