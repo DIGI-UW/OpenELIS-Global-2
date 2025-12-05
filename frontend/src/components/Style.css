@@ -550,3 +550,29 @@ button {
     width: 100% !important;
   }
 }
+
+/* Fix sidenav scrollbar - scroll whole page not just nav */
+.cds--side-nav {
+  overflow-y: visible !important;
+  overflow-x: visible !important;
+}
+
+.cds--side-nav__navigation {
+  overflow-y: visible !important;
+  overflow-x: visible !important;
+}
+
+/* Simplify active styles - no dark-blue subnav background */
+.cds--side-nav__menu-item .cds--side-nav__link {
+  background-color: transparent !important;
+}
+
+.cds--side-nav__menu-item .cds--side-nav__link--current,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
+  border-left: 4px solid var(--cds-link-primary);
+  background-color: var(--cds-layer-selected-01) !important;
+}
+
+.cds--side-nav__menu-item .cds--side-nav__link:hover {
+  background-color: var(--cds-layer-hover-01) !important;
+}
