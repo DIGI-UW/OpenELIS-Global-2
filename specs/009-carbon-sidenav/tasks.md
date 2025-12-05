@@ -30,9 +30,9 @@ parallel.
 
 | Milestone | User Stories                           | Scope                                            |
 | --------- | -------------------------------------- | ------------------------------------------------ |
-| M1        | P1-US1 (Toggle), P1-US2 (Persistence)  | Core layout, tri-state toggle, localStorage      |
-| M2a       | P2-US3 (Hierarchical Nav)              | Hierarchical menus, auto-expand, active styling  |
-| M2b       | P2-US4 (Page Config), FR-011/012/013   | Header extraction, global rollout, storage lock  |
+| M1        | P1-US1 (Toggle), P1-US2 (Persistence)  | useSideNavPreference hook, tri-state, localStorage |
+| M2a       | P2-US3 (Hierarchical Nav)              | useMenuAutoExpand hook, active styling           |
+| M2b       | P2-US4 (Page Config), FR-011/012/013   | Enhance Header.js with hooks, lock mode          |
 | M3        | P3-US5 (Icons/Tooltips), P3-US6 (Mobile) | Icons, responsive behavior, E2E tests          |
 
 ## Milestone Dependency Graph
@@ -245,106 +245,105 @@ auto-expand working.
 
 ---
 
-## Milestone 2b: Global Rollout (Branch: `feat/OGC-009-sidenav/m2b-rollout`)
+## Milestone 2b: Enhance Header.js (Branch: `feat/OGC-009-sidenav/m2b-enhance`)
 
 **Type**: Sequential (depends on M1, M2a)  
 **PR Target**: `develop`  
-**Scope**: Header action extraction, global Layout.js swap, context preservation,
-storage pages default to LOCK mode  
-**Verification**: Header functionality tests pass, no regression in login/logout/
-notifications  
+**Scope**: Enhance existing Header.js with hooks, modernize patterns, add lock mode  
+**Verification**: Integration tests pass, no infinite loops, all header features work  
 **User Stories**: P2-US4 (Page-Level Config), FR-011/012/013 (Header Preservation)
+
+**APPROACH CHANGE**: After the failed TwoModeLayout replacement approach caused
+infinite loops and missing navigation, M2b now **enhances Header.js in-place**
+instead of replacing it.
 
 ### Branch Setup (MANDATORY - First Task)
 
-- [x] T060 [M2b] Create milestone branch from M2a:
-      `git checkout feat/OGC-009-sidenav/m2a-nav && git checkout -b feat/OGC-009-sidenav/m2b-rollout` ✅
+- [ ] T060 [M2b] Create milestone branch from develop (fresh start):
+      `git checkout develop && git pull && git checkout -b feat/OGC-009-sidenav/m2b-enhance`
+
+### Cleanup (Remove Failed Approach Artifacts)
+
+- [ ] T060a [M2b] Archive TwoModeLayout.js (move to `_archive/` or delete)
+- [ ] T060b [M2b] Delete HeaderActions.js (caused infinite loops)
+- [ ] T060c [M2b] Keep salvageable files: useSideNavPreference.js, useMenuAutoExpand.js,
+      Layout.integration.test.js
 
 ### Tests for Milestone 2b (MANDATORY - TDD Enforcement)
 
-> **CRITICAL: Write these tests FIRST, run them, and verify they FAIL (Red
-> phase)**
+> **CRITICAL: Integration tests that catch REAL issues (infinite loops, missing nav)**
 >
 > Reference: [Jest Best Practices](../../.specify/guides/jest-best-practices.md)
-> Template: `.specify/templates/testing/JestComponent.test.jsx.template`
 
-- [x] T061 [P] [M2b] **[RED]** Add header action tests to
-      `frontend/src/components/layout/TwoModeLayout.test.js` → Run `npm test`,
-      verify FAILS before T064 ✅ VERIFIED FAILS (6 tests)
+- [ ] T061 [P] [M2b] **[RED]** Update Layout.integration.test.js to verify
+      Header.js enhancement → Run `npm test`, verify current state
 
-  - Test: renders headerActions prop content in header global bar
-  - Test: headerActions position inside HeaderGlobalBar
-  - Test: notification button can toggle panel
-  - Test: user panel button can toggle panel
-  - Test: search toggle can toggle search bar
-  - Test: headerActions works alongside sidenav toggle
-  - Test: no error when headerActions not provided
+  - Test: renders without infinite loop when authenticated
+  - Test: side navigation renders when authenticated
+  - Test: navigation items render in sidenav
+  - Test: header actions (search, notifications, user) render
+  - Test: lock button toggles lock mode
 
-- [x] T062 [P] [M2b] **[RED]** Add Layout.js integration test to
-      `frontend/src/components/layout/Layout.test.js` → Run `npm test`, verify
-      FAILS before T066 ✅ VERIFIED FAILS (2 tests)
+- [ ] T062 [P] [M2b] **[RED]** Add Header.js enhancement tests to new file
+      `frontend/src/components/layout/Header.test.js`
 
-  - Test: renders TwoModeLayout (passes)
-  - Test: passes headerActions to TwoModeLayout (FAILS - not implemented)
-  - Test: ConfigurationContext available to children (passes)
-  - Test: NotificationContext available to children (passes)
-  - Test: route-based configuration passes correct defaultMode (passes)
-  - Test: headerActions includes user icon (FAILS - not implemented)
+  - Test: uses useIntl hook (not injectIntl HOC)
+  - Test: uses useLocation hook (not withRouter HOC)
+  - Test: lock mode applies isPersistent={true} to SideNav
+  - Test: menus auto-expand based on current route
+  - Test: no jsonpath dependency used
 
 ### Implementation for Milestone 2b
 
-- [ ] T063 [M2b] **[GREEN]** Add headerActions prop to TwoModeLayout in
-      `frontend/src/components/layout/TwoModeLayout.js` → Run T061 - verify it
-      PASSES
+- [ ] T063 [M2b] **[GREEN]** Migrate Header.js from injectIntl HOC to useIntl hook
+      in `frontend/src/components/layout/Header.js`
 
-  - Accept headerActions: ReactNode prop
-  - Render in HeaderGlobalBar position
-  - Maintain existing sidenav + toggle + content structure
+  - Add `const intl = useIntl();` inside component
+  - Replace `props.intl.locale` with `intl.locale`
+  - Remove `injectIntl` from export
 
-- [ ] T064 [M2b] **[GREEN]** Extract header actions from Header.js into reusable
-      component in `frontend/src/components/layout/HeaderActions.js`
+- [ ] T064 [M2b] **[GREEN]** Migrate Header.js from withRouter HOC to useLocation hook
+      in `frontend/src/components/layout/Header.js`
 
-  - Create HeaderActions component
-  - Move: search toggle, notifications button, user panel button, help menu
-  - Keep all panel state management in this component
-  - Export for use by Layout.js
+  - Add `const location = useLocation();` inside component
+  - Remove `withRouter` from export
+  - Update export: `export default OEHeader;`
 
-- [ ] T065 [M2b] **[GREEN]** Update HeaderActions to include notification panel
-      and slide-over in `frontend/src/components/layout/HeaderActions.js`
+- [ ] T065 [M2b] **[GREEN]** Import and use useSideNavPreference hook in Header.js
+      for lock mode support in `frontend/src/components/layout/Header.js`
 
-  - Include SlideOverNotifications component
-  - Include HeaderPanel for user details
-  - Wire onChangeLanguage callback
-  - Preserve all existing panel interactions
+  - Import `useSideNavPreference` from "./useSideNavPreference"
+  - Add `const { mode, toggle: toggleLock } = useSideNavPreference(...)`
+  - Modify SideNav: `isPersistent={mode === "lock"}`
+  - Add lock button to HeaderGlobalBar
 
-- [ ] T066 [M2b] **[GREEN]** Update Layout.js to use TwoModeLayout in
-      `frontend/src/components/layout/Layout.js` → Run T062 - verify it PASSES
+- [ ] T066 [M2b] **[GREEN]** Import and use useMenuAutoExpand hook in Header.js
+      in `frontend/src/components/layout/Header.js`
 
-  - Import TwoModeLayout, HeaderActions
-  - Wrap children with TwoModeLayout
-  - Pass HeaderActions via headerActions prop
-  - Pass onChangeLanguage to HeaderActions
-  - Preserve ConfigurationContext and NotificationContext providers
+  - Import `useMenuAutoExpand` from "./useMenuAutoExpand"
+  - Replace jsonpath-based menu expansion with hook
+  - Remove `var jp = require("jsonpath")` dependency
 
-- [ ] T067 [M2b] **[GREEN]** Wire storage pages to defaultMode="lock" in
-      `frontend/src/App.js`
+- [ ] T067 [M2b] **[GREEN]** Update Layout.js to apply content margin for lock mode
+      in `frontend/src/components/layout/Layout.js`
 
-  - Update routes that render storage pages
-  - Pass defaultMode="lock" prop via route configuration
-  - User preference continues to override page defaults
+  - Import `useSideNavPreference` hook
+  - Add content class based on mode: `content-nav-locked`
+  - Add CSS to Style.css for `.content-nav-locked { margin-left: 16rem; }`
 
 - [ ] T068 [M2b] Run all M2b tests after implementation:
-      `cd frontend && npm test -- --testPathPattern="(TwoModeLayout|Layout)" --watchAll=false`
+      `cd frontend && npm test -- --testPathPattern="(Header|Layout)" --watchAll=false`
 
 ### Milestone 2b Completion
 
 - [ ] T069 [M2b] Manual verification: All header features work (login, logout,
       notifications, search, language, help)
-- [ ] T070 [M2b] Format code: `cd frontend && npm run format`
-- [ ] T071 [M2b] Create PR for M2b: `feat/OGC-009-sidenav/m2b-rollout` → `develop`
+- [ ] T070 [M2b] Manual verification: Lock mode pushes content, persists preference
+- [ ] T071 [M2b] Format code: `cd frontend && npm run format`
+- [ ] T072 [M2b] Create PR for M2b: `feat/OGC-009-sidenav/m2b-enhance` → `develop`
 
-**Checkpoint**: Milestone 2b PR ready for review. Global rollout complete with
-header functionality preserved.
+**Checkpoint**: Milestone 2b PR ready for review. Header.js enhanced with modern
+hooks and lock mode, no regressions.
 
 ---
 
@@ -476,9 +475,12 @@ develop
   │
   ├── feat/OGC-009-sidenav/m1-core (M1 PR) → develop ✅ COMPLETE
   ├── feat/OGC-009-sidenav/m2a-nav (M2a PR) → develop ✅ COMPLETE
-  ├── feat/OGC-009-sidenav/m2b-rollout (M2b PR) → develop
+  ├── feat/OGC-009-sidenav/m2b-enhance (M2b PR) → develop ← REVISED APPROACH
   └── feat/OGC-009-sidenav/m3-polish (M3 PR) → develop
 ```
+
+**NOTE**: M2b was renamed from `m2b-rollout` to `m2b-enhance` to reflect the
+revised approach (enhance Header.js vs replace with TwoModeLayout).
 
 ### Within Each Milestone
 
@@ -510,9 +512,9 @@ Each milestone depends on the previous milestone being merged. This ensures:
 | --------- | ---------- | ---------- | -------------------- | ------------------------- |
 | M1        | 11         | 2          | 4                    | P1-US1, P1-US2            |
 | M2a       | 12         | 3          | 4                    | P2-US3                    |
-| M2b       | 12         | 2          | 6                    | P2-US4, FR-011/012/013    |
+| M2b       | 16         | 2          | 8                    | P2-US4, FR-011/012/013    |
 | M3        | 19         | 3          | 5                    | P3-US5, P3-US6            |
-| **Total** | **54**     | **10**     | **19**               | **6 stories + 3 FRs**     |
+| **Total** | **58**     | **10**     | **21**               | **6 stories + 3 FRs**     |
 
 ---
 
@@ -524,3 +526,16 @@ Each milestone depends on the previous milestone being merged. This ensures:
 - E2E tests follow Constitution V.5 guidelines (individual test runs, console
   log review)
 - Target >70% code coverage for new code (measured via Jest)
+
+### Approach Change (December 5, 2025)
+
+M2b was revised after the "TwoModeLayout replacement" approach failed:
+- **Original approach**: Replace Header.js with TwoModeLayout + HeaderActions
+- **Problem**: Caused infinite loops, missing navigation, broken tests
+- **Revised approach**: Enhance existing Header.js with hooks
+
+**What we learned**:
+1. Tests that mock too much hide real integration issues
+2. Extracting components breaks shared state management
+3. Enhancing existing code is safer than replacing it
+4. Integration smoke tests (Layout.integration.test.js) catch real bugs

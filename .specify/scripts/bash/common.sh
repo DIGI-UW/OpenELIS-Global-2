@@ -96,7 +96,7 @@ check_feature_branch() {
         return 0
     fi
 
-    echo "ERROR: Not on a feature branch. Current branch: $branch" >&2
+        echo "ERROR: Not on a feature branch. Current branch: $branch" >&2
     echo "Feature branches should match one of these patterns:" >&2
     echo "" >&2
     echo "  Legacy format:" >&2

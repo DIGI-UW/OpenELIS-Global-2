@@ -71,90 +71,110 @@ npm start
 
 - React UI: https://localhost/
 
-## Implementation Steps
+## Implementation Steps (M2b: Enhance Header.js)
 
-### Step 1: Create the Custom Hook
+### Step 1: Revert to Working State (DONE)
 
-Create `frontend/src/components/layout/useSideNavPreference.js`:
+Ensure Header.js and Layout.js are reverted to develop baseline:
+
+```bash
+git checkout develop -- frontend/src/components/layout/Header.js
+git checkout develop -- frontend/src/components/layout/Layout.js
+```
+
+### Step 2: Import Hooks into Header.js
+
+Add imports to existing `frontend/src/components/layout/Header.js`:
 
 ```jsx
-import { useState, useCallback } from "react";
+// Add these imports
+import { useSideNavPreference } from "./useSideNavPreference";
+import { useMenuAutoExpand } from "./useMenuAutoExpand";
+import { useIntl } from "react-intl";  // Replace injectIntl
+import { useLocation } from "react-router-dom";  // Replace withRouter
+```
 
-export function useSideNavPreference({
-  defaultExpanded = false,
-  storageKeyPrefix = "default",
-} = {}) {
-  const storageKey = `${storageKeyPrefix}SideNavExpanded`;
+### Step 3: Migrate from HOCs to Hooks
 
-  const [isExpanded, setIsExpanded] = useState(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      return saved !== null ? saved === "true" : defaultExpanded;
-    } catch (e) {
-      console.warn("localStorage unavailable");
-      return defaultExpanded;
-    }
-  });
+Replace the HOC wrapping pattern:
 
-  const toggle = useCallback(() => {
-    setIsExpanded((prev) => {
-      const newValue = !prev;
-      try {
-        localStorage.setItem(storageKey, String(newValue));
-      } catch (e) {
-        console.warn("Could not persist preference");
-      }
-      return newValue;
-    });
-  }, [storageKey]);
+```jsx
+// BEFORE (HOCs)
+export default withRouter(injectIntl(OEHeader));
 
-  const setExpanded = useCallback(
-    (value) => {
-      setIsExpanded(value);
-      try {
-        localStorage.setItem(storageKey, String(value));
-      } catch (e) {
-        console.warn("Could not persist preference");
-      }
-    },
-    [storageKey]
+// AFTER (Hooks inside component)
+function OEHeader(props) {
+  const intl = useIntl();
+  const location = useLocation();
+  // ... rest of component
+}
+export default OEHeader;
+```
+
+### Step 4: Add Lock Mode Support
+
+Inside Header.js, add lock mode logic:
+
+```jsx
+// Inside OEHeader component
+const { mode, isExpanded: isLocked, toggle: toggleLock } = useSideNavPreference({
+  storageKeyPrefix: "global",
+  defaultMode: "close"
+});
+
+// Modify SideNav to support lock mode
+<SideNav
+  expanded={mode === "lock" || isSideNavExpanded}
+  isPersistent={mode === "lock"}
+/>
+
+// Add lock button to HeaderGlobalBar
+<HeaderGlobalAction onClick={toggleLock} aria-label="Lock navigation">
+  {mode === "lock" ? <Pin size={20} /> : <PinOutline size={20} />}
+</HeaderGlobalAction>
+```
+
+### Step 5: Add Auto-Expand with Hook
+
+Replace jsonpath-based expansion with hook:
+
+```jsx
+// Replace jsonpath menu expansion
+const menusWithAutoExpand = useMenuAutoExpand(menus.menu || []);
+
+// Use in render
+{menusWithAutoExpand.map((menuItem, index) => 
+  generateMenuItems(menuItem, index, 0, `$.menu[${index}]`)
+)}
+```
+
+### Step 6: Add Content Push to Layout.js
+
+Update `frontend/src/components/layout/Layout.js`:
+
+```jsx
+import { useSideNavPreference } from "./useSideNavPreference";
+
+function Layout(props) {
+  const { mode } = useSideNavPreference({ storageKeyPrefix: "global" });
+  const contentClass = mode === "lock" ? "content-nav-locked" : "";
+  
+  return (
+    // ... providers ...
+    <Content className={contentClass}>{children}</Content>
   );
-
-  return { isExpanded, toggle, setExpanded };
 }
 ```
 
-### Step 2: Create the Layout Component
+### Step 7: Add CSS for Lock Mode
 
-See `research.md` Appendix A1 for the complete component structure.
+Add to `frontend/src/components/Style.css`:
 
-Key points:
-
-- Use `isFixedNav={true}` and `isChildOfHeader={true}` on SideNav
-- Content wrapper must be a sibling to Header (not nested)
-- Apply dynamic margin classes based on `isExpanded` state
-
-### Step 3: Add CSS Styles
-
-See `research.md` Appendix A2 for the complete CSS.
-
-Key points:
-
-- Use 16rem margin for expanded, 3rem for collapsed
-- Use Carbon's transition timing (0.11s cubic-bezier)
-- Add media query for mobile responsiveness at 1056px
-
-### Step 4: Configure Routes
-
-Update `App.js` to use the new layout for specific routes:
-
-```jsx
-// Analyzer pages - expanded by default
-<Route path="/analyzers">
-  <TwoModeLayout defaultExpanded={true} storageKeyPrefix="analyzer">
-    {/* analyzer routes */}
-  </TwoModeLayout>
-</Route>
+```css
+.content-nav-locked {
+  margin-left: 16rem;
+  transition: margin-left 0.11s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
 ```
 
 ## Testing
@@ -187,9 +207,12 @@ npm run cy:run -- --spec "cypress/e2e/sidenavNavigation.cy.js"
 
 | File                                                     | Purpose                           |
 | -------------------------------------------------------- | --------------------------------- |
-| `frontend/src/components/layout/TwoModeLayout.js`        | Main layout component             |
-| `frontend/src/components/layout/TwoModeLayout.css`       | Layout styles                     |
-| `frontend/src/components/layout/useSideNavPreference.js` | Custom hook for state/persistence |
+| `frontend/src/components/layout/Header.js`               | Enhanced with lock mode + hooks   |
+| `frontend/src/components/layout/Layout.js`               | Content margin for lock mode      |
+| `frontend/src/components/layout/useSideNavPreference.js` | Tri-state hook (show/lock/close)  |
+| `frontend/src/components/layout/useMenuAutoExpand.js`    | Route-based menu auto-expansion   |
+| `frontend/src/components/layout/Layout.integration.test.js` | Critical smoke tests           |
+| `frontend/src/components/Style.css`                      | Lock mode content margin CSS      |
 | `frontend/cypress/e2e/sidenavNavigation.cy.js`           | E2E tests                         |
 
 ## Reference Documentation
