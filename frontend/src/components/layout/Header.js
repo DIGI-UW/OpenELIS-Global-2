@@ -9,7 +9,8 @@ import {
   UserAvatarFilledAlt,
   LocationFilled,
   Menu,
-  Locked,
+  Pin,
+  PinFilled,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
 import HelpMenu from "./HelpMenu";
@@ -279,6 +280,7 @@ function OEHeader({
               href={menuItem.menu.actionURL}
               target={menuItem.menu.openInNewWindow ? "_blank" : ""}
               className="top-level-menu-item"
+              isActive={location.pathname === menuItem.menu.actionURL}
             >
               {renderSideNavMenuItemLabel(menuItem, level)}
             </SideNavMenuItem>
@@ -297,6 +299,10 @@ function OEHeader({
               target={menuItem.menu.openInNewWindow ? "_blank" : ""}
               style={{ width: "100%" }}
               rel="noreferrer"
+              isActive={
+                menuItem.menu.actionURL &&
+                location.pathname === menuItem.menu.actionURL
+              }
             >
               <span style={{ display: "flex", width: "100%" }}>
                 {!menuItem.menu.actionURL &&
@@ -336,9 +342,6 @@ function OEHeader({
   };
 
   const hasActiveChildMenu = (menuItem) => {
-    if (menuItem.menu.elementId === "menu_reports_routine") {
-      console.log("reports");
-    }
     return (
       menuItem.childMenus.length >= 1 &&
       menuItem.childMenus.some((element) => {
@@ -501,18 +504,16 @@ function OEHeader({
                     mode === SIDENAV_MODES.CLOSE
                       ? "Open menu"
                       : mode === SIDENAV_MODES.SHOW
-                        ? "Lock menu"
-                        : "Close menu"
+                        ? "Pin menu"
+                        : "Unpin menu"
                   }
                   onClick={toggleSideNav}
                   isActive={isExpanded}
                   isCollapsible={true}
-                  renderIcon={() => {
-                    if (mode === SIDENAV_MODES.CLOSE) return <Menu size={20} />;
-                    if (mode === SIDENAV_MODES.SHOW)
-                      return <Locked size={20} />;
-                    return <Close size={20} />;
-                  }}
+                  renderMenuIcon={Menu}
+                  renderCloseIcon={
+                    mode === SIDENAV_MODES.SHOW ? Pin : PinFilled
+                  }
                 />
               )}
               <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
