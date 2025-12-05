@@ -206,19 +206,19 @@ public class SpecimenLabel extends Label {
      * Constructor for generic samples with sample type, quantity, and from
      * information (no patient info).
      *
-     * @param sampleItem   The sample item to create label for
-     * @param labNo        Lab/accession number
-     * @param sampleType   Sample type description
-     * @param quantity     Quantity with unit of measure
-     * @param from         Source/origin of the sample
+     * @param sampleItem The sample item to create label for
+     * @param labNo      Lab/accession number
+     * @param sampleType Sample type description
+     * @param quantity   Quantity with unit of measure
+     * @param from       Source/origin of the sample
      */
     public SpecimenLabel(SampleItem sampleItem, String labNo, String sampleType, String quantity, String from) {
         // set dimensions
         try {
-            width = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_BARCODE_WIDTH));
-            height = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_BARCODE_HEIGHT));
+            width = Float.parseFloat(
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_BARCODE_WIDTH));
+            height = Float.parseFloat(
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_BARCODE_HEIGHT));
         } catch (Exception e) {
             LogEvent.logError("SpecimenLabel", "SpecimenLabel(SampleItem, labNo, sampleType, quantity, from)",
                     "Error parsing specimen barcode dimensions: " + e.toString());

@@ -49,6 +49,7 @@ import ReferredOutTests from "./components/resultPage/resultsReferredOut/Referre
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
+import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
 
@@ -368,6 +369,18 @@ export default function App() {
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
+                  exact
+                  component={() => <NotebookSampleOrder />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NotebookSampleOrder/:notebookId"
+                  exact
+                  component={() => <NotebookSampleOrder />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute

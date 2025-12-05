@@ -147,13 +147,13 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
                     "No sample found for accession number: " + labNo);
         }
 
-        // Create OrderLabel with generic sample details (1 copy) - order label comes after specimens
+        // Create OrderLabel with generic sample details (1 copy) - order label comes
+        // after specimens
         OrderLabel orderLabel = new OrderLabel(labNo, sampleType, sampleQuantity, from);
         orderLabel.setNumLabels(1);
         labels.add(orderLabel);
 
-        LogEvent.logInfo("LabelMakerServlet", "printGenericSampleLabel",
-                "Total labels to print: " + labels.size());
+        LogEvent.logInfo("LabelMakerServlet", "printGenericSampleLabel", "Total labels to print: " + labels.size());
 
         // Create label maker with all labels and generate PDF
         BarcodeLabelMaker labelMaker = new BarcodeLabelMaker(labels);

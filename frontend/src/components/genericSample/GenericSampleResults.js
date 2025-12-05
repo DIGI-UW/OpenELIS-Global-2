@@ -30,7 +30,29 @@ import { Formik } from "formik";
 import config from "../../config.json";
 
 /**
- * GenericSampleResults - Result Entry page for Generic Sample menu.
+ * GenericSampleResults - Configurable result entry component for Generic Sample menu.
+ *
+ * @param {Object} props - Component configuration
+ * @param {string} props.title - Page title (i18n key, default: "result.entry.title")
+ * @param {string} props.titleDefault - Default page title
+ * @param {Array} props.breadcrumbs - Custom breadcrumb array [{label, link}]
+ * @param {string} props.searchEndpoint - API endpoint for search (default: "/rest/LogbookResults")
+ * @param {string} props.saveEndpoint - API endpoint for saving (default: "/rest/LogbookResults")
+ * @param {boolean} props.showBreadcrumbs - Show breadcrumbs (default: true)
+ * @param {boolean} props.showAcceptColumn - Show accept as-is column (default: true)
+ * @param {boolean} props.showNotesColumn - Show notes column (default: true)
+ * @param {boolean} props.showCurrentResultColumn - Show current result column (default: true)
+ * @param {boolean} props.showNormalRangeColumn - Show normal range column (default: true)
+ * @param {boolean} props.showTestDateColumn - Show test date column (default: true)
+ * @param {boolean} props.showPagination - Show pagination controls (default: true)
+ * @param {number} props.defaultPageSize - Default page size (default: 20)
+ * @param {Function} props.onSearchComplete - Callback after search completes (results) => void
+ * @param {Function} props.onSaveSuccess - Callback after successful save (response) => void
+ * @param {Function} props.onSaveError - Callback after save error (error) => void
+ * @param {Array} props.additionalColumns - Additional columns to render [{id, name, cell, width}]
+ * @param {Function} props.renderCustomSearch - Render function for custom search fields (handleSearch) => React.Node
+ * @param {Function} props.transformSearchParams - Transform search parameters before request (params) => params
+ * @param {Function} props.transformSaveData - Transform data before save (data) => data
  *
  * Features:
  * - Search by accession number
@@ -40,7 +62,28 @@ import config from "../../config.json";
  *
  * Related: Feature 001-sample-management
  */
-function GenericSampleResults() {
+function GenericSampleResults({
+  title = "result.entry.title",
+  titleDefault = "Result Entry",
+  breadcrumbs: customBreadcrumbs,
+  searchEndpoint = "/rest/LogbookResults",
+  saveEndpoint = "/rest/LogbookResults",
+  showBreadcrumbs = true,
+  showAcceptColumn = true,
+  showNotesColumn = true,
+  showCurrentResultColumn = true,
+  showNormalRangeColumn = true,
+  showTestDateColumn = true,
+  showPagination = true,
+  defaultPageSize = 20,
+  onSearchComplete,
+  onSaveSuccess,
+  onSaveError,
+  additionalColumns = [],
+  renderCustomSearch,
+  transformSearchParams,
+  transformSaveData,
+}) {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -49,11 +92,13 @@ function GenericSampleResults() {
   const componentMounted = useRef(true);
 
   // Breadcrumb navigation
-  const breadcrumbs = [
+  const defaultBreadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "sample.label.generic", link: "/GenericSample/Order" },
     { label: "result.entry.label" },
   ];
+
+  const breadcrumbs = customBreadcrumbs || defaultBreadcrumbs;
 
   // Search state
   const [accessionNumber, setAccessionNumber] = useState("");
@@ -64,7 +109,7 @@ function GenericSampleResults() {
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
 
   // Form state
   const [acceptAsIs, setAcceptAsIs] = useState([]);
@@ -99,27 +144,43 @@ function GenericSampleResults() {
     // Use the full accession number as-is
     // Note: We don't filter by finished status so users can see and edit results after saving
     const labNumber = accessionNumber.trim();
-    const searchEndPoint =
-      "/rest/LogbookResults?" +
-      "labNumber=" +
-      encodeURIComponent(labNumber) +
-      "&doRange=false" +
-      "&patientPK=" +
-      "&collectionDate=" +
-      "&recievedDate=" +
-      "&selectedTest=" +
-      "&selectedSampleStatus=" +
-      "&selectedAnalysisStatus=" +
-      "&testSectionId=" +
-      "&upperRangeAccessionNumber=";
+    let searchParams = {
+      labNumber: labNumber,
+      doRange: "false",
+      patientPK: "",
+      collectionDate: "",
+      recievedDate: "",
+      selectedTest: "",
+      selectedSampleStatus: "",
+      selectedAnalysisStatus: "",
+      testSectionId: "",
+      upperRangeAccessionNumber: "",
+    };
 
-    getFromOpenElisServer(searchEndPoint, (data) => {
+    // Allow transforming search params
+    if (transformSearchParams) {
+      searchParams = transformSearchParams(searchParams);
+    }
+
+    const queryString = Object.entries(searchParams)
+      .map(
+        ([key, value]) =>
+          `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+      )
+      .join("&");
+
+    const fullSearchEndpoint = `${searchEndpoint}?${queryString}`;
+
+    getFromOpenElisServer(fullSearchEndpoint, (data) => {
       setLoading(false);
       if (data && data.testResult && data.testResult.length > 0) {
         // Add IDs to results
         let i = 0;
         data.testResult.forEach((item) => (item.id = "" + i++));
         setResults(data);
+        if (onSearchComplete) {
+          onSearchComplete(data);
+        }
       } else {
         setResults({ testResult: [] });
         addNotification({
@@ -178,15 +239,19 @@ function GenericSampleResults() {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    const searchEndPoint = "/rest/LogbookResults";
-    const dataToSend = { ...results };
+    let dataToSend = { ...results };
     dataToSend.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
       delete result.result;
     });
 
+    // Allow transforming save data
+    if (transformSaveData) {
+      dataToSend = transformSaveData(dataToSend);
+    }
+
     postToOpenElisServerJsonResponse(
-      searchEndPoint,
+      saveEndpoint,
       JSON.stringify(dataToSend),
       (resp) => {
         setIsSubmitting(false);
@@ -196,6 +261,9 @@ function GenericSampleResults() {
             message: intl.formatMessage({ id: "success.save.msg" }),
             kind: NotificationKinds.success,
           });
+          if (onSaveSuccess) {
+            onSaveSuccess(resp);
+          }
           // Refresh results
           handleSearch();
         } else {
@@ -204,6 +272,9 @@ function GenericSampleResults() {
             message: intl.formatMessage({ id: "error.save.msg" }),
             kind: NotificationKinds.error,
           });
+          if (onSaveError) {
+            onSaveError(resp);
+          }
         }
         setNotificationVisible(true);
       },
@@ -219,10 +290,13 @@ function GenericSampleResults() {
   };
 
   /**
-   * Table columns configuration.
+   * Build table columns configuration based on props.
    */
-  const columns = [
-    {
+  const buildColumns = () => {
+    const cols = [];
+
+    // Sample Info column (always shown)
+    cols.push({
       id: "sampleInfo",
       name: intl.formatMessage({ id: "column.name.sampleInfo" }),
       cell: (row) => {
@@ -269,15 +343,21 @@ function GenericSampleResults() {
       sortable: true,
       selector: (row) => row.accessionNumber,
       width: "14rem",
-    },
-    {
-      id: "testDate",
-      name: intl.formatMessage({ id: "column.name.testDate" }),
-      selector: (row) => row.testDate,
-      sortable: true,
-      width: "7rem",
-    },
-    {
+    });
+
+    // Test Date column
+    if (showTestDateColumn) {
+      cols.push({
+        id: "testDate",
+        name: intl.formatMessage({ id: "column.name.testDate" }),
+        selector: (row) => row.testDate,
+        sortable: true,
+        width: "7rem",
+      });
+    }
+
+    // Test Name column (always shown)
+    cols.push({
       id: "testName",
       name: intl.formatMessage({ id: "column.name.testName" }),
       cell: (row) => {
@@ -298,28 +378,38 @@ function GenericSampleResults() {
       sortable: true,
       selector: (row) => row.testName,
       width: "12rem",
-    },
-    {
-      id: "normalRange",
-      name: intl.formatMessage({ id: "column.name.normalRange" }),
-      selector: (row) => row.normalRange,
-      sortable: true,
-      width: "8rem",
-    },
-    {
-      id: "accept",
-      name: intl.formatMessage({ id: "column.name.accept" }),
-      cell: (row) => (
-        <Checkbox
-          id={"testResult" + row.id + ".forceTechApproval"}
-          name={"testResult[" + row.id + "].forceTechApproval"}
-          labelText=""
-          onChange={(e) => handleAcceptAsIsChange(e, row.id)}
-        />
-      ),
-      width: "5rem",
-    },
-    {
+    });
+
+    // Normal Range column
+    if (showNormalRangeColumn) {
+      cols.push({
+        id: "normalRange",
+        name: intl.formatMessage({ id: "column.name.normalRange" }),
+        selector: (row) => row.normalRange,
+        sortable: true,
+        width: "8rem",
+      });
+    }
+
+    // Accept column
+    if (showAcceptColumn) {
+      cols.push({
+        id: "accept",
+        name: intl.formatMessage({ id: "column.name.accept" }),
+        cell: (row) => (
+          <Checkbox
+            id={"testResult" + row.id + ".forceTechApproval"}
+            name={"testResult[" + row.id + "].forceTechApproval"}
+            labelText=""
+            onChange={(e) => handleAcceptAsIsChange(e, row.id)}
+          />
+        ),
+        width: "5rem",
+      });
+    }
+
+    // Result column (always shown)
+    cols.push({
       id: "result",
       name: intl.formatMessage({ id: "column.name.result" }),
       cell: (row) => {
@@ -360,56 +450,73 @@ function GenericSampleResults() {
         }
       },
       width: "10rem",
-    },
-    {
-      id: "currentResult",
-      name: intl.formatMessage({ id: "column.name.currentResult" }),
-      cell: (row) => {
-        // For dictionary/coded results, show the display text instead of the ID
-        if (
-          (row.resultType === "D" ||
-            row.resultType === "M" ||
-            row.resultType === "C") &&
-          row.resultValue &&
-          row.dictionaryResults
-        ) {
-          const dictItem = row.dictionaryResults.find(
-            (dict) => dict.id === row.resultValue,
-          );
-          return dictItem ? dictItem.value : row.resultValue;
-        }
-        return row.resultValue || "";
-      },
-      width: "8rem",
-    },
-    {
-      id: "notes",
-      name: intl.formatMessage({ id: "column.name.notes" }),
-      cell: (row) => (
-        <TextArea
-          id={"testResult" + row.id + ".note"}
-          name={"testResult[" + row.id + "].note"}
-          labelText=""
-          hideLabel
-          rows={2}
-          defaultValue={row.pastNotes || ""}
-          onChange={(e) => handleResultChange(e, row.id)}
-        />
-      ),
-      width: "15rem",
-    },
-  ];
+    });
+
+    // Current Result column
+    if (showCurrentResultColumn) {
+      cols.push({
+        id: "currentResult",
+        name: intl.formatMessage({ id: "column.name.currentResult" }),
+        cell: (row) => {
+          // For dictionary/coded results, show the display text instead of the ID
+          if (
+            (row.resultType === "D" ||
+              row.resultType === "M" ||
+              row.resultType === "C") &&
+            row.resultValue &&
+            row.dictionaryResults
+          ) {
+            const dictItem = row.dictionaryResults.find(
+              (dict) => dict.id === row.resultValue,
+            );
+            return dictItem ? dictItem.value : row.resultValue;
+          }
+          return row.resultValue || "";
+        },
+        width: "8rem",
+      });
+    }
+
+    // Notes column
+    if (showNotesColumn) {
+      cols.push({
+        id: "notes",
+        name: intl.formatMessage({ id: "column.name.notes" }),
+        cell: (row) => (
+          <TextArea
+            id={"testResult" + row.id + ".note"}
+            name={"testResult[" + row.id + "].note"}
+            labelText=""
+            hideLabel
+            rows={2}
+            defaultValue={row.pastNotes || ""}
+            onChange={(e) => handleResultChange(e, row.id)}
+          />
+        ),
+        width: "15rem",
+      });
+    }
+
+    // Add any additional custom columns
+    if (additionalColumns.length > 0) {
+      cols.push(...additionalColumns);
+    }
+
+    return cols;
+  };
+
+  const columns = buildColumns();
 
   return (
     <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      {showBreadcrumbs && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
 
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <Section>
             <Section>
               <Heading>
-                <FormattedMessage id="result.entry.title" />
+                <FormattedMessage id={title} defaultMessage={titleDefault} />
               </Heading>
             </Section>
           </Section>
@@ -459,6 +566,9 @@ function GenericSampleResults() {
           </Column>
         </Grid>
 
+        {/* Custom search fields */}
+        {renderCustomSearch && renderCustomSearch(handleSearch)}
+
         {/* Results Table */}
         {results.testResult && results.testResult.length > 0 && (
           <>
@@ -474,56 +584,62 @@ function GenericSampleResults() {
               {({ handleChange }) => (
                 <Form onChange={handleChange}>
                   <DataTable
-                    data={results.testResult.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
+                    data={
+                      showPagination
+                        ? results.testResult.slice(
+                            (page - 1) * pageSize,
+                            page * pageSize,
+                          )
+                        : results.testResult
+                    }
                     columns={columns}
                     isSortable
                   />
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[10, 20, 30, 50, 100]}
-                    totalItems={results.testResult.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min, max, total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min, max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
+                  {showPagination && (
+                    <Pagination
+                      onChange={handlePageChange}
+                      page={page}
+                      pageSize={pageSize}
+                      pageSizes={[10, 20, 30, 50, 100]}
+                      totalItems={results.testResult.length}
+                      forwardText={intl.formatMessage({
+                        id: "pagination.forward",
+                      })}
+                      backwardText={intl.formatMessage({
+                        id: "pagination.backward",
+                      })}
+                      itemRangeText={(min, max, total) =>
+                        intl.formatMessage(
+                          { id: "pagination.item-range" },
+                          { min, max, total },
+                        )
+                      }
+                      itemsPerPageText={intl.formatMessage({
+                        id: "pagination.items-per-page",
+                      })}
+                      itemText={(min, max) =>
+                        intl.formatMessage(
+                          { id: "pagination.item" },
+                          { min, max },
+                        )
+                      }
+                      pageNumberText={intl.formatMessage({
+                        id: "pagination.page-number",
+                      })}
+                      pageRangeText={(_current, total) =>
+                        intl.formatMessage(
+                          { id: "pagination.page-range" },
+                          { total },
+                        )
+                      }
+                      pageText={(page, pagesUnknown) =>
+                        intl.formatMessage(
+                          { id: "pagination.page" },
+                          { page: pagesUnknown ? "" : page },
+                        )
+                      }
+                    />
+                  )}
                   <Button
                     type="button"
                     onClick={handleSave}
