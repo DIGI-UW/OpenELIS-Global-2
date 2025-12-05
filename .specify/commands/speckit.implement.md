@@ -64,6 +64,8 @@ You **MUST** consider the user input before proceeding (if not empty).
 
    - **REQUIRED**: Read tasks.md for the complete task list and execution plan
    - **REQUIRED**: Read plan.md for tech stack, architecture, and file structure
+   - **REQUIRED**: Read Milestone Plan from plan.md (per Constitution Principle
+     IX)
    - **IF EXISTS**: Read data-model.md for entities and relationships
    - **IF EXISTS**: Read contracts/ for API specifications and test requirements
    - **IF EXISTS**: Read research.md for technical decisions and constraints
@@ -160,6 +162,24 @@ You **MUST** consider the user input before proceeding (if not empty).
      - **WARN** if >30 tasks (PR likely too large)
      - **WARN** if >20 files will be modified (PR likely too large)
      - Suggest splitting into sub-milestones if threshold exceeded
+   - **User Story Alignment**:
+     - Verify current milestone's user stories match implementation scope
+     - **WARN** if implementing code for user stories not in current milestone
+
+   **Scope Validation Output**:
+
+   ```
+   PR Scope Check:
+   - Current Branch: feat/OG-009-sidenav/m1-backend
+   - Milestone: M1 (Backend Core)
+   - User Stories: P1, P2 (backend portions)
+   - Tasks in scope: 18 ✓
+   - Files to modify: 12 ✓
+   - Status: PROCEED
+   ```
+
+   **If validation fails**: Display warnings and ask user to confirm before
+   proceeding. Do NOT auto-proceed if >30 tasks or >20 files.
 
 7. Execute implementation following the task plan:
 
