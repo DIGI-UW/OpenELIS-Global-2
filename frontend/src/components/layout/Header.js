@@ -489,22 +489,20 @@ function OEHeader({
 
     const newMenus = { ...menus };
 
-    // Accordion behavior: Only one top-level section open at a time
+    // REMOVED: Accordion auto-collapse behavior
+    // User feedback: "autocollapse causes consistency issues and changes user focus"
+    // New behavior: Allow multiple sections to be expanded simultaneously
     if (path.startsWith("$.menu[")) {
       // This is a top-level item (level 0)
-      console.log(`[SideNav] Top-level accordion - collapsing siblings`);
-      // Collapse all other top-level items
+      console.log(`[SideNav] Top-level item - toggling without collapsing siblings`);
       newMenus.menu = newMenus.menu.map((item) => {
         if (item.menu.elementId === menuItem.menu.elementId) {
           // This is the item being toggled
           console.log(`[SideNav] Toggling ${item.menu.elementId} from ${item.expanded} to ${!item.expanded}`);
           return { ...item, expanded: !item.expanded };
         } else {
-          // Collapse all siblings
-          if (item.expanded) {
-            console.log(`[SideNav] Collapsing sibling ${item.menu.elementId}`);
-          }
-          return { ...item, expanded: false };
+          // Keep siblings as-is (don't collapse)
+          return item;
         }
       });
     } else {
