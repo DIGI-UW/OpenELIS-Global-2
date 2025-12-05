@@ -1,8 +1,19 @@
 # Debug Guide: Page Reload Sidenav State Issues
 
-## The Problem
+## ✅ FIXED: Invalid SHOW Mode in localStorage
 
-On page reload, the sidenav sometimes gets stuck open and content is hidden behind it.
+**Issue Found:** Your console logs showed `savedValue: 'show'` in localStorage, causing nav to be stuck open as overlay on page reload.
+
+**Root Cause:** SHOW mode is meant to be **temporary** (overlay that auto-closes), but was being persisted to localStorage.
+
+**Fix Applied:** 
+- SHOW mode is NO LONGER persisted
+- Invalid SHOW mode in localStorage is automatically cleared
+- Only CLOSE and LOCK modes persist across reloads
+
+---
+
+## The Problem (Historical)
 
 **Expected Behavior:**
 1. **Storage pages** (`/Storage/*`, `/FreezerMonitoring/*`):
