@@ -17,7 +17,7 @@ import { BrowserRouter } from "react-router-dom";
 
 // Mock functions
 const mockToggle = jest.fn();
-const mockSetExpanded = jest.fn();
+const mockSetMode = jest.fn();
 
 // Mock the useSideNavPreference hook
 jest.mock("./useSideNavPreference", () => {
@@ -62,11 +62,15 @@ const renderWithProviders = (ui, options = {}) => {
 };
 
 // Helper to set up the mock return value
-const setupMock = (isExpanded) => {
+const setupMock = (mode = "close") => {
+  const navMode =
+    typeof mode === "boolean" ? (mode ? "lock" : "close") : mode || "close";
   useSideNavPreference.mockReturnValue({
-    isExpanded: isExpanded,
+    mode: navMode,
+    isExpanded: navMode !== "close",
     toggle: mockToggle,
-    setExpanded: mockSetExpanded,
+    setMode: mockSetMode,
+    SIDENAV_MODES: { SHOW: "show", LOCK: "lock", CLOSE: "close" },
   });
 };
 
@@ -83,7 +87,7 @@ describe("TwoModeLayout", () => {
      * @see spec.md FR-001: Toggle between expanded (256px) and collapsed (48px) modes
      */
     test("testRender_DefaultState_SidenavCollapsed", () => {
-      setupMock(false);
+      setupMock("close");
 
       renderWithProviders(
         <TwoModeLayout>
@@ -91,10 +95,10 @@ describe("TwoModeLayout", () => {
         </TwoModeLayout>,
       );
 
-      // Content wrapper should have collapsed class
+      // Content wrapper should have rail class
       const contentWrapper = screen.getByTestId("content-wrapper");
-      expect(contentWrapper.className).toContain("content-collapsed");
-      expect(contentWrapper.className).not.toContain("content-expanded");
+      expect(contentWrapper.className).toContain("content-rail");
+      expect(contentWrapper.className).not.toContain("content-locked");
     });
 
     /**
@@ -102,7 +106,7 @@ describe("TwoModeLayout", () => {
      * @see spec.md US4: Page-Level Mode Configuration
      */
     test("testRender_ExpandedState_SidenavExpanded", () => {
-      setupMock(true);
+      setupMock("lock");
 
       renderWithProviders(
         <TwoModeLayout defaultExpanded={true}>
@@ -110,10 +114,10 @@ describe("TwoModeLayout", () => {
         </TwoModeLayout>,
       );
 
-      // Content wrapper should have expanded class
+      // Content wrapper should have locked class
       const contentWrapper = screen.getByTestId("content-wrapper");
-      expect(contentWrapper.className).toContain("content-expanded");
-      expect(contentWrapper.className).not.toContain("content-collapsed");
+      expect(contentWrapper.className).toContain("content-locked");
+      expect(contentWrapper.className).not.toContain("content-rail");
     });
 
     /**
@@ -121,7 +125,7 @@ describe("TwoModeLayout", () => {
      * @see spec.md FR-008: Sidenav as sibling to Content component
      */
     test("testRender_WithChildren_RendersChildrenInContent", () => {
-      setupMock(false);
+      setupMock("close");
 
       renderWithProviders(
         <TwoModeLayout>
@@ -140,7 +144,7 @@ describe("TwoModeLayout", () => {
      * @see spec.md US1 Acceptance Scenario 1: Click toggle, sidenav expands
      */
     test("testToggle_ClickButton_CallsToggle", () => {
-      setupMock(false);
+      setupMock("close");
 
       renderWithProviders(
         <TwoModeLayout>
@@ -178,8 +182,8 @@ describe("TwoModeLayout", () => {
      * Test: Content area has correct margin class when expanded
      * @see spec.md FR-007: Content pushing (not overlay) when expanded
      */
-    test("testContentArea_Expanded_HasExpandedClass", () => {
-      setupMock(true);
+    test("testContentArea_Expanded_HasLockedClass", () => {
+      setupMock("lock");
 
       renderWithProviders(
         <TwoModeLayout>
@@ -188,14 +192,14 @@ describe("TwoModeLayout", () => {
       );
 
       const contentWrapper = screen.getByTestId("content-wrapper");
-      expect(contentWrapper.className).toContain("content-expanded");
+      expect(contentWrapper.className).toContain("content-locked");
     });
 
     /**
      * Test: Content area has correct margin class when collapsed
      */
-    test("testContentArea_Collapsed_HasCollapsedClass", () => {
-      setupMock(false);
+    test("testContentArea_Collapsed_HasRailClass", () => {
+      setupMock("close");
 
       renderWithProviders(
         <TwoModeLayout>
@@ -204,7 +208,7 @@ describe("TwoModeLayout", () => {
       );
 
       const contentWrapper = screen.getByTestId("content-wrapper");
-      expect(contentWrapper.className).toContain("content-collapsed");
+      expect(contentWrapper.className).toContain("content-rail");
     });
   });
 
@@ -215,7 +219,7 @@ describe("TwoModeLayout", () => {
      * @see spec.md FR-007: Use isFixedNav for content pushing
      */
     test("testCarbon_SideNav_IsRendered", () => {
-      setupMock(false);
+      setupMock("close");
 
       renderWithProviders(
         <TwoModeLayout>
@@ -232,7 +236,7 @@ describe("TwoModeLayout", () => {
      * Test: Uses Carbon Header component
      */
     test("testCarbon_Header_IsRendered", () => {
-      setupMock(false);
+      setupMock("close");
 
       renderWithProviders(
         <TwoModeLayout>
@@ -251,7 +255,7 @@ describe("TwoModeLayout", () => {
      * Test: Passes defaultExpanded to useSideNavPreference
      */
     test("testProps_DefaultExpanded_PassedToHook", () => {
-      setupMock(true);
+      setupMock("lock");
 
       renderWithProviders(
         <TwoModeLayout defaultExpanded={true} storageKeyPrefix="test">
@@ -259,17 +263,19 @@ describe("TwoModeLayout", () => {
         </TwoModeLayout>,
       );
 
-      expect(useSideNavPreference).toHaveBeenCalledWith({
-        defaultExpanded: true,
-        storageKeyPrefix: "test",
-      });
+      expect(useSideNavPreference).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultMode: "lock",
+          storageKeyPrefix: "test",
+        }),
+      );
     });
 
     /**
      * Test: Passes storageKeyPrefix to useSideNavPreference
      */
     test("testProps_StorageKeyPrefix_PassedToHook", () => {
-      setupMock(false);
+      setupMock("close");
 
       renderWithProviders(
         <TwoModeLayout storageKeyPrefix="analyzer">

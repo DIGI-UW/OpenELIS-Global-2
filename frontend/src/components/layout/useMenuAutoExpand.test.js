@@ -371,4 +371,3 @@ describe("useMenuAutoExpand", () => {
     });
   });
 });
-

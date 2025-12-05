@@ -11,29 +11,37 @@
  * @see research.md Appendix A2: CSS Styles for Content Pushing
  */
 
-/* Content area when sidenav is expanded (256px / 16rem) */
-.content-expanded {
-  margin-left: 16rem !important; /* Width of expanded SideNav */
-  width: calc(100% - 16rem) !important;
+/* Wrapper variants driven by nav mode */
+.content-locked {
+  margin-left: 16rem;
+  width: calc(100% - 16rem);
   transition:
     margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9),
     width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
 }
 
-/* Content area when sidenav is collapsed (48px / 3rem rail) */
-.content-collapsed {
-  margin-left: 3rem !important; /* Width of collapsed SideNav rail */
-  width: calc(100% - 3rem) !important;
+.content-rail {
+  margin-left: 3rem;
+  width: calc(100% - 3rem);
   transition:
     margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9),
     width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
 }
 
-/* Override Carbon Content's default margin when inside our wrapper */
-.content-expanded .cds--content,
-.content-collapsed .cds--content {
-  margin-left: 0 !important;
-  width: 100% !important;
+.content-overlay {
+  margin-left: 0;
+  width: 100%;
+  transition:
+    margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9),
+    width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
+}
+
+/* Ensure Carbon Content inside wrapper is full width */
+.content-locked .cds--content,
+.content-rail .cds--content,
+.content-overlay .cds--content {
+  margin-left: 0;
+  width: 100%;
 }
 
 /**
@@ -47,16 +55,29 @@
  * @see research.md R6: Responsive Behavior
  *
  * Note: This responsive behavior will be fully implemented in M3.
- * For M1, we establish the base styles; M3 will add the overlay behavior.
  */
 @media (max-width: 1056px) {
-  .content-expanded {
-    margin-left: 0 !important;
-    width: 100% !important;
+  .content-locked,
+  .content-rail,
+  .content-overlay {
+    margin-left: 0;
+    width: 100%;
   }
+}
 
-  .content-collapsed {
-    margin-left: 0 !important;
-    width: 100% !important;
-  }
+/* Active/hover styling aligned with develop (left border indicator) */
+.cds--side-nav__item--active > .cds--side-nav__link,
+.cds--side-nav__link[aria-current="page"] {
+  border-left: 4px solid var(--cds-link-primary);
+  background-color: var(--cds-layer-selected-01);
+}
+
+.cds--side-nav__link:hover {
+  background-color: var(--cds-layer-hover-01);
+  border-left: 4px solid var(--cds-link-primary);
+}
+
+/* Suppress competing default indicator */
+.cds--side-nav__link[aria-current="page"]::before {
+  display: none;
 }

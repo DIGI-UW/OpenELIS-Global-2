@@ -1,12 +1,24 @@
 import { useState, useCallback } from "react";
 
+const SIDENAV_MODES = {
+  SHOW: "show", // overlay, auto-close on outside click
+  LOCK: "lock", // pushes content, stays open
+  CLOSE: "close", // rail / collapsed
+};
+
+const MODE_CYCLE = [
+  SIDENAV_MODES.CLOSE,
+  SIDENAV_MODES.SHOW,
+  SIDENAV_MODES.LOCK,
+];
+
 /**
- * Custom hook for managing sidenav expanded/collapsed state with localStorage persistence.
+ * Custom hook for managing sidenav mode (show/lock/close) with localStorage persistence.
  *
  * This hook provides:
- * - Initialization from localStorage (with fallback to defaultExpanded)
- * - Toggle function that inverts state and persists
- * - setExpanded function for programmatic control
+ * - Initialization from localStorage (with fallback to defaultMode)
+ * - toggle() cycles through modes: close -> show -> lock -> close
+ * - setMode() for direct control
  * - Graceful handling when localStorage is unavailable (e.g., private browsing)
  *
  * @see spec.md US2: Persist User Preference Across Sessions (P1)
@@ -14,83 +26,107 @@ import { useState, useCallback } from "react";
  * @see data-model.md UseSideNavPreferenceOptions and UseSideNavPreferenceReturn interfaces
  *
  * @param {Object} options - Configuration options
- * @param {boolean} [options.defaultExpanded=false] - Default state when no preference is stored
+ * @param {("show"|"lock"|"close")} [options.defaultMode="close"] - Default mode when no preference is stored
+ * @param {boolean} [options.defaultExpanded] - Deprecated: maps true -> lock, false -> close
  * @param {string} [options.storageKeyPrefix='default'] - Prefix for localStorage key
  * @returns {Object} Hook return value
- * @returns {boolean} returns.isExpanded - Current sidenav expansion state
- * @returns {function} returns.toggle - Toggle function (also persists to localStorage)
- * @returns {function} returns.setExpanded - Programmatically set state (also persists)
+ * @returns {("show"|"lock"|"close")} returns.mode - Current sidenav mode
+ * @returns {boolean} returns.isExpanded - Derived expansion state (show/lock = true, close = false)
+ * @returns {function} returns.toggle - Cycle mode (persists)
+ * @returns {function} returns.setMode - Programmatically set mode (persists)
  *
  * @example
  * // Basic usage
- * const { isExpanded, toggle } = useSideNavPreference();
+ * const { mode, toggle } = useSideNavPreference();
  *
  * @example
  * // With custom defaults
- * const { isExpanded, toggle, setExpanded } = useSideNavPreference({
- *   defaultExpanded: true,
+ * const { mode, toggle, setMode } = useSideNavPreference({
+ *   defaultMode: 'lock',
  *   storageKeyPrefix: 'analyzer'
  * });
  */
 export function useSideNavPreference({
-  defaultExpanded = false,
+  defaultMode,
+  defaultExpanded, // deprecated, kept for backward compatibility
   storageKeyPrefix = "default",
 } = {}) {
-  const storageKey = `${storageKeyPrefix}SideNavExpanded`;
+  const storageKey = `${storageKeyPrefix}SideNavMode`;
 
-  /**
-   * Initialize state from localStorage, falling back to defaultExpanded.
-   * Uses a function initializer to avoid reading localStorage on every render.
-   */
-  const [isExpanded, setIsExpanded] = useState(() => {
+  const initialMode = () => {
     try {
       const saved = localStorage.getItem(storageKey);
-      if (saved !== null) {
-        return saved === "true";
+      if (
+        saved &&
+        [SIDENAV_MODES.SHOW, SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(
+          saved,
+        )
+      ) {
+        return saved;
       }
-      return defaultExpanded;
     } catch (e) {
-      // localStorage unavailable (e.g., private browsing mode)
-      console.warn(
-        "localStorage unavailable, using default sidenav preference",
-      );
-      return defaultExpanded;
+      console.warn("localStorage unavailable, using default sidenav mode");
     }
-  });
+    if (
+      defaultMode &&
+      [SIDENAV_MODES.SHOW, SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(
+        defaultMode,
+      )
+    ) {
+      return defaultMode;
+    }
+    if (typeof defaultExpanded === "boolean") {
+      return defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE;
+    }
+    return SIDENAV_MODES.CLOSE;
+  };
 
   /**
-   * Toggle sidenav state and persist to localStorage.
-   * @see spec.md US1: Toggle Sidenav Between Modes
+   * Initialize state from localStorage, falling back to defaultMode/defaultExpanded.
+   * Uses a function initializer to avoid reading localStorage on every render.
    */
-  const toggle = useCallback(() => {
-    setIsExpanded((prev) => {
-      const newValue = !prev;
-      try {
-        localStorage.setItem(storageKey, String(newValue));
-      } catch (e) {
-        console.warn("Could not persist sidenav preference to localStorage");
-      }
-      return newValue;
-    });
-  }, [storageKey]);
+  const [mode, setModeState] = useState(initialMode);
 
   /**
-   * Programmatically set sidenav state and persist to localStorage.
-   * Useful for page-level configuration or external control.
+   * Persist helper
    */
-  const setExpanded = useCallback(
+  const persistMode = useCallback(
     (value) => {
-      setIsExpanded(value);
       try {
-        localStorage.setItem(storageKey, String(value));
+        localStorage.setItem(storageKey, value);
       } catch (e) {
-        console.warn("Could not persist sidenav preference to localStorage");
+        console.warn("Could not persist sidenav mode to localStorage");
       }
     },
     [storageKey],
   );
 
-  return { isExpanded, toggle, setExpanded };
+  /**
+   * Toggle sidenav mode in a 3-step cycle: close -> show -> lock -> close
+   */
+  const toggle = useCallback(() => {
+    setModeState((prev) => {
+      const currentIndex = MODE_CYCLE.indexOf(prev);
+      const nextMode = MODE_CYCLE[(currentIndex + 1) % MODE_CYCLE.length];
+      persistMode(nextMode);
+      return nextMode;
+    });
+  }, [persistMode]);
+
+  /**
+   * Programmatically set sidenav mode and persist to localStorage.
+   */
+  const setMode = useCallback(
+    (value) => {
+      setModeState(value);
+      persistMode(value);
+    },
+    [persistMode],
+  );
+
+  const isExpanded = mode !== SIDENAV_MODES.CLOSE;
+
+  return { mode, isExpanded, toggle, setMode, SIDENAV_MODES };
 }
 
 export default useSideNavPreference;

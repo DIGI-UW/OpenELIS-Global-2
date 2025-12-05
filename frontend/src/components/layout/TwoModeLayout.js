@@ -1,6 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import PropTypes from "prop-types";
 import { useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import {
   Header,
   HeaderContainer,
@@ -44,16 +51,36 @@ import "./TwoModeLayout.css";
  *   <AnalyzerPageContent />
  * </TwoModeLayout>
  */
+const SIDENAV_MODES = {
+  SHOW: "show", // overlay
+  LOCK: "lock", // push content
+  CLOSE: "close", // rail
+};
+
 function TwoModeLayout({
   children,
-  defaultExpanded = false,
+  defaultExpanded, // deprecated: maps to lock/close
+  defaultMode,
   storageKeyPrefix = "default",
   menus: menusProp, // For testing - allows injecting menu data
 }) {
   const intl = useIntl();
+  const location = useLocation();
+  const sideNavRef = useRef(null);
+
+  const normalizedDefaultMode = useMemo(() => {
+    if (typeof defaultExpanded === "boolean") {
+      return defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE;
+    }
+    if (defaultMode && Object.values(SIDENAV_MODES).includes(defaultMode)) {
+      return defaultMode;
+    }
+    return SIDENAV_MODES.CLOSE;
+  }, [defaultMode, defaultExpanded]);
 
   // Use the custom hook for state management and persistence
-  const { isExpanded, toggle } = useSideNavPreference({
+  const { mode, isExpanded, toggle, setMode } = useSideNavPreference({
+    defaultMode: normalizedDefaultMode,
     defaultExpanded,
     storageKeyPrefix,
   });
@@ -82,6 +109,42 @@ function TwoModeLayout({
   const menus = { ...menusRaw, menu: menusWithAutoExpand };
 
   /**
+   * Active route helper
+   */
+  const isRouteActive = useCallback(
+    (actionURL) => {
+      if (!actionURL) return false;
+      if (location.pathname === actionURL) return true;
+      if (location.pathname.startsWith(actionURL + "/")) return true;
+      return false;
+    },
+    [location.pathname],
+  );
+
+  /**
+   * Click outside to close when in SHOW (overlay) mode
+   */
+  useEffect(() => {
+    if (mode !== SIDENAV_MODES.SHOW) {
+      return undefined;
+    }
+    const handleClickOutside = (event) => {
+      if (sideNavRef.current && !sideNavRef.current.contains(event.target)) {
+        setMode(SIDENAV_MODES.CLOSE);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [mode, setMode]);
+
+  const contentClass =
+    mode === SIDENAV_MODES.LOCK
+      ? "content-locked"
+      : mode === SIDENAV_MODES.CLOSE
+        ? "content-rail"
+        : "content-overlay";
+
+  /**
    * Recursive menu item generator supporting:
    * - Parent items with children (expandable)
    * - Leaf items (navigable)
@@ -94,6 +157,8 @@ function TwoModeLayout({
     if (!menuItem.menu.isActive) {
       return null;
     }
+
+    const active = isRouteActive(menuItem.menu.actionURL);
 
     // Top-level item with children - render as expandable menu
     if (level === 0 && menuItem.childMenus && menuItem.childMenus.length > 0) {
@@ -126,6 +191,8 @@ function TwoModeLayout({
           rel={
             menuItem.menu.openInNewWindow ? "noopener noreferrer" : undefined
           }
+          isActive={active}
+          aria-current={active ? "page" : undefined}
         >
           {intl.formatMessage({ id: menuItem.menu.displayKey })}
         </SideNavMenuItem>
@@ -160,6 +227,8 @@ function TwoModeLayout({
         href={menuItem.menu.actionURL}
         target={menuItem.menu.openInNewWindow ? "_blank" : undefined}
         rel={menuItem.menu.openInNewWindow ? "noopener noreferrer" : undefined}
+        isActive={active}
+        aria-current={active ? "page" : undefined}
         style={{ paddingLeft: `${level * 0.5 + 1}rem` }}
       >
         {intl.formatMessage({ id: menuItem.menu.displayKey })}
@@ -174,7 +243,9 @@ function TwoModeLayout({
           {/* Header with menu toggle button */}
           <Header aria-label="OpenELIS Global">
             <HeaderMenuButton
-              aria-label={isExpanded ? "Close menu" : "Open menu"}
+              aria-label={
+                mode === SIDENAV_MODES.CLOSE ? "Open menu" : "Cycle menu mode"
+              }
               onClick={toggle}
               isActive={isExpanded}
               aria-expanded={isExpanded}
@@ -190,6 +261,7 @@ function TwoModeLayout({
             isFixedNav={true}
             isChildOfHeader={true}
             expanded={isExpanded}
+            ref={sideNavRef}
           >
             <SideNavItems>
               {menus.menu && menus.menu.length > 0 ? (
@@ -202,11 +274,8 @@ function TwoModeLayout({
             </SideNavItems>
           </SideNav>
 
-          {/* Content wrapper with dynamic margin based on sidenav state */}
-          <div
-            data-testid="content-wrapper"
-            className={isExpanded ? "content-expanded" : "content-collapsed"}
-          >
+          {/* Content wrapper with dynamic margin based on sidenav mode */}
+          <div data-testid="content-wrapper" className={contentClass}>
             <Content>{children}</Content>
           </div>
         </Theme>
@@ -229,6 +298,12 @@ TwoModeLayout.propTypes = {
   defaultExpanded: PropTypes.bool,
 
   /**
+   * Default mode when no preference is stored. supersedes defaultExpanded.
+   * Values: 'show' | 'lock' | 'close'
+   */
+  defaultMode: PropTypes.oneOf(["show", "lock", "close"]),
+
+  /**
    * Prefix for the localStorage key. Allows different pages to have
    * independent sidenav preferences.
    * Format: `{storageKeyPrefix}SideNavExpanded`
@@ -248,6 +323,7 @@ TwoModeLayout.propTypes = {
 TwoModeLayout.defaultProps = {
   children: null,
   defaultExpanded: false,
+  defaultMode: undefined,
   storageKeyPrefix: "default",
   menus: null,
 };
