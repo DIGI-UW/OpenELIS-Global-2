@@ -559,29 +559,40 @@ button {
   display: none; /* Chrome/Safari/Edge */
 }
 
-/* Simplify active styles - no dark-blue subnav background */
-.cds--side-nav__menu-item .cds--side-nav__link {
-  background-color: transparent !important;
-}
+/* =============================================================================
+   SIDENAV ACTIVE/HOVER STYLES
+   
+   ARCHITECTURE:
+   - Carbon's SideNavMenuItem has isActive prop → adds .cds--side-nav__link--current
+   - Custom buttons inside have .active class for same visual
+   - Both need proper specificity to show the left border indicator
+   
+   CRITICAL: Do NOT add transparent !important on .cds--side-nav__link base class!
+   That rule KILLS all active/hover states due to CSS specificity conflicts.
+   ============================================================================= */
 
+/* Base link styles - Let Carbon handle default backgrounds (no overrides!) */
+
+/* Carbon's active state - via isActive prop */
 .cds--side-nav__menu-item .cds--side-nav__link--current,
 .cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
-  border-left: 4px solid var(--cds-link-primary);
-  background-color: var(--cds-layer-selected-01) !important;
+  border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
+  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
 }
 
+/* Hover state for Carbon links */
 .cds--side-nav__menu-item .cds--side-nav__link:hover {
-  background-color: var(--cds-layer-hover-01) !important;
+  background-color: var(--cds-layer-hover-01, rgba(255,255,255,0.1)) !important;
 }
 
-/* Hover styles for custom subnav buttons */
-.custom-sidenav-button:hover {
-  background-color: var(--cds-layer-hover-01);
+/* Custom button hover - needs specificity to override parent */
+.cds--side-nav__menu-item .custom-sidenav-button:hover {
+  background-color: var(--cds-layer-hover-01, rgba(255,255,255,0.1)) !important;
 }
 
-/* Active state for custom subnav buttons */
-.custom-sidenav-button.active {
-  border-left: 4px solid var(--cds-link-primary);
-  background-color: var(--cds-layer-selected-01);
+/* Custom button active state - needs specificity to override parent */
+.cds--side-nav__menu-item .custom-sidenav-button.active {
+  border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
+  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
   padding-left: calc(0.5rem - 4px); /* Compensate for border */
 }
