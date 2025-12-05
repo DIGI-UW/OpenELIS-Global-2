@@ -26,6 +26,12 @@ You **MUST** consider the user input before proceeding (if not empty).
 
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
    - Fill Constitution Check section from constitution
+   - **Fill Milestone Plan section** (MANDATORY per Constitution Principle IX):
+     - Estimate feature effort (if >3 days, milestones REQUIRED)
+     - Define milestones based on architectural layers and user stories
+     - Mark parallel milestones with `[P]`
+     - Define verification criteria for each milestone
+     - Generate Mermaid dependency graph
    - Fill Testing Strategy section (MANDATORY - per Testing Roadmap)
    - Evaluate gates (ERROR if violations unjustified)
    - Phase 0: Generate research.md (resolve all NEEDS CLARIFICATION)
@@ -86,6 +92,59 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Preserve manual additions between markers
 
 **Output**: data-model.md, /contracts/\*, quickstart.md, agent-specific file
+
+### Milestone Plan (MANDATORY per Constitution Principle IX)
+
+**Reference**: `.specify/memory/constitution.md` (Principle IX: Spec-Driven
+Iteration)
+
+For features requiring >3 days effort, the plan MUST include a complete
+"Milestone Plan" section that:
+
+1. **Estimates Feature Effort**: Calculate total implementation time
+
+   - If <3 days: Milestone Plan optional (single PR acceptable)
+   - If ≥3 days: Milestone Plan REQUIRED
+
+2. **Defines Milestones**: Break feature into manageable PRs
+
+   - Target: 15-25 tasks per milestone
+   - Maximum: 30 tasks per milestone (larger = split)
+   - Each milestone = 1 PR
+
+3. **Maps User Stories to Milestones**: Connect spec.md stories to milestones
+
+   - Each milestone should cover 1-3 user stories
+   - Backend milestones: Backend portions of multiple stories
+   - Frontend milestones: Frontend portions of multiple stories
+   - Integration milestones: Connect all pieces
+
+4. **Identifies Parallel Opportunities**: Mark `[P]` milestones
+
+   - Milestones that can be developed simultaneously
+   - Enables team parallelization
+   - Reduces total delivery time
+
+5. **Defines Verification Criteria**: What tests must pass per milestone
+   - Unit tests for backend milestones
+   - Jest tests for frontend milestones
+   - E2E tests for integration milestones
+
+**Milestone Plan Table Format**:
+
+| ID     | Branch Suffix  | Scope                    | User Stories      | Verification    | Depends On |
+| ------ | -------------- | ------------------------ | ----------------- | --------------- | ---------- |
+| M1     | m1-backend     | Entities, DAOs, Services | P1, P2 (backend)  | Unit tests pass | -          |
+| [P] M2 | m2-frontend    | React components         | P1, P2 (frontend) | Jest tests pass | -          |
+| M3     | m3-integration | Controllers, API, E2E    | All               | E2E tests pass  | M1, M2     |
+
+**Milestone Dependency Graph** (Mermaid):
+
+```mermaid
+graph LR
+    M1[M1: Backend] --> M3[M3: Integration]
+    M2[M2: Frontend] --> M3
+```
 
 ### Testing Strategy (MANDATORY)
 

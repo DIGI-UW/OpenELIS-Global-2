@@ -78,6 +78,45 @@ Verify compliance with
 - Bypassing FHIR for external integration
 - Skipping test implementation
 
+## Milestone Plan
+
+_GATE: Features >3 days MUST define milestones per Constitution Principle IX.
+Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
+
+### Milestone Table
+
+| ID     | Branch Suffix | Scope                    | Verification           | Depends On |
+| ------ | ------------- | ------------------------ | ---------------------- | ---------- |
+| M1     | m1-[name]     | [Layers/Stories covered] | [Tests that must pass] | -          |
+| [P] M2 | m2-[name]     | [Layers/Stories covered] | [Tests that must pass] | -          |
+| M3     | m3-[name]     | [Layers/Stories covered] | [Tests that must pass] | M1, M2     |
+
+**Legend**:
+
+- **[P]**: Parallel milestone - can be developed alongside other milestones
+- **Sequential** (no prefix): Must complete before dependent milestones
+- **Branch**: Full path is `feat/{issue-id}-{name}/{suffix}`
+
+### Milestone Dependency Graph
+
+```mermaid
+graph LR
+    M1[M1: Name] --> M3[M3: Name]
+    M2[M2: Name] --> M3
+```
+
+### PR Strategy
+
+- **Spec PR**: `spec/{issue-id}-{name}` → `develop` (specification documents
+  only)
+- **Milestone PRs**: `feat/{issue-id}-{name}/m{N}-{desc}` →
+  `feat/{issue-id}-{name}` or `develop`
+- **Integration PR** (if using feature branch): `feat/{issue-id}-{name}` →
+  `develop`
+
+**Small Features (<3 days)**: May use single `feat/{issue-id}-{name}` branch
+without milestones.
+
 ## Testing Strategy
 
 **Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)

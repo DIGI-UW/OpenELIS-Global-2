@@ -183,6 +183,37 @@ accessing any of these links, simply follow these steps:
         npm run build
         npm run cy:run # this will run e2e testing same CI
 
+### AI-Assisted Development (SpecKit)
+
+This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
+Spec-Driven Development (SDD). AI coding agents can use slash commands to create
+specifications, plans, and tasks.
+
+**Setup SpecKit Commands:**
+
+```bash
+# Install commands for all supported AI agents (Cursor + Claude Code)
+./.specify/scripts/bash/install-commands.sh
+
+# Or install for specific agent only
+./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
+./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
+```
+
+**Available Commands** (after installation):
+
+- `/speckit.specify` - Create feature specification
+- `/speckit.plan` - Generate implementation plan
+- `/speckit.tasks` - Generate task breakdown
+- `/speckit.implement` - Execute implementation
+- `/speckit.analyze` - Validate consistency
+
+**Reference Documentation:**
+
+- **AGENTS.md** - Comprehensive guide for AI coding agents
+- **Constitution**: `.specify/memory/constitution.md` - Governance principles
+- **Feature Example**: `specs/001-sample-storage/` - Complete SDD example
+
 ### Testing Resources
 
 For comprehensive testing guidance, see:

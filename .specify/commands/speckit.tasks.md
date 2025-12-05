@@ -30,33 +30,42 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 3. **Execute task generation workflow**:
 
-   - Load plan.md and extract tech stack, libraries, project structure
+   - Load plan.md and extract:
+     - Tech stack, libraries, project structure
+     - **Milestone Plan table** (REQUIRED per Constitution Principle IX)
+     - Milestone dependencies and parallel markers `[P]`
    - Load spec.md and extract user stories with their priorities (P1, P2, P3,
      etc.)
-   - If data-model.md exists: Extract entities and map to user stories
-   - If contracts/ exists: Map endpoints to user stories
+   - If data-model.md exists: Extract entities and map to milestones
+   - If contracts/ exists: Map endpoints to milestones
    - If research.md exists: Extract decisions for setup tasks
-   - Generate tasks organized by user story (see Task Generation Rules below)
-   - Generate dependency graph showing user story completion order
-   - Create parallel execution examples per user story
-   - Validate task completeness (each user story has all needed tasks,
-     independently testable)
+   - **Map user stories to milestones** based on Milestone Plan scope
+   - Generate tasks organized by **MILESTONE** (see Task Generation Rules below)
+   - Generate Mermaid dependency graph showing milestone/PR completion order
+   - Mark parallel milestones with `[P]` in section headers
+   - Include branch creation as FIRST task of each milestone
+   - Include PR creation as LAST task of each milestone
+   - Validate task completeness (each milestone has all needed tasks,
+     independently reviewable)
 
-4. **Generate tasks.md**: Use `.specify.specify/templates/tasks-template.md` as
+4. **Generate tasks.md**: Use `.specify/templates/tasks-template.md` as
    structure, fill with:
 
    - Correct feature name from plan.md
-   - Phase 1: Setup tasks (project initialization)
-   - Phase 2: Foundational tasks (blocking prerequisites for all user stories)
-   - Phase 3+: One phase per user story (in priority order from spec.md)
-   - Each phase includes: story goal, independent test criteria, tests (if
-     requested), implementation tasks
-   - Final Phase: Polish & cross-cutting concerns
+   - **Milestone Dependency Graph** (Mermaid diagram showing PR order)
+   - **One section per Milestone** (from Milestone Plan in plan.md):
+     - Branch setup task (FIRST - create milestone branch)
+     - Tests for that milestone (TDD - before implementation)
+     - Implementation tasks
+     - PR creation task (LAST - create milestone PR)
+   - **User Story to Milestone Mapping**: Each milestone header shows which user
+     stories (P1, P2, etc.) it covers
+   - Parallel milestones marked with `[P]` in section header
+   - Clear file paths for each task
    - All tasks must follow the strict checklist format (see Task Generation
      Rules below)
-   - Clear file paths for each task
-   - Dependencies section showing story completion order
-   - Parallel execution examples per story
+   - Dependencies section showing milestone/PR completion order
+   - Parallel execution examples per milestone
    - Implementation strategy section (MVP first, incremental delivery)
 
 5. **Report**: Output path to generated tasks.md and summary:
@@ -75,11 +84,17 @@ enough that an LLM can complete it without additional context.
 
 ## Task Generation Rules
 
-**CRITICAL**: Tasks MUST be organized by user story to enable independent
-implementation and testing.
+**CRITICAL**: Tasks MUST be organized by **MILESTONE** (per Constitution
+Principle IX). Each milestone maps to one or more **USER STORIES** from spec.md.
 
-**Tests are OPTIONAL**: Only generate test tasks if explicitly requested in the
-feature specification or if user requests TDD approach.
+**SDD Alignment** (per [GitHub SpecKit](https://github.com/github/spec-kit)):
+
+- Milestones are the **implementation units** (1 Milestone = 1 PR)
+- User Stories are the **specification units** (from spec.md)
+- Milestones should cover 1-3 user stories to keep PRs reviewable
+
+**Tests are MANDATORY**: Per Constitution Principle V, test tasks MUST be
+included and appear BEFORE implementation tasks (TDD workflow).
 
 ### Checklist Format (REQUIRED)
 
@@ -118,40 +133,47 @@ Every task MUST strictly follow this format:
 
 ### Task Organization
 
-1. **From User Stories (spec.md)** - PRIMARY ORGANIZATION:
+1. **From Milestones (plan.md)** - PRIMARY ORGANIZATION:
 
-   - Each user story (P1, P2, P3...) gets its own phase
-   - Map all related components to their story:
-     - Models needed for that story
-     - Services needed for that story
-     - Endpoints/UI needed for that story
-     - If tests requested: Tests specific to that story
-   - Mark story dependencies (most stories should be independent)
+   - Each milestone from Milestone Plan table gets its own section
+   - Map user stories to milestones based on scope column
+   - Each milestone section header MUST include:
+     - Branch name: `feat/{issue}/m{N}-{name}`
+     - Type: Sequential or Parallel `[P]`
+     - User Stories covered: P1, P2, etc. (from spec.md)
+     - Verification criteria: What tests must pass
 
-2. **From Contracts**:
+2. **User Story to Milestone Mapping**:
 
-   - Map each contract/endpoint → to the user story it serves
-   - If tests requested: Each contract → contract test task [P] before
-     implementation in that story's phase
+   - Read Milestone Plan "Scope" column to determine which user stories each
+     milestone covers
+   - A milestone typically covers 1-3 user stories (keeps PRs reviewable)
+   - Backend milestones often cover backend portions of multiple stories
+   - Frontend milestones often cover frontend portions of multiple stories
+   - Integration milestones tie everything together
 
-3. **From Data Model**:
+3. **From Contracts/Data Model**:
 
-   - Map each entity to the user story(ies) that need it
-   - If entity serves multiple stories: Put in earliest story or Setup phase
-   - Relationships → service layer tasks in appropriate story phase
+   - Map each contract/endpoint → to the milestone that implements it
+   - Map each entity → to the milestone that creates it
+   - Entities used by multiple milestones: Create in earliest milestone
 
-4. **From Setup/Infrastructure**:
-   - Shared infrastructure → Setup phase (Phase 1)
-   - Foundational/blocking tasks → Foundational phase (Phase 2)
-   - Story-specific setup → within that story's phase
+4. **Milestone Size Validation** (PR Scope):
+   - Target: 15-25 tasks per milestone
+   - Maximum: 30 tasks per milestone
+   - If >30 tasks: Split into sub-milestones (m1a-backend-entities,
+     m1b-backend-services)
 
-### Phase Structure
+### Milestone Structure
 
-- **Phase 1**: Setup (project initialization)
-- **Phase 2**: Foundational (blocking prerequisites - MUST complete before user
-  stories)
-- **Phase 3+**: User Stories in priority order (P1, P2, P3...)
-  - Within each story: Tests (if requested) → Models → Services → Endpoints →
-    Integration
-  - Each phase should be a complete, independently testable increment
-- **Final Phase**: Polish & Cross-Cutting Concerns
+- **Each Milestone Section** includes:
+
+  1. Branch setup task (FIRST): `git checkout -b feat/{issue}/m{N}-{name}`
+  2. Test tasks (TDD): Write failing tests
+  3. Implementation tasks: Models → Services → Controllers → UI
+  4. PR creation task (LAST): Create PR to target branch
+
+- **Milestone Dependencies**:
+  - Sequential: M1 → M3 (M3 depends on M1)
+  - Parallel `[P]`: M1 and M2 can run simultaneously
+  - Final: Polish milestone depends on all prior milestones

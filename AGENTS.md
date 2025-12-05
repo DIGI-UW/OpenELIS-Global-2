@@ -33,7 +33,7 @@ reporting, serving 30+ countries worldwide.
 
 **Governance:**
 
-- **Constitution Authority**: `.specify/memory/constitution.md` (v1.7.0) is the
+- **Constitution Authority**: `.specify/memory/constitution.md` (v1.8.0) is the
   authoritative governance document
 - **All code changes MUST comply with constitutional principles**
 - **Constitution supersedes all other documentation in case of conflict**
@@ -216,9 +216,9 @@ jakarta.persistence (Jakarta EE 9)
 
 ## Constitution Principles Summary
 
-> **Full Document:** `.specify/memory/constitution.md` (1147 lines, v1.7.0)
+> **Full Document:** `.specify/memory/constitution.md` (v1.8.0)
 
-The constitution defines 8 core principles that ALL code changes MUST follow:
+The constitution defines 9 core principles that ALL code changes MUST follow:
 
 ### I. Configuration-Driven Variation
 
@@ -436,6 +436,34 @@ hardcoded English text.
 - [ ] Sensitive data encrypted at rest (if applicable)
 - [ ] HTTPS endpoints only (NO HTTP for PHI)
 
+### IX. Spec-Driven Iteration (NEW in v1.8.0)
+
+**Rule:** Features requiring >3 days effort MUST be broken into Validation
+Milestones. Each Milestone = 1 Pull Request.
+
+**Why:** Large PRs create review bottlenecks, increase merge conflict risk, and
+delay feedback. Milestone-based delivery enables manageable code reviews.
+
+**How:**
+
+- Spec PR created first on `spec/{issue-id}-{name}` branch
+- Each milestone gets own branch: `feat/{issue-id}-{name}/m{N}-{desc}`
+- Parallel milestones marked with `[P]` can be developed simultaneously
+- Sequential milestones must complete in order
+
+**Branch Naming Convention:**
+
+| Branch Type      | Pattern                              | Example                           |
+| ---------------- | ------------------------------------ | --------------------------------- |
+| Spec Branch      | `spec/{issue-id}-{name}`             | `spec/OGC-009-sidenav`            |
+| Feature Branch   | `feat/{issue-id}-{name}`             | `feat/OGC-009-sidenav`            |
+| Milestone Branch | `feat/{issue-id}-{name}/m{N}-{desc}` | `feat/OGC-009-sidenav/m1-backend` |
+| Hotfix           | `hotfix/{issue-id}-{desc}`           | `hotfix/OGC-123-fix-login`        |
+| Bugfix           | `fix/{issue-id}-{desc}`              | `fix/OGC-456-null-check`          |
+
+**Reference:**
+[GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+
 ---
 
 ## Development Workflow
@@ -473,8 +501,26 @@ docker compose -f dev.docker-compose.yml up -d
 
 ### SpecKit Workflow (Specification-Driven Development)
 
-This project uses GitHub SpecKit for rigorous feature development. The workflow
-enforces constitution compliance at every stage.
+This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
+rigorous feature development. The workflow enforces constitution compliance at
+every stage.
+
+**Setup (Required for AI Agents):**
+
+Before using SpecKit commands, install them to your AI agent's command
+directory:
+
+```bash
+# Install commands for all supported AI agents (Cursor + Claude Code)
+./.specify/scripts/bash/install-commands.sh
+
+# Or install for specific agent only
+./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
+./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
+```
+
+This copies command definitions from `.specify/commands/` to agent-specific
+directories (`.cursor/commands/`, `.claude/commands/`).
 
 **Available Commands:**
 
@@ -581,18 +627,37 @@ docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
 
 ### Branch Strategy
 
+**Reference:** See Constitution Principle IX for complete conventions.
+
+**Primary Branches:**
+
 - **`develop`** - Main development branch (ALL PRs target this)
 - **`main`** - Production releases only (reviewers backport from develop)
-- **Feature branches:** `{###-feature-name}` (e.g., `001-sample-storage`) or
-  `issue-{###}-{feature-name}`
-- **Hotfix branches:** `hotfix-{description}` (merged to develop + main)
 
-**Creating Feature Branch:**
+**Feature Development (Principle IX):**
+
+- **Spec branches:** `spec/{issue-id}-{name}` - Specification PRs
+- **Feature branches:** `feat/{issue-id}-{name}` - Integration target
+- **Milestone branches:** `feat/{issue-id}-{name}/m{N}-{desc}` - Individual PRs
+- **Hotfix branches:** `hotfix/{issue-id}-{desc}` (merged to develop + main)
+- **Bugfix branches:** `fix/{issue-id}-{desc}` (merged to develop)
+
+**Issue ID Format:** Jira ticket (`OGC-{###}`) preferred, or GitHub issue number
+(`{###}`)
+
+**Creating Feature Branch (SDD Workflow):**
 
 ```bash
+# 1. Start with spec branch
 git checkout develop
 git pull --rebase upstream develop
-git checkout -b 001-new-feature
+git checkout -b spec/OGC-009-sidenav
+
+# 2. After spec PR approved, create feature branch
+git checkout -b feat/OGC-009-sidenav
+
+# 3. For each milestone, create milestone branch
+git checkout -b feat/OGC-009-sidenav/m1-backend
 ```
 
 ### Pre-Commit Checklist
@@ -1790,7 +1855,7 @@ Before creating PR, verify ALL items:
 - **IHE Lab Profiles:**
   https://wiki.ihe.net/index.php/Laboratory_Technical_Framework
 - **HAPI FHIR:** https://hapifhir.io/
-- **GitHub SpecKit:** https://github.com/anthropics/github-speckit
+- **GitHub SpecKit:** https://github.com/github/spec-kit
 
 ---
 
@@ -1840,6 +1905,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2025-11-09 **Constitution Version:** 1.7.0 **Maintained By:**
+**Last Updated:** 2025-12-04 **Constitution Version:** 1.8.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

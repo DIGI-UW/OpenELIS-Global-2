@@ -1,6 +1,67 @@
 # OpenELIS Global 3.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Spec-Driven Iteration (Principle IX)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.7.0 → 1.8.0
+Change Type: MINOR - New principle added for milestone-based PR workflow
+Date: 2025-12-04
+
+Added Sections:
+  - Principle IX: Spec-Driven Iteration
+    * NEW: Mandate to break features >3 days into Validation Milestones
+    * NEW: Each Milestone = 1 Pull Request
+    * NEW: Parallel [P] and Sequential milestone types
+    * NEW: Branch naming convention (spec/, feat/, milestone/, hotfix/, fix/)
+    * NEW: Jira integration via OGC-{###} issue ID format
+    * NEW: Milestone Plan table structure for plan.md
+
+Modified Sections:
+  - Development Workflow > Branch Strategy
+    * CHANGED: Updated to reference Principle IX for complete naming conventions
+    * ADDED: Spec branches, Feature branches, Milestone branches
+    * ADDED: Issue ID format guidance (Jira OGC-{###} or GitHub {###})
+
+  - Development Workflow > Pull Request Requirements
+    * CHANGED: Branch naming checklist updated for new conventions
+    * ADDED: Examples for spec PRs, milestone PRs, bugfix PRs
+
+Rationale for Changes:
+  Large features implemented as single PRs create review bottlenecks, increase
+  merge conflict risk, and delay feedback. The SDD (Spec-Driven Development)
+  approach from GitHub SpecKit enables:
+  - Manageable code reviews (smaller PRs)
+  - Earlier validation of architectural decisions
+  - Parallel development when milestones are independent
+  - Clear progress tracking via milestone checkpoints
+  - Reduced risk of "big bang" integration failures
+
+  This aligns with industry best practices for stacked PRs and trunk-based
+  development while maintaining the rigor of spec-driven workflows.
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/plan-template.md - Add Milestone Plan section
+  ⚠️ .specify/templates/tasks-template.md - Restructure to milestone-based phases
+  ⚠️ .specify/commands/speckit.tasks.md - Generate per-milestone task groups
+  ⚠️ .specify/commands/speckit.implement.md - Auto-create branches per milestone
+
+Follow-up TODOs:
+  - Update plan-template.md with Milestone Plan section
+  - Update tasks-template.md with milestone-based phase structure
+  - Update speckit.tasks.md to read milestones from plan.md
+  - Update speckit.implement.md to create milestone branches automatically
+  - Test workflow on 009-carbon-sidenav feature
+
+Commit Message:
+  docs: amend constitution to v1.8.0 (Spec-Driven Iteration - Principle IX)
+
+  - Add Principle IX: Spec-Driven Iteration for milestone-based PR workflow
+  - Define branch naming: spec/, feat/, feat/.../m{N}-, hotfix/, fix/
+  - Support parallel [P] and sequential milestones
+  - Enable Jira integration via OGC-{###} issue IDs
+  - Update Branch Strategy and PR Requirements sections
+  - Based on GitHub SpecKit SDD approach
+
 SYNC IMPACT REPORT - Enhanced Cypress E2E Testing Workflow and Review Requirements
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.6.0 → 1.7.0
@@ -898,6 +959,95 @@ patient data breaches and legal penalties.
 
 ---
 
+### IX. Spec-Driven Iteration (ADDED 2025-12-04)
+
+**MANDATE**: Features requiring >3 days effort MUST be broken into Validation
+Milestones. Each Milestone = 1 Pull Request. Milestones can be parallel `[P]` or
+sequential, enabling flexible team coordination.
+
+**Rules**:
+
+- **Spec First**: Specification PR created first on `spec/{issue-id}-{name}`
+  branch
+- **Milestone = PR**: Each milestone generates exactly one pull request
+- **Parallel Milestones `[P]`**: Can be developed simultaneously by different
+  developers or in any order
+- **Sequential Milestones**: Must complete in order due to dependencies
+- **Branch per Milestone**: Each milestone gets its own branch following naming
+  convention
+- **Verification Gate**: Each milestone PR must pass its verification criteria
+  before merge
+
+**Branch Naming Convention**:
+
+| Branch Type         | Pattern                                  | Example                                    |
+| ------------------- | ---------------------------------------- | ------------------------------------------ |
+| Spec Branch         | `spec/{issue-id}-{name}`                 | `spec/OGC-009-sidenav`, `spec/009-sidenav` |
+| Spec Clarification  | `spec/{issue-id}-{name}/clarify-{topic}` | `spec/OGC-009-sidenav/clarify-responsive`  |
+| Feature Integration | `feat/{issue-id}-{name}`                 | `feat/OGC-009-sidenav`                     |
+| Milestone Branch    | `feat/{issue-id}-{name}/m{N}-{desc}`     | `feat/OGC-009-sidenav/m1-backend`          |
+| Hotfix              | `hotfix/{issue-id}-{desc}`               | `hotfix/OGC-123-fix-login`                 |
+| Bugfix              | `fix/{issue-id}-{desc}`                  | `fix/OGC-456-null-check`                   |
+
+**Issue ID Formats**:
+
+- **Jira (Primary)**: `OGC-{###}` (e.g., `OGC-009`, `OGC-123`) - OpenELIS Global
+  Confluence project
+- **GitHub Issues**: `{###}` (e.g., `009`, `123`) - for GitHub-only tracking
+- **Other Trackers**: `{PREFIX}-{###}` - flexible for external integrations
+
+**Milestone Plan Structure** (in `plan.md`):
+
+```markdown
+| ID     | Branch         | Scope                    | Verification    | Depends On |
+| ------ | -------------- | ------------------------ | --------------- | ---------- |
+| M1     | m1-backend     | Entities, DAOs, Services | Unit tests pass | -          |
+| [P] M2 | m2-frontend    | React components         | Jest tests pass | -          |
+| M3     | m3-integration | API + E2E                | E2E tests pass  | M1, M2     |
+```
+
+**Workflow**:
+
+1. **Specification Phase** (on `spec/{issue-id}-{name}` branch):
+
+   - Create spec branch from `develop`
+   - Complete `spec.md` (user stories, requirements)
+   - Complete `plan.md` (architecture, milestone plan)
+   - Complete `tasks.md` (task breakdown by milestone)
+   - Use `spec/{issue-id}-{name}/clarify-{topic}` branches for spec iterations
+   - Create Spec PR targeting `develop` for review
+
+2. **Implementation Phase** (after spec PR approved or ready):
+   - Create feature branch `feat/{issue-id}-{name}` from `develop`
+   - For each milestone:
+     - Create milestone branch from **feature branch** (not develop)
+     - Implement tasks for that milestone
+     - Create PR targeting **feature branch**
+     - Merge after review and tests pass
+   - After all milestones merged to feature branch:
+     - Final PR merges `feat/{issue-id}-{name}` → `develop`
+
+**Key Rules**:
+
+- Milestone branches always target the feature branch until feature is complete
+- Spec clarification branches merge back to spec branch
+- Only the final feature branch PR targets `develop`
+
+**Rationale**: Large features implemented as single PRs create review
+bottlenecks, increase merge conflict risk, and delay feedback. Milestone-based
+delivery enables:
+
+- Manageable code reviews (smaller PRs)
+- Earlier validation of architectural decisions
+- Parallel development when milestones are independent
+- Clear progress tracking
+- Reduced risk of "big bang" integration failures
+
+**Reference**:
+[GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+
+---
+
 ## Technical Stack Constraints
 
 **NON-NEGOTIABLE**: All code MUST use these versions/frameworks. Exceptions
@@ -988,19 +1138,37 @@ creates hidden maintenance costs.
 
 ### Branch Strategy
 
+**Reference**: See Principle IX (Spec-Driven Iteration) for complete branch
+naming conventions and milestone workflow.
+
+**Primary Branches**:
+
 - **`develop`** - Main development branch (all PRs target this)
 - **`main`** - Production releases only (reviewers backport from develop)
-- **Feature branches**: `issue-{###}-{feature-name}` (e.g.,
-  `issue-123-storage-management`)
-- **Hotfix branches**: `hotfix-{description}` (merged to develop + main)
+
+**Feature Development Branches** (per Principle IX):
+
+- **Spec branches**: `spec/{issue-id}-{name}` - Specification PRs
+- **Feature branches**: `feat/{issue-id}-{name}` - Integration target for
+  multi-milestone features
+- **Milestone branches**: `feat/{issue-id}-{name}/m{N}-{desc}` - Individual
+  milestone PRs
+- **Hotfix branches**: `hotfix/{issue-id}-{desc}` (merged to develop + main)
+- **Bugfix branches**: `fix/{issue-id}-{desc}` (merged to develop)
+
+**Issue ID Format**: Jira ticket (`OGC-{###}`) preferred, or GitHub issue number
+(`{###}`)
 
 ### Pull Request Requirements
 
 **MANDATORY CHECKLIST** (from [PULL_REQUEST_TIPS.md](PULL_REQUEST_TIPS.md)):
 
-1. **GitHub Issue**: PR MUST reference issue number in title (e.g., "issue-123:
-   Add storage location widget")
-2. **Branch Naming**: Branch name matches `issue-{###}-{feature-name}`
+1. **GitHub Issue**: PR MUST reference issue number in title (e.g., "OG-123: Add
+   storage location widget" or "feat(009): Add sidenav")
+2. **Branch Naming**: Branch name follows Principle IX convention:
+   - Spec PRs: `spec/{issue-id}-{name}`
+   - Milestone PRs: `feat/{issue-id}-{name}/m{N}-{desc}`
+   - Bugfix PRs: `fix/{issue-id}-{desc}`
 3. **Target Branch**: Always `develop` (unless hotfix)
 4. **Code Formatting** (MANDATORY - MUST run before each commit):
    - Backend: `mvn spotless:apply` - MUST run before committing
@@ -1132,6 +1300,7 @@ documenting:
 - [ ] Tests included (Principle V)
 - [ ] Liquibase for schema changes (Principle VI)
 - [ ] Security/compliance requirements met (Principle VIII)
+- [ ] Milestone scope appropriate (Principle IX) - for features >3 days
 
 **Quarterly Audits**: Architecture team samples merged PRs to verify
 constitution adherence. Violations trigger corrective actions (documentation
@@ -1167,10 +1336,11 @@ sync.
 
 ---
 
-**Version**: 1.7.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-11-07
+**Version**: 1.8.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-12-04
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.8.0: Spec-Driven Iteration (Principle IX) - Milestone-based PR workflow (2025-12-04)
   Amendment v1.7.0: Enhanced Cypress E2E testing workflow and review requirements (2025-11-07)
   Amendment v1.6.0: Cypress E2E testing best practices (2025-11-05)
   Amendment v1.5.0: Explicit prohibition of @Transactional in controllers (2025-11-05)
