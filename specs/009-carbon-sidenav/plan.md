@@ -26,9 +26,10 @@ primary)
 **Performance Goals**: 150ms perceived response time for toggle, <5s full page
 load  
 **Constraints**: Must not break existing navigation functionality, must support
-4 levels of menu nesting  
-**Scale/Scope**: Applied to analyzer routes initially (`/analyzers/*`), gradual
-rollout to other sections
+4 levels of menu nesting, must preserve ALL header actions (notifications, user
+menu, search, language, help, logout)  
+**Scale/Scope**: Applied globally to all authenticated routes in a single
+rollout (full Layout.js swap, header actions extracted and preserved)
 
 ## Constitution Check
 
@@ -70,35 +71,40 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 
 ### Milestone Table
 
-| ID     | Branch Suffix | Scope                                          | User Stories | Verification                     | Depends On |
-| ------ | ------------- | ---------------------------------------------- | ------------ | -------------------------------- | ---------- |
-| M1     | m1-core       | TwoModeLayout component, toggle, localStorage  | P1 (both)    | Jest unit tests pass             | -          |
-| [P] M2 | m2-nav        | Hierarchical menus, auto-expand, page config   | P2 (both)    | Jest tests + manual verification | -          |
-| M3     | m3-polish     | Icons/tooltips, responsive behavior, E2E tests | P3 (both)    | E2E tests pass                   | M1, M2     |
+| ID  | Branch Suffix | Scope                                                          | User Stories           | Verification                      | Depends On |
+| --- | ------------- | -------------------------------------------------------------- | ---------------------- | --------------------------------- | ---------- |
+| M1  | m1-core       | TwoModeLayout component, tri-state toggle, localStorage        | P1-US1, P1-US2         | Jest unit tests pass              | -          |
+| M2a | m2a-nav       | Hierarchical menus, auto-expand, active styling                | P2-US3                 | Jest tests pass, nav works        | M1         |
+| M2b | m2b-rollout   | Header extraction, global Layout.js swap, context preservation | P2-US4, FR-011/012/013 | Header functionality tests pass   | M1, M2a    |
+| M3  | m3-polish     | Icons/tooltips, responsive behavior, E2E tests                 | P3-US5, P3-US6         | E2E tests pass                    | M2b        |
 
 **Legend**:
 
-- **[P]**: Parallel milestone - M2 can be developed alongside M1
-- **Sequential**: M3 depends on M1 and M2 completion
+- **M2a**: Navigation features (menus, auto-expand, active styling)
+- **M2b**: Global rollout (header extraction, Layout.js swap, storage defaults)
+- **Sequential**: M1 → M2a → M2b → M3 (each depends on previous)
 - **Branch**: Full path is `feat/OGC-009-sidenav/{suffix}`
 
 ### Milestone Dependency Graph
 
 ```mermaid
 graph LR
-    M1[M1: Core Layout] --> M3[M3: Polish & E2E]
-    M2[M2: Navigation] --> M3
+    M1[M1: Core Layout] --> M2a[M2a: Navigation]
+    M2a --> M2b[M2b: Global Rollout]
+    M2b --> M3[M3: Polish & E2E]
 ```
 
 ### PR Strategy
 
 - **Spec PR**: `spec/OGC-009-sidenav` → `develop` (this specification - already
   created)
-- **M1 PR**: `feat/OGC-009-sidenav/m1-core` → `develop`
-- **M2 PR**: `feat/OGC-009-sidenav/m2-nav` → `develop` (can be parallel with M1)
-- **M3 PR**: `feat/OGC-009-sidenav/m3-polish` → `develop` (after M1 + M2 merged)
+- **M1 PR**: `feat/OGC-009-sidenav/m1-core` → `develop` ✅ COMPLETE
+- **M2a PR**: `feat/OGC-009-sidenav/m2a-nav` → `develop` (navigation features)
+- **M2b PR**: `feat/OGC-009-sidenav/m2b-rollout` → `develop` (global rollout +
+  header preservation)
+- **M3 PR**: `feat/OGC-009-sidenav/m3-polish` → `develop` (after M2b merged)
 
-**Estimated Effort**: ~4-5 days total (justifies milestone breakdown per
+**Estimated Effort**: ~5-6 days total (justifies milestone breakdown per
 Principle IX)
 
 ## Testing Strategy
@@ -182,14 +188,15 @@ frontend/
 ├── src/
 │   ├── components/
 │   │   └── layout/
-│   │       ├── Layout.js              # Existing - will be modified
-│   │       ├── Header.js              # Existing - kept for backward compatibility
-│   │       ├── AnalyzerLayout.js      # POC - will be refactored into reusable component
-│   │       ├── AnalyzerLayout.css     # POC styles - will be moved to shared
+│   │       ├── Layout.js              # Existing - will be modified to use TwoModeLayout
+│   │       ├── Header.js              # Existing - kept for reference (deprecated)
+│   │       ├── HeaderActions.js       # NEW - Extracted header global actions
 │   │       ├── TwoModeLayout.js       # NEW - Reusable two-mode layout component
 │   │       ├── TwoModeLayout.css      # NEW - Shared layout styles
 │   │       ├── TwoModeLayout.test.js  # NEW - Unit tests
-│   │       └── useSideNavPreference.js # NEW - Custom hook for preference persistence
+│   │       ├── useSideNavPreference.js # NEW - Custom hook for preference persistence
+│   │       ├── useMenuAutoExpand.js   # NEW - Custom hook for menu auto-expansion
+│   │       └── index.js               # NEW - Exports for layout components
 │   └── pages/
 │       └── [existing pages]
 ├── cypress/
@@ -261,14 +268,40 @@ navigation.
 - Prevents users from being "lost" in collapsed menus
 - Implemented via recursive `markActiveExpanded()` function on route change
 
+### D5: Header Action Preservation Strategy
+
+**Decision**: Extract header global actions (user menu, notifications, search,
+language, help) into TwoModeLayout via prop composition, NOT component
+duplication.
+
+**Rationale**:
+
+- Header.js contains ~300 lines of complex state management for notifications,
+  panels, search
+- Duplicating this code violates DRY and creates maintenance burden
+- Solution: Refactor Header.js to separate concerns:
+  1. TwoModeLayout manages: sidenav state, menu toggle, content pushing
+  2. HeaderGlobalBar content passed via `headerActions` prop or render prop
+  3. Contexts (ConfigurationContext, NotificationContext) remain in Layout.js
+     wrapper
+
+**Implementation**:
+
+- TwoModeLayout accepts `headerActions` prop (ReactNode)
+- Create `HeaderActions.js` component extracted from Header.js global bar
+- Layout.js passes HeaderActions to TwoModeLayout
+- All panel state (notifications, user, search) remains in HeaderActions
+
 ## Risk Assessment
 
-| Risk                         | Impact | Likelihood | Mitigation                                                 |
-| ---------------------------- | ------ | ---------- | ---------------------------------------------------------- |
-| Breaking existing navigation | High   | Low        | Keep Header.js for backward compatibility, gradual rollout |
-| Mobile responsiveness issues | Medium | Medium     | Test on multiple viewport sizes, use Carbon breakpoints    |
-| localStorage unavailable     | Low    | Low        | Graceful fallback to page default, log warning             |
-| Performance degradation      | Medium | Low        | CSS transitions only (no JS animation), minimal re-renders |
+| Risk                         | Impact | Likelihood | Mitigation                                                               |
+| ---------------------------- | ------ | ---------- | ------------------------------------------------------------------------ |
+| Breaking header functionality| High   | Medium     | Extract HeaderActions component, comprehensive tests for all actions     |
+| Breaking existing navigation | High   | Low        | Preserve menu API integration, test all menu item types                  |
+| Mobile responsiveness issues | Medium | Medium     | Test on multiple viewport sizes, use Carbon breakpoints                  |
+| localStorage unavailable     | Low    | Low        | Graceful fallback to page default, log warning                           |
+| Performance degradation      | Medium | Low        | CSS transitions only (no JS animation), minimal re-renders               |
+| Context loss after swap      | High   | Low        | Layout.js keeps ConfigurationContext/NotificationContext providers       |
 
 ## Dependencies
 
