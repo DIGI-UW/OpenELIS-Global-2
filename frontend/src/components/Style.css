@@ -47,18 +47,14 @@ li.clickableUserDetails:hover {
   margin: 0 5% 0 2%;
 }
 
-.inputText,
-.inputSearch {
-  --cds-text-primary: black;
-  --cds-text-secondary: black;
-}
+/* REMOVED: Forcing black text caused dark mode input issues 
+   Carbon's <Theme theme="white"> handles this correctly */
 .inputText {
   width: 100%;
 }
 
 .inputSearch {
   width: 50%;
-  --cds-icon-primary: black;
 }
 
 .rules {
@@ -232,13 +228,8 @@ button {
   margin-right: 5%;
   width: 100%;
 }
-.inputText,
-.inputSelect,
-.inputSelect2,
-.inputText2 {
-  --cds-text-primary: black;
-  --cds-text-secondary: black;
-}
+/* REMOVED: Forcing black text caused dark mode input issues 
+   Carbon's <Theme theme="white"> handles this correctly */
 .inputText,
 .inputSelect {
   width: 100%;
@@ -341,9 +332,7 @@ button {
 }
 
 .selectSampleType {
-  --cds-text-primary: black;
   width: 200px;
-  --cds-text-secondary: black;
   margin-bottom: 20px;
 }
 
@@ -429,6 +418,7 @@ button {
   display: inline-flex !important;
 }
 
+/* Minimal custom button styles - let Carbon handle backgrounds */
 .custom-sidenav-button {
   box-sizing: border-box;
   margin: 0;
@@ -437,8 +427,8 @@ button {
   display: flex;
   visibility: visible !important;
   align-items: center;
-  background-color: var(--cds-background-hover, #072655);
-  color: var(--cds-text-secondary, #ffffff);
+  background-color: transparent; /* Let Carbon theme handle it */
+  color: inherit; /* Inherit from parent Carbon component */
   transition:
     color 110ms,
     background-color 110ms,
@@ -446,14 +436,11 @@ button {
   -webkit-user-select: none;
   user-select: none;
   width: 100%;
-}
-
-.custom-sidenav-button {
   pointer-events: auto;
 }
 
 .custom-sidenav-button:hover {
-  background-color: var(--cds-background, #295785);
+  background-color: var(--cds-layer-hover-01); /* Use Carbon hover token */
 }
 
 .cds--side-nav__link a {

@@ -23,7 +23,6 @@ import React, {
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useLocation, useHistory } from "react-router-dom";
-import { useSideNavPreference } from "./useSideNavPreference";
 import { useMenuAutoExpand } from "./useMenuAutoExpand";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
@@ -47,7 +46,14 @@ import {
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
 import SearchBar from "./search/searchBar";
-function OEHeader(props) {
+function OEHeader({
+  onChangeLanguage,
+  mode,
+  isExpanded,
+  toggleSideNav,
+  setMode,
+  SIDENAV_MODES,
+}) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
 
@@ -61,15 +67,7 @@ function OEHeader(props) {
   const history = useHistory();
 
   // Lock mode support - tri-state sidenav (show/lock/close)
-  const {
-    mode,
-    isExpanded,
-    toggle: toggleSideNav,
-    setMode,
-    SIDENAV_MODES,
-  } = useSideNavPreference({
-    storageKeyPrefix: "main",
-  });
+  // State is managed by Layout.js and passed via props
   const isLocked = mode === SIDENAV_MODES.LOCK;
 
   const [switchCollapsed, setSwitchCollapsed] = useState(true);
@@ -648,7 +646,7 @@ function OEHeader(props) {
                         <FormattedMessage id="header.label.selectlocale" />
                       }
                       onChange={(event) => {
-                        props.onChangeLanguage(event.target.value);
+                        onChangeLanguage(event.target.value);
                       }}
                       value={intl.locale}
                     >

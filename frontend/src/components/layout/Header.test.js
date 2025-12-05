@@ -265,7 +265,14 @@ const MOCK_MENU_DATA = [
   },
 ];
 
-const renderHeader = (initialRoute = "/") => {
+// Mock sidenav props that Layout.js would provide
+const SIDENAV_MODES = {
+  SHOW: "show",
+  LOCK: "lock",
+  CLOSE: "close",
+};
+
+const renderHeader = (initialRoute = "/", sidenavMode = "close") => {
   const mockGetFromServer = require("../utils/Utils").getFromOpenElisServer;
   mockGetFromServer.mockImplementation((url, callback) => {
     if (url === "/rest/menu") {
@@ -275,6 +282,9 @@ const renderHeader = (initialRoute = "/") => {
     }
   });
 
+  const mockToggle = jest.fn();
+  const mockSetMode = jest.fn();
+
   return render(
     <MemoryRouter initialEntries={[initialRoute]}>
       <IntlProvider locale="en" messages={messages}>
@@ -283,7 +293,14 @@ const renderHeader = (initialRoute = "/") => {
         >
           <ConfigurationContext.Provider value={mockConfigurationContext}>
             <NotificationContext.Provider value={mockNotificationContext}>
-              <OEHeader onChangeLanguage={jest.fn()} />
+              <OEHeader
+                onChangeLanguage={jest.fn()}
+                mode={sidenavMode}
+                isExpanded={sidenavMode !== "close"}
+                toggleSideNav={mockToggle}
+                setMode={mockSetMode}
+                SIDENAV_MODES={SIDENAV_MODES}
+              />
             </NotificationContext.Provider>
           </ConfigurationContext.Provider>
         </UserSessionDetailsContext.Provider>

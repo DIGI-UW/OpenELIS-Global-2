@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
+import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
 import { Content, Theme } from "@carbon/react";
@@ -11,16 +12,27 @@ export const NotificationContext = createContext(null);
 
 export default function Layout(props) {
   const { children } = props;
+  const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [resetConfig, setResetConfig] = useState(false);
   const [configurationProperties, setConfigurationProperties] = useState({});
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
+  // Determine layout config based on route
+  // Storage pages default to LOCK, others to CLOSE
+  // Use separate storage keys to persist preferences independently
+  const isStorageContext =
+    location.pathname.startsWith("/Storage") ||
+    location.pathname.startsWith("/FreezerMonitoring");
+
+  const layoutConfig = isStorageContext
+    ? { storageKeyPrefix: "storage", defaultMode: "lock" }
+    : { storageKeyPrefix: "main", defaultMode: "close" };
+
   // Lock mode support - push content when sidenav is locked
-  const { mode, SIDENAV_MODES } = useSideNavPreference({
-    storageKeyPrefix: "main",
-  });
+  const { mode, isExpanded, toggle, setMode, SIDENAV_MODES } =
+    useSideNavPreference(layoutConfig);
   const isLocked = mode === SIDENAV_MODES.LOCK;
 
   const addNotification = (notificationBody) => {
@@ -71,7 +83,14 @@ export default function Layout(props) {
         }}
       >
         <div className="d-flex flex-column min-vh-100">
-          <Header onChangeLanguage={props.onChangeLanguage} />
+          <Header
+            onChangeLanguage={props.onChangeLanguage}
+            mode={mode}
+            isExpanded={isExpanded}
+            toggleSideNav={toggle}
+            setMode={setMode}
+            SIDENAV_MODES={SIDENAV_MODES}
+          />
           <Theme theme="white">
             <Content className={isLocked ? "content-nav-locked" : ""}>
               {children}

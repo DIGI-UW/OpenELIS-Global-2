@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 const SIDENAV_MODES = {
   SHOW: "show", // overlay, auto-close on outside click
@@ -86,6 +86,13 @@ export function useSideNavPreference({
    * Uses a function initializer to avoid reading localStorage on every render.
    */
   const [mode, setModeState] = useState(initialMode);
+
+  /**
+   * Reset state when storageKeyPrefix changes (e.g. switching between main and storage layouts)
+   */
+  useEffect(() => {
+    setModeState(initialMode());
+  }, [storageKeyPrefix]);
 
   /**
    * Persist helper
