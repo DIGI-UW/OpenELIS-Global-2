@@ -10,8 +10,6 @@
  * <p>The Original Code is OpenELIS code.
  *
  * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
- *
- * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
  */
 package org.openelisglobal.inventory.valueholder;
 
@@ -19,9 +17,13 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import java.sql.Timestamp;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,17 +31,19 @@ import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * InventoryItem entity - Master data for inventory items (reagents, RDTs,
- * cartridges) Enhanced for inventory management feature with item type,
- * category, manufacturer, and stock thresholds
+ * LotStatusHistory entity - Tracks QC status changes for inventory lots
+ *
+ * Records status transitions: PENDING -> PASSED/FAILED Example: Lot received
+ * (PENDING), QC test performed, result recorded, status updated to
+ * PASSED/FAILED
  */
 @Getter
 @Setter
 @Entity
-@Table(name = "inventory_item", schema = "clinlims")
+@Table(name = "lot_status_history", schema = "clinlims")
 @DynamicUpdate
 @org.hibernate.annotations.OptimisticLocking(type = org.hibernate.annotations.OptimisticLockType.VERSION)
-public class InventoryItem extends BaseObject<String> {
+public class LotStatusHistory extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
@@ -47,41 +51,37 @@ public class InventoryItem extends BaseObject<String> {
     @Column(name = "id", length = 36)
     private String id;
 
-    @Column(name = "fhir_uuid", nullable = false, unique = true)
-    private UUID fhirUuid;
-
-    @Column(name = "name", length = 255)
-    private String name;
-
-    @Column(name = "description", columnDefinition = "text")
-    private String description;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lot_id", nullable = false)
+    private InventoryLot lot;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", length = 50, nullable = false)
-    private ItemType itemType;
+    @Column(name = "status_from", length = 20)
+    private QCStatus statusFrom;
 
-    @Column(name = "category", length = 100)
-    private String category;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_to", length = 20, nullable = false)
+    private QCStatus statusTo;
 
-    @Column(name = "manufacturer", length = 255)
-    private String manufacturer;
+    @Column(name = "qc_test_id", length = 36)
+    private String qcTestId;
 
-    @Column(name = "units", length = 50, nullable = false)
-    private String units;
+    @Column(name = "reason", columnDefinition = "text")
+    private String reason;
 
-    @Column(name = "low_stock_threshold")
-    private Integer lowStockThreshold;
+    @Column(name = "changed_by_user", nullable = false)
+    private Integer changedByUser;
 
-    @Column(name = "is_active", length = 1)
-    private String isActive;
+    @Column(name = "changed_date", nullable = false)
+    private Timestamp changedDate;
 
     @PrePersist
     private void onPrePersist() {
         if (id == null) {
             id = UUID.randomUUID().toString();
         }
-        if (fhirUuid == null) {
-            fhirUuid = UUID.randomUUID();
+        if (changedDate == null) {
+            changedDate = new Timestamp(System.currentTimeMillis());
         }
     }
 }

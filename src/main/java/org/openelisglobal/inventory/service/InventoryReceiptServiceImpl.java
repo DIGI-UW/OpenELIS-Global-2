@@ -46,4 +46,10 @@ public class InventoryReceiptServiceImpl extends AuditableBaseObjectServiceImpl<
     public InventoryReceipt getInventoryReceiptByInventoryItemId(String id) {
         return getBaseObjectDAO().getInventoryReceiptByInventoryItemId(id);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryReceipt> findByInventoryItemId(String inventoryItemId) {
+        return getBaseObjectDAO().findByInventoryItemId(inventoryItemId);
+    }
 }

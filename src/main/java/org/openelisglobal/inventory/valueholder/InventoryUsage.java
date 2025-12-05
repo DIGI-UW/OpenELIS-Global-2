@@ -10,18 +10,18 @@
  * <p>The Original Code is OpenELIS code.
  *
  * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
- *
- * <p>Contributor(s): CIRG, University of Washington, Seattle WA.
  */
 package org.openelisglobal.inventory.valueholder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import java.sql.Timestamp;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,17 +29,20 @@ import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * InventoryItem entity - Master data for inventory items (reagents, RDTs,
- * cartridges) Enhanced for inventory management feature with item type,
- * category, manufacturer, and stock thresholds
+ * InventoryUsage entity - Links inventory consumption to specific test results
+ *
+ * Enables traceability: which reagent lot was used for which test? Critical for
+ * quality control and recall management.
+ *
+ * Example: HIV test on sample #12345 used RDT lot #ABC123
  */
 @Getter
 @Setter
 @Entity
-@Table(name = "inventory_item", schema = "clinlims")
+@Table(name = "inventory_usage", schema = "clinlims")
 @DynamicUpdate
 @org.hibernate.annotations.OptimisticLocking(type = org.hibernate.annotations.OptimisticLockType.VERSION)
-public class InventoryItem extends BaseObject<String> {
+public class InventoryUsage extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
@@ -47,41 +50,36 @@ public class InventoryItem extends BaseObject<String> {
     @Column(name = "id", length = 36)
     private String id;
 
-    @Column(name = "fhir_uuid", nullable = false, unique = true)
-    private UUID fhirUuid;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inventory_item_id", nullable = false)
+    private InventoryItem inventoryItem;
 
-    @Column(name = "name", length = 255)
-    private String name;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lot_id", nullable = false)
+    private InventoryLot lot;
 
-    @Column(name = "description", columnDefinition = "text")
-    private String description;
+    @Column(name = "test_result_id", length = 36)
+    private String testResultId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", length = 50, nullable = false)
-    private ItemType itemType;
+    @Column(name = "analysis_id", length = 36)
+    private String analysisId;
 
-    @Column(name = "category", length = 100)
-    private String category;
+    @Column(name = "quantity_used", nullable = false)
+    private Integer quantityUsed;
 
-    @Column(name = "manufacturer", length = 255)
-    private String manufacturer;
+    @Column(name = "usage_date", nullable = false)
+    private Timestamp usageDate;
 
-    @Column(name = "units", length = 50, nullable = false)
-    private String units;
-
-    @Column(name = "low_stock_threshold")
-    private Integer lowStockThreshold;
-
-    @Column(name = "is_active", length = 1)
-    private String isActive;
+    @Column(name = "performed_by_user", nullable = false)
+    private Integer performedByUser;
 
     @PrePersist
     private void onPrePersist() {
         if (id == null) {
             id = UUID.randomUUID().toString();
         }
-        if (fhirUuid == null) {
-            fhirUuid = UUID.randomUUID();
+        if (usageDate == null) {
+            usageDate = new Timestamp(System.currentTimeMillis());
         }
     }
 }

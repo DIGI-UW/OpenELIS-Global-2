@@ -24,6 +24,7 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     }
 
     @Override
+    @Transactional(readOnly = true)
     public InventoryItem readInventoryItem(String idString) {
         return getBaseObjectDAO().readInventoryItem(idString);
     }
@@ -32,5 +33,35 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     @Transactional(readOnly = true)
     public List<InventoryItem> getAllInventoryItems() {
         return getBaseObjectDAO().getAllInventoryItems();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryItem> findAllActive() {
+        return getBaseObjectDAO().findAllActive();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryItem> findByItemType(String itemType) {
+        return getBaseObjectDAO().findByItemType(itemType);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryItem> findByCategory(String category) {
+        return getBaseObjectDAO().findByCategory(category);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryItem> searchByName(String name) {
+        return getBaseObjectDAO().searchByName(name);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryItem> findLowStockItems() {
+        return getBaseObjectDAO().findLowStockItems();
     }
 }

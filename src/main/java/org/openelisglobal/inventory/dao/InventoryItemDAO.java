@@ -18,24 +18,63 @@ import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
+/**
+ * DAO for InventoryItem entity Provides methods to query inventory items
+ * (reagents, RDTs, cartridges)
+ */
 public interface InventoryItemDAO extends BaseDAO<InventoryItem, String> {
 
-    // public boolean insertData(InventoryItem InventoryItem) throws
-    // LIMSRuntimeException;
+    /**
+     * Get all inventory items
+     * 
+     * @deprecated Use getAll() from BaseDAO instead
+     */
+    @Deprecated
+    List<InventoryItem> getAllInventoryItems() throws LIMSRuntimeException;
 
-    // public void deleteData(List<InventoryItem> results) throws
-    // LIMSRuntimeException;
+    /**
+     * Read inventory item by ID
+     * 
+     * @deprecated Use get(String id) from BaseDAO instead
+     */
+    @Deprecated
+    InventoryItem readInventoryItem(String idString) throws LIMSRuntimeException;
 
-    public List<InventoryItem> getAllInventoryItems() throws LIMSRuntimeException;
+    /**
+     * Find all active inventory items
+     *
+     * @return List of active items
+     */
+    List<InventoryItem> findAllActive();
 
-    public InventoryItem readInventoryItem(String idString) throws LIMSRuntimeException;
+    /**
+     * Find inventory items by item type
+     *
+     * @param itemType Item type (REAGENT, RDT, CARTRIDGE)
+     * @return List of items matching the type
+     */
+    List<InventoryItem> findByItemType(String itemType);
 
-    // public void getData(InventoryItem inventoryItem) throws LIMSRuntimeException;
+    /**
+     * Find inventory items by category
+     *
+     * @param category Category name
+     * @return List of items in the category
+     */
+    List<InventoryItem> findByCategory(String category);
 
-    // public void updateData(InventoryItem inventoryItem) throws
-    // LIMSRuntimeException;
+    /**
+     * Search inventory items by name (case-insensitive, partial match)
+     *
+     * @param name Search term
+     * @return List of matching items
+     */
+    List<InventoryItem> searchByName(String name);
 
-    // public InventoryItem getInventoryItemById(InventoryItem inventoryItem) throws
-    // LIMSRuntimeException;
-
+    /**
+     * Find items with low stock (total current quantity below threshold)
+     *
+     * @return List of items with low stock
+     */
+    List<InventoryItem> findLowStockItems();
 }

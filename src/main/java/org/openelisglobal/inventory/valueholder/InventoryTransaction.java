@@ -15,6 +15,8 @@ package org.openelisglobal.inventory.valueholder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -26,20 +28,25 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.Immutable;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.organization.valueholder.Organization;
 
 /**
- * InventoryReceipt entity - Records when inventory items are received Enhanced
- * with received quantity, invoice tracking, and user information
+ * InventoryTransaction entity - Immutable audit trail of all inventory quantity
+ * changes
+ *
+ * Records every change to inventory lot quantities for complete traceability: -
+ * RECEIPT: Initial stock received - CONSUMPTION: Used for testing - ADJUSTMENT:
+ * Manual corrections - TRANSFER: Moved between locations - DISPOSAL: Discarded
+ * (expired, damaged, etc.)
  */
 @Getter
 @Setter
 @Entity
-@Table(name = "inventory_receipt", schema = "clinlims")
+@Table(name = "inventory_transaction", schema = "clinlims")
+@Immutable
 @DynamicUpdate
-@org.hibernate.annotations.OptimisticLocking(type = org.hibernate.annotations.OptimisticLockType.VERSION)
-public class InventoryReceipt extends BaseObject<String> {
+public class InventoryTransaction extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
@@ -47,38 +54,40 @@ public class InventoryReceipt extends BaseObject<String> {
     @Column(name = "id", length = 36)
     private String id;
 
-    @Column(name = "inventory_item_id", length = 36, nullable = false)
-    private String inventoryItemId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lot_id", nullable = false)
+    private InventoryLot lot;
 
-    @Column(name = "received_date", nullable = false)
-    private Timestamp receivedDate;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type", length = 50, nullable = false)
+    private TransactionType transactionType;
 
-    @Column(name = "received_quantity", nullable = false)
-    private Integer receivedQuantity;
+    @Column(name = "quantity", nullable = false)
+    private Integer quantity;
 
-    @Column(name = "invoice_number", length = 100)
-    private String invoiceNumber;
+    @Column(name = "transaction_date", nullable = false)
+    private Timestamp transactionDate;
 
-    @Column(name = "received_by_user", nullable = false)
-    private Integer receivedByUser;
+    @Column(name = "reference_id", length = 36)
+    private String referenceId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reference_type", length = 50)
+    private ReferenceType referenceType;
 
     @Column(name = "notes", columnDefinition = "text")
     private String notes;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id")
-    private Organization organization;
-
-    @Column(name = "org_id", insertable = false, updatable = false)
-    private String orgId;
+    @Column(name = "performed_by_user", nullable = false)
+    private Integer performedByUser;
 
     @PrePersist
     private void onPrePersist() {
         if (id == null) {
             id = UUID.randomUUID().toString();
         }
-        if (receivedDate == null) {
-            receivedDate = new Timestamp(System.currentTimeMillis());
+        if (transactionDate == null) {
+            transactionDate = new Timestamp(System.currentTimeMillis());
         }
     }
 }

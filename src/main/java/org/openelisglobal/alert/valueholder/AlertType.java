@@ -17,6 +17,16 @@ public enum AlertType {
     INVENTORY_LOW,
 
     /**
+     * Inventory lot expiring soon
+     */
+    INVENTORY_EXPIRING_SOON,
+
+    /**
+     * Inventory lot has expired
+     */
+    INVENTORY_EXPIRED,
+
+    /**
      * Sample tracking and status alerts
      */
     SAMPLE_TRACKING,

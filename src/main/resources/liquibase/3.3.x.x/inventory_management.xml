@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20251204-01-enhance-inventory-item" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="inventory_item" schemaName="clinlims" />
+            <not>
+                <columnExists columnName="fhir_uuid" schemaName="clinlims" tableName="inventory_item" />
+            </not>
+        </preConditions>
+        <comment>Enhance inventory_item table with new fields for inventory management feature</comment>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="true"/>
+            </column>
+            <column name="item_type" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="category" type="VARCHAR(100)"/>
+            <column name="manufacturer" type="VARCHAR(255)"/>
+            <column name="units" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="low_stock_threshold" type="INTEGER"/>
+        </addColumn>
+
+        <sql>CREATE EXTENSION IF NOT EXISTS "uuid-ossp";</sql>
+        <sql>UPDATE clinlims.inventory_item SET fhir_uuid = uuid_generate_v4() WHERE fhir_uuid IS NULL;</sql>
+        <sql>UPDATE clinlims.inventory_item SET item_type = 'REAGENT' WHERE item_type IS NULL;</sql>
+        <sql>UPDATE clinlims.inventory_item SET units = 'units' WHERE units IS NULL;</sql>
+
+        <addNotNullConstraint tableName="inventory_item" columnName="fhir_uuid" columnDataType="UUID" schemaName="clinlims"/>
+        <addNotNullConstraint tableName="inventory_item" columnName="item_type" columnDataType="VARCHAR(50)" schemaName="clinlims"/>
+        <addNotNullConstraint tableName="inventory_item" columnName="units" columnDataType="VARCHAR(50)" schemaName="clinlims"/>
+
+        <addUniqueConstraint tableName="inventory_item" columnNames="fhir_uuid" constraintName="uq_inventory_item_fhir_uuid" schemaName="clinlims"/>
+
+        <rollback>
+            <dropColumn tableName="inventory_item" columnName="fhir_uuid" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_item" columnName="item_type" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_item" columnName="category" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_item" columnName="manufacturer" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_item" columnName="units" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_item" columnName="low_stock_threshold" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20251204-02-enhance-inventory-location" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="inventory_location" schemaName="clinlims" />
+            <not>
+                <columnExists columnName="fhir_uuid" schemaName="clinlims" tableName="inventory_location" />
+            </not>
+        </preConditions>
+        <comment>Enhance inventory_location table (Java class: InventoryLot) with quantity tracking and QC status. Links to storage_location table for physical inventory storage locations.</comment>
+
+        <addColumn tableName="inventory_location" schemaName="clinlims">
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="true"/>
+            </column>
+            <column name="initial_quantity" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="current_quantity" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="storage_location_id" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="qc_status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="ACTIVE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="barcode" type="VARCHAR(100)"/>
+            <column name="version" type="INTEGER" defaultValue="0"/>
+        </addColumn>
+
+        <sql>UPDATE clinlims.inventory_location SET fhir_uuid = uuid_generate_v4() WHERE fhir_uuid IS NULL;</sql>
+        <sql>UPDATE clinlims.inventory_location SET initial_quantity = 100, current_quantity = 100 WHERE initial_quantity IS NULL;</sql>
+        <sql>UPDATE clinlims.inventory_location SET qc_status = 'PENDING' WHERE qc_status IS NULL;</sql>
+        <sql>UPDATE clinlims.inventory_location SET status = 'ACTIVE' WHERE status IS NULL;</sql>
+
+        <addNotNullConstraint tableName="inventory_location" columnName="fhir_uuid" columnDataType="UUID" schemaName="clinlims"/>
+        <addNotNullConstraint tableName="inventory_location" columnName="initial_quantity" columnDataType="INTEGER" schemaName="clinlims"/>
+        <addNotNullConstraint tableName="inventory_location" columnName="current_quantity" columnDataType="INTEGER" schemaName="clinlims"/>
+        <addNotNullConstraint tableName="inventory_location" columnName="qc_status" columnDataType="VARCHAR(20)" schemaName="clinlims"/>
+        <addNotNullConstraint tableName="inventory_location" columnName="status" columnDataType="VARCHAR(20)" schemaName="clinlims"/>
+
+        <addUniqueConstraint tableName="inventory_location" columnNames="fhir_uuid" constraintName="uq_inventory_location_fhir_uuid" schemaName="clinlims"/>
+        <addUniqueConstraint tableName="inventory_location" columnNames="barcode" constraintName="uq_inventory_location_barcode" schemaName="clinlims"/>
+
+        <sql>ALTER TABLE clinlims.inventory_location ADD CONSTRAINT chk_current_quantity_positive CHECK (current_quantity >= 0);</sql>
+
+        <rollback>
+            <sql>ALTER TABLE clinlims.inventory_location DROP CONSTRAINT IF EXISTS chk_current_quantity_positive;</sql>
+            <dropColumn tableName="inventory_location" columnName="fhir_uuid" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_location" columnName="initial_quantity" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_location" columnName="current_quantity" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_location" columnName="storage_location_id" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_location" columnName="qc_status" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_location" columnName="status" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_location" columnName="barcode" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_location" columnName="version" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20251204-03-create-storage-location" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="storage_location" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Create storage_location table for tracking physical locations where inventory items (reagents, RDTs, cartridges) are stored. This is separate from STORAGE_DEVICE which tracks sample storage.</comment>
+
+        <createSequence sequenceName="storage_location_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="storage_location" schemaName="clinlims">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_storage_location_id"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parent_location_id" type="VARCHAR(36)"/>
+            <column name="description" type="TEXT"/>
+            <column name="temperature_min" type="NUMERIC(5,2)"/>
+            <column name="temperature_max" type="NUMERIC(5,2)"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="storage_location" columnNames="location_code" constraintName="uq_storage_location_code" schemaName="clinlims"/>
+
+        <addForeignKeyConstraint
+            baseTableName="storage_location"
+            baseColumnNames="parent_location_id"
+            constraintName="fk_storage_location_parent"
+            referencedTableName="storage_location"
+            referencedColumnNames="id"
+            onDelete="SET NULL"
+            baseTableSchemaName="clinlims"
+            referencedTableSchemaName="clinlims"/>
+
+        <rollback>
+            <dropTable tableName="storage_location" schemaName="clinlims"/>
+            <dropSequence sequenceName="storage_location_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add foreign key from inventory_location to storage_location table -->
+    <changeSet id="20251204-03b-add-storage-location-fk" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="storage_location" schemaName="clinlims" />
+            <tableExists tableName="inventory_location" schemaName="clinlims" />
+            <columnExists tableName="inventory_location" columnName="storage_location_id" schemaName="clinlims" />
+        </preConditions>
+        <comment>Add foreign key constraint from inventory_location (InventoryLot) to storage_location table for inventory physical storage</comment>
+
+        <addForeignKeyConstraint
+            baseTableName="inventory_location"
+            baseColumnNames="storage_location_id"
+            constraintName="fk_inventory_lot_storage_location"
+            referencedTableName="storage_location"
+            referencedColumnNames="id"
+            onDelete="SET NULL"
+            baseTableSchemaName="clinlims"
+            referencedTableSchemaName="clinlims"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="inventory_location" constraintName="fk_inventory_lot_storage_location" baseTableSchemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20251204-04-enhance-inventory-receipt" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="inventory_receipt" schemaName="clinlims" />
+            <not>
+                <columnExists columnName="received_quantity" schemaName="clinlims" tableName="inventory_receipt" />
+            </not>
+        </preConditions>
+        <comment>Enhance inventory_receipt table with quantity, invoice, and notes</comment>
+
+        <addColumn tableName="inventory_receipt" schemaName="clinlims">
+            <column name="received_quantity" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="invoice_number" type="VARCHAR(100)"/>
+            <column name="received_by_user" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="notes" type="TEXT"/>
+        </addColumn>
+
+        <sql>UPDATE clinlims.inventory_receipt SET received_quantity = 1 WHERE received_quantity IS NULL;</sql>
+        <sql>UPDATE clinlims.inventory_receipt SET received_by_user = sys_user_id WHERE received_by_user IS NULL;</sql>
+
+        <addNotNullConstraint tableName="inventory_receipt" columnName="received_quantity" columnDataType="INTEGER" schemaName="clinlims"/>
+        <addNotNullConstraint tableName="inventory_receipt" columnName="received_by_user" columnDataType="INTEGER" schemaName="clinlims"/>
+
+        <rollback>
+            <dropColumn tableName="inventory_receipt" columnName="received_quantity" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_receipt" columnName="invoice_number" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_receipt" columnName="received_by_user" schemaName="clinlims"/>
+            <dropColumn tableName="inventory_receipt" columnName="notes" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20251204-05-create-inventory-transaction" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_transaction" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Create inventory_transaction table for audit trail of all inventory quantity changes (immutable)</comment>
+
+        <createSequence sequenceName="inventory_transaction_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="inventory_transaction" schemaName="clinlims">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_inventory_transaction_id"/>
+            </column>
+            <column name="lot_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_id" type="VARCHAR(36)"/>
+            <column name="reference_type" type="VARCHAR(50)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="performed_by_user" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="inventory_transaction"
+            baseColumnNames="lot_id"
+            constraintName="fk_inventory_transaction_lot"
+            referencedTableName="inventory_location"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            baseTableSchemaName="clinlims"
+            referencedTableSchemaName="clinlims"/>
+
+        <rollback>
+            <dropTable tableName="inventory_transaction" schemaName="clinlims"/>
+            <dropSequence sequenceName="inventory_transaction_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20251204-06-create-lot-status-history" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lot_status_history" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Create lot_status_history table for tracking QC status changes for inventory lots</comment>
+
+        <createSequence sequenceName="lot_status_history_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="lot_status_history" schemaName="clinlims">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_lot_status_history_id"/>
+            </column>
+            <column name="lot_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status_from" type="VARCHAR(20)"/>
+            <column name="status_to" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qc_test_id" type="VARCHAR(36)"/>
+            <column name="reason" type="TEXT"/>
+            <column name="changed_by_user" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="lot_status_history"
+            baseColumnNames="lot_id"
+            constraintName="fk_lot_status_history_lot"
+            referencedTableName="inventory_location"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            baseTableSchemaName="clinlims"
+            referencedTableSchemaName="clinlims"/>
+
+        <rollback>
+            <dropTable tableName="lot_status_history" schemaName="clinlims"/>
+            <dropSequence sequenceName="lot_status_history_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20251204-07-create-inventory-usage" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_usage" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Create inventory_usage table for linking inventory consumption to test results</comment>
+
+        <createSequence sequenceName="inventory_usage_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="inventory_usage" schemaName="clinlims">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_inventory_usage_id"/>
+            </column>
+            <column name="inventory_item_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lot_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_result_id" type="VARCHAR(36)"/>
+            <column name="analysis_id" type="VARCHAR(36)"/>
+            <column name="quantity_used" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="usage_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="performed_by_user" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="inventory_usage"
+            baseColumnNames="inventory_item_id"
+            constraintName="fk_inventory_usage_item"
+            referencedTableName="inventory_item"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            baseTableSchemaName="clinlims"
+            referencedTableSchemaName="clinlims"/>
+
+        <addForeignKeyConstraint
+            baseTableName="inventory_usage"
+            baseColumnNames="lot_id"
+            constraintName="fk_inventory_usage_lot"
+            referencedTableName="inventory_location"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            baseTableSchemaName="clinlims"
+            referencedTableSchemaName="clinlims"/>
+
+        <rollback>
+            <dropTable tableName="inventory_usage" schemaName="clinlims"/>
+            <dropSequence sequenceName="inventory_usage_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20251204-08-add-performance-indexes" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists tableName="inventory_location" indexName="idx_lot_fefo_selection" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add performance indexes for critical inventory queries (FEFO selection, stock calculation)</comment>
+
+        <!-- FEFO lot selection (most critical query) -->
+        <createIndex tableName="inventory_location" indexName="idx_lot_fefo_selection" schemaName="clinlims">
+            <column name="inventory_item_id"/>
+            <column name="status"/>
+            <column name="expiration_date"/>
+            <column name="current_quantity"/>
+        </createIndex>
+
+        <!-- Stock level calculation -->
+        <createIndex tableName="inventory_location" indexName="idx_lot_stock_calculation" schemaName="clinlims">
+            <column name="inventory_item_id"/>
+            <column name="status"/>
+            <column name="current_quantity"/>
+        </createIndex>
+
+        <!-- Low-stock alert query -->
+        <createIndex tableName="inventory_item" indexName="idx_item_active" schemaName="clinlims">
+            <column name="is_active"/>
+        </createIndex>
+
+        <!-- Transaction history queries -->
+        <createIndex tableName="inventory_transaction" indexName="idx_transaction_lot_date" schemaName="clinlims">
+            <column name="lot_id"/>
+            <column name="transaction_date"/>
+        </createIndex>
+
+        <!-- Usage tracking queries -->
+        <createIndex tableName="inventory_usage" indexName="idx_usage_test_result" schemaName="clinlims">
+            <column name="test_result_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="inventory_location" indexName="idx_lot_fefo_selection" schemaName="clinlims"/>
+            <dropIndex tableName="inventory_location" indexName="idx_lot_stock_calculation" schemaName="clinlims"/>
+            <dropIndex tableName="inventory_item" indexName="idx_item_active" schemaName="clinlims"/>
+            <dropIndex tableName="inventory_transaction" indexName="idx_transaction_lot_date" schemaName="clinlims"/>
+            <dropIndex tableName="inventory_usage" indexName="idx_usage_test_result" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

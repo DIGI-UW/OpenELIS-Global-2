@@ -12,4 +12,6 @@ public interface InventoryReceiptService extends BaseObjectService<InventoryRece
     List<InventoryReceipt> getAllInventoryReceipts();
 
     InventoryReceipt getInventoryReceiptByInventoryItemId(String id);
+
+    List<InventoryReceipt> findByInventoryItemId(String inventoryItemId);
 }
