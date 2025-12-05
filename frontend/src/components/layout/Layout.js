@@ -48,6 +48,15 @@ export default function Layout(props) {
     contentClass: isLocked ? "content-nav-locked" : "none",
   });
 
+  // Auto-close SHOW mode when navigating to a new page
+  // SHOW mode is temporary overlay - should only persist on current page
+  useEffect(() => {
+    if (mode === SIDENAV_MODES.SHOW) {
+      console.log(`[Layout] Route changed while in SHOW mode - auto-closing to CLOSE`);
+      setMode(SIDENAV_MODES.CLOSE);
+    }
+  }, [location.pathname]); // Only trigger on route change, not on mode change
+
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);
   };

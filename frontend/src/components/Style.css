@@ -431,6 +431,12 @@ button {
   padding-left: 1rem !important;
 }
 
+/* Compensate padding when active border is added */
+.reduced-padding-nav-menu-item > a.cds--side-nav__link--current,
+.reduced-padding-nav-menu-item > a.cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(1rem - 4px) !important; /* Compensate for 4px border */
+}
+
 .top-level-menu-item > a {
   pointer-events: auto !important;
   text-decoration: none !important;
@@ -440,9 +446,7 @@ button {
   background-color: var(--cds-background-hover, #072655);
 }
 
-#mainHeader .cds--side-nav__link {
-  pointer-events: none;
-}
+/* Removed pointer-events: none - was blocking subnav clicks after onClick refactor */
 
 @media screen and (max-width: 792px) {
   .banner h5 {
