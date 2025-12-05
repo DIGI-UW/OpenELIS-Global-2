@@ -537,4 +537,206 @@ describe("TwoModeLayout", () => {
       expect(link.getAttribute("rel")).toContain("noreferrer");
     });
   });
+
+  /**
+   * Header Actions Tests (M2b)
+   *
+   * These tests verify the headerActions prop that allows rendering
+   * extracted header global actions (notifications, user panel, search,
+   * language selector, help) in the TwoModeLayout header.
+   *
+   * @see spec.md FR-011: Preserve ALL existing header functionality
+   * @see plan.md D5: Header Action Preservation Strategy
+   */
+  describe("header actions (M2b)", () => {
+    /**
+     * Test: Renders headerActions prop content in header global bar
+     * @see spec.md FR-011: System MUST preserve ALL existing header functionality
+     */
+    test("testHeaderActions_ProvidedAsReactNode_RendersInHeaderGlobalBar", () => {
+      setupMock("close");
+
+      const HeaderActionsContent = () => (
+        <div data-testid="header-actions-content">
+          <button data-testid="notifications-btn">Notifications</button>
+          <button data-testid="user-btn">User</button>
+          <button data-testid="search-btn">Search</button>
+        </div>
+      );
+
+      renderWithProviders(
+        <TwoModeLayout headerActions={<HeaderActionsContent />}>
+          <div>Test Content</div>
+        </TwoModeLayout>,
+      );
+
+      // Header actions should be rendered in the header area
+      expect(screen.getByTestId("header-actions-content")).toBeTruthy();
+      expect(screen.getByTestId("notifications-btn")).toBeTruthy();
+      expect(screen.getByTestId("user-btn")).toBeTruthy();
+      expect(screen.getByTestId("search-btn")).toBeTruthy();
+    });
+
+    /**
+     * Test: headerActions renders in HeaderGlobalBar position
+     * @see plan.md D5: HeaderGlobalBar content passed via headerActions prop
+     */
+    test("testHeaderActions_Position_InsideHeaderGlobalBar", () => {
+      setupMock("close");
+
+      renderWithProviders(
+        <TwoModeLayout
+          headerActions={
+            <button data-testid="action-button">Action</button>
+          }
+        >
+          <div>Test Content</div>
+        </TwoModeLayout>,
+      );
+
+      // The action button should be inside the Carbon header structure
+      const actionButton = screen.getByTestId("action-button");
+      expect(actionButton).toBeTruthy();
+
+      // Verify it's within the header (has cds--header ancestor)
+      const header = document.querySelector(".cds--header");
+      expect(header).toBeTruthy();
+      expect(header.contains(actionButton)).toBe(true);
+    });
+
+    /**
+     * Test: headerActions can include functional notification button
+     * @see spec.md FR-011: notifications panel must work
+     */
+    test("testHeaderActions_NotificationButton_CanTogglePanel", () => {
+      setupMock("close");
+
+      const mockNotificationToggle = jest.fn();
+
+      renderWithProviders(
+        <TwoModeLayout
+          headerActions={
+            <button
+              data-testid="notification-toggle"
+              onClick={mockNotificationToggle}
+            >
+              Notifications
+            </button>
+          }
+        >
+          <div>Test Content</div>
+        </TwoModeLayout>,
+      );
+
+      const notificationBtn = screen.getByTestId("notification-toggle");
+      fireEvent.click(notificationBtn);
+
+      expect(mockNotificationToggle).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * Test: headerActions can include functional user panel button
+     * @see spec.md FR-011: user menu must work
+     */
+    test("testHeaderActions_UserPanelButton_CanTogglePanel", () => {
+      setupMock("close");
+
+      const mockUserToggle = jest.fn();
+
+      renderWithProviders(
+        <TwoModeLayout
+          headerActions={
+            <button data-testid="user-toggle" onClick={mockUserToggle}>
+              User
+            </button>
+          }
+        >
+          <div>Test Content</div>
+        </TwoModeLayout>,
+      );
+
+      const userBtn = screen.getByTestId("user-toggle");
+      fireEvent.click(userBtn);
+
+      expect(mockUserToggle).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * Test: headerActions can include functional search toggle
+     * @see spec.md FR-011: search bar must work
+     */
+    test("testHeaderActions_SearchToggle_CanToggleSearchBar", () => {
+      setupMock("close");
+
+      const mockSearchToggle = jest.fn();
+
+      renderWithProviders(
+        <TwoModeLayout
+          headerActions={
+            <button data-testid="search-toggle" onClick={mockSearchToggle}>
+              Search
+            </button>
+          }
+        >
+          <div>Test Content</div>
+        </TwoModeLayout>,
+      );
+
+      const searchBtn = screen.getByTestId("search-toggle");
+      fireEvent.click(searchBtn);
+
+      expect(mockSearchToggle).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * Test: headerActions works alongside sidenav toggle
+     * @see spec.md: Layout maintains sidenav toggle + content structure
+     */
+    test("testHeaderActions_WithSidenavToggle_BothWork", () => {
+      setupMock("close");
+
+      const mockActionClick = jest.fn();
+
+      renderWithProviders(
+        <TwoModeLayout
+          headerActions={
+            <button data-testid="custom-action" onClick={mockActionClick}>
+              Custom Action
+            </button>
+          }
+        >
+          <div>Test Content</div>
+        </TwoModeLayout>,
+      );
+
+      // Sidenav toggle should still work
+      const toggleButton = screen.getByRole("button", { name: /menu/i });
+      fireEvent.click(toggleButton);
+      expect(mockToggle).toHaveBeenCalledTimes(1);
+
+      // Custom action should also work
+      const customAction = screen.getByTestId("custom-action");
+      fireEvent.click(customAction);
+      expect(mockActionClick).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * Test: Without headerActions prop, no error is thrown
+     */
+    test("testHeaderActions_NotProvided_NoError", () => {
+      setupMock("close");
+
+      // Should not throw when headerActions is not provided
+      expect(() => {
+        renderWithProviders(
+          <TwoModeLayout>
+            <div>Test Content</div>
+          </TwoModeLayout>,
+        );
+      }).not.toThrow();
+
+      // Layout should still render
+      expect(screen.getByText("Test Content")).toBeTruthy();
+    });
+  });
 });
