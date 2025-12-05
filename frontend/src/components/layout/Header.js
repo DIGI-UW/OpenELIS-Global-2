@@ -8,8 +8,6 @@ import {
   Search,
   UserAvatarFilledAlt,
   LocationFilled,
-  Pin,
-  PinFilled,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
 import HelpMenu from "./HelpMenu";
@@ -22,7 +20,7 @@ import React, {
   useState,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useLocation } from "react-router-dom";
+import { useLocation, useHistory } from "react-router-dom";
 import { useSideNavPreference } from "./useSideNavPreference";
 import { useMenuAutoExpand } from "./useMenuAutoExpand";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
@@ -33,7 +31,6 @@ import { languages } from "../../languages";
 
 import {
   Header,
-  HeaderContainer,
   HeaderGlobalAction,
   HeaderGlobalBar,
   HeaderMenuButton,
@@ -59,11 +56,13 @@ function OEHeader(props) {
 
   const intl = useIntl();
   const location = useLocation();
+  const history = useHistory();
 
   // Lock mode support - tri-state sidenav (show/lock/close)
   const {
     mode,
-    toggle: toggleLock,
+    isExpanded,
+    toggle: toggleSideNav,
     SIDENAV_MODES,
   } = useSideNavPreference({
     storageKeyPrefix: "main",
@@ -334,7 +333,7 @@ function OEHeader(props) {
           if (menuItem.menu.openInNewWindow) {
             window.open(menuItem.menu.actionURL);
           } else {
-            window.location.href = menuItem.menu.actionURL;
+            history.push(menuItem.menu.actionURL);
           }
         }}
       >
@@ -450,21 +449,23 @@ function OEHeader(props) {
               flexDirection: "column",
             }}
           >
-            <HeaderContainer
-              render={({ isSideNavExpanded, onClickSideNavExpand }) => (
-                <Header id="mainHeader" className="mainHeader" aria-label="">
-                  {userSessionDetails.authenticated && (
-                    <HeaderMenuButton
-                      data-cy="menuButton"
-                      aria-label={
-                        isSideNavExpanded ? "Close menu" : "Open menu"
-                      }
-                      onClick={onClickSideNavExpand}
-                      isActive={isSideNavExpanded}
-                      isCollapsible={true}
-                    />
-                  )}
-                  <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
+            <Header id="mainHeader" className="mainHeader" aria-label="">
+              {userSessionDetails.authenticated && (
+                <HeaderMenuButton
+                  data-cy="menuButton"
+                  aria-label={
+                    isLocked
+                      ? "Unlock menu"
+                      : isExpanded
+                        ? "Lock menu"
+                        : "Open menu"
+                  }
+                  onClick={toggleSideNav}
+                  isActive={isExpanded}
+                  isCollapsible={true}
+                />
+              )}
+              <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
                     <span id="header-logo">{logo()}</span>
                     <div className="banner">
                       <h5>{configurationProperties?.BANNER_TEXT}</h5>
@@ -536,20 +537,6 @@ function OEHeader(props) {
                               </span>
                             )}
                           </div>
-                        </HeaderGlobalAction>
-                        <HeaderGlobalAction
-                          id="lock-Icon"
-                          aria-label={
-                            isLocked ? "Unlock sidebar" : "Lock sidebar"
-                          }
-                          onClick={toggleLock}
-                          data-testid="lock-sidenav-button"
-                        >
-                          {isLocked ? (
-                            <PinFilled size={20} />
-                          ) : (
-                            <Pin size={20} />
-                          )}
                         </HeaderGlobalAction>
                       </>
                     )}
@@ -642,8 +629,10 @@ function OEHeader(props) {
                     <>
                       <SideNav
                         aria-label="Side navigation"
-                        expanded={isSideNavExpanded || isLocked}
-                        isPersistent={isLocked}
+                        expanded={isExpanded}
+                        isFixedNav={isLocked}
+                        isPersistent={false}
+                        isChildOfHeader={true}
                       >
                         <SideNavItems>
                           {autoExpandedMenus.map((childMenuItem, index) => {
@@ -659,8 +648,6 @@ function OEHeader(props) {
                     </>
                   )}
                 </Header>
-              )}
-            />
             <div style={{ flex: 1 }}>
               <SlideOver
                 open={notificationsOpen}

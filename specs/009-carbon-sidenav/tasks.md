@@ -373,10 +373,11 @@ complete
 > - [Cypress Best Practices](../../.specify/guides/cypress-best-practices.md)
 > - [Constitution Section V.5](../../.specify/memory/constitution.md)
 
-- [ ] T081 [P] [M3] **[RED]** Create Cypress E2E test file in
+- [x] T081 [P] [M3] **[RED]** Create Cypress E2E test file in
       `frontend/cypress/e2e/sidenavNavigation.cy.js` → Run
       `npm run cy:run -- --spec "cypress/e2e/sidenavNavigation.cy.js"`, verify
       FAILS before T087
+      ✅ Created in M2b to verify critical fixes
 
   - Test: menu loads from real database (no mocks) - verify items render
   - Test: can toggle sidenav between three modes (show/lock/close)
