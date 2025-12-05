@@ -498,8 +498,9 @@ function OEHeader({
           >
             <Header id="mainHeader" className="mainHeader" aria-label="">
               {userSessionDetails.authenticated && (
-                <HeaderMenuButton
+                <button
                   data-cy="menuButton"
+                  className="cds--header__action cds--header__menu-trigger cds--header__menu-toggle"
                   aria-label={
                     mode === SIDENAV_MODES.CLOSE
                       ? "Open menu"
@@ -508,13 +509,19 @@ function OEHeader({
                         : "Unpin menu"
                   }
                   onClick={toggleSideNav}
-                  isActive={isExpanded}
-                  isCollapsible={true}
-                  renderMenuIcon={Menu}
-                  renderCloseIcon={
-                    mode === SIDENAV_MODES.SHOW ? Pin : PinFilled
+                  title={
+                    mode === SIDENAV_MODES.CLOSE
+                      ? "Open menu"
+                      : mode === SIDENAV_MODES.SHOW
+                        ? "Pin menu"
+                        : "Unpin menu"
                   }
-                />
+                  type="button"
+                >
+                  {mode === SIDENAV_MODES.CLOSE && <Menu size={20} />}
+                  {mode === SIDENAV_MODES.SHOW && <Pin size={20} />}
+                  {mode === SIDENAV_MODES.LOCK && <PinFilled size={20} />}
+                </button>
               )}
               <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
                 <span id="header-logo">{logo()}</span>
