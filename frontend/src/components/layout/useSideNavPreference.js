@@ -63,11 +63,21 @@ export function useSideNavPreference({
         defaultMode,
       });
 
-      if (
+      // SHOW mode should never be persisted - it's temporary only
+      // If we find it in localStorage, treat it as invalid and use default
+      if (savedValue === SIDENAV_MODES.SHOW) {
+        console.warn(
+          `[useSideNavPreference] Found invalid SHOW mode in localStorage - SHOW is temporary only. Clearing and using default.`,
+        );
+        try {
+          localStorage.removeItem(storageKey);
+        } catch (e) {
+          console.warn("Could not clear invalid SHOW mode from localStorage");
+        }
+        // Fall through to use defaultMode
+      } else if (
         savedValue &&
-        [SIDENAV_MODES.SHOW, SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(
-          savedValue,
-        )
+        [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(savedValue)
       ) {
         console.log(`[useSideNavPreference] Using saved mode:`, savedValue);
         return savedValue;
@@ -127,11 +137,25 @@ export function useSideNavPreference({
   }, [storageKeyPrefix]);
 
   /**
-   * Persist helper
+   * Persist helper - IMPORTANT: SHOW mode is temporary and should NOT be persisted!
+   * Only CLOSE and LOCK modes are saved to localStorage.
+   * SHOW mode is for temporary overlay that auto-closes on outside click.
    */
   const persistMode = useCallback(
     (value) => {
+      // SHOW mode is temporary - don't persist it
+      if (value === SIDENAV_MODES.SHOW) {
+        console.log(
+          `[useSideNavPreference] SHOW mode is temporary - not persisting to localStorage`,
+        );
+        return;
+      }
+
       try {
+        console.log(`[useSideNavPreference] Persisting mode to localStorage:`, {
+          storageKey,
+          value,
+        });
         localStorage.setItem(storageKey, value);
       } catch (e) {
         console.warn("Could not persist sidenav mode to localStorage");
