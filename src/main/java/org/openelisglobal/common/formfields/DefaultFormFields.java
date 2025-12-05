@@ -18,10 +18,15 @@ package org.openelisglobal.common.formfields;
 import java.util.HashMap;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.formfields.FormFields.Field;
+import org.openelisglobal.common.formfields.service.FormFieldConfigurationService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.spring.util.SpringContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DefaultFormFields extends AFormFields {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultFormFields.class);
     private HashMap<FormFields.Field, FormField> defaultAttributes = new HashMap<>();
 
     {
@@ -138,7 +143,29 @@ public class DefaultFormFields extends AFormFields {
     @Override
     protected HashMap<Field, FormField> getSetAttributes() {
         String fieldSet = ConfigurationProperties.getInstance().getPropertyValueUpperCase(Property.FormFieldSet);
+        LOGGER.info("Attempting to load form fields for domain: {}", fieldSet);
 
+        // Try to load from file-based configuration first
+        try {
+            FormFieldConfigurationService configService = SpringContext.getBean(FormFieldConfigurationService.class);
+            LOGGER.info("FormFieldConfigurationService bean retrieved: {}", (configService != null));
+            if (configService != null && configService.hasDomainConfiguration(fieldSet)) {
+                HashMap<Field, FormField> fileBasedFields = new HashMap<>(configService.loadFormFields(fieldSet));
+                LOGGER.info("Loaded {} form fields from file-based configuration for domain: {}",
+                        fileBasedFields.size(), fieldSet);
+                return fileBasedFields;
+            } else {
+                LOGGER.info(
+                        "No file-based configuration found for domain: {}, falling back to hardcoded implementation",
+                        fieldSet);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Error loading file-based configuration, falling back to hardcoded classes: {}", e.getMessage(),
+                    e);
+        }
+
+        // Fall back to hardcoded implementation classes for backward compatibility
+        LOGGER.info("Using hardcoded form fields implementation for domain: {}", fieldSet);
         if (IActionConstants.FORM_FIELD_SET_LNSP_HAITI.equals(fieldSet)) {
             return new HT_LNSPFormFields().getImplementationAttributes();
         } else if (IActionConstants.FORM_FIELD_SET_HAITI.equals(fieldSet)) {

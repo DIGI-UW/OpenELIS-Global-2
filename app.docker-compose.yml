@@ -10,6 +10,7 @@ services:
             - ./dev/plugins:/var/lib/openelis-global/plugins
             - ./dev/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
             -  lucene_index-vol:/var/lib/lucene_index
+            - ./volume/formfields:/var/lib/openelis-global/formfields
         secrets:
             - source: common.properties
         tty: true

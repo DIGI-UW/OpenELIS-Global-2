@@ -18,10 +18,15 @@ package org.openelisglobal.common.formfields;
 import java.util.HashMap;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.formfields.AdminFormFields.Field;
+import org.openelisglobal.common.formfields.service.FormFieldConfigurationService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.spring.util.SpringContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DefaultAdminFormFields extends AAdminFormFields {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAdminFormFields.class);
     private HashMap<AdminFormFields.Field, Boolean> defaultAttributes = new HashMap<>();
 
     {
@@ -90,7 +95,33 @@ public class DefaultAdminFormFields extends AAdminFormFields {
     @Override
     protected HashMap<Field, Boolean> getSetAttributes() {
         String fieldSet = ConfigurationProperties.getInstance().getPropertyValueUpperCase(Property.FormFieldSet);
+        LOGGER.info("Attempting to load admin form fields for domain: {}", fieldSet);
 
+        // Try to load from file-based configuration first
+        try {
+            FormFieldConfigurationService configService = SpringContext.getBean(FormFieldConfigurationService.class);
+            LOGGER.info("FormFieldConfigurationService bean retrieved for admin fields: {}", (configService != null));
+            if (configService != null && configService.hasDomainConfiguration(fieldSet)) {
+                HashMap<Field, Boolean> fileBasedFields = new HashMap<>(configService.loadAdminFormFields(fieldSet));
+                if (!fileBasedFields.isEmpty()) {
+                    LOGGER.info("Loaded {} admin form fields from file-based configuration for domain: {}",
+                            fileBasedFields.size(), fieldSet);
+                    return fileBasedFields;
+                } else {
+                    LOGGER.info("File-based admin configuration exists but returned empty for domain: {}", fieldSet);
+                }
+            } else {
+                LOGGER.info(
+                        "No file-based admin configuration found for domain: {}, falling back to hardcoded implementation",
+                        fieldSet);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Error loading file-based admin configuration, falling back to hardcoded classes: {}",
+                    e.getMessage(), e);
+        }
+
+        // Fall back to hardcoded implementation classes for backward compatibility
+        LOGGER.info("Using hardcoded admin form fields implementation for domain: {}", fieldSet);
         if (IActionConstants.FORM_FIELD_SET_LNSP_HAITI.equals(fieldSet)) {
             return new HT_LNSPAdministrationFormFields().getImplementationAttributes();
         } else if (IActionConstants.FORM_FIELD_SET_HAITI.equals(fieldSet)) {
