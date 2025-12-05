@@ -228,8 +228,22 @@ function OEHeader({
     );
   };
   const generateMenuItems = (menuItem, index, level, path) => {
-    if (menuItem.menu.isActive) {
-      if (level === 0 && menuItem.childMenus.length > 0) {
+    // Skip inactive menu items
+    if (!menuItem.menu.isActive) {
+      return <React.Fragment key={path}></React.Fragment>;
+    }
+
+    const isActive =
+      !!menuItem.menu.actionURL &&
+      location.pathname === menuItem.menu.actionURL;
+    const hasChildren = menuItem.childMenus.length > 0;
+
+    // ============================================================================
+    // LEVEL 0: Top-level menu items
+    // ============================================================================
+    if (level === 0) {
+      // Top-level with children - use SideNavMenu (expandable)
+      if (hasChildren) {
         return (
           <span id={menuItem.menu.elementId} key={path}>
             <span
@@ -255,9 +269,6 @@ function OEHeader({
                 })}
                 key={`${menuItem.menu.elementId}-${menuItem.expanded}`}
                 defaultExpanded={menuItem.expanded}
-                // onClick={(e) => { // not supported yet, but if it becomes so we can simplify the functionality here by having this here and not have a span around it
-                //   setMenuItemExpanded(e, menuItem, path);
-                // }}
               >
                 <span
                   onClick={(e) => {
@@ -265,12 +276,12 @@ function OEHeader({
                     e.stopPropagation();
                   }}
                 >
-                  {menuItem.childMenus.map((childMenuItem, index) => {
+                  {menuItem.childMenus.map((childMenuItem, childIndex) => {
                     return generateMenuItems(
                       childMenuItem,
-                      index,
+                      childIndex,
                       level + 1,
-                      path + ".childMenus[" + index + "]",
+                      path + ".childMenus[" + childIndex + "]",
                     );
                   })}
                 </span>
@@ -278,182 +289,99 @@ function OEHeader({
             </span>
           </span>
         );
-      } else if (level === 0) {
-        return (
-          <span key={path} id={menuItem.menu.elementId}>
-            <SideNavMenuItem
-              id={menuItem.menu.elementId + "_nav"}
-              href={menuItem.menu.actionURL}
-              target={menuItem.menu.openInNewWindow ? "_blank" : ""}
-              className="top-level-menu-item"
-              isActive={
-                !!menuItem.menu.actionURL &&
-                location.pathname === menuItem.menu.actionURL
-              }
-            >
-              {renderSideNavMenuItemLabel(menuItem, level)}
-            </SideNavMenuItem>
-          </span>
-        );
-      } else {
-        // Level > 0 items: use custom buttons for navigation
-        // DO NOT set href on SideNavMenuItem - custom buttons handle navigation
-        // This prevents double navigation and flickering
-        return (
-          <span
-            data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
-            id={menuItem.menu.elementId}
-            key={path}
-          >
-            <SideNavMenuItem
-              className="reduced-padding-nav-menu-item"
-              style={{ width: "100%" }}
-              isActive={
-                !!menuItem.menu.actionURL &&
-                location.pathname === menuItem.menu.actionURL
-              }
-            >
-              <span style={{ display: "flex", width: "100%" }}>
-                {!menuItem.menu.actionURL &&
-                  !hasActiveChildMenu(menuItem) &&
-                  console.warn("menu entry has no action url and no child")}
-                {!hasActiveChildMenu(menuItem) &&
-                  renderSingleNavButton(menuItem, index, level, path)}
-                {!menuItem.menu.actionURL &&
-                  hasActiveChildMenu(menuItem) &&
-                  renderSingleDropdownButton(menuItem, index, level, path)}
-                {menuItem.menu.actionURL &&
-                  hasActiveChildMenu(menuItem) &&
-                  renderDualNavDropdownButton(menuItem, index, level, path)}
-              </span>
-            </SideNavMenuItem>
-            {menuItem.childMenus.map((childMenuItem, index) => {
-              return (
-                <span
-                  key={path + ".childMenus[" + index + "].span"}
-                  style={{ display: menuItem.expanded ? "" : "none" }}
-                >
-                  {generateMenuItems(
-                    childMenuItem,
-                    index,
-                    level + 1,
-                    path + ".childMenus[" + index + "]",
-                  )}
-                </span>
-              );
-            })}
-          </span>
-        );
       }
-    } else {
-      return <React.Fragment key={path}></React.Fragment>;
+
+      // Top-level without children - simple link
+      return (
+        <span key={path} id={menuItem.menu.elementId}>
+          <SideNavMenuItem
+            id={menuItem.menu.elementId + "_nav"}
+            className="top-level-menu-item"
+            isActive={isActive}
+            onClick={(e) => {
+              e.preventDefault();
+              if (menuItem.menu.openInNewWindow) {
+                window.open(menuItem.menu.actionURL);
+              } else {
+                history.push(menuItem.menu.actionURL);
+              }
+            }}
+          >
+            {renderSideNavMenuItemLabel(menuItem, level)}
+          </SideNavMenuItem>
+        </span>
+      );
     }
-  };
 
-  const hasActiveChildMenu = (menuItem) => {
-    return (
-      menuItem.childMenus.length >= 1 &&
-      menuItem.childMenus.some((element) => {
-        return element.menu.isActive;
-      })
-    );
-  };
-
-  const renderSingleNavButton = (menuItem, index, level, path) => {
+    // ============================================================================
+    // LEVEL > 0: Subnav items (SIMPLIFIED - NO CUSTOM BUTTONS!)
+    // ============================================================================
     const marginValue = (level - 1) * 0.5 + "rem";
-    const isActive =
-      menuItem.menu.actionURL && location.pathname === menuItem.menu.actionURL;
+
     return (
-      <button
-        data-cy="single-sidenav-button"
-        className={`custom-sidenav-button ${isActive ? "active" : ""}`}
-        style={{ width: "100%", marginLeft: marginValue }}
-        id={menuItem.menu.elementId + "_nav"}
-        onClick={() => {
-          if (menuItem.menu.openInNewWindow) {
-            window.open(menuItem.menu.actionURL);
-          } else {
-            history.push(menuItem.menu.actionURL);
-          }
-        }}
+      <span
+        data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
+        id={menuItem.menu.elementId}
+        key={path}
       >
-        {renderSideNavMenuItemLabel(menuItem, level)}
-      </button>
-    );
-  };
+        <SideNavMenuItem
+          className="reduced-padding-nav-menu-item"
+          isActive={isActive}
+          onClick={(e) => {
+            e.preventDefault();
 
-  const renderSingleDropdownButton = (menuItem, index, level, path) => {
-    const marginValue = (level - 1) * 0.5 + "rem";
-    return (
-      <button
-        data-cy="sidenav-button"
-        id={menuItem.menu.displayKey + "_dropdown"}
-        className={"custom-sidenav-button"}
-        style={{ marginLeft: marginValue }}
-        onClick={(e) => {
-          onClickSideNavItem(e, menuItem, path);
-        }}
-      >
-        {renderSideNavMenuItemLabel(menuItem, level)}
-        {renderSideNavChevron(menuItem)}
-      </button>
-    );
-  };
+            // If has children, toggle expansion
+            if (hasChildren) {
+              setMenuItemExpanded(e, menuItem, path);
+            }
 
-  const renderDualNavDropdownButton = (menuItem, index, level, path) => {
-    const marginValue = (level - 1) * 0.5 + "rem";
-    const isActive =
-      menuItem.menu.actionURL && location.pathname === menuItem.menu.actionURL;
-    return (
-      <>
-        <button
-          id={menuItem.menu.elementId + "_nav"}
-          className={
-            menuItem.menu.actionURL
-              ? `custom-sidenav-button ${isActive ? "active" : ""}`
-              : "custom-sidenav-button-unclickable"
-          }
-          style={{ marginLeft: marginValue }}
-          onClick={() => {
-            if (menuItem.menu.openInNewWindow) {
-              window.open(menuItem.menu.actionURL);
-            } else {
-              history.push(menuItem.menu.actionURL);
+            // Navigate if has URL
+            if (menuItem.menu.actionURL) {
+              if (menuItem.menu.openInNewWindow) {
+                window.open(menuItem.menu.actionURL);
+              } else {
+                history.push(menuItem.menu.actionURL);
+              }
             }
           }}
         >
-          {renderSideNavMenuItemLabel(menuItem, level)}
-        </button>
-        {menuItem.childMenus.length > 0 && (
-          <button
-            data-cy={`sidenav-button-${menuItem.menu.elementId}`}
-            id={menuItem.menu.displayKey + "_dropdown"}
-            className="custom-sidenav-button"
-            onClick={(e) => {
-              onClickSideNavItem(e, menuItem, path);
+          <div
+            style={{
+              display: "flex",
+              width: "100%",
+              alignItems: "center",
+              marginLeft: marginValue,
             }}
           >
-            {renderSideNavChevron(menuItem)}
-          </button>
-        )}
-      </>
-    );
-  };
+            <span style={{ flex: 1 }}>
+              {renderSideNavMenuItemLabel(menuItem, level)}
+            </span>
+            {hasChildren && (
+              <div className="cds--side-nav__icon cds--side-nav__icon--small cds--side-nav__submenu-chevron">
+                {menuItem.expanded ? <ChevronUp /> : <ChevronDown />}
+              </div>
+            )}
+          </div>
+        </SideNavMenuItem>
 
-  const renderSideNavChevron = (menuItem) => {
-    return (
-      <>
-        {menuItem.expanded && (
-          <div className="cds--side-nav__icon cds--side-nav__icon--small cds--side-nav__submenu-chevron">
-            <ChevronUp />
-          </div>
-        )}
-        {!menuItem.expanded && (
-          <div className="cds--side-nav__icon cds--side-nav__icon--small cds--side-nav__submenu-chevron">
-            <ChevronDown />
-          </div>
-        )}
-      </>
+        {/* Render children if expanded */}
+        {hasChildren &&
+          menuItem.childMenus.map((childMenuItem, childIndex) => {
+            return (
+              <span
+                key={path + ".childMenus[" + childIndex + "].span"}
+                style={{ display: menuItem.expanded ? "" : "none" }}
+              >
+                {generateMenuItems(
+                  childMenuItem,
+                  childIndex,
+                  level + 1,
+                  path + ".childMenus[" + childIndex + "]",
+                )}
+              </span>
+            );
+          })}
+      </span>
     );
   };
 
@@ -464,12 +392,6 @@ function OEHeader({
         <FormattedMessage id={menuItem.menu.displayKey} />
       </span>
     );
-  };
-
-  const onClickSideNavItem = (e, menuItem, path) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setMenuItemExpanded(e, menuItem, path);
   };
 
   const setMenuItemExpanded = (e, menuItem, path) => {

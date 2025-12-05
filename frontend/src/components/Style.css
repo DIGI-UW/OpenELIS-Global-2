@@ -418,31 +418,6 @@ button {
   display: inline-flex !important;
 }
 
-/* Minimal custom button styles - let Carbon handle backgrounds */
-.custom-sidenav-button {
-  box-sizing: border-box;
-  margin: 0;
-  border: 0;
-  cursor: pointer;
-  display: flex;
-  visibility: visible !important;
-  align-items: center;
-  background-color: transparent; /* Let Carbon theme handle it */
-  color: inherit; /* Inherit from parent Carbon component */
-  transition:
-    color 110ms,
-    background-color 110ms,
-    outline 110ms;
-  -webkit-user-select: none;
-  user-select: none;
-  width: 100%;
-  pointer-events: auto;
-}
-
-.custom-sidenav-button:hover {
-  background-color: var(--cds-layer-hover-01); /* Use Carbon hover token */
-}
-
 .cds--side-nav__link a {
   pointer-events: auto;
   text-decoration: none !important;
@@ -585,14 +560,4 @@ button {
   background-color: var(--cds-layer-hover-01, rgba(255,255,255,0.1)) !important;
 }
 
-/* Custom button hover - needs specificity to override parent */
-.cds--side-nav__menu-item .custom-sidenav-button:hover {
-  background-color: var(--cds-layer-hover-01, rgba(255,255,255,0.1)) !important;
-}
-
-/* Custom button active state - needs specificity to override parent */
-.cds--side-nav__menu-item .custom-sidenav-button.active {
-  border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
-  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
-  padding-left: calc(0.5rem - 4px); /* Compensate for border */
-}
+/* All custom button styles removed - using Carbon's SideNavMenuItem isActive only */
