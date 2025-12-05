@@ -244,18 +244,28 @@ function OEHeader({
     if (level === 0) {
       // Top-level with children - use SideNavMenu (expandable)
       if (hasChildren) {
+        console.log(`[SideNav] Rendering top-level menu with children:`, {
+          elementId: menuItem.menu.elementId,
+          childCount: menuItem.childMenus.length,
+          expanded: menuItem.expanded,
+        });
+
         return (
           <span id={menuItem.menu.elementId} key={path}>
             <span
               id={menuItem.menu.elementId + "_dropdown"}
               onClick={(e) => {
+                console.log(`[SideNav] Top-level menu clicked:`, menuItem.menu.elementId);
                 setMenuItemExpanded(e, menuItem, path);
                 // Also navigate to first active child
                 const firstActiveChild = menuItem.childMenus.find(
                   (c) => c.menu.isActive,
                 );
                 if (firstActiveChild?.menu.actionURL) {
+                  console.log(`[SideNav] Navigating to first child:`, firstActiveChild.menu.actionURL);
                   history.push(firstActiveChild.menu.actionURL);
+                } else {
+                  console.log(`[SideNav] No active child with URL found`);
                 }
               }}
             >
@@ -292,6 +302,12 @@ function OEHeader({
       }
 
       // Top-level without children - simple link
+      console.log(`[SideNav] Rendering top-level simple link:`, {
+        elementId: menuItem.menu.elementId,
+        actionURL: menuItem.menu.actionURL,
+        isActive,
+      });
+
       return (
         <span key={path} id={menuItem.menu.elementId}>
           <SideNavMenuItem
@@ -299,10 +315,13 @@ function OEHeader({
             className="top-level-menu-item"
             isActive={isActive}
             onClick={(e) => {
+              console.log(`[SideNav] Top-level simple link clicked:`, menuItem.menu.elementId);
               e.preventDefault();
               if (menuItem.menu.openInNewWindow) {
+                console.log(`[SideNav] Opening in new window:`, menuItem.menu.actionURL);
                 window.open(menuItem.menu.actionURL);
               } else {
+                console.log(`[SideNav] Navigating to:`, menuItem.menu.actionURL);
                 history.push(menuItem.menu.actionURL);
               }
             }}
@@ -318,6 +337,53 @@ function OEHeader({
     // ============================================================================
     const marginValue = (level - 1) * 0.5 + "rem";
 
+    console.log(`[SideNav] Rendering level ${level} item:`, {
+      elementId: menuItem.menu.elementId,
+      displayKey: menuItem.menu.displayKey,
+      actionURL: menuItem.menu.actionURL,
+      hasChildren,
+      isActive,
+      expanded: menuItem.expanded,
+    });
+
+    // Handler for label click - navigate (and expand if has children)
+    const handleLabelClick = (e) => {
+      console.log(`[SideNav] Label clicked:`, {
+        elementId: menuItem.menu.elementId,
+        hasChildren,
+        actionURL: menuItem.menu.actionURL,
+      });
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // If has children, expand first
+      if (hasChildren) {
+        console.log(`[SideNav] Expanding menu:`, menuItem.menu.elementId);
+        setMenuItemExpanded(e, menuItem, path);
+      }
+
+      // Then navigate if has URL
+      if (menuItem.menu.actionURL) {
+        console.log(`[SideNav] Navigating to:`, menuItem.menu.actionURL);
+        if (menuItem.menu.openInNewWindow) {
+          window.open(menuItem.menu.actionURL);
+        } else {
+          history.push(menuItem.menu.actionURL);
+        }
+      } else {
+        console.log(`[SideNav] No actionURL, skipping navigation`);
+      }
+    };
+
+    // Handler for chevron click - ONLY expand, don't navigate
+    const handleChevronClick = (e) => {
+      console.log(`[SideNav] Chevron clicked:`, menuItem.menu.elementId);
+      e.preventDefault();
+      e.stopPropagation();
+      setMenuItemExpanded(e, menuItem, path);
+    };
+
     return (
       <span
         data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
@@ -327,23 +393,8 @@ function OEHeader({
         <SideNavMenuItem
           className="reduced-padding-nav-menu-item"
           isActive={isActive}
-          onClick={(e) => {
-            e.preventDefault();
-
-            // If has children, toggle expansion
-            if (hasChildren) {
-              setMenuItemExpanded(e, menuItem, path);
-            }
-
-            // Navigate if has URL
-            if (menuItem.menu.actionURL) {
-              if (menuItem.menu.openInNewWindow) {
-                window.open(menuItem.menu.actionURL);
-              } else {
-                history.push(menuItem.menu.actionURL);
-              }
-            }
-          }}
+          href={menuItem.menu.actionURL || "#"}
+          onClick={handleLabelClick}
         >
           <div
             style={{
@@ -357,7 +408,11 @@ function OEHeader({
               {renderSideNavMenuItemLabel(menuItem, level)}
             </span>
             {hasChildren && (
-              <div className="cds--side-nav__icon cds--side-nav__icon--small cds--side-nav__submenu-chevron">
+              <div
+                className="cds--side-nav__icon cds--side-nav__icon--small cds--side-nav__submenu-chevron"
+                onClick={handleChevronClick}
+                style={{ cursor: "pointer" }}
+              >
                 {menuItem.expanded ? <ChevronUp /> : <ChevronDown />}
               </div>
             )}
@@ -395,29 +450,44 @@ function OEHeader({
   };
 
   const setMenuItemExpanded = (e, menuItem, path) => {
+    console.log(`[SideNav] setMenuItemExpanded called:`, {
+      elementId: menuItem.menu.elementId,
+      currentExpanded: menuItem.expanded,
+      path,
+      isTopLevel: path.startsWith("$.menu["),
+    });
+
     const newMenus = { ...menus };
 
     // Accordion behavior: Only one top-level section open at a time
     if (path.startsWith("$.menu[")) {
       // This is a top-level item (level 0)
+      console.log(`[SideNav] Top-level accordion - collapsing siblings`);
       // Collapse all other top-level items
       newMenus.menu = newMenus.menu.map((item) => {
         if (item.menu.elementId === menuItem.menu.elementId) {
           // This is the item being toggled
+          console.log(`[SideNav] Toggling ${item.menu.elementId} from ${item.expanded} to ${!item.expanded}`);
           return { ...item, expanded: !item.expanded };
         } else {
           // Collapse all siblings
+          if (item.expanded) {
+            console.log(`[SideNav] Collapsing sibling ${item.menu.elementId}`);
+          }
           return { ...item, expanded: false };
         }
       });
     } else {
       // Nested item - just toggle it without affecting siblings
+      console.log(`[SideNav] Nested item - toggling without affecting siblings`);
       const newMenuItem = { ...menuItem };
       newMenuItem.expanded = !newMenuItem.expanded;
+      console.log(`[SideNav] New expanded state: ${newMenuItem.expanded}`);
       var jp = require("jsonpath");
       jp.value(newMenus, path, newMenuItem);
     }
 
+    console.log(`[SideNav] Setting new menus state`);
     setMenus(newMenus);
   };
 
