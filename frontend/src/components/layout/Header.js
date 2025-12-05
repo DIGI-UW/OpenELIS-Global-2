@@ -43,6 +43,53 @@ import {
   SideNavMenuItem,
   Theme,
 } from "@carbon/react";
+
+/**
+ * OpenELIS custom blue theme for header/navigation
+ * Based on Carbon's g100 theme but with brand colors
+ * This creates a scoped theme zone for header/nav only
+ */
+const openelisHeaderTheme = {
+  // Background colors
+  background: "#295785", // Primary blue
+  "background-hover": "#072655", // Darker blue on hover
+  "background-active": "#072655",
+  "background-selected": "#072655",
+
+  // Layer colors (for surfaces like nav items)
+  "layer-01": "#295785",
+  "layer-02": "#1e4a6b",
+  "layer-03": "#164060",
+  "layer-hover-01": "#072655",
+  "layer-hover-02": "#072655",
+  "layer-active-01": "#072655",
+  "layer-selected-01": "#072655",
+
+  // Text colors
+  "text-primary": "#ffffff",
+  "text-secondary": "#f4f4f4",
+  "text-on-color": "#ffffff",
+  "text-helper": "#c6c6c6",
+
+  // Icon colors
+  "icon-primary": "#ffffff",
+  "icon-secondary": "#f4f4f4",
+  "icon-on-color": "#ffffff",
+
+  // Link colors
+  "link-primary": "#ffffff",
+  "link-primary-hover": "#f4f4f4",
+
+  // Field colors (for inputs in header like search)
+  "field-01": "#295785",
+  "field-02": "#1e4a6b",
+  "field-hover-01": "#072655",
+  "field-hover-02": "#072655",
+
+  // Border colors
+  "border-subtle-00": "#1e4a6b",
+  "border-strong-01": "#ffffff",
+};
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
 import SearchBar from "./search/searchBar";
@@ -502,7 +549,7 @@ function OEHeader({
   return (
     <>
       <div className="container">
-        <Theme>
+        <Theme theme={openelisHeaderTheme}>
           <div
             style={{
               display: "flex",

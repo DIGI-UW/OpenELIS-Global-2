@@ -55,11 +55,6 @@ li.clickableUserDetails:hover {
 
 .inputSearch {
   width: 50%;
-  /* Override dark theme for header search input */
-  --cds-field-01: #ffffff;
-  --cds-text-primary: #161616;
-  --cds-text-secondary: #525252;
-  --cds-icon-primary: #161616;
 }
 
 .rules {

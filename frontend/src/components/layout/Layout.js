@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
-import { Content, Theme } from "@carbon/react";
+import { Content } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { useSideNavPreference } from "./useSideNavPreference";
@@ -91,11 +91,9 @@ export default function Layout(props) {
             setMode={setMode}
             SIDENAV_MODES={SIDENAV_MODES}
           />
-          <Theme theme="white">
-            <Content className={isLocked ? "content-nav-locked" : ""}>
-              {children}
-            </Content>
-          </Theme>
+          <Content className={isLocked ? "content-nav-locked" : ""}>
+            {children}
+          </Content>
           <Footer />
         </div>
       </NotificationContext.Provider>
