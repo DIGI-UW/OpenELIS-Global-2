@@ -107,8 +107,22 @@ function OEHeader({
 
   const handleMenuItems = (tag, res) => {
     if (res) {
-      let newMenus = menus;
-      newMenus[tag] = res;
+      console.log(`[SideNav] handleMenuItems called:`, { tag, itemCount: res.length });
+      
+      // FIX: Initialize expanded property for all menu items
+      const initializeExpanded = (items) => {
+        return items.map((item) => ({
+          ...item,
+          expanded: item.expanded === true, // Ensure boolean, default to false
+          childMenus: item.childMenus ? initializeExpanded(item.childMenus) : [],
+        }));
+      };
+      
+      const initializedMenus = initializeExpanded(res);
+      console.log(`[SideNav] Initialized ${initializedMenus.length} menu items with expanded=false`);
+      
+      let newMenus = { ...menus };
+      newMenus[tag] = initializedMenus;
       setMenus(newMenus);
     }
   };
@@ -233,10 +247,26 @@ function OEHeader({
       return <React.Fragment key={path}></React.Fragment>;
     }
 
-    const isActive =
-      !!menuItem.menu.actionURL &&
-      location.pathname === menuItem.menu.actionURL;
+    // FIX: Use startsWith for URL matching instead of exact match
+    // This allows /Storage/samples to match /Storage
+    const exactMatch = location.pathname === menuItem.menu.actionURL;
+    const prefixMatch = 
+      menuItem.menu.actionURL?.length > 1 && 
+      location.pathname.startsWith(menuItem.menu.actionURL + "/");
+    const isActive = !!menuItem.menu.actionURL && (exactMatch || prefixMatch);
     const hasChildren = menuItem.childMenus.length > 0;
+
+    // Debug: Log active state calculation for items on current path
+    if (isActive || exactMatch || prefixMatch) {
+      console.log(`[SideNav] Active match found:`, {
+        elementId: menuItem.menu.elementId,
+        actionURL: menuItem.menu.actionURL,
+        currentPath: location.pathname,
+        exactMatch,
+        prefixMatch,
+        isActive,
+      });
+    }
 
     // ============================================================================
     // LEVEL 0: Top-level menu items
