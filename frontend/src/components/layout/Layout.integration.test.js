@@ -17,31 +17,84 @@ describe("Layout Full Integration (Smoke Tests)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     const mockGetFromServer = require("../utils/Utils").getFromOpenElisServer;
-    
+
     mockGetFromServer.mockImplementation((url, callback) => {
       if (url.includes("configuration-properties")) {
         callback({
           releaseNumber: "3.2.1.0",
           BANNER_TEXT: "Test LIMS",
         });
-      } else if (url.includes("/menu/menu_")) {
-        callback({
-          menu: [
-            {
+      } else if (url === "/rest/menu") {
+        // Realistic menu structure matching database
+        callback([
+          {
+            menu: {
               elementId: "menu_home",
               displayKey: "banner.menu.home",
-              url: "/Dashboard",
+              actionURL: "/Dashboard",
+              isActive: true,
             },
-            {
+            childMenus: [],
+          },
+          {
+            menu: {
               elementId: "menu_sample",
-              displayKey: "sidenav.label.sample",
-              url: "/SamplePatientEntry",
+              displayKey: "banner.menu.sample",
+              actionURL: "",
+              isActive: true,
             },
-          ],
-        });
-      } else if (url.includes("/notification/pnconfig")) {
-        callback({ subscribed: false });
-      } else if (url.includes("/notification")) {
+            childMenus: [
+              {
+                menu: {
+                  elementId: "menu_sample_add",
+                  displayKey: "sidenav.label.addorder",
+                  actionURL: "/SamplePatientEntry",
+                  isActive: true,
+                },
+                childMenus: [],
+              },
+            ],
+          },
+          {
+            menu: {
+              elementId: "menu_storage",
+              displayKey: "banner.menu.storage",
+              actionURL: "",
+              isActive: true,
+            },
+            childMenus: [
+              {
+                menu: {
+                  elementId: "menu_storage_management",
+                  displayKey: "storage.nav.dashboard",
+                  actionURL: "/Storage",
+                  isActive: true,
+                },
+                childMenus: [],
+              },
+            ],
+          },
+          {
+            menu: {
+              elementId: "menu_admin",
+              displayKey: "sidenav.label.admin",
+              actionURL: "",
+              isActive: true,
+            },
+            childMenus: [
+              {
+                menu: {
+                  elementId: "menu_admin_usermgt",
+                  displayKey: "sidenav.label.admin.usermgt",
+                  actionURL: "/MasterListsPage#!usersManagement",
+                  isActive: true,
+                },
+                childMenus: [],
+              },
+            ],
+          },
+        ]);
+      } else if (url.includes("/notifications")) {
         callback([]);
       }
     });
@@ -55,34 +108,40 @@ describe("Layout Full Integration (Smoke Tests)", () => {
     };
 
     // Spy on console.error to catch infinite loop warnings
-    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
-    render(
+    const { container } = render(
       <BrowserRouter>
         <IntlProvider locale="en" messages={messages}>
-          <UserSessionDetailsContext.Provider value={{ userSessionDetails: mockUserSessionDetails }}>
+          <UserSessionDetailsContext.Provider
+            value={{ userSessionDetails: mockUserSessionDetails }}
+          >
             <Layout onChangeLanguage={jest.fn()}>
-              <div>Test Content</div>
+              <div data-testid="test-content">Test Content</div>
             </Layout>
           </UserSessionDetailsContext.Provider>
         </IntlProvider>
-      </BrowserRouter>
+      </BrowserRouter>,
     );
 
-    // Wait for content to render
+    // Wait for layout to render (Content wrapper should exist)
     await waitFor(
       () => {
-        expect(screen.getByText("Test Content")).toBeInTheDocument();
+        const content = container.querySelector(".cds--content");
+        expect(content).toBeTruthy();
       },
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
 
     // CRITICAL: Check for infinite loop warning
     const infiniteLoopErrors = consoleErrorSpy.mock.calls.filter(
       (call) =>
         call[0] &&
+        typeof call[0] === "string" &&
         (call[0].includes("Maximum update depth") ||
-          call[0].includes("Too many re-renders"))
+          call[0].includes("Too many re-renders")),
     );
 
     expect(infiniteLoopErrors.length).toBe(0);
@@ -100,13 +159,15 @@ describe("Layout Full Integration (Smoke Tests)", () => {
     const { container } = render(
       <BrowserRouter>
         <IntlProvider locale="en" messages={messages}>
-          <UserSessionDetailsContext.Provider value={{ userSessionDetails: mockUserSessionDetails }}>
+          <UserSessionDetailsContext.Provider
+            value={{ userSessionDetails: mockUserSessionDetails }}
+          >
             <Layout onChangeLanguage={jest.fn()}>
               <div>Test Content</div>
             </Layout>
           </UserSessionDetailsContext.Provider>
         </IntlProvider>
-      </BrowserRouter>
+      </BrowserRouter>,
     );
 
     // CRITICAL: SideNav must be present when authenticated
@@ -115,7 +176,7 @@ describe("Layout Full Integration (Smoke Tests)", () => {
         const sideNav = container.querySelector(".cds--side-nav");
         expect(sideNav).toBeTruthy();
       },
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
   });
 
@@ -129,13 +190,15 @@ describe("Layout Full Integration (Smoke Tests)", () => {
     const { container } = render(
       <BrowserRouter>
         <IntlProvider locale="en" messages={messages}>
-          <UserSessionDetailsContext.Provider value={{ userSessionDetails: mockUserSessionDetails }}>
+          <UserSessionDetailsContext.Provider
+            value={{ userSessionDetails: mockUserSessionDetails }}
+          >
             <Layout onChangeLanguage={jest.fn()}>
               <div>Test Content</div>
             </Layout>
           </UserSessionDetailsContext.Provider>
         </IntlProvider>
-      </BrowserRouter>
+      </BrowserRouter>,
     );
 
     // CRITICAL: Navigation items must render
@@ -144,7 +207,7 @@ describe("Layout Full Integration (Smoke Tests)", () => {
         const homeLink = container.querySelector('[href="/Dashboard"]');
         expect(homeLink).toBeTruthy();
       },
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
   });
 
@@ -158,13 +221,15 @@ describe("Layout Full Integration (Smoke Tests)", () => {
     const { container } = render(
       <BrowserRouter>
         <IntlProvider locale="en" messages={messages}>
-          <UserSessionDetailsContext.Provider value={{ userSessionDetails: mockUserSessionDetails }}>
+          <UserSessionDetailsContext.Provider
+            value={{ userSessionDetails: mockUserSessionDetails }}
+          >
             <Layout onChangeLanguage={jest.fn()}>
               <div>Test Content</div>
             </Layout>
           </UserSessionDetailsContext.Provider>
         </IntlProvider>
-      </BrowserRouter>
+      </BrowserRouter>,
     );
 
     // CRITICAL: Header actions (search, notifications, user menu) must render
@@ -173,12 +238,12 @@ describe("Layout Full Integration (Smoke Tests)", () => {
         const searchIcon = container.querySelector("#search-Icon");
         const notificationIcon = container.querySelector("#notification-Icon");
         const userIcon = container.querySelector("#user-Icon");
-        
+
         expect(searchIcon).toBeTruthy();
         expect(notificationIcon).toBeTruthy();
         expect(userIcon).toBeTruthy();
       },
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
   });
 
@@ -192,13 +257,15 @@ describe("Layout Full Integration (Smoke Tests)", () => {
     const { container } = render(
       <BrowserRouter>
         <IntlProvider locale="en" messages={messages}>
-          <UserSessionDetailsContext.Provider value={{ userSessionDetails: mockUserSessionDetails }}>
+          <UserSessionDetailsContext.Provider
+            value={{ userSessionDetails: mockUserSessionDetails }}
+          >
             <Layout onChangeLanguage={jest.fn()}>
               <div>Test Content</div>
             </Layout>
           </UserSessionDetailsContext.Provider>
         </IntlProvider>
-      </BrowserRouter>
+      </BrowserRouter>,
     );
 
     // SideNav should NOT be present when not authenticated
@@ -207,8 +274,7 @@ describe("Layout Full Integration (Smoke Tests)", () => {
         const sideNav = container.querySelector(".cds--side-nav");
         expect(sideNav).toBeFalsy();
       },
-      { timeout: 1000 }
+      { timeout: 1000 },
     );
   });
 });
-

@@ -81,11 +81,7 @@ function TwoModeLayout({
    */
   const logo = () => (
     <picture>
-      <img
-        className="logo"
-        src={`../images/openelis_logo.png`}
-        alt="logo"
-      />
+      <img className="logo" src={`../images/openelis_logo.png`} alt="logo" />
     </picture>
   );
 
@@ -264,7 +260,11 @@ function TwoModeLayout({
         <div style={{ display: "flex", flexDirection: "column" }}>
           <HeaderContainer
             render={({ isSideNavExpanded, onClickSideNavExpand }) => (
-              <Header id="mainHeader" className="mainHeader" aria-label="OpenELIS Global">
+              <Header
+                id="mainHeader"
+                className="mainHeader"
+                aria-label="OpenELIS Global"
+              >
                 {userSessionDetails?.authenticated && (
                   <HeaderMenuButton
                     data-cy="menuButton"
@@ -284,9 +284,7 @@ function TwoModeLayout({
                     </p>
                   </div>
                 </HeaderName>
-                <HeaderGlobalBar>
-                  {headerActions}
-                </HeaderGlobalBar>
+                <HeaderGlobalBar>{headerActions}</HeaderGlobalBar>
                 {/* SideNav only shown when authenticated - matches develop Header.js */}
                 {userSessionDetails?.authenticated && (
                   <SideNav
@@ -297,7 +295,12 @@ function TwoModeLayout({
                     <SideNavItems>
                       {menus.menu && menus.menu.length > 0 ? (
                         menus.menu.map((menuItem, index) =>
-                          generateMenuItems(menuItem, index, 0, `menu[${index}]`),
+                          generateMenuItems(
+                            menuItem,
+                            index,
+                            0,
+                            `menu[${index}]`,
+                          ),
                         )
                       ) : (
                         <></>

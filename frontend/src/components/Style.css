@@ -533,3 +533,20 @@ button {
     width: 14rem;
   }
 }
+
+/* Lock mode: Push content when sidenav is locked */
+.content-nav-locked {
+  margin-left: 16rem !important;
+  width: calc(100% - 16rem) !important;
+  transition:
+    margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9),
+    width 0.11s cubic-bezier(0.2, 0, 1, 0.9);
+}
+
+/* Responsive: Don't push content on smaller screens */
+@media screen and (max-width: 1056px) {
+  .content-nav-locked {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}

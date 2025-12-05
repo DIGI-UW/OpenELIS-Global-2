@@ -4,6 +4,7 @@ import Footer from "./Footer";
 import { Content, Theme } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { useSideNavPreference } from "./useSideNavPreference";
 
 export const ConfigurationContext = createContext(null);
 export const NotificationContext = createContext(null);
@@ -15,6 +16,12 @@ export default function Layout(props) {
   const [configurationProperties, setConfigurationProperties] = useState({});
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [notifications, setNotifications] = useState([]);
+
+  // Lock mode support - push content when sidenav is locked
+  const { mode, SIDENAV_MODES } = useSideNavPreference({
+    storageKeyPrefix: "main",
+  });
+  const isLocked = mode === SIDENAV_MODES.LOCK;
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);
@@ -66,7 +73,9 @@ export default function Layout(props) {
         <div className="d-flex flex-column min-vh-100">
           <Header onChangeLanguage={props.onChangeLanguage} />
           <Theme theme="white">
-            <Content>{children}</Content>
+            <Content className={isLocked ? "content-nav-locked" : ""}>
+              {children}
+            </Content>
           </Theme>
           <Footer />
         </div>

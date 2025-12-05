@@ -599,9 +599,7 @@ describe("TwoModeLayout", () => {
 
       renderWithProviders(
         <TwoModeLayout
-          headerActions={
-            <button data-testid="action-button">Action</button>
-          }
+          headerActions={<button data-testid="action-button">Action</button>}
         >
           <div>Test Content</div>
         </TwoModeLayout>,
