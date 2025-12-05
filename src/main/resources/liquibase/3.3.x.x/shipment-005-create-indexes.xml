@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="shipment-005-create-indexes" author="pkomena">
+        <!-- Indexes for shipping_box table -->
+        <createIndex indexName="idx_shipping_box_state" tableName="shipping_box">
+            <column name="state"/>
+        </createIndex>
+
+        <createIndex indexName="idx_shipping_box_destination" tableName="shipping_box">
+            <column name="destination_facility_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_shipping_box_created_date" tableName="shipping_box">
+            <column name="created_date"/>
+        </createIndex>
+
+        <createIndex indexName="idx_shipping_box_fhir_uuid" tableName="shipping_box">
+            <column name="fhir_uuid"/>
+        </createIndex>
+
+        <createIndex indexName="idx_shipping_box_archived" tableName="shipping_box">
+            <column name="archived"/>
+        </createIndex>
+
+        <!-- Indexes for shipment table -->
+        <createIndex indexName="idx_shipment_box_id" tableName="shipment">
+            <column name="shipping_box_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_shipment_status" tableName="shipment">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_shipment_tracking" tableName="shipment">
+            <column name="tracking_number"/>
+        </createIndex>
+
+        <!-- Indexes for box_sample table -->
+        <createIndex indexName="idx_box_sample_box_id" tableName="box_sample">
+            <column name="shipping_box_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_box_sample_sample_id" tableName="box_sample">
+            <column name="sample_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_box_sample_reception_status" tableName="box_sample">
+            <column name="reception_status"/>
+        </createIndex>
+
+        <!-- Composite index for box-sample lookup -->
+        <createIndex indexName="idx_box_sample_composite" tableName="box_sample" unique="true">
+            <column name="shipping_box_id"/>
+            <column name="sample_id"/>
+        </createIndex>
+
+        <!-- Indexes for unassigned_sample table -->
+        <createIndex indexName="idx_unassigned_sample_test_id" tableName="unassigned_sample">
+            <column name="referral_test_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_unassigned_sample_destination" tableName="unassigned_sample">
+            <column name="destination_facility_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_unassigned_sample_priority" tableName="unassigned_sample">
+            <column name="priority"/>
+        </createIndex>
+
+        <createIndex indexName="idx_unassigned_sample_created_date" tableName="unassigned_sample">
+            <column name="created_date"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="shipping_box" indexName="idx_shipping_box_state"/>
+            <dropIndex tableName="shipping_box" indexName="idx_shipping_box_destination"/>
+            <dropIndex tableName="shipping_box" indexName="idx_shipping_box_created_date"/>
+            <dropIndex tableName="shipping_box" indexName="idx_shipping_box_fhir_uuid"/>
+            <dropIndex tableName="shipping_box" indexName="idx_shipping_box_archived"/>
+            <dropIndex tableName="shipment" indexName="idx_shipment_box_id"/>
+            <dropIndex tableName="shipment" indexName="idx_shipment_status"/>
+            <dropIndex tableName="shipment" indexName="idx_shipment_tracking"/>
+            <dropIndex tableName="box_sample" indexName="idx_box_sample_box_id"/>
+            <dropIndex tableName="box_sample" indexName="idx_box_sample_sample_id"/>
+            <dropIndex tableName="box_sample" indexName="idx_box_sample_reception_status"/>
+            <dropIndex tableName="box_sample" indexName="idx_box_sample_composite"/>
+            <dropIndex tableName="unassigned_sample" indexName="idx_unassigned_sample_test_id"/>
+            <dropIndex tableName="unassigned_sample" indexName="idx_unassigned_sample_destination"/>
+            <dropIndex tableName="unassigned_sample" indexName="idx_unassigned_sample_priority"/>
+            <dropIndex tableName="unassigned_sample" indexName="idx_unassigned_sample_created_date"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

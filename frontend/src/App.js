@@ -14,6 +14,7 @@ import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
 import EQAResultsPage from "./components/eqa/EQAResultsPage";
 import InventoryManagement from "./components/inventory/InventoryManagement";
+import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import AnalyzersPage from "./pages/AnalyzersPage";
@@ -578,6 +579,17 @@ export default function App() {
                   exact
                   component={() => <InventoryManagement />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment"
+                  exact
+                  component={() => <ShipmentDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/:tab"
+                  component={() => <ShipmentDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/SampleManagement"

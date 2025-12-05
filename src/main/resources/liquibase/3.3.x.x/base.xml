@@ -32,6 +32,7 @@
   <include relativeToChangelogFile="true" file="021-add-patient-merge-menu-item.xml"/>
   <include relativeToChangelogFile="true" file="022-add-patient-merge-menu-localization.xml"/>
 
+<<<<<<< HEAD
 
   <!-- Generic Reporting Framework (reporting-framework) -->
   <include relativeToChangelogFile="true" file="028-create-report-definition-table.xml"/>
@@ -78,4 +79,13 @@
   <!-- OGC-284: Barcode expansion (labels domain + sample/sample_item barcode info) -->
   <include relativeToChangelogFile="true" file="barcode_expansion.xml"/>
   <include relativeToChangelogFile="true" file="028-barcode-info-tables.xml"/>
+  <!-- Sample shipping management -->
+  <include relativeToChangelogFile="true" file="shipment-001-create-shipping-box-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-002-create-shipment-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-003-create-box-sample-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-004-create-unassigned-sample-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-005-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-006-create-foreign-keys.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-007-add-menu-and-role.xml"/>
+
 </databaseChangeLog>

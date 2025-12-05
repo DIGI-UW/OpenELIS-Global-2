@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="shipment-006-create-foreign-keys" author="pkomena">
+        <!-- Foreign keys for shipping_box table -->
+        <addForeignKeyConstraint
+            constraintName="fk_shipping_box_destination"
+            baseTableName="shipping_box"
+            baseColumnNames="destination_facility_id"
+            referencedTableName="organization"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_shipping_box_created_by"
+            baseTableName="shipping_box"
+            baseColumnNames="created_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="SET NULL"
+            onUpdate="CASCADE"/>
+
+        <!-- Foreign keys for shipment table -->
+        <addForeignKeyConstraint
+            constraintName="fk_shipment_box"
+            baseTableName="shipment"
+            baseColumnNames="shipping_box_id"
+            referencedTableName="shipping_box"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+
+        <!-- Foreign keys for box_sample table -->
+        <addForeignKeyConstraint
+            constraintName="fk_box_sample_box"
+            baseTableName="box_sample"
+            baseColumnNames="shipping_box_id"
+            referencedTableName="shipping_box"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_box_sample_sample"
+            baseTableName="box_sample"
+            baseColumnNames="sample_id"
+            referencedTableName="sample"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="CASCADE"/>
+
+        <!-- Foreign keys for unassigned_sample table -->
+        <addForeignKeyConstraint
+            constraintName="fk_unassigned_sample_sample"
+            baseTableName="unassigned_sample"
+            baseColumnNames="sample_id"
+            referencedTableName="sample"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_unassigned_sample_test"
+            baseTableName="unassigned_sample"
+            baseColumnNames="referral_test_id"
+            referencedTableName="test"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_unassigned_sample_destination"
+            baseTableName="unassigned_sample"
+            baseColumnNames="destination_facility_id"
+            referencedTableName="organization"
+            referencedColumnNames="id"
+            onDelete="SET NULL"
+            onUpdate="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="shipping_box" constraintName="fk_shipping_box_destination"/>
+            <dropForeignKeyConstraint baseTableName="shipping_box" constraintName="fk_shipping_box_created_by"/>
+            <dropForeignKeyConstraint baseTableName="shipment" constraintName="fk_shipment_box"/>
+            <dropForeignKeyConstraint baseTableName="box_sample" constraintName="fk_box_sample_box"/>
+            <dropForeignKeyConstraint baseTableName="box_sample" constraintName="fk_box_sample_sample"/>
+            <dropForeignKeyConstraint baseTableName="unassigned_sample" constraintName="fk_unassigned_sample_sample"/>
+            <dropForeignKeyConstraint baseTableName="unassigned_sample" constraintName="fk_unassigned_sample_test"/>
+            <dropForeignKeyConstraint baseTableName="unassigned_sample" constraintName="fk_unassigned_sample_destination"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

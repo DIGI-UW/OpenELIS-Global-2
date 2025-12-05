@@ -1,0 +1,76 @@
+{
+  "shipment.module.title": "Gestion des Envois",
+  "shipment.dashboard.title": "Tableau de Bord des Envois",
+  "shipment.dashboard.description": "Gérer les boîtes d'expédition et suivre les échantillons référés",
+  "shipment.dashboard.tabs.shipments": "Envois",
+  "shipment.dashboard.tabs.unassigned": "Tests Non Assignés",
+
+  "shipment.tab.boxes": "Boîtes d'Expédition",
+  "shipment.tab.unassignedSamples": "Échantillons Non Assignés",
+
+  "shipment.label.boxId": "ID de Boîte",
+  "shipment.label.destination": "Destination",
+  "shipment.label.state": "État",
+  "shipment.label.sampleCount": "Nombre d'Échantillons",
+  "shipment.label.createdDate": "Date de Création",
+  "shipment.label.referralTest": "Test de Référence",
+  "shipment.label.priority": "Priorité",
+
+  "shipment.filter.state": "Filtrer par État",
+  "shipment.filter.facility": "Filtrer par Établissement",
+
+  "shipment.action.createBox": "Créer une Nouvelle Boîte",
+  "shipment.action.addToBox": "Ajouter à la Boîte",
+
+  "shipment.box.create": "Créer une Boîte",
+  "shipment.box.title": "Boîte {boxId}",
+  "shipment.box.destination": "Destination",
+  "shipment.box.temperature": "Exigence de Température",
+  "shipment.box.notes": "Notes",
+  "shipment.box.addSample": "Ajouter un Échantillon",
+  "shipment.box.manifest": "Manifeste",
+  "shipment.box.readyToSend": "Marquer Prêt à Envoyer",
+  "shipment.box.state": "État",
+  "shipment.box.createdDate": "Date de Création",
+  "shipment.box.sampleCount": "Nombre d'Échantillons",
+
+  "shipment.box.generateLabel": "Générer l'Étiquette",
+  "shipment.box.generateManifest": "Générer le Manifeste",
+  "shipment.box.labelDownloaded": "Étiquette téléchargée avec succès",
+  "shipment.box.manifestDownloaded": "Manifeste téléchargé avec succès",
+
+  "shipment.sample.accessionNumber": "Numéro d'Accession",
+  "shipment.sample.type": "Type d'Échantillon",
+  "shipment.sample.status": "Statut",
+  "shipment.sample.remove": "Retirer",
+  "shipment.sample.search": "Rechercher échantillon par numéro d'accession",
+
+  "shipment.state.draft": "Brouillon",
+  "shipment.state.readyToSend": "Prêt à Envoyer",
+  "shipment.state.sent": "Envoyé",
+  "shipment.state.inTransit": "En Transit",
+  "shipment.state.partiallyReceived": "Partiellement Reçu",
+  "shipment.state.received": "Reçu",
+  "shipment.state.reconciled": "Réconcilié",
+  "shipment.state.cancelled": "Annulé",
+  "shipment.state.lostInTransit": "Perdu en Transit",
+
+  "shipment.modal.createBox.title": "Créer une Nouvelle Boîte",
+  "shipment.modal.createBox.submit": "Créer",
+  "shipment.modal.createBox.cancel": "Annuler",
+
+  "shipment.notification.boxCreated": "Boîte créée avec succès",
+  "shipment.notification.sampleAdded": "Échantillon ajouté à la boîte",
+  "shipment.notification.sampleRemoved": "Échantillon retiré de la boîte",
+  "shipment.notification.boxReadyToSend": "Boîte marquée comme Prête à Envoyer",
+  "shipment.notification.error": "Une erreur s'est produite : {message}",
+
+  "shipment.error.sampleNotFound": "Échantillon non trouvé",
+  "shipment.error.sampleAlreadyInBox": "Échantillon déjà dans la boîte",
+  "shipment.error.boxNotEmpty": "La boîte doit contenir au moins un échantillon",
+  "shipment.error.invalidState": "État de boîte invalide pour cette opération",
+
+  "error.fetch.boxes": "Échec de récupération des boîtes d'expédition",
+  "error.fetch.unassignedSamples": "Échec de récupération des échantillons non assignés",
+  "error.fetch.facilities": "Échec de récupération des établissements"
+}

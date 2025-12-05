@@ -1,0 +1,109 @@
+.shipment-dashboard {
+  padding: 1rem;
+}
+
+.dashboard-header {
+  margin-bottom: 2rem;
+  padding: 2rem;
+}
+
+.dashboard-header h2 {
+  margin-bottom: 0.5rem;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.dashboard-header p {
+  color: #525252;
+  font-size: 1rem;
+}
+
+.dashboard-content {
+  margin-top: 1rem;
+}
+
+.tab-toolbar {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.tab-toolbar .cds--search {
+  flex: 1;
+  min-width: 250px;
+}
+
+.tab-toolbar .cds--dropdown {
+  min-width: 200px;
+}
+
+.tab-toolbar button {
+  white-space: nowrap;
+}
+
+.cds--data-table-container {
+  padding-top: 0;
+}
+
+.cds--data-table {
+  margin-top: 1rem;
+}
+
+.cds--data-table th,
+.cds--data-table td {
+  padding: 1rem;
+}
+
+.cds--data-table td {
+  vertical-align: middle;
+}
+
+/* Empty state styling */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #525252;
+}
+
+.empty-state h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Loading state */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+/* Tag styling adjustments */
+.cds--tag {
+  min-width: 100px;
+  justify-content: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .tab-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tab-toolbar .cds--search,
+  .tab-toolbar .cds--dropdown {
+    width: 100%;
+  }
+
+  .dashboard-header h2 {
+    font-size: 1.5rem;
+  }
+}

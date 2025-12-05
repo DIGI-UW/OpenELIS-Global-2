@@ -1,4 +1,5 @@
 # Referred Sample Container Management System
+
 ## Comprehensive Functional Specification
 
 **Version:** 1.0  
@@ -9,6 +10,7 @@
 ---
 
 ## Table of Contents
+
 1. [Executive Summary](#executive-summary)
 2. [User Roles & Permissions](#user-roles--permissions)
 3. [System States & Workflow](#system-states--workflow)
@@ -25,7 +27,8 @@
    - 5.3 [Manifest & Documentation Rules](#53-manifest--documentation-rules)
    - 5.4 [Receiving & Reconciliation Rules](#54-receiving--reconciliation-rules)
    - 5.5 [Security & Audit Rules](#55-security--audit-rules)
-   - 5.6 [Integration & Interoperability Rules](#56-integration--interoperability-rules)
+   - 5.6
+     [Integration & Interoperability Rules](#56-integration--interoperability-rules)
    - 5.7 [Unassigned Tests Tracking Rules](#57-unassigned-tests-tracking-rules)
 6. [Functional Requirements](#functional-requirements)
    - 6.1 [Box Management Functions](#61-box-management-functions)
@@ -33,7 +36,8 @@
    - 6.3 [Label & Manifest Functions](#63-label--manifest-functions)
    - 6.4 [Receiving Functions](#64-receiving-functions)
    - 6.5 [Dashboard & Reporting Functions](#65-dashboard--reporting-functions)
-   - 6.5A [Unassigned Tests Tracking Functions](#65a-unassigned-tests-tracking-functions)
+   - 6.5A
+     [Unassigned Tests Tracking Functions](#65a-unassigned-tests-tracking-functions)
    - 6.6 [Administration Functions](#66-administration-functions)
    - 6.7 [Integration Functions](#67-integration-functions)
    - 6.8 [Audit & Compliance Functions](#68-audit--compliance-functions)
@@ -46,9 +50,14 @@
 
 ## 1. Executive Summary
 
-The Referred Sample Container Management System enables laboratory staff to build, track, and manage boxes of samples sent to reference laboratories. The system provides end-to-end tracking from box creation through receiving and reconciliation, with full audit trails and electronic manifest exchange capabilities.
+The Referred Sample Container Management System enables laboratory staff to
+build, track, and manage boxes of samples sent to reference laboratories. The
+system provides end-to-end tracking from box creation through receiving and
+reconciliation, with full audit trails and electronic manifest exchange
+capabilities.
 
 ### Key Capabilities
+
 - Box creation and sample manifest management
 - **Unassigned tests tracking - ensures all referred samples are accounted for**
 - Barcode scanning integration for samples and boxes
@@ -59,10 +68,16 @@ The Referred Sample Container Management System enables laboratory staff to buil
 - Non-conformity recording with optional documentation
 
 ### Unassigned Tests Feature
-A critical accountability feature that tracks all samples marked for referral but not yet assigned to a shipment. This prevents samples from being forgotten or lost in the referral process by:
+
+A critical accountability feature that tracks all samples marked for referral
+but not yet assigned to a shipment. This prevents samples from being forgotten
+or lost in the referral process by:
+
 - Displaying all unassigned referred samples in a dedicated dashboard tab
-- Highlighting samples based on how long they've been unassigned (7-day and 30-day thresholds)
-- Providing quick actions to add samples to boxes, mark as lost, or cancel referrals
+- Highlighting samples based on how long they've been unassigned (7-day and
+  30-day thresholds)
+- Providing quick actions to add samples to boxes, mark as lost, or cancel
+  referrals
 - Supporting bulk operations for efficient management
 - Optional alerting for aging unassigned samples
 
@@ -71,9 +86,11 @@ A critical accountability feature that tracks all samples marked for referral bu
 ## 2. User Roles & Permissions
 
 ### 2.1 Shipping Role (New Global Role)
+
 **Permission Name:** `ROLE_SHIPPING`
 
 **Capabilities:**
+
 - Create and manage boxes
 - Add/remove samples from boxes
 - Mark boxes as ready to send
@@ -84,11 +101,14 @@ A critical accountability feature that tracks all samples marked for referral bu
 - View reports
 
 **Access Restriction:**
+
 - Can edit boxes in Draft, Ready to Send, and In Transit states
 - Cannot edit boxes after they are marked as Sent (except Admin)
 
 ### 2.2 Administrator Role
+
 **Additional Capabilities:**
+
 - Configure label prefixes and formats
 - Manage facility registry (reference lab destinations)
 - Define label dimensions and barcode types
@@ -97,6 +117,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Manage FHIR mapping options
 
 ### 2.3 Lab Technician (Receiving)
+
 **Note:** Uses Shipping role permissions for receiving workflow
 
 ---
@@ -105,28 +126,28 @@ A critical accountability feature that tracks all samples marked for referral bu
 
 ### 3.1 Box States
 
-| State | Description | Allowed Transitions | User Actions Available |
-|-------|-------------|---------------------|------------------------|
-| **Draft** | Box created, samples being added | → Ready to Send<br>→ Cancelled | Add/remove samples, edit metadata, delete box |
-| **Ready to Send** | All required fields complete, ready for shipment | → Sent<br>→ Draft<br>→ Cancelled | Print labels, send box, edit samples |
-| **Sent** | Box dispatched to reference lab | → In Transit<br>→ Cancelled | View only, resend manifest |
-| **In Transit** | Box confirmed en route | → Partially Received<br>→ Received<br>→ Lost in Transit | View only, resend manifest |
-| **Partially Received** | Some samples confirmed at destination | → Received<br>→ Lost in Transit | Continue receiving workflow |
-| **Received** | All expected samples confirmed | → Closed/Archived | View, generate reports |
-| **Closed/Archived** | Box reconciled and closed | None (terminal state) | View only, reports |
-| **Cancelled/Abandoned** | Box not sent or shipment cancelled | None (terminal state) | View only |
-| **Lost in Transit** | Box not received, marked as lost | None (terminal state) | View only, incident reports |
+| State                   | Description                                      | Allowed Transitions                                     | User Actions Available                        |
+| ----------------------- | ------------------------------------------------ | ------------------------------------------------------- | --------------------------------------------- |
+| **Draft**               | Box created, samples being added                 | → Ready to Send<br>→ Cancelled                          | Add/remove samples, edit metadata, delete box |
+| **Ready to Send**       | All required fields complete, ready for shipment | → Sent<br>→ Draft<br>→ Cancelled                        | Print labels, send box, edit samples          |
+| **Sent**                | Box dispatched to reference lab                  | → In Transit<br>→ Cancelled                             | View only, resend manifest                    |
+| **In Transit**          | Box confirmed en route                           | → Partially Received<br>→ Received<br>→ Lost in Transit | View only, resend manifest                    |
+| **Partially Received**  | Some samples confirmed at destination            | → Received<br>→ Lost in Transit                         | Continue receiving workflow                   |
+| **Received**            | All expected samples confirmed                   | → Closed/Archived                                       | View, generate reports                        |
+| **Closed/Archived**     | Box reconciled and closed                        | None (terminal state)                                   | View only, reports                            |
+| **Cancelled/Abandoned** | Box not sent or shipment cancelled               | None (terminal state)                                   | View only                                     |
+| **Lost in Transit**     | Box not received, marked as lost                 | None (terminal state)                                   | View only, incident reports                   |
 
 ### 3.2 Sample States (within a Box)
 
-| State | Description | Visual Indicator |
-|-------|-------------|------------------|
-| **Pending** | Added to manifest, not yet sent | Gray dot |
-| **Sent** | Included in sent box | Blue dot |
-| **Received** | Confirmed at destination via scan | Green checkmark |
-| **Missing** | Expected but not received | Yellow warning |
-| **Damaged** | Received but damaged | Red exclamation |
-| **Rejected** | Not acceptable for testing | Red X |
+| State        | Description                       | Visual Indicator |
+| ------------ | --------------------------------- | ---------------- |
+| **Pending**  | Added to manifest, not yet sent   | Gray dot         |
+| **Sent**     | Included in sent box              | Blue dot         |
+| **Received** | Confirmed at destination via scan | Green checkmark  |
+| **Missing**  | Expected but not received         | Yellow warning   |
+| **Damaged**  | Received but damaged              | Red exclamation  |
+| **Rejected** | Not acceptable for testing        | Red X            |
 
 ### 3.3 Core Workflow Diagram
 
@@ -178,18 +199,23 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 4.1 Box Creation & Management
 
 #### US-001: Create a New Box
+
 **As a** shipping coordinator  
 **I want to** create a new box with a unique identifier  
-**So that** I can start building a manifest of samples to send to a reference lab
+**So that** I can start building a manifest of samples to send to a reference
+lab
 
 **Acceptance Criteria:**
-- System auto-generates Box ID based on configured prefix (or accepts scanned existing Box ID)
+
+- System auto-generates Box ID based on configured prefix (or accepts scanned
+  existing Box ID)
 - User must select destination from facility registry dropdown
 - Box is saved in "Draft" state
 - Box creation timestamp and creator user ID are recorded
 - User can add optional notes/comments to the box
 
 **UI Notes:**
+
 - "Create New Box" button prominently displayed on dashboard
 - Modal or full-page form for box creation
 - Required fields marked with asterisk
@@ -197,21 +223,25 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-002: Add Samples to Box via Barcode Scan
+
 **As a** shipping coordinator  
 **I want to** scan sample barcodes to add them to a box  
 **So that** I can quickly build the manifest without manual typing
 
 **Acceptance Criteria:**
+
 - USB barcode scanner input accepted (keyboard wedge)
 - Each scanned sample appears in manifest table with status "Pending"
 - System validates sample exists in OpenELIS
 - Green checkmark displayed on successful scan
 - Red X displayed on failed scan with error message
 - Duplicate samples rejected with error: "Sample already in this box"
-- Sample already in another active box rejected with error: "Sample [ID] is already in box [Box ID]"
+- Sample already in another active box rejected with error: "Sample [ID] is
+  already in box [Box ID]"
 - System prompts user to try again after failed scan
 
 **UI Notes:**
+
 - Dedicated scan input field with focus indicator
 - Real-time feedback (green/red visual indicators)
 - Audio beep option for scan feedback
@@ -220,18 +250,22 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-003: Lookup and Add Samples Manually
+
 **As a** shipping coordinator  
 **I want to** search for and add samples manually  
 **So that** I can include samples when barcode scanning is not available
 
 **Acceptance Criteria:**
+
 - Search by accession number or sample ID
 - Auto-complete suggestions as user types
-- Sample details displayed before adding (accession #, test type, collection date)
+- Sample details displayed before adding (accession #, test type, collection
+  date)
 - User can confirm addition from search results
 - Same validation rules as barcode scan apply
 
 **UI Notes:**
+
 - Search field with Carbon ComboBox component
 - Sample preview card before adding
 - "Add to Box" button in preview
@@ -239,11 +273,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-004: Add Non-Referral Sample with Reason
+
 **As a** shipping coordinator  
 **I want to** add a sample that wasn't already marked for referral  
 **So that** I can refer additional samples as needed with proper documentation
 
 **Acceptance Criteria:**
+
 - When adding a non-referral sample, system displays additional step
 - User must select/enter reason for referral (dropdown + free text)
 - System automatically marks sample with referral flag
@@ -252,6 +288,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Sample now shows as referred in order entry system
 
 **UI Notes:**
+
 - Modal dialog appears after sample selection
 - "Reason for Referral" required field
 - Link to view/edit order details if needed
@@ -259,11 +296,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-005: View Sample Details in Manifest
+
 **As a** shipping coordinator  
 **I want to** see key details for each sample in the box  
 **So that** I can verify I'm sending the correct samples
 
 **Acceptance Criteria:**
+
 - Table displays: Accession #, Test Type, Collection Date, Status
 - Temperature/storage requirements shown if specified in order
 - Sample disposal requirements shown if applicable
@@ -271,6 +310,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Ability to expand row for additional details
 
 **UI Notes:**
+
 - Carbon DataTable component
 - Expandable rows for additional metadata
 - Icons for temperature requirements (frozen ❄️, refrigerated 🧊, room temp 🌡️)
@@ -278,18 +318,22 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-006: Remove Sample from Box
+
 **As a** shipping coordinator  
 **I want to** remove a sample from a box at any time  
 **So that** I can correct mistakes or respond to changed requirements
 
 **Acceptance Criteria:**
-- Samples can be removed from boxes in Draft, Ready to Send, or In Transit states
+
+- Samples can be removed from boxes in Draft, Ready to Send, or In Transit
+  states
 - Confirmation dialog before removal: "Remove [Sample ID] from box?"
 - Removal logged in audit trail with user ID and timestamp
 - Removed sample is unlinked from box (referral flag remains if it was set)
 - If box is in Ready to Send state, it reverts to Draft after removal
 
 **UI Notes:**
+
 - Remove icon (trash can) in each table row
 - Confirmation modal with sample details
 - Undo option for accidental removal (5-second toast notification)
@@ -297,11 +341,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-007: Mark Box as Ready to Send
+
 **As a** shipping coordinator  
 **I want to** mark a box as ready to send  
 **So that** it can go through final validation before shipment
 
 **Acceptance Criteria:**
+
 - Checkbox displayed on manifest screen: "Mark as Ready to Send"
 - System validates all required fields:
   - Box has at least 1 sample
@@ -313,6 +359,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - "Send Box" button becomes enabled
 
 **UI Notes:**
+
 - Checkbox at top of manifest table
 - Validation messages displayed inline with specific errors
 - Success notification when ready state achieved
@@ -322,11 +369,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 4.2 Labeling & Documentation
 
 #### US-008: Configure Box Label Format (Admin)
+
 **As an** administrator  
 **I want to** configure the box label format and specifications  
 **So that** labels meet our operational and regulatory requirements
 
 **Acceptance Criteria:**
+
 - Admin can define label prefix (e.g., "REF-BOX-")
 - Admin can select barcode type (Code 39, Code 128, QR Code, Data Matrix)
 - Admin can specify label dimensions (width x height in mm or inches)
@@ -342,6 +391,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Multiple label templates can be created for different destinations
 
 **UI Notes:**
+
 - Admin panel section: "Label Configuration"
 - Visual label designer with drag-and-drop fields
 - Template selector dropdown
@@ -350,11 +400,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-009: Print Box Label
+
 **As a** shipping coordinator  
 **I want to** print a label for the box  
 **So that** it can be physically identified and tracked
 
 **Acceptance Criteria:**
+
 - "Print Label" button available when box is in Ready to Send or later state
 - Label generated using configured template
 - Box ID rendered as scannable barcode
@@ -363,6 +415,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Label generation logged in audit trail
 
 **UI Notes:**
+
 - Print button in box details view
 - Print preview modal before printing
 - "Print Another Copy" option
@@ -370,11 +423,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-010: Generate and Print Packing List/Manifest
+
 **As a** shipping coordinator  
 **I want to** generate a packing list with all samples  
 **So that** the reference lab knows what to expect
 
 **Acceptance Criteria:**
+
 - "Generate Packing List" button available when box is Ready to Send or later
 - Packing list includes:
   - Box ID and barcode
@@ -382,7 +437,8 @@ A critical accountability feature that tracks all samples marked for referral bu
   - Sender details
   - Date and time generated
   - Total sample count
-  - Table of all samples with: Accession #, Patient ID, Test Type, Collection Date, Special Requirements
+  - Table of all samples with: Accession #, Patient ID, Test Type, Collection
+    Date, Special Requirements
   - Barcode for each sample (optional toggle)
 - Summary sheet includes barcode for entire shipment
 - PDF format for electronic storage and email
@@ -390,6 +446,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Optional: Individual sample labels with barcodes (checked by user)
 
 **UI Notes:**
+
 - "Generate Manifest" button with dropdown:
   - "Packing List Only"
   - "Packing List + Sample Labels"
@@ -400,11 +457,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-011: Regenerate or Resend Manifest
+
 **As a** shipping coordinator  
 **I want to** regenerate or resend a packing list  
 **So that** I can provide updated information or resend lost documentation
 
 **Acceptance Criteria:**
+
 - Regeneration allowed within 24 hours of sending
 - After 24 hours, recall option available for 7 days (requires admin approval)
 - "Resend Manifest" button sends electronic copy without regenerating
@@ -416,6 +475,7 @@ A critical accountability feature that tracks all samples marked for referral bu
   - Email with PDF attachment
 
 **UI Notes:**
+
 - "Resend Manifest" button in box details
 - Version history dropdown
 - Confirmation modal with resend options
@@ -425,13 +485,16 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 4.3 Sending Workflow
 
 #### US-012: Send Box with Confirmation
+
 **As a** shipping coordinator  
 **I want to** mark a box as sent with mandatory confirmation  
 **So that** I don't accidentally send boxes prematurely
 
 **Acceptance Criteria:**
+
 - "Send Box" button only enabled when box is in Ready to Send state
-- Warning modal displayed: "Are you sure you want to send this box? This action will lock the packing list."
+- Warning modal displayed: "Are you sure you want to send this box? This action
+  will lock the packing list."
 - Modal shows summary: Box ID, Destination, # Samples, Date/Time
 - User must explicitly click "Confirm Send"
 - Box state changes to "Sent"
@@ -440,6 +503,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Send timestamp and user recorded
 
 **UI Notes:**
+
 - Warning modal with amber/yellow theme
 - "Cancel" and "Confirm Send" buttons
 - Summary of box contents in modal
@@ -448,20 +512,24 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-013: Electronic Manifest Exchange
+
 **As a** shipping coordinator  
 **I want to** automatically send electronic manifests  
 **So that** the reference lab receives advance notification
 
 **Acceptance Criteria:**
+
 - When box is marked as Sent, system checks destination configuration
 - If FHIR enabled: Send SupplyDelivery resource with status "in-progress"
 - If API enabled: POST manifest JSON to configured endpoint
-- If email enabled: Send confirmation email with PDF attachment to configured recipients
+- If email enabled: Send confirmation email with PDF attachment to configured
+  recipients
 - System retries failed transmissions (3 attempts with exponential backoff)
 - Transmission log shows status (success/failed) with timestamp
 - User can manually retry transmission
 
 **UI Notes:**
+
 - Transmission status indicator in box details
 - "View Transmission Log" expandable section
 - "Resend" button for failed transmissions
@@ -471,11 +539,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 4.4 Receiving Workflow
 
 #### US-014: Scan Box at Receiving Location
+
 **As a** receiving technician  
 **I want to** scan a box ID when it arrives  
 **So that** I can start the receiving process
 
 **Acceptance Criteria:**
+
 - Receiving screen with "Scan Box ID" input field
 - When box scanned, system displays:
   - Box details (ID, origin, sent date)
@@ -486,6 +556,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - If box already fully received, warning: "Box already received on [Date]"
 
 **UI Notes:**
+
 - Prominent scan input at top of receiving screen
 - Box details card displayed after successful scan
 - Sample checklist in table format below
@@ -493,11 +564,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-015: Scan Samples During Receipt
+
 **As a** receiving technician  
 **I want to** scan each sample as I remove it from the box  
 **So that** I can confirm receipt and identify discrepancies
 
 **Acceptance Criteria:**
+
 - "Scan Sample" input field in receiving screen
 - As each sample scanned:
   - Corresponding row in checklist gets green checkmark
@@ -512,6 +585,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Manual checkbox available if barcode cannot be scanned
 
 **UI Notes:**
+
 - Scan input field with autofocus
 - Live progress indicator (e.g., "5 of 12 samples received")
 - Filter: "Show only unreceived samples"
@@ -520,11 +594,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-016: Manual Check-off for Damaged Barcodes
+
 **As a** receiving technician  
 **I want to** manually check off samples when barcodes are unreadable  
 **So that** I can still complete the receiving process
 
 **Acceptance Criteria:**
+
 - Each sample row has checkbox for manual confirmation
 - Checking box marks sample as "Received"
 - System logs that sample was manually confirmed (not scanned)
@@ -532,6 +608,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Audit trail distinguishes between scanned and manual receipt
 
 **UI Notes:**
+
 - Checkbox in each row
 - Confirmation dialog: "Manually confirm receipt of [Sample ID]?"
 - Visual indicator (icon) showing scan vs. manual receipt method
@@ -539,11 +616,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-017: Record Non-Conformities
+
 **As a** receiving technician  
 **I want to** record non-conformities for samples  
 **So that** quality issues are documented
 
 **Acceptance Criteria:**
+
 - "Report Issue" button/icon in each sample row
 - Non-conformity types available (from OpenELIS order entry system):
   - Damaged container
@@ -559,10 +638,12 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Optional free text notes field
 - Optional photo/document upload (JPG, PNG, PDF)
 - Non-conformity flag applied to sample (existing flag in OpenELIS)
-- Sample marked as "optionally available for testing" (can still be tested but with flag)
+- Sample marked as "optionally available for testing" (can still be tested but
+  with flag)
 - "Apply to All Samples" checkbox for batch issues (e.g., temperature deviation)
 
 **UI Notes:**
+
 - Modal dialog for non-conformity recording
 - Multi-select checkboxes for types
 - File upload component with preview
@@ -572,11 +653,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-018: Complete Box Receipt
+
 **As a** receiving technician  
 **I want to** complete and close the receiving process  
 **So that** the box is fully reconciled
 
 **Acceptance Criteria:**
+
 - "Complete Receipt" button enabled when all expected samples accounted for
 - System checks:
   - All expected samples marked as Received, Missing, Damaged, or Rejected
@@ -592,6 +675,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - FHIR SupplyDelivery status updated to "completed"
 
 **UI Notes:**
+
 - "Complete Receipt" button at bottom of checklist
 - Summary modal with statistics
 - Option to print receiving report
@@ -599,11 +683,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-019: Handle Missing Samples
+
 **As a** receiving technician  
 **I want to** mark samples as missing  
 **So that** discrepancies are tracked
 
 **Acceptance Criteria:**
+
 - "Mark as Missing" button for unreceived samples
 - Missing samples remain in "Missing" state
 - Missing count displayed in box summary
@@ -612,6 +698,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Missing samples can later be marked as received if they arrive late
 
 **UI Notes:**
+
 - "Missing" status with yellow warning icon
 - Notes field for each missing sample
 - Filter to show only missing samples
@@ -619,19 +706,23 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-020: Handle Unexpected Samples
+
 **As a** receiving technician  
 **I want to** document unexpected samples in the box  
 **So that** they can be followed up outside this system
 
 **Acceptance Criteria:**
+
 - When scanning unexpected sample, option to "Add as Unexpected"
 - Unexpected sample added to receiving log (not to manifest)
 - Note field required: "Why is this sample unexpected?"
 - Unexpected samples logged but not processed in this workflow
 - Receiving report includes unexpected samples section
-- Follow-up handled outside this feature (entered as new samples in OpenELIS later)
+- Follow-up handled outside this feature (entered as new samples in OpenELIS
+  later)
 
 **UI Notes:**
+
 - Unexpected samples shown in separate section
 - Orange/amber color coding
 - "Requires Follow-up" flag
@@ -641,38 +732,48 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 4.5 Dashboard & Reporting
 
 #### US-021: View Dashboard with Metrics
+
 **As a** shipping coordinator  
 **I want to** see key metrics about boxes  
 **So that** I can understand the current state of shipments
 
 **Acceptance Criteria:**
+
 - Dashboard displays metric cards:
   1. "Boxes Ready to Send" - count of boxes in Ready to Send state
   2. "Boxes In Transit" - count of boxes in Sent or In Transit states
-  3. "Awaiting Receipt Confirmation" - count of boxes in Partially Received state
-  4. "Received This Week" - count of boxes received in current week (with date range shown)
+  3. "Awaiting Receipt Confirmation" - count of boxes in Partially Received
+     state
+  4. "Received This Week" - count of boxes received in current week (with date
+     range shown)
 - Cards clickable to filter main table
 - Cards show trend indicators if applicable (e.g., "+2 since yesterday")
 - Cards styled similar to Pathology dashboard (screenshot reference)
 
 **UI Notes:**
+
 - Carbon Card components (4 cards in row)
 - Large number display in each card
 - Subtle background colors per state
-- Date range shown for "Received This Week" card (e.g., "Week 31/10/2025 - 07/11/2025")
+- Date range shown for "Received This Week" card (e.g., "Week 31/10/2025 -
+  07/11/2025")
 
 ---
 
 #### US-021A: View Unassigned Referred Tests
+
 **As a** shipping coordinator  
-**I want to** view all samples marked as referred but not yet assigned to a shipment  
+**I want to** view all samples marked as referred but not yet assigned to a
+shipment  
 **So that** I can ensure no referred samples are forgotten or lost
 
 **Acceptance Criteria:**
+
 - Dashboard has tab navigation: "Shipments" | "Unassigned Tests"
 - "Unassigned Tests" tab displays all samples where:
   - Sample has referral flag set to true
-  - Sample is not in any active box (Draft, Ready to Send, Sent, In Transit, Partially Received)
+  - Sample is not in any active box (Draft, Ready to Send, Sent, In Transit,
+    Partially Received)
   - Sample is not marked as Lost or Referral Cancelled
 - Table displays columns:
   - Accession Number
@@ -695,6 +796,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Action menu for each sample: "Add to Box" | "Mark as Lost" | "Cancel Referral"
 
 **UI Notes:**
+
 - Carbon Tabs component for tab navigation
 - Carbon DataTable with search and filters
 - Warning badges for aging unassigned samples
@@ -703,11 +805,14 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-021B: Add Unassigned Sample to Box
+
 **As a** shipping coordinator  
-**I want to** add an unassigned sample directly to a box from the unassigned list  
+**I want to** add an unassigned sample directly to a box from the unassigned
+list  
 **So that** I can quickly resolve unassigned samples
 
 **Acceptance Criteria:**
+
 - "Add to Box" action opens modal or side panel
 - User can select existing Draft or Ready to Send box
 - User can create new box and add sample
@@ -716,6 +821,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Success notification displayed
 
 **UI Notes:**
+
 - Modal with box selection dropdown
 - "Create New Box" option in dropdown
 - Quick add without leaving unassigned view
@@ -723,11 +829,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-021C: Mark Unassigned Sample as Lost
+
 **As a** shipping coordinator  
 **I want to** mark an unassigned sample as lost  
 **So that** it no longer appears in the unassigned list and is properly tracked
 
 **Acceptance Criteria:**
+
 - "Mark as Lost" action requires confirmation dialog
 - Confirmation shows sample details and warning message
 - User must provide reason for marking as lost (required text field)
@@ -739,6 +847,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Cannot be undone (except by administrator)
 
 **UI Notes:**
+
 - Warning modal with amber/red theme
 - Required reason text field
 - "This action cannot be undone" warning
@@ -747,11 +856,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-021D: Cancel Referral for Unassigned Sample
+
 **As a** shipping coordinator  
 **I want to** cancel the referral for an unassigned sample  
 **So that** samples no longer needed for referral are properly tracked
 
 **Acceptance Criteria:**
+
 - "Cancel Referral" action requires confirmation dialog
 - Confirmation shows sample details
 - User must provide reason for cancellation (required text field)
@@ -763,6 +874,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Cancellation date and user recorded
 
 **UI Notes:**
+
 - Confirmation modal
 - Required reason text field
 - Warning: "Sample will return to normal processing workflow"
@@ -771,11 +883,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-021E: Bulk Actions on Unassigned Samples
+
 **As a** shipping coordinator  
 **I want to** perform actions on multiple unassigned samples at once  
 **So that** I can efficiently manage large numbers of unassigned samples
 
 **Acceptance Criteria:**
+
 - Checkbox column in unassigned tests table for multi-select
 - "Select All" checkbox in header (with intelligent pagination handling)
 - Bulk actions toolbar appears when samples selected
@@ -787,6 +901,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - "Clear Selection" button in toolbar
 
 **UI Notes:**
+
 - Carbon DataTable batch actions pattern
 - Toolbar slides in from top when selection active
 - Action buttons disabled until samples selected
@@ -794,11 +909,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-022: View and Filter Box List Table
+
 **As a** shipping coordinator  
 **I want to** view and filter the list of boxes  
 **So that** I can find specific shipments
 
 **Acceptance Criteria:**
+
 - Table displays columns:
   - Box ID
   - Destination
@@ -819,6 +936,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Default sort: Most recent created date first
 
 **UI Notes:**
+
 - Carbon DataTable component
 - Filter row above table
 - Status badges with semantic colors (blue, yellow, green, red)
@@ -827,11 +945,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-023: Quick Actions in Table
+
 **As a** shipping coordinator  
 **I want to** perform quick actions from the table  
 **So that** I don't have to navigate to detail pages
 
 **Acceptance Criteria:**
+
 - Actions column in table with overflow menu (⋮)
 - Actions vary based on box state:
   - **Draft/Ready to Send:** View, Edit, Print Label, Delete
@@ -841,6 +961,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Action results shown via toast notifications
 
 **UI Notes:**
+
 - Carbon OverflowMenu component
 - Icons for each action
 - Disabled actions grayed out with tooltip explaining why
@@ -848,11 +969,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-024: Generate Reports
+
 **As a** user  
 **I want to** generate reports on shipments  
 **So that** I can track and analyze shipping activity
 
 **Acceptance Criteria:**
+
 - Report filters:
   - By Box ID (specific or multiple)
   - By Date Range (sent date or received date)
@@ -877,6 +1000,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Report can be scheduled (future enhancement noted)
 
 **UI Notes:**
+
 - Reports section in navigation
 - Filter sidebar on left
 - "Generate Report" button
@@ -888,11 +1012,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 4.6 Administration
 
 #### US-025: Manage Label Prefixes
+
 **As an** administrator  
 **I want to** define and manage label prefixes  
 **So that** boxes are consistently identified
 
 **Acceptance Criteria:**
+
 - Admin can create multiple prefix templates
 - Each prefix has:
   - Name/Description
@@ -905,6 +1031,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Cannot delete prefix if boxes exist using it
 
 **UI Notes:**
+
 - Admin table with prefix list
 - "Add Prefix" button
 - Inline editing
@@ -913,11 +1040,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-026: Manage Facility Registry
+
 **As an** administrator  
 **I want to** manage reference lab destinations  
 **So that** users can select the correct shipping destination
 
 **Acceptance Criteria:**
+
 - Admin can add/edit/deactivate facilities
 - Each facility has:
   - Facility Name
@@ -933,6 +1062,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Cannot delete facility if boxes exist using it
 
 **UI Notes:**
+
 - Facility management table
 - "Add Facility" modal
 - Integration settings collapsible section
@@ -941,11 +1071,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 ---
 
 #### US-027: Configure FHIR Mappings
+
 **As an** administrator  
 **I want to** configure FHIR resource mappings  
 **So that** electronic manifests conform to standards
 
 **Acceptance Criteria:**
+
 - Admin can configure:
   - SupplyDelivery.status mappings for box states
   - Specimen.container.type codes for sample containers
@@ -956,6 +1088,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Test connection button for FHIR endpoints
 
 **UI Notes:**
+
 - FHIR Configuration section in admin
 - Mapping table with inline editing
 - "Test FHIR Connection" button
@@ -968,31 +1101,38 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 5.1 Box Management Rules
 
 **BR-001: Unique Box ID**
+
 - Each Box ID must be unique across the entire system
 - Box IDs can be auto-generated using configured prefix + sequential number
 - Box IDs can be manually scanned (e.g., from pre-printed labels)
 - If scanned Box ID already exists, system rejects and prompts for different ID
 
 **BR-002: Box State Transitions**
+
 - Boxes must progress through states in logical order (see state diagram)
 - Cannot skip required states (e.g., cannot go from Draft directly to Sent)
 - State transitions are logged with timestamp and user ID
 - Only administrators can reverse state transitions
 
 **BR-003: Box Editing Restrictions**
+
 - Draft boxes: Fully editable
-- Ready to Send boxes: Can edit samples and metadata, but state resets to Draft if samples changed
-- Sent/In Transit boxes: Cannot edit samples (manifest locked), can only edit notes
+- Ready to Send boxes: Can edit samples and metadata, but state resets to Draft
+  if samples changed
+- Sent/In Transit boxes: Cannot edit samples (manifest locked), can only edit
+  notes
 - After Sent: Only administrators can edit
 - Received/Closed boxes: Read-only except for notes/documentation
 
 **BR-004: Box Deletion**
+
 - Only Draft boxes can be deleted
 - Deletion requires confirmation
 - Deleted boxes are soft-deleted (marked inactive, audit trail retained)
 - Box IDs from deleted boxes cannot be reused
 
 **BR-005: Minimum Box Requirements**
+
 - Box must have at least 1 sample to be marked as Ready to Send
 - Box must have destination selected
 - Box must have all required metadata fields filled
@@ -1002,12 +1142,15 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 5.2 Sample Management Rules
 
 **BR-006: Sample Uniqueness**
+
 - Each sample can belong to only one active box at a time
 - Active boxes are those in Draft, Ready to Send, Sent, or In Transit states
-- If sample is in Received/Closed box, it can be added to a new box (re-referral scenario)
+- If sample is in Received/Closed box, it can be added to a new box (re-referral
+  scenario)
 - System checks sample status before allowing addition to box
 
 **BR-007: Sample Eligibility**
+
 - Samples already marked for referral in OpenELIS can be added directly
 - Non-referral samples require additional step:
   - Reason for referral must be provided
@@ -1016,6 +1159,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System validates that sample exists in OpenELIS before adding
 
 **BR-008: Sample Metadata Requirements**
+
 - Each sample must have:
   - Accession Number (required)
   - Test Type (required)
@@ -1024,12 +1168,15 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Missing required fields prevent box from being marked Ready to Send
 
 **BR-009: Sample Removal**
+
 - Samples can be removed from boxes at any time before receipt is completed
 - Sample removal logs user ID, timestamp, and reason (optional)
-- If sample had referral flag set by this box, flag is not removed (referral intention remains)
+- If sample had referral flag set by this box, flag is not removed (referral
+  intention remains)
 - Removing sample from Ready to Send box reverts box to Draft state
 
 **BR-010: Duplicate Prevention**
+
 - Scanning same sample twice in same box is rejected with error message
 - System performs real-time duplicate check on scan/add
 
@@ -1038,6 +1185,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 5.3 Manifest & Documentation Rules
 
 **BR-011: Manifest Generation**
+
 - Manifest can be generated at any point after box creation
 - Final manifest is locked when box is marked as Sent
 - Manifest includes:
@@ -1048,6 +1196,7 @@ A critical accountability feature that tracks all samples marked for referral bu
   - Sender signature line (for printed copy)
 
 **BR-012: Manifest Versioning**
+
 - Each manifest regeneration creates a new version
 - Version number increments (v1, v2, v3...)
 - All versions retained in system
@@ -1055,12 +1204,14 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Users can view previous versions in history
 
 **BR-013: Manifest Regeneration Time Limits**
+
 - Regeneration allowed freely within 24 hours of sending
 - After 24 hours up to 7 days: Recall option (requires admin approval)
 - After 7 days: No regeneration (contact support for special cases)
 - Reasoning: Prevents confusion with multiple manifests in circulation
 
 **BR-014: Electronic Manifest Exchange**
+
 - Electronic manifest sent automatically when box marked as Sent
 - Transmission method based on destination configuration:
   - FHIR: SupplyDelivery resource with status "in-progress"
@@ -1071,6 +1222,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Users can manually retry after automatic attempts fail
 
 **BR-015: Label Printing**
+
 - Box labels can be printed multiple times (reprints allowed)
 - Each print logged in audit trail
 - Label format determined by:
@@ -1083,48 +1235,60 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 5.4 Receiving & Reconciliation Rules
 
 **BR-016: Receiving Initiation**
+
 - Box must be in Sent or In Transit state to start receiving
 - Scanning box ID initiates receiving workflow
 - Box transitions to Partially Received state when first sample is confirmed
 - Receiving session can be paused and resumed
 
 **BR-017: Sample Receipt Validation**
+
 - Each scanned sample is checked against manifest
 - If sample not in manifest: "Unexpected sample" option available
-- If sample already marked as received: Warning displayed but scan allowed (for verification)
+- If sample already marked as received: Warning displayed but scan allowed (for
+  verification)
 - Sample status changes to Received only after successful validation
 
 **BR-018: Receipt Completion Criteria**
+
 - Box can be marked as "Receipt Complete" when:
-  - All expected samples are accounted for (Received, Missing, Damaged, or Rejected)
+  - All expected samples are accounted for (Received, Missing, Damaged, or
+    Rejected)
   - Any non-conformities have been documented
 - Partial receipts are allowed (box can be completed with missing samples)
 - Completion requires confirmation with summary of discrepancies
 
 **BR-019: Missing Sample Handling**
+
 - Samples not received can be marked as Missing
-- Missing status is permanent but can be updated to Received if sample arrives late
+- Missing status is permanent but can be updated to Received if sample arrives
+  late
 - Missing samples do not prevent completion of receiving workflow
 - Missing samples are included in reconciliation reports
 
 **BR-020: Non-Conformity Recording**
+
 - Non-conformities can be recorded at any point during receiving
 - Non-conformity does not automatically reject sample
-- Sample with non-conformity is flagged but remains "optionally available for testing"
+- Sample with non-conformity is flagged but remains "optionally available for
+  testing"
 - Non-conformity flag integrates with existing OpenELIS non-conformity system
 - Photos/documents uploaded with non-conformities are linked to sample record
 
 **BR-021: Unexpected Sample Handling**
+
 - Unexpected samples are logged in receiving record but not added to manifest
 - Unexpected samples must be followed up outside this workflow
 - Receiving can be completed with unexpected samples present
-- Unexpected samples are entered into OpenELIS as new samples after investigation
+- Unexpected samples are entered into OpenELIS as new samples after
+  investigation
 
 ---
 
 ### 5.5 Security & Audit Rules
 
 **BR-022: User Authentication & Authorization**
+
 - All actions require authenticated user session
 - User must have Shipping role permission to access feature
 - Administrator role required for:
@@ -1134,6 +1298,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Permission checks enforced on both client and server side
 
 **BR-023: Audit Trail Requirements**
+
 - All actions logged with:
   - User ID
   - Timestamp (date and time)
@@ -1146,8 +1311,10 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Audit logs queryable for reporting and investigation
 
 **BR-024: Data Retention**
+
 - Active boxes and samples: Retained indefinitely
-- Closed/Archived boxes: Retained per organizational policy (recommend 7 years minimum)
+- Closed/Archived boxes: Retained per organizational policy (recommend 7 years
+  minimum)
 - Deleted boxes: Soft-deleted, audit trail retained
 - Uploaded documents: Retained with associated sample/box record
 
@@ -1156,6 +1323,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 5.6 Integration & Interoperability Rules
 
 **BR-025: FHIR Compliance**
+
 - SupplyDelivery resource used for box tracking
 - Status mappings:
   - Draft → SupplyDelivery.status = "in-progress" (preparing)
@@ -1166,13 +1334,17 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Organization references used for sender and receiver facilities
 
 **BR-026: Sample Referral Integration**
+
 - Sample referral flag in OpenELIS synchronized with box inclusion
-- Adding non-referral sample to box automatically sets referral flag in order entry
+- Adding non-referral sample to box automatically sets referral flag in order
+  entry
 - Referral destination in order entry updated to match box destination
 - Removing sample from box does not remove referral flag
 
 **BR-027: Non-Conformity Integration**
-- Non-conformities recorded in this system sync with order entry non-conformity system
+
+- Non-conformities recorded in this system sync with order entry non-conformity
+  system
 - Non-conformity types from order entry system available in receiving workflow
 - Additional types specific to shipping can be added
 - SNOMED CT codes mapped for interoperability (configurable by admin)
@@ -1182,22 +1354,27 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 5.7 Unassigned Tests Tracking Rules
 
 **BR-028: Unassigned Test Definition**
+
 - A sample is considered "unassigned" when:
   - Referral flag is set to true in OpenELIS
-  - Sample is not in any active box (Draft, Ready to Send, Sent, In Transit, Partially Received states)
+  - Sample is not in any active box (Draft, Ready to Send, Sent, In Transit,
+    Partially Received states)
   - Sample status is not "Lost" or "Referral Cancelled"
-- Once a sample is added to a box, it immediately becomes "assigned" and is removed from unassigned list
+- Once a sample is added to a box, it immediately becomes "assigned" and is
+  removed from unassigned list
 - Samples in Received/Closed boxes are considered "assigned" (already shipped)
 
 **BR-029: Unassigned Test Aging**
+
 - Days unassigned calculated from referral date to current date
 - Visual indicators based on aging:
   - 0-7 days: Normal (no highlighting)
   - 7-30 days: Warning (yellow highlight)
-  - >30 days: Alert (red highlight)
+  - > 30 days: Alert (red highlight)
 - Aging thresholds configurable by administrator
 
 **BR-030: Mark as Lost Workflow**
+
 - Only unassigned samples can be marked as lost
 - Samples in boxes cannot be marked as lost (must be removed from box first)
 - Marking as lost is permanent and cannot be undone by regular users
@@ -1210,8 +1387,10 @@ A critical accountability feature that tracks all samples marked for referral bu
   - Cannot be added to future boxes unless status reversed
 
 **BR-031: Cancel Referral Workflow**
+
 - Only unassigned samples can have referral cancelled
-- Samples in boxes cannot have referral cancelled (must be removed from box first)
+- Samples in boxes cannot have referral cancelled (must be removed from box
+  first)
 - Cancelling referral:
   - Removes referral flag from sample
   - Removes referral destination
@@ -1222,11 +1401,13 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Cancellation can be done by Shipping role or Administrator
 
 **BR-032: Unassigned Test Notifications**
+
 - Optional: System can send alerts for samples unassigned >7 days (configurable)
 - Weekly summary report can be generated showing all unassigned samples
 - Reports include aging statistics and destination breakdown
 
 **BR-033: Bulk Operations**
+
 - Multiple unassigned samples can be added to same box in bulk operation
 - Bulk operations require all selected samples to pass validation
 - If any sample fails validation, entire bulk operation is rolled back
@@ -1239,6 +1420,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 6.1 Box Management Functions
 
 **FR-001: Box Creation**
+
 - System shall provide UI to create new box
 - System shall auto-generate Box ID using configured prefix + sequential number
 - System shall allow manual entry/scan of Box ID
@@ -1247,18 +1429,21 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall save box in Draft state with creator user ID and timestamp
 
 **FR-002: Box Editing**
+
 - System shall provide UI to edit box metadata (destination, notes)
 - System shall enforce editing restrictions based on box state
 - System shall log all edits in audit trail
 - System shall prevent editing after Sent state unless user is Administrator
 
 **FR-003: Box Deletion**
+
 - System shall allow deletion of Draft boxes only
 - System shall require confirmation before deletion
 - System shall perform soft delete (mark inactive, retain audit trail)
 - System shall prevent reuse of deleted Box IDs
 
 **FR-004: Box State Management**
+
 - System shall manage box state transitions per workflow diagram
 - System shall validate state transition rules
 - System shall update FHIR SupplyDelivery status when state changes
@@ -1269,6 +1454,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 6.2 Sample Management Functions
 
 **FR-005: Add Sample via Barcode Scan**
+
 - System shall accept barcode input from USB keyboard wedge scanners
 - System shall validate sample exists in OpenELIS
 - System shall check for duplicate samples in box
@@ -1278,6 +1464,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall add sample to manifest table with status "Pending"
 
 **FR-006: Add Sample via Manual Lookup**
+
 - System shall provide search/auto-complete for sample lookup
 - System shall search by accession number or sample ID
 - System shall display sample details before adding
@@ -1285,6 +1472,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall add confirmed sample to manifest
 
 **FR-007: Handle Non-Referral Samples**
+
 - System shall detect if sample is not marked for referral
 - System shall prompt user for reason for referral
 - System shall require reason before allowing sample addition
@@ -1292,6 +1480,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall set referral destination to box destination
 
 **FR-008: Display Sample Details**
+
 - System shall display sample list in table format
 - System shall show: Accession #, Test Type, Collection Date, Status
 - System shall show temperature/storage requirements from order entry
@@ -1299,13 +1488,16 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall provide visual status indicators (color-coded)
 
 **FR-009: Remove Sample from Box**
-- System shall allow sample removal from boxes in Draft, Ready to Send, In Transit states
+
+- System shall allow sample removal from boxes in Draft, Ready to Send, In
+  Transit states
 - System shall require confirmation before removal
 - System shall log removal in audit trail
 - System shall revert box to Draft state if removed from Ready to Send box
 - System shall not remove referral flag from sample in OpenELIS
 
 **FR-010: Validate Ready to Send**
+
 - System shall provide checkbox to mark box as Ready to Send
 - System shall validate:
   - Box has at least 1 sample
@@ -1319,6 +1511,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 6.3 Label & Manifest Functions
 
 **FR-011: Configure Label Templates (Admin)**
+
 - System shall allow admin to define label templates
 - System shall support configuration of:
   - Label dimensions (width x height)
@@ -1328,6 +1521,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall allow multiple templates for different destinations
 
 **FR-012: Generate Box Label**
+
 - System shall generate printable label using configured template
 - System shall render Box ID as scannable barcode
 - System shall populate all configured fields from box metadata
@@ -1335,6 +1529,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall log each label print in audit trail
 
 **FR-013: Generate Packing List**
+
 - System shall generate packing list/manifest when requested
 - System shall include:
   - Box metadata (ID, destination, sender, date/time)
@@ -1346,6 +1541,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall support option to include individual sample labels
 
 **FR-014: Manifest Versioning**
+
 - System shall assign version number to each manifest generation
 - System shall increment version on regeneration
 - System shall retain all previous versions
@@ -1353,12 +1549,14 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall allow viewing previous versions
 
 **FR-015: Manifest Regeneration & Recall**
+
 - System shall allow manifest regeneration within 24 hours of sending
 - System shall allow recall request after 24 hours (requires admin approval)
 - System shall block regeneration after 7 days
 - System shall log all regeneration actions
 
 **FR-016: Electronic Manifest Sending**
+
 - System shall send electronic manifest when box marked as Sent
 - System shall check destination configuration for transmission methods
 - System shall support:
@@ -1374,6 +1572,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 6.4 Receiving Functions
 
 **FR-017: Initiate Receiving**
+
 - System shall provide receiving screen with box scan input
 - System shall validate box is in Sent or In Transit state
 - System shall display box details and expected sample list
@@ -1381,6 +1580,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall allow receiving session to be paused and resumed
 
 **FR-018: Scan Samples During Receipt**
+
 - System shall accept sample barcode scans
 - System shall validate sample against manifest
 - System shall mark sample as Received on successful scan
@@ -1391,6 +1591,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall offer "Add as Unexpected" option for unmanifested samples
 
 **FR-019: Manual Sample Check-off**
+
 - System shall provide manual checkbox for each sample
 - System shall require confirmation for manual check-off
 - System shall mark sample as Received when manually checked
@@ -1398,6 +1599,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall display visual indicator for manual vs. scanned receipt
 
 **FR-020: Record Non-Conformities**
+
 - System shall provide UI to record non-conformities for samples
 - System shall offer non-conformity types from OpenELIS order entry system
 - System shall support additional shipping-specific types
@@ -1409,6 +1611,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall provide "Apply to All Samples" option for batch issues
 
 **FR-021: Handle Missing Samples**
+
 - System shall allow marking samples as Missing
 - System shall require confirmation for missing status
 - System shall allow optional notes explaining missing sample
@@ -1416,6 +1619,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall allow later update if missing sample arrives
 
 **FR-022: Handle Unexpected Samples**
+
 - System shall detect samples not in manifest
 - System shall log unexpected samples in receiving record
 - System shall require note explaining unexpected sample
@@ -1424,6 +1628,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall include unexpected samples in receiving report
 
 **FR-023: Complete Receipt**
+
 - System shall provide "Complete Receipt" button
 - System shall validate all samples accounted for
 - System shall display summary of:
@@ -1440,6 +1645,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 6.5 Dashboard & Reporting Functions
 
 **FR-024: Display Dashboard Metrics**
+
 - System shall display metric cards:
   - Boxes Ready to Send (count)
   - Boxes In Transit (count)
@@ -1450,14 +1656,17 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall calculate date range for "This Week" dynamically
 
 **FR-025: Display Box List Table**
+
 - System shall display table with columns:
-  - Box ID, Destination, Created Date, Status, # Samples, Created By, Sent Date, Received Date
+  - Box ID, Destination, Created Date, Status, # Samples, Created By, Sent Date,
+    Received Date
 - System shall support sorting on all columns
 - System shall provide pagination (25, 50, 100 per page)
 - System shall display status with color-coded badges
 - System shall default sort to most recent created date first
 
 **FR-026: Filter Box List**
+
 - System shall provide filters:
   - Date range picker (created date)
   - Destination dropdown (from facility registry)
@@ -1468,6 +1677,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall allow clearing all filters
 
 **FR-027: Provide Quick Actions**
+
 - System shall display actions overflow menu in table rows
 - System shall show context-appropriate actions based on box state
 - System shall disable/hide actions based on user permissions
@@ -1475,6 +1685,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall refresh table after actions complete
 
 **FR-028: Generate Reports**
+
 - System shall provide report generation UI
 - System shall support filter criteria:
   - Box ID (specific or multiple)
@@ -1483,7 +1694,8 @@ A critical accountability feature that tracks all samples marked for referral bu
   - Status
   - Created By user
 - System shall generate report with columns:
-  - Box ID, Contents, Sent Date/Time, Sender, Received Status, Received Date/Time, Receiving User, Non-conformities Count, Missing Samples Count
+  - Box ID, Contents, Sent Date/Time, Sender, Received Status, Received
+    Date/Time, Receiving User, Non-conformities Count, Missing Samples Count
 - System shall support export formats:
   - PDF (formatted report)
   - Excel (.xlsx)
@@ -1496,13 +1708,16 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 6.5A Unassigned Tests Tracking Functions
 
 **FR-028A: Display Unassigned Tests List**
-- System shall provide tab navigation on dashboard: "Shipments" | "Unassigned Tests"
+
+- System shall provide tab navigation on dashboard: "Shipments" | "Unassigned
+  Tests"
 - System shall query all samples where:
   - referral_flag = true
   - sample is not in any shipping_box_sample record with active box
   - sample status ≠ "Lost" and ≠ "Referral Cancelled"
 - System shall display table with columns:
-  - Accession Number, Patient Name/ID, Test Type, Collection Date, Referral Date, Referral Destination, Referral Reason, Days Unassigned
+  - Accession Number, Patient Name/ID, Test Type, Collection Date, Referral
+    Date, Referral Destination, Referral Reason, Days Unassigned
 - System shall calculate "Days Unassigned" as current_date - referral_date
 - System shall apply visual highlighting:
   - Yellow background for samples 7-30 days unassigned
@@ -1510,6 +1725,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall refresh list in real-time when samples added to boxes
 
 **FR-028B: Search and Filter Unassigned Tests**
+
 - System shall provide global search across all table columns
 - System shall provide filters:
   - Date range picker (referral date)
@@ -1521,6 +1737,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall support column sorting (ascending/descending)
 
 **FR-028C: Add Unassigned Sample to Box**
+
 - System shall provide "Add to Box" action in row overflow menu
 - System shall open modal/side panel with options:
   - Select existing Draft or Ready to Send box (dropdown)
@@ -1531,6 +1748,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall display success notification with link to box
 
 **FR-028D: Mark Unassigned Sample as Lost**
+
 - System shall provide "Mark as Lost" action in row overflow menu
 - System shall display confirmation dialog with:
   - Sample details (accession #, test type, patient)
@@ -1547,6 +1765,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall prevent undo (except by administrator)
 
 **FR-028E: Cancel Referral for Unassigned Sample**
+
 - System shall provide "Cancel Referral" action in row overflow menu
 - System shall display confirmation dialog with:
   - Sample details
@@ -1563,6 +1782,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall log action in audit trail
 
 **FR-028F: Bulk Selection and Actions**
+
 - System shall provide checkbox column for multi-select
 - System shall provide "Select All" option (current page or all pages)
 - System shall display bulk actions toolbar when samples selected
@@ -1575,6 +1795,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall log bulk actions with list of affected samples
 
 **FR-028G: Export Unassigned Tests**
+
 - System shall provide "Export" button in unassigned tests view
 - System shall export current filtered/searched results
 - System shall support export formats:
@@ -1586,6 +1807,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall log export action
 
 **FR-028H: Unassigned Tests Aging Alerts (Optional)**
+
 - System shall check for samples unassigned >7 days daily
 - System shall generate alert list for review
 - System shall send email digest to configured users (optional)
@@ -1597,6 +1819,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 6.6 Administration Functions
 
 **FR-029: Manage Label Prefixes**
+
 - System shall allow admin to create/edit/deactivate label prefixes
 - System shall support configuration of:
   - Prefix text
@@ -1607,6 +1830,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall prevent deletion of prefixes in use
 
 **FR-030: Manage Facility Registry**
+
 - System shall allow admin to add/edit/deactivate facilities
 - System shall store facility data:
   - Name, Code, Address, Contact Info
@@ -1619,6 +1843,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall support facility grouping/categorization
 
 **FR-031: Configure FHIR Mappings**
+
 - System shall allow admin to configure FHIR mappings:
   - SupplyDelivery.status for box states
   - Specimen.container.type for container types
@@ -1628,6 +1853,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall store mapping configuration persistently
 
 **FR-032: Manage User Permissions**
+
 - System shall provide UI to assign Shipping role to users
 - System shall integrate with OpenELIS user management
 - System shall enforce role-based access control
@@ -1638,6 +1864,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 6.7 Integration Functions
 
 **FR-033: OpenELIS Sample Integration**
+
 - System shall query OpenELIS for sample details when adding to box
 - System shall retrieve:
   - Accession number, Test type, Collection date
@@ -1647,6 +1874,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall sync non-conformities with OpenELIS order entry system
 
 **FR-034: FHIR Message Exchange**
+
 - System shall generate FHIR SupplyDelivery resource for each box
 - System shall update SupplyDelivery.status on box state changes
 - System shall POST FHIR messages to configured endpoints
@@ -1654,6 +1882,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall log all FHIR transactions
 
 **FR-035: API Integration**
+
 - System shall expose API endpoint to receive incoming boxes (FHIR-based)
 - System shall expose API endpoint for other OpenELIS instances
 - System shall POST manifest JSON to configured API endpoints
@@ -1661,6 +1890,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall retry failed API calls with exponential backoff
 
 **FR-036: Email Notifications**
+
 - System shall send email with PDF manifest when configured
 - System shall support multiple recipient addresses per destination
 - System shall include box summary in email body
@@ -1672,6 +1902,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 6.8 Audit & Compliance Functions
 
 **FR-037: Audit Logging**
+
 - System shall log all user actions with:
   - User ID and username
   - Timestamp (ISO 8601 format with timezone)
@@ -1685,6 +1916,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - System shall provide audit log query interface for admins
 
 **FR-038: Compliance Reporting**
+
 - System shall generate audit reports for compliance purposes
 - System shall support queries by:
   - User, Date range, Action type, Entity
@@ -1698,12 +1930,14 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 7.1 Design System Guidelines
 
 **DS-001: Carbon Design System Adherence**
+
 - Use Carbon Design System React components exclusively
 - Follow Carbon spacing, typography, and color tokens
 - Implement Carbon's grid system for layouts
 - Use Carbon icons from `@carbon/icons-react`
 
 **DS-002: Color Coding**
+
 - **Status Colors:**
   - Draft: Gray (`$ui-03`)
   - Ready to Send: Blue (`$support-02`)
@@ -1722,6 +1956,7 @@ A critical accountability feature that tracks all samples marked for referral bu
   - Rejected: Red
 
 **DS-003: Typography**
+
 - Headings: IBM Plex Sans
 - Body: IBM Plex Sans
 - Code/IDs: IBM Plex Mono
@@ -1732,6 +1967,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 7.2 Layout & Navigation
 
 **UI-001: Main Navigation**
+
 - Add "Sample Shipping" item to OpenELIS main navigation
 - Icon: Package/Box icon from Carbon
 - Sub-menu items:
@@ -1742,6 +1978,7 @@ A critical accountability feature that tracks all samples marked for referral bu
   - Administration (admin only)
 
 **UI-002: Page Structure**
+
 - Header: Breadcrumbs + Page Title + Primary Actions
 - Content: Main content area
 - Carbon Grid: 16-column layout
@@ -1785,6 +2022,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ```
 
 **Components:**
+
 - Carbon Tabs for "Shipments" | "Unassigned Tests" navigation
 - Metric Cards: Carbon `Tile` or custom cards styled like pathology cards
 - Search: Carbon `Search` component
@@ -1833,16 +2071,19 @@ A critical accountability feature that tracks all samples marked for referral bu
 ```
 
 **Row Actions Menu (⋮):**
+
 - Add to Box...
 - Mark as Lost
 - Cancel Referral
 
 **Visual Indicators:**
+
 - Normal rows (0-7 days): Standard white background
 - Warning rows (7-30 days): Yellow/amber background tint (#FFF3CD)
 - Alert rows (>30 days): Red/pink background tint (#FFE6E6)
 
 **Components:**
+
 - Carbon Tabs component
 - Alert banner: Carbon `InlineNotification` (warning type)
 - Search: Carbon `Search` with full-text capability
@@ -1886,6 +2127,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ```
 
 **Components:**
+
 - Modal: Carbon `Modal` (small size)
 - Sample details: Carbon `Tile` with read-only fields
 - Dropdown: Carbon `Dropdown` with filtered options
@@ -1931,6 +2173,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ```
 
 **Components:**
+
 - Modal: Carbon `Modal` (medium size) with danger theme
 - Warning icon and styling
 - Dropdown: Carbon `Dropdown` for reason selection
@@ -1975,6 +2218,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ```
 
 **Components:**
+
 - Modal: Carbon `Modal` (medium size)
 - Info section with current referral details
 - Dropdown: Carbon `Dropdown` for reason selection
@@ -2036,6 +2280,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ```
 
 **Components:**
+
 - Modal: Carbon `Modal` (medium size)
 - Sample list: Read-only list with scrolling if needed
 - Validation: Carbon `InlineNotification` for destination matching
@@ -2080,6 +2325,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ```
 
 **Components:**
+
 - Form: Carbon `Form`, `TextInput`, `Dropdown`, `TextArea`
 - Scan Input: Autofocus, keyboard event listener for scanner
 - Checkbox: Carbon `Checkbox` for "Mark as Ready to Send"
@@ -2087,6 +2333,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Buttons: Carbon `Button` (primary, secondary, danger)
 
 **Validation:**
+
 - Real-time validation on "Mark as Ready to Send"
 - Inline error messages for missing fields
 - Toast notification on successful save
@@ -2096,6 +2343,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 ### 7.5 Scanning Feedback UI
 
 **UI-005: Scan Success Feedback**
+
 - Green checkmark overlay (✓)
 - Fade-in animation (200ms)
 - Success beep sound (if enabled)
@@ -2103,6 +2351,7 @@ A critical accountability feature that tracks all samples marked for referral bu
 - Auto-clear input field for next scan
 
 **UI-006: Scan Error Feedback**
+
 - Red X overlay (✗)
 - Shake animation (300ms)
 - Error beep sound (if enabled)
@@ -2115,33 +2364,34 @@ A critical accountability feature that tracks all samples marked for referral bu
 - "Try Again" prompt with input cleared
 
 **Implementation:**
+
 ```jsx
 // Pseudo-code for scan feedback
 const [scanStatus, setScanStatus] = useState(null); // null | 'success' | 'error'
-const [scanMessage, setScanMessage] = useState('');
+const [scanMessage, setScanMessage] = useState("");
 
 const handleScan = async (barcode) => {
   try {
     await addSampleToBox(barcode);
-    setScanStatus('success');
+    setScanStatus("success");
     setScanMessage(`Sample ${barcode} added`);
-    playSound('success');
+    playSound("success");
     // Auto-clear after 2s
     setTimeout(() => setScanStatus(null), 2000);
   } catch (error) {
-    setScanStatus('error');
+    setScanStatus("error");
     setScanMessage(error.message);
-    playSound('error');
+    playSound("error");
   }
 };
 
 // Visual feedback component
-{scanStatus === 'success' && (
-  <CheckmarkFilled className="scan-success-icon" />
-)}
-{scanStatus === 'error' && (
-  <ErrorFilled className="scan-error-icon" />
-)}
+{
+  scanStatus === "success" && <CheckmarkFilled className="scan-success-icon" />;
+}
+{
+  scanStatus === "error" && <ErrorFilled className="scan-error-icon" />;
+}
 ```
 
 ---
@@ -2200,6 +2450,7 @@ const handleScan = async (barcode) => {
 ```
 
 **Components:**
+
 - Box Details Card: Carbon `Tile` with key metrics
 - Scan Input: Large, prominent, autofocus
 - Progress Indicator: Carbon `ProgressBar` or custom component
@@ -2208,6 +2459,7 @@ const handleScan = async (barcode) => {
 - Filter: Carbon `Checkbox` for unreceived only
 
 **Color Coding:**
+
 - Received rows: Green background tint
 - Pending rows: Gray
 - Non-conformity icon: Yellow/Red warning
@@ -2256,6 +2508,7 @@ const handleScan = async (barcode) => {
 ```
 
 **Components:**
+
 - Modal: Carbon `Modal` (medium size)
 - Checkboxes: Carbon `CheckboxGroup`
 - Text Area: Carbon `TextArea`
@@ -2307,6 +2560,7 @@ const handleScan = async (barcode) => {
 ```
 
 **Components:**
+
 - Filter Sidebar: Carbon `Accordion` or separate panel
 - Date Picker: Carbon `DatePicker` with range selection
 - Dropdowns: Carbon `Dropdown`, `MultiSelect`
@@ -2406,12 +2660,14 @@ const handleScan = async (barcode) => {
 ### 7.10 Responsive Design
 
 **UI-012: Breakpoints**
+
 - Large Desktop (≥1584px): Full 16-column grid
 - Desktop (1056px-1583px): Full features
 - Tablet (672px-1055px): Collapsed sidebar, stacked metric cards
 - Mobile (≤671px): Single column, bottom navigation, simplified tables
 
 **UI-013: Mobile Adaptations**
+
 - Dashboard: Stack metric cards vertically
 - Table: Horizontal scroll or card view
 - Forms: Full-width inputs
@@ -2424,6 +2680,7 @@ const handleScan = async (barcode) => {
 ### 8.1 OpenELIS Integration
 
 **INT-001: Sample Data Retrieval**
+
 - API endpoint: `GET /rest/sample/{accessionNumber}`
 - Response includes:
   - Accession number, Sample ID
@@ -2435,6 +2692,7 @@ const handleScan = async (barcode) => {
   - Referral flag
 
 **INT-002: Referral Flag Update**
+
 - API endpoint: `PATCH /rest/sample/{accessionNumber}/referral`
 - Request body:
   ```json
@@ -2447,6 +2705,7 @@ const handleScan = async (barcode) => {
   ```
 
 **INT-003: Non-Conformity Sync**
+
 - API endpoint: `POST /rest/sample/{accessionNumber}/non-conformity`
 - Request body:
   ```json
@@ -2467,22 +2726,27 @@ const handleScan = async (barcode) => {
 **INT-004: SupplyDelivery Resource**
 
 Create SupplyDelivery when box is sent:
+
 ```json
 {
   "resourceType": "SupplyDelivery",
   "id": "box-123",
-  "identifier": [{
-    "system": "http://openelis.org/box-id",
-    "value": "REF-BOX-00042"
-  }],
+  "identifier": [
+    {
+      "system": "http://openelis.org/box-id",
+      "value": "REF-BOX-00042"
+    }
+  ],
   "status": "in-progress",
   "patient": null,
   "type": {
-    "coding": [{
-      "system": "http://terminology.hl7.org/CodeSystem/supply-item-type",
-      "code": "specimen",
-      "display": "Specimen Container"
-    }]
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/supply-item-type",
+        "code": "specimen",
+        "display": "Specimen Container"
+      }
+    ]
   },
   "suppliedItem": {
     "quantity": {
@@ -2501,13 +2765,16 @@ Create SupplyDelivery when box is sent:
     "reference": "Organization/sending-facility"
   },
   "occurrenceDateTime": "2025-11-07T10:30:00Z",
-  "receiver": [{
-    "reference": "Practitioner/receiving-tech"
-  }]
+  "receiver": [
+    {
+      "reference": "Practitioner/receiving-tech"
+    }
+  ]
 }
 ```
 
 **INT-005: Status Updates**
+
 - Update SupplyDelivery.status on box state changes:
   - Sent → `in-progress`
   - Received → `completed`
@@ -2515,6 +2782,7 @@ Create SupplyDelivery when box is sent:
   - Lost → `abandoned` (with note)
 
 **INT-006: Specimen References**
+
 - Each sample in manifest linked as contained Specimen resources
 - Specimen.identifier = sample accession number
 - Specimen.container.type = container type code
@@ -2528,6 +2796,7 @@ Create SupplyDelivery when box is sent:
 Endpoint: `POST {configured_url}/api/v1/shipments/incoming`
 
 Request:
+
 ```json
 {
   "shipment": {
@@ -2561,6 +2830,7 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -2573,7 +2843,8 @@ Response:
 
 Endpoint: `POST /api/v1/shipments/incoming` (on receiving system)
 
-This endpoint is exposed by the receiving OpenELIS instance to accept incoming manifests from other instances.
+This endpoint is exposed by the receiving OpenELIS instance to accept incoming
+manifests from other instances.
 
 ---
 
@@ -2582,26 +2853,30 @@ This endpoint is exposed by the receiving OpenELIS instance to accept incoming m
 **INT-009: Email Notification**
 
 When box is sent (if configured):
+
 - To: Configured email addresses for destination
 - CC: Sender email
 - Subject: `Shipment [Box ID] Sent - [# Samples] Samples`
 - Body:
+
   ```
   A new shipment has been sent to your facility.
-  
+
   Box ID: REF-BOX-00042
   From: Sending Facility
   Sent Date: November 7, 2025 10:30 AM
   Number of Samples: 12
   Sent By: John Doe
-  
+
   Please see attached packing list for complete manifest.
-  
+
   [View in OpenELIS] (link if available)
   ```
+
 - Attachment: PDF packing list
 
 **INT-010: Email Configuration**
+
 - Use OpenELIS email configuration (SMTP settings)
 - Support multiple recipients (comma-separated)
 - Track email send status (success/failure)
@@ -2612,6 +2887,7 @@ When box is sent (if configured):
 ### 8.5 Barcode Scanner Integration
 
 **INT-011: Keyboard Wedge Scanners**
+
 - Accept input from USB barcode scanners
 - Scanner emulates keyboard input
 - Detect barcode input patterns:
@@ -2623,6 +2899,7 @@ When box is sent (if configured):
   - Validate format (alphanumeric, specific patterns)
 
 **INT-012: Barcode Formats**
+
 - Support common formats:
   - Code 39
   - Code 128
@@ -2639,6 +2916,7 @@ When box is sent (if configured):
 ### 9.1 Performance
 
 **NFR-001: Response Time**
+
 - Box creation: < 1 second
 - Sample scan processing: < 500ms
 - Dashboard load: < 2 seconds
@@ -2646,11 +2924,13 @@ When box is sent (if configured):
 - Report generation (> 100 boxes): < 30 seconds
 
 **NFR-002: Throughput**
+
 - Support 10,000+ samples/day across all boxes
 - Support 500+ concurrent users
 - Support 100+ simultaneous barcode scans/minute
 
 **NFR-003: Scalability**
+
 - Horizontal scaling for web servers
 - Database optimization for large datasets (millions of samples)
 - Efficient indexing on Box ID, Sample ID, dates
@@ -2660,24 +2940,28 @@ When box is sent (if configured):
 ### 9.2 Security
 
 **NFR-004: Authentication**
+
 - Integrate with OpenELIS authentication system
 - Support single sign-on (SSO) if implemented
 - Session timeout after 30 minutes of inactivity
 - Require re-authentication for sensitive actions
 
 **NFR-005: Authorization**
+
 - Role-based access control (Shipping role, Admin role)
 - Permission checks on all API endpoints
 - Client-side and server-side authorization enforcement
 - Audit all permission checks
 
 **NFR-006: Data Protection**
+
 - Encrypt data in transit (TLS 1.2+)
 - Encrypt sensitive data at rest (database encryption)
 - Redact sensitive data in logs
 - Follow HIPAA/PHI guidelines for patient data
 
 **NFR-007: Audit Trail**
+
 - Immutable audit logs
 - Log all user actions with timestamp, user ID, IP address
 - Retain audit logs per compliance requirements (minimum 7 years)
@@ -2688,17 +2972,20 @@ When box is sent (if configured):
 ### 9.3 Reliability
 
 **NFR-008: Availability**
+
 - 99.9% uptime during business hours
 - Scheduled maintenance windows communicated in advance
 - Graceful degradation if external integrations fail
 
 **NFR-009: Data Integrity**
+
 - Database transactions for all critical operations
 - Foreign key constraints enforced
 - Data validation on input (client and server)
 - Backup strategy: Daily full backup, hourly incremental
 
 **NFR-010: Error Handling**
+
 - User-friendly error messages
 - Technical details logged server-side
 - Automatic retry for transient failures (with exponential backoff)
@@ -2709,6 +2996,7 @@ When box is sent (if configured):
 ### 9.4 Usability
 
 **NFR-011: Accessibility**
+
 - WCAG 2.1 Level AA compliance
 - Keyboard navigation support
 - Screen reader compatible
@@ -2716,6 +3004,7 @@ When box is sent (if configured):
 - Focus indicators visible
 
 **NFR-012: User Experience**
+
 - Consistent with OpenELIS UI patterns
 - Carbon Design System adherence
 - Responsive design (desktop, tablet, mobile)
@@ -2723,6 +3012,7 @@ When box is sent (if configured):
 - Inline help text and tooltips
 
 **NFR-013: Training & Documentation**
+
 - User manual with screenshots
 - Video tutorials for key workflows
 - Contextual help within application
@@ -2733,6 +3023,7 @@ When box is sent (if configured):
 ### 9.5 Maintainability
 
 **NFR-014: Code Quality**
+
 - React components following best practices
 - TypeScript for type safety
 - ESLint and Prettier for code style
@@ -2740,12 +3031,14 @@ When box is sent (if configured):
 - Integration tests for critical paths
 
 **NFR-015: Monitoring & Logging**
+
 - Application performance monitoring (APM)
 - Error tracking (e.g., Sentry)
 - Usage analytics (without PHI)
 - Server and database health monitoring
 
 **NFR-016: Deployment**
+
 - CI/CD pipeline for automated testing and deployment
 - Blue-green deployment for zero-downtime updates
 - Database migration scripts version-controlled
@@ -2758,13 +3051,14 @@ When box is sent (if configured):
 ### 10.1 Core Entities
 
 **Box**
+
 ```sql
 CREATE TABLE shipping_box (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   box_id VARCHAR(50) UNIQUE NOT NULL,
   destination_facility_id BIGINT NOT NULL,
-  status ENUM('DRAFT', 'READY_TO_SEND', 'SENT', 'IN_TRANSIT', 
-              'PARTIALLY_RECEIVED', 'RECEIVED', 'CLOSED', 
+  status ENUM('DRAFT', 'READY_TO_SEND', 'SENT', 'IN_TRANSIT',
+              'PARTIALLY_RECEIVED', 'RECEIVED', 'CLOSED',
               'CANCELLED', 'LOST') NOT NULL,
   created_by BIGINT NOT NULL,
   created_at TIMESTAMP NOT NULL,
@@ -2788,13 +3082,14 @@ CREATE TABLE shipping_box (
 ```
 
 **BoxSample** (Junction table)
+
 ```sql
 CREATE TABLE shipping_box_sample (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   box_id BIGINT NOT NULL,
   sample_id BIGINT NOT NULL,
   accession_number VARCHAR(50) NOT NULL,
-  status ENUM('PENDING', 'SENT', 'RECEIVED', 'MISSING', 
+  status ENUM('PENDING', 'SENT', 'RECEIVED', 'MISSING',
               'DAMAGED', 'REJECTED') NOT NULL,
   added_by BIGINT NOT NULL,
   added_at TIMESTAMP NOT NULL,
@@ -2816,6 +3111,7 @@ CREATE TABLE shipping_box_sample (
 ```
 
 **BoxManifest**
+
 ```sql
 CREATE TABLE shipping_box_manifest (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -2832,6 +3128,7 @@ CREATE TABLE shipping_box_manifest (
 ```
 
 **SampleNonConformity**
+
 ```sql
 CREATE TABLE shipping_sample_non_conformity (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -2848,6 +3145,7 @@ CREATE TABLE shipping_sample_non_conformity (
 ```
 
 **NonConformityAttachment**
+
 ```sql
 CREATE TABLE shipping_non_conformity_attachment (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -2864,6 +3162,7 @@ CREATE TABLE shipping_non_conformity_attachment (
 ```
 
 **Facility** (extends existing OpenELIS facility table)
+
 ```sql
 CREATE TABLE facility_integration_config (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -2883,6 +3182,7 @@ CREATE TABLE facility_integration_config (
 ```
 
 **LabelTemplate**
+
 ```sql
 CREATE TABLE label_template (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -2903,6 +3203,7 @@ CREATE TABLE label_template (
 ```
 
 **AuditLog**
+
 ```sql
 CREATE TABLE shipping_audit_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -2923,6 +3224,7 @@ CREATE TABLE shipping_audit_log (
 ```
 
 **TransmissionLog**
+
 ```sql
 CREATE TABLE shipping_transmission_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -2940,6 +3242,7 @@ CREATE TABLE shipping_transmission_log (
 ```
 
 **Sample** (extends existing OpenELIS sample table)
+
 ```sql
 -- Add columns to existing sample table for referral tracking
 ALTER TABLE sample ADD COLUMN referral_flag BOOLEAN DEFAULT FALSE;
@@ -2966,10 +3269,11 @@ ALTER TABLE sample ADD FOREIGN KEY (lost_by) REFERENCES user(id);
 ```
 
 **UnassignedSampleView** (Database view for performance)
+
 ```sql
 -- View to efficiently query unassigned samples
 CREATE VIEW unassigned_samples_view AS
-SELECT 
+SELECT
   s.id,
   s.accession_number,
   s.patient_id,
@@ -2980,7 +3284,7 @@ SELECT
   s.referral_reason,
   f.name AS referral_destination_name,
   DATEDIFF(CURRENT_DATE, s.referral_date) AS days_unassigned,
-  CASE 
+  CASE
     WHEN DATEDIFF(CURRENT_DATE, s.referral_date) > 30 THEN 'RED'
     WHEN DATEDIFF(CURRENT_DATE, s.referral_date) > 7 THEN 'YELLOW'
     ELSE 'NORMAL'
@@ -2991,7 +3295,7 @@ WHERE s.referral_flag = TRUE
   AND s.lost_flag = FALSE
   AND s.referral_cancelled_date IS NULL
   AND s.id NOT IN (
-    SELECT DISTINCT sample_id 
+    SELECT DISTINCT sample_id
     FROM shipping_box_sample sbs
     INNER JOIN shipping_box sb ON sbs.box_id = sb.id
     WHERE sb.status IN ('DRAFT', 'READY_TO_SEND', 'SENT', 'IN_TRANSIT', 'PARTIALLY_RECEIVED', 'RECEIVED')
@@ -3000,12 +3304,13 @@ WHERE s.referral_flag = TRUE
 ```
 
 **LostSampleLog**
+
 ```sql
 CREATE TABLE lost_sample_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   sample_id BIGINT NOT NULL,
   accession_number VARCHAR(50) NOT NULL,
-  lost_reason_category ENUM('LOST_IN_LAB', 'DAMAGED', 'IMPROPERLY_STORED', 
+  lost_reason_category ENUM('LOST_IN_LAB', 'DAMAGED', 'IMPROPERLY_STORED',
                             'UNKNOWN_LOCATION', 'OTHER') NOT NULL,
   lost_reason_notes TEXT,
   marked_lost_by BIGINT NOT NULL,
@@ -3022,14 +3327,15 @@ CREATE TABLE lost_sample_log (
 ```
 
 **ReferralCancellationLog**
+
 ```sql
 CREATE TABLE referral_cancellation_log (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   sample_id BIGINT NOT NULL,
   accession_number VARCHAR(50) NOT NULL,
   previous_destination_facility_id BIGINT NOT NULL,
-  cancellation_reason_category ENUM('TEST_IN_HOUSE', 'PATIENT_CANCELLED', 
-                                     'NO_LONGER_NEEDED', 'DUPLICATE', 
+  cancellation_reason_category ENUM('TEST_IN_HOUSE', 'PATIENT_CANCELLED',
+                                     'NO_LONGER_NEEDED', 'DUPLICATE',
                                      'ADMIN_ERROR', 'OTHER') NOT NULL,
   cancellation_reason_notes TEXT,
   cancelled_by BIGINT NOT NULL,
@@ -3043,6 +3349,7 @@ CREATE TABLE referral_cancellation_log (
 ```
 
 **UnassignedAlertConfig** (Admin configuration)
+
 ```sql
 CREATE TABLE unassigned_alert_config (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -3086,10 +3393,12 @@ unassigned_samples_view (derived from sample + facility + shipping_box_sample)
 ```
 
 **Key Relationships:**
+
 - Sample can be in multiple boxes over time (historical tracking)
 - Sample can have 0 or 1 lost_sample_log entry
-- Sample can have 0 or 1 referral_cancellation_log entry  
-- Sample with referral_flag=true and not in active box appears in unassigned_samples_view
+- Sample can have 0 or 1 referral_cancellation_log entry
+- Sample with referral_flag=true and not in active box appears in
+  unassigned_samples_view
 - Facility referenced by both box destination and sample referral destination
 
 ---
@@ -3097,6 +3406,7 @@ unassigned_samples_view (derived from sample + facility + shipping_box_sample)
 ### 10.3 Sample Data
 
 **Example Box:**
+
 ```json
 {
   "id": 123,
@@ -3136,70 +3446,70 @@ unassigned_samples_view (derived from sample + facility + shipping_box_sample)
 
 ## Appendix A: Glossary
 
-| Term | Definition |
-|------|------------|
-| **Accession Number** | Unique identifier for a laboratory sample/specimen |
-| **Box** | Physical container used to ship multiple samples |
-| **Carbon Design System** | IBM's open-source design system and component library |
-| **FHIR** | Fast Healthcare Interoperability Resources - HL7 standard |
-| **Keyboard Wedge** | Barcode scanner that emulates keyboard input |
-| **Manifest** | Document listing all samples in a shipment |
-| **Non-conformity** | Quality issue or deviation from expected sample condition |
-| **OpenELIS** | Open source Laboratory Information System |
-| **Packing List** | Same as manifest - printed list of box contents |
-| **Referral** | Process of sending sample to external lab for testing |
-| **SupplyDelivery** | FHIR resource type for tracking shipments |
-| **Unassigned Sample** | Sample marked for referral but not yet added to any shipment box |
-| **Days Unassigned** | Number of days since a sample was marked for referral but remains unassigned |
-| **Lost Sample** | Sample that cannot be located and is permanently marked as lost |
-| **Referral Cancellation** | Removal of referral flag from a sample, returning it to normal workflow |
+| Term                      | Definition                                                                   |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| **Accession Number**      | Unique identifier for a laboratory sample/specimen                           |
+| **Box**                   | Physical container used to ship multiple samples                             |
+| **Carbon Design System**  | IBM's open-source design system and component library                        |
+| **FHIR**                  | Fast Healthcare Interoperability Resources - HL7 standard                    |
+| **Keyboard Wedge**        | Barcode scanner that emulates keyboard input                                 |
+| **Manifest**              | Document listing all samples in a shipment                                   |
+| **Non-conformity**        | Quality issue or deviation from expected sample condition                    |
+| **OpenELIS**              | Open source Laboratory Information System                                    |
+| **Packing List**          | Same as manifest - printed list of box contents                              |
+| **Referral**              | Process of sending sample to external lab for testing                        |
+| **SupplyDelivery**        | FHIR resource type for tracking shipments                                    |
+| **Unassigned Sample**     | Sample marked for referral but not yet added to any shipment box             |
+| **Days Unassigned**       | Number of days since a sample was marked for referral but remains unassigned |
+| **Lost Sample**           | Sample that cannot be located and is permanently marked as lost              |
+| **Referral Cancellation** | Removal of referral flag from a sample, returning it to normal workflow      |
 
 ---
 
 ## Appendix B: FHIR Status Mappings
 
-| Box Status | SupplyDelivery.status | Description |
-|------------|----------------------|-------------|
-| Draft | in-progress | Box being prepared |
-| Ready to Send | in-progress | Box ready for shipment |
-| Sent | in-progress | Box dispatched |
-| In Transit | in-progress | Box en route |
-| Partially Received | in-progress | Receiving in progress |
-| Received | completed | All samples confirmed |
-| Closed/Archived | completed | Reconciliation complete |
-| Cancelled | abandoned | Shipment cancelled |
-| Lost in Transit | abandoned | Box not received |
+| Box Status         | SupplyDelivery.status | Description             |
+| ------------------ | --------------------- | ----------------------- |
+| Draft              | in-progress           | Box being prepared      |
+| Ready to Send      | in-progress           | Box ready for shipment  |
+| Sent               | in-progress           | Box dispatched          |
+| In Transit         | in-progress           | Box en route            |
+| Partially Received | in-progress           | Receiving in progress   |
+| Received           | completed             | All samples confirmed   |
+| Closed/Archived    | completed             | Reconciliation complete |
+| Cancelled          | abandoned             | Shipment cancelled      |
+| Lost in Transit    | abandoned             | Box not received        |
 
 ---
 
 ## Appendix C: User Permissions Matrix
 
-| Action | Shipping Role | Admin Role |
-|--------|--------------|-----------|
-| View dashboard | ✓ | ✓ |
-| View unassigned tests | ✓ | ✓ |
-| Add unassigned sample to box | ✓ | ✓ |
-| Mark sample as lost | ✓ | ✓ |
-| Reverse lost status | ✗ | ✓ |
-| Cancel referral | ✓ | ✓ |
-| Export unassigned tests | ✓ | ✓ |
-| Configure aging thresholds | ✗ | ✓ |
-| Configure unassigned alerts | ✗ | ✓ |
-| Create box | ✓ | ✓ |
-| Edit box (Draft) | ✓ | ✓ |
-| Edit box (Ready to Send) | ✓ | ✓ |
-| Edit box (after Sent) | ✗ | ✓ |
-| Delete box | ✓ | ✓ |
-| Add/remove samples | ✓ | ✓ |
-| Send box | ✓ | ✓ |
-| Receive box | ✓ | ✓ |
-| Record non-conformities | ✓ | ✓ |
-| Generate reports | ✓ | ✓ |
-| Configure labels | ✗ | ✓ |
-| Manage facilities | ✗ | ✓ |
-| Configure FHIR | ✗ | ✓ |
-| View audit logs | ✗ | ✓ |
-| Approve manifest recall | ✗ | ✓ |
+| Action                       | Shipping Role | Admin Role |
+| ---------------------------- | ------------- | ---------- |
+| View dashboard               | ✓             | ✓          |
+| View unassigned tests        | ✓             | ✓          |
+| Add unassigned sample to box | ✓             | ✓          |
+| Mark sample as lost          | ✓             | ✓          |
+| Reverse lost status          | ✗             | ✓          |
+| Cancel referral              | ✓             | ✓          |
+| Export unassigned tests      | ✓             | ✓          |
+| Configure aging thresholds   | ✗             | ✓          |
+| Configure unassigned alerts  | ✗             | ✓          |
+| Create box                   | ✓             | ✓          |
+| Edit box (Draft)             | ✓             | ✓          |
+| Edit box (Ready to Send)     | ✓             | ✓          |
+| Edit box (after Sent)        | ✗             | ✓          |
+| Delete box                   | ✓             | ✓          |
+| Add/remove samples           | ✓             | ✓          |
+| Send box                     | ✓             | ✓          |
+| Receive box                  | ✓             | ✓          |
+| Record non-conformities      | ✓             | ✓          |
+| Generate reports             | ✓             | ✓          |
+| Configure labels             | ✗             | ✓          |
+| Manage facilities            | ✗             | ✓          |
+| Configure FHIR               | ✗             | ✓          |
+| View audit logs              | ✗             | ✓          |
+| Approve manifest recall      | ✗             | ✓          |
 
 ---
 
@@ -3209,10 +3519,10 @@ unassigned_samples_view (derived from sample + facility + shipping_box_sample)
 
 ## Document Revision History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-11-07 | System Analyst | Initial comprehensive specification |
-| 1.1 | 2025-11-07 | System Analyst | Added Unassigned Tests tracking feature: new dashboard tab, search/filter capabilities, mark as lost and cancel referral workflows, bulk actions, data model extensions, and business rules |
+| Version | Date       | Author         | Changes                                                                                                                                                                                     |
+| ------- | ---------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.0     | 2025-11-07 | System Analyst | Initial comprehensive specification                                                                                                                                                         |
+| 1.1     | 2025-11-07 | System Analyst | Added Unassigned Tests tracking feature: new dashboard tab, search/filter capabilities, mark as lost and cancel referral workflows, bulk actions, data model extensions, and business rules |
 
 ---
 

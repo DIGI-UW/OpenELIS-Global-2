@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="shipment-004-create-sequence" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="unassigned_sample_seq"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="unassigned_sample_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="shipment-004-create-unassigned-sample-table" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="unassigned_sample"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="unassigned_sample">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="INTEGER">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="referral_test_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assigned_date" type="TIMESTAMP"/>
+            <column name="destination_facility_id" type="INTEGER"/>
+            <column name="priority" type="VARCHAR(20)"/>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="unassigned_sample"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
