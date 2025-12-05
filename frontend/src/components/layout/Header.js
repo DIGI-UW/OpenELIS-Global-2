@@ -8,6 +8,8 @@ import {
   Search,
   UserAvatarFilledAlt,
   LocationFilled,
+  Menu,
+  Locked,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
 import HelpMenu from "./HelpMenu";
@@ -63,6 +65,7 @@ function OEHeader(props) {
     mode,
     isExpanded,
     toggle: toggleSideNav,
+    setMode,
     SIDENAV_MODES,
   } = useSideNavPreference({
     storageKeyPrefix: "main",
@@ -173,6 +176,31 @@ function OEHeader(props) {
   useEffect(() => {
     getNotifications();
   }, []);
+
+  // Click-outside handler: Close nav when in SHOW mode and user clicks outside
+  useEffect(() => {
+    if (mode !== SIDENAV_MODES.SHOW) return; // Only active in SHOW mode
+
+    const handleClickOutside = (event) => {
+      const sideNav = document.querySelector(".cds--side-nav");
+      const menuButton = document.querySelector('[data-cy="menuButton"]');
+
+      if (
+        sideNav &&
+        !sideNav.contains(event.target) &&
+        menuButton &&
+        !menuButton.contains(event.target)
+      ) {
+        // Click outside in SHOW mode - collapse to CLOSE
+        setMode(SIDENAV_MODES.CLOSE);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [mode, SIDENAV_MODES, setMode]);
 
   const panelSwitchIcon = () => {
     return userSessionDetails.authenticated ? (
@@ -432,10 +460,28 @@ function OEHeader(props) {
 
   const setMenuItemExpanded = (e, menuItem, path) => {
     const newMenus = { ...menus };
-    const newMenuItem = { ...menuItem };
-    newMenuItem.expanded = !newMenuItem.expanded;
-    var jp = require("jsonpath");
-    jp.value(newMenus, path, newMenuItem);
+
+    // Accordion behavior: Only one top-level section open at a time
+    if (path.startsWith("$.menu[")) {
+      // This is a top-level item (level 0)
+      // Collapse all other top-level items
+      newMenus.menu = newMenus.menu.map((item) => {
+        if (item.menu.elementId === menuItem.menu.elementId) {
+          // This is the item being toggled
+          return { ...item, expanded: !item.expanded };
+        } else {
+          // Collapse all siblings
+          return { ...item, expanded: false };
+        }
+      });
+    } else {
+      // Nested item - just toggle it without affecting siblings
+      const newMenuItem = { ...menuItem };
+      newMenuItem.expanded = !newMenuItem.expanded;
+      var jp = require("jsonpath");
+      jp.value(newMenus, path, newMenuItem);
+    }
+
     setMenus(newMenus);
   };
 
@@ -454,200 +500,195 @@ function OEHeader(props) {
                 <HeaderMenuButton
                   data-cy="menuButton"
                   aria-label={
-                    isLocked
-                      ? "Unlock menu"
-                      : isExpanded
+                    mode === SIDENAV_MODES.CLOSE
+                      ? "Open menu"
+                      : mode === SIDENAV_MODES.SHOW
                         ? "Lock menu"
-                        : "Open menu"
+                        : "Close menu"
                   }
                   onClick={toggleSideNav}
                   isActive={isExpanded}
                   isCollapsible={true}
+                  renderIcon={() => {
+                    if (mode === SIDENAV_MODES.CLOSE) return <Menu size={20} />;
+                    if (mode === SIDENAV_MODES.SHOW)
+                      return <Locked size={20} />;
+                    return <Close size={20} />;
+                  }}
                 />
               )}
               <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
-                    <span id="header-logo">{logo()}</span>
-                    <div className="banner">
-                      <h5>{configurationProperties?.BANNER_TEXT}</h5>
-                      <p>
-                        <FormattedMessage id="header.label.version" /> &nbsp;{" "}
-                        {configurationProperties?.releaseNumber}
-                      </p>
-                    </div>
-                  </HeaderName>
-                  <HeaderGlobalBar>
-                    {userSessionDetails.authenticated && (
-                      <>
-                        {searchBar && <SearchBar />}
-                        <HeaderGlobalAction
-                          id="search-Icon"
-                          aria-label="Search"
-                          onClick={() =>
-                            handlePanelToggle(searchBar ? "" : "search")
-                          }
-                        >
-                          {!searchBar ? (
-                            <Search size={20} />
-                          ) : (
-                            <Close size={20} />
-                          )}
-                        </HeaderGlobalAction>
-                        <HeaderGlobalAction
-                          id="notification-Icon"
-                          aria-label="Notifications"
-                          onClick={() =>
-                            handlePanelToggle(
-                              notificationsOpen ? "" : "notifications",
-                            )
-                          }
-                        >
-                          <div
+                <span id="header-logo">{logo()}</span>
+                <div className="banner">
+                  <h5>{configurationProperties?.BANNER_TEXT}</h5>
+                  <p>
+                    <FormattedMessage id="header.label.version" /> &nbsp;{" "}
+                    {configurationProperties?.releaseNumber}
+                  </p>
+                </div>
+              </HeaderName>
+              <HeaderGlobalBar>
+                {userSessionDetails.authenticated && (
+                  <>
+                    {searchBar && <SearchBar />}
+                    <HeaderGlobalAction
+                      id="search-Icon"
+                      aria-label="Search"
+                      onClick={() =>
+                        handlePanelToggle(searchBar ? "" : "search")
+                      }
+                    >
+                      {!searchBar ? <Search size={20} /> : <Close size={20} />}
+                    </HeaderGlobalAction>
+                    <HeaderGlobalAction
+                      id="notification-Icon"
+                      aria-label="Notifications"
+                      onClick={() =>
+                        handlePanelToggle(
+                          notificationsOpen ? "" : "notifications",
+                        )
+                      }
+                    >
+                      <div
+                        style={{
+                          position: "relative",
+                          display: "inline-block",
+                        }}
+                      >
+                        {!notificationsOpen ? (
+                          <Notification size={20} />
+                        ) : (
+                          <Close size={20} />
+                        )}
+                        {unReadNotifications?.length > 0 && (
+                          <span
                             style={{
-                              position: "relative",
-                              display: "inline-block",
+                              position: "absolute",
+                              top: "-5px",
+                              right: "-5px",
+                              backgroundColor: "red",
+                              color: "white",
+                              borderRadius: "50%",
+                              width: "22px",
+                              height: "22px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "12px",
+                              animation: "pulse 5s infinite",
+                              opacity: 1,
+                              transition: "background-color 0.3s ease-in-out",
                             }}
                           >
-                            {!notificationsOpen ? (
-                              <Notification size={20} />
-                            ) : (
-                              <Close size={20} />
-                            )}
-                            {unReadNotifications?.length > 0 && (
-                              <span
-                                style={{
-                                  position: "absolute",
-                                  top: "-5px",
-                                  right: "-5px",
-                                  backgroundColor: "red",
-                                  color: "white",
-                                  borderRadius: "50%",
-                                  width: "22px",
-                                  height: "22px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: "12px",
-                                  animation: "pulse 5s infinite",
-                                  opacity: 1,
-                                  transition:
-                                    "background-color 0.3s ease-in-out",
-                                }}
-                              >
-                                {unReadNotifications.length}
-                              </span>
-                            )}
-                          </div>
-                        </HeaderGlobalAction>
-                      </>
-                    )}
-                    <HeaderGlobalAction
-                      id="user-Icon"
-                      aria-label={panelSwitchLabel()}
-                      onClick={() =>
-                        handlePanelToggle(switchCollapsed ? "user" : "")
-                      }
-                      ref={userSwitchRef}
-                    >
-                      {panelSwitchIcon()}
+                            {unReadNotifications.length}
+                          </span>
+                        )}
+                      </div>
                     </HeaderGlobalAction>
-                    <HelpMenu
-                      helpOpen={helpOpen}
-                      handlePanelToggle={handlePanelToggle}
-                    />
-                  </HeaderGlobalBar>
-                  <HeaderPanel
-                    aria-label="Header Panel"
-                    expanded={!switchCollapsed}
-                    className="headerPanel"
-                    ref={headerPanelRef}
-                  >
-                    <ul>
-                      {userSessionDetails.authenticated && (
-                        <>
-                          <li className="userDetails">
-                            <UserAvatarFilledAlt
-                              size={18}
-                              style={{ marginRight: "4px" }}
-                            />
-                            {userSessionDetails.firstName}{" "}
-                            {userSessionDetails.lastName}
-                          </li>
-                          {userSessionDetails.loginLabUnit && (
-                            <li className="userDetails">
-                              <LocationFilled
-                                size={18}
-                                style={{ marginRight: "4px" }}
-                              />
-                              {userSessionDetails.loginLabUnit}{" "}
-                            </li>
-                          )}
-                          <li
-                            data-cy="logOut"
-                            className="userDetails clickableUserDetails"
-                            onClick={logout}
-                          >
-                            <Logout style={{ marginRight: "3px" }} />
-                            <FormattedMessage id="header.label.logout" />
-                          </li>
-                        </>
-                      )}
-                      <li className="userDetails">
-                        <Select
-                          id="selector"
-                          name="selectLocale"
-                          className="selectLocale"
-                          invalidText="A valid locale value is required"
-                          labelText={
-                            <FormattedMessage id="header.label.selectlocale" />
-                          }
-                          onChange={(event) => {
-                            props.onChangeLanguage(event.target.value);
-                          }}
-                          value={intl.locale}
-                        >
-                          {Object.entries(languages).map(
-                            ([code, { label }]) => (
-                              <SelectItem
-                                key={code}
-                                text={label}
-                                value={code}
-                              />
-                            ),
-                          )}
-                        </Select>
-                      </li>
-                      <li className="userDetails">
-                        <label className="cds--label">
-                          {" "}
-                          <FormattedMessage id="header.label.version" />:{" "}
-                          {configurationProperties?.releaseNumber}
-                        </label>
-                      </li>
-                    </ul>
-                  </HeaderPanel>
+                  </>
+                )}
+                <HeaderGlobalAction
+                  id="user-Icon"
+                  aria-label={panelSwitchLabel()}
+                  onClick={() =>
+                    handlePanelToggle(switchCollapsed ? "user" : "")
+                  }
+                  ref={userSwitchRef}
+                >
+                  {panelSwitchIcon()}
+                </HeaderGlobalAction>
+                <HelpMenu
+                  helpOpen={helpOpen}
+                  handlePanelToggle={handlePanelToggle}
+                />
+              </HeaderGlobalBar>
+              <HeaderPanel
+                aria-label="Header Panel"
+                expanded={!switchCollapsed}
+                className="headerPanel"
+                ref={headerPanelRef}
+              >
+                <ul>
                   {userSessionDetails.authenticated && (
                     <>
-                      <SideNav
-                        aria-label="Side navigation"
-                        expanded={isExpanded}
-                        isFixedNav={isLocked}
-                        isPersistent={false}
-                        isChildOfHeader={true}
+                      <li className="userDetails">
+                        <UserAvatarFilledAlt
+                          size={18}
+                          style={{ marginRight: "4px" }}
+                        />
+                        {userSessionDetails.firstName}{" "}
+                        {userSessionDetails.lastName}
+                      </li>
+                      {userSessionDetails.loginLabUnit && (
+                        <li className="userDetails">
+                          <LocationFilled
+                            size={18}
+                            style={{ marginRight: "4px" }}
+                          />
+                          {userSessionDetails.loginLabUnit}{" "}
+                        </li>
+                      )}
+                      <li
+                        data-cy="logOut"
+                        className="userDetails clickableUserDetails"
+                        onClick={logout}
                       >
-                        <SideNavItems>
-                          {autoExpandedMenus.map((childMenuItem, index) => {
-                            return generateMenuItems(
-                              childMenuItem,
-                              index,
-                              0,
-                              "$.menu[" + index + "]",
-                            );
-                          })}
-                        </SideNavItems>
-                      </SideNav>
+                        <Logout style={{ marginRight: "3px" }} />
+                        <FormattedMessage id="header.label.logout" />
+                      </li>
                     </>
                   )}
-                </Header>
+                  <li className="userDetails">
+                    <Select
+                      id="selector"
+                      name="selectLocale"
+                      className="selectLocale"
+                      invalidText="A valid locale value is required"
+                      labelText={
+                        <FormattedMessage id="header.label.selectlocale" />
+                      }
+                      onChange={(event) => {
+                        props.onChangeLanguage(event.target.value);
+                      }}
+                      value={intl.locale}
+                    >
+                      {Object.entries(languages).map(([code, { label }]) => (
+                        <SelectItem key={code} text={label} value={code} />
+                      ))}
+                    </Select>
+                  </li>
+                  <li className="userDetails">
+                    <label className="cds--label">
+                      {" "}
+                      <FormattedMessage id="header.label.version" />:{" "}
+                      {configurationProperties?.releaseNumber}
+                    </label>
+                  </li>
+                </ul>
+              </HeaderPanel>
+              {userSessionDetails.authenticated && (
+                <>
+                  <SideNav
+                    aria-label="Side navigation"
+                    expanded={isExpanded}
+                    isFixedNav={isLocked}
+                    isPersistent={false}
+                    isChildOfHeader={true}
+                  >
+                    <SideNavItems>
+                      {autoExpandedMenus.map((childMenuItem, index) => {
+                        return generateMenuItems(
+                          childMenuItem,
+                          index,
+                          0,
+                          "$.menu[" + index + "]",
+                        );
+                      })}
+                    </SideNavItems>
+                  </SideNav>
+                </>
+              )}
+            </Header>
             <div style={{ flex: 1 }}>
               <SlideOver
                 open={notificationsOpen}
