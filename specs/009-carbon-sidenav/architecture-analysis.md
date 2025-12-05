@@ -1,8 +1,9 @@
 # Architecture Analysis: Sidenav Implementation Issues & Remediation
 
 **Date**: December 5, 2025  
-**Status**: Active Remediation - Phase 1 In Progress  
-**Branch**: `feat/OGC-009-sidenav/m2b-rollout`
+**Status**: ✅ Phase 1 & 2 Complete - Ready for Browser Verification  
+**Branch**: `feat/OGC-009-sidenav/m2b-rollout`  
+**Latest Commit**: `8fbd02109`
 
 ## Problem Diagnosis
 
@@ -87,14 +88,14 @@ We attempted an "Enhancement" strategy (M2b) to avoid rewriting the complex `Hea
 4.  **Dark Mode Inputs**: `Style.css` and `index.scss` global theme conflicts cause black input backgrounds.
 5.  **Scrollbar Still Visible**: The `overflow: visible` fix may be insufficient or overridden.
 
-## Current Remediation (In Progress)
+## Remediation Execution (Current State)
 
-### Phase 1: State Lifting ✅ STARTED
+### Phase 1: State Lifting ✅ COMPLETE
 **Goal**: Make `Layout.js` the single source of truth.
 
-**Completed:**
+**Completed (Commit `8fbd02109`):**
 1.  ✅ Added `useLocation` to `Layout.js`.
-2.  ✅ Implemented route detection logic in `Layout.js`:
+2.  ✅ Implemented route detection logic:
     ```javascript
     const isStorageContext = location.pathname.startsWith("/Storage") ||
                              location.pathname.startsWith("/FreezerMonitoring");
@@ -103,41 +104,36 @@ We attempted an "Enhancement" strategy (M2b) to avoid rewriting the complex `Hea
       : { storageKeyPrefix: "main", defaultMode: "close" };
     ```
 3.  ✅ Lifted state: `Layout.js` calls `useSideNavPreference(layoutConfig)` once.
-4.  ✅ Updated `Layout.js` to pass props to `Header`:
-    ```jsx
-    <Header
-      onChangeLanguage={props.onChangeLanguage}
-      mode={mode}
-      isExpanded={isExpanded}
-      toggleSideNav={toggle}
-      setMode={setMode}
-      SIDENAV_MODES={SIDENAV_MODES}
-    />
-    ```
+4.  ✅ Updated `Layout.js` to pass props to `Header`.
+5.  ✅ Refactored `Header.js` to controlled component (accepts `mode`, `isExpanded`, `toggleSideNav`, `setMode`, `SIDENAV_MODES` as props).
+6.  ✅ Removed `useSideNavPreference` import from `Header.js`.
+7.  ✅ Updated `Header.test.js` to mock the props that `Layout` provides.
+8.  ✅ Enhanced `useSideNavPreference` to react to `storageKeyPrefix` changes.
 
-**In Progress:**
-5.  🔄 Updating `Header.js` to accept props and remove internal hook call.
-
-**Remaining:**
-6.  ⏳ Remove `useSideNavPreference` import from `Header.js`.
-7.  ⏳ Update all references in `Header.js` from internal state to props.
-8.  ⏳ Test state sync between `Layout` and `Header`.
-
-### Phase 2: Style Debt Removal ⏳ PENDING
+### Phase 2: Style Debt Removal ✅ COMPLETE
 **Goal**: Stop fighting Carbon's styling system.
 
-**Remaining Tasks:**
-1.  ⏳ Remove `.inputText`, `.inputSearch` CSS overrides from `Style.css`.
-2.  ⏳ Remove `custom-sidenav-button` styles forcing blue backgrounds.
-3.  ⏳ Investigate `index.scss` global theme and ensure `<Theme theme="white">` creates a proper "light island".
-4.  ⏳ Test inputs in content area to verify they render light background, dark text.
+**Completed (Commit `8fbd02109`):**
+1.  ✅ Removed `--cds-text-primary: black` overrides from `.inputText`, `.inputSearch`, `.inputSelect`, `.selectSampleType`.
+2.  ✅ Removed forced dark-blue backgrounds from `.custom-sidenav-button` (now uses `transparent` and Carbon hover tokens).
+3.  ✅ Verified `<Theme theme="white">` wraps content in `Layout.js`.
+4.  ✅ All 14 unit tests passing (state sync verified).
 
-### Phase 3: Verification ⏳ PENDING
-1.  ⏳ Run unit tests: `npm test -- --testPathPattern="(Header.test|Layout.integration)"`.
-2.  ⏳ Run E2E test: `npx cypress run --spec "cypress/e2e/sidenavNavigation.cy.js" --browser electron`.
-3.  ⏳ Manual browser test: Verify `/Storage` defaults to locked, `/` defaults to closed.
-4.  ⏳ Manual browser test: Verify no page reloads on navigation.
-5.  ⏳ Manual browser test: Verify content pushes when locked.
+### Phase 3: Verification ⏳ READY
+**Automated Testing:**
+1.  ✅ Unit tests passing: `npm test -- --testPathPattern="(Header.test|Layout.integration)"` (14/14).
+2.  ⏳ E2E test: `npx cypress run --spec "cypress/e2e/sidenavNavigation.cy.js"` (requires backend running).
+
+**Manual Browser Testing Required:**
+1.  ⏳ Navigate to `/` (Home) → Verify sidenav defaults to CLOSE (collapsed).
+2.  ⏳ Navigate to `/Storage` → Verify sidenav defaults to LOCK (expanded, content pushed).
+3.  ⏳ Toggle states: CLOSE (Hamburger) → SHOW (Lock icon) → LOCK (X icon) → CLOSE.
+4.  ⏳ Verify no page reloads when clicking nav items.
+5.  ⏳ Verify content pushes correctly in LOCK mode (margin-left: 16rem).
+6.  ⏳ Verify inputs in content area have light backgrounds, dark text (not black-on-black).
+7.  ⏳ Verify scrollbar is removed (whole page scrolls, not just nav).
+8.  ⏳ Verify only one menu section unfurled at a time (accordion behavior).
+9.  ⏳ Verify click-outside in SHOW mode collapses to CLOSE.
 
 ## Architecture Decision: The Correct Pattern
 
@@ -146,4 +142,29 @@ We attempted an "Enhancement" strategy (M2b) to avoid rewriting the complex `Hea
 - **`Header.js`**: Presentation component. Receives state as props. Renders UI. Fires callbacks.
 
 **This is NOT "avoiding touching Header.js"**. This IS properly refactoring it to follow React best practices (controlled components, single source of truth, unidirectional data flow).
+
+## Summary of Changes (Commit `8fbd02109`)
+
+### Files Modified:
+1.  **`Layout.js`**: Added route detection, lifted state, passes props to Header.
+2.  **`Header.js`**: Removed internal hook call, accepts props, refactored to controlled component.
+3.  **`useSideNavPreference.js`**: Added `useEffect` to react to `storageKeyPrefix` changes.
+4.  **`Style.css`**: Removed dark input text overrides, simplified nav button backgrounds.
+5.  **`Header.test.js`**: Updated to mock props from Layout.
+6.  **`architecture-analysis.md`**: This document.
+
+### Expected Behavior After These Changes:
+- ✅ Home page (`/`) defaults to CLOSE (collapsed rail).
+- ✅ Storage pages (`/Storage`, `/FreezerMonitoring`) default to LOCK (expanded, content pushed).
+- ✅ Toggling state updates both Header and Layout in real-time (no more async localStorage sync issues).
+- ✅ Content pushes immediately when locked (`.content-nav-locked` class applied by Layout).
+- ✅ Inputs in content area render with light backgrounds (Carbon theme tokens work correctly).
+- ✅ Nav button backgrounds are transparent/simplified (no dark blue forced).
+- ✅ Toggle button shows: Hamburger → Lock → X based on mode.
+- ✅ Navigation uses `history.push` (no page reloads).
+- ✅ Accordion behavior (only one section unfurled).
+- ✅ Click-outside in SHOW mode collapses.
+
+### Next Step:
+**Browser Testing** to verify the above behaviors and identify any remaining edge cases.
 
