@@ -236,6 +236,13 @@ function OEHeader({
               id={menuItem.menu.elementId + "_dropdown"}
               onClick={(e) => {
                 setMenuItemExpanded(e, menuItem, path);
+                // Also navigate to first active child
+                const firstActiveChild = menuItem.childMenus.find(
+                  (c) => c.menu.isActive,
+                );
+                if (firstActiveChild?.menu.actionURL) {
+                  history.push(firstActiveChild.menu.actionURL);
+                }
               }}
             >
               <SideNavMenu
@@ -354,10 +361,12 @@ function OEHeader({
 
   const renderSingleNavButton = (menuItem, index, level, path) => {
     const marginValue = (level - 1) * 0.5 + "rem";
+    const isActive =
+      menuItem.menu.actionURL && location.pathname === menuItem.menu.actionURL;
     return (
       <button
         data-cy="single-sidenav-button"
-        className={"custom-sidenav-button"}
+        className={`custom-sidenav-button ${isActive ? "active" : ""}`}
         style={{ width: "100%", marginLeft: marginValue }}
         id={menuItem.menu.elementId + "_nav"}
         onClick={() => {
@@ -393,13 +402,15 @@ function OEHeader({
 
   const renderDualNavDropdownButton = (menuItem, index, level, path) => {
     const marginValue = (level - 1) * 0.5 + "rem";
+    const isActive =
+      menuItem.menu.actionURL && location.pathname === menuItem.menu.actionURL;
     return (
       <>
         <button
           id={menuItem.menu.elementId + "_nav"}
           className={
             menuItem.menu.actionURL
-              ? "custom-sidenav-button"
+              ? `custom-sidenav-button ${isActive ? "active" : ""}`
               : "custom-sidenav-button-unclickable"
           }
           style={{ marginLeft: marginValue }}
@@ -407,7 +418,7 @@ function OEHeader({
             if (menuItem.menu.openInNewWindow) {
               window.open(menuItem.menu.actionURL);
             } else {
-              window.location.href = menuItem.menu.actionURL;
+              history.push(menuItem.menu.actionURL);
             }
           }}
         >

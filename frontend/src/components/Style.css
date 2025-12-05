@@ -55,6 +55,11 @@ li.clickableUserDetails:hover {
 
 .inputSearch {
   width: 50%;
+  /* Override dark theme for header search input */
+  --cds-field-01: #ffffff;
+  --cds-text-primary: #161616;
+  --cds-text-secondary: #525252;
+  --cds-icon-primary: #161616;
 }
 
 .rules {
@@ -577,4 +582,11 @@ button {
 /* Hover styles for custom subnav buttons */
 .custom-sidenav-button:hover {
   background-color: var(--cds-layer-hover-01);
+}
+
+/* Active state for custom subnav buttons */
+.custom-sidenav-button.active {
+  border-left: 4px solid var(--cds-link-primary);
+  background-color: var(--cds-layer-selected-01);
+  padding-left: calc(0.5rem - 4px); /* Compensate for border */
 }
