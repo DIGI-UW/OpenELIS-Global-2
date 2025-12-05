@@ -1,0 +1,2 @@
+INDEX VERSION 1.134+/Users/pascal/dev/OpenELIS-Global-3/.metadata/.plugins/org.eclipse.jdt.core
+1865797976.index

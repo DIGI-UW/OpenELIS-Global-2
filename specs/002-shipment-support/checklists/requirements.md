@@ -1,6 +1,7 @@
 # Specification Quality Checklist: Referred Sample Container Management System
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
+**Purpose**: Validate specification completeness and quality before proceeding
+to planning  
 **Created**: 2025-01-15  
 **Feature**: [spec.md](../spec.md)
 
@@ -37,5 +38,3 @@
 - Edge cases are documented
 - Dependencies and assumptions are clearly stated
 - Out of scope items are explicitly listed to prevent scope creep
-
-

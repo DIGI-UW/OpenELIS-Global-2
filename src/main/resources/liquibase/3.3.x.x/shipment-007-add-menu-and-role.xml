@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add Shipment Management menu entry under Order/Sample menu -->
+    <changeSet author="pkomena" id="shipment-007-add-menu">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_sample_shipment'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for Sample Shipment Management</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample')"/>
+            <column name="presentation_order" value="99"/>
+            <column name="element_id" value="menu_sample_shipment"/>
+            <column name="action_url" value="/SampleShipment"/>
+            <column name="display_key" value="banner.menu.sample.shipment"/>
+            <column name="tool_tip_key" value="tooltip.banner.menu.sample.shipment"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Add Sample Shipment system module -->
+    <changeSet author="pkomena" id="shipment-007-add-module">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_module WHERE name = 'SampleShipmentManagement'</sqlCheck>
+        </preConditions>
+        <comment>Add a module for Sample Shipment Management</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq"/>
+            <column name="name" value="SampleShipmentManagement"/>
+            <column name="description" value="Manage sample shipments between facilities"/>
+            <column name="has_select_flag" value="Y"/>
+            <column name="has_add_flag" value="Y"/>
+            <column name="has_update_flag" value="Y"/>
+            <column name="has_delete_flag" value="Y"/>
+        </insert>
+    </changeSet>
+
+    <!-- Add system module URL mapping -->
+    <changeSet author="pkomena" id="shipment-007-add-module-url">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module_url" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'SampleShipmentManagement'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add URL mapping for Sample Shipment Management module</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/SampleShipment"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleShipmentManagement')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Assign module to Reception role (users who handle sample receipt/shipping) -->
+    <changeSet author="pkomena" id="shipment-007-assign-role-reception">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'SampleShipmentManagement'
+            </sqlCheck>
+        </preConditions>
+        <comment>Assign Sample Shipment Management to Reception role</comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="Y"/>
+            <column name="has_update" value="Y"/>
+            <column name="has_delete" value="Y"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reception')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleShipmentManagement')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Assign module to Results role (users who may need to view shipment status) -->
+    <changeSet author="pkomena" id="shipment-007-assign-role-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Results'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'SampleShipmentManagement'
+            </sqlCheck>
+        </preConditions>
+        <comment>Assign Sample Shipment Management to Results role (read-only access)</comment>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq"/>
+            <column name="has_select" value="Y"/>
+            <column name="has_add" value="N"/>
+            <column name="has_update" value="N"/>
+            <column name="has_delete" value="N"/>
+            <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Results')"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleShipmentManagement')"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

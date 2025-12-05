@@ -16,4 +16,13 @@
   <include relativeToChangelogFile="true" file="008-add-short-code-columns.xml"/>
   <include relativeToChangelogFile="true" file="009-create-print-history-table.xml"/>
 
+  <!-- Sample shipping management -->
+  <include relativeToChangelogFile="true" file="shipment-001-create-shipping-box-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-002-create-shipment-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-003-create-box-sample-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-004-create-unassigned-sample-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-005-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-006-create-foreign-keys.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-007-add-menu-and-role.xml"/>
+
 </databaseChangeLog>

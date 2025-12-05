@@ -773,7 +773,7 @@ bypasses these safeguards.
 **Example Changeset**:
 
 ```xml
-<changeSet id="storage-001-create-storage-room-table" author="dev-team">
+<changeSet id="storage-001-create-storage-room-table" author="pkomena">
   <createTable tableName="storage_room">
     <column name="id" type="VARCHAR(36)"><constraints primaryKey="true"/></column>
     <column name="fhir_uuid" type="UUID"><constraints nullable="false" unique="true"/></column>

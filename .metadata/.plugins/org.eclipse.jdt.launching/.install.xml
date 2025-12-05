@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<dirs>
+    <entry loc="/Users/pascal/.sdkman/candidates/java/17.0.13-zulu" stamp="1727795084000"/>
+    <entry loc="/opt/homebrew/Cellar/openjdk@17/17.0.13/libexec/openjdk.jdk/Contents/Home" stamp="1728568919000"/>
+    <entry loc="/opt/homebrew/Cellar/openjdk@21/21.0.5/libexec/openjdk.jdk/Contents/Home" stamp="1728675762000"/>
+    <entry loc="/Library/Java/JavaVirtualMachines/zulu-8.jdk/Contents/Home" stamp="1695189120772"/>
+    <entry loc="/Users/pascal/.sdkman/candidates/java/8.0.382-zulu" stamp="1689323480000"/>
+    <entry loc="/Library/Java/JavaVirtualMachines/adoptopenjdk-16.jdk/Contents/Home" stamp="1619049988000"/>
+    <entry loc="/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home" stamp="1670342196000"/>
+    <entry loc="/Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home" stamp="1618964067000"/>
+</dirs>

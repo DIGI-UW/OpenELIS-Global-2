@@ -1,0 +1,1444 @@
+!SESSION 2025-11-19 12:48:57.213 -----------------------------------------------
+eclipse.buildId=4.32.0.20240606-1231
+java.version=21.0.5
+java.vendor=Homebrew
+BootLoader constants: OS=macosx, ARCH=aarch64, WS=cocoa, NL=fr_CI
+Framework arguments:  -product org.eclipse.epp.package.jee.product -keyring /Users/pascal/.eclipse_keyring
+Command-line arguments:  -os macosx -ws cocoa -arch aarch64 -product org.eclipse.epp.package.jee.product -keyring /Users/pascal/.eclipse_keyring -data /Users/pascal/dev/OpenELIS-Global-3
+
+!ENTRY org.eclipse.eclemma.core 4 0 2025-11-19 12:48:58.403
+!MESSAGE FrameworkEvent ERROR
+!STACK 0
+org.osgi.framework.BundleException: Could not resolve module: org.eclipse.eclemma.core [319]
+  Unresolved requirement: Require-Bundle: org.jacoco.report; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.report; bundle-version="0.8.12.202403310830"
+       org.jacoco.report [958]
+         Unresolved requirement: Import-Package: org.jacoco.core.runtime; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.runtime; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.objectweb.asm"
+              org.jacoco.core [957]
+         Unresolved requirement: Import-Package: org.jacoco.core.analysis; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.analysis; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.jacoco.core.internal.analysis"
+         Unresolved requirement: Import-Package: org.jacoco.core.data; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.data; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.internal.data"
+         Unresolved requirement: Import-Package: org.jacoco.core; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"
+  Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+  Bundle was not resolved because of a uses constraint violation.
+  org.apache.felix.resolver.reason.ReasonException: Uses constraint violation. Unable to resolve resource org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"] because it is exposed to package 'org.objectweb.asm' from resources org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"] and org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"] via two dependency chains.
+
+Chain 1:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"]
+
+Chain 2:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm.commons)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package=org.objectweb.asm.commons; uses:=org.objectweb.asm
+  org.objectweb.asm.commons [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm.commons"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(version>=9.7.0))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"]
+	at org.eclipse.osgi.container.Module.start(Module.java:493)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel$2.run(ModuleContainer.java:2074)
+	at org.eclipse.osgi.internal.framework.EquinoxContainerAdaptor$1$1.execute(EquinoxContainerAdaptor.java:143)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2065)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2005)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.doContainerStartLevel(ModuleContainer.java:1968)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1884)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1)
+	at org.eclipse.osgi.framework.eventmgr.EventManager.dispatchEvent(EventManager.java:230)
+	at org.eclipse.osgi.framework.eventmgr.EventManager$EventThread.run(EventManager.java:341)
+
+!ENTRY org.eclipse.eclemma.ui 4 0 2025-11-19 12:48:58.407
+!MESSAGE FrameworkEvent ERROR
+!STACK 0
+org.osgi.framework.BundleException: Could not resolve module: org.eclipse.eclemma.ui [321]
+  Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+       org.jacoco.core [957]
+  Unresolved requirement: Require-Bundle: org.eclipse.eclemma.core
+    -> Bundle-SymbolicName: org.eclipse.eclemma.core; bundle-version="3.1.9.202405260028"; singleton:="true"
+       org.eclipse.eclemma.core [319]
+         Unresolved requirement: Require-Bundle: org.jacoco.report; bundle-version="[0.8.12,0.8.13)"
+           -> Bundle-SymbolicName: org.jacoco.report; bundle-version="0.8.12.202403310830"
+              org.jacoco.report [958]
+                Unresolved requirement: Import-Package: org.jacoco.core.runtime; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.runtime; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.objectweb.asm"
+                Unresolved requirement: Import-Package: org.jacoco.core.analysis; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.analysis; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.jacoco.core.internal.analysis"
+                Unresolved requirement: Import-Package: org.jacoco.core.data; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.data; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.internal.data"
+                Unresolved requirement: Import-Package: org.jacoco.core; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"
+         Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+           -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+  Bundle was not resolved because of a uses constraint violation.
+  org.apache.felix.resolver.reason.ReasonException: Uses constraint violation. Unable to resolve resource org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"] because it is exposed to package 'org.objectweb.asm' from resources org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"] and org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"] via two dependency chains.
+
+Chain 1:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"]
+
+Chain 2:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm.commons)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package=org.objectweb.asm.commons; uses:=org.objectweb.asm
+  org.objectweb.asm.commons [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm.commons"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(version>=9.7.0))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"]
+	at org.eclipse.osgi.container.Module.start(Module.java:493)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel$2.run(ModuleContainer.java:2074)
+	at org.eclipse.osgi.internal.framework.EquinoxContainerAdaptor$1$1.execute(EquinoxContainerAdaptor.java:143)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2065)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2005)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.doContainerStartLevel(ModuleContainer.java:1968)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1884)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1)
+	at org.eclipse.osgi.framework.eventmgr.EventManager.dispatchEvent(EventManager.java:230)
+	at org.eclipse.osgi.framework.eventmgr.EventManager$EventThread.run(EventManager.java:341)
+
+!ENTRY ch.qos.logback.classic 1 0 2025-11-19 12:48:58.475
+!MESSAGE Activated before the state location was initialized. Retry after the state location is initialized.
+
+!ENTRY ch.qos.logback.classic 1 0 2025-11-19 12:48:59.791
+!MESSAGE Logback config file: /Users/pascal/dev/OpenELIS-Global-3/.metadata/.plugins/org.eclipse.m2e.logback/logback.2.6.1.20240411-1122.xml
+
+!ENTRY org.eclipse.ui 2 0 2025-11-19 12:48:59.913
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-11-19 12:48:59.913
+!MESSAGE Commands should really have a category: plug-in='org.springframework.tooling.boot.ls', id='spring.initializr.addStarters', categoryId='org.eclipse.lsp4e.commandCategory'
+
+!ENTRY org.eclipse.ui 2 0 2025-11-19 12:49:00.133
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-11-19 12:49:00.133
+!MESSAGE Commands should really have a category: plug-in='org.springframework.tooling.boot.ls', id='spring.initializr.addStarters', categoryId='org.eclipse.lsp4e.commandCategory'
+
+!ENTRY org.eclipse.ui 2 0 2025-11-19 12:49:00.177
+!MESSAGE Warnings while parsing the images from the 'org.eclipse.ui.commandImages' extension point.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-11-19 12:49:00.177
+!MESSAGE Cannot bind to an undefined command: plug-in='com.genuitec.eclipse.theming.ui', id='com.genuitec.myeclipse.help.darktheme.commandid'
+
+!ENTRY com.genuitec.eclipse.theming.ui 1 0 2025-11-19 12:49:00.487
+!MESSAGE A DevStyle Theme is being activated on this workspace; preparing colors and configuration
+
+!ENTRY com.genuitec.eclipse.theming.ui 1 0 2025-11-19 12:49:00.492
+!MESSAGE DevStyle has archived current color configurations to alternate preferences - will be restored when switching out of the DevStyle Theme
+
+!ENTRY com.genuitec.copilot4eclipse.boot 1 0 2025-11-19 12:49:02.825
+!MESSAGE [C4E] booting
+
+!ENTRY com.genuitec.copilot4eclipse.copilotapi 1 0 2025-11-19 12:49:02.970
+!MESSAGE [C4E] Language server: EMBEDDED_NODE
+
+!ENTRY org.eclipse.lsp4e 1 0 2025-11-19 12:49:05.348
+!MESSAGE [Info]	[lsp] GitHub Copilot Language Server 1.348.0 initialized
+
+!ENTRY org.eclipse.lsp4e 1 0 2025-11-19 12:49:05.553
+!MESSAGE [Info]	[certificates] Removed 9 expired certificates
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-19 12:49:05.624
+!MESSAGE [C4E] Conversation persistence: /Users/pascal/dev/OpenELIS-Global-3/.metadata/.plugins/com.genuitec.copilot4eclipse/chatdata
+
+!ENTRY com.genuitec.copilot4eclipse.copilotapi 1 0 2025-11-19 12:49:05.639
+!MESSAGE [C4E] Copilot API proxy: disabled
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-19 12:49:05.722
+!MESSAGE [C4E] Internal server started: true uri: http://localhost:58289/chat
+
+!ENTRY com.genuitec.copilot4eclipse.boot 1 0 2025-11-19 12:49:07.241
+!MESSAGE [C4E] API started
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-19 12:49:10.635
+!MESSAGE [C4E] Workspace labels: 
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:26.468
+!MESSAGE Classpath changed for project: dataexport-api
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:26.902
+!MESSAGE Classpath changed for project: dataexport-api
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:26.902
+!MESSAGE Classpath changed for project: dataexport-core
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:27.304
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.core.util.CommentRecorderParser.endParse(CommentRecorderParser.java:131)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.endParse(SourceElementParser.java:827)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.parseCompilationUnit(SourceElementParser.java:1119)
+	at org.eclipse.jdt.internal.core.CompilationUnit.buildStructure(CompilationUnit.java:189)
+	at org.eclipse.jdt.internal.core.Openable.generateInfos(Openable.java:245)
+	at org.eclipse.jdt.internal.core.SourceRefElement.generateInfos(SourceRefElement.java:128)
+	at org.eclipse.jdt.internal.core.JavaElement.openWhenClosed(JavaElement.java:585)
+	at org.eclipse.jdt.internal.core.JavaElement.getElementInfo(JavaElement.java:308)
+	at org.eclipse.jdt.internal.core.JavaElement.getElementInfo(JavaElement.java:294)
+	at org.eclipse.jdt.internal.core.JavaElement.exists(JavaElement.java:211)
+	at org.eclipse.jdt.internal.core.CompilationUnit.findPrimaryType(CompilationUnit.java:592)
+	at org.eclipse.jem.internal.adapters.jdom.JavaReflectionSynchronizer.getFullNameFromElement(JavaReflectionSynchronizer.java:210)
+	at org.eclipse.jem.internal.adapters.jdom.JavaReflectionSynchronizer.doFlush(JavaReflectionSynchronizer.java:66)
+	at org.eclipse.jem.internal.adapters.jdom.JavaReflectionSynchronizer.flushTypes(JavaReflectionSynchronizer.java:294)
+	at org.eclipse.jem.internal.adapters.jdom.JavaReflectionSynchronizer.elementChanged(JavaReflectionSynchronizer.java:266)
+	at org.eclipse.jdt.internal.core.DeltaProcessor$3.run(DeltaProcessor.java:1751)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.jdt.internal.core.DeltaProcessor.notifyListeners(DeltaProcessor.java:1739)
+	at org.eclipse.jdt.internal.core.DeltaProcessor.firePostChangeDelta(DeltaProcessor.java:1572)
+	at org.eclipse.jdt.internal.core.DeltaProcessor.fire(DeltaProcessor.java:1548)
+	at org.eclipse.jdt.internal.core.DeltaProcessor.notifyAndFire(DeltaProcessor.java:2259)
+	at org.eclipse.jdt.internal.core.DeltaProcessor.resourceChanged(DeltaProcessor.java:2151)
+	at org.eclipse.jdt.internal.core.DeltaProcessingState.resourceChanged(DeltaProcessingState.java:501)
+	at org.eclipse.core.internal.events.NotificationManager$1.run(NotificationManager.java:321)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.core.internal.events.NotificationManager.notify(NotificationManager.java:311)
+	at org.eclipse.core.internal.events.NotificationManager.broadcastChanges(NotificationManager.java:174)
+	at org.eclipse.core.internal.resources.Workspace.broadcastPostChange(Workspace.java:458)
+	at org.eclipse.core.internal.resources.Workspace.endOperation(Workspace.java:1586)
+	at org.eclipse.core.internal.resources.CharsetDeltaJob.run(CharsetDeltaJob.java:216)
+	at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:27.312
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.core.util.CommentRecorderParser.endParse(CommentRecorderParser.java:131)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.endParse(SourceElementParser.java:827)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.parseCompilationUnit(SourceElementParser.java:1119)
+	at org.eclipse.jdt.internal.core.CompilationUnit.buildStructure(CompilationUnit.java:189)
+	at org.eclipse.jdt.internal.core.Openable.generateInfos(Openable.java:245)
+	at org.eclipse.jdt.internal.core.SourceRefElement.generateInfos(SourceRefElement.java:128)
+	at org.eclipse.jdt.internal.core.JavaElement.openWhenClosed(JavaElement.java:585)
+	at org.eclipse.jdt.internal.core.JavaElement.getElementInfo(JavaElement.java:308)
+	at org.eclipse.jdt.internal.core.JavaElement.getElementInfo(JavaElement.java:294)
+	at org.eclipse.jdt.internal.core.JavaElement.exists(JavaElement.java:211)
+	at org.eclipse.jdt.internal.core.CompilationUnit.findPrimaryType(CompilationUnit.java:592)
+	at org.eclipse.jem.internal.adapters.jdom.JavaReflectionSynchronizer.getFullNameFromElement(JavaReflectionSynchronizer.java:210)
+	at org.eclipse.jem.internal.adapters.jdom.JavaReflectionSynchronizer.doFlush(JavaReflectionSynchronizer.java:66)
+	at org.eclipse.jem.internal.adapters.jdom.JavaReflectionSynchronizer.flushTypes(JavaReflectionSynchronizer.java:294)
+	at org.eclipse.jem.internal.adapters.jdom.JavaReflectionSynchronizer.elementChanged(JavaReflectionSynchronizer.java:266)
+	at org.eclipse.jdt.internal.core.DeltaProcessor$3.run(DeltaProcessor.java:1751)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.jdt.internal.core.DeltaProcessor.notifyListeners(DeltaProcessor.java:1739)
+	at org.eclipse.jdt.internal.core.DeltaProcessor.firePostChangeDelta(DeltaProcessor.java:1572)
+	at org.eclipse.jdt.internal.core.DeltaProcessor.fire(DeltaProcessor.java:1548)
+	at org.eclipse.jdt.internal.core.DeltaProcessor.notifyAndFire(DeltaProcessor.java:2259)
+	at org.eclipse.jdt.internal.core.DeltaProcessor.resourceChanged(DeltaProcessor.java:2151)
+	at org.eclipse.jdt.internal.core.DeltaProcessingState.resourceChanged(DeltaProcessingState.java:501)
+	at org.eclipse.core.internal.events.NotificationManager$1.run(NotificationManager.java:321)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.core.internal.events.NotificationManager.notify(NotificationManager.java:311)
+	at org.eclipse.core.internal.events.NotificationManager.broadcastChanges(NotificationManager.java:174)
+	at org.eclipse.core.internal.resources.Workspace.broadcastPostChange(Workspace.java:458)
+	at org.eclipse.core.internal.resources.Workspace.endOperation(Workspace.java:1586)
+	at org.eclipse.core.internal.resources.CharsetDeltaJob.run(CharsetDeltaJob.java:216)
+	at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:27.851
+!MESSAGE Classpath changed for project: dataexport-api
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:27.852
+!MESSAGE Boot project ADDED: dataexport-api
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:27.852
+!MESSAGE Starting Boot LS...
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:27.852
+!MESSAGE Started Boot LS process
+
+!ENTRY org.springframework.tooling.ls.eclipse.commons 1 0 2025-11-19 12:49:27.859
+!MESSAGE Command list starting LS: org.springframework.tooling.boot.ls
+START:
+/opt/homebrew/Cellar/openjdk@21/21.0.5/libexec/openjdk.jdk/Contents/Home/bin/java
+-cp
+/Users/pascal/eclipse/jee-2024-06/Eclipse.app/Contents/Eclipse/../../../../../.p2/pool/plugins/org.springframework.tooling.boot.ls_1.56.0.202407191456/servers/spring-boot-language-server/BOOT-INF/classes:/Users/pascal/eclipse/jee-2024-06/Eclipse.app/Contents/Eclipse/../../../../../.p2/pool/plugins/org.springframework.tooling.boot.ls_1.56.0.202407191456/servers/spring-boot-language-server/BOOT-INF/lib/*
+-Dsts.lsp.client=eclipse
+-Xmx1024m
+-XX:TieredStopAtLevel=1
+-Xlog:jni+resolve=off
+-Dspring.config.location=file:/Users/pascal/eclipse/jee-2024-06/Eclipse.app/Contents/Eclipse/../../../../../.p2/pool/plugins/org.springframework.tooling.boot.ls_1.56.0.202407191456/servers/spring-boot-language-server/BOOT-INF/classes/application.properties
+-XX:ErrorFile=/Users/pascal/dev/OpenELIS-Global-3/.metadata/.plugins/org.springframework.tooling.boot.ls/fatal-error-spring-boot_1763556567858
+org.springframework.ide.vscode.boot.app.BootLanguageServerBootApp
+--languageserver.hover-timeout=225
+END
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:27.859
+!MESSAGE DelegatingStreamConnectionProvider - Starting Boot LS
+
+!ENTRY org.springframework.tooling.ls.eclipse.commons 1 0 2025-11-19 12:49:27.862
+!MESSAGE Started org.springframework.tooling.boot.ls LS process 96538
+
+!ENTRY org.eclipse.m2e.logback.appender 2 0 2025-11-19 12:49:28.120
+!MESSAGE Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+
+!ENTRY org.eclipse.m2e.logback.appender 2 0 2025-11-19 12:49:28.122
+!MESSAGE Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:28.289
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.dietParse(Parser.java:11306)
+	at org.eclipse.jdt.internal.compiler.Compiler.internalBeginToCompile(Compiler.java:850)
+	at org.eclipse.jdt.internal.compiler.Compiler.beginToCompile(Compiler.java:393)
+	at org.eclipse.jdt.internal.compiler.Compiler.compile(Compiler.java:443)
+	at org.eclipse.jdt.internal.compiler.Compiler.compile(Compiler.java:425)
+	at org.eclipse.jdt.internal.core.builder.AbstractImageBuilder.compile(AbstractImageBuilder.java:410)
+	at org.eclipse.jdt.internal.core.builder.BatchImageBuilder.compile(BatchImageBuilder.java:211)
+	at org.eclipse.jdt.internal.core.builder.AbstractImageBuilder.compile(AbstractImageBuilder.java:341)
+	at org.eclipse.jdt.internal.core.builder.BatchImageBuilder.build(BatchImageBuilder.java:79)
+	at org.eclipse.jdt.internal.core.builder.JavaBuilder.buildAll(JavaBuilder.java:286)
+	at org.eclipse.jdt.internal.core.builder.JavaBuilder.build(JavaBuilder.java:192)
+	at org.eclipse.core.internal.events.BuildManager$2.run(BuildManager.java:1077)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:296)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:352)
+	at org.eclipse.core.internal.events.BuildManager$1.run(BuildManager.java:441)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:444)
+	at org.eclipse.core.internal.events.BuildManager.basicBuildLoop(BuildManager.java:555)
+	at org.eclipse.core.internal.events.BuildManager.basicBuildLoop(BuildManager.java:503)
+	at org.eclipse.core.internal.events.BuildManager.build(BuildManager.java:585)
+	at org.eclipse.core.internal.events.AutoBuildJob.doBuild(AutoBuildJob.java:207)
+	at org.eclipse.core.internal.events.AutoBuildJob.run(AutoBuildJob.java:300)
+	at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:28.298
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.dietParse(Parser.java:11306)
+	at org.eclipse.jdt.internal.compiler.Compiler.internalBeginToCompile(Compiler.java:850)
+	at org.eclipse.jdt.internal.compiler.Compiler.beginToCompile(Compiler.java:393)
+	at org.eclipse.jdt.internal.compiler.Compiler.compile(Compiler.java:443)
+	at org.eclipse.jdt.internal.compiler.Compiler.compile(Compiler.java:425)
+	at org.eclipse.jdt.internal.core.builder.AbstractImageBuilder.compile(AbstractImageBuilder.java:410)
+	at org.eclipse.jdt.internal.core.builder.BatchImageBuilder.compile(BatchImageBuilder.java:211)
+	at org.eclipse.jdt.internal.core.builder.AbstractImageBuilder.compile(AbstractImageBuilder.java:341)
+	at org.eclipse.jdt.internal.core.builder.BatchImageBuilder.build(BatchImageBuilder.java:79)
+	at org.eclipse.jdt.internal.core.builder.JavaBuilder.buildAll(JavaBuilder.java:286)
+	at org.eclipse.jdt.internal.core.builder.JavaBuilder.build(JavaBuilder.java:192)
+	at org.eclipse.core.internal.events.BuildManager$2.run(BuildManager.java:1077)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:296)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:352)
+	at org.eclipse.core.internal.events.BuildManager$1.run(BuildManager.java:441)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:444)
+	at org.eclipse.core.internal.events.BuildManager.basicBuildLoop(BuildManager.java:555)
+	at org.eclipse.core.internal.events.BuildManager.basicBuildLoop(BuildManager.java:503)
+	at org.eclipse.core.internal.events.BuildManager.build(BuildManager.java:585)
+	at org.eclipse.core.internal.events.AutoBuildJob.doBuild(AutoBuildJob.java:207)
+	at org.eclipse.core.internal.events.AutoBuildJob.run(AutoBuildJob.java:300)
+	at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)
+
+!ENTRY org.eclipse.m2e.logback.appender 2 0 2025-11-19 12:49:28.532
+!MESSAGE Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+
+!ENTRY org.eclipse.m2e.logback.appender 2 0 2025-11-19 12:49:28.533
+!MESSAGE Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:29.159
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.core.util.CommentRecorderParser.endParse(CommentRecorderParser.java:131)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.endParse(SourceElementParser.java:827)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.parseCompilationUnit(SourceElementParser.java:1119)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.indexDocument(SourceIndexer.java:114)
+	at org.eclipse.jdt.internal.core.search.JavaSearchParticipant.indexDocument(JavaSearchParticipant.java:82)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager.indexDocument(IndexManager.java:674)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager$2.execute(IndexManager.java:1281)
+	at org.eclipse.jdt.internal.core.search.processing.JobManager.indexerLoop(JobManager.java:542)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:29.160
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.core.util.CommentRecorderParser.endParse(CommentRecorderParser.java:131)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.endParse(SourceElementParser.java:827)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.parseCompilationUnit(SourceElementParser.java:1119)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.indexDocument(SourceIndexer.java:114)
+	at org.eclipse.jdt.internal.core.search.JavaSearchParticipant.indexDocument(JavaSearchParticipant.java:82)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager.indexDocument(IndexManager.java:674)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager$2.execute(IndexManager.java:1281)
+	at org.eclipse.jdt.internal.core.search.processing.JobManager.indexerLoop(JobManager.java:542)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:29.250
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.dietParse(Parser.java:11306)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.accept(SourceIndexer.java:131)
+	at org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment.askForType(LookupEnvironment.java:373)
+	at org.eclipse.jdt.internal.compiler.lookup.PackageBinding.getTypeOrPackage(PackageBinding.java:276)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.findImport(CompilationUnitScope.java:626)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.findSingleImport(CompilationUnitScope.java:698)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.resolveSingleImport(CompilationUnitScope.java:955)
+	at org.eclipse.jdt.internal.compiler.lookup.Scope.getTypeOrPackage(Scope.java:3551)
+	at org.eclipse.jdt.internal.compiler.lookup.Scope.getType(Scope.java:3274)
+	at org.eclipse.jdt.internal.compiler.ast.SingleTypeReference.getTypeBinding(SingleTypeReference.java:60)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.internalResolveType(TypeReference.java:525)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveType(TypeReference.java:637)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveTypeArgument(TypeReference.java:655)
+	at org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference.internalResolveLeafType(ParameterizedSingleTypeReference.java:263)
+	at org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference.internalResolveType(ParameterizedSingleTypeReference.java:174)
+	at org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference.resolveType(ParameterizedSingleTypeReference.java:401)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveType(TypeReference.java:633)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveSuperType(TypeReference.java:605)
+	at org.eclipse.jdt.internal.compiler.lookup.ClassScope.findSupertype(ClassScope.java:1669)
+	at org.eclipse.jdt.internal.compiler.lookup.ClassScope.connectSuperInterfaces(ClassScope.java:1420)
+	at org.eclipse.jdt.internal.compiler.lookup.ClassScope.connectTypeHierarchy(ClassScope.java:1475)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.connectTypeHierarchy(CompilationUnitScope.java:409)
+	at org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment$CompleteTypeBindingsSteps.perform(LookupEnvironment.java:183)
+	at org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment.completeTypeBindings(LookupEnvironment.java:555)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.resolveDocument(SourceIndexer.java:171)
+	at org.eclipse.jdt.internal.core.search.JavaSearchParticipant.resolveDocument(JavaSearchParticipant.java:116)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager.indexResolvedDocument(IndexManager.java:680)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager$2.execute(IndexManager.java:1286)
+	at org.eclipse.jdt.internal.core.search.processing.JobManager.indexerLoop(JobManager.java:542)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:29.478
+!MESSAGE Classpath changed for project: dataexport-api
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:29.478
+!MESSAGE Classpath changed for project: dataexport-core
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:29.479
+!MESSAGE Boot project ADDED: dataexport-core
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:29.613
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.core.util.CommentRecorderParser.endParse(CommentRecorderParser.java:131)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.endParse(SourceElementParser.java:827)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.parseCompilationUnit(SourceElementParser.java:1119)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.indexDocument(SourceIndexer.java:114)
+	at org.eclipse.jdt.internal.core.search.JavaSearchParticipant.indexDocument(JavaSearchParticipant.java:82)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager.indexDocument(IndexManager.java:674)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager$2.execute(IndexManager.java:1281)
+	at org.eclipse.jdt.internal.core.search.processing.JobManager.indexerLoop(JobManager.java:542)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:29.663
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.dietParse(Parser.java:11306)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.accept(SourceIndexer.java:131)
+	at org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment.askForType(LookupEnvironment.java:373)
+	at org.eclipse.jdt.internal.compiler.lookup.PackageBinding.getTypeOrPackage(PackageBinding.java:276)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.findImport(CompilationUnitScope.java:626)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.findSingleImport(CompilationUnitScope.java:698)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.resolveSingleImport(CompilationUnitScope.java:955)
+	at org.eclipse.jdt.internal.compiler.lookup.Scope.getTypeOrPackage(Scope.java:3551)
+	at org.eclipse.jdt.internal.compiler.lookup.Scope.getType(Scope.java:3274)
+	at org.eclipse.jdt.internal.compiler.ast.SingleTypeReference.getTypeBinding(SingleTypeReference.java:60)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.internalResolveType(TypeReference.java:525)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveType(TypeReference.java:637)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveTypeArgument(TypeReference.java:655)
+	at org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference.internalResolveLeafType(ParameterizedSingleTypeReference.java:263)
+	at org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference.internalResolveType(ParameterizedSingleTypeReference.java:174)
+	at org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference.resolveType(ParameterizedSingleTypeReference.java:401)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveType(TypeReference.java:633)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveSuperType(TypeReference.java:605)
+	at org.eclipse.jdt.internal.compiler.lookup.ClassScope.findSupertype(ClassScope.java:1669)
+	at org.eclipse.jdt.internal.compiler.lookup.ClassScope.connectSuperInterfaces(ClassScope.java:1420)
+	at org.eclipse.jdt.internal.compiler.lookup.ClassScope.connectTypeHierarchy(ClassScope.java:1475)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.connectTypeHierarchy(CompilationUnitScope.java:409)
+	at org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment$CompleteTypeBindingsSteps.perform(LookupEnvironment.java:183)
+	at org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment.completeTypeBindings(LookupEnvironment.java:555)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.resolveDocument(SourceIndexer.java:171)
+	at org.eclipse.jdt.internal.core.search.JavaSearchParticipant.resolveDocument(JavaSearchParticipant.java:116)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager.indexResolvedDocument(IndexManager.java:680)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager$2.execute(IndexManager.java:1286)
+	at org.eclipse.jdt.internal.core.search.processing.JobManager.indexerLoop(JobManager.java:542)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:29.668
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.core.util.CommentRecorderParser.endParse(CommentRecorderParser.java:131)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.endParse(SourceElementParser.java:827)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.parseCompilationUnit(SourceElementParser.java:1119)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.indexDocument(SourceIndexer.java:114)
+	at org.eclipse.jdt.internal.core.search.JavaSearchParticipant.indexDocument(JavaSearchParticipant.java:82)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager.indexDocument(IndexManager.java:674)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager$2.execute(IndexManager.java:1281)
+	at org.eclipse.jdt.internal.core.search.processing.JobManager.indexerLoop(JobManager.java:542)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+!ENTRY org.eclipse.m2e.logback.appender 2 0 2025-11-19 12:49:29.685
+!MESSAGE Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+
+!ENTRY org.eclipse.m2e.logback.appender 2 0 2025-11-19 12:49:29.686
+!MESSAGE Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:29.706
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.dietParse(Parser.java:11306)
+	at org.eclipse.jdt.internal.compiler.Compiler.internalBeginToCompile(Compiler.java:850)
+	at org.eclipse.jdt.internal.compiler.Compiler.beginToCompile(Compiler.java:393)
+	at org.eclipse.jdt.internal.compiler.Compiler.compile(Compiler.java:443)
+	at org.eclipse.jdt.internal.compiler.Compiler.compile(Compiler.java:425)
+	at org.eclipse.jdt.internal.core.builder.AbstractImageBuilder.compile(AbstractImageBuilder.java:410)
+	at org.eclipse.jdt.internal.core.builder.BatchImageBuilder.compile(BatchImageBuilder.java:211)
+	at org.eclipse.jdt.internal.core.builder.AbstractImageBuilder.compile(AbstractImageBuilder.java:341)
+	at org.eclipse.jdt.internal.core.builder.BatchImageBuilder.build(BatchImageBuilder.java:79)
+	at org.eclipse.jdt.internal.core.builder.JavaBuilder.buildAll(JavaBuilder.java:286)
+	at org.eclipse.jdt.internal.core.builder.JavaBuilder.build(JavaBuilder.java:205)
+	at org.eclipse.core.internal.events.BuildManager$2.run(BuildManager.java:1077)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:296)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:352)
+	at org.eclipse.core.internal.events.BuildManager$1.run(BuildManager.java:441)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:444)
+	at org.eclipse.core.internal.events.BuildManager.basicBuildLoop(BuildManager.java:555)
+	at org.eclipse.core.internal.events.BuildManager.basicBuildLoop(BuildManager.java:503)
+	at org.eclipse.core.internal.events.BuildManager.build(BuildManager.java:585)
+	at org.eclipse.core.internal.events.AutoBuildJob.doBuild(AutoBuildJob.java:207)
+	at org.eclipse.core.internal.events.AutoBuildJob.run(AutoBuildJob.java:300)
+	at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:29.710
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.dietParse(Parser.java:11306)
+	at org.eclipse.jdt.internal.compiler.Compiler.internalBeginToCompile(Compiler.java:850)
+	at org.eclipse.jdt.internal.compiler.Compiler.beginToCompile(Compiler.java:393)
+	at org.eclipse.jdt.internal.compiler.Compiler.compile(Compiler.java:443)
+	at org.eclipse.jdt.internal.compiler.Compiler.compile(Compiler.java:425)
+	at org.eclipse.jdt.internal.core.builder.AbstractImageBuilder.compile(AbstractImageBuilder.java:410)
+	at org.eclipse.jdt.internal.core.builder.BatchImageBuilder.compile(BatchImageBuilder.java:211)
+	at org.eclipse.jdt.internal.core.builder.AbstractImageBuilder.compile(AbstractImageBuilder.java:341)
+	at org.eclipse.jdt.internal.core.builder.BatchImageBuilder.build(BatchImageBuilder.java:79)
+	at org.eclipse.jdt.internal.core.builder.JavaBuilder.buildAll(JavaBuilder.java:286)
+	at org.eclipse.jdt.internal.core.builder.JavaBuilder.build(JavaBuilder.java:205)
+	at org.eclipse.core.internal.events.BuildManager$2.run(BuildManager.java:1077)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:296)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:352)
+	at org.eclipse.core.internal.events.BuildManager$1.run(BuildManager.java:441)
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:47)
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:444)
+	at org.eclipse.core.internal.events.BuildManager.basicBuildLoop(BuildManager.java:555)
+	at org.eclipse.core.internal.events.BuildManager.basicBuildLoop(BuildManager.java:503)
+	at org.eclipse.core.internal.events.BuildManager.build(BuildManager.java:585)
+	at org.eclipse.core.internal.events.AutoBuildJob.doBuild(AutoBuildJob.java:207)
+	at org.eclipse.core.internal.events.AutoBuildJob.run(AutoBuildJob.java:300)
+	at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)
+
+!ENTRY org.eclipse.m2e.logback.appender 2 0 2025-11-19 12:49:29.741
+!MESSAGE Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+
+!ENTRY org.eclipse.m2e.logback.appender 2 0 2025-11-19 12:49:29.743
+!MESSAGE Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:30.606
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.core.util.CommentRecorderParser.endParse(CommentRecorderParser.java:131)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.endParse(SourceElementParser.java:827)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.parseCompilationUnit(SourceElementParser.java:1119)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.indexDocument(SourceIndexer.java:114)
+	at org.eclipse.jdt.internal.core.search.JavaSearchParticipant.indexDocument(JavaSearchParticipant.java:82)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager.indexDocument(IndexManager.java:674)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager$2.execute(IndexManager.java:1281)
+	at org.eclipse.jdt.internal.core.search.processing.JobManager.indexerLoop(JobManager.java:542)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:30.606
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.core.util.CommentRecorderParser.endParse(CommentRecorderParser.java:131)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.endParse(SourceElementParser.java:827)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.SourceElementParser.parseCompilationUnit(SourceElementParser.java:1119)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.indexDocument(SourceIndexer.java:114)
+	at org.eclipse.jdt.internal.core.search.JavaSearchParticipant.indexDocument(JavaSearchParticipant.java:82)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager.indexDocument(IndexManager.java:674)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager$2.execute(IndexManager.java:1281)
+	at org.eclipse.jdt.internal.core.search.processing.JobManager.indexerLoop(JobManager.java:542)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+!ENTRY org.eclipse.jdt.core 4 0 2025-11-19 12:49:30.612
+!MESSAGE Lombok annotation handler class lombok.eclipse.handlers.HandleEqualsAndHashCode failed
+!STACK 0
+java.lang.NoSuchMethodError: 'java.lang.StringBuffer org.eclipse.jdt.internal.compiler.ast.Expression.print(int, java.lang.StringBuffer)'
+	at lombok.eclipse.handlers.EclipseHandlerUtil.createAnnotation(EclipseHandlerUtil.java:1335)
+	at lombok.eclipse.HandlerLibrary$AnnotationHandlerContainer.handle(HandlerLibrary.java:105)
+	at lombok.eclipse.HandlerLibrary.handleAnnotation(HandlerLibrary.java:237)
+	at lombok.eclipse.TransformEclipseAST$AnnotationVisitor.visitAnnotationOnType(TransformEclipseAST.java:265)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:107)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:74)
+	at lombok.eclipse.EclipseAST.traverseChildren(EclipseAST.java:231)
+	at lombok.eclipse.EclipseNode.traverse(EclipseNode.java:69)
+	at lombok.eclipse.EclipseAST.traverse(EclipseAST.java:224)
+	at lombok.eclipse.TransformEclipseAST.go(TransformEclipseAST.java:222)
+	at lombok.eclipse.TransformEclipseAST.transform(TransformEclipseAST.java:183)
+	at lombok.eclipse.TransformEclipseAST.transform_swapped(TransformEclipseAST.java:107)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at lombok.launch.PatchFixesHider$Util.invokeMethod(PatchFixesHider.java:133)
+	at lombok.launch.PatchFixesHider$Transform.transform_swapped(PatchFixesHider.java:256)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.endParse(Parser.java:11535)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12735)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12965)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.parse(Parser.java:12922)
+	at org.eclipse.jdt.internal.compiler.parser.Parser.dietParse(Parser.java:11306)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.accept(SourceIndexer.java:131)
+	at org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment.askForType(LookupEnvironment.java:373)
+	at org.eclipse.jdt.internal.compiler.lookup.PackageBinding.getTypeOrPackage(PackageBinding.java:276)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.findImport(CompilationUnitScope.java:626)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.findSingleImport(CompilationUnitScope.java:698)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.resolveSingleImport(CompilationUnitScope.java:955)
+	at org.eclipse.jdt.internal.compiler.lookup.Scope.getTypeOrPackage(Scope.java:3551)
+	at org.eclipse.jdt.internal.compiler.lookup.Scope.getType(Scope.java:3274)
+	at org.eclipse.jdt.internal.compiler.ast.SingleTypeReference.getTypeBinding(SingleTypeReference.java:60)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.internalResolveType(TypeReference.java:525)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveType(TypeReference.java:637)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveTypeArgument(TypeReference.java:655)
+	at org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference.internalResolveLeafType(ParameterizedSingleTypeReference.java:263)
+	at org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference.internalResolveType(ParameterizedSingleTypeReference.java:174)
+	at org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference.resolveType(ParameterizedSingleTypeReference.java:401)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveType(TypeReference.java:633)
+	at org.eclipse.jdt.internal.compiler.ast.TypeReference.resolveSuperType(TypeReference.java:605)
+	at org.eclipse.jdt.internal.compiler.lookup.ClassScope.findSupertype(ClassScope.java:1669)
+	at org.eclipse.jdt.internal.compiler.lookup.ClassScope.connectSuperInterfaces(ClassScope.java:1420)
+	at org.eclipse.jdt.internal.compiler.lookup.ClassScope.connectTypeHierarchy(ClassScope.java:1475)
+	at org.eclipse.jdt.internal.compiler.lookup.CompilationUnitScope.connectTypeHierarchy(CompilationUnitScope.java:409)
+	at org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment$CompleteTypeBindingsSteps.perform(LookupEnvironment.java:183)
+	at org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment.completeTypeBindings(LookupEnvironment.java:555)
+	at org.eclipse.jdt.internal.core.search.indexing.SourceIndexer.resolveDocument(SourceIndexer.java:171)
+	at org.eclipse.jdt.internal.core.search.JavaSearchParticipant.resolveDocument(JavaSearchParticipant.java:116)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager.indexResolvedDocument(IndexManager.java:680)
+	at org.eclipse.jdt.internal.core.search.indexing.IndexManager$2.execute(IndexManager.java:1286)
+	at org.eclipse.jdt.internal.core.search.processing.JobManager.indexerLoop(JobManager.java:542)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:42.709
+!MESSAGE Classpath changed for project: dataexport-api
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:42.709
+!MESSAGE Boot project REMOVED: dataexport-api
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:42.709
+!MESSAGE Classpath changed for project: dataexport-core
+
+!ENTRY org.springframework.tooling.boot.ls 1 0 2025-11-19 12:49:42.709
+!MESSAGE Boot project REMOVED: dataexport-core
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-19 12:50:44.784
+!MESSAGE [C4E] Internal server stopped: Server@5876be74{STOPPED}[10.0.25,sto=0]
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-19 12:50:44.784
+!MESSAGE [C4E] Internal server stopped: true
+!SESSION 2025-11-19 12:50:48.483 -----------------------------------------------
+eclipse.buildId=4.32.0.20240606-1231
+java.version=21.0.5
+java.vendor=Homebrew
+BootLoader constants: OS=macosx, ARCH=aarch64, WS=cocoa, NL=fr_CI
+Framework arguments:  -product org.eclipse.epp.package.jee.product -keyring /Users/pascal/.eclipse_keyring
+Command-line arguments:  -os macosx -ws cocoa -arch aarch64 -product org.eclipse.epp.package.jee.product -keyring /Users/pascal/.eclipse_keyring
+
+!ENTRY org.eclipse.eclemma.core 4 0 2025-11-19 12:50:49.676
+!MESSAGE FrameworkEvent ERROR
+!STACK 0
+org.osgi.framework.BundleException: Could not resolve module: org.eclipse.eclemma.core [319]
+  Unresolved requirement: Require-Bundle: org.jacoco.report; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.report; bundle-version="0.8.12.202403310830"
+       org.jacoco.report [958]
+         Unresolved requirement: Import-Package: org.jacoco.core.runtime; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.runtime; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.objectweb.asm"
+              org.jacoco.core [957]
+         Unresolved requirement: Import-Package: org.jacoco.core; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"
+         Unresolved requirement: Import-Package: org.jacoco.core.data; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.data; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.internal.data"
+         Unresolved requirement: Import-Package: org.jacoco.core.analysis; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.analysis; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.jacoco.core.internal.analysis"
+  Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+  Bundle was not resolved because of a uses constraint violation.
+  org.apache.felix.resolver.reason.ReasonException: Uses constraint violation. Unable to resolve resource org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"] because it is exposed to package 'org.objectweb.asm' from resources org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"] and org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"] via two dependency chains.
+
+Chain 1:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"]
+
+Chain 2:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm.commons)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package=org.objectweb.asm.commons; uses:=org.objectweb.asm
+  org.objectweb.asm.commons [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm.commons"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(version>=9.7.0))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"]
+	at org.eclipse.osgi.container.Module.start(Module.java:493)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel$2.run(ModuleContainer.java:2074)
+	at org.eclipse.osgi.internal.framework.EquinoxContainerAdaptor$1$1.execute(EquinoxContainerAdaptor.java:143)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2065)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2005)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.doContainerStartLevel(ModuleContainer.java:1968)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1884)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1)
+	at org.eclipse.osgi.framework.eventmgr.EventManager.dispatchEvent(EventManager.java:230)
+	at org.eclipse.osgi.framework.eventmgr.EventManager$EventThread.run(EventManager.java:341)
+
+!ENTRY org.eclipse.eclemma.ui 4 0 2025-11-19 12:50:49.679
+!MESSAGE FrameworkEvent ERROR
+!STACK 0
+org.osgi.framework.BundleException: Could not resolve module: org.eclipse.eclemma.ui [321]
+  Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+       org.jacoco.core [957]
+  Unresolved requirement: Require-Bundle: org.eclipse.eclemma.core
+    -> Bundle-SymbolicName: org.eclipse.eclemma.core; bundle-version="3.1.9.202405260028"; singleton:="true"
+       org.eclipse.eclemma.core [319]
+         Unresolved requirement: Require-Bundle: org.jacoco.report; bundle-version="[0.8.12,0.8.13)"
+           -> Bundle-SymbolicName: org.jacoco.report; bundle-version="0.8.12.202403310830"
+              org.jacoco.report [958]
+                Unresolved requirement: Import-Package: org.jacoco.core.runtime; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.runtime; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.objectweb.asm"
+                Unresolved requirement: Import-Package: org.jacoco.core; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"
+                Unresolved requirement: Import-Package: org.jacoco.core.data; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.data; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.internal.data"
+                Unresolved requirement: Import-Package: org.jacoco.core.analysis; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.analysis; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.jacoco.core.internal.analysis"
+         Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+           -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+  Bundle was not resolved because of a uses constraint violation.
+  org.apache.felix.resolver.reason.ReasonException: Uses constraint violation. Unable to resolve resource org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"] because it is exposed to package 'org.objectweb.asm' from resources org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"] and org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"] via two dependency chains.
+
+Chain 1:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"]
+
+Chain 2:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm.commons)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package=org.objectweb.asm.commons; uses:=org.objectweb.asm
+  org.objectweb.asm.commons [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm.commons"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(version>=9.7.0))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"]
+	at org.eclipse.osgi.container.Module.start(Module.java:493)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel$2.run(ModuleContainer.java:2074)
+	at org.eclipse.osgi.internal.framework.EquinoxContainerAdaptor$1$1.execute(EquinoxContainerAdaptor.java:143)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2065)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2005)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.doContainerStartLevel(ModuleContainer.java:1968)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1884)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1)
+	at org.eclipse.osgi.framework.eventmgr.EventManager.dispatchEvent(EventManager.java:230)
+	at org.eclipse.osgi.framework.eventmgr.EventManager$EventThread.run(EventManager.java:341)
+
+!ENTRY ch.qos.logback.classic 1 0 2025-11-19 12:50:49.742
+!MESSAGE Activated before the state location was initialized. Retry after the state location is initialized.
+
+!ENTRY ch.qos.logback.classic 1 0 2025-11-19 12:50:54.015
+!MESSAGE Logback config file: /Users/pascal/dev/OpenELIS-Global-3/.metadata/.plugins/org.eclipse.m2e.logback/logback.2.6.1.20240411-1122.xml
+
+!ENTRY org.eclipse.ui 2 0 2025-11-19 12:50:54.165
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-11-19 12:50:54.165
+!MESSAGE Commands should really have a category: plug-in='org.springframework.tooling.boot.ls', id='spring.initializr.addStarters', categoryId='org.eclipse.lsp4e.commandCategory'
+
+!ENTRY org.eclipse.ui 2 0 2025-11-19 12:50:54.268
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-11-19 12:50:54.268
+!MESSAGE Commands should really have a category: plug-in='org.springframework.tooling.boot.ls', id='spring.initializr.addStarters', categoryId='org.eclipse.lsp4e.commandCategory'
+
+!ENTRY com.genuitec.copilot4eclipse.boot 1 0 2025-11-19 12:50:56.209
+!MESSAGE [C4E] booting
+
+!ENTRY com.genuitec.copilot4eclipse.copilotapi 1 0 2025-11-19 12:50:56.260
+!MESSAGE [C4E] Language server: EMBEDDED_NODE
+
+!ENTRY org.eclipse.lsp4e 1 0 2025-11-19 12:50:58.257
+!MESSAGE [Info]	[lsp] GitHub Copilot Language Server 1.348.0 initialized
+
+!ENTRY org.eclipse.lsp4e 1 0 2025-11-19 12:50:58.425
+!MESSAGE [Info]	[certificates] Removed 9 expired certificates
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-19 12:50:58.446
+!MESSAGE [C4E] Conversation persistence: /Users/pascal/dev/OpenELIS-Global-3/.metadata/.plugins/com.genuitec.copilot4eclipse/chatdata
+
+!ENTRY com.genuitec.copilot4eclipse.copilotapi 1 0 2025-11-19 12:50:58.455
+!MESSAGE [C4E] Copilot API proxy: disabled
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-19 12:50:58.527
+!MESSAGE [C4E] Internal server started: true uri: http://localhost:59464/chat
+
+!ENTRY com.genuitec.copilot4eclipse.boot 1 0 2025-11-19 12:51:00.454
+!MESSAGE [C4E] API started
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-19 12:51:03.453
+!MESSAGE [C4E] Workspace labels: 
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-19 12:51:54.962
+!MESSAGE [C4E] Internal server stopped: Server@48bc38bd{STOPPED}[10.0.25,sto=0]
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-19 12:51:54.962
+!MESSAGE [C4E] Internal server stopped: true
+!SESSION 2025-11-26 08:53:32.930 -----------------------------------------------
+eclipse.buildId=4.32.0.20240606-1231
+java.version=21.0.5
+java.vendor=Homebrew
+BootLoader constants: OS=macosx, ARCH=aarch64, WS=cocoa, NL=fr_CI
+Framework arguments:  -product org.eclipse.epp.package.jee.product -keyring /Users/pascal/.eclipse_keyring
+Command-line arguments:  -os macosx -ws cocoa -arch aarch64 -product org.eclipse.epp.package.jee.product -keyring /Users/pascal/.eclipse_keyring -data /Users/pascal/dev/OpenELIS-Global-3
+
+!ENTRY org.eclipse.eclemma.core 4 0 2025-11-26 08:53:34.144
+!MESSAGE FrameworkEvent ERROR
+!STACK 0
+org.osgi.framework.BundleException: Could not resolve module: org.eclipse.eclemma.core [319]
+  Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+       org.jacoco.core [957]
+  Unresolved requirement: Require-Bundle: org.jacoco.report; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.report; bundle-version="0.8.12.202403310830"
+       org.jacoco.report [958]
+         Unresolved requirement: Import-Package: org.jacoco.core.data; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.data; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.internal.data"
+         Unresolved requirement: Import-Package: org.jacoco.core.runtime; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.runtime; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.objectweb.asm"
+         Unresolved requirement: Import-Package: org.jacoco.core.analysis; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.analysis; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.jacoco.core.internal.analysis"
+         Unresolved requirement: Import-Package: org.jacoco.core; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"
+  Bundle was not resolved because of a uses constraint violation.
+  org.apache.felix.resolver.reason.ReasonException: Uses constraint violation. Unable to resolve resource org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"] because it is exposed to package 'org.objectweb.asm' from resources org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"] and org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"] via two dependency chains.
+
+Chain 1:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"]
+
+Chain 2:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm.commons)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package=org.objectweb.asm.commons; uses:=org.objectweb.asm
+  org.objectweb.asm.commons [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm.commons"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(version>=9.7.0))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"]
+	at org.eclipse.osgi.container.Module.start(Module.java:493)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel$2.run(ModuleContainer.java:2074)
+	at org.eclipse.osgi.internal.framework.EquinoxContainerAdaptor$1$1.execute(EquinoxContainerAdaptor.java:143)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2065)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2005)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.doContainerStartLevel(ModuleContainer.java:1968)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1884)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1)
+	at org.eclipse.osgi.framework.eventmgr.EventManager.dispatchEvent(EventManager.java:230)
+	at org.eclipse.osgi.framework.eventmgr.EventManager$EventThread.run(EventManager.java:341)
+
+!ENTRY org.eclipse.eclemma.ui 4 0 2025-11-26 08:53:34.146
+!MESSAGE FrameworkEvent ERROR
+!STACK 0
+org.osgi.framework.BundleException: Could not resolve module: org.eclipse.eclemma.ui [321]
+  Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+       org.jacoco.core [957]
+  Unresolved requirement: Require-Bundle: org.eclipse.eclemma.core
+    -> Bundle-SymbolicName: org.eclipse.eclemma.core; bundle-version="3.1.9.202405260028"; singleton:="true"
+       org.eclipse.eclemma.core [319]
+         Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+           -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+         Unresolved requirement: Require-Bundle: org.jacoco.report; bundle-version="[0.8.12,0.8.13)"
+           -> Bundle-SymbolicName: org.jacoco.report; bundle-version="0.8.12.202403310830"
+              org.jacoco.report [958]
+                Unresolved requirement: Import-Package: org.jacoco.core.data; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.data; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.internal.data"
+                Unresolved requirement: Import-Package: org.jacoco.core.runtime; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.runtime; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.objectweb.asm"
+                Unresolved requirement: Import-Package: org.jacoco.core.analysis; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.analysis; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.jacoco.core.internal.analysis"
+                Unresolved requirement: Import-Package: org.jacoco.core; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"
+  Bundle was not resolved because of a uses constraint violation.
+  org.apache.felix.resolver.reason.ReasonException: Uses constraint violation. Unable to resolve resource org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"] because it is exposed to package 'org.objectweb.asm' from resources org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"] and org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"] via two dependency chains.
+
+Chain 1:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"]
+
+Chain 2:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm.commons)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package=org.objectweb.asm.commons; uses:=org.objectweb.asm
+  org.objectweb.asm.commons [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm.commons"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(version>=9.7.0))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"]
+	at org.eclipse.osgi.container.Module.start(Module.java:493)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel$2.run(ModuleContainer.java:2074)
+	at org.eclipse.osgi.internal.framework.EquinoxContainerAdaptor$1$1.execute(EquinoxContainerAdaptor.java:143)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2065)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2005)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.doContainerStartLevel(ModuleContainer.java:1968)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1884)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1)
+	at org.eclipse.osgi.framework.eventmgr.EventManager.dispatchEvent(EventManager.java:230)
+	at org.eclipse.osgi.framework.eventmgr.EventManager$EventThread.run(EventManager.java:341)
+
+!ENTRY ch.qos.logback.classic 1 0 2025-11-26 08:53:34.212
+!MESSAGE Activated before the state location was initialized. Retry after the state location is initialized.
+
+!ENTRY ch.qos.logback.classic 1 0 2025-11-26 08:53:35.579
+!MESSAGE Logback config file: /Users/pascal/dev/OpenELIS-Global-3/.metadata/.plugins/org.eclipse.m2e.logback/logback.2.6.1.20240411-1122.xml
+
+!ENTRY org.eclipse.ui 2 0 2025-11-26 08:53:35.701
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-11-26 08:53:35.701
+!MESSAGE Commands should really have a category: plug-in='org.springframework.tooling.boot.ls', id='spring.initializr.addStarters', categoryId='org.eclipse.lsp4e.commandCategory'
+
+!ENTRY org.eclipse.ui 2 0 2025-11-26 08:53:35.926
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-11-26 08:53:35.926
+!MESSAGE Commands should really have a category: plug-in='org.springframework.tooling.boot.ls', id='spring.initializr.addStarters', categoryId='org.eclipse.lsp4e.commandCategory'
+
+!ENTRY com.genuitec.copilot4eclipse.boot 1 0 2025-11-26 08:53:38.325
+!MESSAGE [C4E] booting
+
+!ENTRY com.genuitec.copilot4eclipse.copilotapi 1 0 2025-11-26 08:53:38.390
+!MESSAGE [C4E] Language server: EMBEDDED_NODE
+
+!ENTRY org.eclipse.lsp4e 1 0 2025-11-26 08:53:40.681
+!MESSAGE [Info]	[lsp] GitHub Copilot Language Server 1.348.0 initialized
+
+!ENTRY org.eclipse.lsp4e 1 0 2025-11-26 08:53:40.850
+!MESSAGE [Info]	[certificates] Removed 9 expired certificates
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-26 08:53:40.892
+!MESSAGE [C4E] Conversation persistence: /Users/pascal/dev/OpenELIS-Global-3/.metadata/.plugins/com.genuitec.copilot4eclipse/chatdata
+
+!ENTRY com.genuitec.copilot4eclipse.copilotapi 1 0 2025-11-26 08:53:40.904
+!MESSAGE [C4E] Copilot API proxy: disabled
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-26 08:53:40.994
+!MESSAGE [C4E] Internal server started: true uri: http://localhost:58341/chat
+
+!ENTRY com.genuitec.copilot4eclipse.boot 1 0 2025-11-26 08:53:42.390
+!MESSAGE [C4E] API started
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-26 08:53:45.901
+!MESSAGE [C4E] Workspace labels: 
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-26 08:53:50.895
+!MESSAGE [C4E] Internal server stopped: Server@32c0234{STOPPED}[10.0.25,sto=0]
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-11-26 08:53:50.895
+!MESSAGE [C4E] Internal server stopped: true
+!SESSION 2025-12-04 10:38:32.875 -----------------------------------------------
+eclipse.buildId=4.32.0.20240606-1231
+java.version=21.0.5
+java.vendor=Homebrew
+BootLoader constants: OS=macosx, ARCH=aarch64, WS=cocoa, NL=fr_CI
+Framework arguments:  -product org.eclipse.epp.package.jee.product -keyring /Users/pascal/.eclipse_keyring
+Command-line arguments:  -os macosx -ws cocoa -arch aarch64 -product org.eclipse.epp.package.jee.product -keyring /Users/pascal/.eclipse_keyring -data /Users/pascal/dev/OpenELIS-Global-3
+
+!ENTRY org.eclipse.eclemma.core 4 0 2025-12-04 10:38:34.111
+!MESSAGE FrameworkEvent ERROR
+!STACK 0
+org.osgi.framework.BundleException: Could not resolve module: org.eclipse.eclemma.core [319]
+  Unresolved requirement: Require-Bundle: org.jacoco.report; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.report; bundle-version="0.8.12.202403310830"
+       org.jacoco.report [958]
+         Unresolved requirement: Import-Package: org.jacoco.core; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"
+              org.jacoco.core [957]
+         Unresolved requirement: Import-Package: org.jacoco.core.data; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.data; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.internal.data"
+         Unresolved requirement: Import-Package: org.jacoco.core.analysis; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.analysis; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.jacoco.core.internal.analysis"
+         Unresolved requirement: Import-Package: org.jacoco.core.runtime; version="[0.8.12,0.8.13)"
+           -> Export-Package: org.jacoco.core.runtime; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.objectweb.asm"
+  Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+  Bundle was not resolved because of a uses constraint violation.
+  org.apache.felix.resolver.reason.ReasonException: Uses constraint violation. Unable to resolve resource org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"] because it is exposed to package 'org.objectweb.asm' from resources org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"] and org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"] via two dependency chains.
+
+Chain 1:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"]
+
+Chain 2:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm.commons)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package=org.objectweb.asm.commons; uses:=org.objectweb.asm
+  org.objectweb.asm.commons [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm.commons"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(version>=9.7.0))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"]
+	at org.eclipse.osgi.container.Module.start(Module.java:493)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel$2.run(ModuleContainer.java:2074)
+	at org.eclipse.osgi.internal.framework.EquinoxContainerAdaptor$1$1.execute(EquinoxContainerAdaptor.java:143)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2065)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2005)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.doContainerStartLevel(ModuleContainer.java:1968)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1884)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1)
+	at org.eclipse.osgi.framework.eventmgr.EventManager.dispatchEvent(EventManager.java:230)
+	at org.eclipse.osgi.framework.eventmgr.EventManager$EventThread.run(EventManager.java:341)
+
+!ENTRY org.eclipse.eclemma.ui 4 0 2025-12-04 10:38:34.113
+!MESSAGE FrameworkEvent ERROR
+!STACK 0
+org.osgi.framework.BundleException: Could not resolve module: org.eclipse.eclemma.ui [321]
+  Unresolved requirement: Require-Bundle: org.eclipse.eclemma.core
+    -> Bundle-SymbolicName: org.eclipse.eclemma.core; bundle-version="3.1.9.202405260028"; singleton:="true"
+       org.eclipse.eclemma.core [319]
+         Unresolved requirement: Require-Bundle: org.jacoco.report; bundle-version="[0.8.12,0.8.13)"
+           -> Bundle-SymbolicName: org.jacoco.report; bundle-version="0.8.12.202403310830"
+              org.jacoco.report [958]
+                Unresolved requirement: Import-Package: org.jacoco.core; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"
+                     org.jacoco.core [957]
+                Unresolved requirement: Import-Package: org.jacoco.core.data; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.data; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.internal.data"
+                Unresolved requirement: Import-Package: org.jacoco.core.analysis; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.analysis; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.jacoco.core.internal.analysis"
+                Unresolved requirement: Import-Package: org.jacoco.core.runtime; version="[0.8.12,0.8.13)"
+                  -> Export-Package: org.jacoco.core.runtime; bundle-symbolic-name="org.jacoco.core"; bundle-version="0.8.12.202403310830"; version="0.8.12"; uses:="org.jacoco.core.data,org.objectweb.asm"
+         Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+           -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+  Unresolved requirement: Require-Bundle: org.jacoco.core; bundle-version="[0.8.12,0.8.13)"
+    -> Bundle-SymbolicName: org.jacoco.core; bundle-version="0.8.12.202403310830"
+  Bundle was not resolved because of a uses constraint violation.
+  org.apache.felix.resolver.reason.ReasonException: Uses constraint violation. Unable to resolve resource org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"] because it is exposed to package 'org.objectweb.asm' from resources org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"] and org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"] via two dependency chains.
+
+Chain 1:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm"]
+
+Chain 2:
+  org.jacoco.core [osgi.identity; type="osgi.bundle"; version:Version="0.8.12.202403310830"; osgi.identity="org.jacoco.core"]
+    import: (&(osgi.wiring.package=org.objectweb.asm.commons)(&(version>=9.7.0)(!(version>=9.8.0))))
+     |
+    export: osgi.wiring.package=org.objectweb.asm.commons; uses:=org.objectweb.asm
+  org.objectweb.asm.commons [osgi.identity; type="osgi.bundle"; version:Version="9.7.0"; osgi.identity="org.objectweb.asm.commons"]
+    import: (&(osgi.wiring.package=org.objectweb.asm)(version>=9.7.0))
+     |
+    export: osgi.wiring.package: org.objectweb.asm
+  org.objectweb.asm [osgi.identity; type="osgi.bundle"; version:Version="9.8.0"; osgi.identity="org.objectweb.asm"]
+	at org.eclipse.osgi.container.Module.start(Module.java:493)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel$2.run(ModuleContainer.java:2074)
+	at org.eclipse.osgi.internal.framework.EquinoxContainerAdaptor$1$1.execute(EquinoxContainerAdaptor.java:143)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2065)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.incStartLevel(ModuleContainer.java:2005)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.doContainerStartLevel(ModuleContainer.java:1968)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1884)
+	at org.eclipse.osgi.container.ModuleContainer$ContainerStartLevel.dispatchEvent(ModuleContainer.java:1)
+	at org.eclipse.osgi.framework.eventmgr.EventManager.dispatchEvent(EventManager.java:230)
+	at org.eclipse.osgi.framework.eventmgr.EventManager$EventThread.run(EventManager.java:341)
+
+!ENTRY ch.qos.logback.classic 1 0 2025-12-04 10:38:34.187
+!MESSAGE Activated before the state location was initialized. Retry after the state location is initialized.
+
+!ENTRY ch.qos.logback.classic 1 0 2025-12-04 10:38:36.528
+!MESSAGE Logback config file: /Users/pascal/dev/OpenELIS-Global-3/.metadata/.plugins/org.eclipse.m2e.logback/logback.2.6.1.20240411-1122.xml
+
+!ENTRY org.eclipse.ui 2 0 2025-12-04 10:38:36.909
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-12-04 10:38:36.909
+!MESSAGE Commands should really have a category: plug-in='org.springframework.tooling.boot.ls', id='spring.initializr.addStarters', categoryId='org.eclipse.lsp4e.commandCategory'
+
+!ENTRY org.eclipse.ui 2 0 2025-12-04 10:38:37.375
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-12-04 10:38:37.375
+!MESSAGE Commands should really have a category: plug-in='org.springframework.tooling.boot.ls', id='spring.initializr.addStarters', categoryId='org.eclipse.lsp4e.commandCategory'
+
+!ENTRY com.genuitec.copilot4eclipse.boot 1 0 2025-12-04 10:38:40.242
+!MESSAGE [C4E] booting
+
+!ENTRY com.genuitec.copilot4eclipse.copilotapi 1 0 2025-12-04 10:38:40.343
+!MESSAGE [C4E] Language server: EMBEDDED_NODE
+
+!ENTRY org.eclipse.lsp4e 1 0 2025-12-04 10:38:43.209
+!MESSAGE [Info]	[lsp] GitHub Copilot Language Server 1.348.0 initialized
+
+!ENTRY org.eclipse.lsp4e 1 0 2025-12-04 10:38:43.385
+!MESSAGE [Info]	[certificates] Removed 9 expired certificates
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-12-04 10:38:43.437
+!MESSAGE [C4E] Conversation persistence: /Users/pascal/dev/OpenELIS-Global-3/.metadata/.plugins/com.genuitec.copilot4eclipse/chatdata
+
+!ENTRY com.genuitec.copilot4eclipse.copilotapi 1 0 2025-12-04 10:38:43.452
+!MESSAGE [C4E] Copilot API proxy: disabled
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-12-04 10:38:43.541
+!MESSAGE [C4E] Internal server started: true uri: http://localhost:65257/chat
+
+!ENTRY com.genuitec.copilot4eclipse.boot 1 0 2025-12-04 10:38:44.915
+!MESSAGE [C4E] API started
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-12-04 10:38:45.076
+!MESSAGE [C4E] Internal server stopped: Server@b07650c{STOPPED}[10.0.25,sto=0]
+
+!ENTRY com.genuitec.copilot4eclipse.chat 1 0 2025-12-04 10:38:45.077
+!MESSAGE [C4E] Internal server stopped: true
+
+!ENTRY org.eclipse.oomph.ui 4 0 2025-12-04 10:38:45.456
+!MESSAGE Invalid thread access
+!STACK 0
+org.eclipse.swt.SWTException: Invalid thread access
+	at org.eclipse.swt.SWT.error(SWT.java:4922)
+	at org.eclipse.swt.SWT.error(SWT.java:4837)
+	at org.eclipse.swt.SWT.error(SWT.java:4808)
+	at org.eclipse.swt.widgets.Display.error(Display.java:1211)
+	at org.eclipse.swt.widgets.Display.createDisplay(Display.java:962)
+	at org.eclipse.swt.widgets.Display.create(Display.java:946)
+	at org.eclipse.swt.graphics.Device.<init>(Device.java:132)
+	at org.eclipse.swt.widgets.Display.<init>(Display.java:800)
+	at org.eclipse.swt.widgets.Display.<init>(Display.java:791)
+	at org.eclipse.swt.widgets.Display.getDefault(Display.java:1545)
+	at org.eclipse.oomph.setup.ui.SetupUIPlugin.performStartup(SetupUIPlugin.java:220)
+	at org.eclipse.oomph.setup.ui.EarlyStartup.earlyStartup(EarlyStartup.java:23)
+	at org.eclipse.oomph.internal.ui.EarlyStart.run(EarlyStart.java:119)
+	at org.eclipse.oomph.internal.ui.EarlyStart$1.run(EarlyStart.java:98)
+	at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)
