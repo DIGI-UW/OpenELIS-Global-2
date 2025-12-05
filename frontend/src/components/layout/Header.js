@@ -10,7 +10,6 @@ import {
   LocationFilled,
   Menu,
   Pin,
-  PinFilled,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
 import HelpMenu from "./HelpMenu";
@@ -280,7 +279,10 @@ function OEHeader({
               href={menuItem.menu.actionURL}
               target={menuItem.menu.openInNewWindow ? "_blank" : ""}
               className="top-level-menu-item"
-              isActive={location.pathname === menuItem.menu.actionURL}
+              isActive={
+                !!menuItem.menu.actionURL &&
+                location.pathname === menuItem.menu.actionURL
+              }
             >
               {renderSideNavMenuItemLabel(menuItem, level)}
             </SideNavMenuItem>
@@ -300,7 +302,7 @@ function OEHeader({
               style={{ width: "100%" }}
               rel="noreferrer"
               isActive={
-                menuItem.menu.actionURL &&
+                !!menuItem.menu.actionURL &&
                 location.pathname === menuItem.menu.actionURL
               }
             >
@@ -506,7 +508,7 @@ function OEHeader({
                       ? "Open menu"
                       : mode === SIDENAV_MODES.SHOW
                         ? "Pin menu"
-                        : "Unpin menu"
+                        : "Close menu"
                   }
                   onClick={toggleSideNav}
                   title={
@@ -514,13 +516,13 @@ function OEHeader({
                       ? "Open menu"
                       : mode === SIDENAV_MODES.SHOW
                         ? "Pin menu"
-                        : "Unpin menu"
+                        : "Close menu"
                   }
                   type="button"
                 >
                   {mode === SIDENAV_MODES.CLOSE && <Menu size={20} />}
                   {mode === SIDENAV_MODES.SHOW && <Pin size={20} />}
-                  {mode === SIDENAV_MODES.LOCK && <PinFilled size={20} />}
+                  {mode === SIDENAV_MODES.LOCK && <Close size={20} />}
                 </button>
               )}
               <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
