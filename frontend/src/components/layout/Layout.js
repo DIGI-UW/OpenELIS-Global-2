@@ -30,10 +30,23 @@ export default function Layout(props) {
     ? { storageKeyPrefix: "storage", defaultMode: "lock" }
     : { storageKeyPrefix: "main", defaultMode: "close" };
 
+  console.log(`[Layout] Route changed:`, {
+    pathname: location.pathname,
+    isStorageContext,
+    layoutConfig,
+  });
+
   // Lock mode support - push content when sidenav is locked
   const { mode, isExpanded, toggle, setMode, SIDENAV_MODES } =
     useSideNavPreference(layoutConfig);
   const isLocked = mode === SIDENAV_MODES.LOCK;
+
+  console.log(`[Layout] Sidenav state:`, {
+    mode,
+    isExpanded,
+    isLocked,
+    contentClass: isLocked ? "content-nav-locked" : "none",
+  });
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);
