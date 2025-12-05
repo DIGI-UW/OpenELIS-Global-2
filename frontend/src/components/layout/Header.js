@@ -41,6 +41,7 @@ import {
   SideNavItems,
   SideNavMenu,
   SideNavMenuItem,
+  Theme,
 } from "@carbon/react";
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
@@ -252,7 +253,7 @@ function OEHeader({
                 title={intl.formatMessage({
                   id: menuItem.menu.displayKey,
                 })}
-                key={"menu_" + index + "_" + level}
+                key={`${menuItem.menu.elementId}-${menuItem.expanded}`}
                 defaultExpanded={menuItem.expanded}
                 // onClick={(e) => { // not supported yet, but if it becomes so we can simplify the functionality here by having this here and not have a span around it
                 //   setMenuItemExpanded(e, menuItem, path);
@@ -295,6 +296,9 @@ function OEHeader({
           </span>
         );
       } else {
+        // Level > 0 items: use custom buttons for navigation
+        // DO NOT set href on SideNavMenuItem - custom buttons handle navigation
+        // This prevents double navigation and flickering
         return (
           <span
             data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
@@ -303,10 +307,7 @@ function OEHeader({
           >
             <SideNavMenuItem
               className="reduced-padding-nav-menu-item"
-              href={menuItem.menu.actionURL}
-              target={menuItem.menu.openInNewWindow ? "_blank" : ""}
               style={{ width: "100%" }}
-              rel="noreferrer"
               isActive={
                 !!menuItem.menu.actionURL &&
                 location.pathname === menuItem.menu.actionURL
@@ -656,23 +657,26 @@ function OEHeader({
                     </>
                   )}
                   <li className="userDetails">
-                    <Select
-                      id="selector"
-                      name="selectLocale"
-                      className="selectLocale"
-                      invalidText="A valid locale value is required"
-                      labelText={
-                        <FormattedMessage id="header.label.selectlocale" />
-                      }
-                      onChange={(event) => {
-                        onChangeLanguage(event.target.value);
-                      }}
-                      value={intl.locale}
-                    >
-                      {Object.entries(languages).map(([code, { label }]) => (
-                        <SelectItem key={code} text={label} value={code} />
-                      ))}
-                    </Select>
+                    {/* Theme wrapper ONLY around Select to make dropdown light */}
+                    <Theme theme="white">
+                      <Select
+                        id="selector"
+                        name="selectLocale"
+                        className="selectLocale"
+                        invalidText="A valid locale value is required"
+                        labelText={
+                          <FormattedMessage id="header.label.selectlocale" />
+                        }
+                        onChange={(event) => {
+                          onChangeLanguage(event.target.value);
+                        }}
+                        value={intl.locale}
+                      >
+                        {Object.entries(languages).map(([code, { label }]) => (
+                          <SelectItem key={code} text={label} value={code} />
+                        ))}
+                      </Select>
+                    </Theme>
                   </li>
                   <li className="userDetails">
                     <label className="cds--label">
