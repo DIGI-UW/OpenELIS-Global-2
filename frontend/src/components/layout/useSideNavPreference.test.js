@@ -109,6 +109,7 @@ describe("useSideNavPreference", () => {
 
     /**
      * Test: Uses custom storageKeyPrefix for localStorage key
+     * Note: SHOW mode in localStorage is invalid and gets cleared
      * @see data-model.md localStorage Key Format: {storageKeyPrefix}SideNavExpanded
      */
     test("testInit_CustomStorageKeyPrefix_UsesCorrectKey", () => {
@@ -124,7 +125,12 @@ describe("useSideNavPreference", () => {
       expect(localStorageMock.getItem).toHaveBeenCalledWith(
         "analyzerSideNavMode",
       );
-      expect(result.current.mode).toBe("show");
+      // SHOW mode is invalid in localStorage, should fall back to defaultMode
+      expect(result.current.mode).toBe("close");
+      // Should clear invalid SHOW mode from localStorage
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
+        "analyzerSideNavMode",
+      );
     });
   });
 
@@ -159,7 +165,8 @@ describe("useSideNavPreference", () => {
     });
 
     /**
-     * Test: toggle() persists new state to localStorage
+     * Test: toggle() persists new state to localStorage (except SHOW mode)
+     * SHOW mode is temporary and NOT persisted
      * @see spec.md FR-002: System MUST persist the user's sidenav mode preference
      */
     test("testToggle_PersistsToLocalStorage", () => {
@@ -170,17 +177,30 @@ describe("useSideNavPreference", () => {
       );
 
       act(() => {
-        result.current.toggle(); // close -> show
+        result.current.toggle(); // close -> show (NOT persisted)
       });
 
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+      // SHOW mode should NOT be persisted
+      expect(localStorageMock.setItem).not.toHaveBeenCalledWith(
         "defaultSideNavMode",
         "show",
+      );
+      expect(result.current.mode).toBe("show");
+
+      act(() => {
+        result.current.toggle(); // show -> lock (PERSISTED)
+      });
+
+      // LOCK mode SHOULD be persisted
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        "defaultSideNavMode",
+        "lock",
       );
     });
 
     /**
      * Test: toggle() uses correct key with custom storageKeyPrefix
+     * Note: SHOW mode is NOT persisted (it's temporary)
      */
     test("testToggle_CustomPrefix_PersistsWithCorrectKey", () => {
       localStorageMock.getItem.mockReturnValue(null);
@@ -193,12 +213,26 @@ describe("useSideNavPreference", () => {
       );
 
       act(() => {
-        result.current.toggle(); // close -> show
+        result.current.toggle(); // close -> show (NOT persisted)
       });
 
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+      // SHOW mode should NOT be persisted
+      expect(localStorageMock.setItem).not.toHaveBeenCalledWith(
         "analyzerSideNavMode",
         "show",
+      );
+
+      // But state should be show
+      expect(result.current.mode).toBe("show");
+
+      act(() => {
+        result.current.toggle(); // show -> lock (PERSISTED)
+      });
+
+      // LOCK mode SHOULD be persisted
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        "analyzerSideNavMode",
+        "lock",
       );
     });
   });
