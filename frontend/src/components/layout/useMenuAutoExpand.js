@@ -57,9 +57,12 @@ export function useMenuAutoExpand(initialMenus) {
 
         // Check if this item matches current route
         // Match exact route or prefix (e.g., /analyzers/qc matches /analyzers/qc/alerts)
+        // Guard against empty URLs (parent folders with no actionURL)
         if (
-          item.menu.actionURL === location.pathname ||
-          location.pathname.startsWith(item.menu.actionURL + "/")
+          item.menu.actionURL &&
+          item.menu.actionURL.length > 1 && // Must be more than just "/"
+          (item.menu.actionURL === location.pathname ||
+            location.pathname.startsWith(item.menu.actionURL + "/"))
         ) {
           isActiveBranch = true;
         }

@@ -549,6 +549,16 @@ button {
   overflow-x: visible !important;
 }
 
+/* Hide scrollbar on sidenav - let page scroll instead */
+.cds--side-nav {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.cds--side-nav::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
+}
+
 /* Simplify active styles - no dark-blue subnav background */
 .cds--side-nav__menu-item .cds--side-nav__link {
   background-color: transparent !important;
@@ -562,4 +572,9 @@ button {
 
 .cds--side-nav__menu-item .cds--side-nav__link:hover {
   background-color: var(--cds-layer-hover-01) !important;
+}
+
+/* Hover styles for custom subnav buttons */
+.custom-sidenav-button:hover {
+  background-color: var(--cds-layer-hover-01);
 }
