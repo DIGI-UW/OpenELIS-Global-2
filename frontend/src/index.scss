@@ -1,13 +1,30 @@
+// =============================================================================
+// OpenELIS Global Theme Configuration
+// =============================================================================
+// 
+// ARCHITECTURE:
+// 1. Global theme: Custom blue for header/nav (defined here in SCSS)
+// 2. Content area: Uses Carbon's <Theme theme="white"> wrapper in Layout.js
+//
+// WHY THIS APPROACH:
+// - Carbon's Theme component only accepts: 'white', 'g10', 'g90', 'g100'
+// - Custom branding colors MUST be defined in SCSS at compile time
+// - Content area uses Theme component to switch to white theme
+// - This is Carbon's documented approach for mixed-zone theming
+//
+// =============================================================================
+
 @use "@carbon/react/scss/themes";
 @use "@carbon/react/scss/theme" with (
   $fallback: themes.$g100,
   $theme: (
+    // OpenELIS brand colors for header/nav
     background: #295785,
+    background-hover: #072655,
     text-primary: #ffffff,
     text-secondary: #ffffff,
     icon-primary: #ffffff,
     icon-secondary: #ffffff,
-    background-hover: #072655,
     layer-01: #295785,
     layer-hover-01: #072655,
   )
@@ -15,19 +32,11 @@
 
 @use "@carbon/react";
 
-// Content area overrides - force light theme
+// Content area - just layout, Theme component handles colors
 .cds--content {
   margin-top: 3rem;
   padding: 0;
   background-color: #f5f6f8;
-  --cds-background: #ffffff;
-  --cds-layer-01: #f4f4f4;
-  --cds-layer-02: #ffffff;
-  --cds-field-01: #ffffff;
-  --cds-text-primary: #161616;
-  --cds-text-secondary: #525252;
-  --cds-icon-primary: #161616;
-  --cds-link-primary: #0f62fe;
 }
 
 .loginPageContent,
