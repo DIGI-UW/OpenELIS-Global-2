@@ -237,7 +237,7 @@ auto-expand works
 - [ ] T029 [M2] Manual verification: Menu hierarchy renders, auto-expand works
       on navigation (requires running app - deferred to PR review)
 - [ ] T030 [M2] Format code: `cd frontend && npm run format`
-- [ ] T031 [M2] Create PR for M2: `feat/OGC-009-sidenav/m2-nav` → `develop`
+- [x] T031 [M2] Create PR for M2: `feat/OGC-009-sidenav/m2-nav` → `feat/OGC-009-sidenav/m1-core` ✅ PR #2382 created
 
 **Checkpoint**: Milestone 2 PR ready for review. Hierarchical menus and
 auto-expand working.
