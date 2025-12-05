@@ -1,16 +1,33 @@
 @use "@carbon/react/scss/themes";
 @use "@carbon/react/scss/theme" with (
-  $fallback: themes.$white,
-  $theme: themes.$white
+  $fallback: themes.$g100,
+  $theme: (
+    background: #295785,
+    text-primary: #ffffff,
+    text-secondary: #ffffff,
+    icon-primary: #ffffff,
+    icon-secondary: #ffffff,
+    background-hover: #072655,
+    layer-01: #295785,
+    layer-hover-01: #072655,
+  )
 );
 
 @use "@carbon/react";
 
-// Content area - uses default white theme
+// Content area overrides - force light theme
 .cds--content {
   margin-top: 3rem;
   padding: 0;
-  background-color: #f5f6f8; // Slightly off-white for visual separation
+  background-color: #f5f6f8;
+  --cds-background: #ffffff;
+  --cds-layer-01: #f4f4f4;
+  --cds-layer-02: #ffffff;
+  --cds-field-01: #ffffff;
+  --cds-text-primary: #161616;
+  --cds-text-secondary: #525252;
+  --cds-icon-primary: #161616;
+  --cds-link-primary: #0f62fe;
 }
 
 .loginPageContent,
