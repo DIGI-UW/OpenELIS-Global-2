@@ -333,21 +333,18 @@ export default function App() {
                   exact
                   component={() => <CytologyDashboard />}
                   role=""
-                    
                 />
-                  <SecureRoute
+                <SecureRoute
                   path="/genericProgram"
                   exact
-                  component={() => <ProgramDashboard/>}
+                  component={() => <ProgramDashboard />}
                   role=""
-              
                 />
-                                  <SecureRoute
+                <SecureRoute
                   path="/programView/:programSampleId"
                   exact
-                  component={() => <ProgramCaseView/>}
+                  component={() => <ProgramCaseView />}
                   role=""
-              
                 />
                 <SecureRoute
                   path="/FreezerMonitoring"

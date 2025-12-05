@@ -17,6 +17,10 @@ public class ProgramSampleDisplayItem {
     private String lastName;
     private String age;
     private String gender;
+    private String patientPK;
+    private String referringFacility;
+    private String department;
+    private String requester;
 
     private Questionnaire programQuestionnaire;
     private QuestionnaireResponse programQuestionnaireResponse;
@@ -116,6 +120,38 @@ public class ProgramSampleDisplayItem {
 
     public void setQuestionnaireStatus(String questionnaireStatus) {
         this.questionnaireStatus = questionnaireStatus;
+    }
+
+    public String getPatientPK() {
+        return patientPK;
+    }
+
+    public void setPatientPK(String patientPK) {
+        this.patientPK = patientPK;
+    }
+
+    public String getReferringFacility() {
+        return referringFacility;
+    }
+
+    public void setReferringFacility(String referringFacility) {
+        this.referringFacility = referringFacility;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getRequester() {
+        return requester;
+    }
+
+    public void setRequester(String requester) {
+        this.requester = requester;
     }
 
 }

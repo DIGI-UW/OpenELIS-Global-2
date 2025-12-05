@@ -1853,5 +1853,6 @@
   "sidenav.label.storage.coldstorage": "Cold Storage Monitoring",
   "sidenav.label.storage.coldstorage.tooltip": "Monitor temperature and humidity of freezers and refrigerators",
   "sidenav.label.storage.management": "Storage Management",
-  "sidenav.label.storage.management.tooltip": "Manage storage locations and devices"
+  "sidenav.label.storage.management.tooltip": "Manage storage locations and devices",
+  "banner.menu.results.questionnaires": "Questionnaires"
 }

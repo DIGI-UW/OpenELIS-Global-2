@@ -8,4 +8,5 @@ public interface GenericProgramDisplayService {
     ProgramSampleDisplayItem getProgramSampleById(Integer programSampleId);
 
     DashboardSummary getAllProgramSamples();
+
 }

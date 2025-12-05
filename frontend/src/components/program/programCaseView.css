@@ -1,248 +1,68 @@
-/* ProgramCaseView.css */
-.program-case-view {
-  padding: 1rem;
+.patient-header-2 {
+  border: 1px solid #ddd;
+  padding: 3%;
+  justify-content: center;
+  text-align: left;
+  margin-top: 20px;
+  background-color: #ffffff;
+  border-radius: 5px;
+  margin-top: 1%;
 }
-
-/* Header Section */
-.program-case-header {
-  margin-bottom: 2rem;
+.table-item {
+  border: 1px solid purple;
+  border-radius: 5px;
+  padding: 1%;
 }
-
-.program-case-header h2 {
-  margin: 0;
-  color: #161616;
-  font-size: 1.75rem;
-  font-weight: 600;
+.table-container {
+  background-color: #ffffff;
+  border-radius: 5px;
+  padding: 2%;
+  margin-top: 20px;
 }
-
-/* Patient Header Section */
-.patient-header-section {
-  margin-bottom: 2rem;
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1rem;
+.dashboard-tile {
+  box-shadow: 0.1rem 0.1rem 0.1rem 0.1rem #e2dddd;
+  text-align: right;
 }
-
-/* Program Information Section */
-.program-info-section {
-  margin-bottom: 2rem;
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.section-title {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  color: #161616;
-  font-size: 1.25rem;
-  font-weight: 600;
-  border-bottom: 2px solid #0f62fe;
-  padding-bottom: 0.5rem;
-}
-
-.info-item {
-  margin-bottom: 1.5rem;
-}
-
-.info-item:last-child {
-  margin-bottom: 0;
-}
-
-.info-item strong {
-  display: block;
-  font-size: 0.875rem;
-  color: #525252;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-  text-transform: uppercase;
-  letter-spacing: 0.32px;
-}
-
-.info-item span {
-  display: block;
-  font-size: 1rem;
-  color: #161616;
-  font-weight: 400;
-  line-height: 1.5;
-}
-
-/* Questionnaire Section */
-.questionnaire-section {
-  margin-bottom: 2rem;
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.questionnaire-header {
-  margin-bottom: 1.5rem;
-}
-
-.questionnaire-edit-mode,
-.questionnaire-view-mode {
-  margin-top: 1rem;
-}
-
-.questionnaire-edit-actions {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-/* Loading, Error, and No Data States */
-.program-case-loading,
-.program-case-error,
-.program-case-no-data {
-  min-height: 400px;
-}
-
-.program-case-loading .cds--loading {
-  margin-bottom: 1rem;
-}
-
-.program-case-error h3,
-.program-case-no-data h3 {
-  color: #da1e28;
-  margin-bottom: 1rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.program-case-error p,
-.program-case-no-data p {
-  color: #525252;
-  margin-bottom: 1.5rem;
-}
-
-/* Modal Styles */
-.cds--modal-container {
-  max-width: 500px;
-}
-
-.cds--modal-content {
-  margin-bottom: 2rem;
-  color: #525252;
-  line-height: 1.5;
-}
-
-/* Questionnaire Table Styles */
-.my-custom-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.my-custom-table tr {
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.my-custom-table tr:last-child {
-  border-bottom: none;
-}
-
-.my-custom-table td {
-  padding: 1rem 0;
-  vertical-align: top;
-}
-
-.my-custom-table td:first-child {
-  width: 40%;
-  padding-right: 1rem;
-}
-
-.my-custom-table h6 {
-  margin: 0;
-  color: #161616;
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.font1 {
-  color: #161616;
-  line-height: 1.5;
-  font-size: 0.875rem;
-}
-
-.questionnaireResponseAnswer {
-  background: #e8f4ff;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-weight: 500;
-  font-size: 0.875rem;
-}
-
-/* Form Styles */
-.extraQuestions {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.formInlineDiv {
+.dashboard-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 50px;
+  padding: 50px;
 }
-
-.inputText {
-  width: 100%;
-}
-
-/* Responsive Design */
-@media (max-width: 1056px) { /* md breakpoint */
-  .formInlineDiv {
-    grid-template-columns: 1fr;
+@media screen and (max-width: 1150px) and (min-width: 700px) {
+  .dashboard-container {
+    gap: 40px;
+    padding: 30px;
   }
-}
-
-@media (max-width: 672px) { /* sm breakpoint */
-  .program-case-view {
-    padding: 0.5rem;
+  .dashboard-tile {
+    min-width: 175px;
   }
-  
-  .patient-header-section,
-  .program-info-section,
-  .questionnaire-section {
-    padding: 0.75rem;
-  }
-  
-  .my-custom-table td:first-child {
-    width: 100%;
-    padding-bottom: 0.5rem;
-    padding-right: 0;
-  }
-  
-  .my-custom-table td {
-    display: block;
-    padding: 0.5rem 0;
-  }
-  
-  .questionnaire-header {
-    flex-direction: column;
-    align-items: flex-start !important;
-  }
-  
-  .questionnaire-edit-actions {
-    flex-direction: column;
-    align-items: stretch !important;
-  }
-  
-  .questionnaire-edit-actions button {
-    width: 100%;
+  .tile-title-Program {
+    font-size: 0.9rem;
   }
 }
 
-/* Stack customizations */
-.cds--stack-horizontal {
-  align-items: center;
+@media (max-width: 925px) {
+  .dashboard-container {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    padding: 22px;
+  }
 }
 
-@media (max-width: 672px) {
-  .cds--stack-horizontal {
-    flex-direction: column;
-    align-items: flex-start;
+@media (max-width: 500px) {
+  .dashboard-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (max-width: 700px) and (min-width: 450px) {
+  .dashboard-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+    padding: 30px;
+  }
+  .tile-title-Program {
+    font-size: 0.9rem;
   }
 }

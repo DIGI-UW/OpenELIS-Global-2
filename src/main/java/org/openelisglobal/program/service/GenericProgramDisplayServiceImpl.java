@@ -2,14 +2,19 @@ package org.openelisglobal.program.service;
 
 import jakarta.transaction.Transactional;
 import java.util.List;
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
+import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.bean.DashboardSummary;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.ProgramSampleDisplayItem;
+import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,6 +30,9 @@ public class GenericProgramDisplayServiceImpl implements GenericProgramDisplaySe
 
     @Autowired
     private FhirUtil fhirUtil;
+
+    @Autowired
+    private OrganizationService organizationService;
 
     @Override
     @Transactional
@@ -71,6 +79,21 @@ public class GenericProgramDisplayServiceImpl implements GenericProgramDisplaySe
         display.setLastName(patient.getPerson().getLastName());
         display.setGender(patient.getGender());
         display.setAge(DateUtil.getCurrentAgeForDate(patient.getBirthDate(), DateUtil.getNowAsTimestamp()));
+
+        display.setPatientPK(patient.getId());
+
+        SampleOrderService sampleOrderService = new SampleOrderService(ps.getSample());
+        SampleOrderItem sampleItem = sampleOrderService.getSampleOrderItem();
+        display.setReferringFacility(sampleItem.getReferringSiteName());
+
+        if (StringUtils.isNotBlank(sampleItem.getReferringSiteDepartmentId())) {
+            Organization org = organizationService.get(sampleItem.getReferringSiteDepartmentId());
+            if (org != null) {
+                display.setDepartment(org.getOrganizationName());
+            }
+        }
+
+        display.setRequester(sampleItem.getProviderLastName() + " " + sampleItem.getProviderFirstName());
 
         if (ps.getProgram().getQuestionnaireUUID() != null) {
             display.setProgramQuestionnaire(fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)

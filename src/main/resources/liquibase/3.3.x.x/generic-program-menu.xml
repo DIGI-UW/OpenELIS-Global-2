@@ -14,10 +14,11 @@
 
         <insert tableName="menu" schemaName="clinlims">
             <column name="id" valueSequenceNext="menu_seq"/>
-            <column name="presentation_order" value="26"/>
-            <column name="element_id" value="generic_program"/>
-            <column name="display_key" value="sidenav.label.generic.program"/>
-            <column name="tool_tip_key" value="sidenav.label.generic.program.tooltip"/>
+            <column name="parent_id" value="11"/>
+            <column name="presentation_order" value="7"/>
+            <column name="element_id" value="questionnaires"/>
+            <column name="display_key" value="banner.menu.results.questionnaires"/>
+            <column name="tool_tip_key" value="banner.menu.results.questionnaires.tooltip"/>
             <column name="new_window" valueBoolean="false"/>
             <column name="is_active" valueBoolean="true"/>
             <column name="action_url" value="/genericProgram"/>
