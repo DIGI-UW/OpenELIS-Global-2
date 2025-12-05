@@ -264,7 +264,9 @@ describe("Layout", () => {
       );
 
       // Verify the content wrapper exists (TwoModeLayout rendered)
-      const contentWrapper = document.querySelector('[data-testid="content-wrapper"]');
+      const contentWrapper = document.querySelector(
+        '[data-testid="content-wrapper"]',
+      );
       expect(contentWrapper).toBeTruthy();
       // Note: Actual class depends on localStorage; defaultMode is "lock" for /storage
     });
@@ -281,7 +283,9 @@ describe("Layout", () => {
       );
 
       // Verify the content wrapper exists
-      const contentWrapper = document.querySelector('[data-testid="content-wrapper"]');
+      const contentWrapper = document.querySelector(
+        '[data-testid="content-wrapper"]',
+      );
       expect(contentWrapper).toBeTruthy();
       // Note: defaultMode is "close" for /home
     });
@@ -297,7 +301,9 @@ describe("Layout", () => {
         { route: "/analyzers/qc" },
       );
 
-      const contentWrapper = document.querySelector('[data-testid="content-wrapper"]');
+      const contentWrapper = document.querySelector(
+        '[data-testid="content-wrapper"]',
+      );
       expect(contentWrapper).toBeTruthy();
       // Note: defaultMode is "lock" for /analyzers
     });
@@ -344,4 +350,3 @@ describe("Layout", () => {
     });
   });
 });
-

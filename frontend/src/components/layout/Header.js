@@ -8,6 +8,8 @@ import {
   Search,
   UserAvatarFilledAlt,
   LocationFilled,
+  Pin,
+  PinFilled,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
 import HelpMenu from "./HelpMenu";
@@ -19,8 +21,10 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import { withRouter } from "react-router-dom";
+import { FormattedMessage, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
+import { useSideNavPreference } from "./useSideNavPreference";
+import { useMenuAutoExpand } from "./useMenuAutoExpand";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
 import { ConfigurationContext } from "../layout/Layout";
@@ -54,6 +58,17 @@ function OEHeader(props) {
   const [isOpen, setIsOpen] = useState(false);
 
   const intl = useIntl();
+  const location = useLocation();
+
+  // Lock mode support - tri-state sidenav (show/lock/close)
+  const {
+    mode,
+    toggle: toggleLock,
+    SIDENAV_MODES,
+  } = useSideNavPreference({
+    storageKeyPrefix: "main",
+  });
+  const isLocked = mode === SIDENAV_MODES.LOCK;
 
   const [switchCollapsed, setSwitchCollapsed] = useState(true);
   const [menus, setMenus] = useState({
@@ -61,6 +76,10 @@ function OEHeader(props) {
     menu_billing: { menu: {}, childMenus: [] },
     menu_nonconformity: { menu: {}, childMenus: [] },
   });
+
+  // Auto-expand menu items based on current route
+  const autoExpandedMenus = useMenuAutoExpand(menus["menu"]);
+
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -518,6 +537,20 @@ function OEHeader(props) {
                             )}
                           </div>
                         </HeaderGlobalAction>
+                        <HeaderGlobalAction
+                          id="lock-Icon"
+                          aria-label={
+                            isLocked ? "Unlock sidebar" : "Lock sidebar"
+                          }
+                          onClick={toggleLock}
+                          data-testid="lock-sidenav-button"
+                        >
+                          {isLocked ? (
+                            <PinFilled size={20} />
+                          ) : (
+                            <Pin size={20} />
+                          )}
+                        </HeaderGlobalAction>
                       </>
                     )}
                     <HeaderGlobalAction
@@ -583,7 +616,7 @@ function OEHeader(props) {
                           onChange={(event) => {
                             props.onChangeLanguage(event.target.value);
                           }}
-                          value={props.intl.locale}
+                          value={intl.locale}
                         >
                           {Object.entries(languages).map(
                             ([code, { label }]) => (
@@ -609,11 +642,11 @@ function OEHeader(props) {
                     <>
                       <SideNav
                         aria-label="Side navigation"
-                        expanded={isSideNavExpanded}
-                        isPersistent={false}
+                        expanded={isSideNavExpanded || isLocked}
+                        isPersistent={isLocked}
                       >
                         <SideNavItems>
-                          {menus["menu"].map((childMenuItem, index) => {
+                          {autoExpandedMenus.map((childMenuItem, index) => {
                             return generateMenuItems(
                               childMenuItem,
                               index,
@@ -655,4 +688,4 @@ function OEHeader(props) {
   );
 }
 
-export default withRouter(injectIntl(OEHeader));
+export default OEHeader;
