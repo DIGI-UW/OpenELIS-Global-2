@@ -56,12 +56,16 @@ export function useSideNavPreference({
   const initialMode = () => {
     try {
       const saved = localStorage.getItem(storageKey);
+      console.log(
+        `[useSideNavPreference] storageKey="${storageKey}", saved="${saved}", defaultMode="${defaultMode}"`,
+      );
       if (
         saved &&
         [SIDENAV_MODES.SHOW, SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(
           saved,
         )
       ) {
+        console.log(`[useSideNavPreference] Using stored preference: "${saved}"`);
         return saved;
       }
     } catch (e) {
@@ -73,11 +77,15 @@ export function useSideNavPreference({
         defaultMode,
       )
     ) {
+      console.log(`[useSideNavPreference] Using defaultMode: "${defaultMode}"`);
       return defaultMode;
     }
     if (typeof defaultExpanded === "boolean") {
-      return defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE;
+      const mode = defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE;
+      console.log(`[useSideNavPreference] Using defaultExpanded: ${mode}`);
+      return mode;
     }
+    console.log(`[useSideNavPreference] Using fallback: "close"`);
     return SIDENAV_MODES.CLOSE;
   };
 
