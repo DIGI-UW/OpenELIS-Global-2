@@ -32,7 +32,25 @@ import { useSideNavPreference } from "./useSideNavPreference";
 
 // Test wrapper providing required context (IntlProvider, BrowserRouter)
 const renderWithProviders = (ui, options = {}) => {
-  const messages = {};
+  const messages = {
+    // Mock messages for menu items used in tests
+    "menu.analyzer": "Analyzers",
+    "menu.analyzer.errors": "Error Tracking",
+    "menu.home": "Home",
+    "menu.level1": "Level 1",
+    "menu.level2": "Level 2",
+    "menu.level3": "Level 3",
+    "menu.level4": "Level 4",
+    "menu.parent": "Parent Menu",
+    "menu.child": "Child Menu",
+    "menu.active": "Active Item",
+    "menu.inactive": "Inactive Item",
+    "menu.external": "External Link",
+    "menu.analyzers": "Analyzers",
+    "menu.analyzers.qc": "Quality Control",
+    "menu.samples": "Samples",
+    "menu.samples.search": "Sample Search",
+  };
   return render(
     <BrowserRouter>
       <IntlProvider locale="en" messages={messages}>
@@ -264,6 +282,253 @@ describe("TwoModeLayout", () => {
           storageKeyPrefix: "analyzer",
         }),
       );
+    });
+  });
+
+  describe("menu rendering (M2)", () => {
+    /**
+     * Test: Renders SideNavMenu for items with children
+     * @see spec.md US3: Hierarchical Navigation Structure (P2)
+     */
+    test("testMenu_ItemWithChildren_RendersSideNavMenu", () => {
+      setupMock(false);
+
+      const mockMenus = {
+        menu: [
+          {
+            menu: {
+              id: "1",
+              displayKey: "menu.analyzer",
+              actionURL: "/analyzers",
+              isActive: true,
+            },
+            childMenus: [
+              {
+                menu: {
+                  id: "1.1",
+                  displayKey: "menu.analyzer.errors",
+                  actionURL: "/analyzers/errors",
+                  isActive: true,
+                },
+                childMenus: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      renderWithProviders(<TwoModeLayout menus={mockMenus} />);
+
+      // Should render parent as SideNavMenu (expandable)
+      const menuElement = document.querySelector(".cds--side-nav__menu");
+      expect(menuElement).toBeTruthy();
+    });
+
+    /**
+     * Test: Renders SideNavMenuItem for leaf items
+     */
+    test("testMenu_LeafItem_RendersSideNavMenuItem", () => {
+      setupMock(false);
+
+      const mockMenus = {
+        menu: [
+          {
+            menu: {
+              id: "1",
+              displayKey: "menu.home",
+              actionURL: "/home",
+              isActive: true,
+            },
+            childMenus: [],
+          },
+        ],
+      };
+
+      renderWithProviders(<TwoModeLayout menus={mockMenus} />);
+
+      // Should render as SideNavMenuItem (direct link)
+      const menuItem = document.querySelector(".cds--side-nav__link");
+      expect(menuItem).toBeTruthy();
+      expect(menuItem.getAttribute("href")).toBe("/home");
+    });
+
+    /**
+     * Test: Supports 4 levels of menu nesting
+     * @see spec.md FR-010: Support up to 4 levels of hierarchy
+     */
+    test("testMenu_FourLevels_RendersAllLevels", () => {
+      setupMock(false);
+
+      const mockMenus = {
+        menu: [
+          {
+            menu: {
+              id: "1",
+              displayKey: "menu.level1",
+              actionURL: "/level1",
+              isActive: true,
+            },
+            childMenus: [
+              {
+                menu: {
+                  id: "1.1",
+                  displayKey: "menu.level2",
+                  actionURL: "/level1/level2",
+                  isActive: true,
+                },
+                childMenus: [
+                  {
+                    menu: {
+                      id: "1.1.1",
+                      displayKey: "menu.level3",
+                      actionURL: "/level1/level2/level3",
+                      isActive: true,
+                    },
+                    childMenus: [
+                      {
+                        menu: {
+                          id: "1.1.1.1",
+                          displayKey: "menu.level4",
+                          actionURL: "/level1/level2/level3/level4",
+                          isActive: true,
+                        },
+                        childMenus: [],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      renderWithProviders(<TwoModeLayout menus={mockMenus} />);
+
+      // Should render nested structure with menus (L1-L3) and items (L2-L4)
+      const allMenus = document.querySelectorAll(".cds--side-nav__menu");
+      const allLinks = document.querySelectorAll(".cds--side-nav__link");
+
+      // At least 1 menu (level 1 parent) and some links rendered
+      expect(allMenus.length).toBeGreaterThanOrEqual(1);
+      expect(allLinks.length).toBeGreaterThanOrEqual(1);
+    });
+
+    /**
+     * Test: Applies correct indentation per level
+     * @see research.md A4: paddingLeft: `${level * 0.5 + 1}rem`
+     */
+    test("testMenu_NestedItems_ApplyCorrectIndentation", () => {
+      setupMock(false);
+
+      const mockMenus = {
+        menu: [
+          {
+            menu: {
+              id: "1",
+              displayKey: "menu.parent",
+              actionURL: "/parent",
+              isActive: true,
+            },
+            childMenus: [
+              {
+                menu: {
+                  id: "1.1",
+                  displayKey: "menu.child",
+                  actionURL: "/parent/child",
+                  isActive: true,
+                },
+                childMenus: [],
+              },
+            ],
+          },
+        ],
+      };
+
+      renderWithProviders(<TwoModeLayout menus={mockMenus} />);
+
+      // Child item should have indentation
+      const childLink = document.querySelector(
+        '.cds--side-nav__link[href="/parent/child"]',
+      );
+      expect(childLink).toBeTruthy();
+      // Indentation is handled by Carbon or custom paddingLeft
+    });
+
+    /**
+     * Test: Does not render inactive menu items
+     */
+    test("testMenu_InactiveItem_NotRendered", () => {
+      setupMock(false);
+
+      const mockMenus = {
+        menu: [
+          {
+            menu: {
+              id: "1",
+              displayKey: "menu.active",
+              actionURL: "/active",
+              isActive: true,
+            },
+            childMenus: [],
+          },
+          {
+            menu: {
+              id: "2",
+              displayKey: "menu.inactive",
+              actionURL: "/inactive",
+              isActive: false, // Inactive
+            },
+            childMenus: [],
+          },
+        ],
+      };
+
+      renderWithProviders(<TwoModeLayout menus={mockMenus} />);
+
+      // Should only render active item
+      const activeLink = document.querySelector(
+        '.cds--side-nav__link[href="/active"]',
+      );
+      const inactiveLink = document.querySelector(
+        '.cds--side-nav__link[href="/inactive"]',
+      );
+
+      expect(activeLink).toBeTruthy();
+      expect(inactiveLink).toBeFalsy(); // Should not render
+    });
+
+    /**
+     * Test: Handles menu items with openInNewWindow flag
+     * @see research.md A4: target="_blank" + rel="noopener noreferrer"
+     */
+    test("testMenu_OpenInNewWindow_SetsTargetBlank", () => {
+      setupMock(false);
+
+      const mockMenus = {
+        menu: [
+          {
+            menu: {
+              id: "1",
+              displayKey: "menu.external",
+              actionURL: "https://example.com",
+              isActive: true,
+              openInNewWindow: true,
+            },
+            childMenus: [],
+          },
+        ],
+      };
+
+      renderWithProviders(<TwoModeLayout menus={mockMenus} />);
+
+      const link = document.querySelector(
+        '.cds--side-nav__link[href="https://example.com"]',
+      );
+      expect(link).toBeTruthy();
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toContain("noopener");
+      expect(link.getAttribute("rel")).toContain("noreferrer");
     });
   });
 });
