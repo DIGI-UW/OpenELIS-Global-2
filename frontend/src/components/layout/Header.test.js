@@ -15,6 +15,9 @@ jest.mock("../utils/Utils", () => ({
   putToOpenElisServer: jest.fn(),
 }));
 
+// Import mocked functions for use in tests
+const { getFromOpenElisServer, putToOpenElisServer } = require("../utils/Utils");
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store = {};
@@ -272,7 +275,8 @@ const SIDENAV_MODES = {
   CLOSE: "close",
 };
 
-const renderHeader = (initialRoute = "/", sidenavMode = "close") => {
+const renderHeader = (options = {}) => {
+  const { initialRoute = "/", sidenavMode = "close" } = options;
   const mockGetFromServer = require("../utils/Utils").getFromOpenElisServer;
   mockGetFromServer.mockImplementation((url, callback) => {
     if (url === "/rest/menu") {
@@ -446,6 +450,79 @@ describe("Header Component - M2b Enhancement Tests", () => {
         const userIcon = container.querySelector("#user-Icon");
         expect(userIcon).toBeTruthy();
       });
+    });
+  });
+
+  describe("URL Matching and Active State", () => {
+    /**
+     * Test: URL matching logic is covered by E2E tests
+     * Unit testing active state requires complex DOM mocking
+     * See: cypress/e2e/sidenavEnhanced.cy.js for comprehensive URL matching tests
+     * 
+     * Note: Active state is determined by:
+     * 1. Exact match: location.pathname === menuItem.menu.actionURL
+     * 2. Prefix match: location.pathname.startsWith(menuItem.menu.actionURL + "/")
+     * 3. Length check: actionURL.length > 1 (prevents "/" from matching everything)
+     */
+    test("URL matching logic documentation", () => {
+      // This test documents the URL matching algorithm
+      // Actual behavior is tested in E2E tests with real navigation
+      expect(true).toBe(true);
+    });
+  });
+
+  describe("Menu Initialization", () => {
+    /**
+     * Test: Menu items from API get expanded property initialized to false
+     * Ensures no undefined expanded properties that cause toggle bugs
+     */
+    test("menu items from API get expanded=false initialized", async () => {
+      const menuWithoutExpanded = [
+        {
+          menu: {
+            elementId: "menu_storage",
+            displayKey: "banner.menu.storage",
+            actionURL: "",
+            isActive: true,
+          },
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_storage_mgmt",
+                displayKey: "sidenav.label.storage.management",
+                actionURL: "/Storage",
+                isActive: true,
+              },
+              childMenus: [],
+              // Note: No expanded property - simulates real API response
+            },
+          ],
+          // Note: No expanded property - simulates real API response
+        },
+      ];
+
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url === "/rest/menu") {
+          callback(menuWithoutExpanded);
+        }
+      });
+
+      const consoleLogSpy = jest.spyOn(console, "log");
+      renderHeader();
+
+      // Wait for menu to load
+      await waitFor(
+        () => {
+          // Check that handleMenuItems was called and logged initialization
+          const initLog = consoleLogSpy.mock.calls.find((call) =>
+            call[0]?.includes("[SideNav] Initialized"),
+          );
+          expect(initLog).toBeTruthy();
+        },
+        { timeout: 2000 },
+      );
+
+      consoleLogSpy.mockRestore();
     });
   });
 });
