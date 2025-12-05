@@ -4,12 +4,12 @@ import { useSideNavPreference } from "./useSideNavPreference";
 /**
  * Unit tests for useSideNavPreference hook
  *
- * This hook manages sidenav expanded/collapsed state with localStorage persistence.
+ * This hook manages sidenav mode (show/lock/close) with localStorage persistence.
  * Tests cover:
- * - Default state when no localStorage value exists
- * - Restoring state from localStorage
- * - Toggle functionality with persistence
- * - setExpanded functionality with persistence
+ * - Default mode when no localStorage value exists
+ * - Restoring mode from localStorage
+ * - Toggle cycle close -> show -> lock -> close with persistence
+ * - setMode functionality with persistence
  * - Graceful fallback when localStorage is unavailable
  *
  * @see spec.md User Story 2: Persist User Preference Across Sessions (P1)
@@ -53,12 +53,13 @@ describe("useSideNavPreference", () => {
       localStorageMock.getItem.mockReturnValue(null);
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: false }),
+        useSideNavPreference({ defaultMode: "close" }),
       );
 
+      expect(result.current.mode).toBe("close");
       expect(result.current.isExpanded).toBe(false);
       expect(localStorageMock.getItem).toHaveBeenCalledWith(
-        "defaultSideNavExpanded",
+        "defaultSideNavMode",
       );
     });
 
@@ -69,9 +70,10 @@ describe("useSideNavPreference", () => {
       localStorageMock.getItem.mockReturnValue(null);
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: true }),
+        useSideNavPreference({ defaultMode: "lock" }),
       );
 
+      expect(result.current.mode).toBe("lock");
       expect(result.current.isExpanded).toBe(true);
     });
 
@@ -83,9 +85,10 @@ describe("useSideNavPreference", () => {
       localStorageMock.getItem.mockReturnValue("true");
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: false }),
+        useSideNavPreference({ defaultMode: "show" }),
       );
 
+      expect(result.current.mode).toBe("show");
       expect(result.current.isExpanded).toBe(true);
     });
 
@@ -97,9 +100,10 @@ describe("useSideNavPreference", () => {
       localStorageMock.getItem.mockReturnValue("false");
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: true }),
+        useSideNavPreference({ defaultMode: "close" }),
       );
 
+      expect(result.current.mode).toBe("close");
       expect(result.current.isExpanded).toBe(false);
     });
 
@@ -108,19 +112,19 @@ describe("useSideNavPreference", () => {
      * @see data-model.md localStorage Key Format: {storageKeyPrefix}SideNavExpanded
      */
     test("testInit_CustomStorageKeyPrefix_UsesCorrectKey", () => {
-      localStorageMock.getItem.mockReturnValue("true");
+      localStorageMock.getItem.mockReturnValue("show");
 
       const { result } = renderHook(() =>
         useSideNavPreference({
-          defaultExpanded: false,
+          defaultMode: "close",
           storageKeyPrefix: "analyzer",
         }),
       );
 
       expect(localStorageMock.getItem).toHaveBeenCalledWith(
-        "analyzerSideNavExpanded",
+        "analyzerSideNavMode",
       );
-      expect(result.current.isExpanded).toBe(true);
+      expect(result.current.mode).toBe("show");
     });
   });
 
@@ -129,40 +133,29 @@ describe("useSideNavPreference", () => {
      * Test: toggle() inverts state from false to true
      * @see spec.md US1 Acceptance Scenario 1: Click toggle, sidenav expands
      */
-    test("testToggle_FromFalse_SetsToTrue", () => {
-      localStorageMock.getItem.mockReturnValue(null);
+    test("testToggle_CyclesCloseShowLock", () => {
+      localStorageMock.getItem.mockReturnValue(null); // default to close
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: false }),
+        useSideNavPreference({ defaultMode: "close" }),
       );
 
-      expect(result.current.isExpanded).toBe(false);
+      expect(result.current.mode).toBe("close");
 
       act(() => {
         result.current.toggle();
       });
-
-      expect(result.current.isExpanded).toBe(true);
-    });
-
-    /**
-     * Test: toggle() inverts state from true to false
-     * @see spec.md US1 Acceptance Scenario 2: Click toggle, sidenav collapses
-     */
-    test("testToggle_FromTrue_SetsToFalse", () => {
-      localStorageMock.getItem.mockReturnValue("true");
-
-      const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: false }),
-      );
-
-      expect(result.current.isExpanded).toBe(true);
+      expect(result.current.mode).toBe("show");
 
       act(() => {
         result.current.toggle();
       });
+      expect(result.current.mode).toBe("lock");
 
-      expect(result.current.isExpanded).toBe(false);
+      act(() => {
+        result.current.toggle();
+      });
+      expect(result.current.mode).toBe("close");
     });
 
     /**
@@ -173,16 +166,16 @@ describe("useSideNavPreference", () => {
       localStorageMock.getItem.mockReturnValue(null);
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: false }),
+        useSideNavPreference({ defaultMode: "close" }),
       );
 
       act(() => {
-        result.current.toggle();
+        result.current.toggle(); // close -> show
       });
 
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        "defaultSideNavExpanded",
-        "true",
+        "defaultSideNavMode",
+        "show",
       );
     });
 
@@ -194,74 +187,76 @@ describe("useSideNavPreference", () => {
 
       const { result } = renderHook(() =>
         useSideNavPreference({
-          defaultExpanded: false,
+          defaultMode: "close",
           storageKeyPrefix: "analyzer",
         }),
       );
 
       act(() => {
-        result.current.toggle();
+        result.current.toggle(); // close -> show
       });
 
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        "analyzerSideNavExpanded",
-        "true",
+        "analyzerSideNavMode",
+        "show",
       );
     });
   });
 
-  describe("setExpanded", () => {
+  describe("setMode", () => {
     /**
-     * Test: setExpanded(true) sets state to true
+     * Test: setMode(lock) sets state to lock
      */
-    test("testSetExpanded_True_SetsToTrue", () => {
+    test("testSetMode_Lock_SetsToLock", () => {
       localStorageMock.getItem.mockReturnValue(null);
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: false }),
+        useSideNavPreference({ defaultMode: "close" }),
       );
 
       act(() => {
-        result.current.setExpanded(true);
+        result.current.setMode("lock");
       });
 
+      expect(result.current.mode).toBe("lock");
       expect(result.current.isExpanded).toBe(true);
     });
 
     /**
-     * Test: setExpanded(false) sets state to false
+     * Test: setMode(close) sets state to close
      */
-    test("testSetExpanded_False_SetsToFalse", () => {
-      localStorageMock.getItem.mockReturnValue("true");
+    test("testSetMode_Close_SetsToClose", () => {
+      localStorageMock.getItem.mockReturnValue("lock");
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: false }),
+        useSideNavPreference({ defaultMode: "lock" }),
       );
 
       act(() => {
-        result.current.setExpanded(false);
+        result.current.setMode("close");
       });
 
+      expect(result.current.mode).toBe("close");
       expect(result.current.isExpanded).toBe(false);
     });
 
     /**
-     * Test: setExpanded() persists to localStorage
+     * Test: setMode() persists to localStorage
      */
-    test("testSetExpanded_PersistsToLocalStorage", () => {
+    test("testSetMode_PersistsToLocalStorage", () => {
       localStorageMock.getItem.mockReturnValue(null);
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: false }),
+        useSideNavPreference({ defaultMode: "close" }),
       );
 
       act(() => {
-        result.current.setExpanded(true);
+        result.current.setMode("lock");
       });
 
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        "defaultSideNavExpanded",
-        "true",
+        "defaultSideNavMode",
+        "lock",
       );
     });
   });
@@ -291,10 +286,10 @@ describe("useSideNavPreference", () => {
         .mockImplementation(() => {});
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: true }),
+        useSideNavPreference({ defaultMode: "lock" }),
       );
 
-      expect(result.current.isExpanded).toBe(true);
+      expect(result.current.mode).toBe("lock");
 
       consoleWarnSpy.mockRestore();
     });
@@ -307,7 +302,7 @@ describe("useSideNavPreference", () => {
       localStorageMock.getItem.mockReturnValue(null);
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultExpanded: false }),
+        useSideNavPreference({ defaultMode: "close" }),
       );
 
       // Now make localStorage throw on setItem
@@ -320,11 +315,11 @@ describe("useSideNavPreference", () => {
         .mockImplementation(() => {});
 
       act(() => {
-        result.current.toggle();
+        result.current.toggle(); // close -> show
       });
 
       // State should still toggle even if persistence fails
-      expect(result.current.isExpanded).toBe(true);
+      expect(result.current.mode).toBe("show");
 
       consoleWarnSpy.mockRestore();
     });
@@ -339,10 +334,10 @@ describe("useSideNavPreference", () => {
 
       const { result } = renderHook(() => useSideNavPreference());
 
-      // Default should be collapsed (false) with "default" prefix
-      expect(result.current.isExpanded).toBe(false);
+      // Default should be close with "default" prefix
+      expect(result.current.mode).toBe("close");
       expect(localStorageMock.getItem).toHaveBeenCalledWith(
-        "defaultSideNavExpanded",
+        "defaultSideNavMode",
       );
     });
   });
