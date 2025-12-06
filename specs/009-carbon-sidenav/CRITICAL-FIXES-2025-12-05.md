@@ -205,6 +205,96 @@ useEffect(() => {
 
 ---
 
+## Follow-up Fixes (Round 2)
+
+### Issue #5: LOCK Mode Broken - localStorage Pollution
+
+**Symptom**: Storage pages never default to LOCK mode, always stay CLOSED even though `defaultMode: 'lock'`.
+
+**Console Evidence**:
+```
+[useSideNavPreference] Reading from localStorage: {storageKey: 'storageSideNavMode', savedValue: 'close', defaultMode: 'lock'}
+[useSideNavPreference] Using saved mode: close  // ❌ Should use 'lock'!
+```
+
+**Root Cause**: The auto-close SHOW mode logic in `Layout.js` was calling `setMode(SIDENAV_MODES.CLOSE)`, which persisted 'close' to localStorage:
+```javascript
+// Layout.js (BROKEN)
+useEffect(() => {
+  if (mode === SIDENAV_MODES.SHOW) {
+    setMode(SIDENAV_MODES.CLOSE);  // ❌ Persists to localStorage!
+  }
+}, [location.pathname]);
+```
+
+When navigating from Dashboard (SHOW mode) → Storage, this would:
+1. Detect SHOW mode
+2. Call `setMode(CLOSE)`
+3. Persist `{storageSideNavMode: 'close'}` to localStorage
+4. **Overwrite** the LOCK default!
+
+**Fix**: Changed `useSideNavPreference.js` to **ignore localStorage on context switches**:
+```javascript
+// useSideNavPreference.js - useEffect for storageKeyPrefix change
+useEffect(() => {
+  // ALWAYS use defaultMode when switching contexts (main ↔ storage)
+  // Do NOT read from localStorage - prevents cross-context pollution
+  const effectiveDefault = defaultMode || SIDENAV_MODES.CLOSE;
+  setModeState(effectiveDefault);
+}, [storageKeyPrefix, defaultMode]);
+```
+
+**Result**: 
+- ✅ Storage pages correctly default to LOCK mode
+- ✅ Dashboard pages correctly default to CLOSE mode
+- ✅ Manual toggles within a context still persist
+- ✅ But manual toggles in one context DON'T affect another context's defaults
+
+---
+
+### Issue #6: Menus Still Auto-Collapsing
+
+**Symptom**: User expands "Generic Sample" and "Storage" → clicks "Non-Conform" → "Generic Sample" collapses unexpectedly.
+
+**Root Cause**: While we removed accordion logic in `setMenuItemExpanded()`, there was a **second auto-collapse mechanism** in `useMenuAutoExpand()`:
+
+```javascript
+// useMenuAutoExpand.js (BROKEN)
+const markActiveExpanded = (items) => {
+  items.forEach((item) => {
+    item.expanded = false;  // ❌ Force-collapse ALL menus on EVERY route change!
+    
+    if (markActiveExpanded(item.childMenus)) {
+      item.expanded = true;  // Then re-expand only active branch
+    }
+  });
+};
+```
+
+**This runs on EVERY route change**, resetting all menus to collapsed, then only re-expanding the active branch.
+
+**Fix**: Removed the force-collapse line:
+```javascript
+// useMenuAutoExpand.js (FIXED)
+const markActiveExpanded = (items) => {
+  items.forEach((item) => {
+    // REMOVED: item.expanded = false (was force-collapsing all menus)
+    // Keep current expanded state, only expand if in active branch
+    
+    if (markActiveExpanded(item.childMenus)) {
+      item.expanded = true;  // Expand parent of active route
+    }
+  });
+};
+```
+
+**Result**: 
+- ✅ Manual menu expansions persist across route changes
+- ✅ Active route's parent menu still auto-expands
+- ✅ But siblings DON'T auto-collapse
+
+---
+
 ## Next Steps
 
 **Manual Testing** (READY NOW):
