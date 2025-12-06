@@ -52,8 +52,57 @@ export function useSideNavPreference({
   storageKeyPrefix = "default",
 } = {}) {
   const storageKey = `${storageKeyPrefix}SideNavMode`;
+  const versionKey = `sidenavPreferenceVersion`;
+  const CURRENT_VERSION = "2.0.0"; // Incremented due to context-aware localStorage fix
+
+  /**
+   * Migration: Clean up stale localStorage from previous implementations.
+   * Run once per version to fix localStorage pollution.
+   * 
+   * CRITICAL: Previous implementation had bug where SHOW mode auto-close
+   * would persist 'close' to storageSideNavMode, overwriting LOCK defaults.
+   * This migration ensures clean slate.
+   */
+  const runMigration = () => {
+    try {
+      const storedVersion = localStorage.getItem(versionKey);
+      
+      if (storedVersion !== CURRENT_VERSION) {
+        console.log(
+          `[useSideNavPreference] Migration: v${storedVersion || 'legacy'} → v${CURRENT_VERSION}`,
+        );
+        console.log(`[useSideNavPreference] Clearing potentially polluted localStorage keys...`);
+        
+        // Clear all sidenav preference keys
+        // These may have cross-context pollution from previous bugs
+        const keysToMigrate = [
+          'mainSideNavMode',
+          'storageSideNavMode', 
+          'defaultSideNavMode',
+          // Add any other context prefixes here if added in future
+        ];
+        
+        keysToMigrate.forEach(key => {
+          const oldValue = localStorage.getItem(key);
+          if (oldValue) {
+            console.log(`[useSideNavPreference] Migration: Removing ${key} = ${oldValue}`);
+            localStorage.removeItem(key);
+          }
+        });
+        
+        // Set new version marker
+        localStorage.setItem(versionKey, CURRENT_VERSION);
+        console.log(`[useSideNavPreference] Migration complete ✅`);
+      }
+    } catch (e) {
+      console.warn('localStorage migration failed (may be unavailable):', e);
+    }
+  };
 
   const initialMode = () => {
+    // Run migration on first access (once per version)
+    runMigration();
+    
     let savedValue = null;
     try {
       savedValue = localStorage.getItem(storageKey);
