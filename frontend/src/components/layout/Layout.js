@@ -30,23 +30,10 @@ export default function Layout(props) {
     ? { storageKeyPrefix: "storage", defaultMode: "lock" }
     : { storageKeyPrefix: "main", defaultMode: "close" };
 
-  console.log(`[Layout] Route changed:`, {
-    pathname: location.pathname,
-    isStorageContext,
-    layoutConfig,
-  });
-
   // Lock mode support - push content when sidenav is locked
   const { mode, isExpanded, toggle, setMode, SIDENAV_MODES } =
     useSideNavPreference(layoutConfig);
   const isLocked = mode === SIDENAV_MODES.LOCK;
-
-  console.log(`[Layout] Sidenav state:`, {
-    mode,
-    isExpanded,
-    isLocked,
-    contentClass: isLocked ? "content-nav-locked" : "none",
-  });
 
   // Track previous context to detect context switches (main ↔ storage)
   const prevContextRef = useRef(isStorageContext);
@@ -58,36 +45,16 @@ export default function Layout(props) {
     
     if (pathnameChanged && mode === SIDENAV_MODES.SHOW) {
       // SHOW mode is temporary - close to default mode for new route
-      const newDefaultMode = layoutConfig.defaultMode;
-      console.log(`[Layout] Route changed while in SHOW mode - auto-closing to default`, {
-        previousPath: prevPathnameRef.current,
-        currentPath: location.pathname,
-        closingTo: newDefaultMode,
-      });
-      setMode(newDefaultMode);
+      setMode(layoutConfig.defaultMode);
     }
     
     prevPathnameRef.current = location.pathname;
   }, [location.pathname, mode, setMode, SIDENAV_MODES.SHOW, layoutConfig.defaultMode]);
 
-  // Handle context switches: When moving between main ↔ storage contexts,
-  // the useSideNavPreference hook already handles this via its useEffect on storageKeyPrefix.
-  // We don't need a separate effect here - the hook will:
-  // 1. Read saved preference for new context
-  // 2. If no saved preference, use new context's defaultMode
-  // This happens automatically when layoutConfig changes.
+  // Track context changes for future debugging if needed
   useEffect(() => {
-    const contextChanged = prevContextRef.current !== isStorageContext;
-    if (contextChanged) {
-      console.log(`[Layout] Context switched:`, {
-        from: prevContextRef.current ? 'storage' : 'main',
-        to: isStorageContext ? 'storage' : 'main',
-        newDefaultMode: layoutConfig.defaultMode,
-        note: 'useSideNavPreference hook will handle mode adjustment',
-      });
-    }
     prevContextRef.current = isStorageContext;
-  }, [isStorageContext, layoutConfig.defaultMode]);
+  }, [isStorageContext]);
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);
