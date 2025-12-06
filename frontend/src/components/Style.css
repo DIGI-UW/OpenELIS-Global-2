@@ -565,4 +565,15 @@ button {
   background-color: var(--cds-layer-hover-01, rgba(255,255,255,0.1)) !important;
 }
 
+/* Subnav items (level 1+) - ensure proper indentation via CSS */
+.reduced-padding-nav-menu-item > a.cds--side-nav__link {
+  padding-left: 2.5rem !important; /* Extra indent for subnavs beyond top-level */
+}
+
+/* Active subnavs - compensate for border + keep extra indent */
+.reduced-padding-nav-menu-item > a.cds--side-nav__link--current,
+.reduced-padding-nav-menu-item > a.cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(2.5rem - 4px) !important; /* Extra indent minus 4px border */
+}
+
 /* All custom button styles removed - using Carbon's SideNavMenuItem isActive only */
