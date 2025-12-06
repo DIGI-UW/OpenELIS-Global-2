@@ -557,15 +557,19 @@ button {
  * ============================================================================
  */
 
-/* Active state - ONLY left border, NO background color (hover is enough for feedback) */
+/* Active state - ONLY left border, NO background color, NO other borders */
 .cds--side-nav__menu-item .cds--side-nav__link--current,
-.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"],
+.cds--side-nav__link--current,
+.cds--side-nav__link[aria-current="page"] {
   border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
   background-color: transparent !important; /* No background - hover is enough */
   padding-left: calc(1rem - 4px) !important; /* Compensate for 4px border to prevent double border */
   border-right: none !important; /* Remove any white border on right */
   border-top: none !important; /* Remove any white border on top */
   border-bottom: none !important; /* Remove any white border on bottom */
+  outline: none !important; /* Remove any outline */
+  box-shadow: none !important; /* Remove any box shadow */
 }
 
 /* Hover state - applies to ALL links */
@@ -575,8 +579,26 @@ button {
 
 /* Active state hover - keep transparent background even on hover */
 .cds--side-nav__menu-item .cds--side-nav__link--current:hover,
-.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:hover {
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:hover,
+.cds--side-nav__link--current:hover,
+.cds--side-nav__link[aria-current="page"]:hover {
   background-color: transparent !important; /* No background even on hover - left border is enough */
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove any default Carbon active state backgrounds/borders that might be causing white borders */
+.cds--side-nav__menu-item.cds--side-nav__menu-item--active .cds--side-nav__link,
+.cds--side-nav__menu-item[aria-current="page"] .cds--side-nav__link {
+  background-color: transparent !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* ============================================================================
