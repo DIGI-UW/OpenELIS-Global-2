@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Inventory Lot Table -->
+    <changeSet id="inventory-004-create-inventory-lot-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_lot"/>
+            </not>
+        </preConditions>
+        <createTable tableName="inventory_lot">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="inventory_item_id" type="VARCHAR(36)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_lot_inventory_item"
+                    references="inventory_item(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="storage_location_id" type="VARCHAR(36)">
+                <constraints nullable="true"
+                    foreignKeyName="fk_lot_storage_location"
+                    references="inventory_storage_location(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="lot_number" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiration_date" type="TIMESTAMP"/>
+            <column name="date_opened" type="TIMESTAMP"/>
+            <column name="calculated_expiry_after_opening" type="TIMESTAMP"/>
+            <column name="receipt_date" type="TIMESTAMP"/>
+            <column name="initial_quantity" type="DECIMAL(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="current_quantity" type="DECIMAL(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qc_status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="ACTIVE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="barcode" type="VARCHAR(100)">
+                <constraints unique="true"/>
+            </column>
+            <column name="version" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.inventory_lot
+            ADD CONSTRAINT chk_lot_qc_status
+            CHECK (qc_status IN ('PENDING', 'PASSED', 'FAILED', 'QUARANTINED'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.inventory_lot
+            ADD CONSTRAINT chk_lot_status
+            CHECK (status IN ('ACTIVE', 'IN_USE', 'EXPIRED', 'CONSUMED', 'DISPOSED', 'QUARANTINED'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.inventory_lot
+            ADD CONSTRAINT chk_lot_quantities
+            CHECK (initial_quantity >= 1 AND current_quantity >= 0);
+        </sql>
+        <rollback>
+            <dropTable tableName="inventory_lot"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Inventory Transaction Table -->
+    <changeSet id="inventory-005-create-inventory-transaction-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_transaction"/>
+            </not>
+        </preConditions>
+        <createTable tableName="inventory_transaction">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lot_id" type="VARCHAR(36)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_transaction_lot"
+                    references="inventory_lot(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="transaction_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity_change" type="DECIMAL(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity_after" type="DECIMAL(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_id" type="VARCHAR(36)"/>
+            <column name="reference_type" type="VARCHAR(50)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="performed_by_user" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.inventory_transaction
+            ADD CONSTRAINT chk_transaction_type
+            CHECK (transaction_type IN ('RECEIPT', 'CONSUMPTION', 'ADJUSTMENT', 'DISPOSAL', 'OPENING', 'QC_TEST', 'MANUAL'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.inventory_transaction
+            ADD CONSTRAINT chk_reference_type
+            CHECK (reference_type IS NULL OR reference_type IN ('TEST_RESULT', 'RECEIPT', 'QC_RUN', 'MANUAL', 'ADJUSTMENT'));
+        </sql>
+        <rollback>
+            <dropTable tableName="inventory_transaction"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Inventory Usage Table -->
+    <changeSet id="inventory-006-create-inventory-usage-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_usage"/>
+            </not>
+        </preConditions>
+        <createTable tableName="inventory_usage">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="inventory_item_id" type="VARCHAR(36)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_usage_inventory_item"
+                    references="inventory_item(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="lot_id" type="VARCHAR(36)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_usage_lot"
+                    references="inventory_lot(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="test_result_id" type="VARCHAR(36)"/>
+            <column name="analysis_id" type="VARCHAR(36)"/>
+            <column name="quantity_used" type="DECIMAL(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="usage_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="performed_by_user" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.inventory_usage
+            ADD CONSTRAINT chk_usage_quantity
+            CHECK (quantity_used >= 1);
+        </sql>
+        <rollback>
+            <dropTable tableName="inventory_usage"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Create Indexes for Performance -->
+    <changeSet id="inventory-007-create-lot-tracking-indexes" author="mherman22">
+        <!-- Inventory Lot Indexes -->
+        <createIndex indexName="idx_lot_inventory_item" tableName="inventory_lot">
+            <column name="inventory_item_id"/>
+        </createIndex>
+        <createIndex indexName="idx_lot_storage_location" tableName="inventory_lot">
+            <column name="storage_location_id"/>
+        </createIndex>
+        <createIndex indexName="idx_lot_status" tableName="inventory_lot">
+            <column name="status"/>
+        </createIndex>
+        <createIndex indexName="idx_lot_qc_status" tableName="inventory_lot">
+            <column name="qc_status"/>
+        </createIndex>
+        <createIndex indexName="idx_lot_expiration" tableName="inventory_lot">
+            <column name="expiration_date"/>
+        </createIndex>
+        <createIndex indexName="idx_lot_number" tableName="inventory_lot">
+            <column name="lot_number"/>
+        </createIndex>
+
+        <!-- Transaction Indexes -->
+        <createIndex indexName="idx_transaction_lot" tableName="inventory_transaction">
+            <column name="lot_id"/>
+        </createIndex>
+        <createIndex indexName="idx_transaction_type" tableName="inventory_transaction">
+            <column name="transaction_type"/>
+        </createIndex>
+        <createIndex indexName="idx_transaction_date" tableName="inventory_transaction">
+            <column name="transaction_date"/>
+        </createIndex>
+        <createIndex indexName="idx_transaction_reference" tableName="inventory_transaction">
+            <column name="reference_id"/>
+            <column name="reference_type"/>
+        </createIndex>
+
+        <!-- Usage Indexes -->
+        <createIndex indexName="idx_usage_inventory_item" tableName="inventory_usage">
+            <column name="inventory_item_id"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_lot" tableName="inventory_usage">
+            <column name="lot_id"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_date" tableName="inventory_usage">
+            <column name="usage_date"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_test_result" tableName="inventory_usage">
+            <column name="test_result_id"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_analysis" tableName="inventory_usage">
+            <column name="analysis_id"/>
+        </createIndex>
+
+        <rollback>
+            <!-- Inventory Lot Indexes -->
+            <dropIndex indexName="idx_lot_inventory_item" tableName="inventory_lot"/>
+            <dropIndex indexName="idx_lot_storage_location" tableName="inventory_lot"/>
+            <dropIndex indexName="idx_lot_status" tableName="inventory_lot"/>
+            <dropIndex indexName="idx_lot_qc_status" tableName="inventory_lot"/>
+            <dropIndex indexName="idx_lot_expiration" tableName="inventory_lot"/>
+            <dropIndex indexName="idx_lot_number" tableName="inventory_lot"/>
+
+            <!-- Transaction Indexes -->
+            <dropIndex indexName="idx_transaction_lot" tableName="inventory_transaction"/>
+            <dropIndex indexName="idx_transaction_type" tableName="inventory_transaction"/>
+            <dropIndex indexName="idx_transaction_date" tableName="inventory_transaction"/>
+            <dropIndex indexName="idx_transaction_reference" tableName="inventory_transaction"/>
+
+            <!-- Usage Indexes -->
+            <dropIndex indexName="idx_usage_inventory_item" tableName="inventory_usage"/>
+            <dropIndex indexName="idx_usage_lot" tableName="inventory_usage"/>
+            <dropIndex indexName="idx_usage_date" tableName="inventory_usage"/>
+            <dropIndex indexName="idx_usage_test_result" tableName="inventory_usage"/>
+            <dropIndex indexName="idx_usage_analysis" tableName="inventory_usage"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
