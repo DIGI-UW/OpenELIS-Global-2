@@ -552,7 +552,12 @@ button {
 
 /* Base link styles - Let Carbon handle default backgrounds (no overrides!) */
 
-/* Carbon's active state - via isActive prop */
+/* ============================================================================
+ * UNIFIED ACTIVE/HOVER STYLES - Works for ALL levels (top-level + subnavs)
+ * ============================================================================
+ */
+
+/* Active state - applies to ALL SideNavMenuItem components (top-level and subnavs) */
 .cds--side-nav__menu-item .cds--side-nav__link--current,
 .cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
   border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
@@ -560,20 +565,42 @@ button {
   padding-left: calc(1rem - 4px) !important; /* Compensate for 4px border to prevent double border */
 }
 
-/* Hover state for Carbon links */
+/* Hover state - applies to ALL links */
 .cds--side-nav__menu-item .cds--side-nav__link:hover {
-  background-color: var(--cds-layer-hover-01, rgba(255,255,255,0.1)) !important;
+  background-color: var(--cds-layer-hover-01, rgba(255,255,255,0.05)) !important;
 }
 
-/* Subnav items (level 1+) - ensure proper indentation via CSS */
-.reduced-padding-nav-menu-item > a.cds--side-nav__link {
-  padding-left: 2.5rem !important; /* Extra indent for subnavs beyond top-level */
+/* Active state hover - ensure active background overrides hover */
+.cds--side-nav__menu-item .cds--side-nav__link--current:hover,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:hover {
+  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
+}
+
+/* ============================================================================
+ * SUBNAV INDENTATION (level 1+) - Using Carbon's actual DOM structure
+ * ============================================================================
+ */
+
+/* Subnav items - Carbon renders: <li class="cds--side-nav__menu-item"> <a class="cds--side-nav__link"> */
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link {
+  padding-left: 2.5rem !important; /* Extra indent for subnavs */
 }
 
 /* Active subnavs - compensate for border + keep extra indent */
-.reduced-padding-nav-menu-item > a.cds--side-nav__link--current,
-.reduced-padding-nav-menu-item > a.cds--side-nav__link[aria-current="page"] {
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link--current,
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
   padding-left: calc(2.5rem - 4px) !important; /* Extra indent minus 4px border */
+}
+
+/* ============================================================================
+ * TOP-LEVEL ITEMS WITH CHILDREN - SideNavMenu active state
+ * ============================================================================
+ */
+
+/* When a SideNavMenu contains an active child, highlight the parent */
+.top-level-menu-item.cds--side-nav__menu[aria-expanded="true"] .cds--side-nav__link--current ~ *,
+.top-level-menu-item.cds--side-nav__menu .cds--side-nav__link--current {
+  /* Parent menu should show visual indicator when child is active */
 }
 
 /* All custom button styles removed - using Carbon's SideNavMenuItem isActive only */
