@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useContext, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -48,12 +48,23 @@ export default function Layout(props) {
     contentClass: isLocked ? "content-nav-locked" : "none",
   });
 
-  // Auto-close SHOW mode on route change (content is hidden behind overlay!)
+  // Track previous pathname to detect actual route changes
+  const prevPathnameRef = useRef(location.pathname);
+
+  // Auto-close SHOW mode ONLY when route actually changes (not when mode changes!)
   useEffect(() => {
-    if (mode === SIDENAV_MODES.SHOW) {
-      console.log(`[Layout] Route changed while in SHOW mode - auto-closing to CLOSE`);
+    const pathnameChanged = prevPathnameRef.current !== location.pathname;
+    
+    if (pathnameChanged && mode === SIDENAV_MODES.SHOW) {
+      console.log(`[Layout] Route changed while in SHOW mode - auto-closing to CLOSE`, {
+        previousPath: prevPathnameRef.current,
+        currentPath: location.pathname,
+      });
       setMode(SIDENAV_MODES.CLOSE);
     }
+    
+    // Update ref for next comparison
+    prevPathnameRef.current = location.pathname;
   }, [location.pathname, mode, setMode, SIDENAV_MODES.SHOW, SIDENAV_MODES.CLOSE]);
 
   const addNotification = (notificationBody) => {
