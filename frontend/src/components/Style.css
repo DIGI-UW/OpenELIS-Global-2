@@ -622,4 +622,34 @@ button {
   padding-left: calc(1rem - 4px) !important; /* Base padding minus 4px border */
 }
 
-/* All custom button styles removed - using Carbon's SideNavMenuItem isActive only */
+/* ============================================================================
+ * CHEVRON POSITIONING - Position chevron icon on right side of link
+ * ============================================================================
+ */
+
+/* Make link container relative for chevron absolute positioning */
+.cds--side-nav__menu-item .cds--side-nav__link {
+  position: relative;
+}
+
+/* Chevron positioning - align to right side of link */
+.cds--side-nav__submenu-chevron {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
+
+/* Subnav items (level 1+) - extra indent for visual hierarchy */
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link {
+  padding-left: 2.5rem !important; /* Extra indent for subnavs */
+}
+
+/* Active subnavs - compensate for border + keep extra indent */
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link--current,
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(2.5rem - 4px) !important; /* Extra indent minus 4px border */
+}
