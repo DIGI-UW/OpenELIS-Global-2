@@ -254,16 +254,6 @@ function OEHeader({
     const isActive = !!menuItem.menu.actionURL && (exactMatch || prefixMatch);
     const hasChildren = menuItem.childMenus.length > 0;
 
-    // Debug: Log active state calculation for items on current path
-    if (isActive || exactMatch || prefixMatch) {
-        elementId: menuItem.menu.elementId,
-        actionURL: menuItem.menu.actionURL,
-        currentPath: location.pathname,
-        exactMatch,
-        prefixMatch,
-        isActive,
-      });
-    }
 
     // ============================================================================
     // LEVEL 0: Top-level menu items
