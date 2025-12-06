@@ -52,114 +52,39 @@ export function useSideNavPreference({
   storageKeyPrefix = "default",
 } = {}) {
   const storageKey = `${storageKeyPrefix}SideNavMode`;
-  const versionKey = `sidenavPreferenceVersion`;
-  const CURRENT_VERSION = "2.0.0"; // Incremented due to context-aware localStorage fix
 
   /**
-   * Migration: Clean up stale localStorage from previous implementations.
-   * Run once per version to fix localStorage pollution.
-   * 
-   * CRITICAL: Previous implementation had bug where SHOW mode auto-close
-   * would persist 'close' to storageSideNavMode, overwriting LOCK defaults.
-   * This migration ensures clean slate.
+   * Initialize mode on component mount.
+   * SIMPLE: Read localStorage → defaultMode → CLOSE
    */
-  const runMigration = () => {
-    try {
-      const storedVersion = localStorage.getItem(versionKey);
-      
-      if (storedVersion !== CURRENT_VERSION) {
-        console.log(
-          `[useSideNavPreference] Migration: v${storedVersion || 'legacy'} → v${CURRENT_VERSION}`,
-        );
-        console.log(`[useSideNavPreference] Clearing potentially polluted localStorage keys...`);
-        
-        // Clear all sidenav preference keys
-        // These may have cross-context pollution from previous bugs
-        const keysToMigrate = [
-          'mainSideNavMode',
-          'storageSideNavMode', 
-          'defaultSideNavMode',
-          // Add any other context prefixes here if added in future
-        ];
-        
-        keysToMigrate.forEach(key => {
-          const oldValue = localStorage.getItem(key);
-          if (oldValue) {
-            console.log(`[useSideNavPreference] Migration: Removing ${key} = ${oldValue}`);
-            localStorage.removeItem(key);
-          }
-        });
-        
-        // Set new version marker
-        localStorage.setItem(versionKey, CURRENT_VERSION);
-        console.log(`[useSideNavPreference] Migration complete ✅`);
-      }
-    } catch (e) {
-      console.warn('localStorage migration failed (may be unavailable):', e);
-    }
-  };
-
   const initialMode = () => {
-    // Run migration on first access (once per version)
-    runMigration();
-    
-    let savedValue = null;
     try {
-      savedValue = localStorage.getItem(storageKey);
-      console.log(`[useSideNavPreference] Reading from localStorage:`, {
-        storageKey,
-        savedValue,
-        defaultMode,
-      });
-
-      // SHOW mode should never be persisted - it's temporary only
-      // If we find it in localStorage, treat it as invalid and use default
-      if (savedValue === SIDENAV_MODES.SHOW) {
-        console.warn(
-          `[useSideNavPreference] Found invalid SHOW mode in localStorage - SHOW is temporary only. Clearing and using default.`,
-        );
-        try {
-          localStorage.removeItem(storageKey);
-        } catch (e) {
-          console.warn("Could not clear invalid SHOW mode from localStorage");
-        }
-        // Fall through to use defaultMode
-      } else if (
-        savedValue &&
-        [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(savedValue)
-      ) {
-        console.log(`[useSideNavPreference] Using saved mode:`, savedValue);
-        return savedValue;
+      const saved = localStorage.getItem(storageKey);
+      
+      // Reject SHOW (temporary only)
+      if (saved === SIDENAV_MODES.SHOW) {
+        console.warn(`[useSideNavPreference] Init: ignoring SHOW in localStorage`);
+        localStorage.removeItem(storageKey);
+      }
+      // Accept LOCK or CLOSE
+      else if (saved && [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(saved)) {
+        console.log(`[useSideNavPreference] Init: using saved:`, saved);
+        return saved;
       }
     } catch (e) {
-      console.warn("localStorage unavailable, using default sidenav mode");
+      console.warn("localStorage unavailable");
     }
 
-    if (
-      defaultMode &&
-      [SIDENAV_MODES.SHOW, SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(
-        defaultMode,
-      )
-    ) {
-      console.log(
-        `[useSideNavPreference] Using defaultMode (no saved value):`,
-        defaultMode,
-      );
+    // No saved value - use defaultMode
+    if (defaultMode && [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(defaultMode)) {
+      console.log(`[useSideNavPreference] Init: using defaultMode:`, defaultMode);
       return defaultMode;
     }
 
+    // Fallback
     if (typeof defaultExpanded === "boolean") {
-      const mode = defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE;
-      console.log(
-        `[useSideNavPreference] Using defaultExpanded:`,
-        defaultExpanded,
-        "=>",
-        mode,
-      );
-      return mode;
+      return defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE;
     }
-
-    console.log(`[useSideNavPreference] Using fallback CLOSE mode`);
     return SIDENAV_MODES.CLOSE;
   };
 
@@ -171,29 +96,53 @@ export function useSideNavPreference({
 
   /**
    * Reset state when storageKeyPrefix changes (e.g. switching between main and storage layouts)
-   * CRITICAL: Use defaultMode directly on context switch, NOT localStorage
-   * Reason: User's manual toggle in one context should not affect another context's default
-   * Example: User closes nav on Dashboard → should not prevent Storage from defaulting to LOCK
+   * 
+   * CORRECT BEHAVIOR:
+   * 1. Read localStorage for the NEW context (each context has its own key)
+   * 2. If found and valid (not SHOW), use it (user's preference for this context!)
+   * 3. If not found, use defaultMode for this context
+   * 
+   * This ensures:
+   * - User preferences persist within each context ✅
+   * - Contexts don't pollute each other (separate keys) ✅
+   * - SHOW mode doesn't persist (filtered out) ✅
    */
   useEffect(() => {
-    // On context switch, always apply the new context's defaultMode
-    // Do NOT read from localStorage here - that would allow preferences from one context
-    // to bleed into another context (e.g., closing nav on Dashboard shouldn't affect Storage's LOCK default)
+    const newStorageKey = `${storageKeyPrefix}SideNavMode`;
+    
+    try {
+      const saved = localStorage.getItem(newStorageKey);
+      
+      // Ignore SHOW mode from localStorage (it's temporary)
+      if (saved === SIDENAV_MODES.SHOW) {
+        console.warn(`[useSideNavPreference] Context switch: ignoring SHOW in localStorage`);
+        localStorage.removeItem(newStorageKey);
+        // Fall through to defaultMode
+      } 
+      // Use valid saved preference for this context
+      else if (saved && [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(saved)) {
+        console.log(
+          `[useSideNavPreference] Context switch: using saved preference for ${storageKeyPrefix}:`,
+          saved
+        );
+        setModeState(saved);
+        return; // Early return - we found a valid saved preference
+      }
+    } catch (e) {
+      console.warn('localStorage unavailable');
+    }
+    
+    // No saved preference - use defaultMode
     const effectiveDefault = defaultMode && 
-      [SIDENAV_MODES.SHOW, SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(defaultMode)
+      [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(defaultMode)
       ? defaultMode
       : (typeof defaultExpanded === "boolean" 
           ? (defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE)
           : SIDENAV_MODES.CLOSE);
     
     console.log(
-      `[useSideNavPreference] storageKeyPrefix changed, applying defaultMode:`,
-      {
-        storageKeyPrefix,
-        defaultMode: effectiveDefault,
-        previousMode: mode,
-        ignoring_localStorage: true,
-      },
+      `[useSideNavPreference] Context switch: no saved preference, using defaultMode:`,
+      effectiveDefault
     );
     setModeState(effectiveDefault);
   }, [storageKeyPrefix, defaultMode]);
