@@ -557,12 +557,15 @@ button {
  * ============================================================================
  */
 
-/* Active state - applies to ALL SideNavMenuItem components (top-level and subnavs) */
+/* Active state - ONLY left border, NO background color (hover is enough for feedback) */
 .cds--side-nav__menu-item .cds--side-nav__link--current,
 .cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
   border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
-  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
+  background-color: transparent !important; /* No background - hover is enough */
   padding-left: calc(1rem - 4px) !important; /* Compensate for 4px border to prevent double border */
+  border-right: none !important; /* Remove any white border on right */
+  border-top: none !important; /* Remove any white border on top */
+  border-bottom: none !important; /* Remove any white border on bottom */
 }
 
 /* Hover state - applies to ALL links */
@@ -570,10 +573,10 @@ button {
   background-color: var(--cds-layer-hover-01, rgba(255,255,255,0.05)) !important;
 }
 
-/* Active state hover - ensure active background overrides hover */
+/* Active state hover - keep transparent background even on hover */
 .cds--side-nav__menu-item .cds--side-nav__link--current:hover,
 .cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:hover {
-  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
+  background-color: transparent !important; /* No background even on hover - left border is enough */
 }
 
 /* ============================================================================
