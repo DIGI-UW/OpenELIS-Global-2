@@ -241,12 +241,10 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
       "be.visible",
     );
 
-    cy.get("body").then(($body) => {
-      if ($body.find('[data-testid="sample-row"]').length === 0) {
-        cy.log("No samples available - skipping disposal counter test");
-        return;
-      }
+    // Fail test if no samples exist (better feedback than silent skip)
+    cy.get('[data-testid="sample-row"]').should("have.length.greaterThan", 0);
 
+    cy.get("body").then(($body) => {
       // Get initial Disposed count from metric card
       let initialDisposedCount;
       cy.get('[data-testid="metric-disposed"]', { timeout: 10000 })

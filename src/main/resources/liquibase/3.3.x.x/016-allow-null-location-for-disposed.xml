@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-144: Allow NULL location for disposed samples -->
+    <!-- Disposed samples need to preserve assignment record for metrics/audit
+         but clear the location fields. This migration removes NOT NULL constraints
+         on location_id and location_type and updates the check constraint to
+         allow NULL values. -->
+    <changeSet id="storage-016-allow-null-location-for-disposed" author="ogc-144">
+        <comment>
+            Allow NULL location_id and location_type in sample_storage_assignment
+            to support disposal workflow (FR-056, FR-057). Disposed samples keep
+            their assignment record with NULL location for metrics counting and
+            audit trail.
+        </comment>
+
+        <!-- Remove NOT NULL constraint from location_id -->
+        <dropNotNullConstraint tableName="sample_storage_assignment"
+                               columnName="location_id"
+                               columnDataType="numeric(10,0)"/>
+
+        <!-- Remove NOT NULL constraint from location_type -->
+        <dropNotNullConstraint tableName="sample_storage_assignment"
+                               columnName="location_type"
+                               columnDataType="VARCHAR(20)"/>
+
+        <!-- Update check constraint to allow NULL location_type -->
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            ADD CONSTRAINT chk_location_type_valid
+            CHECK (location_type IS NULL OR location_type IN ('device', 'shelf', 'rack'));
+        </sql>
+
+        <rollback>
+            <!-- Restore check constraint without NULL -->
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                ADD CONSTRAINT chk_location_type_valid
+                CHECK (location_type IN ('device', 'shelf', 'rack'));
+            </sql>
+
+            <!-- Restore NOT NULL constraints -->
+            <addNotNullConstraint tableName="sample_storage_assignment"
+                                  columnName="location_id"
+                                  columnDataType="numeric(10,0)"/>
+            <addNotNullConstraint tableName="sample_storage_assignment"
+                                  columnName="location_type"
+                                  columnDataType="VARCHAR(20)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

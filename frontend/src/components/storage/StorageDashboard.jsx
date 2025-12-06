@@ -1247,12 +1247,12 @@ const StorageDashboard = () => {
               });
             }
 
-            // Apply status filter
+            // Apply status filter for Samples tab
             if (filterStatus && visibleFilters.status) {
               const statusFilter =
-                filterStatus === "true"
+                filterStatus === "active"
                   ? "active"
-                  : filterStatus === "false"
+                  : filterStatus === "disposed"
                     ? "disposed"
                     : null;
               if (statusFilter) {
@@ -1290,11 +1290,11 @@ const StorageDashboard = () => {
         }
       }
 
-      // Convert status filter: "true" -> "active", "false" -> "disposed", "" -> no filter
+      // Convert status filter for Samples tab: "active" or "disposed"
       if (filterStatus && visibleFilters.status) {
-        if (filterStatus === "true") {
+        if (filterStatus === "active") {
           params.append("status", "active");
-        } else if (filterStatus === "false") {
+        } else if (filterStatus === "disposed") {
           params.append("status", "disposed");
         }
         // If filterStatus is empty string, don't add status param (show all)
@@ -2650,38 +2650,77 @@ const StorageDashboard = () => {
                               titleText={intl.formatMessage({
                                 id: "storage.filter.status",
                               })}
-                              items={[
-                                {
-                                  id: "",
-                                  label: intl.formatMessage({
-                                    id: "label.all",
-                                  }),
-                                },
-                                {
-                                  id: "true",
-                                  label: intl.formatMessage({
-                                    id: "label.active",
-                                  }),
-                                },
-                                {
-                                  id: "false",
-                                  label: intl.formatMessage({
-                                    id: "label.inactive",
-                                  }),
-                                },
-                              ]}
+                              items={
+                                selectedTab === 0
+                                  ? [
+                                      // Samples tab: active/disposed
+                                      {
+                                        id: "",
+                                        label: intl.formatMessage({
+                                          id: "label.all",
+                                        }),
+                                      },
+                                      {
+                                        id: "active",
+                                        label: intl.formatMessage({
+                                          id: "label.active",
+                                        }),
+                                      },
+                                      {
+                                        id: "disposed",
+                                        label: intl.formatMessage({
+                                          id: "storage.status.disposed",
+                                          defaultMessage: "Disposed",
+                                        }),
+                                      },
+                                    ]
+                                  : [
+                                      // Other tabs: active/inactive
+                                      {
+                                        id: "",
+                                        label: intl.formatMessage({
+                                          id: "label.all",
+                                        }),
+                                      },
+                                      {
+                                        id: "true",
+                                        label: intl.formatMessage({
+                                          id: "label.active",
+                                        }),
+                                      },
+                                      {
+                                        id: "false",
+                                        label: intl.formatMessage({
+                                          id: "label.inactive",
+                                        }),
+                                      },
+                                    ]
+                              }
                               selectedItem={
                                 filterStatus
                                   ? {
                                       id: filterStatus,
                                       label:
-                                        filterStatus === "true"
-                                          ? intl.formatMessage({
-                                              id: "label.active",
-                                            })
-                                          : intl.formatMessage({
-                                              id: "label.inactive",
-                                            }),
+                                        selectedTab === 0
+                                          ? filterStatus === "active"
+                                            ? intl.formatMessage({
+                                                id: "label.active",
+                                              })
+                                            : filterStatus === "disposed"
+                                              ? intl.formatMessage({
+                                                  id: "storage.status.disposed",
+                                                  defaultMessage: "Disposed",
+                                                })
+                                              : intl.formatMessage({
+                                                  id: "label.all",
+                                                })
+                                          : filterStatus === "true"
+                                            ? intl.formatMessage({
+                                                id: "label.active",
+                                              })
+                                            : intl.formatMessage({
+                                                id: "label.inactive",
+                                              }),
                                     }
                                   : {
                                       id: "",

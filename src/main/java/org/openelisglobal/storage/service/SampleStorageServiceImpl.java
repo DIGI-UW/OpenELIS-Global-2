@@ -110,7 +110,16 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
-            map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
+            // Map status ID to user-friendly name for filtering (OGC-144: FR-056)
+            String statusName = "active"; // Default
+            if (sampleItem.getStatusId() != null) {
+                if (statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {
+                    statusName = "disposed";
+                } else {
+                    statusName = "active"; // All non-disposed samples are active
+                }
+            }
+            map.put("status", statusName);
 
             // Check if this sample item has an assignment
             SampleStorageAssignment assignment = assignmentsBySampleItemId.get(sampleItem.getId());
@@ -955,8 +964,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                             previousPositionCoordinate);
                 }
 
-                // Clear the location (remove assignment)
-                sampleStorageAssignmentDAO.delete(existingAssignment);
+                // Clear the location but preserve assignment record for metrics/audit (FR-056,
+                // FR-057)
+                existingAssignment.setLocationId(null);
+                existingAssignment.setLocationType(null);
+                existingAssignment.setPositionCoordinate(null);
+                sampleStorageAssignmentDAO.update(existingAssignment);
             }
 
             // Update SampleItem status to "disposed"
