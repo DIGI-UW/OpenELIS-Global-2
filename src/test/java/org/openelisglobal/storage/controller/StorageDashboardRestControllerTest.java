@@ -72,7 +72,9 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
                 .andExpect(status().isOk()).andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
-        List<Map<String, Object>> samples = objectMapper.readValue(responseBody,
+        JsonNode root = objectMapper.readTree(responseBody);
+        JsonNode itemsNode = root.has("items") ? root.get("items") : root;
+        List<Map<String, Object>> samples = objectMapper.convertValue(itemsNode,
                 objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
 
         assertNotNull("Response should not be null", samples);
@@ -97,7 +99,9 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
                 .andExpect(status().isOk()).andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
-        List<Map<String, Object>> samples = objectMapper.readValue(responseBody,
+        JsonNode root = objectMapper.readTree(responseBody);
+        JsonNode itemsNode = root.has("items") ? root.get("items") : root;
+        List<Map<String, Object>> samples = objectMapper.convertValue(itemsNode,
                 objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
 
         assertNotNull("Response should not be null", samples);

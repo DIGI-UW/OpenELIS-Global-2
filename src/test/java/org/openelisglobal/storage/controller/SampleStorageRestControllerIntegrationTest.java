@@ -205,19 +205,22 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items")).andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
 
-        // Then: Response should be valid JSON array
+        // Then: Response should be valid JSON object with items array
         String responseContent = result.getResponse().getContentAsString();
         assertNotNull("Response should not be null", responseContent);
         assertFalse("Response should not be empty", responseContent.trim().isEmpty());
 
         JsonNode responseJson = objectMapper.readTree(responseContent);
-        assertTrue("Response should be an array", responseJson.isArray());
+        assertTrue("Response should be an object", responseJson.isObject());
+        assertTrue("Response should contain 'items' array", responseJson.has("items"));
+        JsonNode items = responseJson.get("items");
+        assertTrue("Response items should be an array", items.isArray());
 
         // Verify at least one sample is returned
-        assertTrue("Response should contain at least one sample", responseJson.size() > 0);
+        assertTrue("Response should contain at least one sample", items.size() > 0);
 
         // Verify each sample has required fields
-        JsonNode firstSample = responseJson.get(0);
+        JsonNode firstSample = items.get(0);
         assertNotNull("First sample should not be null", firstSample);
         assertTrue("Sample should have 'id' field", firstSample.has("id"));
         assertTrue("SampleItem should have 'sampleItemId' field", firstSample.has("sampleItemId"));
@@ -260,12 +263,16 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         // Then: Parse and verify response structure
         String responseContent = result.getResponse().getContentAsString();
         JsonNode responseJson = objectMapper.readTree(responseContent);
+        assertTrue("Response should be an object", responseJson.isObject());
+        assertTrue("Response should contain 'items' array", responseJson.has("items"));
+        JsonNode items = responseJson.get("items");
+        assertTrue("Response items should be an array", items.isArray());
 
         // Verify all samples have required base fields
         // Note: When running with full test suite, other tests may leave sample items
         // without storage assignments, which won't have all storage-related fields
         boolean foundAssignedSample = false;
-        for (JsonNode sample : responseJson) {
+        for (JsonNode sample : items) {
             // Base fields should always be present
             assertTrue("Sample should have 'id' field", sample.has("id"));
             assertTrue("SampleItem should have 'sampleItemId' field", sample.has("sampleItemId"));

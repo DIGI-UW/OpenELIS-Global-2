@@ -109,9 +109,12 @@ const StorageDashboard = () => {
       page: parsedPage,
       size: parsedSize,
       type: Array.isArray(response) ? "array" : typeof response,
-      keys: response && typeof response === "object" ? Object.keys(response) : null,
+      keys:
+        response && typeof response === "object" ? Object.keys(response) : null,
       itemsLength:
-        response && typeof response === "object" && Array.isArray(response.items)
+        response &&
+        typeof response === "object" &&
+        Array.isArray(response.items)
           ? response.items.length
           : Array.isArray(response)
             ? response.length
