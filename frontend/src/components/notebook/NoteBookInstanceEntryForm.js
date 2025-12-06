@@ -1871,8 +1871,7 @@ const NoteBookInstanceEntryForm = () => {
                               <Column lg={14} md={8} sm={4}>
                                 <div>
                                   <span style={{ marginRight: "0.5rem" }}>
-                                    {intl.formatMessage({ id: "sample.type" })}
-                                    :{" "}
+                                    {intl.formatMessage({ id: "sample.type" })}:{" "}
                                   </span>
                                   {(() => {
                                     const sampleType = sampleTypes.find(
