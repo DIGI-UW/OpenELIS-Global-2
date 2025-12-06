@@ -48,10 +48,13 @@ export default function Layout(props) {
     contentClass: isLocked ? "content-nav-locked" : "none",
   });
 
-  // REMOVED: Auto-close SHOW mode useEffect
-  // Reason: useSideNavPreference now handles context switches properly
-  // When storageKeyPrefix changes (main→storage), it applies new defaultMode
-  // This automatically handles SHOW mode reset without localStorage pollution
+  // Auto-close SHOW mode on route change (content is hidden behind overlay!)
+  useEffect(() => {
+    if (mode === SIDENAV_MODES.SHOW) {
+      console.log(`[Layout] Route changed while in SHOW mode - auto-closing to CLOSE`);
+      setMode(SIDENAV_MODES.CLOSE);
+    }
+  }, [location.pathname, mode, setMode, SIDENAV_MODES.SHOW, SIDENAV_MODES.CLOSE]);
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);

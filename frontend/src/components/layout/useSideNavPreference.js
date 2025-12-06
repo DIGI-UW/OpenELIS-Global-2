@@ -148,9 +148,14 @@ export function useSideNavPreference({
   }, [storageKeyPrefix, defaultMode]);
 
   /**
-   * Persist helper - IMPORTANT: SHOW mode is temporary and should NOT be persisted!
-   * Only CLOSE and LOCK modes are saved to localStorage.
-   * SHOW mode is for temporary overlay that auto-closes on outside click.
+   * Persist helper - ONLY persist when user explicitly changes from default!
+   * 
+   * RULES:
+   * - SHOW mode is temporary - never persist
+   * - Only persist if new mode is DIFFERENT from defaultMode
+   *   - Dashboard (default CLOSE): Only persist LOCK
+   *   - Storage (default LOCK): Only persist CLOSE
+   * - If new mode matches defaultMode, clear localStorage (user reset to default)
    */
   const persistMode = useCallback(
     (value) => {
@@ -162,17 +167,41 @@ export function useSideNavPreference({
         return;
       }
 
+      // Determine effective default for comparison
+      const effectiveDefault = defaultMode && 
+        [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(defaultMode)
+        ? defaultMode
+        : (typeof defaultExpanded === "boolean" 
+            ? (defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE)
+            : SIDENAV_MODES.CLOSE);
+
+      // Only persist if different from default (user explicitly changed preference)
+      if (value === effectiveDefault) {
+        // User reset to default - clear saved preference
+        try {
+          localStorage.removeItem(storageKey);
+          console.log(
+            `[useSideNavPreference] Mode matches default (${effectiveDefault}) - clearing saved preference`,
+          );
+        } catch (e) {
+          console.warn("Could not clear localStorage");
+        }
+        return;
+      }
+
+      // User changed from default - persist the preference
       try {
-        console.log(`[useSideNavPreference] Persisting mode to localStorage:`, {
+        console.log(`[useSideNavPreference] Persisting preference (differs from default):`, {
           storageKey,
           value,
+          defaultMode: effectiveDefault,
         });
         localStorage.setItem(storageKey, value);
       } catch (e) {
         console.warn("Could not persist sidenav mode to localStorage");
       }
     },
-    [storageKey],
+    [storageKey, defaultMode, defaultExpanded],
   );
 
   /**
