@@ -55,17 +55,15 @@
 
     <storage_rack id="30"
         fhir_uuid="00000000-0000-0000-0000-00000000001e" label="Rack R1"
-        code="RR1"
-        active="true" parent_shelf_id="20" sys_user_id="1"
+        code="RR1" active="true" parent_shelf_id="20" sys_user_id="1"
         last_updated="2025-01-01 12:00:00" />
 
     <storage_rack id="31"
         fhir_uuid="00000000-0000-0000-0000-00000000001f" label="Rack R2"
-        code="RR2"
-        active="true" parent_shelf_id="20" sys_user_id="1"
+        code="RR2" active="true" parent_shelf_id="20" sys_user_id="1"
         last_updated="2025-01-01 12:00:00" />
 
-    
+
 
     <localization id="1"
         description="Serum Sample Localization" english="Serum" french="Sérum"

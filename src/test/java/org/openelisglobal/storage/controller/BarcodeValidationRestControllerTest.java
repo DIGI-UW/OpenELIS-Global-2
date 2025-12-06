@@ -124,7 +124,8 @@ public class BarcodeValidationRestControllerTest extends BaseWebContextSensitive
         String validBarcode = String.format("%s-%s", roomCode, deviceCode);
         String requestBody = String.format("{\"barcode\": \"%s\"}", validBarcode);
 
-        // Act - Controller always returns 200 OK, with valid=true/false in response body
+        // Act - Controller always returns 200 OK, with valid=true/false in response
+        // body
         MvcResult result = mockMvc.perform(
                 post("/rest/storage/barcode/validate").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isOk()).andReturn();
@@ -273,10 +274,10 @@ public class BarcodeValidationRestControllerTest extends BaseWebContextSensitive
         String barcode = String.format("%s-%s-%s-%s-A1", roomCode, deviceCode, shelfCode, rackCode);
         String requestBody = String.format("{\"barcode\": \"%s\"}", barcode);
 
-        // Act - Controller always returns 200 OK, with valid=true/false in response body
-        MvcResult result = mockMvc
-                .perform(post("/rest/storage/barcode/validate").contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+        // Act - Controller always returns 200 OK, with valid=true/false in response
+        // body
+        MvcResult result = mockMvc.perform(
+                post("/rest/storage/barcode/validate").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isOk()).andReturn();
 
         // Assert

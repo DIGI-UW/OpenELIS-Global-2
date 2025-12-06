@@ -328,8 +328,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 movement.setNewLocationType(null);
                 movement.setNewPositionCoordinate(null);
                 movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
-                movement.setReason("Disposal: " + reason + " | Method: " + method
-                        + (notes != null ? " | Notes: " + notes : ""));
+                movement.setReason(
+                        "Disposal: " + reason + " | Method: " + method + (notes != null ? " | Notes: " + notes : ""));
                 movement.setMovedByUserId(1); // Default to system user
 
                 movementIdInt = sampleStorageMovementDAO.insert(movement);
@@ -1149,8 +1149,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     /**
-     * Resolve SampleItem from identifier (internal ID, accession number, or external
-     * reference)
+     * Resolve SampleItem from identifier (internal ID, accession number, or
+     * external reference)
      * 
      * @param identifier Internal SampleItem ID, accession number, or external
      *                   reference

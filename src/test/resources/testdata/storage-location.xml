@@ -79,19 +79,19 @@
 
     <storage_rack id="5002"
         fhir_uuid="00000000-0000-0000-0000-000000004002" label="Rack R3"
-        code="TEST-RR3" parent_shelf_id="5001"
-        active="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+        code="TEST-RR3" parent_shelf_id="5001" active="true" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
 
     <storage_rack id="5003"
         fhir_uuid="00000000-0000-0000-0000-000000004003" label="Rack Flexible"
-        code="TEST-RF" parent_shelf_id="5002"
-        active="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
-
-    
+        code="TEST-RF" parent_shelf_id="5002" active="true" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
 
 
 
-    
+
+
+
 
     <sample id="50000" accession_number="TEST-SAMPLE-001"
         fhir_uuid="00000000-0000-0000-0000-000000010000" domain="H"
