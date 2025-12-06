@@ -65,7 +65,7 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
             // Delete in correct order to respect foreign key constraints
             jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id >= 1000");
             jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE id >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_position WHERE id >= 1000");
+            jdbcTemplate.execute("DELETE FROM storage_box WHERE id >= 1000");
             jdbcTemplate.execute("DELETE FROM storage_rack WHERE id >= 1000");
             jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id >= 1000");
             jdbcTemplate.execute("DELETE FROM storage_device WHERE id >= 1000");
@@ -113,17 +113,14 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         // Create rack directly via JDBC (code must be ≤10 chars and NOT NULL)
         String rackCode = "RACK" + (timestamp % 1000);
         jdbcTemplate.update(
-                "INSERT INTO storage_rack (id, label, code, rows, columns, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Test Rack", rackCode, 4, 6, shelfId, true, 1);
+                "INSERT INTO storage_rack (id, label, code, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                baseId, "Test Rack", rackCode, shelfId, true, 1);
         Integer rackId = baseId;
 
-        // Create position directly via JDBC
-        // Note: parent_device_id is required (NOT NULL constraint)
-        // If parent_rack_id is set, parent_shelf_id is also required (check constraint)
+        // Create box to hold positions (rows/columns define capacity)
         jdbcTemplate.update(
-                "INSERT INTO storage_position (id, coordinate, parent_rack_id, parent_shelf_id, parent_device_id, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "A1", rackId, shelfId, deviceId, 1);
-        Integer positionId = baseId;
+                "INSERT INTO storage_box (id, label, short_code, type, rows, columns, parent_rack_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                baseId, "Box A", "BOXA", "plate", 8, 12, rackId, true, 1);
 
         // Create sample with unique ID
         int sampleId = 10000 + (int) timestamp;
@@ -176,13 +173,6 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
 
         int status = assignmentResult.getResponse().getStatus();
         String responseBody = assignmentResult.getResponse().getContentAsString();
-
-        if (status != 201) {
-            System.err.println("Assignment failed with status " + status);
-            System.err.println("Response body: " + responseBody);
-            System.err.println("SampleItem ID: " + sampleItemId);
-            System.err.println("Position ID: " + positionId);
-        }
 
         assertEquals("Assignment should succeed", 201, status);
         assertNotNull("Assignment response should not be null", responseBody);

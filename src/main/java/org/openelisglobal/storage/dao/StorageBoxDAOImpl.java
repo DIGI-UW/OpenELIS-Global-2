@@ -35,7 +35,8 @@ public class StorageBoxDAOImpl extends BaseDAOImpl<StorageBox, Integer> implemen
     @Transactional(readOnly = true)
     public StorageBox findByCoordinates(String coordinates) {
         try {
-            String hql = "FROM StorageBox b WHERE b.coordinate = :coordinates";
+            // Search by shortCode (the short identifier used in barcodes)
+            String hql = "FROM StorageBox b WHERE b.shortCode = :coordinates";
             Query<StorageBox> query = entityManager.unwrap(Session.class).createQuery(hql, StorageBox.class);
             query.setParameter("coordinates", coordinates);
             List<StorageBox> results = query.list();
@@ -49,7 +50,8 @@ public class StorageBoxDAOImpl extends BaseDAOImpl<StorageBox, Integer> implemen
     @Transactional(readOnly = true)
     public StorageBox findByCoordinatesAndParentRack(String coordinates, StorageRack parentRack) {
         try {
-            String hql = "FROM StorageBox b WHERE b.coordinate = :coordinates AND b.parentRack.id = :rackId";
+            // Search by shortCode (the short identifier used in barcodes)
+            String hql = "FROM StorageBox b WHERE b.shortCode = :coordinates AND b.parentRack.id = :rackId";
             Query<StorageBox> query = entityManager.unwrap(Session.class).createQuery(hql, StorageBox.class);
             query.setParameter("coordinates", coordinates);
             query.setParameter("rackId", parentRack.getId());
@@ -87,7 +89,7 @@ public class StorageBoxDAOImpl extends BaseDAOImpl<StorageBox, Integer> implemen
             Long count = query.uniqueResult();
             return count != null ? count.intValue() : 0;
         } catch (Exception e) {
-            return 0;
+            throw new LIMSRuntimeException("Error counting occupied boxes in shelf", e);
         }
     }
 
@@ -103,7 +105,7 @@ public class StorageBoxDAOImpl extends BaseDAOImpl<StorageBox, Integer> implemen
             Long count = query.uniqueResult();
             return count != null ? count.intValue() : 0;
         } catch (Exception e) {
-            return 0;
+            throw new LIMSRuntimeException("Error counting occupied boxes in device", e);
         }
     }
 }

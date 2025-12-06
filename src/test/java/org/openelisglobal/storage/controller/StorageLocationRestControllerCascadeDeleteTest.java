@@ -80,10 +80,10 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
                 "INSERT INTO storage_shelf (id, label, code, parent_device_id, active, fhir_uuid, sys_user_id, last_updated) VALUES (?, ?, ?, ?, ?, gen_random_uuid(), ?, CURRENT_TIMESTAMP)",
                 10000, "Test Shelf", "TESTSHELF", 10000, true, 1);
 
-        // Create rack
+        // Create rack (Note: racks no longer have rows/columns - use code)
         jdbcTemplate.update(
-                "INSERT INTO storage_rack (id, label, code, parent_shelf_id, rows, columns, active, fhir_uuid, sys_user_id, last_updated) VALUES (?, ?, ?, ?, ?, ?, ?, gen_random_uuid(), ?, CURRENT_TIMESTAMP)",
-                10000, "Test Rack", "TESTRACK", 10000, 8, 12, true, 1);
+                "INSERT INTO storage_rack (id, label, code, parent_shelf_id, active, fhir_uuid, sys_user_id, last_updated) VALUES (?, ?, ?, ?, ?, gen_random_uuid(), ?, CURRENT_TIMESTAMP)",
+                10000, "Test Rack", "TESTRACK", 10000, true, 1);
 
         return 10000; // Return shelf ID
     }

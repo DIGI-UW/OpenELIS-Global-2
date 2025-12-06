@@ -45,6 +45,12 @@ public class SampleStorageServiceDisposalTest {
     @Mock
     private IStatusService statusService;
 
+    @Mock
+    private org.openelisglobal.sample.service.SampleService sampleService;
+
+    @Mock
+    private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
+
     @InjectMocks
     private SampleStorageServiceImpl sampleStorageService;
 
@@ -145,8 +151,6 @@ public class SampleStorageServiceDisposalTest {
         // Arrange
         testSampleItem.setStatusId(DISPOSED_STATUS_ID);
         when(sampleItemDAO.get("sample-item-123")).thenReturn(Optional.of(testSampleItem));
-        // Override lenient stub for this specific test - disposed status should match
-        when(statusService.matches(eq(DISPOSED_STATUS_ID), eq(SampleStatus.Disposed))).thenReturn(true);
 
         // Act
         sampleStorageService.disposeSampleItem("sample-item-123", "expired", "autoclave", null);

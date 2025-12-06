@@ -249,27 +249,117 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Override
     @Transactional
     public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes) {
-        if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
-            throw new LIMSRuntimeException("SampleItem ID is required");
-        }
-        // Remove existing assignment if present
-        SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItemId);
-        if (existingAssignment != null) {
-            sampleStorageAssignmentDAO.delete(existingAssignment);
-        }
+        try {
+            // Validate inputs
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("SampleItem ID is required");
+            }
+            if (reason == null || reason.trim().isEmpty()) {
+                throw new LIMSRuntimeException("Disposal reason is required");
+            }
+            if (method == null || method.trim().isEmpty()) {
+                throw new LIMSRuntimeException("Disposal method is required");
+            }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("disposalId", (String) null);
-        response.put("sampleItemId", sampleItemId);
-        response.put("status", "disposed");
-        response.put("previousLocation", (String) null);
-        response.put("disposedDate", new Timestamp(System.currentTimeMillis()).toString());
-        response.put("reason", reason);
-        response.put("method", method);
-        if (notes != null) {
-            response.put("notes", notes);
+            // Resolve SampleItem (handles internal ID, accession number, or external ID)
+            SampleItem sampleItem = resolveSampleItem(sampleItemId);
+
+            // Check if already disposed (status_id = 24 for disposed)
+            if (sampleItem.getStatusId() != null && "24".equals(sampleItem.getStatusId())) {
+                throw new LIMSRuntimeException("SampleItem is already disposed");
+            }
+
+            // Find existing assignment to get previous location
+            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO
+                    .findBySampleItemId(sampleItem.getId());
+            String previousLocation = null;
+            Integer previousLocationId = null;
+            String previousLocationType = null;
+            String previousPositionCoordinate = null;
+
+            if (existingAssignment != null) {
+                previousLocationId = existingAssignment.getLocationId();
+                previousLocationType = existingAssignment.getLocationType();
+                previousPositionCoordinate = existingAssignment.getPositionCoordinate();
+
+                // Build hierarchical path for audit log
+                if (previousLocationId != null && previousLocationType != null) {
+                    Object locationEntity = null;
+                    switch (previousLocationType) {
+                    case "box":
+                        locationEntity = storageLocationService.get(previousLocationId, StorageBox.class);
+                        break;
+                    case "rack":
+                        locationEntity = storageLocationService.get(previousLocationId, StorageRack.class);
+                        break;
+                    case "shelf":
+                        locationEntity = storageLocationService.get(previousLocationId, StorageShelf.class);
+                        break;
+                    case "device":
+                        locationEntity = storageLocationService.get(previousLocationId, StorageDevice.class);
+                        break;
+                    }
+                    if (locationEntity != null) {
+                        previousLocation = buildHierarchicalPathForEntity(locationEntity, previousLocationType,
+                                previousPositionCoordinate);
+                    }
+                }
+
+                // Clear the location (remove assignment)
+                sampleStorageAssignmentDAO.delete(existingAssignment);
+            }
+
+            // Update SampleItem status to "disposed" (status_id = 24)
+            sampleItem.setStatusId("24");
+            sampleItemDAO.update(sampleItem);
+
+            // Create audit movement record for disposal
+            // Only create if there was a previous location (constraint requires at least
+            // one location)
+            Integer movementIdInt = null;
+            if (previousLocationId != null && previousLocationType != null) {
+                SampleStorageMovement movement = new SampleStorageMovement();
+                movement.setSampleItem(sampleItem);
+                movement.setPreviousLocationId(previousLocationId);
+                movement.setPreviousLocationType(previousLocationType);
+                movement.setPreviousPositionCoordinate(previousPositionCoordinate);
+                // For disposal, new_location is NULL (no new location)
+                movement.setNewLocationId(null);
+                movement.setNewLocationType(null);
+                movement.setNewPositionCoordinate(null);
+                movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
+                movement.setReason("Disposal: " + reason + " | Method: " + method
+                        + (notes != null ? " | Notes: " + notes : ""));
+                movement.setMovedByUserId(1); // Default to system user
+
+                movementIdInt = sampleStorageMovementDAO.insert(movement);
+            }
+            String movementId = movementIdInt != null ? movementIdInt.toString() : null;
+
+            // Log successful disposal
+            if (logger.isInfoEnabled()) {
+                logger.info("SampleItem {} disposed successfully. Movement ID: {}", sampleItem.getId(), movementId);
+            }
+
+            // Build response
+            Map<String, Object> response = new HashMap<>();
+            response.put("disposalId", movementId);
+            response.put("sampleItemId", sampleItem.getId());
+            response.put("status", "disposed");
+            response.put("previousLocation", previousLocation);
+            response.put("disposedDate", new Timestamp(System.currentTimeMillis()).toString());
+            response.put("reason", reason);
+            response.put("method", method);
+            if (notes != null) {
+                response.put("notes", notes);
+            }
+
+            return response;
+
+        } catch (StaleObjectStateException e) {
+            throw new LIMSRuntimeException("Sample was just modified by another user. Please refresh and try again.",
+                    e);
         }
-        return response;
     }
 
     /**
@@ -1059,23 +1149,39 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     /**
-     * Resolve SampleItem from accession number or external reference number
-     * Frontend users only have access to accession numbers or external reference
-     * numbers, not internal SampleItem IDs.
+     * Resolve SampleItem from identifier (internal ID, accession number, or external
+     * reference)
      * 
-     * @param identifier Accession number or external reference number
+     * @param identifier Internal SampleItem ID, accession number, or external
+     *                   reference
      * @return SampleItem entity
      * @throws LIMSRuntimeException if SampleItem not found or multiple SampleItems
      *                              match
      */
     private SampleItem resolveSampleItem(String identifier) {
         if (identifier == null || identifier.trim().isEmpty()) {
-            throw new LIMSRuntimeException("Sample identifier (accession number or external reference) is required");
+            throw new LIMSRuntimeException("Sample identifier is required");
         }
 
         String trimmedId = identifier.trim();
 
-        // Step 1: Try accession number lookup (Sample → SampleItems)
+        // Step 1: Try internal ID lookup (for programmatic/test access)
+        try {
+            java.util.Optional<SampleItem> sampleItemOpt = sampleItemDAO.get(trimmedId);
+            if (sampleItemOpt.isPresent()) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Found SampleItem by internal ID: {}", trimmedId);
+                }
+                return sampleItemOpt.get();
+            }
+        } catch (Exception e) {
+            // Not a valid internal ID, continue to other methods
+            if (logger.isDebugEnabled()) {
+                logger.debug("Identifier '{}' is not a valid internal ID, trying other methods", trimmedId);
+            }
+        }
+
+        // Step 2: Try accession number lookup (Sample → SampleItems)
         Sample sample = sampleService.getSampleByAccessionNumber(trimmedId);
         if (sample != null) {
             List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
@@ -1093,7 +1199,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
         }
 
-        // Step 2: Try external reference lookup (direct SampleItem lookup)
+        // Step 3: Try external reference lookup (direct SampleItem lookup)
         List<SampleItem> sampleItemsByExtId = sampleItemService.getSampleItemsByExternalID(trimmedId);
         if (sampleItemsByExtId != null && !sampleItemsByExtId.isEmpty()) {
             if (sampleItemsByExtId.size() == 1) {
@@ -1110,7 +1216,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
         // Not found by any method
         throw new LIMSRuntimeException(String.format(
-                "Sample not found with identifier '%s'. Please check the accession number or external reference number.",
+                "Sample not found with identifier '%s'. Please check the ID, accession number, or external reference number.",
                 trimmedId));
     }
 }

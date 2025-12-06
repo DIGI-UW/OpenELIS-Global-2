@@ -85,19 +85,19 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
                 testShelfId, "Test Shelf", "TEST-SHELF", testDeviceId, true, 1);
         testShelf = storageShelfDAO.get(testShelfId).orElse(null);
 
-        // Create test racks
+        // Create test racks (Note: racks no longer have rows/columns - use code column)
         testRack1Id = 2203;
         jdbcTemplate.update(
-                "INSERT INTO storage_rack (id, label, code, rows, columns, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testRack1Id, "Rack 1", "RACK-1", 8, 12, testShelfId, true, 1);
+                "INSERT INTO storage_rack (id, label, code, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                testRack1Id, "Rack 1", "RACK-1", testShelfId, true, 1);
         testRack1 = storageRackDAO.get(testRack1Id).orElse(null);
 
         testRack2Id = 2204;
         jdbcTemplate.update(
-                "INSERT INTO storage_rack (id, label, code, rows, columns, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testRack2Id, "Rack 2", "RACK-2", 9, 9, testShelfId, true, 1);
+                "INSERT INTO storage_rack (id, label, code, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                testRack2Id, "Rack 2", "RACK-2", testShelfId, true, 1);
         testRack2 = storageRackDAO.get(testRack2Id).orElse(null);
     }
 

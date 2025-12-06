@@ -333,7 +333,26 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
             return storageShelfDAO.insert(shelf);
         } else if (entity instanceof StorageRack) {
-            return storageRackDAO.insert((StorageRack) entity);
+            StorageRack rack = (StorageRack) entity;
+            if (rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty()) {
+                String normalizedCode = codeValidationService.autoUppercase(rack.getShortCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                Integer parentShelfId = rack.getParentShelf() != null ? rack.getParentShelf().getId() : null;
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "rack",
+                        null, parentShelfId != null ? parentShelfId.toString() : null);
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                rack.setShortCode(normalizedCode);
+            }
+            return storageRackDAO.insert(rack);
         } else if (entity instanceof StorageBox) {
             StorageBox box = (StorageBox) entity;
             // Validate grid dimensions (boxes are gridded containers)
@@ -450,10 +469,30 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existingRack == null) {
                 throw new LIMSRuntimeException("Rack not found: " + rack.getId());
             }
+            if (rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty()) {
+                String normalizedCode = codeValidationService.autoUppercase(rack.getShortCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                Integer parentShelfId = rack.getParentShelf() != null ? rack.getParentShelf().getId() : null;
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "rack",
+                        rack.getId().toString(), parentShelfId != null ? parentShelfId.toString() : null);
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                existingRack.setShortCode(normalizedCode);
+            } else {
+                existingRack.setShortCode(null);
+            }
             // Update editable fields
             existingRack.setLabel(rack.getLabel());
-            existingRack.setShortCode(rack.getShortCode());
             existingRack.setActive(rack.getActive());
+            existingRack.setParentShelf(rack.getParentShelf());
             // Note: Code does NOT regenerate when label changes - only updates if
             // explicitly provided
 
