@@ -122,11 +122,19 @@ export function useSideNavPreference({
       // Use valid saved preference for this context
       else if (saved && [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(saved)) {
         console.log(
-          `[useSideNavPreference] Context switch: using saved preference for ${storageKeyPrefix}:`,
-          saved
+          `[useSideNavPreference] ✅ Context switch: using SAVED preference for ${storageKeyPrefix}:`,
+          { saved, willOverrideDefault: defaultMode }
         );
         setModeState(saved);
         return; // Early return - we found a valid saved preference
+      }
+      // Log invalid values for debugging
+      else if (saved) {
+        console.warn(
+          `[useSideNavPreference] ⚠️ Context switch: found INVALID value in localStorage:`,
+          { key: newStorageKey, invalidValue: saved, clearingIt: true }
+        );
+        localStorage.removeItem(newStorageKey);
       }
     } catch (e) {
       console.warn('localStorage unavailable');
@@ -141,8 +149,8 @@ export function useSideNavPreference({
           : SIDENAV_MODES.CLOSE);
     
     console.log(
-      `[useSideNavPreference] Context switch: no saved preference, using defaultMode:`,
-      effectiveDefault
+      `[useSideNavPreference] ⭐ Context switch: NO saved preference, using defaultMode:`,
+      { context: storageKeyPrefix, mode: effectiveDefault, checkedKey: newStorageKey }
     );
     setModeState(effectiveDefault);
   }, [storageKeyPrefix, defaultMode]);
