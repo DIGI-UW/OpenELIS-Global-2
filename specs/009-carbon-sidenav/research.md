@@ -11,11 +11,12 @@ approach failed** during M2b implementation. Key learnings:
 
 ### What Went Wrong
 
-1. **Extracting HeaderActions caused infinite loops** - Separating header actions
-   into a new component broke state sharing and caused `Maximum update depth
-   exceeded` errors.
+1. **Extracting HeaderActions caused infinite loops** - Separating header
+   actions into a new component broke state sharing and caused
+   `Maximum update depth exceeded` errors.
 
 2. **Over-mocking in tests hid real issues** - Unit tests passed but missed:
+
    - Infinite re-render loops
    - Navigation completely missing
    - Integration failures
@@ -27,21 +28,23 @@ approach failed** during M2b implementation. Key learnings:
 ### Revised Approach
 
 **Enhance Header.js instead of replacing it**:
+
 - Import `useSideNavPreference` hook for lock mode support
 - Import `useMenuAutoExpand` hook for route-based menu expansion
-- Migrate from HOCs (`withRouter`, `injectIntl`) to hooks (`useLocation`, `useIntl`)
+- Migrate from HOCs (`withRouter`, `injectIntl`) to hooks (`useLocation`,
+  `useIntl`)
 - Remove `jsonpath` dependency
 - Layout.js applies content margin class based on mode
 
 ### Salvageable Code
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| `useSideNavPreference.js` | KEEP | Solid tri-state logic |
-| `useMenuAutoExpand.js` | KEEP | Clean auto-expand algorithm |
-| `Layout.integration.test.js` | KEEP | Catches infinite loops |
-| `TwoModeLayout.js` | ARCHIVE | Reference only |
-| `HeaderActions.js` | DELETE | Caused infinite loops |
+| Component                    | Status  | Notes                       |
+| ---------------------------- | ------- | --------------------------- |
+| `useSideNavPreference.js`    | KEEP    | Solid tri-state logic       |
+| `useMenuAutoExpand.js`       | KEEP    | Clean auto-expand algorithm |
+| `Layout.integration.test.js` | KEEP    | Catches infinite loops      |
+| `TwoModeLayout.js`           | ARCHIVE | Reference only              |
+| `HeaderActions.js`           | DELETE  | Caused infinite loops       |
 
 ---
 

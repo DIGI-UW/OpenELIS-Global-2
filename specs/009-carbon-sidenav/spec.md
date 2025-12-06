@@ -3,11 +3,12 @@
 **Feature Branch**: `009-carbon-sidenav`  
 **Created**: December 4, 2025  
 **Status**: Draft  
-**Input**: Refactor the existing Layout/Header components to follow Carbon design
-best practices with improved sidenav functionality. This is a **refactor, not a
-rewrite** — ALL existing header functionality (notifications, user menu, language
-selector, search bar, logout, panels) MUST be preserved. The only behavioral
-change is the sidenav toggle (tri-state: show/lock/close) and active styling.
+**Input**: Refactor the existing Layout/Header components to follow Carbon
+design best practices with improved sidenav functionality. This is a **refactor,
+not a rewrite** — ALL existing header functionality (notifications, user menu,
+language selector, search bar, logout, panels) MUST be preserved. The only
+behavioral change is the sidenav toggle (tri-state: show/lock/close) and active
+styling.
 
 ## Critical Scope Constraint
 
@@ -26,6 +27,7 @@ header/layout functionality:
 - ✅ Notification context (NotificationContext)
 
 **ONLY CHANGES**:
+
 - Sidenav toggle behavior: tri-state (SHOW overlay, LOCK push, CLOSE rail)
 - Sidenav active styling: left-border indicator for current page
 - Content push/overlay based on mode
@@ -55,6 +57,7 @@ on navigation. Users need a persistent "locked" mode for complex workflows.
 ### What This Feature Preserves (Non-Negotiable)
 
 All existing header functionality MUST continue to work identically:
+
 - User menu, notifications, search, language selector, logout
 - All panel interactions and state management
 - Configuration and notification contexts
@@ -81,8 +84,8 @@ accordingly.
    toggle button, **Then** it enters **SHOW (overlay)** mode: the sidenav opens
    over the content with no content push.
 2. **Given** the sidenav is in **SHOW (overlay)** mode, **When** I click the
-   menu toggle again, **Then** it enters **LOCK (push)** mode: the sidenav
-   stays open and the content shifts right by 16rem.
+   menu toggle again, **Then** it enters **LOCK (push)** mode: the sidenav stays
+   open and the content shifts right by 16rem.
 3. **Given** the sidenav is in **LOCK (push)** mode, **When** I click the menu
    toggle again, **Then** it returns to **CLOSE (rail)**: the sidenav collapses
    to 48px/3rem and the content fills the space.
@@ -97,13 +100,14 @@ accordingly.
 ## Clarifications
 
 ### Session 2025-12-05
-- Q: Should the sidenav behavior apply globally to all authenticated routes?
-  → A: Yes. All authenticated pages use the enhanced sidenav. Storage and
+
+- Q: Should the sidenav behavior apply globally to all authenticated routes? →
+  A: Yes. All authenticated pages use the enhanced sidenav. Storage and
   multi-tab pages default to LOCK mode; user preference overrides page defaults.
-- Q: Should this refactor preserve ALL existing header functionality?
-  → A: Yes. This is a refactor, NOT a rewrite. Zero loss of functionality.
-  All header actions (notifications, user menu, language, search, logout)
-  must remain intact.
+- Q: Should this refactor preserve ALL existing header functionality? → A: Yes.
+  This is a refactor, NOT a rewrite. Zero loss of functionality. All header
+  actions (notifications, user menu, language, search, logout) must remain
+  intact.
 
 ---
 
@@ -265,8 +269,8 @@ content rather than pushing it.
 - **FR-010**: System MUST highlight the currently active navigation item with a
   left-border indicator consistent with existing visual language.
 - **FR-011**: System MUST preserve ALL existing header functionality during
-  refactor: user menu, notifications panel, language selector, search bar,
-  help links, logout, version display.
+  refactor: user menu, notifications panel, language selector, search bar, help
+  links, logout, version display.
 - **FR-012**: System MUST preserve ConfigurationContext and NotificationContext
   providers from the existing Layout.js.
 - **FR-013**: System MUST apply the refactored layout globally to all
@@ -319,9 +323,10 @@ content rather than pushing it.
   2.1 AA compliance for navigation components).
 - **SC-007**: Developers can configure page-level default mode with a single
   prop change.
-- **SC-008**: ALL existing header functionality works identically after refactor:
-  user menu opens/closes, notifications panel works, language selector changes
-  language, search bar functions, logout works, help links navigate correctly.
+- **SC-008**: ALL existing header functionality works identically after
+  refactor: user menu opens/closes, notifications panel works, language selector
+  changes language, search bar functions, logout works, help links navigate
+  correctly.
 - **SC-009**: Zero regression in login/logout flow after refactor.
 - **SC-010**: ConfigurationContext and NotificationContext continue to provide
   data to all child components.

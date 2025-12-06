@@ -102,7 +102,7 @@ const SearchBar = (props) => {
               onKeyDown={handleAutocompleteKeyDown}
               onClear={handleClearSearch}
               className="search-input"
-              autoComplete
+              autoComplete="on"
             />
           </Theme>
           <Button

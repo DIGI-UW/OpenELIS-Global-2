@@ -560,6 +560,7 @@
   "label.button.submit": "Connecter",
   "label.button.uploadfile": "Télécharger le Fichier",
   "label.button.viewReport": "Voir le rapport",
+  "label.loading": "Chargement...",
   "label.cancel.test.no.replace": "Annuler le test pour les numéros de laboratoire sélectionnés, ne pas assigner un nouveau test",
   "label.checkedWillBeModified": "Les numéros de laboratoire cochés seront modifiés",
   "label.critical.range": "Plage critique",

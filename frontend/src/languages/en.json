@@ -560,6 +560,7 @@
   "label.button.submit": "Submit",
   "label.button.uploadfile": "Upload file",
   "label.button.viewReport": "View Report",
+  "label.loading": "Loading...",
   "label.cancel.test.no.replace": "Cancel test for lab numbers selected, do not assign a new test",
   "label.checkedWillBeModified": "Checked lab no. will be modified",
   "label.critical.range": "Critical range",

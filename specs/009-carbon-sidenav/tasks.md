@@ -28,12 +28,12 @@ parallel.
 
 ## User Story to Milestone Mapping
 
-| Milestone | User Stories                           | Scope                                            |
-| --------- | -------------------------------------- | ------------------------------------------------ |
-| M1        | P1-US1 (Toggle), P1-US2 (Persistence)  | useSideNavPreference hook, tri-state, localStorage |
-| M2a       | P2-US3 (Hierarchical Nav)              | useMenuAutoExpand hook, active styling           |
-| M2b       | P2-US4 (Page Config), FR-011/012/013   | Enhance Header.js with hooks, lock mode          |
-| M3        | P3-US5 (Icons/Tooltips), P3-US6 (Mobile) | Icons, responsive behavior, E2E tests          |
+| Milestone | User Stories                             | Scope                                              |
+| --------- | ---------------------------------------- | -------------------------------------------------- |
+| M1        | P1-US1 (Toggle), P1-US2 (Persistence)    | useSideNavPreference hook, tri-state, localStorage |
+| M2a       | P2-US3 (Hierarchical Nav)                | useMenuAutoExpand hook, active styling             |
+| M2b       | P2-US4 (Page Config), FR-011/012/013     | Enhance Header.js with hooks, lock mode            |
+| M3        | P3-US5 (Icons/Tooltips), P3-US6 (Mobile) | Icons, responsive behavior, E2E tests              |
 
 ## Milestone Dependency Graph
 
@@ -151,15 +151,15 @@ persistence working.
 **Type**: Sequential (depends on M1)  
 **PR Target**: `develop`  
 **Scope**: Hierarchical menus, auto-expand active branch, active styling  
-**Verification**: Jest tests pass, menu hierarchy displays correctly, auto-expand
-works  
+**Verification**: Jest tests pass, menu hierarchy displays correctly,
+auto-expand works  
 **User Stories**: P2-US3 (Hierarchical Navigation)
 
 ### Branch Setup (MANDATORY - First Task)
 
 - [x] T020 [M2a] Create milestone branch from develop:
-      `git checkout develop && git pull && git checkout -b feat/OGC-009-sidenav/m2a-nav` ✅
-      (branched from M1)
+      `git checkout develop && git pull && git checkout -b feat/OGC-009-sidenav/m2a-nav`
+      ✅ (branched from M1)
 
 ### Tests for Milestone 2a (MANDATORY - TDD Enforcement)
 
@@ -238,7 +238,8 @@ works
 - [ ] T029 [M2a] Manual verification: Menu hierarchy renders, auto-expand works
       on navigation (requires running app - deferred to PR review)
 - [x] T030 [M2a] Format code: `cd frontend && npm run format` ✅
-- [x] T031 [M2a] Create PR for M2a: `feat/OGC-009-sidenav/m2a-nav` → `develop` ✅ PR #2382 created
+- [x] T031 [M2a] Create PR for M2a: `feat/OGC-009-sidenav/m2a-nav` → `develop`
+      ✅ PR #2382 created
 
 **Checkpoint**: Milestone 2a PR ready for review. Hierarchical menus and
 auto-expand working.
@@ -249,9 +250,12 @@ auto-expand working.
 
 **Type**: Sequential (depends on M1, M2a)  
 **PR Target**: `develop`  
-**Scope**: Enhance existing Header.js with hooks, modernize patterns, add lock mode  
-**Verification**: Integration tests pass, no infinite loops, all header features work  
-**User Stories**: P2-US4 (Page-Level Config), FR-011/012/013 (Header Preservation)
+**Scope**: Enhance existing Header.js with hooks, modernize patterns, add lock
+mode  
+**Verification**: Integration tests pass, no infinite loops, all header features
+work  
+**User Stories**: P2-US4 (Page-Level Config), FR-011/012/013 (Header
+Preservation)
 
 **APPROACH CHANGE**: After the failed TwoModeLayout replacement approach caused
 infinite loops and missing navigation, M2b now **enhances Header.js in-place**
@@ -267,17 +271,19 @@ instead of replacing it.
 
 - [x] T060a [M2b] Archive TwoModeLayout.js (move to `_archive/` or delete) ✅
 - [x] T060b [M2b] Delete HeaderActions.js (caused infinite loops) ✅
-- [x] T060c [M2b] Keep salvageable files: useSideNavPreference.js, useMenuAutoExpand.js,
-      Layout.integration.test.js ✅
+- [x] T060c [M2b] Keep salvageable files: useSideNavPreference.js,
+      useMenuAutoExpand.js, Layout.integration.test.js ✅
 
 ### Tests for Milestone 2b (MANDATORY - TDD Enforcement)
 
-> **CRITICAL: Integration tests that catch REAL issues (infinite loops, missing nav)**
+> **CRITICAL: Integration tests that catch REAL issues (infinite loops, missing
+> nav)**
 >
 > Reference: [Jest Best Practices](../../.specify/guides/jest-best-practices.md)
 
 - [x] T061 [P] [M2b] **[RED]** Update Layout.integration.test.js to verify
-      Header.js enhancement → Run `npm test`, verify current state ✅ 5/5 tests pass
+      Header.js enhancement → Run `npm test`, verify current state ✅ 5/5 tests
+      pass
 
   - Test: renders without infinite loop when authenticated
   - Test: side navigation renders when authenticated
@@ -296,22 +302,23 @@ instead of replacing it.
 
 ### Implementation for Milestone 2b
 
-- [x] T063 [M2b] **[GREEN]** Migrate Header.js from injectIntl HOC to useIntl hook
-      in `frontend/src/components/layout/Header.js` ✅
+- [x] T063 [M2b] **[GREEN]** Migrate Header.js from injectIntl HOC to useIntl
+      hook in `frontend/src/components/layout/Header.js` ✅
 
   - Add `const intl = useIntl();` inside component
   - Replace `props.intl.locale` with `intl.locale`
   - Remove `injectIntl` from export
 
-- [x] T064 [M2b] **[GREEN]** Migrate Header.js from withRouter HOC to useLocation hook
-      in `frontend/src/components/layout/Header.js` ✅
+- [x] T064 [M2b] **[GREEN]** Migrate Header.js from withRouter HOC to
+      useLocation hook in `frontend/src/components/layout/Header.js` ✅
 
   - Add `const location = useLocation();` inside component
   - Remove `withRouter` from export
   - Update export: `export default OEHeader;`
 
-- [x] T065 [M2b] **[GREEN]** Import and use useSideNavPreference hook in Header.js
-      for lock mode support in `frontend/src/components/layout/Header.js` ✅
+- [x] T065 [M2b] **[GREEN]** Import and use useSideNavPreference hook in
+      Header.js for lock mode support in
+      `frontend/src/components/layout/Header.js` ✅
 
   - Import `useSideNavPreference` from "./useSideNavPreference"
   - Add `const { mode, toggle: toggleLock } = useSideNavPreference(...)`
@@ -325,8 +332,8 @@ instead of replacing it.
   - Use hook to transform menus["menu"] for auto-expansion
   - Note: jsonpath still used for manual menu toggling (future cleanup)
 
-- [x] T067 [M2b] **[GREEN]** Update Layout.js to apply content margin for lock mode
-      in `frontend/src/components/layout/Layout.js` ✅
+- [x] T067 [M2b] **[GREEN]** Update Layout.js to apply content margin for lock
+      mode in `frontend/src/components/layout/Layout.js` ✅
 
   - Import `useSideNavPreference` hook
   - Add content class based on mode: `content-nav-locked`
@@ -340,9 +347,11 @@ instead of replacing it.
 
 - [ ] T069 [M2b] Manual verification: All header features work (login, logout,
       notifications, search, language, help)
-- [ ] T070 [M2b] Manual verification: Lock mode pushes content, persists preference
+- [ ] T070 [M2b] Manual verification: Lock mode pushes content, persists
+      preference
 - [x] T071 [M2b] Format code: `cd frontend && npm run format` ✅
-- [ ] T072 [M2b] Create PR for M2b: `feat/OGC-009-sidenav/m2b-rollout` → `develop`
+- [ ] T072 [M2b] Create PR for M2b: `feat/OGC-009-sidenav/m2b-rollout` →
+      `develop`
 
 **Checkpoint**: Milestone 2b PR ready for review. Header.js enhanced with modern
 hooks and lock mode, no regressions.
@@ -376,8 +385,7 @@ complete
 - [x] T081 [P] [M3] **[RED]** Create Cypress E2E test file in
       `frontend/cypress/e2e/sidenavNavigation.cy.js` → Run
       `npm run cy:run -- --spec "cypress/e2e/sidenavNavigation.cy.js"`, verify
-      FAILS before T087
-      ✅ Created in M2b to verify critical fixes
+      FAILS before T087 ✅ Created in M2b to verify critical fixes
 
   - Test: menu loads from real database (no mocks) - verify items render
   - Test: can toggle sidenav between three modes (show/lock/close)
@@ -501,6 +509,7 @@ revised approach (enhance Header.js vs replace with TwoModeLayout).
 **Milestone Order**: M1 → M2a → M2b → M3
 
 Each milestone depends on the previous milestone being merged. This ensures:
+
 - M2a builds on M1's TwoModeLayout component
 - M2b integrates header extraction with M2a's navigation
 - M3 adds polish after global rollout is complete
@@ -514,13 +523,13 @@ Each milestone depends on the previous milestone being merged. This ensures:
 
 ## Task Summary
 
-| Milestone | Task Count | Test Tasks | Implementation Tasks | User Stories              |
-| --------- | ---------- | ---------- | -------------------- | ------------------------- |
-| M1        | 11         | 2          | 4                    | P1-US1, P1-US2            |
-| M2a       | 12         | 3          | 4                    | P2-US3                    |
-| M2b       | 16         | 2          | 8                    | P2-US4, FR-011/012/013    |
-| M3        | 19         | 3          | 5                    | P3-US5, P3-US6            |
-| **Total** | **58**     | **10**     | **21**               | **6 stories + 3 FRs**     |
+| Milestone | Task Count | Test Tasks | Implementation Tasks | User Stories           |
+| --------- | ---------- | ---------- | -------------------- | ---------------------- |
+| M1        | 11         | 2          | 4                    | P1-US1, P1-US2         |
+| M2a       | 12         | 3          | 4                    | P2-US3                 |
+| M2b       | 16         | 2          | 8                    | P2-US4, FR-011/012/013 |
+| M3        | 19         | 3          | 5                    | P3-US5, P3-US6         |
+| **Total** | **58**     | **10**     | **21**               | **6 stories + 3 FRs**  |
 
 ---
 
@@ -536,11 +545,13 @@ Each milestone depends on the previous milestone being merged. This ensures:
 ### Approach Change (December 5, 2025)
 
 M2b was revised after the "TwoModeLayout replacement" approach failed:
+
 - **Original approach**: Replace Header.js with TwoModeLayout + HeaderActions
 - **Problem**: Caused infinite loops, missing navigation, broken tests
 - **Revised approach**: Enhance existing Header.js with hooks
 
 **What we learned**:
+
 1. Tests that mock too much hide real integration issues
 2. Extracting components breaks shared state management
 3. Enhancing existing code is safer than replacing it

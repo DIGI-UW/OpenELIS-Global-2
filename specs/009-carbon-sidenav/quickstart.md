@@ -15,12 +15,12 @@ localStorage.
 
 This feature is broken into 4 milestones per Constitution Principle IX:
 
-| Milestone | Branch                              | Scope                                | Can Start    |
-| --------- | ----------------------------------- | ------------------------------------ | ------------ |
-| M1        | `feat/OGC-009-sidenav/m1-core`      | Core layout, tri-state toggle        | ✅ COMPLETE  |
-| M2a       | `feat/OGC-009-sidenav/m2a-nav`      | Hierarchical nav, auto-expand        | ✅ COMPLETE  |
-| M2b       | `feat/OGC-009-sidenav/m2b-rollout`  | Global rollout, header preservation  | After M2a    |
-| M3        | `feat/OGC-009-sidenav/m3-polish`    | Icons, responsive, E2E tests         | After M2b    |
+| Milestone | Branch                             | Scope                               | Can Start   |
+| --------- | ---------------------------------- | ----------------------------------- | ----------- |
+| M1        | `feat/OGC-009-sidenav/m1-core`     | Core layout, tri-state toggle       | ✅ COMPLETE |
+| M2a       | `feat/OGC-009-sidenav/m2a-nav`     | Hierarchical nav, auto-expand       | ✅ COMPLETE |
+| M2b       | `feat/OGC-009-sidenav/m2b-rollout` | Global rollout, header preservation | After M2a   |
+| M3        | `feat/OGC-009-sidenav/m3-polish`   | Icons, responsive, E2E tests        | After M2b   |
 
 **Workflow**:
 
@@ -90,8 +90,8 @@ Add imports to existing `frontend/src/components/layout/Header.js`:
 // Add these imports
 import { useSideNavPreference } from "./useSideNavPreference";
 import { useMenuAutoExpand } from "./useMenuAutoExpand";
-import { useIntl } from "react-intl";  // Replace injectIntl
-import { useLocation } from "react-router-dom";  // Replace withRouter
+import { useIntl } from "react-intl"; // Replace injectIntl
+import { useLocation } from "react-router-dom"; // Replace withRouter
 ```
 
 ### Step 3: Migrate from HOCs to Hooks
@@ -143,9 +143,11 @@ Replace jsonpath-based expansion with hook:
 const menusWithAutoExpand = useMenuAutoExpand(menus.menu || []);
 
 // Use in render
-{menusWithAutoExpand.map((menuItem, index) => 
-  generateMenuItems(menuItem, index, 0, `$.menu[${index}]`)
-)}
+{
+  menusWithAutoExpand.map((menuItem, index) =>
+    generateMenuItems(menuItem, index, 0, `$.menu[${index}]`)
+  );
+}
 ```
 
 ### Step 6: Add Content Push to Layout.js
@@ -158,7 +160,7 @@ import { useSideNavPreference } from "./useSideNavPreference";
 function Layout(props) {
   const { mode } = useSideNavPreference({ storageKeyPrefix: "global" });
   const contentClass = mode === "lock" ? "content-nav-locked" : "";
-  
+
   return (
     // ... providers ...
     <Content className={contentClass}>{children}</Content>
@@ -205,15 +207,15 @@ npm run cy:run -- --spec "cypress/e2e/sidenavNavigation.cy.js"
 
 ## Key Files
 
-| File                                                     | Purpose                           |
-| -------------------------------------------------------- | --------------------------------- |
-| `frontend/src/components/layout/Header.js`               | Enhanced with lock mode + hooks   |
-| `frontend/src/components/layout/Layout.js`               | Content margin for lock mode      |
-| `frontend/src/components/layout/useSideNavPreference.js` | Tri-state hook (show/lock/close)  |
-| `frontend/src/components/layout/useMenuAutoExpand.js`    | Route-based menu auto-expansion   |
-| `frontend/src/components/layout/Layout.integration.test.js` | Critical smoke tests           |
-| `frontend/src/components/Style.css`                      | Lock mode content margin CSS      |
-| `frontend/cypress/e2e/sidenavNavigation.cy.js`           | E2E tests                         |
+| File                                                        | Purpose                          |
+| ----------------------------------------------------------- | -------------------------------- |
+| `frontend/src/components/layout/Header.js`                  | Enhanced with lock mode + hooks  |
+| `frontend/src/components/layout/Layout.js`                  | Content margin for lock mode     |
+| `frontend/src/components/layout/useSideNavPreference.js`    | Tri-state hook (show/lock/close) |
+| `frontend/src/components/layout/useMenuAutoExpand.js`       | Route-based menu auto-expansion  |
+| `frontend/src/components/layout/Layout.integration.test.js` | Critical smoke tests             |
+| `frontend/src/components/Style.css`                         | Lock mode content margin CSS     |
+| `frontend/cypress/e2e/sidenavNavigation.cy.js`              | E2E tests                        |
 
 ## Reference Documentation
 

@@ -179,11 +179,11 @@ const { mode, isExpanded, toggle, setMode } = useSideNavPreference({
 
 ### Examples
 
-| Context        | Key                    | Value                              |
-| -------------- | ---------------------- | ---------------------------------- |
-| Storage pages  | `storageSideNavMode`   | `"show"` or `"lock"` or `"close"`  |
-| Default layout | `defaultSideNavMode`   | `"show"` or `"lock"` or `"close"`  |
-| Admin pages    | `adminSideNavMode`     | `"show"` or `"lock"` or `"close"`  |
+| Context        | Key                  | Value                             |
+| -------------- | -------------------- | --------------------------------- |
+| Storage pages  | `storageSideNavMode` | `"show"` or `"lock"` or `"close"` |
+| Default layout | `defaultSideNavMode` | `"show"` or `"lock"` or `"close"` |
+| Admin pages    | `adminSideNavMode`   | `"show"` or `"lock"` or `"close"` |
 
 ### Value Type
 
