@@ -238,27 +238,6 @@ function OEHeader({
       </>
     );
   };
-  /**
-   * Helper: Check if any child menu item (recursively) is active
-   * Used to determine if parent should show active state
-   */
-  const hasActiveChild = (menuItem) => {
-    if (!menuItem.childMenus || menuItem.childMenus.length === 0) {
-      return false;
-    }
-    
-    return menuItem.childMenus.some((child) => {
-      const exactMatch = location.pathname === child.menu.actionURL;
-      const prefixMatch = 
-        child.menu.actionURL?.length > 1 && 
-        location.pathname.startsWith(child.menu.actionURL + "/");
-      const childIsActive = !!child.menu.actionURL && (exactMatch || prefixMatch);
-      
-      // Check recursively
-      return childIsActive || hasActiveChild(child);
-    });
-  };
-
   const generateMenuItems = (menuItem, index, level, path) => {
     // Skip inactive menu items
     if (!menuItem.menu.isActive) {
@@ -266,16 +245,14 @@ function OEHeader({
     }
 
     // URL matching: exact match OR prefix match (for parent routes)
+    // NOTE: We only check direct matches - parent items don't show active when child is active
+    // (parent is already unfurled, making it clear what's selected)
     const exactMatch = location.pathname === menuItem.menu.actionURL;
     const prefixMatch = 
       menuItem.menu.actionURL?.length > 1 && 
       location.pathname.startsWith(menuItem.menu.actionURL + "/");
     const isActive = !!menuItem.menu.actionURL && (exactMatch || prefixMatch);
     const hasChildren = menuItem.childMenus.length > 0;
-    
-    // For items with children, also check if any child is active
-    const parentIsActive = hasChildren ? hasActiveChild(menuItem) : false;
-    const finalIsActive = isActive || parentIsActive;
 
     // Indentation: level 0 = no indent, level 1+ = progressive indent
     const marginValue = level > 0 ? `${level * 0.5}rem` : "0";
@@ -325,7 +302,7 @@ function OEHeader({
       >
         <SideNavMenuItem
           className={level === 0 ? "top-level-menu-item" : "reduced-padding-nav-menu-item"}
-          isActive={finalIsActive}
+          isActive={isActive}
           href={menuItem.menu.actionURL || (hasChildren ? "#" : undefined)}
           onClick={handleLabelClick}
         >
@@ -337,8 +314,8 @@ function OEHeader({
               marginLeft: marginValue,
             }}
           >
-            <span style={{ flex: 1 }}>
-              {renderSideNavMenuItemLabel(menuItem, level)}
+            <span style={{ flex: 1, fontSize: level > 0 ? `${100 - 5 * (level - 1)}%` : "100%" }}>
+              <FormattedMessage id={menuItem.menu.displayKey} />
             </span>
             {hasChildren && (
               <div
@@ -367,14 +344,6 @@ function OEHeader({
     );
   };
 
-  const renderSideNavMenuItemLabel = (menuItem, level) => {
-    const fontPercent = 100 - 5 * (level - 1) + "%";
-    return (
-      <span style={{ fontSize: fontPercent }}>
-        <FormattedMessage id={menuItem.menu.displayKey} />
-      </span>
-    );
-  };
 
   const setMenuItemExpanded = (e, menuItem, path) => {
     const newMenus = { ...menus };
