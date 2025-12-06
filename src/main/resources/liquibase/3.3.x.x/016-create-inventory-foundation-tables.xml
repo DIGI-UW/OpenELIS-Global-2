@@ -5,23 +5,23 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Drop old inventory tables if they exist (from previous implementation) -->
-    <changeSet id="inventory-000-drop-old-tables" author="mherman22">
-        <preConditions onFail="MARK_RAN">
-            <or>
-                <tableExists tableName="inventory_item" schemaName="clinlims"/>
-                <tableExists tableName="inventory_location" schemaName="clinlims"/>
-                <tableExists tableName="inventory_receipt" schemaName="clinlims"/>
-            </or>
-        </preConditions>
-        <comment>Drop old inventory tables from previous implementation (used numeric IDs)</comment>
-        <sql>DROP TABLE IF EXISTS clinlims.inventory_receipt CASCADE;</sql>
-        <sql>DROP TABLE IF EXISTS clinlims.inventory_location CASCADE;</sql>
-        <sql>DROP TABLE IF EXISTS clinlims.inventory_item CASCADE;</sql>
-        <sql>DROP SEQUENCE IF EXISTS clinlims.inventory_item_seq;</sql>
-        <sql>DROP SEQUENCE IF EXISTS clinlims.inventory_location_seq;</sql>
-        <sql>DROP SEQUENCE IF EXISTS clinlims.inventory_receipt_seq;</sql>
-    </changeSet>
+<!--    &lt;!&ndash; Drop old inventory tables if they exist (from previous implementation) &ndash;&gt;-->
+<!--    <changeSet id="inventory-000-drop-old-tables" author="mherman22">-->
+<!--        <preConditions onFail="MARK_RAN">-->
+<!--            <or>-->
+<!--                <tableExists tableName="inventory_item" schemaName="clinlims"/>-->
+<!--                <tableExists tableName="inventory_location" schemaName="clinlims"/>-->
+<!--                <tableExists tableName="inventory_receipt" schemaName="clinlims"/>-->
+<!--            </or>-->
+<!--        </preConditions>-->
+<!--        <comment>Drop old inventory tables from previous implementation (used numeric IDs)</comment>-->
+<!--        <sql>DROP TABLE IF EXISTS clinlims.inventory_receipt CASCADE;</sql>-->
+<!--        <sql>DROP TABLE IF EXISTS clinlims.inventory_location CASCADE;</sql>-->
+<!--        <sql>DROP TABLE IF EXISTS clinlims.inventory_item CASCADE;</sql>-->
+<!--        <sql>DROP SEQUENCE IF EXISTS clinlims.inventory_item_seq;</sql>-->
+<!--        <sql>DROP SEQUENCE IF EXISTS clinlims.inventory_location_seq;</sql>-->
+<!--        <sql>DROP SEQUENCE IF EXISTS clinlims.inventory_receipt_seq;</sql>-->
+<!--    </changeSet>-->
 
     <!-- Inventory Item Table -->
     <changeSet id="inventory-001-create-inventory-item-table" author="mherman22">
