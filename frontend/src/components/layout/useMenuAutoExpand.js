@@ -36,6 +36,10 @@ export function useMenuAutoExpand(initialMenus) {
     /**
      * Recursive function to mark menu items for expansion.
      * Returns true if this item or any descendant matches the current route.
+     * 
+     * CHANGED (2025-12-05): Do NOT force-collapse menus on route change.
+     * Only expand parents of active route, preserve manual expansions.
+     * User feedback: "autocollapse causes consistency issues and changes user focus"
      *
      * @param {Array} items - Menu items to process
      * @returns {boolean} true if this branch contains the active route
@@ -44,13 +48,13 @@ export function useMenuAutoExpand(initialMenus) {
       let isActiveBranch = false;
 
       items.forEach((item) => {
-        // Reset expanded state
-        item.expanded = false;
+        // REMOVED: item.expanded = false (was force-collapsing all menus)
+        // Keep current expanded state, only expand if in active branch
 
         // Recursively check children first (depth-first)
         if (item.childMenus && item.childMenus.length > 0) {
           if (markActiveExpanded(item.childMenus)) {
-            item.expanded = true;
+            item.expanded = true; // Expand parent of active child
             isActiveBranch = true;
           }
         }

@@ -122,19 +122,32 @@ export function useSideNavPreference({
 
   /**
    * Reset state when storageKeyPrefix changes (e.g. switching between main and storage layouts)
+   * CRITICAL: Use defaultMode directly on context switch, NOT localStorage
+   * Reason: User's manual toggle in one context should not affect another context's default
+   * Example: User closes nav on Dashboard → should not prevent Storage from defaulting to LOCK
    */
   useEffect(() => {
-    const newMode = initialMode();
+    // On context switch, always apply the new context's defaultMode
+    // Do NOT read from localStorage here - that would allow preferences from one context
+    // to bleed into another context (e.g., closing nav on Dashboard shouldn't affect Storage's LOCK default)
+    const effectiveDefault = defaultMode && 
+      [SIDENAV_MODES.SHOW, SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(defaultMode)
+      ? defaultMode
+      : (typeof defaultExpanded === "boolean" 
+          ? (defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE)
+          : SIDENAV_MODES.CLOSE);
+    
     console.log(
-      `[useSideNavPreference] storageKeyPrefix changed, resetting mode:`,
+      `[useSideNavPreference] storageKeyPrefix changed, applying defaultMode:`,
       {
         storageKeyPrefix,
-        newMode,
+        defaultMode: effectiveDefault,
         previousMode: mode,
+        ignoring_localStorage: true,
       },
     );
-    setModeState(newMode);
-  }, [storageKeyPrefix]);
+    setModeState(effectiveDefault);
+  }, [storageKeyPrefix, defaultMode]);
 
   /**
    * Persist helper - IMPORTANT: SHOW mode is temporary and should NOT be persisted!
