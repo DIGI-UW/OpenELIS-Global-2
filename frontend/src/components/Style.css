@@ -557,6 +557,7 @@ button {
 .cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
   border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
   background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
+  padding-left: calc(1rem - 4px) !important; /* Compensate for 4px border to prevent double border */
 }
 
 /* Hover state for Carbon links */

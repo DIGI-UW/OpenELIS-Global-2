@@ -51,21 +51,24 @@ export default function Layout(props) {
   // Track previous pathname to detect actual route changes
   const prevPathnameRef = useRef(location.pathname);
 
-  // Auto-close SHOW mode ONLY when route actually changes (not when mode changes!)
+  // Auto-close SHOW mode to DEFAULT mode for new route (not always CLOSE!)
   useEffect(() => {
     const pathnameChanged = prevPathnameRef.current !== location.pathname;
     
     if (pathnameChanged && mode === SIDENAV_MODES.SHOW) {
-      console.log(`[Layout] Route changed while in SHOW mode - auto-closing to CLOSE`, {
+      // Close to the DEFAULT mode for the NEW route (respects page-specific defaults!)
+      const newDefaultMode = layoutConfig.defaultMode;
+      console.log(`[Layout] Route changed while in SHOW mode - auto-closing to default for new route`, {
         previousPath: prevPathnameRef.current,
         currentPath: location.pathname,
+        closingTo: newDefaultMode,
       });
-      setMode(SIDENAV_MODES.CLOSE);
+      setMode(newDefaultMode);
     }
     
     // Update ref for next comparison
     prevPathnameRef.current = location.pathname;
-  }, [location.pathname, mode, setMode, SIDENAV_MODES.SHOW, SIDENAV_MODES.CLOSE]);
+  }, [location.pathname, mode, setMode, SIDENAV_MODES.SHOW, layoutConfig.defaultMode]);
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);
