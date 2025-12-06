@@ -245,13 +245,23 @@ function OEHeader({
     }
 
     // URL matching: exact match OR prefix match (for parent routes)
-    // NOTE: We only check direct matches - parent items don't show active when child is active
-    // (parent is already unfurled, making it clear what's selected)
-    const exactMatch = location.pathname === menuItem.menu.actionURL;
-    const prefixMatch = 
-      menuItem.menu.actionURL?.length > 1 && 
-      location.pathname.startsWith(menuItem.menu.actionURL + "/");
-    const isActive = !!menuItem.menu.actionURL && (exactMatch || prefixMatch);
+    // Normalize to ignore query/hash to fix cases like /WorkPlanByTest?type=test
+    const normalizePath = (url) => {
+      if (!url) return "";
+      const pathOnly = url.split(/[?#]/)[0] || "";
+      if (pathOnly.length > 1 && pathOnly.endsWith("/")) {
+        return pathOnly.slice(0, -1);
+      }
+      return pathOnly;
+    };
+
+    const currentPath = normalizePath(location.pathname);
+    const actionPath = normalizePath(menuItem.menu.actionURL);
+
+    const exactMatch = actionPath && currentPath === actionPath;
+    const prefixMatch =
+      actionPath && actionPath.length > 1 && currentPath.startsWith(actionPath + "/");
+    const isActive = !!actionPath && (exactMatch || prefixMatch);
     const hasChildren = menuItem.childMenus.length > 0;
 
     // Indentation: level 0 = no indent, level 1+ = progressive indent
@@ -561,11 +571,24 @@ function OEHeader({
               {userSessionDetails.authenticated && (
                 <>
                   <SideNav
+                    key={`${mode}-${SIDENAV_MODES.CLOSE}-${SIDENAV_MODES.LOCK}`}
                     aria-label="Side navigation"
-                    expanded={isExpanded}
-                    isFixedNav={isLocked}
+                    expanded={mode !== SIDENAV_MODES.CLOSE}
+                    isFixedNav={mode === SIDENAV_MODES.LOCK}
                     isPersistent={false}
                     isChildOfHeader={true}
+                    // Debug: log the incoming props for SideNav
+                    ref={(ref) => {
+                      if (ref) {
+                        /* eslint-disable no-console */
+                        console.log("[Header] SideNav render", {
+                          mode,
+                          expanded: mode !== SIDENAV_MODES.CLOSE,
+                          isFixedNav: mode === SIDENAV_MODES.LOCK,
+                        });
+                        /* eslint-enable no-console */
+                      }
+                    }}
                   >
                     <SideNavItems>
                       {autoExpandedMenus.map((childMenuItem, index) => {

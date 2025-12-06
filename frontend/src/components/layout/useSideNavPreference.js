@@ -90,6 +90,16 @@ export function useSideNavPreference({
    * Uses a function initializer to avoid reading localStorage on every render.
    */
   const [mode, setModeState] = useState(initialMode);
+  useEffect(() => {
+    // Debug: log mode changes
+    /* eslint-disable no-console */
+    console.log("[SideNavPref] mode changed", {
+      mode,
+      storageKeyPrefix,
+      isExpanded: mode !== SIDENAV_MODES.CLOSE,
+    });
+    /* eslint-enable no-console */
+  }, [mode, storageKeyPrefix]);
 
   /**
    * Reset state when storageKeyPrefix changes (e.g. switching between main and storage layouts)
@@ -191,7 +201,13 @@ export function useSideNavPreference({
     setModeState((prev) => {
       const currentIndex = MODE_CYCLE.indexOf(prev);
       const nextMode = MODE_CYCLE[(currentIndex + 1) % MODE_CYCLE.length];
-      persistMode(nextMode);
+      // When cycling into SHOW, do not persist (temporary). Persist otherwise.
+      if (nextMode !== SIDENAV_MODES.SHOW) {
+        persistMode(nextMode);
+      }
+      /* eslint-disable no-console */
+      console.log("[SideNavPref] toggle", { prev, nextMode });
+      /* eslint-enable no-console */
       return nextMode;
     });
   }, [persistMode]);
@@ -201,6 +217,9 @@ export function useSideNavPreference({
    */
   const setMode = useCallback(
     (value) => {
+      /* eslint-disable no-console */
+      console.log("[SideNavPref] setMode", { value });
+      /* eslint-enable no-console */
       setModeState(value);
       persistMode(value);
     },

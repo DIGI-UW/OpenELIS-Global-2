@@ -557,19 +557,36 @@ button {
  * ============================================================================
  */
 
-/* Active state - ONLY left border, NO background color, NO other borders */
+/* Active state - Left border + background color, NO other borders */
+/* Use single selector to avoid double borders - only target links within menu items */
 .cds--side-nav__menu-item .cds--side-nav__link--current,
-.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"],
-.cds--side-nav__link--current,
-.cds--side-nav__link[aria-current="page"] {
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
   border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
-  background-color: transparent !important; /* No background - hover is enough */
+  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important; /* Restore active background */
   padding-left: calc(1rem - 4px) !important; /* Compensate for 4px border to prevent double border */
-  border-right: none !important; /* Remove any white border on right */
-  border-top: none !important; /* Remove any white border on top */
-  border-bottom: none !important; /* Remove any white border on bottom */
-  outline: none !important; /* Remove any outline */
-  box-shadow: none !important; /* Remove any box shadow */
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure nav-scoped active background wins specificity */
+nav.cds--side-nav .cds--side-nav__link--current,
+nav.cds--side-nav .cds--side-nav__link[aria-current="page"] {
+  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
+}
+
+/* Remove any ::before pseudo-elements that might add borders */
+.cds--side-nav__menu-item .cds--side-nav__link--current::before,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]::before {
+  display: none !important;
+  content: none !important;
+}
+nav.cds--side-nav .cds--side-nav__link--current::before,
+nav.cds--side-nav .cds--side-nav__link[aria-current="page"]::before {
+  display: none !important;
+  content: none !important;
 }
 
 /* Hover state - applies to ALL links */
@@ -577,49 +594,53 @@ button {
   background-color: var(--cds-layer-hover-01, rgba(255,255,255,0.05)) !important;
 }
 
-/* Active state hover - keep transparent background even on hover */
+/* Active state hover - keep active background on hover */
 .cds--side-nav__menu-item .cds--side-nav__link--current:hover,
-.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:hover,
-.cds--side-nav__link--current:hover,
-.cds--side-nav__link[aria-current="page"]:hover {
-  background-color: transparent !important; /* No background even on hover - left border is enough */
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:hover {
+  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important; /* Keep active background on hover */
   border-right: none !important;
   border-top: none !important;
   border-bottom: none !important;
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* Focus state - remove white background that appears on click */
+.cds--side-nav__menu-item .cds--side-nav__link:focus,
+.cds--side-nav__menu-item .cds--side-nav__link:active,
+.cds--side-nav__menu-item .cds--side-nav__link:focus-visible {
+  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important; /* Use active background, not white */
+  outline: none !important;
+  box-shadow: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+/* Active + Focus state - ensure no white background */
+.cds--side-nav__menu-item .cds--side-nav__link--current:focus,
+.cds--side-nav__menu-item .cds--side-nav__link--current:active,
+.cds--side-nav__menu-item .cds--side-nav__link--current:focus-visible,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:focus,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:active,
+.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:focus-visible {
+  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
 }
 
 /* Remove any default Carbon active state backgrounds/borders that might be causing white borders */
 .cds--side-nav__menu-item.cds--side-nav__menu-item--active .cds--side-nav__link,
 .cds--side-nav__menu-item[aria-current="page"] .cds--side-nav__link {
-  background-color: transparent !important;
+  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
   border-right: none !important;
   border-top: none !important;
   border-bottom: none !important;
   outline: none !important;
   box-shadow: none !important;
-}
-
-/* ============================================================================
- * SUBNAV INDENTATION (level 1+) - Unified structure uses marginLeft inline style
- * ============================================================================
- * 
- * NOTE: Indentation is now handled via inline `marginLeft` style in Header.js
- * This CSS rule ensures subnav items have proper base padding that works with
- * the marginLeft offset for visual hierarchy.
- */
-
-/* Subnav items (level 1+) - ensure proper base padding */
-.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link {
-  /* Base padding - marginLeft from inline style provides additional indent */
-  padding-left: 1rem !important;
-}
-
-/* Active subnavs - compensate for border */
-.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link--current,
-.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
-  padding-left: calc(1rem - 4px) !important; /* Base padding minus 4px border */
 }
 
 /* ============================================================================
@@ -641,6 +662,11 @@ button {
   display: flex;
   align-items: center;
   z-index: 1;
+}
+
+.cds--side-nav__navigation {
+  overflow-y: visible !important;
+  max-height: none !important;
 }
 
 /* Subnav items (level 1+) - extra indent for visual hierarchy */
