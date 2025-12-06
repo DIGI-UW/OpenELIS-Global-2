@@ -85,8 +85,8 @@ describe("useSideNavPreference", () => {
     test("testInit_LocalStorageHasTrue_ReturnsTrue", () => {
       localStorageMock.getItem.mockReturnValue("true"); // Invalid value (legacy boolean)
 
-      const { result } = renderHook(() =>
-        useSideNavPreference({ defaultMode: "lock" }), // Valid defaultMode
+      const { result } = renderHook(
+        () => useSideNavPreference({ defaultMode: "lock" }), // Valid defaultMode
       );
 
       // Should ignore invalid localStorage value and use defaultMode

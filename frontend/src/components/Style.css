@@ -562,8 +562,13 @@ button {
 .cds--side-nav__menu-item .cds--side-nav__link--current,
 .cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
   border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
-  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important; /* Restore active background */
-  padding-left: calc(1rem - 4px) !important; /* Compensate for 4px border to prevent double border */
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important; /* Restore active background */
+  padding-left: calc(
+    1rem - 4px
+  ) !important; /* Compensate for 4px border to prevent double border */
   border-right: none !important;
   border-top: none !important;
   border-bottom: none !important;
@@ -574,7 +579,10 @@ button {
 /* Ensure nav-scoped active background wins specificity */
 nav.cds--side-nav .cds--side-nav__link--current,
 nav.cds--side-nav .cds--side-nav__link[aria-current="page"] {
-  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important;
 }
 
 /* Remove any ::before pseudo-elements that might add borders */
@@ -591,13 +599,19 @@ nav.cds--side-nav .cds--side-nav__link[aria-current="page"]::before {
 
 /* Hover state - applies to ALL links */
 .cds--side-nav__menu-item .cds--side-nav__link:hover {
-  background-color: var(--cds-layer-hover-01, rgba(255,255,255,0.05)) !important;
+  background-color: var(
+    --cds-layer-hover-01,
+    rgba(255, 255, 255, 0.05)
+  ) !important;
 }
 
 /* Active state hover - keep active background on hover */
 .cds--side-nav__menu-item .cds--side-nav__link--current:hover,
 .cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:hover {
-  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important; /* Keep active background on hover */
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important; /* Keep active background on hover */
   border-right: none !important;
   border-top: none !important;
   border-bottom: none !important;
@@ -609,7 +623,10 @@ nav.cds--side-nav .cds--side-nav__link[aria-current="page"]::before {
 .cds--side-nav__menu-item .cds--side-nav__link:focus,
 .cds--side-nav__menu-item .cds--side-nav__link:active,
 .cds--side-nav__menu-item .cds--side-nav__link:focus-visible {
-  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important; /* Use active background, not white */
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important; /* Use active background, not white */
   outline: none !important;
   box-shadow: none !important;
   border-right: none !important;
@@ -623,45 +640,89 @@ nav.cds--side-nav .cds--side-nav__link[aria-current="page"]::before {
 .cds--side-nav__menu-item .cds--side-nav__link--current:focus-visible,
 .cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:focus,
 .cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:active,
-.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]:focus-visible {
-  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
+.cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"]:focus-visible {
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important;
   outline: none !important;
   box-shadow: none !important;
   border-right: none !important;
   border-top: none !important;
   border-bottom: none !important;
+}
+
+/* Focus state for submenu toggle buttons (parents) - remove white ring */
+nav.cds--side-nav .cds--side-nav__submenu:focus,
+nav.cds--side-nav .cds--side-nav__submenu:active,
+nav.cds--side-nav .cds--side-nav__submenu:focus-visible {
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* HEADER ICONS (global) - remove white focus/outline ring */
+.cds--header__action:focus,
+.cds--header__action:focus-visible,
+.cds--header__action:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Icon-only buttons (Carbon) - remove white ring */
+.cds--btn--icon-only:focus,
+.cds--btn--icon-only:focus-visible,
+.cds--btn--icon-only:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Remove any :after focus indicator on header actions */
+.cds--header__action:focus:after,
+.cds--header__action:active:after,
+.cds--header__action:focus-visible:after {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Locale Select label area: match header background (transparent over blue) */
+.selectLocale .cds--label,
+.selectLocale .cds--form__helper-text {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+/* Ensure select input sits on blue header without white fill */
+.selectLocale .cds--select-input__wrapper {
+  background: transparent !important;
+}
+
+#mainHeader .headerPanel .cds--white.cds--layer-one {
+  background: transparent !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
 }
 
 /* Remove any default Carbon active state backgrounds/borders that might be causing white borders */
 .cds--side-nav__menu-item.cds--side-nav__menu-item--active .cds--side-nav__link,
 .cds--side-nav__menu-item[aria-current="page"] .cds--side-nav__link {
-  background-color: var(--cds-layer-selected-01, rgba(255,255,255,0.1)) !important;
+  background-color: var(
+    --cds-layer-selected-01,
+    rgba(255, 255, 255, 0.1)
+  ) !important;
   border-right: none !important;
   border-top: none !important;
   border-bottom: none !important;
   outline: none !important;
   box-shadow: none !important;
-}
-
-/* ============================================================================
- * CHEVRON POSITIONING - Position chevron icon on right side of link
- * ============================================================================
- */
-
-/* Make link container relative for chevron absolute positioning */
-.cds--side-nav__menu-item .cds--side-nav__link {
-  position: relative;
-}
-
-/* Chevron positioning - align to right side of link */
-.cds--side-nav__submenu-chevron {
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  z-index: 1;
 }
 
 .cds--side-nav__navigation {
@@ -675,7 +736,11 @@ nav.cds--side-nav .cds--side-nav__link[aria-current="page"]::before {
 }
 
 /* Active subnavs - compensate for border + keep extra indent */
-.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link--current,
-.reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
-  padding-left: calc(2.5rem - 4px) !important; /* Extra indent minus 4px border */
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link--current,
+.reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(
+    2.5rem - 4px
+  ) !important; /* Extra indent minus 4px border */
 }

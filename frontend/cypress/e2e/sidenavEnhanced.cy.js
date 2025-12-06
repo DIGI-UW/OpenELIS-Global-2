@@ -1,8 +1,8 @@
 /**
  * E2E Tests: Enhanced Sidenav Navigation & Tri-State Toggle
- * 
+ *
  * Feature: specs/009-carbon-sidenav
- * 
+ *
  * Tests cover:
  * - Tri-state toggle (CLOSE → SHOW → LOCK)
  * - Active state with URL prefix matching
@@ -12,7 +12,7 @@
  * - SPA navigation (no full page reloads)
  * - Storage page defaults to LOCK mode
  * - Non-storage pages default to CLOSE mode
- * 
+ *
  * Constitution: Section V.5 - Individual test execution during development
  * Run: npm run cy:run -- --spec "cypress/e2e/sidenavEnhanced.cy.js"
  */
@@ -25,7 +25,7 @@ describe("Enhanced Sidenav Navigation", () => {
 
   beforeEach(() => {
     cy.viewport(1280, 900);
-    
+
     // Clear sidenav preferences for clean state
     cy.window().then((win) => {
       win.localStorage.removeItem("storageSideNavMode");
@@ -464,4 +464,3 @@ describe("Enhanced Sidenav Navigation", () => {
     });
   });
 });
-

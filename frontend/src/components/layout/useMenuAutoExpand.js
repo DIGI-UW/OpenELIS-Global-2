@@ -20,7 +20,10 @@ import { useLocation } from "react-router-dom";
  * @example
  * const menus = useMenuAutoExpand(initialMenus);
  */
-export function useMenuAutoExpand(initialMenus) {
+export function useMenuAutoExpand(
+  initialMenus,
+  storageKey = "sidenavExpanded",
+) {
   const location = useLocation();
   const [menus, setMenus] = useState(initialMenus);
 
@@ -33,10 +36,21 @@ export function useMenuAutoExpand(initialMenus) {
     // Deep clone to avoid mutating original
     const newMenus = JSON.parse(JSON.stringify(initialMenus));
 
+    // Load persisted expanded map
+    let persisted = {};
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        persisted = JSON.parse(saved);
+      }
+    } catch (e) {
+      persisted = {};
+    }
+
     /**
      * Recursive function to mark menu items for expansion.
      * Returns true if this item or any descendant matches the current route.
-     * 
+     *
      * CHANGED (2025-12-05): Do NOT force-collapse menus on route change.
      * Only expand parents of active route, preserve manual expansions.
      * User feedback: "autocollapse causes consistency issues and changes user focus"
@@ -48,8 +62,8 @@ export function useMenuAutoExpand(initialMenus) {
       let isActiveBranch = false;
 
       items.forEach((item) => {
-        // REMOVED: item.expanded = false (was force-collapsing all menus)
-        // Keep current expanded state, only expand if in active branch
+        // Persisted expansion: if user expanded previously, keep it
+        const persistedExpanded = persisted[item.menu.elementId] === true;
 
         // Recursively check children first (depth-first)
         if (item.childMenus && item.childMenus.length > 0) {
@@ -70,6 +84,11 @@ export function useMenuAutoExpand(initialMenus) {
         ) {
           isActiveBranch = true;
         }
+
+        // Apply persisted expansion if no active branch triggered expansion
+        if (persistedExpanded) {
+          item.expanded = true;
+        }
       });
 
       return isActiveBranch;
@@ -79,7 +98,7 @@ export function useMenuAutoExpand(initialMenus) {
     markActiveExpanded(newMenus);
 
     setMenus(newMenus);
-  }, [location.pathname, initialMenus]);
+  }, [location.pathname, initialMenus, storageKey]);
 
   return menus;
 }

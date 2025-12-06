@@ -60,13 +60,16 @@ export function useSideNavPreference({
   const initialMode = () => {
     try {
       const saved = localStorage.getItem(storageKey);
-      
+
       // Reject SHOW (temporary only) - defensive cleanup
       if (saved === SIDENAV_MODES.SHOW) {
         localStorage.removeItem(storageKey);
       }
       // Accept LOCK or CLOSE
-      else if (saved && [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(saved)) {
+      else if (
+        saved &&
+        [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(saved)
+      ) {
         return saved;
       }
     } catch (e) {
@@ -74,7 +77,10 @@ export function useSideNavPreference({
     }
 
     // No saved value - use defaultMode
-    if (defaultMode && [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(defaultMode)) {
+    if (
+      defaultMode &&
+      [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(defaultMode)
+    ) {
       return defaultMode;
     }
 
@@ -103,12 +109,12 @@ export function useSideNavPreference({
 
   /**
    * Reset state when storageKeyPrefix changes (e.g. switching between main and storage layouts)
-   * 
+   *
    * CORRECT BEHAVIOR:
    * 1. Read localStorage for the NEW context (each context has its own key)
    * 2. If found and valid (not SHOW), use it (user's preference for this context!)
    * 3. If not found, use defaultMode for this context
-   * 
+   *
    * This ensures:
    * - User preferences persist within each context ✅
    * - Contexts don't pollute each other (separate keys) ✅
@@ -116,16 +122,19 @@ export function useSideNavPreference({
    */
   useEffect(() => {
     const newStorageKey = `${storageKeyPrefix}SideNavMode`;
-    
+
     try {
       const saved = localStorage.getItem(newStorageKey);
-      
+
       // Ignore SHOW mode from localStorage (defensive cleanup)
       if (saved === SIDENAV_MODES.SHOW) {
         localStorage.removeItem(newStorageKey);
-      } 
+      }
       // Use valid saved preference for this context
-      else if (saved && [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(saved)) {
+      else if (
+        saved &&
+        [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(saved)
+      ) {
         setModeState(saved);
         return; // Early return - we found a valid saved preference
       }
@@ -136,21 +145,24 @@ export function useSideNavPreference({
     } catch (e) {
       // localStorage unavailable
     }
-    
+
     // No saved preference - use defaultMode
-    const effectiveDefault = defaultMode && 
+    const effectiveDefault =
+      defaultMode &&
       [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(defaultMode)
-      ? defaultMode
-      : (typeof defaultExpanded === "boolean" 
-          ? (defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE)
-          : SIDENAV_MODES.CLOSE);
-    
+        ? defaultMode
+        : typeof defaultExpanded === "boolean"
+          ? defaultExpanded
+            ? SIDENAV_MODES.LOCK
+            : SIDENAV_MODES.CLOSE
+          : SIDENAV_MODES.CLOSE;
+
     setModeState(effectiveDefault);
   }, [storageKeyPrefix, defaultMode]);
 
   /**
    * Persist helper - ONLY persist when user explicitly changes from default!
-   * 
+   *
    * RULES:
    * - SHOW mode is temporary - never persist
    * - Only persist if new mode is DIFFERENT from defaultMode
@@ -166,12 +178,15 @@ export function useSideNavPreference({
       }
 
       // Determine effective default for comparison
-      const effectiveDefault = defaultMode && 
+      const effectiveDefault =
+        defaultMode &&
         [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(defaultMode)
-        ? defaultMode
-        : (typeof defaultExpanded === "boolean" 
-            ? (defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE)
-            : SIDENAV_MODES.CLOSE);
+          ? defaultMode
+          : typeof defaultExpanded === "boolean"
+            ? defaultExpanded
+              ? SIDENAV_MODES.LOCK
+              : SIDENAV_MODES.CLOSE
+            : SIDENAV_MODES.CLOSE;
 
       // Only persist if different from default (user explicitly changed preference)
       if (value === effectiveDefault) {

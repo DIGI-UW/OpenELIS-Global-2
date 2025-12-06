@@ -1,6 +1,4 @@
 import {
-  ChevronDown,
-  ChevronUp,
   Close,
   Language,
   Logout,
@@ -39,6 +37,7 @@ import {
   HeaderPanel,
   SideNav,
   SideNavItems,
+  SideNavMenu,
   SideNavMenuItem,
   Theme,
 } from "@carbon/react";
@@ -52,6 +51,8 @@ function OEHeader({
   toggleSideNav,
   setMode,
   SIDENAV_MODES,
+  defaultMode = "close",
+  storageKeyPrefix = "main",
 }) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
@@ -77,7 +78,10 @@ function OEHeader({
   });
 
   // Auto-expand menu items based on current route
-  const autoExpandedMenus = useMenuAutoExpand(menus["menu"]);
+  const autoExpandedMenus = useMenuAutoExpand(
+    menus["menu"],
+    `${storageKeyPrefix}ExpandedMap`,
+  );
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -93,11 +97,12 @@ function OEHeader({
   }, []);
 
   useEffect(() => {
-    userSessionDetails.authenticated
-      ? getFromOpenElisServer("/rest/menu", (res) => {
-          handleMenuItems("menu", res);
-        })
-      : console.log("User not authenticated, not getting menu");
+    if (!userSessionDetails.authenticated) {
+      return;
+    }
+    getFromOpenElisServer("/rest/menu", (res) => {
+      handleMenuItems("menu", res);
+    });
   }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
@@ -106,18 +111,19 @@ function OEHeader({
 
   const handleMenuItems = (tag, res) => {
     if (res) {
-      
       // FIX: Initialize expanded property for all menu items
       const initializeExpanded = (items) => {
         return items.map((item) => ({
           ...item,
           expanded: item.expanded === true, // Ensure boolean, default to false
-          childMenus: item.childMenus ? initializeExpanded(item.childMenus) : [],
+          childMenus: item.childMenus
+            ? initializeExpanded(item.childMenus)
+            : [],
         }));
       };
-      
+
       const initializedMenus = initializeExpanded(res);
-      
+
       let newMenus = { ...menus };
       newMenus[tag] = initializedMenus;
       setMenus(newMenus);
@@ -238,6 +244,33 @@ function OEHeader({
       </>
     );
   };
+  const hideTimerRef = useRef(null);
+
+  const hasActiveDescendant = (item, currentPath) => {
+    const actionPath = item.menu.actionURL || "";
+    const normalized = actionPath.split(/[?#]/)[0] || "";
+    const exact = normalized && currentPath === normalized;
+    const prefix =
+      normalized &&
+      normalized.length > 1 &&
+      currentPath.startsWith(normalized + "/");
+    if (exact || prefix) return true;
+    return item.childMenus?.some((child) =>
+      hasActiveDescendant(child, currentPath),
+    );
+  };
+
+  const navigateToFirstChild = (item) => {
+    const first = item.childMenus.find((c) => c.menu.actionURL);
+    if (first?.menu.actionURL) {
+      if (first.menu.openInNewWindow) {
+        window.open(first.menu.actionURL);
+      } else {
+        history.push(first.menu.actionURL);
+      }
+    }
+  };
+
   const generateMenuItems = (menuItem, index, level, path) => {
     // Skip inactive menu items
     if (!menuItem.menu.isActive) {
@@ -260,99 +293,91 @@ function OEHeader({
 
     const exactMatch = actionPath && currentPath === actionPath;
     const prefixMatch =
-      actionPath && actionPath.length > 1 && currentPath.startsWith(actionPath + "/");
-    const isActive = !!actionPath && (exactMatch || prefixMatch);
+      actionPath &&
+      actionPath.length > 1 &&
+      currentPath.startsWith(actionPath + "/");
+    const isLeafActive = !!actionPath && (exactMatch || prefixMatch);
     const hasChildren = menuItem.childMenus.length > 0;
 
-    // Indentation: level 0 = no indent, level 1+ = progressive indent
-    const marginValue = level > 0 ? `${level * 0.5}rem` : "0";
-
-    // Handler for label click - navigate (and expand if has children)
+    // Handler for label click - navigate (leaf items only)
     const handleLabelClick = (e) => {
       e.preventDefault();
       e.stopPropagation();
 
-      // If has children, expand first
       if (hasChildren) {
-        setMenuItemExpanded(e, menuItem, path);
+        return; // parent handled by SideNavMenu toggle
       }
 
-      // Then navigate if has URL
       if (menuItem.menu.actionURL) {
         if (menuItem.menu.openInNewWindow) {
           window.open(menuItem.menu.actionURL);
         } else {
           history.push(menuItem.menu.actionURL);
         }
-      } else if (hasChildren) {
-        // Top-level item with children but no URL - navigate to first child
-        const firstChild = menuItem.childMenus.find((c) => c.menu.isActive);
-        if (firstChild?.menu.actionURL) {
-          history.push(firstChild.menu.actionURL);
-        }
       }
     };
 
-    // Handler for chevron click - ONLY expand, don't navigate
-    const handleChevronClick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setMenuItemExpanded(e, menuItem, path);
-    };
+    const hasActiveChild = hasActiveDescendant(menuItem, currentPath);
 
-    // ============================================================================
-    // UNIFIED RENDERING: Use SideNavMenuItem for ALL items (top-level + subnavs)
-    // ============================================================================
-    // Simplified structure: Let Carbon handle the DOM, we just provide content
-    return (
-      <React.Fragment key={path}>
-        <SideNavMenuItem
-          data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
-          id={menuItem.menu.elementId}
-          className={level === 0 ? "top-level-menu-item" : "reduced-padding-nav-menu-item"}
-          isActive={isActive}
-          href={menuItem.menu.actionURL || (hasChildren ? "#" : undefined)}
-          onClick={handleLabelClick}
+    // Parent with children: use Carbon SideNavMenu; on expand, optionally navigate to first child
+    if (hasChildren) {
+      return (
+        <SideNavMenu
+          key={path}
+          title={intl.formatMessage({ id: menuItem.menu.displayKey })}
+          defaultExpanded={
+            !!menuItem.expanded ||
+            hasActiveChild ||
+            (defaultMode === SIDENAV_MODES.LOCK && hasActiveChild)
+          }
+          isActive={isLeafActive || hasActiveChild}
+          onToggle={(expanded) => {
+            setMenuItemExpanded(menuItem, path);
+            if (expanded) {
+              navigateToFirstChild(menuItem);
+            }
+          }}
+          className={
+            level === 0
+              ? "top-level-menu-item"
+              : "reduced-padding-nav-menu-item"
+          }
         >
-          <span style={{ fontSize: level > 0 ? `${100 - 5 * (level - 1)}%` : "100%" }}>
-            <FormattedMessage id={menuItem.menu.displayKey} />
-          </span>
-          {hasChildren && (
-            <div
-              className="cds--side-nav__submenu-chevron"
-              onClick={handleChevronClick}
-              style={{ 
-                cursor: "pointer",
-                position: "absolute",
-                right: "1rem",
-                top: "50%",
-                transform: "translateY(-50%)",
-                display: "flex",
-                alignItems: "center"
-              }}
-            >
-              {menuItem.expanded ? <ChevronUp /> : <ChevronDown />}
-            </div>
-          )}
-        </SideNavMenuItem>
-
-        {/* Render children if expanded - nested SideNavMenuItem items */}
-        {hasChildren &&
-          menuItem.expanded &&
-          menuItem.childMenus.map((childMenuItem, childIndex) => {
-            return generateMenuItems(
+          {menuItem.childMenus.map((childMenuItem, childIndex) =>
+            generateMenuItems(
               childMenuItem,
               childIndex,
               level + 1,
               path + ".childMenus[" + childIndex + "]",
-            );
-          })}
-      </React.Fragment>
+            ),
+          )}
+        </SideNavMenu>
+      );
+    }
+
+    // Leaf item
+    return (
+      <SideNavMenuItem
+        key={path}
+        data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
+        id={menuItem.menu.elementId}
+        className={
+          level === 0 ? "top-level-menu-item" : "reduced-padding-nav-menu-item"
+        }
+        isActive={isLeafActive}
+        href={menuItem.menu.actionURL || undefined}
+        onClick={handleLabelClick}
+      >
+        <span
+          style={{ fontSize: level > 0 ? `${100 - 5 * (level - 1)}%` : "100%" }}
+        >
+          <FormattedMessage id={menuItem.menu.displayKey} />
+        </span>
+      </SideNavMenuItem>
     );
   };
 
-
-  const setMenuItemExpanded = (e, menuItem, path) => {
+  const setMenuItemExpanded = (menuItem, path) => {
     const newMenus = { ...menus };
 
     // REMOVED: Accordion auto-collapse behavior
@@ -378,6 +403,25 @@ function OEHeader({
     }
 
     setMenus(newMenus);
+    // Persist expanded state map for this context
+    try {
+      const expandedMap = {};
+      const captureExpanded = (items) => {
+        items.forEach((it) => {
+          expandedMap[it.menu.elementId] = !!it.expanded;
+          if (it.childMenus) {
+            captureExpanded(it.childMenus);
+          }
+        });
+      };
+      captureExpanded(newMenus.menu || []);
+      localStorage.setItem(
+        `${storageKeyPrefix}ExpandedMap`,
+        JSON.stringify(expandedMap),
+      );
+    } catch (e) {
+      // ignore
+    }
   };
 
   return (
@@ -390,241 +434,264 @@ function OEHeader({
           }}
         >
           <Header id="mainHeader" className="mainHeader" aria-label="">
+            {userSessionDetails.authenticated && (
+              <button
+                data-cy="menuButton"
+                className="cds--header__action cds--header__menu-trigger cds--header__menu-toggle"
+                aria-label={
+                  mode === SIDENAV_MODES.CLOSE
+                    ? "Open menu"
+                    : mode === SIDENAV_MODES.SHOW
+                      ? "Pin menu"
+                      : "Close menu"
+                }
+                onClick={toggleSideNav}
+                title={
+                  mode === SIDENAV_MODES.CLOSE
+                    ? "Open menu"
+                    : mode === SIDENAV_MODES.SHOW
+                      ? "Pin menu"
+                      : "Close menu"
+                }
+                type="button"
+              >
+                {mode === SIDENAV_MODES.CLOSE && <Menu size={20} />}
+                {mode === SIDENAV_MODES.SHOW && <Pin size={20} />}
+                {mode === SIDENAV_MODES.LOCK && <Close size={20} />}
+              </button>
+            )}
+            <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
+              <span id="header-logo">{logo()}</span>
+              <div className="banner">
+                <h5>{configurationProperties?.BANNER_TEXT}</h5>
+                <p>
+                  <FormattedMessage id="header.label.version" /> &nbsp;{" "}
+                  {configurationProperties?.releaseNumber}
+                </p>
+              </div>
+            </HeaderName>
+            <HeaderGlobalBar>
               {userSessionDetails.authenticated && (
-                <button
-                  data-cy="menuButton"
-                  className="cds--header__action cds--header__menu-trigger cds--header__menu-toggle"
-                  aria-label={
-                    mode === SIDENAV_MODES.CLOSE
-                      ? "Open menu"
-                      : mode === SIDENAV_MODES.SHOW
-                        ? "Pin menu"
-                        : "Close menu"
-                  }
-                  onClick={toggleSideNav}
-                  title={
-                    mode === SIDENAV_MODES.CLOSE
-                      ? "Open menu"
-                      : mode === SIDENAV_MODES.SHOW
-                        ? "Pin menu"
-                        : "Close menu"
-                  }
-                  type="button"
-                >
-                  {mode === SIDENAV_MODES.CLOSE && <Menu size={20} />}
-                  {mode === SIDENAV_MODES.SHOW && <Pin size={20} />}
-                  {mode === SIDENAV_MODES.LOCK && <Close size={20} />}
-                </button>
+                <>
+                  {searchBar && <SearchBar />}
+                  <HeaderGlobalAction
+                    id="search-Icon"
+                    aria-label="Search"
+                    onClick={() => handlePanelToggle(searchBar ? "" : "search")}
+                  >
+                    {!searchBar ? <Search size={20} /> : <Close size={20} />}
+                  </HeaderGlobalAction>
+                  <HeaderGlobalAction
+                    id="notification-Icon"
+                    aria-label="Notifications"
+                    onClick={() =>
+                      handlePanelToggle(
+                        notificationsOpen ? "" : "notifications",
+                      )
+                    }
+                  >
+                    <div
+                      style={{
+                        position: "relative",
+                        display: "inline-block",
+                      }}
+                    >
+                      {!notificationsOpen ? (
+                        <Notification size={20} />
+                      ) : (
+                        <Close size={20} />
+                      )}
+                      {unReadNotifications?.length > 0 && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: "-5px",
+                            right: "-5px",
+                            backgroundColor: "red",
+                            color: "white",
+                            borderRadius: "50%",
+                            width: "22px",
+                            height: "22px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "12px",
+                            animation: "pulse 5s infinite",
+                            opacity: 1,
+                            transition: "background-color 0.3s ease-in-out",
+                          }}
+                        >
+                          {unReadNotifications.length}
+                        </span>
+                      )}
+                    </div>
+                  </HeaderGlobalAction>
+                </>
               )}
-              <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
-                <span id="header-logo">{logo()}</span>
-                <div className="banner">
-                  <h5>{configurationProperties?.BANNER_TEXT}</h5>
-                  <p>
-                    <FormattedMessage id="header.label.version" /> &nbsp;{" "}
-                    {configurationProperties?.releaseNumber}
-                  </p>
-                </div>
-              </HeaderName>
-              <HeaderGlobalBar>
+              <HeaderGlobalAction
+                id="user-Icon"
+                aria-label={panelSwitchLabel()}
+                onClick={() => handlePanelToggle(switchCollapsed ? "user" : "")}
+                ref={userSwitchRef}
+              >
+                {panelSwitchIcon()}
+              </HeaderGlobalAction>
+              <HelpMenu
+                helpOpen={helpOpen}
+                handlePanelToggle={handlePanelToggle}
+              />
+            </HeaderGlobalBar>
+            <HeaderPanel
+              aria-label="Header Panel"
+              expanded={!switchCollapsed}
+              className="headerPanel"
+              ref={headerPanelRef}
+            >
+              <ul>
                 {userSessionDetails.authenticated && (
                   <>
-                    {searchBar && <SearchBar />}
-                    <HeaderGlobalAction
-                      id="search-Icon"
-                      aria-label="Search"
-                      onClick={() =>
-                        handlePanelToggle(searchBar ? "" : "search")
-                      }
-                    >
-                      {!searchBar ? <Search size={20} /> : <Close size={20} />}
-                    </HeaderGlobalAction>
-                    <HeaderGlobalAction
-                      id="notification-Icon"
-                      aria-label="Notifications"
-                      onClick={() =>
-                        handlePanelToggle(
-                          notificationsOpen ? "" : "notifications",
-                        )
-                      }
-                    >
-                      <div
-                        style={{
-                          position: "relative",
-                          display: "inline-block",
-                        }}
-                      >
-                        {!notificationsOpen ? (
-                          <Notification size={20} />
-                        ) : (
-                          <Close size={20} />
-                        )}
-                        {unReadNotifications?.length > 0 && (
-                          <span
-                            style={{
-                              position: "absolute",
-                              top: "-5px",
-                              right: "-5px",
-                              backgroundColor: "red",
-                              color: "white",
-                              borderRadius: "50%",
-                              width: "22px",
-                              height: "22px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: "12px",
-                              animation: "pulse 5s infinite",
-                              opacity: 1,
-                              transition: "background-color 0.3s ease-in-out",
-                            }}
-                          >
-                            {unReadNotifications.length}
-                          </span>
-                        )}
-                      </div>
-                    </HeaderGlobalAction>
-                  </>
-                )}
-                <HeaderGlobalAction
-                  id="user-Icon"
-                  aria-label={panelSwitchLabel()}
-                  onClick={() =>
-                    handlePanelToggle(switchCollapsed ? "user" : "")
-                  }
-                  ref={userSwitchRef}
-                >
-                  {panelSwitchIcon()}
-                </HeaderGlobalAction>
-                <HelpMenu
-                  helpOpen={helpOpen}
-                  handlePanelToggle={handlePanelToggle}
-                />
-              </HeaderGlobalBar>
-              <HeaderPanel
-                aria-label="Header Panel"
-                expanded={!switchCollapsed}
-                className="headerPanel"
-                ref={headerPanelRef}
-              >
-                <ul>
-                  {userSessionDetails.authenticated && (
-                    <>
+                    <li className="userDetails">
+                      <UserAvatarFilledAlt
+                        size={18}
+                        style={{ marginRight: "4px" }}
+                      />
+                      {userSessionDetails.firstName}{" "}
+                      {userSessionDetails.lastName}
+                    </li>
+                    {userSessionDetails.loginLabUnit && (
                       <li className="userDetails">
-                        <UserAvatarFilledAlt
+                        <LocationFilled
                           size={18}
                           style={{ marginRight: "4px" }}
                         />
-                        {userSessionDetails.firstName}{" "}
-                        {userSessionDetails.lastName}
+                        {userSessionDetails.loginLabUnit}{" "}
                       </li>
-                      {userSessionDetails.loginLabUnit && (
-                        <li className="userDetails">
-                          <LocationFilled
-                            size={18}
-                            style={{ marginRight: "4px" }}
-                          />
-                          {userSessionDetails.loginLabUnit}{" "}
-                        </li>
-                      )}
-                      <li
-                        data-cy="logOut"
-                        className="userDetails clickableUserDetails"
-                        onClick={logout}
-                      >
-                        <Logout style={{ marginRight: "3px" }} />
-                        <FormattedMessage id="header.label.logout" />
-                      </li>
-                    </>
-                  )}
-                  <li className="userDetails">
-                    {/* Theme wrapper ONLY around Select to make dropdown light */}
-                    <Theme theme="white">
-                      <Select
-                        id="selector"
-                        name="selectLocale"
-                        className="selectLocale"
-                        invalidText="A valid locale value is required"
-                        labelText={
-                          <FormattedMessage id="header.label.selectlocale" />
-                        }
-                        onChange={(event) => {
-                          onChangeLanguage(event.target.value);
-                        }}
-                        value={intl.locale}
-                      >
-                        {Object.entries(languages).map(([code, { label }]) => (
-                          <SelectItem key={code} text={label} value={code} />
-                        ))}
-                      </Select>
-                    </Theme>
-                  </li>
-                  <li className="userDetails">
-                    <label className="cds--label">
-                      {" "}
-                      <FormattedMessage id="header.label.version" />:{" "}
-                      {configurationProperties?.releaseNumber}
-                    </label>
-                  </li>
-                </ul>
-              </HeaderPanel>
-              {userSessionDetails.authenticated && (
-                <>
-                  <SideNav
-                    key={`${mode}-${SIDENAV_MODES.CLOSE}-${SIDENAV_MODES.LOCK}`}
-                    aria-label="Side navigation"
-                    expanded={mode !== SIDENAV_MODES.CLOSE}
-                    isFixedNav={mode === SIDENAV_MODES.LOCK}
-                    isPersistent={false}
-                    isChildOfHeader={true}
-                    // Debug: log the incoming props for SideNav
-                    ref={(ref) => {
-                      if (ref) {
-                        /* eslint-disable no-console */
-                        console.log("[Header] SideNav render", {
-                          mode,
-                          expanded: mode !== SIDENAV_MODES.CLOSE,
-                          isFixedNav: mode === SIDENAV_MODES.LOCK,
-                        });
-                        /* eslint-enable no-console */
+                    )}
+                    <li
+                      data-cy="logOut"
+                      className="userDetails clickableUserDetails"
+                      onClick={logout}
+                    >
+                      <Logout style={{ marginRight: "3px" }} />
+                      <FormattedMessage id="header.label.logout" />
+                    </li>
+                  </>
+                )}
+                <li className="userDetails">
+                  {/* Theme wrapper ONLY around Select to make dropdown light */}
+                  <Theme theme="white">
+                    <Select
+                      id="selector"
+                      name="selectLocale"
+                      className="selectLocale"
+                      invalidText="A valid locale value is required"
+                      labelText={
+                        <FormattedMessage id="header.label.selectlocale" />
                       }
-                    }}
-                  >
-                    <SideNavItems>
-                      {autoExpandedMenus.map((childMenuItem, index) => {
-                        return generateMenuItems(
-                          childMenuItem,
-                          index,
-                          0,
-                          "$.menu[" + index + "]",
-                        );
-                      })}
-                    </SideNavItems>
-                  </SideNav>
-                </>
-              )}
-            </Header>
-            <div style={{ flex: 1 }}>
-              <SlideOver
-                open={notificationsOpen}
-                setOpen={(open) => setNotificationsOpen(open)}
-                slideFrom="right"
-                title="Notifications"
-              >
-                <SlideOverNotifications
-                  loading={loading}
-                  notifications={
-                    showRead ? readNotifications : unReadNotifications
-                  }
-                  showRead={showRead}
-                  markNotificationAsRead={markNotificationAsRead}
-                  getNotifications={getNotifications}
-                  setShowRead={setShowRead}
-                  markAllNotificationsAsRead={markAllNotificationsAsRead}
-                />
-              </SlideOver>
-            </div>
+                      onChange={(event) => {
+                        onChangeLanguage(event.target.value);
+                      }}
+                      value={intl.locale}
+                    >
+                      {Object.entries(languages).map(([code, { label }]) => (
+                        <SelectItem key={code} text={label} value={code} />
+                      ))}
+                    </Select>
+                  </Theme>
+                </li>
+                <li className="userDetails">
+                  <label className="cds--label">
+                    {" "}
+                    <FormattedMessage id="header.label.version" />:{" "}
+                    {configurationProperties?.releaseNumber}
+                  </label>
+                </li>
+              </ul>
+            </HeaderPanel>
+            {userSessionDetails.authenticated && (
+              <>
+                <SideNav
+                  key={`${mode}-${SIDENAV_MODES.CLOSE}-${SIDENAV_MODES.LOCK}`}
+                  aria-label="Side navigation"
+                  expanded={mode !== SIDENAV_MODES.CLOSE}
+                  isFixedNav={mode === SIDENAV_MODES.LOCK}
+                  isPersistent={false}
+                  isChildOfHeader={true}
+                  onMouseEnter={() => {
+                    if (mode === SIDENAV_MODES.SHOW && hideTimerRef.current) {
+                      clearTimeout(hideTimerRef.current);
+                      hideTimerRef.current = null;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (mode === SIDENAV_MODES.SHOW) {
+                      const target = e.relatedTarget;
+                      const navEl = e.currentTarget;
+                      const headerEl = document.getElementById("mainHeader");
+                      const menuButton = document.querySelector(
+                        '[data-cy="menuButton"]',
+                      );
+                      const isNode =
+                        target && typeof target.contains === "function";
+                      if (!isNode) {
+                        return;
+                      }
+                      const insideNav = navEl && navEl.contains(target);
+                      const insideHeader =
+                        headerEl && headerEl.contains(target);
+                      const insideMenuButton =
+                        menuButton && menuButton.contains(target);
+
+                      if (insideNav || insideHeader || insideMenuButton) {
+                        return;
+                      }
+
+                      if (hideTimerRef.current) {
+                        clearTimeout(hideTimerRef.current);
+                      }
+
+                      hideTimerRef.current = setTimeout(() => {
+                        setMode(SIDENAV_MODES.CLOSE);
+                        hideTimerRef.current = null;
+                      }, 350);
+                    }
+                  }}
+                >
+                  <SideNavItems>
+                    {autoExpandedMenus.map((childMenuItem, index) => {
+                      return generateMenuItems(
+                        childMenuItem,
+                        index,
+                        0,
+                        "$.menu[" + index + "]",
+                      );
+                    })}
+                  </SideNavItems>
+                </SideNav>
+              </>
+            )}
+          </Header>
+          <div style={{ flex: 1 }}>
+            <SlideOver
+              open={notificationsOpen}
+              setOpen={(open) => setNotificationsOpen(open)}
+              slideFrom="right"
+              title="Notifications"
+            >
+              <SlideOverNotifications
+                loading={loading}
+                notifications={
+                  showRead ? readNotifications : unReadNotifications
+                }
+                showRead={showRead}
+                markNotificationAsRead={markNotificationAsRead}
+                getNotifications={getNotifications}
+                setShowRead={setShowRead}
+                markAllNotificationsAsRead={markAllNotificationsAsRead}
+              />
+            </SlideOver>
           </div>
+        </div>
       </div>
     </>
   );

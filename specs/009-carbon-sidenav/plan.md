@@ -79,12 +79,12 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 
 ### Milestone Table
 
-| ID  | Branch Suffix | Scope                                                          | User Stories           | Verification                      | Depends On |
-| --- | ------------- | -------------------------------------------------------------- | ---------------------- | --------------------------------- | ---------- |
-| M1  | m1-core       | useSideNavPreference hook, tri-state toggle, localStorage      | P1-US1, P1-US2         | Jest unit tests pass              | -          |
-| M2a | m2a-nav       | useMenuAutoExpand hook, active styling                         | P2-US3                 | Jest tests pass                   | M1         |
-| M2b | m2b-enhance   | Enhance Header.js with hooks, modernize patterns, lock mode    | P2-US4, FR-011/012/013 | Integration tests pass, no loops  | M1, M2a    |
-| M3  | m3-polish     | Icons/tooltips, responsive behavior, E2E tests                 | P3-US5, P3-US6         | E2E tests pass                    | M2b        |
+| ID  | Branch Suffix | Scope                                                       | User Stories           | Verification                     | Depends On |
+| --- | ------------- | ----------------------------------------------------------- | ---------------------- | -------------------------------- | ---------- |
+| M1  | m1-core       | useSideNavPreference hook, tri-state toggle, localStorage   | P1-US1, P1-US2         | Jest unit tests pass             | -          |
+| M2a | m2a-nav       | useMenuAutoExpand hook, active styling                      | P2-US3                 | Jest tests pass                  | M1         |
+| M2b | m2b-enhance   | Enhance Header.js with hooks, modernize patterns, lock mode | P2-US4, FR-011/012/013 | Integration tests pass, no loops | M1, M2a    |
+| M3  | m3-polish     | Icons/tooltips, responsive behavior, E2E tests              | P3-US5, P3-US6         | E2E tests pass                   | M2b        |
 
 **Legend**:
 
@@ -281,8 +281,8 @@ navigation.
 
 ### D5: Enhance Header.js Instead of Replace (REVISED)
 
-**Decision**: Enhance existing Header.js with lock mode and modern patterns.
-Do NOT extract header actions into a separate component.
+**Decision**: Enhance existing Header.js with lock mode and modern patterns. Do
+NOT extract header actions into a separate component.
 
 **Rationale** (Learned from Failed Approach):
 
@@ -301,6 +301,7 @@ Do NOT extract header actions into a separate component.
 6. Add lock button to HeaderGlobalBar (Pin/PinOutline icons)
 
 **What Stays in Header.js**:
+
 - Sidenav toggle and state
 - User panel (profile, logout)
 - Notifications panel (SlideOverNotifications)
@@ -311,17 +312,19 @@ Do NOT extract header actions into a separate component.
 
 ## Risk Assessment
 
-| Risk                         | Impact | Likelihood | Mitigation                                                               |
-| ---------------------------- | ------ | ---------- | ------------------------------------------------------------------------ |
-| Infinite loops from hooks    | High   | Low        | Integration tests check for "Maximum update depth" errors                |
-| Breaking existing navigation | High   | Low        | Preserve menu API integration, test all menu item types                  |
-| HOC to hook migration issues | Medium | Medium     | Test each migration step, keep HOCs as fallback initially                |
-| Mobile responsiveness issues | Medium | Medium     | Test on multiple viewport sizes, use Carbon breakpoints                  |
-| localStorage unavailable     | Low    | Low        | Graceful fallback to page default, log warning                           |
-| Performance degradation      | Medium | Low        | CSS transitions only (no JS animation), minimal re-renders               |
+| Risk                         | Impact | Likelihood | Mitigation                                                 |
+| ---------------------------- | ------ | ---------- | ---------------------------------------------------------- |
+| Infinite loops from hooks    | High   | Low        | Integration tests check for "Maximum update depth" errors  |
+| Breaking existing navigation | High   | Low        | Preserve menu API integration, test all menu item types    |
+| HOC to hook migration issues | Medium | Medium     | Test each migration step, keep HOCs as fallback initially  |
+| Mobile responsiveness issues | Medium | Medium     | Test on multiple viewport sizes, use Carbon breakpoints    |
+| localStorage unavailable     | Low    | Low        | Graceful fallback to page default, log warning             |
+| Performance degradation      | Medium | Low        | CSS transitions only (no JS animation), minimal re-renders |
 
 **Lessons Learned from Failed Approach**:
-- Extracting HeaderActions broke state sharing → Keep header actions in Header.js
+
+- Extracting HeaderActions broke state sharing → Keep header actions in
+  Header.js
 - TwoModeLayout replacement caused integration failures → Enhance existing code
 - Tests that mock too much miss real issues → Use integration smoke tests
 

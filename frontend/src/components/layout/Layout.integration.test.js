@@ -206,7 +206,7 @@ describe("Layout Full Integration (Smoke Tests)", () => {
       () => {
         // After refactor: top-level items use onClick instead of href
         // Check by outer span element ID (menu_home, not menu_home_nav)
-        const homeLink = container.querySelector('#menu_home');
+        const homeLink = container.querySelector("#menu_home");
         expect(homeLink).toBeTruthy();
       },
       { timeout: 2000 },
