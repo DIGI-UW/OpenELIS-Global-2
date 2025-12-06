@@ -38,8 +38,18 @@ import {
   TableHeader,
   TableRow,
   Pagination,
+  Checkbox,
+  FormGroup,
+  Search,
+  Layer,
 } from "@carbon/react";
-import { Launch, Subtract, ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import {
+  Launch,
+  Subtract,
+  ArrowLeft,
+  ArrowRight,
+  Checkmark,
+} from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -55,6 +65,7 @@ import {
   toBase64,
 } from "../utils/Utils";
 import { Add, Json } from "@carbon/icons-react";
+import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
 
 const NoteBookEntryForm = () => {
   let breadcrumbs = [
@@ -67,6 +78,15 @@ const NoteBookEntryForm = () => {
     EDIT: "EDIT",
   });
 
+  const TABS = Object.freeze({
+    ENTRY_DETAILS: 0,
+    METADATA: 1,
+    ATTACHMENTS: 2,
+    WORKFLOW: 3,
+    COMMENTS: 4,
+    AUDIT_TRAIL: 5,
+  });
+
   const intl = useIntl();
   const componentMounted = useRef(false);
   const [mode, setMode] = useState(MODES.CREATE);
@@ -77,6 +97,8 @@ const NoteBookEntryForm = () => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [statuses, setStatuses] = useState([]);
   const [types, setTypes] = useState([]);
+  const [technicianUsers, setTechnicianUsers] = useState([]);
+  const [questionnaires, setQuestionnaires] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [noteBookData, setNoteBookData] = useState(NoteBookInitialData);
@@ -85,25 +107,35 @@ const NoteBookEntryForm = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [initialMount, setInitialMount] = useState(false);
   const [allTests, setAllTests] = useState([]);
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [allPanels, setAllPanels] = useState([]);
+  const [selectedTab, setSelectedTab] = useState(TABS.ENTRY_DETAILS);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [auditTrailItems, setAuditTrailItems] = useState([]);
   const [auditTrailLoading, setAuditTrailLoading] = useState(false);
   const [auditTrailPage, setAuditTrailPage] = useState(1);
   const [auditTrailPageSize, setAuditTrailPageSize] = useState(10);
+  const [sampleTypes, setSampleTypes] = useState([]);
+  const [pageSampleTypeTests, setPageSampleTypeTests] = useState(
+    sampleTypeTestsStructure,
+  );
+  const [pageSelectedTests, setPageSelectedTests] = useState([]);
+  const [pageSelectedPanels, setPageSelectedPanels] = useState([]);
+  const [pageTestSearchTerm, setPageTestSearchTerm] = useState("");
+  const [pagePanelSearchTerm, setPagePanelSearchTerm] = useState("");
+  const [pageSearchBoxTests, setPageSearchBoxTests] = useState([]);
+  const [pageSearchBoxPanels, setPageSearchBoxPanels] = useState([]);
 
   const isFormValid = () => {
     return (
       noteBookData.title?.trim() !== "" &&
       noteBookData.type !== null &&
       noteBookData.type !== "" &&
-      noteBookData.project?.trim() !== "" &&
       noteBookData.objective?.trim() !== ""
     );
   };
 
-  const handleSubmit = (status) => {
+  const handleSubmit = () => {
     if (isSubmitting) {
       return;
     }
@@ -130,17 +162,6 @@ const NoteBookEntryForm = () => {
         return;
       }
 
-      if (!noteBookData.project || noteBookData.project.trim() === "") {
-        addNotification({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({
-            id: "notebook.validation.project.required",
-          }),
-        });
-        return;
-      }
-
       if (!noteBookData.objective || noteBookData.objective.trim() === "") {
         addNotification({
           kind: NotificationKinds.error,
@@ -151,18 +172,16 @@ const NoteBookEntryForm = () => {
         });
         return;
       }
-      noteBookData.status = status ? status : noteBookData.status;
     }
     setIsSubmitting(true);
     noteBookForm.id = noteBookData.id;
     noteBookForm.isTemplate = true;
     noteBookForm.title = noteBookData.title;
     noteBookForm.type = noteBookData.type;
-    noteBookForm.project = noteBookData.project;
     noteBookForm.objective = noteBookData.objective;
     noteBookForm.protocol = noteBookData.protocol;
     noteBookForm.content = noteBookData.content;
-    noteBookForm.status = getNextStatus(noteBookData.status).id;
+    noteBookForm.status = noteBookData.status;
     noteBookForm.technicianId = noteBookData.technicianId;
     noteBookForm.sampleIds = noteBookData.samples
       ? noteBookData.samples.map((entry) => Number(entry.id))
@@ -173,6 +192,12 @@ const NoteBookEntryForm = () => {
       Number(entry.id),
     );
     noteBookForm.tags = noteBookData.tags;
+    // Convert empty string to null for questionnaireFhirUuid (Jackson expects null or valid UUID string)
+    noteBookForm.questionnaireFhirUuid =
+      noteBookData.questionnaireFhirUuid &&
+      noteBookData.questionnaireFhirUuid.trim() !== ""
+        ? noteBookData.questionnaireFhirUuid
+        : null;
     // Send only new comments (those without id) with just text
     noteBookForm.comments = comments
       .filter((c) => c.id === null)
@@ -223,6 +248,8 @@ const NoteBookEntryForm = () => {
     title: "",
     content: "",
     instructions: "",
+    sampleTypeId: null,
+    panels: [],
     tests: [],
   });
   const [newTag, setNewTag] = useState("");
@@ -242,8 +269,15 @@ const NoteBookEntryForm = () => {
       title: "",
       content: "",
       instructions: "",
+      sampleTypeId: null,
+      panels: [],
       tests: [],
     });
+    setPageSelectedTests([]);
+    setPageSelectedPanels([]);
+    setPageSampleTypeTests(sampleTypeTestsStructure);
+    setPageTestSearchTerm("");
+    setPagePanelSearchTerm("");
     setEditingPageIndex(null);
     setPageError("");
     setShowPageModal(true);
@@ -257,8 +291,42 @@ const NoteBookEntryForm = () => {
       title: page.title || "",
       content: page.content || "",
       instructions: page.instructions || "",
+      sampleTypeId: page.sampleTypeId || null,
+      panels: page.panels || [],
       tests: page.tests || [],
     });
+    // If page has sampleTypeId, fetch the tests for that sample type
+    if (page.sampleTypeId) {
+      getFromOpenElisServer(
+        `/rest/sample-type-tests?sampleType=${page.sampleTypeId}`,
+        (res) => {
+          setPageSampleTypeTests(res);
+          // Restore selected tests and panels
+          if (page.tests && page.tests.length > 0) {
+            const selectedTests = res.tests
+              .filter((test) => page.tests.includes(test.id))
+              .map((test) => ({ id: test.id, name: test.name }));
+            setPageSelectedTests(selectedTests);
+          }
+          if (page.panels && page.panels.length > 0 && res.panels) {
+            const selectedPanels = res.panels
+              .filter((panel) => page.panels.includes(parseInt(panel.id)))
+              .map((panel) => ({
+                id: panel.id,
+                name: panel.name,
+                testIds: panel.testIds,
+              }));
+            setPageSelectedPanels(selectedPanels);
+          }
+        },
+      );
+    } else {
+      setPageSelectedTests([]);
+      setPageSelectedPanels([]);
+      setPageSampleTypeTests(sampleTypeTestsStructure);
+    }
+    setPageTestSearchTerm("");
+    setPagePanelSearchTerm("");
     setEditingPageIndex(index);
     setPageError("");
     setShowPageModal(true);
@@ -293,11 +361,17 @@ const NoteBookEntryForm = () => {
       );
       return;
     }
+    // Update newPage with selected tests and panels
+    const updatedPage = {
+      ...newPage,
+      tests: pageSelectedTests.map((test) => test.id),
+      panels: pageSelectedPanels.map((panel) => parseInt(panel.id)),
+    };
     if (editingPageIndex !== null) {
       // Update existing page
       setNoteBookData((prev) => {
         const updatedPages = [...prev.pages];
-        updatedPages[editingPageIndex] = { ...newPage };
+        updatedPages[editingPageIndex] = updatedPage;
         return {
           ...prev,
           pages: updatedPages,
@@ -307,7 +381,7 @@ const NoteBookEntryForm = () => {
       // Add new page
       setNoteBookData((prev) => ({
         ...prev,
-        pages: [...prev.pages, newPage],
+        pages: [...prev.pages, updatedPage],
       }));
     }
     setShowPageModal(false);
@@ -347,6 +421,138 @@ const NoteBookEntryForm = () => {
       ...prev,
       tags: prev.tags.filter((_, i) => i !== index),
     }));
+  };
+
+  // Page modal handlers for sample type, tests, and panels
+  const handlePageSampleTypeChange = (event) => {
+    const sampleTypeId = event.target.value;
+    setNewPage({
+      ...newPage,
+      sampleTypeId: sampleTypeId || null,
+      panels: [],
+    });
+    setPageSelectedTests([]);
+    setPageSelectedPanels([]);
+    if (sampleTypeId) {
+      getFromOpenElisServer(
+        `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
+        (res) => {
+          setPageSampleTypeTests(res);
+        },
+      );
+    } else {
+      setPageSampleTypeTests(sampleTypeTestsStructure);
+    }
+  };
+
+  const pageTestIsSelected = (testId) => {
+    return pageSelectedTests.some((test) => test.id === testId);
+  };
+
+  const pagePanelIsSelected = (panelId) => {
+    for (let i in pageSelectedPanels) {
+      if (pageSelectedPanels[i].id === panelId) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const handlePageTestSearchChange = (event) => {
+    const query = event.target.value;
+    setPageTestSearchTerm(query);
+    const results = pageSampleTypeTests.tests.filter((test) => {
+      return test.name.toLowerCase().includes(query.toLowerCase());
+    });
+    setPageSearchBoxTests(results);
+  };
+
+  const handlePageFilterSelectTest = (test) => {
+    setPageTestSearchTerm("");
+    if (!pageTestIsSelected(test.id)) {
+      setPageSelectedTests([
+        ...pageSelectedTests,
+        { id: test.id, name: test.name },
+      ]);
+    }
+  };
+
+  const handlePageRemoveSelectedTest = (test) => {
+    setPageSelectedTests(pageSelectedTests.filter((t) => t.id !== test.id));
+  };
+
+  const handlePageTestCheckbox = (e, test) => {
+    if (e.currentTarget.checked) {
+      if (!pageTestIsSelected(test.id)) {
+        setPageSelectedTests([
+          ...pageSelectedTests,
+          { id: test.id, name: test.name },
+        ]);
+      }
+    } else {
+      setPageSelectedTests(pageSelectedTests.filter((t) => t.id !== test.id));
+    }
+  };
+
+  const handlePagePanelSearchChange = (event) => {
+    const query = event.target.value;
+    setPagePanelSearchTerm(query);
+    const results = pageSampleTypeTests.panels.filter((panel) => {
+      return panel.name.toLowerCase().includes(query.toLowerCase());
+    });
+    setPageSearchBoxPanels(results);
+  };
+
+  const handlePageFilterSelectPanel = (panel) => {
+    setPagePanelSearchTerm("");
+    addPagePanelToSelectedPanels(panel);
+  };
+
+  const handlePageRemoveSelectedPanel = (panel) => {
+    let index = 0;
+    for (let i in pageSelectedPanels) {
+      if (pageSelectedPanels[i].id === panel.id) {
+        const newPanels = pageSelectedPanels;
+        newPanels.splice(index, 1);
+        setPageSelectedPanels([...newPanels]);
+        break;
+      }
+      index++;
+    }
+    // Remove panel's tests from selected tests
+    const testIdsList = panel.testIds.split(",").map((id) => id.trim());
+    setPageSelectedTests((prev) =>
+      prev.filter((test) => !testIdsList.includes(test.id.toString())),
+    );
+  };
+
+  const handlePagePanelCheckbox = (panel) => {
+    if (!pagePanelIsSelected(panel.id)) {
+      addPagePanelToSelectedPanels(panel);
+    } else {
+      handlePageRemoveSelectedPanel(panel);
+    }
+  };
+
+  const addPagePanelToSelectedPanels = (panel) => {
+    setPageSelectedPanels([
+      ...pageSelectedPanels,
+      { id: panel.id, name: panel.name, testIds: panel.testIds },
+    ]);
+    // Add panel's tests to selected tests
+    const testIdsList = panel.testIds.split(",").map((id) => id.trim());
+    const panelTests = pageSampleTypeTests.tests
+      .filter((test) => testIdsList.includes(test.id.toString()))
+      .map((test) => ({ id: test.id, name: test.name }));
+    setPageSelectedTests((prev) => {
+      const newTests = [...prev];
+      panelTests.forEach((test) => {
+        if (!pageTestIsSelected(test.id)) {
+          newTests.push(test);
+        }
+      });
+      return newTests;
+    });
   };
 
   const handleAddFiles = async (event) => {
@@ -474,6 +680,10 @@ const NoteBookEntryForm = () => {
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
     getFromOpenElisServer("/rest/displayList/ANALYZER_LIST", setAnalyzerList);
     getFromOpenElisServer("/rest/displayList/ALL_TESTS", setAllTests);
+    getFromOpenElisServer("/rest/users", setTechnicianUsers);
+    getFromOpenElisServer("/rest/user-sample-types", setSampleTypes);
+    getFromOpenElisServer("/rest/notebook/questionnaires", setQuestionnaires);
+    getFromOpenElisServer("/rest/panels", setAllPanels);
     return () => {
       componentMounted.current = false;
     };
@@ -492,30 +702,6 @@ const NoteBookEntryForm = () => {
     }
   }, [notebookid]);
 
-  const statusMap = [
-    { id: "DRAFT", value: "Save Draft" },
-    { id: "SUBMITTED", value: "Submit for Review" },
-    { id: "FINALIZED", value: "Finalize Entry" },
-    { id: "LOCKED", value: "Lock Entry" },
-    { id: "ARCHIVED", value: "Archive Entry" },
-  ];
-
-  const statusFlow = {
-    NEW: "DRAFT",
-    DRAFT: "SUBMITTED",
-    SUBMITTED: "FINALIZED",
-    FINALIZED: "LOCKED",
-    LOCKED: "ARCHIVED",
-    ARCHIVED: "ARCHIVED",
-  };
-
-  function getNextStatus(currentStatus) {
-    const nextStatus = currentStatus
-      ? statusFlow[currentStatus]
-      : statusFlow["NEW"];
-    return statusMap.find((s) => s.id === nextStatus);
-  }
-
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -524,7 +710,7 @@ const NoteBookEntryForm = () => {
           <Section>
             <Section>
               <Heading>
-                <FormattedMessage id="notebook.label.formEntry" />
+                <FormattedMessage id="notebook.project.definition.form.title" />
               </Heading>
             </Section>
           </Section>
@@ -561,7 +747,7 @@ const NoteBookEntryForm = () => {
         <Column lg={16} md={8} sm={4}>
           <br />
         </Column>
-        {selectedTab === 0 && (
+        {selectedTab === TABS.ENTRY_DETAILS && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -614,10 +800,10 @@ const NoteBookEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 1 && (
+        {selectedTab === TABS.METADATA && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
-              <Column lg={8} md={2} sm={2}>
+              <Column lg={8} md={8} sm={4}>
                 <Select
                   id="experimenttype"
                   name="experimenttype"
@@ -649,29 +835,57 @@ const NoteBookEntryForm = () => {
                   })}
                 </Select>
               </Column>
-              <Column lg={8} md={4} sm={4}>
+              <Column lg={8} md={8} sm={4}>
                 <TextInput
-                  id="entryProject"
-                  labelText={
-                    <>
-                      {intl.formatMessage({
-                        id: "notebook.label.project",
-                      })}
-                      <span className="requiredlabel">*</span>
-                    </>
-                  }
-                  placeholder={intl.formatMessage({
-                    id: "notebook.label.project",
+                  id="protocol"
+                  labelText={intl.formatMessage({
+                    id: "notebook.label.protocol",
                   })}
-                  value={noteBookData.project}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.label.protocol",
+                  })}
+                  value={noteBookData.protocol || ""}
                   type="text"
                   onChange={(e) => {
                     setNoteBookData({
                       ...noteBookData,
-                      project: e.target.value,
+                      protocol: e.target.value,
                     });
                   }}
                 />
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <Select
+                  id="questionnaire"
+                  name="questionnaire"
+                  labelText={intl.formatMessage({
+                    id: "notebook.label.questionnaire",
+                  })}
+                  value={noteBookData.questionnaireFhirUuid || ""}
+                  onChange={(event) => {
+                    setNoteBookData({
+                      ...noteBookData,
+                      questionnaireFhirUuid: event.target.value || null,
+                    });
+                  }}
+                >
+                  <SelectItem
+                    text={intl.formatMessage({ id: "label.button.select" })}
+                    value=""
+                  />
+                  {questionnaires.map((questionnaire, index) => {
+                    return (
+                      <SelectItem
+                        key={index}
+                        text={questionnaire.value}
+                        value={questionnaire.id}
+                      />
+                    );
+                  })}
+                </Select>
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <br />
@@ -773,7 +987,7 @@ const NoteBookEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 2 && (
+        {selectedTab === TABS.ATTACHMENTS && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -834,7 +1048,7 @@ const NoteBookEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 3 && (
+        {selectedTab === TABS.WORKFLOW && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={2} md={2} sm={4}>
@@ -909,6 +1123,86 @@ const NoteBookEntryForm = () => {
                           <Column lg={14} md={8} sm={4}>
                             {page.content}
                           </Column>
+                          {page.sampleTypeId && (
+                            <>
+                              <Column lg={2} md={8} sm={4}>
+                                <h6>
+                                  {intl.formatMessage({
+                                    id: "sample.type",
+                                  })}
+                                </h6>
+                              </Column>
+                              <Column lg={14} md={8} sm={4}>
+                                <div>
+                                  <span style={{ marginRight: "0.5rem" }}>
+                                    {intl.formatMessage({ id: "sample.type" })}
+                                    :{" "}
+                                  </span>
+                                  {(() => {
+                                    const sampleType = sampleTypes.find(
+                                      (st) => st.id == page.sampleTypeId,
+                                    );
+                                    return sampleType ? (
+                                      <Tag type="blue" size="sm">
+                                        {sampleType.value}
+                                      </Tag>
+                                    ) : (
+                                      <></>
+                                    );
+                                  })()}
+                                </div>
+                              </Column>
+                            </>
+                          )}
+                          {page.panels &&
+                            Array.isArray(page.panels) &&
+                            page.panels.length > 0 && (
+                              <>
+                                <Column lg={2} md={8} sm={4}>
+                                  <h6>
+                                    <FormattedMessage id="sample.label.orderpanel" />
+                                  </h6>
+                                </Column>
+                                <Column lg={14} md={8} sm={4}>
+                                  <div>
+                                    <span style={{ marginRight: "0.5rem" }}>
+                                      <FormattedMessage id="sample.label.orderpanel" />
+                                      :{" "}
+                                    </span>
+                                    {page.panels
+                                      .filter((panelId) => panelId != null)
+                                      .map((panelId, panelIndex) => {
+                                        // Try to find panel by ID (handle both string and number)
+                                        const panel = allPanels.find((p) => {
+                                          if (!p || p.id == null) return false;
+                                          // Normalize both to strings for comparison
+                                          const pId = String(p.id).trim();
+                                          const pagePanelId =
+                                            String(panelId).trim();
+                                          // Compare as both string and number
+                                          return (
+                                            pId === pagePanelId ||
+                                            Number(p.id) === Number(panelId) ||
+                                            p.id == panelId
+                                          );
+                                        });
+                                        // Only show panel if found (don't show ID fallback)
+                                        return panel ? (
+                                          <Tag
+                                            key={panelIndex}
+                                            type="green"
+                                            size="sm"
+                                            style={{ marginRight: "0.5rem" }}
+                                          >
+                                            {panel.value}
+                                          </Tag>
+                                        ) : null;
+                                      })
+                                      .filter((tag) => tag !== null)}
+                                  </div>
+                                </Column>
+                              </>
+                            )}
                           {page.tests &&
                             Array.isArray(page.tests) &&
                             page.tests.length > 0 && (
@@ -969,7 +1263,7 @@ const NoteBookEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 4 && (
+        {selectedTab === TABS.COMMENTS && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -992,9 +1286,16 @@ const NoteBookEntryForm = () => {
                 />
               </Column>
               <Column lg={4} md={8} sm={4}>
-                <Button onClick={handleAddComment} kind="primary" size="sm">
-                  <FormattedMessage id="notebook.comments.add.button" />
-                </Button>
+                <Button
+                  onClick={handleAddComment}
+                  kind="primary"
+                  size="sm"
+                  hasIconOnly
+                  renderIcon={Add}
+                  iconDescription={intl.formatMessage({
+                    id: "notebook.comments.add.button",
+                  })}
+                />
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <br />
@@ -1018,7 +1319,10 @@ const NoteBookEntryForm = () => {
                     >
                       <p>{comment.text}</p>
                       <p style={{ fontSize: "0.875rem", color: "#525252" }}>
-                        {comment.author || "Unknown"} -{" "}
+                        {comment.author ||
+                          userSessionDetails.firstName +
+                            " " +
+                            userSessionDetails.lastName}
                         {comment.dateCreated
                           ? new Date(comment.dateCreated).toLocaleString()
                           : "Just now"}
@@ -1030,7 +1334,7 @@ const NoteBookEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 5 && (
+        {selectedTab === TABS.AUDIT_TRAIL && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -1206,27 +1510,214 @@ const NoteBookEntryForm = () => {
           onChange={handlePageChange}
           required
         />
-        <FilterableMultiSelect
-          key={showPageModal ? "open" : "closed"}
-          id="tests"
-          titleText={intl.formatMessage({
-            id: "barcode.label.info.tests",
+        <Select
+          id="sampleType"
+          name="sampleType"
+          labelText={intl.formatMessage({
+            id: "sample.type",
           })}
-          items={allTests}
-          itemToString={(item) => (item ? item.value : "")}
-          initialSelectedItems={
-            editingPageIndex !== null
-              ? allTests.filter((test) => newPage.tests.includes(test.id))
-              : []
-          }
-          onChange={(changes) => {
-            setNewPage({
-              ...newPage,
-              tests: changes.selectedItems.map((test) => test.id),
-            });
-          }}
-          selectionFeedback="top-after-reopen"
-        />
+          value={newPage.sampleTypeId || ""}
+          onChange={handlePageSampleTypeChange}
+        >
+          <SelectItem text="Select sample type" value="" />
+          {sampleTypes.map((sampleType, index) => (
+            <SelectItem
+              key={index}
+              text={sampleType.value}
+              value={sampleType.id}
+            />
+          ))}
+        </Select>
+        {newPage.sampleTypeId && pageSampleTypeTests && (
+          <>
+            <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+              <h5>
+                <FormattedMessage id="sample.label.orderpanel" />
+              </h5>
+              <div
+                className={"searchTestText"}
+                style={{ marginBottom: "1.188rem" }}
+              >
+                {pageSelectedPanels && pageSelectedPanels.length ? (
+                  <>
+                    {pageSelectedPanels.map((panel, panel_index) => (
+                      <Tag
+                        filter
+                        key={`pagePanelTags_` + panel_index}
+                        onClose={() => handlePageRemoveSelectedPanel(panel)}
+                        style={{ marginRight: "0.5rem" }}
+                        type={"green"}
+                      >
+                        {panel.name}
+                      </Tag>
+                    ))}
+                  </>
+                ) : (
+                  <></>
+                )}
+              </div>
+              <FormGroup
+                legendText={
+                  <FormattedMessage id="sample.search.panel.legend.text" />
+                }
+              >
+                <Search
+                  size="lg"
+                  id="page_panels_search"
+                  labelText={
+                    <FormattedMessage id="label.search.availablepanel" />
+                  }
+                  placeholder={intl.formatMessage({
+                    id: "choose.availablepanel",
+                  })}
+                  onChange={handlePagePanelSearchChange}
+                  value={pagePanelSearchTerm || ""}
+                />
+                <div>
+                  {(() => {
+                    if (!pagePanelSearchTerm) return null;
+                    if (pageSearchBoxPanels && pageSearchBoxPanels.length) {
+                      return (
+                        <ul className={"searchTestsList"}>
+                          {pageSearchBoxPanels.map((panel, panel_index) => (
+                            <li
+                              role="menuitem"
+                              className={"singleTest"}
+                              key={`pagePanelFilter_` + panel_index}
+                              onClick={() => handlePageFilterSelectPanel(panel)}
+                            >
+                              {panel.name}
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    }
+                    return (
+                      <Layer>
+                        <Tile className={"emptyFilterTests"}>
+                          <span>
+                            <FormattedMessage id="sample.panel.search.error.msg" />{" "}
+                            <strong>"{pagePanelSearchTerm}"</strong>{" "}
+                          </span>
+                        </Tile>
+                      </Layer>
+                    );
+                  })()}
+                </div>
+              </FormGroup>
+              {pageSampleTypeTests.panels != null &&
+                pageSampleTypeTests.panels.map((panel) => {
+                  return panel.name === "" ? (
+                    ""
+                  ) : (
+                    <Checkbox
+                      onChange={() => handlePagePanelCheckbox(panel)}
+                      labelText={panel.name}
+                      id={`page_panel_` + panel.id}
+                      key={panel.id}
+                      checked={
+                        pageSelectedPanels.filter(
+                          (item) => item.id === panel.id,
+                        ).length > 0
+                      }
+                    />
+                  );
+                })}
+            </div>
+            <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+              {pageSelectedTests && !pageSelectedTests.length ? (
+                ""
+              ) : (
+                <h5>Order Tests</h5>
+              )}
+              <div
+                className={"searchTestText"}
+                style={{ marginBottom: "1.188rem" }}
+              >
+                {pageSelectedTests && pageSelectedTests.length ? (
+                  <>
+                    {pageSelectedTests.map((test, index) => (
+                      <Tag
+                        filter
+                        key={`pageTestTags_` + index}
+                        onClose={() => handlePageRemoveSelectedTest(test)}
+                        style={{ marginRight: "0.5rem" }}
+                        type={"red"}
+                      >
+                        {test.name}
+                      </Tag>
+                    ))}
+                  </>
+                ) : (
+                  <></>
+                )}
+              </div>
+              <FormGroup
+                legendText={intl.formatMessage({
+                  id: "legend.search.availabletests",
+                })}
+              >
+                <Search
+                  size="lg"
+                  id="page_tests_search"
+                  labelText={
+                    <FormattedMessage id="label.search.available.targetest" />
+                  }
+                  placeholder={intl.formatMessage({
+                    id: "holder.choose.availabletest",
+                  })}
+                  onChange={handlePageTestSearchChange}
+                  value={pageTestSearchTerm || ""}
+                />
+                <div>
+                  {(() => {
+                    if (!pageTestSearchTerm) return null;
+                    if (pageSearchBoxTests && pageSearchBoxTests.length) {
+                      return (
+                        <ul className={"searchTestsList"}>
+                          {pageSearchBoxTests.map((test, test_index) => (
+                            <li
+                              role="menuitem"
+                              className={"singleTest"}
+                              key={`pageFilterTest_` + test_index}
+                              onClick={() => handlePageFilterSelectTest(test)}
+                            >
+                              {test.name}
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    }
+                    return (
+                      <Layer>
+                        <Tile className={"emptyFilterTests"}>
+                          <span>
+                            <FormattedMessage id="title.notestfoundmatching" />
+                            <strong> "{pageTestSearchTerm}"</strong>{" "}
+                          </span>
+                        </Tile>
+                      </Layer>
+                    );
+                  })()}
+                </div>
+              </FormGroup>
+              {pageSampleTypeTests.tests != null &&
+                pageSampleTypeTests.tests.map((test) => {
+                  return test.name === "" ? (
+                    ""
+                  ) : (
+                    <Checkbox
+                      onChange={(e) => handlePageTestCheckbox(e, test)}
+                      labelText={test.name}
+                      id={`page_test_` + test.id}
+                      key={`page_test_checkBox_` + test.id}
+                      checked={pageTestIsSelected(test.id)}
+                    />
+                  );
+                })}
+            </div>
+          </>
+        )}
         <TextArea
           id="instructions"
           name="instructions"
@@ -1277,37 +1768,81 @@ const NoteBookEntryForm = () => {
           required
         />
       </Modal>
+      {/* Status and Technician Section */}
       <Grid fullWidth={true} className="orderLegendBody">
         <Column lg={16} md={8} sm={4}>
           <Grid fullWidth={true} className="gridBoundary">
             <Column lg={8} md={8} sm={4}>
+              <Select
+                id="status"
+                name="status"
+                labelText={intl.formatMessage({ id: "notebook.label.status" })}
+                value={noteBookData.status || ""}
+                onChange={(event) => {
+                  setNoteBookData({
+                    ...noteBookData,
+                    status: event.target.value,
+                  });
+                }}
+                disabled={noteBookData.status === "ARCHIVED"}
+              >
+                <SelectItem />
+                {statuses.map((status, index) => {
+                  return (
+                    <SelectItem
+                      key={index}
+                      text={status.value}
+                      value={status.id}
+                    />
+                  );
+                })}
+              </Select>
+            </Column>
+            <Column lg={8} md={8} sm={4}>
+              <Select
+                id="technician"
+                name="technician"
+                labelText={intl.formatMessage({
+                  id: "label.button.select.technician",
+                })}
+                value={noteBookData.technicianId || ""}
+                onChange={(event) => {
+                  const selectedUser = technicianUsers.find(
+                    (user) => user.id === event.target.value,
+                  );
+                  setNoteBookData({
+                    ...noteBookData,
+                    technicianId: event.target.value,
+                    technicianName: selectedUser ? selectedUser.value : "",
+                  });
+                }}
+              >
+                <SelectItem />
+                {technicianUsers.map((user, index) => {
+                  return (
+                    <SelectItem key={index} text={user.value} value={user.id} />
+                  );
+                })}
+              </Select>
+            </Column>
+          </Grid>
+        </Column>
+        <Column lg={16} md={8} sm={4}>
+          <br />
+        </Column>
+        <Column lg={16} md={8} sm={4}>
+          <Grid fullWidth={true} className="gridBoundary">
+            <Column lg={8} md={8} sm={4}>
               <Button
-                kind="danger--tertiary"
+                kind="primary"
                 disabled={
-                  isSubmitting ||
-                  noteBookData.status === "ARCHIVED" ||
-                  (mode === MODES.CREATE && !isFormValid())
+                  isSubmitting || (mode === MODES.CREATE && !isFormValid())
                 }
                 onClick={() => handleSubmit()}
               >
-                {intl.formatMessage({
-                  id: `notebook.status.${getNextStatus(noteBookData.status).id.toLowerCase()}`,
-                })}
+                <FormattedMessage id="label.button.save" />
               </Button>
             </Column>
-            {noteBookData.status == "NEW" && (
-              <Column lg={8} md={8} sm={4}>
-                <Button
-                  kind="danger--tertiary"
-                  disabled={mode === MODES.CREATE && !isFormValid()}
-                  onClick={() => handleSubmit("DRAFT")}
-                >
-                  {intl.formatMessage({
-                    id: `notebook.status.${getNextStatus("DRAFT").id.toLowerCase()}`,
-                  })}
-                </Button>
-              </Column>
-            )}
           </Grid>
         </Column>
       </Grid>

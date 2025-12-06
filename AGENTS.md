@@ -33,7 +33,7 @@ reporting, serving 30+ countries worldwide.
 
 **Governance:**
 
-- **Constitution Authority**: `.specify/memory/constitution.md` (v1.7.0) is the
+- **Constitution Authority**: `.specify/memory/constitution.md` (v1.8.0) is the
   authoritative governance document
 - **All code changes MUST comply with constitutional principles**
 - **Constitution supersedes all other documentation in case of conflict**
@@ -44,8 +44,9 @@ reporting, serving 30+ countries worldwide.
 - Branch strategy: `develop` (main development), `main` (production releases)
 - Feature branches: `{###-feature-name}` or `issue-{###}-{feature-name}`
 
-**Tech Stack:** Java 21 + Spring Boot 3.x backend, React 17 + Carbon Design
-System frontend, PostgreSQL 14+ database, HAPI FHIR R4 for interoperability
+**Tech Stack:** Java 21 + Spring Framework 6.2.2 (Traditional Spring MVC)
+backend, React 17 + Carbon Design System frontend, PostgreSQL 14+ database, HAPI
+FHIR R4 for interoperability
 
 **Architecture:** Strict 5-layer pattern (Valueholder → DAO → Service →
 Controller → Form)
@@ -76,7 +77,7 @@ sdk use java 21.0.1-tem
 **Why Java 21?**
 
 - Maven compiler plugin requires Java 21 for `--release 21` flag
-- Spring Boot 3.x requires Java 17+ (we use 21 for LTS)
+- Spring Framework 6.2.2 requires Java 17+ (we use 21 for LTS)
 - Jakarta EE 9 APIs require Java 17+
 
 ### Test Skipping (CRITICAL)
@@ -114,7 +115,11 @@ mvn clean install -DskipTests
 **Core Framework:**
 
 - **Java 21 LTS** (OpenJDK/Temurin) - MANDATORY
-- **Spring Boot 3.x** (Spring Framework 6.2.2)
+- **Spring Framework 6.2.2** (Traditional Spring MVC, NOT Spring Boot)
+  - Uses `@EnableWebMvc`, `@Configuration`, `@ComponentScan` (not
+    `@SpringBootApplication`)
+  - Individual Spring modules (spring-web, spring-webmvc, spring-context, etc.)
+  - WAR packaging for Tomcat deployment
 - **Hibernate 6.x** (Hibernate ORM 5.6.15.Final)
 - **Jakarta EE 9** (NOT javax._ - use jakarta.persistence._)
 - **PostgreSQL 14+** (production database)
@@ -211,9 +216,9 @@ jakarta.persistence (Jakarta EE 9)
 
 ## Constitution Principles Summary
 
-> **Full Document:** `.specify/memory/constitution.md` (1147 lines, v1.7.0)
+> **Full Document:** `.specify/memory/constitution.md` (v1.8.0)
 
-The constitution defines 8 core principles that ALL code changes MUST follow:
+The constitution defines 9 core principles that ALL code changes MUST follow:
 
 ### I. Configuration-Driven Variation
 
@@ -431,6 +436,34 @@ hardcoded English text.
 - [ ] Sensitive data encrypted at rest (if applicable)
 - [ ] HTTPS endpoints only (NO HTTP for PHI)
 
+### IX. Spec-Driven Iteration (NEW in v1.8.0)
+
+**Rule:** Features requiring >3 days effort MUST be broken into Validation
+Milestones. Each Milestone = 1 Pull Request.
+
+**Why:** Large PRs create review bottlenecks, increase merge conflict risk, and
+delay feedback. Milestone-based delivery enables manageable code reviews.
+
+**How:**
+
+- Spec PR created first on `spec/{issue-id}-{name}` branch
+- Each milestone gets own branch: `feat/{issue-id}-{name}/m{N}-{desc}`
+- Parallel milestones marked with `[P]` can be developed simultaneously
+- Sequential milestones must complete in order
+
+**Branch Naming Convention:**
+
+| Branch Type      | Pattern                              | Example                           |
+| ---------------- | ------------------------------------ | --------------------------------- |
+| Spec Branch      | `spec/{issue-id}-{name}`             | `spec/OGC-009-sidenav`            |
+| Feature Branch   | `feat/{issue-id}-{name}`             | `feat/OGC-009-sidenav`            |
+| Milestone Branch | `feat/{issue-id}-{name}/m{N}-{desc}` | `feat/OGC-009-sidenav/m1-backend` |
+| Hotfix           | `hotfix/{issue-id}-{desc}`           | `hotfix/OGC-123-fix-login`        |
+| Bugfix           | `fix/{issue-id}-{desc}`              | `fix/OGC-456-null-check`          |
+
+**Reference:**
+[GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+
 ---
 
 ## Development Workflow
@@ -468,8 +501,26 @@ docker compose -f dev.docker-compose.yml up -d
 
 ### SpecKit Workflow (Specification-Driven Development)
 
-This project uses GitHub SpecKit for rigorous feature development. The workflow
-enforces constitution compliance at every stage.
+This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
+rigorous feature development. The workflow enforces constitution compliance at
+every stage.
+
+**Setup (Required for AI Agents):**
+
+Before using SpecKit commands, install them to your AI agent's command
+directory:
+
+```bash
+# Install commands for all supported AI agents (Cursor + Claude Code)
+./.specify/scripts/bash/install-commands.sh
+
+# Or install for specific agent only
+./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
+./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
+```
+
+This copies command definitions from `.specify/commands/` to agent-specific
+directories (`.cursor/commands/`, `.claude/commands/`).
 
 **Available Commands:**
 
@@ -576,18 +627,37 @@ docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
 
 ### Branch Strategy
 
+**Reference:** See Constitution Principle IX for complete conventions.
+
+**Primary Branches:**
+
 - **`develop`** - Main development branch (ALL PRs target this)
 - **`main`** - Production releases only (reviewers backport from develop)
-- **Feature branches:** `{###-feature-name}` (e.g., `001-sample-storage`) or
-  `issue-{###}-{feature-name}`
-- **Hotfix branches:** `hotfix-{description}` (merged to develop + main)
 
-**Creating Feature Branch:**
+**Feature Development (Principle IX):**
+
+- **Spec branches:** `spec/{issue-id}-{name}` - Specification PRs
+- **Feature branches:** `feat/{issue-id}-{name}` - Integration target
+- **Milestone branches:** `feat/{issue-id}-{name}/m{N}-{desc}` - Individual PRs
+- **Hotfix branches:** `hotfix/{issue-id}-{desc}` (merged to develop + main)
+- **Bugfix branches:** `fix/{issue-id}-{desc}` (merged to develop)
+
+**Issue ID Format:** Jira ticket (`OGC-{###}`) preferred, or GitHub issue number
+(`{###}`)
+
+**Creating Feature Branch (SDD Workflow):**
 
 ```bash
+# 1. Start with spec branch
 git checkout develop
 git pull --rebase upstream develop
-git checkout -b 001-new-feature
+git checkout -b spec/OGC-009-sidenav
+
+# 2. After spec PR approved, create feature branch
+git checkout -b feat/OGC-009-sidenav
+
+# 3. For each milestone, create milestone branch
+git checkout -b feat/OGC-009-sidenav/m1-backend
 ```
 
 ### Pre-Commit Checklist
@@ -772,6 +842,49 @@ The Testing Roadmap is the authoritative source for all testing practices,
 patterns, and procedures. This section provides a high-level overview. For
 detailed guidance, see the Testing Roadmap.
 
+### Test Data Management
+
+**MANDATORY**: All test types (E2E, backend integration, manual) use the unified
+fixture loading system.
+
+**Reference**: [Test Data Strategy Guide](.specify/guides/test-data-strategy.md)
+for comprehensive guide.
+
+**Key Principles:**
+
+- Single source of truth: `storage-test-data.sql` contains all test fixtures
+- Unified loader: `load-test-fixtures.sh` used by all test types
+- Dependency validation: Scripts verify required tables exist before loading
+- Comprehensive verification: Automatic verification after loading
+- Safe cleanup: Only removes test-created data, preserves fixtures
+
+**Quick Start:**
+
+```bash
+# Load test fixtures (basic usage)
+./src/test/resources/load-test-fixtures.sh
+
+# Reset database before loading (clean state)
+./src/test/resources/load-test-fixtures.sh --reset
+
+# Load without verification (faster)
+./src/test/resources/load-test-fixtures.sh --no-verify
+```
+
+**Fixture Loading:**
+
+- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
+  `load-test-fixtures.sh`
+- **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
+- **Manual Testing**: Direct execution of `load-test-fixtures.sh`
+
+**For detailed information**, see:
+
+- [Test Data Strategy Guide](.specify/guides/test-data-strategy.md) -
+  Comprehensive guide
+- [E2E Fixtures Quick Reference](.specify/guides/e2e-fixtures-readme.md) -
+  E2E-specific reference
+
 **Key Resources**:
 
 - **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive
@@ -849,21 +962,34 @@ for common patterns and cheat sheets.
 
 **Decision Tree**:
 
-1. **Testing REST controller HTTP layer only?** → Use `@WebMvcTest` ✅
-2. **Testing DAO/repository persistence layer only?** → Use `@DataJpaTest` ✅
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, Spring Boot test annotations (`@WebMvcTest`,
+`@DataJpaTest`, `@SpringBootTest`) are **NOT available**. All tests use
+`BaseWebContextSensitiveTest`.
+
+1. **Testing REST controller HTTP layer only?** → Use
+   `BaseWebContextSensitiveTest` ✅
+2. **Testing DAO/repository persistence layer only?** → Use
+   `BaseWebContextSensitiveTest` ✅
 3. **Testing complete workflow with full application context?** → Use
-   `@SpringBootTest` ✅
-4. **Legacy integration tests with Testcontainers/DBUnit?** → Use
-   `BaseWebContextSensitiveTest` ⚠️
+   `BaseWebContextSensitiveTest` ✅
+4. **All integration tests** → Use `BaseWebContextSensitiveTest` ✅
 
 **When to Use Each**:
 
-| Test Type          | Annotation                    | Use Case               | Speed  | Context        |
-| ------------------ | ----------------------------- | ---------------------- | ------ | -------------- |
-| Controller         | `@WebMvcTest`                 | HTTP layer only        | Fast   | Web layer only |
-| DAO                | `@DataJpaTest`                | Persistence layer only | Fast   | JPA layer only |
-| Integration        | `@SpringBootTest`             | Full workflow          | Medium | Full context   |
-| Legacy Integration | `BaseWebContextSensitiveTest` | Testcontainers/DBUnit  | Slow   | Full context   |
+| Test Type   | Base Class/Pattern            | Use Case               | Speed  | Context      |
+| ----------- | ----------------------------- | ---------------------- | ------ | ------------ |
+| Controller  | `BaseWebContextSensitiveTest` | HTTP layer only        | Medium | Full context |
+| DAO         | `BaseWebContextSensitiveTest` | Persistence layer only | Medium | Full context |
+| Integration | `BaseWebContextSensitiveTest` | Full workflow          | Medium | Full context |
+
+**Why not Spring Boot test annotations?**
+
+- This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**, not
+  Spring Boot
+- No `spring-boot-starter-test` dependency
+- No `@SpringBootApplication` - uses `@EnableWebMvc` + `@Configuration` instead
+- WAR packaging (not JAR) - deployed to Tomcat
 
 **Reference**:
 [Testing Roadmap - Test Slicing Strategy Decision Tree](.specify/guides/testing-roadmap.md#test-slicing-strategy-decision-tree)
@@ -923,18 +1049,20 @@ public class SampleServiceTest {
 
 **Template:** `.specify/templates/testing/JUnit4ServiceTest.java.template`
 
-### Controller Tests (@WebMvcTest)
+### Controller Tests (BaseWebContextSensitiveTest)
 
 **Location:** `src/test/java/org/openelisglobal/{module}/controller/`
 
-**Use for**: Testing REST controllers in isolation with mocked services.
+**Use for**: Testing REST controllers with full Spring context.
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@WebMvcTest` is **NOT available**. All controller
+tests extend `BaseWebContextSensitiveTest`.
 
 **Pattern:**
 
 ```java
-@RunWith(SpringRunner.class)
-@WebMvcTest(StorageLocationRestController.class)
-public class StorageLocationRestControllerTest {
+public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MockMvc mockMvc;
 
@@ -959,6 +1087,7 @@ public class StorageLocationRestControllerTest {
 
 **Key Points:**
 
+- Extends `BaseWebContextSensitiveTest` (provides MockMvc)
 - Use `@MockBean` (NOT `@Mock`) for Spring context mocking
 - Use `MockMvc` for HTTP request/response testing
 - Use JSONPath for response assertions
@@ -966,24 +1095,39 @@ public class StorageLocationRestControllerTest {
 
 **Template:** `.specify/templates/testing/WebMvcTestController.java.template`
 
-### DAO Tests (@DataJpaTest)
+### DAO Tests (BaseWebContextSensitiveTest)
 
 **Location:** `src/test/java/org/openelisglobal/{module}/dao/`
 
-**Use for**: Testing persistence layer in isolation.
+**Use for**: Testing persistence layer with real HQL query execution.
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@DataJpaTest` is **NOT available**. All DAO tests
+extend `BaseWebContextSensitiveTest`.
 
 **Pattern:**
 
 ```java
-@RunWith(SpringRunner.class)
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-public class StorageLocationDAOTest {
+public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
     @Autowired
-    private TestEntityManager entityManager;  // ✅ Use TestEntityManager (NOT JdbcTemplate)
+    private DataSource dataSource;
 
     @Autowired
     private StorageLocationDAO storageLocationDAO;
+
+    private JdbcTemplate jdbcTemplate;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        cleanTestData();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        cleanTestData();
+    }
 
     @Test
     public void testFindByParentId_WithValidParent_ReturnsChildLocations() {
@@ -1149,29 +1293,48 @@ public class HibernateMappingValidationTest {
 - Missing annotations
 - Invalid relationship mappings
 
-### Integration Tests (@SpringBootTest)
+### Integration Tests (BaseWebContextSensitiveTest)
 
 **Location:** `src/test/java/org/openelisglobal/{module}/controller/` or
 `src/test/java/org/openelisglobal/{module}/service/`
 
 **Use for**: Testing complete workflows that require full application context.
 
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@SpringBootTest` is **NOT available**. All
+integration tests extend `BaseWebContextSensitiveTest`.
+
 **Pattern:**
 
 ```java
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional  // ✅ PREFERRED: Automatic rollback
-public class SampleServiceIntegrationTest {
+import javax.sql.DataSource;
+
+public class SampleServiceIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private SampleService sampleService;
+
+    @Autowired
+    private DataSource dataSource;
+
+    private JdbcTemplate jdbcTemplate;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        cleanTestData();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        cleanTestData();
+    }
 
     @Test
     public void testSaveSample_PersistsToDatabase() {
@@ -1293,7 +1456,7 @@ describe("User Story P1: Sample Storage Assignment", () => {
   testing guide for all test types (backend and frontend)
 - **Backend Testing Best Practices**:
   `.specify/guides/backend-testing-best-practices.md` - Quick reference for
-  backend Java/Spring Boot testing patterns
+  backend Java/Spring Framework testing patterns
 - **Jest Best Practices**: `.specify/guides/jest-best-practices.md` - Quick
   reference for Jest + React Testing Library patterns
 - **Cypress Best Practices**: `.specify/guides/cypress-best-practices.md` -
@@ -1308,9 +1471,9 @@ describe("User Story P1: Sample Storage Assignment", () => {
     (JUnit 4 + Mockito)
   - WebMvc Controller:
     `.specify/templates/testing/WebMvcTestController.java.template` - Controller
-    tests (@WebMvcTest)
-  - DataJpa DAO: `.specify/templates/testing/DataJpaTestDao.java.template` - DAO
-    tests (@DataJpaTest)
+    tests (BaseWebContextSensitiveTest)
+  - DAO Tests: `.specify/templates/testing/DataJpaTestDao.java.template` - DAO
+    tests (BaseWebContextSensitiveTest)
   - Jest Component:
     `.specify/templates/testing/JestComponent.test.jsx.template` - Frontend unit
     tests
@@ -1652,6 +1815,21 @@ Before creating PR, verify ALL items:
 - **Code of Conduct:** `CODE_OF_CONDUCT.md` (community standards)
 - **Dev Setup:** `docs/dev_setup.md` (detailed development environment setup)
 
+### Testing Documentation
+
+- **Testing Roadmap:** `.specify/guides/testing-roadmap.md` - Comprehensive
+  testing guide
+- **Test Data Strategy:** `.specify/guides/test-data-strategy.md` - Unified test
+  data management
+- **E2E Fixtures Reference:** `.specify/guides/e2e-fixtures-readme.md` -
+  E2E-specific fixture guide
+- **Cypress Best Practices:** `.specify/guides/cypress-best-practices.md` -
+  Cypress patterns
+- **Jest Best Practices:** `.specify/guides/jest-best-practices.md` - Jest
+  patterns
+- **Backend Testing Best Practices:**
+  `.specify/guides/backend-testing-best-practices.md` - Backend patterns
+
 ### SpecKit Templates
 
 - **Spec Template:** `.specify/templates/spec-template.md`
@@ -1677,7 +1855,7 @@ Before creating PR, verify ALL items:
 - **IHE Lab Profiles:**
   https://wiki.ihe.net/index.php/Laboratory_Technical_Framework
 - **HAPI FHIR:** https://hapifhir.io/
-- **GitHub SpecKit:** https://github.com/anthropics/github-speckit
+- **GitHub SpecKit:** https://github.com/github/spec-kit
 
 ---
 
@@ -1727,6 +1905,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2025-11-09 **Constitution Version:** 1.7.0 **Maintained By:**
+**Last Updated:** 2025-12-04 **Constitution Version:** 1.8.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

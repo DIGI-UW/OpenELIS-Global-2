@@ -2,6 +2,9 @@
 description:
   Generate a custom checklist for the current feature based on user
   requirements.
+scripts:
+  sh: .specify/scripts/bash/check-prerequisites.sh --json
+  ps: .specify/scripts/powershell/check-prerequisites.ps1 -Json
 ---
 
 ## Checklist Purpose: "Unit Tests for English"

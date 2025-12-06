@@ -38,10 +38,12 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.statusofsample.service.StatusOfSampleService;
 import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@DependsOn("liquibase")
 public class StatusService implements IStatusService {
     public enum OrderStatus {
         Entered, Started, Finished, NonConforming_depricated
@@ -57,7 +59,7 @@ public class StatusService implements IStatusService {
     }
 
     public enum SampleStatus {
-        SampleRejected, Entered, Canceled
+        SampleRejected, Entered, Canceled, Disposed
     }
 
     public enum StatusType {
@@ -267,6 +269,11 @@ public class StatusService implements IStatusService {
             return;
         }
 
+        // Defensive check: can't persist status for entities without IDs
+        if (sample.getId() == null || patient.getId() == null) {
+            return;
+        }
+
         List<ObservationHistory> observationList = observationHistoryService.getAll(patient, sample);
 
         ObservationHistory sampleRecord = null;
@@ -432,6 +439,8 @@ public class StatusService implements IStatusService {
             sampleStatusToObjectMap.put(SampleStatus.Canceled, status);
         } else if (name.equals("Sample Rejected")) {
             sampleStatusToObjectMap.put(SampleStatus.SampleRejected, status);
+        } else if (name.equals("SampleDisposed")) {
+            sampleStatusToObjectMap.put(SampleStatus.Disposed, status);
         }
     }
 

@@ -6,8 +6,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
+import org.openelisglobal.storage.form.SampleDisposalForm;
 import org.openelisglobal.storage.form.SampleMovementForm;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageDashboardService;
@@ -45,6 +48,9 @@ public class SampleStorageRestController extends BaseRestController {
     @Autowired
     private StorageDashboardService storageDashboardService;
 
+    @Autowired
+    private IStatusService statusService;
+
     /**
      * Get all SampleItems with storage assignments GET /rest/storage/sample-items
      * Supports filtering by location and status (FR-065)
@@ -64,10 +70,11 @@ public class SampleStorageRestController extends BaseRestController {
                 long totalSampleItems = allAssignments.size();
                 long active = allAssignments.stream()
                         .filter(a -> a.getSampleItem() != null && (a.getSampleItem().getStatusId() == null
-                                || !"disposed".equalsIgnoreCase(a.getSampleItem().getStatusId())))
+                                || !statusService.matches(a.getSampleItem().getStatusId(), SampleStatus.Disposed)))
                         .count();
-                long disposed = allAssignments.stream().filter(
-                        a -> a.getSampleItem() != null && "disposed".equalsIgnoreCase(a.getSampleItem().getStatusId()))
+                long disposed = allAssignments.stream()
+                        .filter(a -> a.getSampleItem() != null
+                                && statusService.matches(a.getSampleItem().getStatusId(), SampleStatus.Disposed))
                         .count();
 
                 // Count unique storage locations (rooms, devices, shelves, racks)
@@ -101,6 +108,33 @@ public class SampleStorageRestController extends BaseRestController {
             }
         } catch (Exception e) {
             logger.error("Error getting SampleItems", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get storage location for a specific SampleItem by ID GET
+     * /rest/storage/sample-items/{sampleItemId}
+     */
+    @GetMapping("/{sampleItemId}")
+    public ResponseEntity<Map<String, Object>> getSampleItemLocation(@PathVariable String sampleItemId) {
+        try {
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            Map<String, Object> location = sampleStorageService.getSampleItemLocation(sampleItemId);
+            if (location == null || location.isEmpty()) {
+                // Return empty location (not assigned yet)
+                Map<String, Object> response = new HashMap<>();
+                response.put("sampleItemId", sampleItemId);
+                response.put("location", "");
+                response.put("hierarchicalPath", "");
+                return ResponseEntity.ok(response);
+            }
+            return ResponseEntity.ok(location);
+        } catch (Exception e) {
+            logger.error("Error getting location for SampleItem: " + sampleItemId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -193,7 +227,8 @@ public class SampleStorageRestController extends BaseRestController {
 
             // Service layer handles all business logic
             String movementId = sampleStorageService.moveSampleItemWithLocation(form.getSampleItemId(),
-                    form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getReason());
+                    form.getLocationId(), form.getLocationType(), form.getPositionCoordinate(), form.getReason(),
+                    form.getNotes());
 
             // Log successful movement
             if (logger.isInfoEnabled()) {
@@ -314,6 +349,93 @@ public class SampleStorageRestController extends BaseRestController {
             logger.error("Error moving SampleItem", e);
             Map<String, Object> error = new HashMap<>();
             error.put("message", "An error occurred during movement: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Update position and/or notes for existing assignment without changing
+     * location PATCH /rest/storage/sample-items/{sampleItemId}
+     */
+    @PatchMapping("/{sampleItemId}")
+    public ResponseEntity<Map<String, Object>> updateAssignmentMetadata(@PathVariable String sampleItemId,
+            @RequestBody Map<String, String> updates) {
+        try {
+            // Validate sampleItemId
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "SampleItem ID is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            // Extract position and notes from request body (null means don't update, empty
+            // string means clear)
+            String positionCoordinate = updates.get("positionCoordinate");
+            String notes = updates.get("notes");
+
+            // Log incoming request for debugging
+            if (logger.isDebugEnabled()) {
+                logger.debug("Updating metadata for SampleItem {}: positionCoordinate={}, notes={}", sampleItemId,
+                        positionCoordinate, notes != null ? "provided" : "null");
+            }
+
+            // Service layer handles update
+            Map<String, Object> response = sampleStorageService.updateAssignmentMetadata(sampleItemId,
+                    positionCoordinate, notes);
+
+            // Log successful update
+            if (logger.isInfoEnabled()) {
+                logger.info("SampleItem {} metadata updated successfully", sampleItemId);
+            }
+
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error updating SampleItem metadata", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "An error occurred during update: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * OGC-73: Dispose SampleItem POST /rest/storage/sample-items/dispose Marks
+     * sample as disposed and clears storage location
+     */
+    @PostMapping("/dispose")
+    public ResponseEntity<Map<String, Object>> disposeSampleItem(@Valid @RequestBody SampleDisposalForm form) {
+        try {
+            // Log incoming request for debugging
+            if (logger.isDebugEnabled()) {
+                logger.debug("Disposing SampleItem {}: reason={}, method={}", form.getSampleItemId(), form.getReason(),
+                        form.getMethod());
+            }
+
+            // Service layer handles all business logic
+            Map<String, Object> response = sampleStorageService.disposeSampleItem(form.getSampleItemId(),
+                    form.getReason(), form.getMethod(), form.getNotes());
+
+            // Log successful disposal
+            if (logger.isInfoEnabled()) {
+                logger.info("SampleItem {} disposed successfully", form.getSampleItemId());
+            }
+
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error disposing SampleItem", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "An error occurred during disposal: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }

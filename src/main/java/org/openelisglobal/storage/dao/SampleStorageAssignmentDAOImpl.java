@@ -25,24 +25,25 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
     @Override
     @Transactional(readOnly = true)
     public SampleStorageAssignment findBySampleItemId(String sampleItemId) {
+        int parsedId;
         try {
-            // Note: SampleItem.id uses LIMSStringNumberUserType (String in Java, numeric in
-            // DB)
-            // When querying through relationships, we must parse String to Integer for the
-            // parameter
-            // This matches the pattern in SampleItemDAOImpl.getSampleItemsBySampleId()
+            parsedId = Integer.parseInt(sampleItemId);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid SampleItem ID format (must be numeric): {}", sampleItemId);
+            return null;
+        }
+
+        try {
             String hql = "FROM SampleStorageAssignment ssa WHERE ssa.sampleItem.id = :sampleItemId";
             Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     SampleStorageAssignment.class);
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", parsedId);
             query.setMaxResults(1);
+
             List<SampleStorageAssignment> results = query.list();
-            return results.isEmpty() ? null : results.get(0);
-        } catch (NumberFormatException e) {
-            logger.error("Invalid SampleItem ID format (must be numeric): " + sampleItemId, e);
-            return null;
+            return results.isEmpty() ? null : results.getFirst();
         } catch (Exception e) {
-            logger.error("Error finding SampleStorageAssignment by SampleItem ID: " + sampleItemId, e);
+            logger.error("Error finding SampleStorageAssignment by SampleItem ID: {}", sampleItemId, e);
             throw new LIMSRuntimeException("Error finding SampleStorageAssignment by SampleItem ID: " + sampleItemId,
                     e);
         }
@@ -137,4 +138,25 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
 
     // No override needed - BaseDAOImpl.getAll() uses entity fetch strategies
     // All relationships are EAGER at entity level, so they load automatically
+
+    @Override
+    @Transactional(readOnly = true)
+    public int countByLocationTypeAndId(String locationType, Integer locationId) {
+        try {
+            if (locationType == null || locationId == null) {
+                return 0;
+            }
+
+            String hql = "SELECT COUNT(*) FROM SampleStorageAssignment ssa "
+                    + "WHERE ssa.locationType = :locationType AND ssa.locationId = :locationId";
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameter("locationType", locationType);
+            query.setParameter("locationId", locationId);
+            Long count = query.uniqueResult();
+            return count != null ? count.intValue() : 0;
+        } catch (Exception e) {
+            logger.error("Error counting sample storage assignments by location: " + e.getMessage(), e);
+            return 0;
+        }
+    }
 }

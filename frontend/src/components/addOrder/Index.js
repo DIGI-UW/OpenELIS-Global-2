@@ -190,14 +190,14 @@ const Index = () => {
 
       const urlParams = new URLSearchParams(window.location.search);
       const externalId = urlParams.get("ID");
-      const labNumber = urlParams.get("labNumber");
 
       newOrderFormValues = {
         ...newOrderFormValues,
         sampleOrderItems: {
           ...newOrderFormValues.sampleOrderItems,
           externalOrderNumber: externalId,
-          labNo: labNumber,
+          // Note: labNo is set by the mount useEffect (line ~631), not here
+          // This avoids redundant state updates and ensures consistent initialization
         },
       };
       setOrderFormValues(newOrderFormValues);
@@ -666,7 +666,14 @@ const Index = () => {
                 })
                 .join(",");
             }
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''/>`;
+            // Extract storage location data if present
+            const storageLocation = sampleItem.sampleXML?.storageLocation;
+            const storageLocationId = storageLocation?.id || "";
+            const storageLocationType = storageLocation?.type || "";
+            const storagePositionCoordinate =
+              storageLocation?.positionCoordinate || "";
+
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}'/>`;
           }
           if (sampleItem.referralItems.length > 0) {
             const referredInstitutes = Object.keys(sampleItem.referralItems)

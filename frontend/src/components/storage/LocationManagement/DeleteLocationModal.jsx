@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   ComposedModal,
   ModalHeader,
@@ -7,9 +7,16 @@ import {
   Button,
   Checkbox,
   InlineNotification,
+  Tooltip,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  hasRole,
+  Roles,
+  deleteFromOpenElisServerFullResponse,
+} from "../../utils/Utils";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import "./DeleteLocationModal.css";
 
 /**
@@ -32,11 +39,14 @@ const DeleteLocationModal = ({
   onDelete,
 }) => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const isAdmin = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
   const [constraints, setConstraints] = useState(null);
   const [isCheckingConstraints, setIsCheckingConstraints] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState(null);
+  const [cascadeSummary, setCascadeSummary] = useState(null);
 
   // Check constraints when modal opens
   useEffect(() => {
@@ -53,17 +63,26 @@ const DeleteLocationModal = ({
       setConfirmed(false);
       setIsDeleting(false);
       setError(null);
+      setCascadeSummary(null);
     }
   }, [open]);
+
+  const getLocationTypePlural = (type) => {
+    const pluralMap = {
+      room: "rooms",
+      device: "devices",
+      shelf: "shelves", // Irregular plural
+      rack: "racks",
+    };
+    return pluralMap[type] || `${type}s`;
+  };
 
   const checkConstraints = () => {
     setIsCheckingConstraints(true);
     setError(null);
 
-    // Build endpoint - for now, we'll check constraints by trying DELETE
-    // In a real implementation, there should be a separate constraint check endpoint
-    // For testing, we'll use getFromOpenElisServer which the test mocks
-    const endpoint = `/rest/storage/${locationType}s/${location.id}/can-delete`;
+    // Build endpoint to check constraints and admin status
+    const endpoint = `/rest/storage/${getLocationTypePlural(locationType)}/${location.id}/can-delete`;
 
     getFromOpenElisServer(
       endpoint,
@@ -89,6 +108,11 @@ const DeleteLocationModal = ({
               "Cannot delete location",
             message: errorMsg,
           });
+
+          // If admin and constraints exist, fetch cascade summary
+          if (isAdmin && (response.isAdmin || response.data?.isAdmin)) {
+            fetchCascadeSummary();
+          }
         } else if (response && response.status === 200) {
           // No constraints, can delete
           setConstraints(null);
@@ -105,24 +129,33 @@ const DeleteLocationModal = ({
     );
   };
 
+  const fetchCascadeSummary = () => {
+    const endpoint = `/rest/storage/${getLocationTypePlural(locationType)}/${location.id}/cascade-delete-summary`;
+    getFromOpenElisServer(
+      endpoint,
+      (response) => {
+        if (response && !response.error) {
+          setCascadeSummary(response);
+        }
+      },
+      (error) => {
+        // Ignore errors - summary is optional
+        console.error("Error fetching cascade summary:", error);
+      },
+    );
+  };
+
   const handleDelete = () => {
     if (!confirmed || !location) return;
 
     setIsDeleting(true);
     setError(null);
 
-    const endpoint = `/rest/storage/${locationType}s/${location.id}`;
+    const endpoint = `/rest/storage/${getLocationTypePlural(locationType)}/${location.id}`;
 
-    // Use fetch directly for DELETE
-    fetch(`${window.location.origin}${endpoint}`, {
-      credentials: "include",
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
-    })
-      .then(async (response) => {
+    deleteFromOpenElisServerFullResponse(
+      endpoint,
+      async (response) => {
         setIsDeleting(false);
 
         if (response.ok) {
@@ -131,6 +164,17 @@ const DeleteLocationModal = ({
             onDelete(location);
           }
           handleClose();
+        } else if (response.status === 403) {
+          // Forbidden - not admin
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage =
+            errorData.message ||
+            errorData.error ||
+            intl.formatMessage({
+              id: "storage.delete.admin.only",
+              defaultMessage: "Only Global Administrators can delete locations",
+            });
+          setError(errorMessage);
         } else if (response.status === 409) {
           // Constraints exist
           const errorData = await response.json().catch(() => ({}));
@@ -155,16 +199,9 @@ const DeleteLocationModal = ({
               }),
           );
         }
-      })
-      .catch((error) => {
-        setIsDeleting(false);
-        setError(
-          intl.formatMessage({
-            id: "storage.delete.error",
-            defaultMessage: "Failed to delete location",
-          }),
-        );
-      });
+      },
+      null,
+    );
   };
 
   const handleClose = () => {
@@ -178,7 +215,9 @@ const DeleteLocationModal = ({
 
   const locationName =
     location?.name || location?.label || location?.code || "Location";
-  const canDelete = !isCheckingConstraints && !constraints && confirmed;
+  // Admin can delete even with constraints (after confirmation), non-admin cannot delete with constraints
+  const canDelete =
+    !isCheckingConstraints && confirmed && (isAdmin || !constraints);
 
   return (
     <ComposedModal
@@ -217,7 +256,7 @@ const DeleteLocationModal = ({
           />
         )}
 
-        {!isCheckingConstraints && constraints && (
+        {!isCheckingConstraints && constraints && !isAdmin && (
           <InlineNotification
             kind="error"
             title={intl.formatMessage({
@@ -232,6 +271,47 @@ const DeleteLocationModal = ({
               {constraints.message || constraints.error}
             </span>
           </InlineNotification>
+        )}
+
+        {!isCheckingConstraints && constraints && isAdmin && cascadeSummary && (
+          <div className="delete-location-cascade-warning">
+            <InlineNotification
+              kind="warning"
+              title={intl.formatMessage({
+                id: "storage.delete.cascade.warning",
+                defaultMessage: "Cascade Delete Warning",
+              })}
+              lowContrast
+              data-testid="delete-location-cascade-warning"
+            >
+              <p data-testid="delete-location-cascade-summary">
+                {intl.formatMessage(
+                  {
+                    id: "storage.delete.cascade.summary",
+                    defaultMessage:
+                      "This will delete {childCount} {childType}(s) and unassign {sampleCount} sample(s). Are you sure you want to proceed?",
+                  },
+                  {
+                    childCount: cascadeSummary.childLocationCount || 0,
+                    childType:
+                      cascadeSummary.childLocationType || "child location",
+                    sampleCount: cascadeSummary.sampleCount || 0,
+                  },
+                )}
+              </p>
+            </InlineNotification>
+            <Checkbox
+              id="delete-confirmation"
+              data-testid="delete-location-confirmation-checkbox"
+              labelText={intl.formatMessage({
+                id: "storage.delete.cascade.confirmation.checkbox",
+                defaultMessage:
+                  "I confirm that I want to delete this location and all its child locations. All samples will be unassigned. This action cannot be undone.",
+              })}
+              checked={confirmed}
+              onChange={(_, { checked }) => setConfirmed(checked)}
+            />
+          </div>
         )}
 
         {!isCheckingConstraints && !constraints && (
@@ -274,18 +354,39 @@ const DeleteLocationModal = ({
         >
           <FormattedMessage id="label.button.cancel" defaultMessage="Cancel" />
         </Button>
-        {!constraints && (
-          <Button
-            kind="danger"
-            onClick={handleDelete}
-            disabled={!canDelete || isDeleting}
-            data-testid="delete-location-confirm-button"
+        {(!constraints || (constraints && isAdmin)) && (
+          <Tooltip
+            label={
+              !isAdmin && constraints
+                ? intl.formatMessage({
+                    id: "storage.delete.admin.only",
+                    defaultMessage:
+                      "Only Global Administrators can delete locations",
+                  })
+                : ""
+            }
+            align="top"
           >
-            <FormattedMessage
-              id="storage.confirm.delete"
-              defaultMessage="Confirm Delete"
-            />
-          </Button>
+            <Button
+              kind="danger"
+              onClick={handleDelete}
+              disabled={!canDelete || isDeleting}
+              data-testid="delete-location-confirm-button"
+            >
+              <FormattedMessage
+                id={
+                  constraints && isAdmin
+                    ? "storage.delete.cascade.confirm"
+                    : "storage.confirm.delete"
+                }
+                defaultMessage={
+                  constraints && isAdmin
+                    ? "Confirm Cascade Delete"
+                    : "Confirm Delete"
+                }
+              />
+            </Button>
+          </Tooltip>
         )}
       </ModalFooter>
     </ComposedModal>

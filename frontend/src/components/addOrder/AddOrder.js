@@ -327,7 +327,7 @@ const AddOrder = (props) => {
   }
 
   const handleLabNoValidation = () => {
-    if (orderFormValues.sampleOrderItems.labNo !== "") {
+    if (orderFormValues.sampleOrderItems.labNo) {
       getFromOpenElisServer(
         "/rest/SampleEntryAccessionNumberValidation?ignoreYear=false&ignoreUsage=false&field=labNo&accessionNumber=" +
           orderFormValues.sampleOrderItems.labNo,
@@ -337,7 +337,7 @@ const AddOrder = (props) => {
   };
 
   const handleLabNoValidationOnChange = (value) => {
-    if (value !== "") {
+    if (value) {
       getFromOpenElisServer(
         "/rest/SampleEntryAccessionNumberValidation?ignoreYear=false&ignoreUsage=false&field=labNo&accessionNumber=" +
           value,

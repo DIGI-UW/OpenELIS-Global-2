@@ -2,6 +2,9 @@
 description:
   Create or update the project constitution from interactive or provided
   principle inputs, ensuring all dependent templates stay in sync
+scripts:
+  sh: .specify/scripts/bash/check-prerequisites.sh --json
+  ps: .specify/scripts/powershell/check-prerequisites.ps1 -Json
 ---
 
 ## User Input

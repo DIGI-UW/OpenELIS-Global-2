@@ -10,11 +10,15 @@ import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
 
     List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
             Date fromDate, Date toDate, Integer noteBookId);
+
+    List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags, Date fromDate,
+            Date toDate);
 
     List<NoteBook> getAllTemplateNoteBooks();
 
@@ -37,4 +41,8 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
     Long getTotalCount();
 
     List<SampleDisplayBean> searchSampleItems(String accession);
+
+    List<NoteBook> getAllActiveNotebooks();
+
+    SampleDisplayBean convertSampleToDisplayBean(SampleItem sampleItem);
 }

@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -64,7 +65,7 @@ public class StorageDevice extends BaseObject<Integer> {
     @Column(name = "NAME", length = 255, nullable = false)
     private String name;
 
-    @Column(name = "CODE", length = 50, nullable = false)
+    @Column(name = "CODE", length = 10, nullable = false)
     private String code;
 
     @Column(name = "TYPE", length = 20, nullable = false)
@@ -75,9 +76,6 @@ public class StorageDevice extends BaseObject<Integer> {
 
     @Column(name = "CAPACITY_LIMIT")
     private Integer capacityLimit;
-
-    @Column(name = "SHORT_CODE", length = 10)
-    private String shortCode;
 
     @Column(name = "ACTIVE", nullable = false)
     private Boolean active;
@@ -155,14 +153,6 @@ public class StorageDevice extends BaseObject<Integer> {
         this.capacityLimit = capacityLimit;
     }
 
-    public String getShortCode() {
-        return shortCode;
-    }
-
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
-    }
-
     public Boolean getActive() {
         return active;
     }
@@ -205,10 +195,12 @@ public class StorageDevice extends BaseObject<Integer> {
     }
 
     // Helper methods for FHIR transform
+    @JsonIgnore
     public String getFhirUuidAsString() {
         return fhirUuid != null ? fhirUuid.toString() : null;
     }
 
+    @JsonIgnore
     public String getTypeAsString() {
         return type; // type is already a String
     }

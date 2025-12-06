@@ -1,13 +1,17 @@
 package org.openelisglobal.storage.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.openelisglobal.coldstorage.service.FreezerService;
+import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
 import org.openelisglobal.storage.service.StorageDashboardService;
@@ -49,7 +53,29 @@ public class StorageLocationRestController extends BaseRestController {
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
 
+    @Autowired
+    private UserModuleService userModuleService;
+
+    @Autowired(required = false)
+    private FreezerService freezerService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * Helper method to check admin status with graceful error handling
+     *
+     * @param request HTTP request containing session information
+     * @return true if user is admin, false otherwise (defaults to false if session
+     *         unavailable)
+     */
+    private boolean checkAdminStatus(HttpServletRequest request) {
+        try {
+            return userModuleService.isUserAdmin(request);
+        } catch (Exception e) {
+            logger.debug("Could not determine admin status, treating as non-admin: " + e.getMessage());
+            return false;
+        }
+    }
 
     // ========== Room Endpoints ==========
 
@@ -75,7 +101,7 @@ public class StorageLocationRestController extends BaseRestController {
             Map<String, Object> response = entityToMap(createdRoom);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error creating room: " + e.getMessage(), e);
+            logger.warn("Validation error creating room: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -143,7 +169,7 @@ public class StorageLocationRestController extends BaseRestController {
             }
             return ResponseEntity.ok(entityToMap(updatedRoom));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error updating room: " + e.getMessage(), e);
+            logger.warn("Validation error updating room: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -153,8 +179,11 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    @DeleteMapping("/rooms/{id}")
-    public ResponseEntity<Map<String, Object>> deleteRoom(@PathVariable String id) {
+    /**
+     * OGC-75: Check if a room can be deleted (pre-flight check for frontend)
+     */
+    @GetMapping("/rooms/{id}/can-delete")
+    public ResponseEntity<Map<String, Object>> canDeleteRoom(@PathVariable String id, HttpServletRequest request) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRoom room = storageLocationService.getRoom(idInt);
@@ -162,19 +191,80 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            // Validate constraints before deletion
-            if (!storageLocationService.canDeleteLocation(room)) {
+            boolean isAdmin = checkAdminStatus(request);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("isAdmin", isAdmin);
+
+            if (storageLocationService.canDeleteLocation(room)) {
+                response.put("canDelete", true);
+                return ResponseEntity.ok(response);
+            } else {
                 String message = storageLocationService.getDeleteConstraintMessage(room);
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Cannot delete room");
-                error.put("message", message);
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                response.put("canDelete", false);
+                response.put("error", "Cannot delete room");
+                response.put("message", message);
+                // Admin can still delete with cascade, so canDelete is false but isAdmin allows
+                // override
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error checking room delete constraints", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * OGC-75: Get cascade delete summary for a room (admin only)
+     */
+    @GetMapping("/rooms/{id}/cascade-delete-summary")
+    public ResponseEntity<Map<String, Object>> getRoomCascadeDeleteSummary(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageRoom room = storageLocationService.getRoom(idInt);
+            if (room == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            storageLocationService.deleteRoom(idInt);
+            Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(room);
+            return ResponseEntity.ok(summary);
+        } catch (Exception e) {
+            logger.error("Error getting room cascade delete summary", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @DeleteMapping("/rooms/{id}")
+    public ResponseEntity<Map<String, Object>> deleteRoom(@PathVariable String id, HttpServletRequest request) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageRoom room = storageLocationService.getRoom(idInt);
+            if (room == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            boolean isAdmin = checkAdminStatus(request);
+
+            // Check if location can be deleted normally
+            if (!storageLocationService.canDeleteLocation(room)) {
+                // If not admin, return 409 (existing behavior)
+                if (!isAdmin) {
+                    String message = storageLocationService.getDeleteConstraintMessage(room);
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("error", "Cannot delete room");
+                    error.put("message", message);
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                }
+                // Admin can delete with cascade (new OGC-75 behavior)
+                storageLocationService.deleteLocationWithCascade(idInt, StorageRoom.class);
+            } else {
+                // No constraints, normal delete
+                storageLocationService.deleteRoom(idInt);
+            }
+
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error deleting room: " + e.getMessage(), e);
+            logger.warn("Constraint violation deleting room: {}", e.getMessage());
             // Conflict if room has constraints (checked in service layer)
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Cannot delete room");
@@ -189,7 +279,8 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Device Endpoints ==========
 
     @PostMapping("/devices")
-    public ResponseEntity<Map<String, Object>> createDevice(@Valid @RequestBody StorageDeviceForm form) {
+    public ResponseEntity<Map<String, Object>> createDevice(@Valid @RequestBody StorageDeviceForm form,
+            jakarta.servlet.http.HttpServletRequest request) {
         try {
             // Set parent room first (needed for code generation)
             Integer parentRoomId = form.getParentRoomId() != null ? Integer.parseInt(form.getParentRoomId()) : null;
@@ -219,6 +310,19 @@ public class StorageLocationRestController extends BaseRestController {
             Integer id = storageLocationService.insert(device);
             device.setId(id);
 
+            if (shouldEnableMonitoring(device)) {
+                try {
+                    String sysUserId = getSysUserId(request);
+                    if (sysUserId == null) {
+                        sysUserId = "1"; // Default system user for tests/REST API without session
+                    }
+                    createFreezerMonitoringStub(device, sysUserId);
+                } catch (Exception e) {
+                    logger.warn("Failed to auto-create freezer monitoring stub for device {}: {}", device.getName(),
+                            e.getMessage());
+                }
+            }
+
             Map<String, Object> response = entityToMap(device);
             response.put("parentRoomId", parentRoomId);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -228,7 +332,7 @@ public class StorageLocationRestController extends BaseRestController {
             error.put("error", "Database constraint violation: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error creating device: " + e.getMessage(), e);
+            logger.warn("Validation error creating device: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -297,6 +401,7 @@ public class StorageLocationRestController extends BaseRestController {
                             : null);
             deviceToUpdate.setCapacityLimit(form.getCapacityLimit());
             deviceToUpdate.setActive(form.getActive());
+            deviceToUpdate.setCode(form.getCode());
 
             // Get existing device to preserve ID
             StorageDevice existingDevice = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
@@ -307,9 +412,15 @@ public class StorageLocationRestController extends BaseRestController {
 
             storageLocationService.update(deviceToUpdate);
             StorageDevice updatedDevice = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
+
+            // Sync device name to Freezer monitoring if linked
+            if (shouldEnableMonitoring(updatedDevice)) {
+                syncDeviceNameToFreezer(updatedDevice);
+            }
+
             return ResponseEntity.ok(entityToMap(updatedDevice));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error updating device: " + e.getMessage(), e);
+            logger.warn("Validation error updating device: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -319,8 +430,11 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    @DeleteMapping("/devices/{id}")
-    public ResponseEntity<Map<String, Object>> deleteDevice(@PathVariable String id) {
+    /**
+     * OGC-75: Check if a device can be deleted (pre-flight check for frontend)
+     */
+    @GetMapping("/devices/{id}/can-delete")
+    public ResponseEntity<Map<String, Object>> canDeleteDevice(@PathVariable String id, HttpServletRequest request) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
@@ -328,19 +442,77 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            // Validate constraints before deletion
-            if (!storageLocationService.canDeleteLocation(device)) {
+            boolean isAdmin = checkAdminStatus(request);
+            Map<String, Object> response = new HashMap<>();
+            response.put("isAdmin", isAdmin);
+
+            if (storageLocationService.canDeleteLocation(device)) {
+                response.put("canDelete", true);
+                return ResponseEntity.ok(response);
+            } else {
                 String message = storageLocationService.getDeleteConstraintMessage(device);
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Cannot delete device");
-                error.put("message", message);
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                response.put("canDelete", false);
+                response.put("error", "Cannot delete device");
+                response.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error checking device delete constraints", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * OGC-75: Get cascade delete summary for a device (admin only)
+     */
+    @GetMapping("/devices/{id}/cascade-delete-summary")
+    public ResponseEntity<Map<String, Object>> getDeviceCascadeDeleteSummary(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
+            if (device == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            storageLocationService.delete(device);
+            Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(device);
+            return ResponseEntity.ok(summary);
+        } catch (Exception e) {
+            logger.error("Error getting device cascade delete summary", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @DeleteMapping("/devices/{id}")
+    public ResponseEntity<Map<String, Object>> deleteDevice(@PathVariable String id, HttpServletRequest request) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
+            if (device == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            boolean isAdmin = checkAdminStatus(request);
+
+            // Check if location can be deleted normally
+            if (!storageLocationService.canDeleteLocation(device)) {
+                // If not admin, return 409 (existing behavior)
+                if (!isAdmin) {
+                    String message = storageLocationService.getDeleteConstraintMessage(device);
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("error", "Cannot delete device");
+                    error.put("message", message);
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                }
+                // Admin can delete with cascade (new OGC-75 behavior)
+                storageLocationService.deleteLocationWithCascade(idInt, StorageDevice.class);
+            } else {
+                // No constraints, normal delete
+                storageLocationService.delete(device);
+            }
+
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error deleting device: " + e.getMessage(), e);
+            logger.warn("Constraint violation deleting device: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Cannot delete device");
             error.put("message", e.getMessage());
@@ -436,6 +608,7 @@ public class StorageLocationRestController extends BaseRestController {
             // parentDevice is read-only - ignored if provided
             shelfToUpdate.setCapacityLimit(form.getCapacityLimit());
             shelfToUpdate.setActive(form.getActive());
+            shelfToUpdate.setCode(form.getCode());
 
             // Get existing shelf to preserve ID
             StorageShelf existingShelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
@@ -448,7 +621,7 @@ public class StorageLocationRestController extends BaseRestController {
             StorageShelf updatedShelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
             return ResponseEntity.ok(entityToMap(updatedShelf));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error updating shelf: " + e.getMessage(), e);
+            logger.warn("Validation error updating shelf: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -458,8 +631,11 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    @DeleteMapping("/shelves/{id}")
-    public ResponseEntity<Map<String, Object>> deleteShelf(@PathVariable String id) {
+    /**
+     * OGC-75: Check if a shelf can be deleted (pre-flight check for frontend)
+     */
+    @GetMapping("/shelves/{id}/can-delete")
+    public ResponseEntity<Map<String, Object>> canDeleteShelf(@PathVariable String id, HttpServletRequest request) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
@@ -467,19 +643,77 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            // Validate constraints before deletion
-            if (!storageLocationService.canDeleteLocation(shelf)) {
+            boolean isAdmin = checkAdminStatus(request);
+            Map<String, Object> response = new HashMap<>();
+            response.put("isAdmin", isAdmin);
+
+            if (storageLocationService.canDeleteLocation(shelf)) {
+                response.put("canDelete", true);
+                return ResponseEntity.ok(response);
+            } else {
                 String message = storageLocationService.getDeleteConstraintMessage(shelf);
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Cannot delete shelf");
-                error.put("message", message);
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                response.put("canDelete", false);
+                response.put("error", "Cannot delete shelf");
+                response.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error checking shelf delete constraints", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * OGC-75: Get cascade delete summary for a shelf (admin only)
+     */
+    @GetMapping("/shelves/{id}/cascade-delete-summary")
+    public ResponseEntity<Map<String, Object>> getShelfCascadeDeleteSummary(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
+            if (shelf == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            storageLocationService.delete(shelf);
+            Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(shelf);
+            return ResponseEntity.ok(summary);
+        } catch (Exception e) {
+            logger.error("Error getting shelf cascade delete summary", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @DeleteMapping("/shelves/{id}")
+    public ResponseEntity<Map<String, Object>> deleteShelf(@PathVariable String id, HttpServletRequest request) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
+            if (shelf == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            boolean isAdmin = checkAdminStatus(request);
+
+            // Check if location can be deleted normally
+            if (!storageLocationService.canDeleteLocation(shelf)) {
+                // If not admin, return 409 (existing behavior)
+                if (!isAdmin) {
+                    String message = storageLocationService.getDeleteConstraintMessage(shelf);
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("error", "Cannot delete shelf");
+                    error.put("message", message);
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                }
+                // Admin can delete with cascade (new OGC-75 behavior)
+                storageLocationService.deleteLocationWithCascade(idInt, StorageShelf.class);
+            } else {
+                // No constraints, normal delete
+                storageLocationService.delete(shelf);
+            }
+
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error deleting shelf: " + e.getMessage(), e);
+            logger.warn("Constraint violation deleting shelf: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Cannot delete shelf");
             error.put("message", e.getMessage());
@@ -579,6 +813,7 @@ public class StorageLocationRestController extends BaseRestController {
             rackToUpdate.setPositionSchemaHint(form.getPositionSchemaHint());
             // parentShelf is read-only - ignored if provided
             rackToUpdate.setActive(form.getActive());
+            rackToUpdate.setCode(form.getCode());
 
             // Get existing rack to preserve ID
             StorageRack existingRack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
@@ -591,7 +826,7 @@ public class StorageLocationRestController extends BaseRestController {
             StorageRack updatedRack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
             return ResponseEntity.ok(entityToMap(updatedRack));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error updating rack: " + e.getMessage(), e);
+            logger.warn("Validation error updating rack: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -601,8 +836,11 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    @DeleteMapping("/racks/{id}")
-    public ResponseEntity<Map<String, Object>> deleteRack(@PathVariable String id) {
+    /**
+     * OGC-75: Check if a rack can be deleted (pre-flight check for frontend)
+     */
+    @GetMapping("/racks/{id}/can-delete")
+    public ResponseEntity<Map<String, Object>> canDeleteRack(@PathVariable String id, HttpServletRequest request) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
@@ -610,19 +848,78 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            // Validate constraints before deletion
-            if (!storageLocationService.canDeleteLocation(rack)) {
+            boolean isAdmin = checkAdminStatus(request);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("isAdmin", isAdmin);
+
+            if (storageLocationService.canDeleteLocation(rack)) {
+                response.put("canDelete", true);
+                return ResponseEntity.ok(response);
+            } else {
                 String message = storageLocationService.getDeleteConstraintMessage(rack);
-                Map<String, Object> error = new HashMap<>();
-                error.put("error", "Cannot delete rack");
-                error.put("message", message);
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                response.put("canDelete", false);
+                response.put("error", "Cannot delete rack");
+                response.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error checking rack delete constraints", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * OGC-75: Get cascade delete summary for a rack (admin only)
+     */
+    @GetMapping("/racks/{id}/cascade-delete-summary")
+    public ResponseEntity<Map<String, Object>> getRackCascadeDeleteSummary(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
+            if (rack == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            storageLocationService.delete(rack);
+            Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(rack);
+            return ResponseEntity.ok(summary);
+        } catch (Exception e) {
+            logger.error("Error getting rack cascade delete summary", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @DeleteMapping("/racks/{id}")
+    public ResponseEntity<Map<String, Object>> deleteRack(@PathVariable String id, HttpServletRequest request) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
+            if (rack == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            boolean isAdmin = checkAdminStatus(request);
+
+            // Check if location can be deleted normally
+            if (!storageLocationService.canDeleteLocation(rack)) {
+                // If not admin, return 409 (existing behavior)
+                if (!isAdmin) {
+                    String message = storageLocationService.getDeleteConstraintMessage(rack);
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("error", "Cannot delete rack");
+                    error.put("message", message);
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                }
+                // Admin can delete with cascade (new OGC-75 behavior)
+                storageLocationService.deleteLocationWithCascade(idInt, StorageRack.class);
+            } else {
+                // No constraints, normal delete
+                storageLocationService.delete(rack);
+            }
+
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error deleting rack: " + e.getMessage(), e);
+            logger.warn("Constraint violation deleting rack: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Cannot delete rack");
             error.put("message", e.getMessage());
@@ -796,19 +1093,75 @@ public class StorageLocationRestController extends BaseRestController {
         return code;
     }
 
+    private boolean shouldEnableMonitoring(StorageDevice device) {
+        if (freezerService == null) {
+            return false;
+        }
+        StorageDevice.DeviceType type = device.getTypeEnum();
+        return type == StorageDevice.DeviceType.FREEZER || type == StorageDevice.DeviceType.REFRIGERATOR;
+    }
+
+    private void createFreezerMonitoringStub(StorageDevice device, String sysUserId) {
+        Freezer freezer = new Freezer();
+        freezer.setName(device.getName());
+        freezer.setStorageDevice(device);
+        freezer.setProtocol(Freezer.Protocol.TCP);
+        freezer.setHost("");
+        freezer.setPort(502);
+        freezer.setSlaveId(1);
+        freezer.setTemperatureRegister(0);
+        freezer.setTemperatureScale(java.math.BigDecimal.ONE);
+        freezer.setTemperatureOffset(java.math.BigDecimal.ZERO);
+        freezer.setHumidityScale(java.math.BigDecimal.ONE);
+        freezer.setHumidityOffset(java.math.BigDecimal.ZERO);
+        freezer.setPollingIntervalSeconds(60);
+        freezer.setActive(false);
+
+        if (device.getTemperatureSetting() != null) {
+            freezer.setTargetTemperature(device.getTemperatureSetting());
+        }
+
+        freezerService.createFreezer(freezer, device.getParentRoom().getId().longValue(), sysUserId);
+        logger.info("Auto-created Freezer monitoring stub for StorageDevice: {} (ID: {})", device.getName(),
+                device.getId());
+    }
+
+    private void syncDeviceNameToFreezer(StorageDevice device) {
+        if (freezerService == null) {
+            return;
+        }
+
+        try {
+            List<Freezer> allFreezers = freezerService.getAllFreezers("");
+            java.util.Optional<Freezer> linkedFreezer = allFreezers.stream()
+                    .filter(f -> f.getStorageDevice() != null && f.getStorageDevice().getId().equals(device.getId()))
+                    .findFirst();
+
+            if (linkedFreezer.isPresent()) {
+                Freezer freezer = linkedFreezer.get();
+                if (!freezer.getName().equals(device.getName())) {
+                    freezer.setName(device.getName()); // Sync name
+                    freezerService.updateFreezer(freezer.getId(), freezer, device.getParentRoom().getId().longValue(),
+                            device.getSysUserId());
+                    logger.info("Synced device name to Freezer: {} (ID: {})", device.getName(), device.getId());
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to sync device name to freezer for device {}: {}", device.getId(), e.getMessage());
+        }
+    }
+
     private Map<String, Object> entityToMap(Object entity) {
         Map<String, Object> map = new HashMap<>();
 
-        if (entity instanceof StorageRoom) {
-            StorageRoom room = (StorageRoom) entity;
+        if (entity instanceof StorageRoom room) {
             map.put("id", room.getId());
             map.put("name", room.getName());
             map.put("code", room.getCode());
             map.put("description", room.getDescription());
             map.put("active", room.getActive());
             map.put("fhirUuid", room.getFhirUuidAsString());
-        } else if (entity instanceof StorageDevice) {
-            StorageDevice device = (StorageDevice) entity;
+        } else if (entity instanceof StorageDevice device) {
             map.put("id", device.getId());
             map.put("name", device.getName());
             map.put("code", device.getCode());
@@ -832,6 +1185,7 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("label", shelf.getLabel());
             map.put("capacityLimit", shelf.getCapacityLimit());
             map.put("active", shelf.getActive());
+            map.put("code", shelf.getCode());
             map.put("fhirUuid", shelf.getFhirUuidAsString());
             // Add parent relationships for filtering (FR-065: filter by device and room)
             // and display
@@ -860,6 +1214,7 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("columns", rack.getColumns());
             map.put("positionSchemaHint", rack.getPositionSchemaHint());
             map.put("active", rack.getActive());
+            map.put("code", rack.getCode());
             map.put("fhirUuid", rack.getFhirUuidAsString());
 
             // Add parent relationships for filtering (FR-065: filter by room, shelf,
@@ -1022,7 +1377,6 @@ public class StorageLocationRestController extends BaseRestController {
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             logger.error("Error searching samples with query: " + q, e);
-            e.printStackTrace(); // Temporary debugging
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             error.put("type", e.getClass().getName());

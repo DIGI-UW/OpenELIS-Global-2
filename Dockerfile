@@ -98,7 +98,9 @@ RUN groupadd tomcat; \
     mkdir -p /var/lib/openelis-global/logs/; \
     chown -R tomcat_admin:tomcat /var/lib/openelis-global/logs/;\
     mkdir -p /var/lib/openelis-global/properties/; \
-    chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/;
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/; \
+    mkdir -p /var/lib/openelis-global/configuration/; \
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/configuration/;
 
 
 COPY install/openelis_healthcheck.sh /healthcheck.sh

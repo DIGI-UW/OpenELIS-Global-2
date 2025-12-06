@@ -33,8 +33,13 @@ import "./EnhancedCascadingMode.css";
  * Props:
  * - onLocationChange: function - Callback when location is selected/created
  * - selectedLocation: object - Pre-selected location (optional)
+ * - focusField: string - Field to focus on ('device' | 'shelf' | 'rack' | 'position')
  */
-const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
+const EnhancedCascadingMode = ({
+  onLocationChange,
+  selectedLocation,
+  focusField = null,
+}) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
@@ -142,6 +147,19 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
     }
   }, [rooms, selectedLocation, selectedRoom]);
 
+  // When rooms load and we have a selectedRoom with id but it's not the full object from the list,
+  // find it in the list and update selectedRoom (handles pre-fill from validComponents)
+  useEffect(() => {
+    if (rooms.length > 0 && selectedRoom && selectedRoom.id) {
+      const fullRoom = rooms.find((r) => r.id === selectedRoom.id);
+      if (fullRoom && selectedRoom !== fullRoom) {
+        // Room found in list - update to use full object and set input
+        setSelectedRoom(fullRoom);
+        setRoomInput(fullRoom.name || "");
+      }
+    }
+  }, [rooms, selectedRoom]);
+
   // Pre-populate from selectedLocation
   // Handle both formats:
   // 1. EnhancedCascadingMode format: { room: {...}, device: {...}, ... }
@@ -164,24 +182,35 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
     if (selectedLocation) {
       // Format 1: EnhancedCascadingMode format (has room/device/shelf/rack properties)
       if (selectedLocation.room && typeof selectedLocation.room === "object") {
-        // If room only has id, try to find full room object in rooms list
-        if (
-          selectedLocation.room.id &&
-          !selectedLocation.room.name &&
-          rooms.length > 0
-        ) {
+        // CRITICAL: If room has id, try to find it in rooms list first to avoid creation mode
+        if (selectedLocation.room.id && rooms.length > 0) {
           const fullRoom = rooms.find((r) => r.id === selectedLocation.room.id);
           if (fullRoom) {
+            // Found in list - select it (selection mode, not creation mode)
             setSelectedRoom(fullRoom);
             setRoomInput(fullRoom.name || "");
-          } else {
-            // Room not loaded yet, set what we have (will be updated when rooms load)
+          } else if (selectedLocation.room.id && selectedLocation.room.name) {
+            // Room has id but not in list yet (async loading) - set selectedRoom but don't set input
+            // This prevents triggering creation mode. The room will be selected when rooms load.
             setSelectedRoom(selectedLocation.room);
+            // Don't set roomInput - wait for rooms to load and then find the room
+          } else {
+            // Room object without id or name - set what we have
+            setSelectedRoom(selectedLocation.room);
+            if (selectedLocation.room.name) {
+              setRoomInput(selectedLocation.room.name);
+            }
+          }
+        } else if (selectedLocation.room.id) {
+          // Room has id but rooms list not loaded yet - set selectedRoom, don't set input
+          setSelectedRoom(selectedLocation.room);
+          // Don't set roomInput to avoid creation mode
+        } else {
+          // Room object without id - set what we have
+          setSelectedRoom(selectedLocation.room);
+          if (selectedLocation.room.name) {
             setRoomInput(selectedLocation.room.name || "");
           }
-        } else {
-          setSelectedRoom(selectedLocation.room);
-          setRoomInput(selectedLocation.room.name || "");
         }
       }
       if (
@@ -521,15 +550,6 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
           }
         } else {
           // New room - show "add new" link
-          if (process.env.NODE_ENV === "development") {
-            console.log(
-              "[EnhancedCascadingMode] handleRoomChange: Setting new room creation mode",
-              {
-                trimmedValue,
-                existingRooms: rooms.map((r) => r.name),
-              },
-            );
-          }
           setIsCreatingRoom(true);
           const newRoom = {
             name: trimmedValue,
@@ -660,18 +680,6 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       );
       return !matches && trimmed.length > 0;
     })();
-    if (process.env.NODE_ENV === "development") {
-      console.log("[EnhancedCascadingMode] canAddRoom:", {
-        currentInput,
-        trimmed,
-        isCreatingRoom,
-        pendingRoomCreation: !!pendingRoomCreation,
-        matchesExisting: !!rooms.find(
-          (r) => r.name?.toLowerCase() === trimmed.toLowerCase(),
-        ),
-        result,
-      });
-    }
     return result;
   }, [roomInput, rooms, isCreatingRoom, pendingRoomCreation]);
 
@@ -696,22 +704,6 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       );
       return !matches && trimmed.length > 0;
     })();
-    if (process.env.NODE_ENV === "development") {
-      console.log("[EnhancedCascadingMode] canAddDevice:", {
-        currentInput,
-        trimmed,
-        selectedRoom: selectedRoom
-          ? { id: selectedRoom.id, name: selectedRoom.name }
-          : null,
-        isCreatingRoom,
-        pendingRoomCreation: !!pendingRoomCreation,
-        isCreatingDevice,
-        matchesExisting: !!devices.find(
-          (d) => d.name?.toLowerCase() === trimmed.toLowerCase(),
-        ),
-        result,
-      });
-    }
     return result;
   }, [
     deviceInput,
@@ -740,21 +732,6 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       );
       return !matches && trimmed.length > 0;
     })();
-    if (process.env.NODE_ENV === "development") {
-      console.log("[EnhancedCascadingMode] canAddShelf:", {
-        currentInput,
-        trimmed,
-        selectedDevice: selectedDevice
-          ? { id: selectedDevice.id, name: selectedDevice.name }
-          : null,
-        isCreatingDevice,
-        isCreatingShelf,
-        matchesExisting: !!shelves.find(
-          (s) => (s.label || s.name)?.toLowerCase() === trimmed.toLowerCase(),
-        ),
-        result,
-      });
-    }
     return result;
   }, [shelfInput, shelves, selectedDevice, isCreatingDevice, isCreatingShelf]);
 
@@ -776,21 +753,6 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
       );
       return !matches && trimmed.length > 0;
     })();
-    if (process.env.NODE_ENV === "development") {
-      console.log("[EnhancedCascadingMode] canAddRack:", {
-        currentInput,
-        trimmed,
-        selectedShelf: selectedShelf
-          ? { id: selectedShelf.id, label: selectedShelf.label }
-          : null,
-        isCreatingShelf,
-        isCreatingRack,
-        matchesExisting: !!racks.find(
-          (r) => (r.label || r.name)?.toLowerCase() === trimmed.toLowerCase(),
-        ),
-        result,
-      });
-    }
     return result;
   }, [rackInput, racks, selectedShelf, isCreatingShelf, isCreatingRack]);
 
@@ -1879,39 +1841,6 @@ const EnhancedCascadingMode = ({ onLocationChange, selectedLocation }) => {
               <FormattedMessage id="storage.add.new" defaultMessage="Add new" />
             </Button>
           </div>
-        </div>
-      </div>
-
-      {/* Position - Simple text input (optional) */}
-      <div className="enhanced-cascading-row">
-        <div className="enhanced-cascading-column enhanced-cascading-column-full">
-          <TextInput
-            id="position-input"
-            data-testid="position-input"
-            labelText={
-              <>
-                <FormattedMessage
-                  id="storage.position.label"
-                  defaultMessage="Position"
-                />{" "}
-                <span className="optional-text">
-                  (
-                  <FormattedMessage
-                    id="label.optional"
-                    defaultMessage="optional"
-                  />
-                  )
-                </span>
-              </>
-            }
-            value={positionInput}
-            onChange={(e) => setPositionInput(e.target.value)}
-            disabled={!selectedRack || !selectedRack.id}
-            placeholder={intl.formatMessage({
-              id: "storage.position.placeholder",
-              defaultMessage: "e.g., A5, 1-1, RED-12",
-            })}
-          />
         </div>
       </div>
     </div>

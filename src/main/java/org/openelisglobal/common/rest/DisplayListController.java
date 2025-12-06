@@ -77,6 +77,9 @@ public class DisplayListController extends BaseRestController {
     @Value("${org.itech.login.saml:false}")
     private Boolean useSAML;
 
+    @Value("${org.itech.login.saml.loginpage:true}")
+    private Boolean useSamlLoginPage;
+
     @Value("${org.itech.login.oauth:false}")
     private Boolean useOAUTH;
 
@@ -414,6 +417,7 @@ public class DisplayListController extends BaseRestController {
         SiteInformation studyManagementTab = siteInformationService.getSiteInformationByName("Study Management tab");
         configs.put("studyManagementTab", studyManagementTab != null ? studyManagementTab.getValue() : "false");
         configs.put("useSaml", useSAML ? "true" : "false");
+        configs.put("useSamlLoginPage", useSamlLoginPage ? "true" : "false");
         configs.put("useOauth", useOAUTH ? "true" : "false");
         if (useOAUTH) {
             ResolvableType type = ResolvableType.forInstance(clientRegistrationRepository).as(Iterable.class);
@@ -437,8 +441,6 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN));
         configs.put(Property.ENABLE_CLIENT_REGISTRY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_CLIENT_REGISTRY));
-        configs.put(Property.ENABLE_OPENELIS_TO_ODOO_CONNECTION.toString(),
-                ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_OPENELIS_TO_ODOO_CONNECTION));
         return configs;
     }
 

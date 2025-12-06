@@ -91,18 +91,4 @@ public class StorageShelfDAOImpl extends BaseDAOImpl<StorageShelf, Integer> impl
         }
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public StorageShelf findByShortCode(String shortCode) {
-        try {
-            String hql = "FROM StorageShelf s WHERE s.shortCode = :shortCode";
-            Query<StorageShelf> query = entityManager.unwrap(Session.class).createQuery(hql, StorageShelf.class);
-            query.setParameter("shortCode", shortCode);
-            query.setMaxResults(1);
-            List<StorageShelf> results = query.list();
-            return results.isEmpty() ? null : results.get(0);
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error finding StorageShelf by short code", e);
-        }
-    }
 }

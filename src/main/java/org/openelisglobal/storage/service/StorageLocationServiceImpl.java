@@ -4,8 +4,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.valueholder.*;
@@ -38,6 +40,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
 
+    @Autowired
+    private CodeGenerationService codeGenerationService;
+
+    @Autowired
+    private CodeValidationService codeValidationService;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -53,10 +61,37 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     public StorageRoom createRoom(StorageRoom room) {
-        // Check for duplicate code
-        StorageRoom existing = storageRoomDAO.findByCode(room.getCode());
-        if (existing != null) {
-            throw new LIMSRuntimeException("Room with code " + room.getCode() + " already exists");
+        // Auto-generate code from name if not provided
+        if (room.getCode() == null || room.getCode().trim().isEmpty()) {
+            String generatedCode = codeGenerationService.generateCodeFromName(room.getName(), "room");
+            // Check for conflicts and resolve if needed
+            Set<String> existingCodes = new HashSet<>();
+            List<StorageRoom> allRooms = storageRoomDAO.getAll();
+            for (StorageRoom r : allRooms) {
+                if (r.getCode() != null) {
+                    existingCodes.add(r.getCode().toUpperCase());
+                }
+            }
+            String finalCode = codeGenerationService.generateCodeWithConflictResolution(room.getName(), "room",
+                    existingCodes);
+            room.setCode(finalCode);
+        } else {
+            // Validate provided code
+            String normalizedCode = codeValidationService.autoUppercase(room.getCode());
+            CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+            if (!formatResult.isValid()) {
+                throw new LIMSRuntimeException(formatResult.getErrorMessage());
+            }
+            CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+            if (!lengthResult.isValid()) {
+                throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+            }
+            CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "room",
+                    null, null);
+            if (!uniquenessResult.isValid()) {
+                throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+            }
+            room.setCode(normalizedCode);
         }
         Integer id = storageRoomDAO.insert(room);
         room.setId(id);
@@ -69,11 +104,32 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         if (existingRoom == null) {
             return null;
         }
-        // Update only editable fields - code is read-only (ignored if provided)
+        // Update editable fields
         existingRoom.setName(room.getName());
-        // existingRoom.setCode(room.getCode()); // Code is read-only - do not update
         existingRoom.setDescription(room.getDescription());
         existingRoom.setActive(room.getActive());
+
+        // Code is editable - validate if provided
+        if (room.getCode() != null && !room.getCode().equals(existingRoom.getCode())) {
+            String normalizedCode = codeValidationService.autoUppercase(room.getCode());
+            CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+            if (!formatResult.isValid()) {
+                throw new LIMSRuntimeException(formatResult.getErrorMessage());
+            }
+            CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+            if (!lengthResult.isValid()) {
+                throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+            }
+            CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "room",
+                    String.valueOf(id), null);
+            if (!uniquenessResult.isValid()) {
+                throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+            }
+            existingRoom.setCode(normalizedCode);
+        }
+        // Note: Code does NOT regenerate when name changes - only updates if explicitly
+        // provided
+
         storageRoomDAO.update(existingRoom);
         return existingRoom;
     }
@@ -85,12 +141,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return;
         }
 
-        // Validate constraints before deletion
-        if (!canDeleteRoom(room)) {
-            String message = getDeleteConstraintMessage(room);
-            throw new LIMSRuntimeException(message);
-        }
-
+        // Note: Constraint validation is done in the controller before calling this
+        // method
+        // This method assumes constraints have been validated
         delete(room);
     }
 
@@ -198,21 +251,128 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return storageRoomDAO.insert(room);
         } else if (entity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) entity;
+
+            // Auto-generate code from name if not provided
+            if (device.getCode() == null || device.getCode().trim().isEmpty()) {
+                String generatedCode = codeGenerationService.generateCodeFromName(device.getName(), "device");
+                // Check for conflicts within parent room
+                Set<String> existingCodes = new HashSet<>();
+                List<StorageDevice> devicesInRoom = storageDeviceDAO.findByParentRoomId(device.getParentRoom().getId());
+                for (StorageDevice d : devicesInRoom) {
+                    if (d.getCode() != null) {
+                        existingCodes.add(d.getCode().toUpperCase());
+                    }
+                }
+                String finalCode = codeGenerationService.generateCodeWithConflictResolution(device.getName(), "device",
+                        existingCodes);
+                device.setCode(finalCode);
+            } else {
+                // Validate provided code
+                String normalizedCode = codeValidationService.autoUppercase(device.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode,
+                        "device", null, String.valueOf(device.getParentRoom().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                device.setCode(normalizedCode);
+            }
+
             // Check for duplicate code in same room
             StorageDevice existing = storageDeviceDAO.findByParentRoomIdAndCode(device.getParentRoom().getId(),
                     device.getCode());
             if (existing != null) {
                 throw new LIMSRuntimeException("Device with code " + device.getCode() + " already exists in this room");
             }
+
             return storageDeviceDAO.insert(device);
         } else if (entity instanceof StorageShelf) {
-            return storageShelfDAO.insert((StorageShelf) entity);
+            StorageShelf shelf = (StorageShelf) entity;
+
+            // Auto-generate code from label/name if not provided
+            String shelfName = shelf.getLabel() != null ? shelf.getLabel() : "";
+            if (shelf.getCode() == null || shelf.getCode().trim().isEmpty()) {
+                String generatedCode = codeGenerationService.generateCodeFromName(shelfName, "shelf");
+                // Check for conflicts within parent device
+                Set<String> existingCodes = new HashSet<>();
+                List<StorageShelf> shelvesInDevice = storageShelfDAO
+                        .findByParentDeviceId(shelf.getParentDevice().getId());
+                for (StorageShelf s : shelvesInDevice) {
+                    if (s.getCode() != null) {
+                        existingCodes.add(s.getCode().toUpperCase());
+                    }
+                }
+                String finalCode = codeGenerationService.generateCodeWithConflictResolution(shelfName, "shelf",
+                        existingCodes);
+                shelf.setCode(finalCode);
+            } else {
+                // Validate provided code
+                String normalizedCode = codeValidationService.autoUppercase(shelf.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode,
+                        "shelf", null, String.valueOf(shelf.getParentDevice().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                shelf.setCode(normalizedCode);
+            }
+
+            return storageShelfDAO.insert(shelf);
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
             // Validate grid dimensions
             if (rack.getRows() < 0 || rack.getColumns() < 0) {
                 throw new IllegalArgumentException("Grid dimensions cannot be negative");
             }
+
+            // Auto-generate code from label/name if not provided
+            String rackName = rack.getLabel() != null ? rack.getLabel() : "";
+            if (rack.getCode() == null || rack.getCode().trim().isEmpty()) {
+                String generatedCode = codeGenerationService.generateCodeFromName(rackName, "rack");
+                // Check for conflicts within parent shelf
+                Set<String> existingCodes = new HashSet<>();
+                List<StorageRack> racksInShelf = storageRackDAO.findByParentShelfId(rack.getParentShelf().getId());
+                for (StorageRack r : racksInShelf) {
+                    if (r.getCode() != null) {
+                        existingCodes.add(r.getCode().toUpperCase());
+                    }
+                }
+                String finalCode = codeGenerationService.generateCodeWithConflictResolution(rackName, "rack",
+                        existingCodes);
+                rack.setCode(finalCode);
+            } else {
+                // Validate provided code
+                String normalizedCode = codeValidationService.autoUppercase(rack.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "rack",
+                        null, String.valueOf(rack.getParentShelf().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                rack.setCode(normalizedCode);
+            }
+
             return storageRackDAO.insert(rack);
         } else if (entity instanceof StoragePosition) {
             return storagePositionDAO.insert((StoragePosition) entity);
@@ -242,12 +402,35 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existingDevice == null) {
                 throw new LIMSRuntimeException("Device not found: " + device.getId());
             }
-            // Update only editable fields - code and parentRoom are read-only
+            // Update editable fields
             existingDevice.setName(device.getName());
             existingDevice.setType(device.getType());
             existingDevice.setTemperatureSetting(device.getTemperatureSetting());
             existingDevice.setCapacityLimit(device.getCapacityLimit());
             existingDevice.setActive(device.getActive());
+
+            // Code is editable - validate if provided
+            if (device.getCode() != null && !device.getCode().equals(existingDevice.getCode())) {
+                String normalizedCode = codeValidationService.autoUppercase(device.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode,
+                        "device", String.valueOf(device.getId()),
+                        String.valueOf(existingDevice.getParentRoom().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                existingDevice.setCode(normalizedCode);
+            }
+            // Note: Code does NOT regenerate when name changes - only updates if explicitly
+            // provided
+
             // Check for active samples when deactivating (null-safe check)
             if (existingDevice.getActive() != null && !existingDevice.getActive()) {
                 int occupiedCount = storagePositionDAO.countOccupiedInDevice(existingDevice.getId());
@@ -265,10 +448,33 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existingShelf == null) {
                 throw new LIMSRuntimeException("Shelf not found: " + shelf.getId());
             }
-            // Update only editable fields - parentDevice is read-only
+            // Update editable fields
             existingShelf.setLabel(shelf.getLabel());
             existingShelf.setCapacityLimit(shelf.getCapacityLimit());
             existingShelf.setActive(shelf.getActive());
+
+            // Code is editable - validate if provided
+            if (shelf.getCode() != null && !shelf.getCode().equals(existingShelf.getCode())) {
+                String normalizedCode = codeValidationService.autoUppercase(shelf.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode,
+                        "shelf", String.valueOf(shelf.getId()),
+                        String.valueOf(existingShelf.getParentDevice().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                existingShelf.setCode(normalizedCode);
+            }
+            // Note: Code does NOT regenerate when label changes - only updates if
+            // explicitly provided
+
             storageShelfDAO.update(existingShelf);
             return null;
         } else if (entity instanceof StorageRack) {
@@ -278,12 +484,34 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existingRack == null) {
                 throw new LIMSRuntimeException("Rack not found: " + rack.getId());
             }
-            // Update only editable fields - parentShelf is read-only
+            // Update editable fields
             existingRack.setLabel(rack.getLabel());
             existingRack.setRows(rack.getRows());
             existingRack.setColumns(rack.getColumns());
             existingRack.setPositionSchemaHint(rack.getPositionSchemaHint());
             existingRack.setActive(rack.getActive());
+
+            // Code is editable - validate if provided
+            if (rack.getCode() != null && !rack.getCode().equals(existingRack.getCode())) {
+                String normalizedCode = codeValidationService.autoUppercase(rack.getCode());
+                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
+                if (!formatResult.isValid()) {
+                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
+                }
+                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
+                if (!lengthResult.isValid()) {
+                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
+                }
+                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "rack",
+                        String.valueOf(rack.getId()), String.valueOf(existingRack.getParentShelf().getId()));
+                if (!uniquenessResult.isValid()) {
+                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
+                }
+                existingRack.setCode(normalizedCode);
+            }
+            // Note: Code does NOT regenerate when label changes - only updates if
+            // explicitly provided
+
             storageRackDAO.update(existingRack);
             return null;
         } else if (entity instanceof StoragePosition) {
@@ -985,14 +1213,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
-        // For now, we only check for child locations
         return true;
     }
 
     /**
      * Check if a device can be deleted (no child shelves, no active samples)
+     * OGC-75: Added sample count check
      */
     private boolean canDeleteDevice(StorageDevice device) {
         if (device == null || device.getId() == null) {
@@ -1005,13 +1231,18 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
+        // OGC-75: Check for active samples assigned to this device
+        int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("device", device.getId());
+        if (sampleCount > 0) {
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * Check if a shelf can be deleted (no child racks, no active samples)
+     * Check if a shelf can be deleted (no child racks, no active samples) OGC-75:
+     * Added sample count check
      */
     private boolean canDeleteShelf(StorageShelf shelf) {
         if (shelf == null || shelf.getId() == null) {
@@ -1024,26 +1255,36 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
+        // OGC-75: Check for active samples assigned to this shelf
+        int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("shelf", shelf.getId());
+        if (sampleCount > 0) {
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * Check if a rack can be deleted (no active samples)
+     * Check if a rack can be deleted (no active samples) OGC-75: Added sample count
+     * check
      */
     private boolean canDeleteRack(StorageRack rack) {
         if (rack == null || rack.getId() == null) {
             return false;
         }
 
-        // TODO: Check for active samples when
-        // SampleStorageService.hasActiveSamplesInLocation() is available
-        // For now, racks can be deleted if no constraints (sample check will be added
-        // later)
+        // OGC-75: Check for active samples assigned to this rack
+        int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rack.getId());
+        if (sampleCount > 0) {
+            return false;
+        }
+
         return true;
     }
 
+    /**
+     * OGC-75: Updated to include sample counts in error messages
+     */
     @Override
     @Transactional(readOnly = true)
     public String getDeleteConstraintMessage(Object locationEntity) {
@@ -1058,7 +1299,6 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 return String.format("Cannot delete Room '%s' because it contains %d device(s)", room.getName(),
                         deviceCount);
             }
-            // TODO: Add sample count check when available
             return "Cannot delete room: unknown constraint";
         } else if (locationEntity instanceof StorageDevice) {
             StorageDevice device = (StorageDevice) locationEntity;
@@ -1067,7 +1307,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 return String.format("Cannot delete Device '%s' because it contains %d shelf(s)", device.getName(),
                         shelfCount);
             }
-            // TODO: Add sample count check when available
+            // OGC-75: Check for assigned samples
+            int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("device", device.getId());
+            if (sampleCount > 0) {
+                return String.format("Cannot delete Device '%s' because it has %d sample(s) assigned", device.getName(),
+                        sampleCount);
+            }
             return "Cannot delete device: unknown constraint";
         } else if (locationEntity instanceof StorageShelf) {
             StorageShelf shelf = (StorageShelf) locationEntity;
@@ -1076,11 +1321,21 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 return String.format("Cannot delete Shelf '%s' because it contains %d rack(s)", shelf.getLabel(),
                         rackCount);
             }
-            // TODO: Add sample count check when available
+            // OGC-75: Check for assigned samples
+            int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("shelf", shelf.getId());
+            if (sampleCount > 0) {
+                return String.format("Cannot delete Shelf '%s' because it has %d sample(s) assigned", shelf.getLabel(),
+                        sampleCount);
+            }
             return "Cannot delete shelf: unknown constraint";
         } else if (locationEntity instanceof StorageRack) {
             StorageRack rack = (StorageRack) locationEntity;
-            // TODO: Add sample count check when available
+            // OGC-75: Check for assigned samples
+            int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rack.getId());
+            if (sampleCount > 0) {
+                return String.format("Cannot delete Rack '%s' because it has %d sample(s) assigned", rack.getLabel(),
+                        sampleCount);
+            }
             return "Cannot delete rack: unknown constraint";
         }
 
@@ -1159,5 +1414,303 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             // If query fails, return 0 (data will show but sample item count will be 0)
             return 0;
         }
+    }
+
+    /**
+     * OGC-75: Get summary of what will be deleted in a cascade delete operation
+     * Returns counts of child locations and samples that will be affected
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getCascadeDeleteSummary(Object locationEntity) {
+        Map<String, Object> summary = new HashMap<>();
+        Map<String, Integer> childLocations = new HashMap<>();
+        int totalSampleCount = 0;
+        String childLocationType = null;
+        int childLocationCount = 0;
+
+        if (locationEntity instanceof StorageRoom) {
+            StorageRoom room = (StorageRoom) locationEntity;
+            List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
+            childLocationCount = devices.size();
+            childLocationType = "device";
+            childLocations.put("devices", devices.size());
+
+            // Count samples in room hierarchy
+            totalSampleCount = countUniqueSamplesInRoom(room.getId(), devices);
+
+            // Count child shelves and racks
+            int shelfCount = 0;
+            int rackCount = 0;
+            for (StorageDevice device : devices) {
+                List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+                shelfCount += shelves.size();
+                childLocations.put("shelves", shelfCount);
+                for (StorageShelf shelf : shelves) {
+                    List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                    rackCount += racks.size();
+                }
+            }
+            childLocations.put("racks", rackCount);
+
+        } else if (locationEntity instanceof StorageDevice) {
+            StorageDevice device = (StorageDevice) locationEntity;
+            List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+            childLocationCount = shelves.size();
+            childLocationType = "shelf";
+            childLocations.put("shelves", shelves.size());
+
+            // Count samples in device hierarchy
+            totalSampleCount = countSamplesInDeviceHierarchy(device.getId());
+
+            // Count child racks
+            int rackCount = 0;
+            for (StorageShelf shelf : shelves) {
+                List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                rackCount += racks.size();
+            }
+            childLocations.put("racks", rackCount);
+
+        } else if (locationEntity instanceof StorageShelf) {
+            StorageShelf shelf = (StorageShelf) locationEntity;
+            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            childLocationCount = racks.size();
+            childLocationType = "rack";
+            childLocations.put("racks", racks.size());
+
+            // Count samples in shelf hierarchy
+            totalSampleCount = countSamplesInShelfHierarchy(shelf.getId());
+
+        } else if (locationEntity instanceof StorageRack) {
+            StorageRack rack = (StorageRack) locationEntity;
+            // Racks have no child locations, only samples
+            childLocationCount = 0;
+            childLocationType = null;
+
+            // Count samples assigned to this rack
+            totalSampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rack.getId());
+        }
+
+        summary.put("childLocations", childLocations);
+        summary.put("sampleCount", totalSampleCount);
+        summary.put("childLocationType", childLocationType);
+        summary.put("childLocationCount", childLocationCount);
+
+        return summary;
+    }
+
+    /**
+     * OGC-75: Count samples in device hierarchy (device + all shelves + all racks)
+     */
+    @Transactional(readOnly = true)
+    private int countSamplesInDeviceHierarchy(Integer deviceId) {
+        List<Integer> locationIds = new ArrayList<>();
+        locationIds.add(deviceId);
+
+        List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(deviceId);
+        for (StorageShelf shelf : shelves) {
+            locationIds.add(shelf.getId());
+            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            for (StorageRack rack : racks) {
+                locationIds.add(rack.getId());
+            }
+        }
+
+        if (locationIds.isEmpty()) {
+            return 0;
+        }
+
+        try {
+            String hql = "SELECT COUNT(DISTINCT ssa.sampleItem.id) FROM SampleStorageAssignment ssa "
+                    + "WHERE ssa.locationId IN :locationIds";
+            jakarta.persistence.Query query = entityManager.createQuery(hql);
+            query.setParameter("locationIds", locationIds);
+            Long count = (Long) query.getSingleResult();
+            return count != null ? count.intValue() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /**
+     * OGC-75: Count samples in shelf hierarchy (shelf + all racks)
+     */
+    @Transactional(readOnly = true)
+    private int countSamplesInShelfHierarchy(Integer shelfId) {
+        List<Integer> locationIds = new ArrayList<>();
+        locationIds.add(shelfId);
+
+        List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelfId);
+        for (StorageRack rack : racks) {
+            locationIds.add(rack.getId());
+        }
+
+        if (locationIds.isEmpty()) {
+            return 0;
+        }
+
+        try {
+            String hql = "SELECT COUNT(DISTINCT ssa.sampleItem.id) FROM SampleStorageAssignment ssa "
+                    + "WHERE ssa.locationId IN :locationIds";
+            jakarta.persistence.Query query = entityManager.createQuery(hql);
+            query.setParameter("locationIds", locationIds);
+            Long count = (Long) query.getSingleResult();
+            return count != null ? count.intValue() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /**
+     * OGC-75: Find all child locations recursively (for cascade deletion)
+     */
+    @Transactional(readOnly = true)
+    private List<Object> findAllChildLocations(Object locationEntity) {
+        List<Object> children = new ArrayList<>();
+
+        if (locationEntity instanceof StorageRoom) {
+            StorageRoom room = (StorageRoom) locationEntity;
+            List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
+            for (StorageDevice device : devices) {
+                children.add(device);
+                children.addAll(findAllChildLocations(device));
+            }
+        } else if (locationEntity instanceof StorageDevice) {
+            StorageDevice device = (StorageDevice) locationEntity;
+            List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+            for (StorageShelf shelf : shelves) {
+                children.add(shelf);
+                children.addAll(findAllChildLocations(shelf));
+            }
+        } else if (locationEntity instanceof StorageShelf) {
+            StorageShelf shelf = (StorageShelf) locationEntity;
+            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            for (StorageRack rack : racks) {
+                children.add(rack);
+                // Racks have no child locations
+            }
+        }
+        // StorageRack has no child locations
+
+        return children;
+    }
+
+    /**
+     * OGC-75: Unassign all samples from location and its children
+     */
+    @Transactional
+    private void unassignSamplesFromHierarchy(Object locationEntity) {
+        List<Integer> locationIds = new ArrayList<>();
+        String locationType = null;
+
+        if (locationEntity instanceof StorageRoom) {
+            StorageRoom room = (StorageRoom) locationEntity;
+            // Room-level assignments not currently supported, but include for completeness
+            List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(room.getId());
+            for (StorageDevice device : devices) {
+                locationIds.add(device.getId());
+                List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+                for (StorageShelf shelf : shelves) {
+                    locationIds.add(shelf.getId());
+                    List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                    for (StorageRack rack : racks) {
+                        locationIds.add(rack.getId());
+                    }
+                }
+            }
+        } else if (locationEntity instanceof StorageDevice) {
+            StorageDevice device = (StorageDevice) locationEntity;
+            locationIds.add(device.getId());
+            locationType = "device";
+            List<StorageShelf> shelves = storageShelfDAO.findByParentDeviceId(device.getId());
+            for (StorageShelf shelf : shelves) {
+                locationIds.add(shelf.getId());
+                List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+                for (StorageRack rack : racks) {
+                    locationIds.add(rack.getId());
+                }
+            }
+        } else if (locationEntity instanceof StorageShelf) {
+            StorageShelf shelf = (StorageShelf) locationEntity;
+            locationIds.add(shelf.getId());
+            locationType = "shelf";
+            List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
+            for (StorageRack rack : racks) {
+                locationIds.add(rack.getId());
+            }
+        } else if (locationEntity instanceof StorageRack) {
+            StorageRack rack = (StorageRack) locationEntity;
+            locationIds.add(rack.getId());
+            locationType = "rack";
+        }
+
+        if (locationIds.isEmpty()) {
+            return;
+        }
+
+        // Find and delete all assignments for these locations
+        try {
+            String hql = "SELECT ssa FROM SampleStorageAssignment ssa WHERE ssa.locationId IN :locationIds";
+            jakarta.persistence.Query query = entityManager.createQuery(hql);
+            query.setParameter("locationIds", locationIds);
+            @SuppressWarnings("unchecked")
+            List<org.openelisglobal.storage.valueholder.SampleStorageAssignment> assignments = query.getResultList();
+            for (org.openelisglobal.storage.valueholder.SampleStorageAssignment assignment : assignments) {
+                sampleStorageAssignmentDAO.delete(assignment);
+            }
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error unassigning samples from location hierarchy", e);
+        }
+    }
+
+    /**
+     * OGC-75: Delete location with cascade deletion of all child locations and
+     * unassignment of all samples Deletes children bottom-up (racks → shelves →
+     * devices → rooms) to maintain referential integrity
+     */
+    @Override
+    @Transactional
+    public void deleteLocationWithCascade(Integer id, Class<?> locationClass) {
+        Object locationEntity = get(id, locationClass);
+        if (locationEntity == null) {
+            throw new LIMSRuntimeException("Location not found: " + id);
+        }
+
+        // Step 1: Find all child locations (recursively)
+        List<Object> childLocations = findAllChildLocations(locationEntity);
+
+        // Step 2: Unassign all samples from location and its children
+        unassignSamplesFromHierarchy(locationEntity);
+
+        // Step 3: Delete child locations bottom-up (racks first, then shelves, then
+        // devices)
+        // Sort children by type: racks first, then shelves, then devices
+        List<StorageRack> racksToDelete = new ArrayList<>();
+        List<StorageShelf> shelvesToDelete = new ArrayList<>();
+        List<StorageDevice> devicesToDelete = new ArrayList<>();
+
+        for (Object child : childLocations) {
+            if (child instanceof StorageRack) {
+                racksToDelete.add((StorageRack) child);
+            } else if (child instanceof StorageShelf) {
+                shelvesToDelete.add((StorageShelf) child);
+            } else if (child instanceof StorageDevice) {
+                devicesToDelete.add((StorageDevice) child);
+            }
+        }
+
+        // Delete in order: racks → shelves → devices
+        for (StorageRack rack : racksToDelete) {
+            storageRackDAO.delete(rack);
+        }
+        for (StorageShelf shelf : shelvesToDelete) {
+            storageShelfDAO.delete(shelf);
+        }
+        for (StorageDevice device : devicesToDelete) {
+            storageDeviceDAO.delete(device);
+        }
+
+        // Step 4: Delete the location itself
+        delete(locationEntity);
     }
 }

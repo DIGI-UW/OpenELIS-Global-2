@@ -44,9 +44,45 @@ implementation details.
 **Amendment (2025-11-22)**: Add comprehensive barcode workflow implementation
 following TDD approach. Includes unified input field (scan/type-ahead), 5-step
 validation, debouncing (500ms), visual feedback, dual barcode auto-detection,
-"last-modified wins" logic, label management (short code, printing, print
-history), and error recovery. All barcode requirements from FR-023 through
-FR-027f must be implemented. See Phase 10 below for detailed TDD workflow.
+"last-modified wins" logic, label management (code field with auto-generation,
+printing, print history), and error recovery. All barcode requirements from
+FR-023 through FR-027f must be implemented. See Phase 10 below for detailed TDD
+workflow.
+
+**Amendment (2025-11-15)**: Two clarifications update Phase 10 implementation:
+
+1. **Barcode Scan Auto-Open Location Modal**: Successful barcode scans with
+   valid partial hierarchies automatically open the "+ Location" form in the
+   select location modal with valid hierarchy pre-filled to the first missing
+   level. If barcode is completely invalid, show error and keep modal closed.
+   See Session 2025-11-15 (Barcode Scan Auto-Open Location Modal) in spec.md.
+2. **Label Management Simplification**: Replace "Label Management" modal with
+   "Print Label" button in overflow menu. Code field (≤10 chars) is stored in
+   location entities (Room, Device, Shelf, Rack) as a database field and edited
+   via Edit CRUD operation (editable field). Print Label shows simple
+   confirmation dialog, no modal. Print history tracked but not displayed in UI.
+   See Session 2025-11-15 (Label Management Simplification) and Session
+   2025-11-16 (Code/Short-Code Simplification) in spec.md.
+
+**Amendment (2025-11-16)**: Code/Short-Code Simplification - Merge code and
+short_code concepts:
+
+1. **Unified Code Field**: All location levels (Room, Device, Shelf, Rack) now
+   use a single `code` field with ≤10 characters constraint. The separate
+   `short_code` field is eliminated.
+2. **Auto-Generation**: Code is auto-generated from location name on create
+   using algorithm: uppercase name, remove non-alphanumeric characters (keep
+   hyphens/underscores), truncate to 10 chars, append numeric suffix if conflict
+   (e.g., "Main Lab" → "MAINLAB", conflict → "MAINLAB-1").
+3. **Editability**: Code is editable in create modal (if implemented) and edit
+   modal. Auto-generation occurs only on create; code does not regenerate when
+   name changes.
+4. **Data Migration**: System must migrate all existing location codes > 10
+   characters to ≤10 chars automatically (truncate or generate new codes using
+   same algorithm).
+5. **Label Printing**: Print Label functionality uses the code field directly
+   (no separate short_code fallback). See Session 2025-11-16 (Code/Short-Code
+   Simplification) in spec.md.
 
 **Amendment**: Update capacity calculation logic to implement two-tier system
 (per FR-062a, FR-062b, FR-062c). Devices and Shelves support manual
@@ -262,13 +298,11 @@ frontend/src/components/storage/
 │   ├── BulkMoveModal.jsx
 │   └── index.js
 ├── LocationManagement/
-│   ├── LocationActionsOverflowMenu.jsx - Overflow menu component for location table rows (Edit, Delete, Label Management)
-│   ├── EditLocationModal.jsx - Modal for editing location entities (Room/Device/Shelf/Rack)
+│   ├── LocationActionsOverflowMenu.jsx - Overflow menu component for location table rows (Edit, Delete, Print Label)
+│   ├── EditLocationModal.jsx - Modal for editing location entities (Room/Device/Shelf/Rack) - code field editable (≤10 chars, auto-generated on create)
 │   ├── DeleteLocationModal.jsx - Confirmation modal for deleting locations with constraint validation
-│   ├── LabelManagementModal.jsx - Modal for short code management and label printing (Devices, Shelves, Racks)
-│   ├── ShortCodeInput.jsx - Short code input with validation (max 10 chars, alphanumeric, auto-uppercase)
-│   ├── PrintLabelButton.jsx - Print label button with PDF preview in new tab
-│   ├── PrintHistoryDisplay.jsx - Read-only print history list component
+│   ├── PrintLabelButton.jsx - Print label button component (triggers confirmation dialog)
+│   ├── PrintLabelConfirmationDialog.jsx - Confirmation dialog: "Print label for [Location Name] ([Location Code])?"
 │   └── index.js
 └── hooks/
     ├── useStorageLocations.js - getFromOpenElisServer data fetching
@@ -900,12 +934,16 @@ Implement comprehensive barcode workflow functionality per FR-023 through
 FR-027f:
 
 - Unified input field supporting both barcode scanning and type-ahead search
-- 5-step validation process (format, existence, hierarchy, activity, conflicts)
+- Progressive validation process (validate up to valid locations, identify first
+  missing level)
+- Auto-open "+ Location" form when barcode has valid partial hierarchy (see
+  Amendment 2025-11-15)
 - Debouncing with 500ms cooldown period
 - Visual feedback (ready state, success green checkmark, error red X)
 - Dual barcode auto-detection (sample vs location barcodes)
 - "Last-modified wins" logic when both dropdowns and input field are used
-- Label management (short code, printing, print history)
+- Simplified label printing (Print Label button with confirmation dialog, code
+  field in Edit form, ≤10 chars constraint)
 - Error recovery with pre-filling valid components
 
 ### TDD Approach
@@ -1038,56 +1076,131 @@ modes.
 2. Add visual feedback (highlight border/icon) for active method
 3. Implement overwrite logic based on last modification timestamp
 
-#### Iteration 8.5: Label Management (Short Code and Printing)
+#### Iteration 8.4.5: Barcode Scan Auto-Open Location Modal
 
-**Objective**: Implement label management modal with short code input and print
-functionality.
+**Objective**: Implement auto-open behavior for barcode scans with valid partial
+hierarchies (see Amendment 2025-11-15).
 
 **Test Order** (TDD workflow):
 
 1. **Backend Unit Tests** (Write First):
 
-   - Test: `ShortCodeValidationServiceTest.java`
-   - Validates: Short code format (max 10 chars, alphanumeric, hyphen/underscore
-     allowed)
-   - Validates: Auto-uppercase conversion
-   - Validates: Must start with letter or number (not hyphen/underscore)
-   - Validates: Uniqueness within context (device/shelf/rack)
-   - Validates: Warning when changing short code (affects printed labels)
+   - Test: `BarcodeValidationServiceTest.java` (update existing)
+   - Validates: Progressive validation identifies first missing level
+   - Validates: Returns valid hierarchy portion and first missing level
+   - Validates: Completely invalid barcode returns error (no valid levels)
 
-2. **Backend Integration Tests** (Write Second):
+2. **Frontend Unit Tests** (Write Second):
 
-   - Test: `LabelManagementRestControllerTest.java`
-   - Validates: `PUT /rest/storage/{type}/{id}/short-code` endpoint
-   - Validates: `POST /rest/storage/{type}/{id}/print-label` endpoint
-   - Validates: Print history tracking (who, when, what)
-   - Validates: PDF generation with system admin settings (label size, format,
-     layout)
+   - Test: `UnifiedBarcodeInput.test.jsx` (update existing)
+   - Validates: Auto-opens "+ Location" form when valid partial hierarchy
+     detected
+   - Validates: Pre-fills valid hierarchy levels in form
+   - Validates: Focuses on first missing level field
+   - Validates: Shows warning if additional invalid levels beyond valid portion
+   - Validates: Shows error and keeps modal closed if completely invalid
 
-3. **Frontend Unit Tests** (Write Third):
-   - Test: `LabelManagementModal.test.jsx`
-   - Validates: Short code input with validation
-   - Validates: Auto-uppercase on input
-   - Validates: Warning dialog before short code change
-   - Validates: Print label button opens PDF in new tab
-   - Validates: Print history display (last printed, view history link)
+3. **Frontend Integration Tests** (Write Third):
+   - Test: `LocationSelectorModal.integration.test.jsx`
+   - Validates: "+ Location" form opens automatically after barcode scan
+   - Validates: Valid hierarchy pre-filled correctly
+   - Validates: First missing level field receives focus
 
 **Implementation Tasks** (After Tests Pass):
 
-1. Create `LabelManagementModal.jsx` - Label management modal
-2. Create `ShortCodeInput.jsx` - Short code input with validation
-3. Create `PrintLabelButton.jsx` - Print label button with PDF preview
-4. Create `PrintHistoryDisplay.jsx` - Print history list component
-5. Update `LocationActionsOverflowMenu.jsx` to include "Label Management" item
-6. Create backend `ShortCodeValidationService.java`
-7. Create backend `LabelManagementService.java` - Integrate with existing
-   BarcodeLabelMaker (see research.md Section 9)
-8. Create backend `StorageLocationLabel.java` - Extend Label class (see
-   research.md Section 9)
-9. Create backend `LabelManagementRestController.java` - REST endpoint for
-   printing
-10. Add database table for print history (Liquibase changeset)
-11. Add `STORAGE_LOCATION_BARCODE_HEIGHT` and `STORAGE_LOCATION_BARCODE_WIDTH`
+1. Update `BarcodeValidationService.java` to return progressive validation
+   results (valid hierarchy, first missing level)
+2. Update `UnifiedBarcodeInput.jsx` to trigger auto-open of "+ Location" form
+3. Update `LocationSelectorModal.jsx` to handle auto-open with pre-filled data
+4. Add React Intl message keys for auto-open behavior
+
+#### Iteration 8.5: Code Field Simplification and Label Printing
+
+**Objective**: Implement unified code field (≤10 chars) with auto-generation and
+simplified label printing (see Amendment 2025-11-16).
+
+**Test Order** (TDD workflow):
+
+1. **Backend Unit Tests** (Write First):
+
+   - Test: `CodeGenerationServiceTest.java` (new)
+   - Validates: Code generation algorithm (uppercase, remove non-alphanumeric,
+     keep hyphens/underscores, truncate to 10 chars)
+   - Validates: Conflict resolution (append numeric suffix)
+   - Validates: Code format validation (max 10 chars, alphanumeric,
+     hyphen/underscore allowed)
+   - Validates: Auto-uppercase conversion
+   - Validates: Must start with letter or number (not hyphen/underscore)
+   - Validates: Uniqueness within context (Room: globally unique;
+     Device/Shelf/Rack: unique within parent)
+   - Test: `CodeValidationServiceTest.java` (rename from
+     ShortCodeValidationServiceTest)
+   - Validates: Code length constraint (≤10 chars)
+   - Validates: Code format validation
+   - Validates: Uniqueness validation
+
+2. **Backend Integration Tests** (Write Second):
+
+   - Test: `StorageLocationRestControllerTest.java` (update existing Create/Edit
+     endpoints)
+   - Validates: `POST /rest/storage/{type}` auto-generates code from name on
+     create
+   - Validates: `PUT /rest/storage/{type}/{id}` accepts code field (editable)
+   - Validates: Code validation on save (length, format, uniqueness)
+   - Validates: Code does NOT regenerate when name changes in edit
+   - Validates: `POST /rest/storage/{type}/{id}/print-label` endpoint
+   - Validates: Print validation checks code exists (≤10 chars) before printing
+   - Validates: Error response if code missing or > 10 chars when printing
+   - Validates: Print history tracking (who, when, what) - not displayed in UI
+   - Validates: PDF generation with system admin settings using code field
+
+3. **Frontend Unit Tests** (Write Third):
+   - Test: `EditLocationModal.test.jsx` (update existing)
+   - Validates: Code field in Edit form (editable, ≤10 chars constraint)
+   - Validates: Code input with validation
+   - Validates: Auto-uppercase on input
+   - Validates: Code field pre-filled in create modal (if implemented) but
+     editable
+   - Test: `CreateLocationModal.test.jsx` (if implemented)
+   - Validates: Code auto-generated from name on create
+   - Validates: Code field editable in create modal
+   - Test: `PrintLabelButton.test.jsx` (new)
+   - Validates: Print Label button shows confirmation dialog
+   - Validates: Confirmation dialog text: "Print label for [Location Name]
+     ([Location Code])?"
+   - Validates: Error message if code missing or invalid: "Code is required for
+     label printing. Please set code in Edit form."
+
+**Implementation Tasks** (After Tests Pass):
+
+1. Update `code` field constraint in `StorageRoom.java`, `StorageDevice.java`,
+   `StorageShelf.java`, `StorageRack.java` valueholders (VARCHAR(10) instead of
+   VARCHAR(50))
+2. Remove `short_code` field from `StorageDevice.java`, `StorageShelf.java`,
+   `StorageRack.java` valueholders
+3. Remove `short_code` column from database tables via Liquibase changeset
+   (Device, Shelf, Rack)
+4. Create `CodeGenerationService.java` - Auto-generation algorithm
+5. Rename `ShortCodeValidationService.java` to `CodeValidationService.java` and
+   update to validate code field (not short_code)
+6. Update `EditLocationModal.jsx` to make code field editable (was read-only)
+   with ≤10 chars validation
+7. Update create location forms (if implemented) to auto-generate code from name
+   and allow editing
+8. Create `PrintLabelButton.jsx` - Simple button component (no modal)
+9. Create `PrintLabelConfirmationDialog.jsx` - Confirmation dialog component
+10. Update `LocationActionsOverflowMenu.jsx` to include "Print Label" button
+    (replaces "Label Management") for Devices, Shelves, and Racks only (Rooms
+    excluded - Rooms have code fields but do not require label printing)
+11. Create backend `LabelPrintingService.java` - Integrate with existing
+    BarcodeLabelMaker (see research.md Section 9)
+12. Create backend `StorageLocationLabel.java` - Extend Label class (see
+    research.md Section 9)
+13. Create backend `LabelPrintingRestController.java` - REST endpoint for
+    printing
+14. Add database table for print history (Liquibase changeset) - tracked but not
+    displayed
+15. Add `STORAGE_LOCATION_BARCODE_HEIGHT` and `STORAGE_LOCATION_BARCODE_WIDTH`
     to ConfigurationProperties (see research.md Section 9)
 
 #### Iteration 8.6: E2E Tests
@@ -1101,12 +1214,23 @@ functionality.
    - Validates: Scan 4-level barcode populates location fields correctly
    - Validates: Scan 2-level barcode (minimum) populates Room and Device only
    - Validates: Scan invalid barcode shows error message with parsed components
+   - Validates: Scan with valid partial hierarchy auto-opens "+ Location" form
+     with pre-filled data
+   - Validates: First missing level field receives focus after auto-open
+   - Validates: Completely invalid barcode shows error and keeps modal closed
    - Validates: Debouncing prevents duplicate scans within 500ms
    - Validates: "Last-modified wins" when switching between dropdown and scan
-   - Validates: Label management modal opens from overflow menu
-   - Validates: Short code change shows warning dialog
-   - Validates: Print label generates PDF and opens in new tab
-   - Validates: Print history displays after printing
+
+- Validates: Print Label button opens confirmation dialog from overflow menu
+  (Devices/Shelves/Racks only, Rooms excluded)
+- Validates: Print label generates PDF and opens in new tab (when code exists
+  and ≤10 chars, browser PDF viewer handles printer selection)
+- Validates: Error message shown if code missing or > 10 chars when printing
+- Validates: Code field in Edit form (editable, ≤10 chars constraint, validation
+  works) for all levels including Rooms
+- Validates: Code auto-generation from name on create (if create modal
+  implemented)
+- Validates: Code does NOT regenerate when name changes in edit modal
 
 **Implementation Tasks** (After Tests Pass):
 
@@ -1125,19 +1249,27 @@ functionality.
   (new)
 - `src/main/java/org/openelisglobal/storage/service/BarcodeValidationService.java`
   (new)
-- `src/main/java/org/openelisglobal/storage/service/ShortCodeValidationService.java`
+- `src/main/java/org/openelisglobal/storage/service/CodeGenerationService.java`
   (new)
-- `src/main/java/org/openelisglobal/storage/service/LabelManagementService.java`
+- `src/main/java/org/openelisglobal/storage/service/CodeValidationService.java`
+  (rename from ShortCodeValidationService)
+- `src/main/java/org/openelisglobal/storage/service/CodeMigrationService.java`
+  (new)
+- `src/main/java/org/openelisglobal/storage/service/LabelPrintingService.java`
   (new)
 - `src/main/java/org/openelisglobal/storage/controller/BarcodeValidationRestController.java`
   (new)
-- `src/main/java/org/openelisglobal/storage/controller/LabelManagementRestController.java`
+- `src/main/java/org/openelisglobal/storage/controller/LabelPrintingRestController.java`
   (new)
 - `src/test/java/org/openelisglobal/storage/service/BarcodeParsingServiceTest.java`
   (new)
 - `src/test/java/org/openelisglobal/storage/service/BarcodeValidationServiceTest.java`
   (new)
-- `src/test/java/org/openelisglobal/storage/service/ShortCodeValidationServiceTest.java`
+- `src/test/java/org/openelisglobal/storage/service/CodeGenerationServiceTest.java`
+  (new)
+- `src/test/java/org/openelisglobal/storage/service/CodeValidationServiceTest.java`
+  (rename from ShortCodeValidationServiceTest)
+- `src/test/java/org/openelisglobal/storage/service/CodeMigrationServiceTest.java`
   (new)
 - `src/test/java/org/openelisglobal/storage/controller/BarcodeValidationRestControllerTest.java`
   (new)
@@ -1158,7 +1290,8 @@ functionality.
   (new)
 - `frontend/src/components/storage/LocationManagement/LabelManagementModal.jsx`
   (new)
-- `frontend/src/components/storage/LocationManagement/ShortCodeInput.jsx` (new)
+- `frontend/src/components/storage/LocationManagement/CodeInput.jsx` (new, if
+  needed for reusable component)
 - `frontend/src/components/storage/LocationManagement/PrintLabelButton.jsx`
   (new)
 - `frontend/src/components/storage/LocationManagement/PrintHistoryDisplay.jsx`
@@ -1215,19 +1348,31 @@ functionality.
 - [ ] Debouncing prevents accidental double-scans (500ms cooldown)
 - [ ] Visual feedback displays correctly (ready, success, error states)
 - [ ] "Last-modified wins" logic works when switching between methods
-- [ ] Label management modal accessible from overflow menu
-- [ ] Short code validation and uniqueness checking works
-- [ ] Print label generates PDF with system admin settings
-- [ ] Print history tracks and displays correctly
+- [ ] Barcode scan with valid partial hierarchy auto-opens "+ Location" form
+- [ ] Valid hierarchy pre-filled correctly, first missing level receives focus
+- [ ] Completely invalid barcode shows error and keeps modal closed
+- [ ] Print Label button accessible from overflow menu (replaces Label
+      Management)
+- [ ] Code field in Edit form (editable, ≤10 chars constraint, validation works)
+- [ ] Code auto-generation from name on create (if create modal implemented)
+- [ ] Code does NOT regenerate when name changes in edit modal
+- [ ] Print label confirmation dialog displays correctly
+- [ ] Print label generates PDF with system admin settings (when code exists and
+      ≤10 chars)
+- [ ] Error message shown if code missing or > 10 chars when printing
+- [ ] Data migration: existing codes > 10 chars migrated to ≤10 chars
+- [ ] Print history tracked in database (not displayed in UI)
 - [ ] All unit tests pass
 - [ ] All integration tests pass
 - [ ] All E2E tests pass
 - [ ] Internationalization complete (en, fr, sw)
 
 **Implementation Status**: [IN PROGRESS] - Backend barcode parsing and
-validation complete (Iteration 9.1). Frontend unified input field (Iteration
-9.2) and debouncing (Iteration 9.3) in progress. See `tasks.md` Phase 10 for
-details.
+validation complete (Iteration 8.1). Frontend unified input field (Iteration
+8.2) and debouncing (Iteration 8.3) in progress. Auto-open location modal
+(Iteration 8.4.5) and simplified label printing (Iteration 8.5) pending. See
+`tasks.md` Phase 10 for details. **Note**: This work must be completed before
+Phase 11 (Polish) and Phase 12 (Validation).
 
 ---
 
