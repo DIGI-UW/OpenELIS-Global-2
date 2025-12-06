@@ -38,18 +38,82 @@ export default function Layout(props) {
   // Track previous context to detect context switches (main ↔ storage)
   const prevContextRef = useRef(isStorageContext);
   const prevPathnameRef = useRef(location.pathname);
+  const autoCloseTimeoutRef = useRef(null);
+  const prevModeRef = useRef(mode);
+
+  // Log mode changes for debugging
+  useEffect(() => {
+    /* eslint-disable no-console */
+    console.log("[Layout] mode change", {
+      prevMode: prevModeRef.current,
+      mode,
+      isExpanded,
+      isLocked,
+      pathname: location.pathname,
+    });
+    /* eslint-enable no-console */
+    prevModeRef.current = mode;
+  }, [mode, isExpanded, isLocked, location.pathname]);
 
   // Auto-close SHOW mode when navigating to a different page
   useEffect(() => {
     const pathnameChanged = prevPathnameRef.current !== location.pathname;
     
     if (pathnameChanged && mode === SIDENAV_MODES.SHOW) {
-      // SHOW mode is temporary - close to default mode for new route
+      // SHOW is temporary: on navigation, revert to page default and collapse
+      console.log("[Layout] route change; mode SHOW -> default", {
+        from: prevPathnameRef.current,
+        to: location.pathname,
+        targetMode: layoutConfig.defaultMode,
+      });
       setMode(layoutConfig.defaultMode);
     }
     
     prevPathnameRef.current = location.pathname;
   }, [location.pathname, mode, setMode, SIDENAV_MODES.SHOW, layoutConfig.defaultMode]);
+
+  // Auto-close shortly after load for pages whose default (or user choice) is CLOSE.
+  // Keep LOCK intact; only collapse temporary SHOW on close-default pages.
+  useEffect(() => {
+    // Clear any pending timeout
+    if (autoCloseTimeoutRef.current) {
+      clearTimeout(autoCloseTimeoutRef.current);
+    }
+
+    const pathnameChanged = prevPathnameRef.current !== location.pathname;
+
+    // Auto-close (or auto-lock) after navigation to a new route
+    // SHOW is temporary: switch to the page’s default mode after route change
+    const shouldAutoClose = pathnameChanged && mode === SIDENAV_MODES.SHOW;
+
+    if (shouldAutoClose) {
+      console.log("[Layout] auto-close timer start", {
+        from: prevPathnameRef.current,
+        to: location.pathname,
+        targetMode: layoutConfig.defaultMode,
+      });
+      autoCloseTimeoutRef.current = setTimeout(() => {
+        console.log("[Layout] auto-close timer firing", {
+          targetMode: layoutConfig.defaultMode,
+        });
+        setMode(layoutConfig.defaultMode);
+      }, 250); // small delay to avoid flicker during initial render
+    }
+
+    return () => {
+      if (autoCloseTimeoutRef.current) {
+        clearTimeout(autoCloseTimeoutRef.current);
+      }
+    };
+  }, [
+    layoutConfig.defaultMode,
+    mode,
+    setMode,
+    SIDENAV_MODES.CLOSE,
+    SIDENAV_MODES.SHOW,
+    location.pathname,
+    prevPathnameRef,
+  ]);
 
   // Track context changes for future debugging if needed
   useEffect(() => {
