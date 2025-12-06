@@ -130,7 +130,7 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
         // Assert
         assertNotNull("Rack should be found", result);
         assertEquals("Label should match", "Rack 1", result.getLabel());
-        assertEquals("Code should match", "RACK-1", result.getCode());
+        assertEquals("Short code should match", "RACK-1", result.getShortCode());
     }
 
     /**

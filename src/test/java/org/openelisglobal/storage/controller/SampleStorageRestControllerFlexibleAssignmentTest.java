@@ -160,10 +160,11 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     private String createRackAndGetId(String label, int rows, int columns, String shelfId) throws Exception {
+        // Note: Racks are now simple containers (no rows/columns)
+        // rows/columns parameters are ignored - kept for backward compatibility
         org.openelisglobal.storage.form.StorageRackForm form = new org.openelisglobal.storage.form.StorageRackForm();
         form.setLabel(label);
-        form.setRows(rows);
-        form.setColumns(columns);
+        form.setShortCode(label.substring(0, Math.min(10, label.length())).toUpperCase());
         form.setParentShelfId(shelfId);
         form.setActive(true);
 

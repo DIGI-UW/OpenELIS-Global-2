@@ -74,28 +74,28 @@ public class StorageEntityTest {
     }
 
     @Test
-    public void testStorageRack_CalculateCapacity_ReturnsRowsTimesColumns() {
-        // Given: Rack with 9x9 grid
-        StorageRack rack = new StorageRack();
-        rack.setRows(9);
-        rack.setColumns(9);
+    public void testStorageBox_CalculateCapacity_ReturnsRowsTimesColumns() {
+        // Given: Box with 9x9 grid (boxes are gridded containers)
+        StorageBox box = new StorageBox();
+        box.setRows(9);
+        box.setColumns(9);
 
         // When: Calculate capacity
-        Integer capacity = rack.getCapacity();
+        Integer capacity = box.getCapacity();
 
         // Then: Capacity should be 81
         assertEquals("Capacity should be rows * columns", Integer.valueOf(81), capacity);
     }
 
     @Test
-    public void testStorageRack_CalculateCapacity_NoGrid_ReturnsZero() {
-        // Given: Rack with no grid (rows=0)
-        StorageRack rack = new StorageRack();
-        rack.setRows(0);
-        rack.setColumns(0);
+    public void testStorageBox_CalculateCapacity_NoGrid_ReturnsZero() {
+        // Given: Box with no grid (rows=0)
+        StorageBox box = new StorageBox();
+        box.setRows(0);
+        box.setColumns(0);
 
         // When: Calculate capacity
-        Integer capacity = rack.getCapacity();
+        Integer capacity = box.getCapacity();
 
         // Then: Capacity should be 0
         assertEquals("No grid should return 0 capacity", Integer.valueOf(0), capacity);
