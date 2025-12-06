@@ -152,7 +152,8 @@ find_feature_dir_by_prefix() {
     # Search for directories in specs/ that start with this prefix
     local matches=()
     if [[ -d "$specs_dir" ]]; then
-        for dir in "$specs_dir"/"$prefix"-*; do
+        # Support both numeric-prefixed folders (e.g., 150-foo) and Jira-style folders (e.g., OGC-150-foo)
+        for dir in "$specs_dir"/"$prefix"-* "$specs_dir"/OGC-"$prefix"-*; do
             if [[ -d "$dir" ]]; then
                 matches+=("$(basename "$dir")")
             fi

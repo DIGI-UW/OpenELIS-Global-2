@@ -2,7 +2,7 @@
 
 **Branch**: `OGC-150-storage-pagination`  
 **Date**: 2025-12-05  
-**Last Updated**: 2025-12-05  
+**Last Updated**: 2025-12-06  
 **Input**: Design documents from `/specs/OGC-150-storage-pagination/`
 
 **Issue**: [OGC-150](https://uwdigi.atlassian.net/browse/OGC-150)  
@@ -25,12 +25,12 @@ feature requires <3 days effort.
 | Phase 0 | [COMPLETE]    | Branch Setup & Prerequisites    | 2/2            | 0               |
 | Phase 1 | [COMPLETE]    | Backend Tests (RED)             | 11/11          | 0               |
 | Phase 2 | [COMPLETE]    | Backend Implementation (GREEN)  | 7/7            | 0               |
-| Phase 3 | [COMPLETE] | Frontend Tests (RED)            | 7/7            | 0               |
-| Phase 4 | [COMPLETE] | Frontend Implementation (GREEN) | 5/5            | 0               |
-| Phase 5 | [COMPLETE] | E2E Tests                       | 10/10            | 0               |
+| Phase 3 | [COMPLETE]    | Frontend Tests (RED)            | 7/7            | 0               |
+| Phase 4 | [IN PROGRESS] | Frontend Implementation (GREEN) | 0/6            | 6               |
+| Phase 5 | [IN PROGRESS] | E2E Tests                       | 8/14           | 6               |
 | Phase 6 | [IN PROGRESS] | Polish & Verification           | 2/9            | 7               |
 
-**Total Tasks**: 38
+**Total Tasks**: 42
 
 ---
 
@@ -222,24 +222,24 @@ FAIL initially)
 
 ### Jest Unit Tests (React Testing Library)
 
-- [ ] T021 [US1] Create test file
+- [x] T021 [US1] Create test file
       `frontend/src/components/storage/StorageDashboard.test.jsx` if not exists,
       add imports (React, testing-library, userEvent, jest-dom, IntlProvider,
       BrowserRouter, StorageDashboard, messages)
-- [ ] T022 [US1] Mock `getFromOpenElisServer` in `StorageDashboard.test.jsx` -
+- [x] T022 [US1] Mock `getFromOpenElisServer` in `StorageDashboard.test.jsx` -
       add `jest.mock('../utils/Utils')` with mockResolvedValue for pagination
       response
-- [ ] T023 [US1] Write test
+- [x] T023 [US1] Write test
       `testPaginationComponent_Renders_WithDefaultPageSize()` in
       `StorageDashboard.test.jsx` - verify Pagination component renders with
       default 25 items
-- [ ] T024 [US2] Write test `testPageChange_TriggersAPICall_WithCorrectParams()`
+- [x] T024 [US2] Write test `testPageChange_TriggersAPICall_WithCorrectParams()`
       in `StorageDashboard.test.jsx` - verify clicking Next button calls API
       with page=1
-- [ ] T025 [US3] Write test `testPageSizeChange_ResetsToPageOne()` in
+- [x] T025 [US3] Write test `testPageSizeChange_ResetsToPageOne()` in
       `StorageDashboard.test.jsx` - verify changing page size to 50 resets to
       page 1
-- [ ] T026 [US1] Write test `testPaginationState_PreservedOnTabSwitch()` in
+- [x] T026 [US1] Write test `testPaginationState_PreservedOnTabSwitch()` in
       `StorageDashboard.test.jsx` - verify page state preserved when switching
       tabs
 
@@ -303,27 +303,39 @@ FAIL initially)
 
 ### Cypress E2E Tests
 
-- [ ] T034 [US1] Create E2E test file
+- [x] T034 [US1] Create E2E test file
       `frontend/cypress/e2e/storagePagination.cy.js` with login before hook and
       loadStorageFixtures
-- [ ] T035 [US1] Write test `should display first page with 25 items by default`
+- [x] T035 [US1] Write test `should display first page with 25 items by default`
       in `storagePagination.cy.js` - verify page loads, 25 items displayed,
       pagination controls visible
-- [ ] T036 [US2] Write test
+- [x] T036 [US2] Write test
       `should navigate to next page when clicking Next button` in
       `storagePagination.cy.js` - set up intercept for API, click Next, verify
       API called with page=1
-- [ ] T037 [US2] Write test
+- [x] T037 [US2] Write test
       `should navigate to previous page when clicking Previous button` in
       `storagePagination.cy.js` - navigate to page 2, click Previous, verify API
       called with page=0
-- [ ] T038 [US3] Write test `should change page size to 50 items` in
+- [x] T038 [US3] Write test `should change page size to 50 items` in
       `storagePagination.cy.js` - set up intercept, select 50 from dropdown,
       verify API called with size=50
-- [ ] T039 [US1] Write test
+- [x] T039 [US1] Write test
       `should preserve pagination state when switching tabs` in
       `storagePagination.cy.js` - navigate to page 2, switch to Rooms tab,
       return to Samples tab, verify still on page 2
+- [x] T039A [US1] Add edge-case test for empty dataset in
+      `storagePagination.cy.js` - verify "No samples found" renders and
+      pagination controls are hidden/disabled
+- [x] T039B [US1] Add edge-case test for single-page dataset in
+      `storagePagination.cy.js` - verify pagination shows page 1 of 1 and
+      prev/next buttons disabled
+- [ ] T039C [US1] Add edge-case test for invalid/high page query (e.g.,
+      page=9999) in `storagePagination.cy.js` - verify redirect to last valid
+      page and data loads without error
+- [ ] T039D [US1] Add edge-case test for filter reducing total results in
+      `storagePagination.cy.js` - verify page resets to 1 and data displays
+      correctly
 
 ### Verification (MANDATORY per Constitution V.5)
 

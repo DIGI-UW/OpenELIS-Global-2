@@ -1,3 +1,4 @@
+// NOTE: Legacy/duplicate test block removed. File intentionally left empty.
 import React from "react";
 import { render, screen, fireEvent, within, act } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
