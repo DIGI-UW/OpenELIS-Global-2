@@ -946,7 +946,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 previousLocationType = existingAssignment.getLocationType();
                 previousPositionCoordinate = existingAssignment.getPositionCoordinate();
 
-                // Build hierarchical path for audit log
+                // Build hierarchical path for audit log before deleting assignment
                 if (previousLocationId != null && previousLocationType != null) {
                     Object locationEntity = null;
                     switch (previousLocationType) {
@@ -964,12 +964,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                             previousPositionCoordinate);
                 }
 
-                // Clear the location but preserve assignment record for metrics/audit (FR-056,
-                // FR-057)
-                existingAssignment.setLocationId(null);
-                existingAssignment.setLocationType(null);
-                existingAssignment.setPositionCoordinate(null);
-                sampleStorageAssignmentDAO.update(existingAssignment);
+                // Remove the assignment entirely on disposal
+                sampleStorageAssignmentDAO.delete(existingAssignment);
             }
 
             // Update SampleItem status to "disposed"
