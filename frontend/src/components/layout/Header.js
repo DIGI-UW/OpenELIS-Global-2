@@ -39,7 +39,6 @@ import {
   HeaderPanel,
   SideNav,
   SideNavItems,
-  SideNavMenu,
   SideNavMenuItem,
   Theme,
 } from "@carbon/react";
@@ -239,102 +238,47 @@ function OEHeader({
       </>
     );
   };
+  /**
+   * Helper: Check if any child menu item (recursively) is active
+   * Used to determine if parent should show active state
+   */
+  const hasActiveChild = (menuItem) => {
+    if (!menuItem.childMenus || menuItem.childMenus.length === 0) {
+      return false;
+    }
+    
+    return menuItem.childMenus.some((child) => {
+      const exactMatch = location.pathname === child.menu.actionURL;
+      const prefixMatch = 
+        child.menu.actionURL?.length > 1 && 
+        location.pathname.startsWith(child.menu.actionURL + "/");
+      const childIsActive = !!child.menu.actionURL && (exactMatch || prefixMatch);
+      
+      // Check recursively
+      return childIsActive || hasActiveChild(child);
+    });
+  };
+
   const generateMenuItems = (menuItem, index, level, path) => {
     // Skip inactive menu items
     if (!menuItem.menu.isActive) {
       return <React.Fragment key={path}></React.Fragment>;
     }
 
-    // FIX: Use startsWith for URL matching instead of exact match
-    // This allows /Storage/samples to match /Storage
+    // URL matching: exact match OR prefix match (for parent routes)
     const exactMatch = location.pathname === menuItem.menu.actionURL;
     const prefixMatch = 
       menuItem.menu.actionURL?.length > 1 && 
       location.pathname.startsWith(menuItem.menu.actionURL + "/");
     const isActive = !!menuItem.menu.actionURL && (exactMatch || prefixMatch);
     const hasChildren = menuItem.childMenus.length > 0;
+    
+    // For items with children, also check if any child is active
+    const parentIsActive = hasChildren ? hasActiveChild(menuItem) : false;
+    const finalIsActive = isActive || parentIsActive;
 
-
-    // ============================================================================
-    // LEVEL 0: Top-level menu items
-    // ============================================================================
-    if (level === 0) {
-      // Top-level with children - use SideNavMenu (expandable)
-      if (hasChildren) {
-        return (
-          <span id={menuItem.menu.elementId} key={path}>
-            <span
-              id={menuItem.menu.elementId + "_dropdown"}
-              onClick={(e) => {
-                setMenuItemExpanded(e, menuItem, path);
-                // Also navigate to first active child
-                const firstActiveChild = menuItem.childMenus.find(
-                  (c) => c.menu.isActive,
-                );
-                if (firstActiveChild?.menu.actionURL) {
-                  history.push(firstActiveChild.menu.actionURL);
-                } else {
-                }
-              }}
-            >
-              <SideNavMenu
-                className="top-level-menu-item"
-                aria-label={intl.formatMessage({
-                  id: menuItem.menu.displayKey,
-                })}
-                title={intl.formatMessage({
-                  id: menuItem.menu.displayKey,
-                })}
-                key={`${menuItem.menu.elementId}-${menuItem.expanded}`}
-                defaultExpanded={menuItem.expanded}
-              >
-                <span
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                >
-                  {menuItem.childMenus.map((childMenuItem, childIndex) => {
-                    return generateMenuItems(
-                      childMenuItem,
-                      childIndex,
-                      level + 1,
-                      path + ".childMenus[" + childIndex + "]",
-                    );
-                  })}
-                </span>
-              </SideNavMenu>
-            </span>
-          </span>
-        );
-      }
-
-      // Top-level without children - simple link
-      return (
-        <span key={path} id={menuItem.menu.elementId}>
-          <SideNavMenuItem
-            id={menuItem.menu.elementId + "_nav"}
-            className="top-level-menu-item"
-            isActive={isActive}
-            onClick={(e) => {
-              e.preventDefault();
-              if (menuItem.menu.openInNewWindow) {
-                window.open(menuItem.menu.actionURL);
-              } else {
-                history.push(menuItem.menu.actionURL);
-              }
-            }}
-          >
-            {renderSideNavMenuItemLabel(menuItem, level)}
-          </SideNavMenuItem>
-        </span>
-      );
-    }
-
-    // ============================================================================
-    // LEVEL > 0: Subnav items (SIMPLIFIED - NO CUSTOM BUTTONS!)
-    // ============================================================================
-    const marginValue = (level - 1) * 0.5 + "rem";
+    // Indentation: level 0 = no indent, level 1+ = progressive indent
+    const marginValue = level > 0 ? `${level * 0.5}rem` : "0";
 
     // Handler for label click - navigate (and expand if has children)
     const handleLabelClick = (e) => {
@@ -353,7 +297,12 @@ function OEHeader({
         } else {
           history.push(menuItem.menu.actionURL);
         }
-      } else {
+      } else if (hasChildren) {
+        // Top-level item with children but no URL - navigate to first child
+        const firstChild = menuItem.childMenus.find((c) => c.menu.isActive);
+        if (firstChild?.menu.actionURL) {
+          history.push(firstChild.menu.actionURL);
+        }
       }
     };
 
@@ -364,6 +313,10 @@ function OEHeader({
       setMenuItemExpanded(e, menuItem, path);
     };
 
+    // ============================================================================
+    // UNIFIED RENDERING: Use SideNavMenuItem for ALL items (top-level + subnavs)
+    // ============================================================================
+    // This ensures consistent active state support across all levels
     return (
       <span
         data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
@@ -371,9 +324,9 @@ function OEHeader({
         key={path}
       >
         <SideNavMenuItem
-          className="reduced-padding-nav-menu-item"
-          isActive={isActive}
-          href={menuItem.menu.actionURL || "#"}
+          className={level === 0 ? "top-level-menu-item" : "reduced-padding-nav-menu-item"}
+          isActive={finalIsActive}
+          href={menuItem.menu.actionURL || (hasChildren ? "#" : undefined)}
           onClick={handleLabelClick}
         >
           <div
@@ -399,21 +352,15 @@ function OEHeader({
           </div>
         </SideNavMenuItem>
 
-        {/* Render children if expanded */}
+        {/* Render children if expanded - nested SideNavMenuItem items */}
         {hasChildren &&
+          menuItem.expanded &&
           menuItem.childMenus.map((childMenuItem, childIndex) => {
-            return (
-              <span
-                key={path + ".childMenus[" + childIndex + "].span"}
-                style={{ display: menuItem.expanded ? "" : "none" }}
-              >
-                {generateMenuItems(
-                  childMenuItem,
-                  childIndex,
-                  level + 1,
-                  path + ".childMenus[" + childIndex + "]",
-                )}
-              </span>
+            return generateMenuItems(
+              childMenuItem,
+              childIndex,
+              level + 1,
+              path + ".childMenus[" + childIndex + "]",
             );
           })}
       </span>

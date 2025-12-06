@@ -577,30 +577,24 @@ button {
 }
 
 /* ============================================================================
- * SUBNAV INDENTATION (level 1+) - Using Carbon's actual DOM structure
+ * SUBNAV INDENTATION (level 1+) - Unified structure uses marginLeft inline style
  * ============================================================================
+ * 
+ * NOTE: Indentation is now handled via inline `marginLeft` style in Header.js
+ * This CSS rule ensures subnav items have proper base padding that works with
+ * the marginLeft offset for visual hierarchy.
  */
 
-/* Subnav items - Carbon renders: <li class="cds--side-nav__menu-item"> <a class="cds--side-nav__link"> */
+/* Subnav items (level 1+) - ensure proper base padding */
 .reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link {
-  padding-left: 2.5rem !important; /* Extra indent for subnavs */
+  /* Base padding - marginLeft from inline style provides additional indent */
+  padding-left: 1rem !important;
 }
 
-/* Active subnavs - compensate for border + keep extra indent */
+/* Active subnavs - compensate for border */
 .reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link--current,
 .reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
-  padding-left: calc(2.5rem - 4px) !important; /* Extra indent minus 4px border */
-}
-
-/* ============================================================================
- * TOP-LEVEL ITEMS WITH CHILDREN - SideNavMenu active state
- * ============================================================================
- */
-
-/* When a SideNavMenu contains an active child, highlight the parent */
-.top-level-menu-item.cds--side-nav__menu[aria-expanded="true"] .cds--side-nav__link--current ~ *,
-.top-level-menu-item.cds--side-nav__menu .cds--side-nav__link--current {
-  /* Parent menu should show visual indicator when child is active */
+  padding-left: calc(1rem - 4px) !important; /* Base padding minus 4px border */
 }
 
 /* All custom button styles removed - using Carbon's SideNavMenuItem isActive only */
