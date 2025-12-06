@@ -1,0 +1,11 @@
+description,localAbbreviation,domain,isActive,sortOrder,englishName,frenchName
+Whole Blood,WB,H,Y,1,Whole Blood,Sang Total
+Serum,SER,H,Y,2,Serum,Sérum
+Plasma,PLS,H,Y,3,Plasma,Plasma
+Urine,UR,H,Y,4,Urine,Urine
+Stool,STL,H,Y,5,Stool,Selles
+Cerebrospinal Fluid,CSF,H,Y,6,Cerebrospinal Fluid,Liquide Céphalo-Rachidien
+Sputum,SPT,H,Y,7,Sputum,Expectoration
+Swab,SWB,H,Y,8,Swab,Écouvillon
+Tissue,TIS,H,Y,9,Tissue,Tissu
+Saliva,SAL,H,Y,10,Saliva,Salive
