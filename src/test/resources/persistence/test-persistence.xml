@@ -81,6 +81,13 @@
         <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
         <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
 
+        <!-- Inventory Management entities (004-remove-old-inventory) -->
+        <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
