@@ -96,6 +96,13 @@ public class InventoryItem extends BaseObject<String> {
     @Column(name = "individual_tracking", length = 1)
     private String individualTracking = "N";
 
+    // HIV_KIT/SYPHILIS_KIT-specific fields
+    @Column(name = "source_organization", length = 255)
+    private String sourceOrganization;
+
+    @Column(name = "kit_test_type", length = 50)
+    private String kitTestType; // HIV, SYPHILIS, etc.
+
     @Column(name = "is_active", length = 1, nullable = false)
     private String isActive = "Y";
 
@@ -120,6 +127,14 @@ public class InventoryItem extends BaseObject<String> {
 
     public boolean isRDT() {
         return itemType == ItemType.RDT;
+    }
+
+    public boolean isHIVKit() {
+        return itemType == ItemType.HIV_KIT;
+    }
+
+    public boolean isSyphilisKit() {
+        return itemType == ItemType.SYPHILIS_KIT;
     }
 
     public boolean isActive() {
@@ -280,6 +295,22 @@ public class InventoryItem extends BaseObject<String> {
 
     public void setIndividualTracking(String individualTracking) {
         this.individualTracking = individualTracking;
+    }
+
+    public String getSourceOrganization() {
+        return sourceOrganization;
+    }
+
+    public void setSourceOrganization(String sourceOrganization) {
+        this.sourceOrganization = sourceOrganization;
+    }
+
+    public String getKitTestType() {
+        return kitTestType;
+    }
+
+    public void setKitTestType(String kitTestType) {
+        this.kitTestType = kitTestType;
     }
 
     public String getIsActive() {

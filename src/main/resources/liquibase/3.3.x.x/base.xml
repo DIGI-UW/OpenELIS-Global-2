@@ -22,6 +22,5 @@
   <include relativeToChangelogFile="true" file="011-freezer-monitoring-schema.xml"/>
   <include relativeToChangelogFile="true" file="012-register-freezer-audit-trail.xml"/>
   <include relativeToChangelogFile="true" file="015-add-sample-disposed-status.xml"/>
-  <include relativeToChangelogFile="true" file="016-create-inventory-foundation-tables.xml"/>
-  <include relativeToChangelogFile="true" file="017-create-inventory-lot-tracking-tables.xml"/>
+  <include relativeToChangelogFile="true" file="016-inventory-management-system.xml"/>
 </databaseChangeLog>
