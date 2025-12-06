@@ -293,40 +293,37 @@ function OEHeader({
     // ============================================================================
     // UNIFIED RENDERING: Use SideNavMenuItem for ALL items (top-level + subnavs)
     // ============================================================================
-    // This ensures consistent active state support across all levels
+    // Simplified structure: Let Carbon handle the DOM, we just provide content
     return (
-      <span
-        data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
-        id={menuItem.menu.elementId}
-        key={path}
-      >
+      <React.Fragment key={path}>
         <SideNavMenuItem
+          data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
+          id={menuItem.menu.elementId}
           className={level === 0 ? "top-level-menu-item" : "reduced-padding-nav-menu-item"}
           isActive={isActive}
           href={menuItem.menu.actionURL || (hasChildren ? "#" : undefined)}
           onClick={handleLabelClick}
         >
-          <div
-            style={{
-              display: "flex",
-              width: "100%",
-              alignItems: "center",
-              marginLeft: marginValue,
-            }}
-          >
-            <span style={{ flex: 1, fontSize: level > 0 ? `${100 - 5 * (level - 1)}%` : "100%" }}>
-              <FormattedMessage id={menuItem.menu.displayKey} />
-            </span>
-            {hasChildren && (
-              <div
-                className="cds--side-nav__icon cds--side-nav__icon--small cds--side-nav__submenu-chevron"
-                onClick={handleChevronClick}
-                style={{ cursor: "pointer" }}
-              >
-                {menuItem.expanded ? <ChevronUp /> : <ChevronDown />}
-              </div>
-            )}
-          </div>
+          <span style={{ fontSize: level > 0 ? `${100 - 5 * (level - 1)}%` : "100%" }}>
+            <FormattedMessage id={menuItem.menu.displayKey} />
+          </span>
+          {hasChildren && (
+            <div
+              className="cds--side-nav__submenu-chevron"
+              onClick={handleChevronClick}
+              style={{ 
+                cursor: "pointer",
+                position: "absolute",
+                right: "1rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                display: "flex",
+                alignItems: "center"
+              }}
+            >
+              {menuItem.expanded ? <ChevronUp /> : <ChevronDown />}
+            </div>
+          )}
         </SideNavMenuItem>
 
         {/* Render children if expanded - nested SideNavMenuItem items */}
@@ -340,7 +337,7 @@ function OEHeader({
               path + ".childMenus[" + childIndex + "]",
             );
           })}
-      </span>
+      </React.Fragment>
     );
   };
 
