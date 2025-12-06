@@ -80,15 +80,17 @@ describe("useSideNavPreference", () => {
     /**
      * Test: Returns stored value when localStorage has preference
      * @see spec.md US2 Acceptance Scenario 1: Toggled to expanded, navigate, remains expanded
+     * Note: localStorage has "true" (legacy boolean), should be ignored, use defaultMode
      */
     test("testInit_LocalStorageHasTrue_ReturnsTrue", () => {
-      localStorageMock.getItem.mockReturnValue("true");
+      localStorageMock.getItem.mockReturnValue("true"); // Invalid value (legacy boolean)
 
       const { result } = renderHook(() =>
-        useSideNavPreference({ defaultMode: "show" }),
+        useSideNavPreference({ defaultMode: "lock" }), // Valid defaultMode
       );
 
-      expect(result.current.mode).toBe("show");
+      // Should ignore invalid localStorage value and use defaultMode
+      expect(result.current.mode).toBe("lock");
       expect(result.current.isExpanded).toBe(true);
     });
 
