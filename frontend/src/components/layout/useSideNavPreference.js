@@ -61,23 +61,20 @@ export function useSideNavPreference({
     try {
       const saved = localStorage.getItem(storageKey);
       
-      // Reject SHOW (temporary only)
+      // Reject SHOW (temporary only) - defensive cleanup
       if (saved === SIDENAV_MODES.SHOW) {
-        console.warn(`[useSideNavPreference] Init: ignoring SHOW in localStorage`);
         localStorage.removeItem(storageKey);
       }
       // Accept LOCK or CLOSE
       else if (saved && [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(saved)) {
-        console.log(`[useSideNavPreference] Init: using saved:`, saved);
         return saved;
       }
     } catch (e) {
-      console.warn("localStorage unavailable");
+      // localStorage unavailable (private browsing, etc.)
     }
 
     // No saved value - use defaultMode
     if (defaultMode && [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(defaultMode)) {
-      console.log(`[useSideNavPreference] Init: using defaultMode:`, defaultMode);
       return defaultMode;
     }
 
@@ -113,31 +110,21 @@ export function useSideNavPreference({
     try {
       const saved = localStorage.getItem(newStorageKey);
       
-      // Ignore SHOW mode from localStorage (it's temporary)
+      // Ignore SHOW mode from localStorage (defensive cleanup)
       if (saved === SIDENAV_MODES.SHOW) {
-        console.warn(`[useSideNavPreference] Context switch: ignoring SHOW in localStorage`);
         localStorage.removeItem(newStorageKey);
-        // Fall through to defaultMode
       } 
       // Use valid saved preference for this context
       else if (saved && [SIDENAV_MODES.LOCK, SIDENAV_MODES.CLOSE].includes(saved)) {
-        console.log(
-          `[useSideNavPreference] ✅ Context switch: using SAVED preference for ${storageKeyPrefix}:`,
-          { saved, willOverrideDefault: defaultMode }
-        );
         setModeState(saved);
         return; // Early return - we found a valid saved preference
       }
-      // Log invalid values for debugging
+      // Clear invalid values
       else if (saved) {
-        console.warn(
-          `[useSideNavPreference] ⚠️ Context switch: found INVALID value in localStorage:`,
-          { key: newStorageKey, invalidValue: saved, clearingIt: true }
-        );
         localStorage.removeItem(newStorageKey);
       }
     } catch (e) {
-      console.warn('localStorage unavailable');
+      // localStorage unavailable
     }
     
     // No saved preference - use defaultMode
@@ -148,10 +135,6 @@ export function useSideNavPreference({
           ? (defaultExpanded ? SIDENAV_MODES.LOCK : SIDENAV_MODES.CLOSE)
           : SIDENAV_MODES.CLOSE);
     
-    console.log(
-      `[useSideNavPreference] ⭐ Context switch: NO saved preference, using defaultMode:`,
-      { context: storageKeyPrefix, mode: effectiveDefault, checkedKey: newStorageKey }
-    );
     setModeState(effectiveDefault);
   }, [storageKeyPrefix, defaultMode]);
 
@@ -169,9 +152,6 @@ export function useSideNavPreference({
     (value) => {
       // SHOW mode is temporary - don't persist it
       if (value === SIDENAV_MODES.SHOW) {
-        console.log(
-          `[useSideNavPreference] SHOW mode is temporary - not persisting to localStorage`,
-        );
         return;
       }
 
@@ -188,25 +168,17 @@ export function useSideNavPreference({
         // User reset to default - clear saved preference
         try {
           localStorage.removeItem(storageKey);
-          console.log(
-            `[useSideNavPreference] Mode matches default (${effectiveDefault}) - clearing saved preference`,
-          );
         } catch (e) {
-          console.warn("Could not clear localStorage");
+          // Ignore
         }
         return;
       }
 
       // User changed from default - persist the preference
       try {
-        console.log(`[useSideNavPreference] Persisting preference (differs from default):`, {
-          storageKey,
-          value,
-          defaultMode: effectiveDefault,
-        });
         localStorage.setItem(storageKey, value);
       } catch (e) {
-        console.warn("Could not persist sidenav mode to localStorage");
+        // Ignore
       }
     },
     [storageKey, defaultMode, defaultExpanded],
@@ -219,12 +191,6 @@ export function useSideNavPreference({
     setModeState((prev) => {
       const currentIndex = MODE_CYCLE.indexOf(prev);
       const nextMode = MODE_CYCLE[(currentIndex + 1) % MODE_CYCLE.length];
-      console.log(
-        `[useSideNavPreference] toggle() called:`,
-        prev,
-        "=>",
-        nextMode,
-      );
       persistMode(nextMode);
       return nextMode;
     });
@@ -235,16 +201,10 @@ export function useSideNavPreference({
    */
   const setMode = useCallback(
     (value) => {
-      console.log(
-        `[useSideNavPreference] setMode() called:`,
-        mode,
-        "=>",
-        value,
-      );
       setModeState(value);
       persistMode(value);
     },
-    [persistMode, mode],
+    [persistMode],
   );
 
   const isExpanded = mode !== SIDENAV_MODES.CLOSE;
