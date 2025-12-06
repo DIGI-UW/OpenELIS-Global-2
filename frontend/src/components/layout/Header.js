@@ -261,11 +261,6 @@ function OEHeader({
     if (level === 0) {
       // Top-level with children - use SideNavMenu (expandable)
       if (hasChildren) {
-          elementId: menuItem.menu.elementId,
-          childCount: menuItem.childMenus.length,
-          expanded: menuItem.expanded,
-        });
-
         return (
           <span id={menuItem.menu.elementId} key={path}>
             <span
@@ -315,11 +310,6 @@ function OEHeader({
       }
 
       // Top-level without children - simple link
-        elementId: menuItem.menu.elementId,
-        actionURL: menuItem.menu.actionURL,
-        isActive,
-      });
-
       return (
         <span key={path} id={menuItem.menu.elementId}>
           <SideNavMenuItem
@@ -346,21 +336,8 @@ function OEHeader({
     // ============================================================================
     const marginValue = (level - 1) * 0.5 + "rem";
 
-      elementId: menuItem.menu.elementId,
-      displayKey: menuItem.menu.displayKey,
-      actionURL: menuItem.menu.actionURL,
-      hasChildren,
-      isActive,
-      expanded: menuItem.expanded,
-    });
-
     // Handler for label click - navigate (and expand if has children)
     const handleLabelClick = (e) => {
-        elementId: menuItem.menu.elementId,
-        hasChildren,
-        actionURL: menuItem.menu.actionURL,
-      });
-
       e.preventDefault();
       e.stopPropagation();
 
@@ -453,12 +430,6 @@ function OEHeader({
   };
 
   const setMenuItemExpanded = (e, menuItem, path) => {
-      elementId: menuItem.menu.elementId,
-      currentExpanded: menuItem.expanded,
-      path,
-      isTopLevel: path.startsWith("$.menu["),
-    });
-
     const newMenus = { ...menus };
 
     // REMOVED: Accordion auto-collapse behavior
