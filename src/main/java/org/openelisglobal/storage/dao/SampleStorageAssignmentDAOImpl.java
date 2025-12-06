@@ -6,6 +6,7 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -51,89 +52,121 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
 
     @Override
     @Transactional(readOnly = true)
-    public SampleStorageAssignment findByStoragePosition(
-            org.openelisglobal.storage.valueholder.StoragePosition position) {
+    public SampleStorageAssignment findByStorageBox(StorageBox box) {
         try {
-            if (position == null) {
+            if (box == null) {
                 return null;
             }
-            // Note: This method is deprecated - assignments now use location_id +
-            // location_type
-            // instead of StoragePosition references. This method is kept for backward
-            // compatibility
-            // but may not work correctly with the new flexible assignment model.
-            // TODO: Consider removing this method or updating it to work with location_id +
-            // location_type
-            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.locationType = 'rack' AND ssa.locationId = :rackId";
-            if (position.getParentRack() != null) {
-                Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
-                        SampleStorageAssignment.class);
-                query.setParameter("rackId", position.getParentRack().getId());
-                query.setMaxResults(1);
-                List<SampleStorageAssignment> results = query.list();
-                return results.isEmpty() ? null : results.get(0);
-            }
-            return null;
+            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.locationType = 'box' AND ssa.locationId = :boxId";
+            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageAssignment.class);
+            query.setParameter("boxId", box.getId());
+            query.setMaxResults(1);
+            List<SampleStorageAssignment> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
-            logger.error("Error finding SampleStorageAssignment by storage position", e);
-            throw new LIMSRuntimeException("Error finding SampleStorageAssignment by storage position", e);
+            logger.error("Error finding SampleStorageAssignment by storage box", e);
+            throw new LIMSRuntimeException("Error finding SampleStorageAssignment by storage box", e);
         }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isPositionOccupied(org.openelisglobal.storage.valueholder.StoragePosition position) {
+    public boolean isBoxOccupied(StorageBox box) {
         try {
-            if (position == null) {
+            if (box == null) {
                 return false;
             }
 
-            // If position has a coordinate and parent rack, check for assignment with
-            // matching coordinate
-            if (position.getCoordinate() != null && !position.getCoordinate().isEmpty()
-                    && position.getParentRack() != null) {
-                // Check for assignment to this rack with this coordinate
-                String hql = "SELECT COUNT(*) FROM SampleStorageAssignment ssa "
-                        + "WHERE ssa.locationType = 'rack' AND ssa.locationId = :rackId "
-                        + "AND ssa.positionCoordinate = :coordinate";
-                Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-                query.setParameter("rackId", position.getParentRack().getId());
-                query.setParameter("coordinate", position.getCoordinate());
-                Long count = query.uniqueResult();
-                return count != null && count > 0;
-            } else if (position.getParentRack() != null) {
-                // Position without coordinate but with rack - check for any assignment to this
-                // rack
-                String hql = "SELECT COUNT(*) FROM SampleStorageAssignment ssa "
-                        + "WHERE ssa.locationType = 'rack' AND ssa.locationId = :rackId";
-                Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-                query.setParameter("rackId", position.getParentRack().getId());
-                Long count = query.uniqueResult();
-                return count != null && count > 0;
-            } else if (position.getParentShelf() != null) {
-                // Position at shelf level - check for assignment to this shelf
-                String hql = "SELECT COUNT(*) FROM SampleStorageAssignment ssa "
-                        + "WHERE ssa.locationType = 'shelf' AND ssa.locationId = :shelfId";
-                Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-                query.setParameter("shelfId", position.getParentShelf().getId());
-                Long count = query.uniqueResult();
-                return count != null && count > 0;
-            } else if (position.getParentDevice() != null) {
-                // Position at device level - check for assignment to this device
-                String hql = "SELECT COUNT(*) FROM SampleStorageAssignment ssa "
-                        + "WHERE ssa.locationType = 'device' AND ssa.locationId = :deviceId";
-                Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-                query.setParameter("deviceId", position.getParentDevice().getId());
-                Long count = query.uniqueResult();
-                return count != null && count > 0;
-            }
-
-            return false;
+            String hql = "SELECT COUNT(*) FROM SampleStorageAssignment ssa "
+                    + "WHERE ssa.locationType = 'box' AND ssa.locationId = :boxId";
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameter("boxId", box.getId());
+            Long count = query.uniqueResult();
+            return count != null && count > 0;
         } catch (Exception e) {
-            logger.error("Error checking position occupancy: " + e.getMessage(), e);
-            // On error, return false (position appears unoccupied)
+            logger.error("Error checking box occupancy: " + e.getMessage(), e);
             return false;
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SampleStorageAssignment findByBoxAndCoordinate(Integer boxId, String coordinate) {
+        try {
+            if (boxId == null || coordinate == null || coordinate.trim().isEmpty()) {
+                return null;
+            }
+
+            String hql = "FROM SampleStorageAssignment ssa "
+                    + "WHERE ssa.locationType = 'box' "
+                    + "AND ssa.locationId = :boxId "
+                    + "AND ssa.positionCoordinate = :coordinate";
+            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageAssignment.class);
+            query.setParameter("boxId", boxId);
+            query.setParameter("coordinate", coordinate.trim());
+            query.setMaxResults(1);
+            List<SampleStorageAssignment> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            logger.error("Error finding assignment by box and coordinate: " + e.getMessage(), e);
+            throw new LIMSRuntimeException("Error finding assignment by box and coordinate", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<String> getOccupiedCoordinatesByBoxId(Integer boxId) {
+        try {
+            if (boxId == null) {
+                return new java.util.ArrayList<>();
+            }
+
+            String hql = "SELECT ssa.positionCoordinate FROM SampleStorageAssignment ssa "
+                    + "WHERE ssa.locationType = 'box' "
+                    + "AND ssa.locationId = :boxId "
+                    + "AND ssa.positionCoordinate IS NOT NULL";
+            Query<String> query = entityManager.unwrap(Session.class).createQuery(hql, String.class);
+            query.setParameter("boxId", boxId);
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error getting occupied coordinates for box: " + e.getMessage(), e);
+            return new java.util.ArrayList<>();
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<String, java.util.Map<String, String>> getOccupiedCoordinatesWithSampleInfo(Integer boxId) {
+        java.util.Map<String, java.util.Map<String, String>> result = new java.util.HashMap<>();
+        try {
+            if (boxId == null) {
+                return result;
+            }
+
+            String hql = "SELECT ssa FROM SampleStorageAssignment ssa "
+                    + "LEFT JOIN FETCH ssa.sampleItem si "
+                    + "WHERE ssa.locationType = 'box' "
+                    + "AND ssa.locationId = :boxId "
+                    + "AND ssa.positionCoordinate IS NOT NULL";
+            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageAssignment.class);
+            query.setParameter("boxId", boxId);
+            java.util.List<SampleStorageAssignment> assignments = query.list();
+
+            for (SampleStorageAssignment assignment : assignments) {
+                if (assignment.getPositionCoordinate() != null && assignment.getSampleItem() != null) {
+                    java.util.Map<String, String> sampleInfo = new java.util.HashMap<>();
+                    sampleInfo.put("externalId", assignment.getSampleItem().getExternalId());
+                    sampleInfo.put("sampleItemId", assignment.getSampleItem().getId());
+                    result.put(assignment.getPositionCoordinate(), sampleInfo);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error getting occupied coordinates with sample info: " + e.getMessage(), e);
+        }
+        return result;
     }
 
     // No override needed - BaseDAOImpl.getAll() uses entity fetch strategies

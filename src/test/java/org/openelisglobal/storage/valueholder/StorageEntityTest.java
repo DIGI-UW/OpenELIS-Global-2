@@ -102,33 +102,6 @@ public class StorageEntityTest {
     }
 
     @Test
-    public void testStoragePosition_OccupancyFlag_DefaultsFalse() {
-        // Given: New StoragePosition
-        StoragePosition position = new StoragePosition();
-
-        // Then: Occupied should default to false (or null)
-        // Occupancy is now calculated dynamically from SampleStorageAssignment records
-    }
-
-    @Test
-    public void testStoragePosition_CoordinateFlexibility_AcceptsAnyFormat() {
-        // Given: Position with various coordinate formats
-        StoragePosition pos1 = new StoragePosition();
-        StoragePosition pos2 = new StoragePosition();
-        StoragePosition pos3 = new StoragePosition();
-
-        // When: Set different coordinate formats
-        pos1.setCoordinate("A5"); // Alphanumeric
-        pos2.setCoordinate("1-1"); // Numeric with dash
-        pos3.setCoordinate("RED-01"); // Color-coded
-
-        // Then: All formats accepted (free text, no validation)
-        assertEquals("A5", pos1.getCoordinate());
-        assertEquals("1-1", pos2.getCoordinate());
-        assertEquals("RED-01", pos3.getCoordinate());
-    }
-
-    @Test
     public void testSampleStorageAssignment_PrePersist_SetsAssignedDate() {
         // Given: New assignment without date
         SampleStorageAssignment assignment = new SampleStorageAssignment();
@@ -149,16 +122,4 @@ public class StorageEntityTest {
                 SampleStorageMovement.class.isAnnotationPresent(org.hibernate.annotations.Immutable.class));
     }
 
-    @Test
-    public void testStoragePosition_GridIndexes_Optional() {
-        // Given: Position without grid indexes
-        StoragePosition position = new StoragePosition();
-        position.setCoordinate("BASKET-1");
-        // rowIndex and columnIndex intentionally NULL
-
-        // Then: Should be valid (grid indexes are optional)
-        assertNull(position.getRowIndex());
-        assertNull(position.getColumnIndex());
-        assertEquals("BASKET-1", position.getCoordinate());
-    }
 }
