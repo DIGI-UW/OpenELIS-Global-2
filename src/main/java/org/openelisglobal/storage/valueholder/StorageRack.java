@@ -40,7 +40,7 @@ public class StorageRack extends BaseObject<Integer> {
     @Column(name = "LABEL", length = 100, nullable = false)
     private String label;
 
-    @Column(name = "SHORT_CODE", length = 10)
+    @Column(name = "CODE", length = 10)
     private String shortCode;
 
     @Column(name = "ACTIVE", nullable = false)

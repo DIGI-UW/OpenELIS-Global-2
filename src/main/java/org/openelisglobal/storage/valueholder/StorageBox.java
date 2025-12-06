@@ -19,10 +19,11 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
 
 /**
- * StorageBox entity - Gridded container (e.g., 96-well plate, sample box) within a rack.
- * The grid dimensions (rows × columns) define the internal coordinate system.
- * Sample assignments reference the box ID + coordinate (e.g., "A1", "B3").
- * Hierarchy: Room → Device → Shelf → Rack → Box (gridded container)
+ * StorageBox entity - Gridded container (e.g., 96-well plate, sample box)
+ * within a rack. The grid dimensions (rows × columns) define the internal
+ * coordinate system. Sample assignments reference the box ID + coordinate
+ * (e.g., "A1", "B3"). Hierarchy: Room → Device → Shelf → Rack → Box (gridded
+ * container)
  */
 @Entity
 @Table(name = "storage_box")
@@ -157,8 +158,8 @@ public class StorageBox extends BaseObject<Integer> {
     }
 
     /**
-     * Validate hierarchy integrity constraints.
-     * - A box must always have a parent rack.
+     * Validate hierarchy integrity constraints. - A box must always have a parent
+     * rack.
      *
      * @return true if hierarchy integrity is valid, false otherwise
      */
@@ -219,4 +220,3 @@ public class StorageBox extends BaseObject<Integer> {
         }
     }
 }
-

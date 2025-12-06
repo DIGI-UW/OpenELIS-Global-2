@@ -98,10 +98,8 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
                 return null;
             }
 
-            String hql = "FROM SampleStorageAssignment ssa "
-                    + "WHERE ssa.locationType = 'box' "
-                    + "AND ssa.locationId = :boxId "
-                    + "AND ssa.positionCoordinate = :coordinate";
+            String hql = "FROM SampleStorageAssignment ssa " + "WHERE ssa.locationType = 'box' "
+                    + "AND ssa.locationId = :boxId " + "AND ssa.positionCoordinate = :coordinate";
             Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     SampleStorageAssignment.class);
             query.setParameter("boxId", boxId);
@@ -124,8 +122,7 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
             }
 
             String hql = "SELECT ssa.positionCoordinate FROM SampleStorageAssignment ssa "
-                    + "WHERE ssa.locationType = 'box' "
-                    + "AND ssa.locationId = :boxId "
+                    + "WHERE ssa.locationType = 'box' " + "AND ssa.locationId = :boxId "
                     + "AND ssa.positionCoordinate IS NOT NULL";
             Query<String> query = entityManager.unwrap(Session.class).createQuery(hql, String.class);
             query.setParameter("boxId", boxId);
@@ -145,10 +142,8 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
                 return result;
             }
 
-            String hql = "SELECT ssa FROM SampleStorageAssignment ssa "
-                    + "LEFT JOIN FETCH ssa.sampleItem si "
-                    + "WHERE ssa.locationType = 'box' "
-                    + "AND ssa.locationId = :boxId "
+            String hql = "SELECT ssa FROM SampleStorageAssignment ssa " + "LEFT JOIN FETCH ssa.sampleItem si "
+                    + "WHERE ssa.locationType = 'box' " + "AND ssa.locationId = :boxId "
                     + "AND ssa.positionCoordinate IS NOT NULL";
             Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     SampleStorageAssignment.class);

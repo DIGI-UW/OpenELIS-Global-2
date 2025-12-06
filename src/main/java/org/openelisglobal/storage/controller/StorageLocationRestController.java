@@ -809,7 +809,6 @@ public class StorageLocationRestController extends BaseRestController {
             rackToUpdate.setShortCode(form.getShortCode());
             // parentShelf is read-only - ignored if provided
             rackToUpdate.setActive(form.getActive());
-            rackToUpdate.setCode(form.getCode());
 
             // Get existing rack to preserve ID
             StorageRack existingRack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
@@ -1191,7 +1190,6 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("label", rack.getLabel());
             map.put("shortCode", rack.getShortCode());
             map.put("active", rack.getActive());
-            map.put("code", rack.getCode());
             map.put("fhirUuid", rack.getFhirUuidAsString());
 
             // Add parent relationships for filtering (FR-065: filter by room, shelf,
@@ -1265,11 +1263,11 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("positionSchemaHint", box.getPositionSchemaHint());
             map.put("shortCode", box.getShortCode());
             map.put("active", box.getActive());
-            
+
             // Get occupied coordinates with sample info (external ID, sample item ID)
             Map<String, Map<String, String>> occupiedCoordinatesMap = sampleStorageAssignmentDAO
                     .getOccupiedCoordinatesWithSampleInfo(box.getId());
-            
+
             map.put("occupied", !occupiedCoordinatesMap.isEmpty());
             map.put("occupiedCoordinates", occupiedCoordinatesMap);
             map.put("fhirUuid", box.getFhirUuidAsString());

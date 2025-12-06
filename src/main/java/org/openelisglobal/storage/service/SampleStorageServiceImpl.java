@@ -51,10 +51,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     public CapacityWarning calculateCapacity(StorageRack rack) {
         // Calculate total capacity from boxes in this rack
         List<StorageBox> boxes = storageLocationService.getBoxesByRack(rack.getId());
-        int totalCapacity = boxes.stream()
-                .mapToInt(box -> box.getCapacity() != null ? box.getCapacity() : 0)
-                .sum();
-        
+        int totalCapacity = boxes.stream().mapToInt(box -> box.getCapacity() != null ? box.getCapacity() : 0).sum();
+
         if (totalCapacity == 0) {
             return null; // No boxes with capacity defined
         }
@@ -208,6 +206,72 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         return result;
     }
 
+    @Override
+    @Transactional
+    public Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate, String notes) {
+        if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+            throw new LIMSRuntimeException("SampleItem ID is required");
+        }
+        SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItemId);
+        if (existingAssignment == null) {
+            throw new LIMSRuntimeException("No storage assignment found for SampleItem: " + sampleItemId);
+        }
+
+        if (positionCoordinate != null) {
+            if (positionCoordinate.trim().isEmpty()) {
+                existingAssignment.setPositionCoordinate(null);
+            } else {
+                existingAssignment.setPositionCoordinate(positionCoordinate.trim());
+            }
+        }
+        if (notes != null) {
+            if (notes.trim().isEmpty()) {
+                existingAssignment.setNotes(null);
+            } else {
+                existingAssignment.setNotes(notes.trim());
+            }
+        }
+
+        sampleStorageAssignmentDAO.update(existingAssignment);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("assignmentId", existingAssignment.getId());
+        response.put("sampleItemId", sampleItemId);
+        response.put("positionCoordinate", existingAssignment.getPositionCoordinate());
+        response.put("notes", existingAssignment.getNotes());
+        response.put("updatedDate", new Timestamp(System.currentTimeMillis()).toString());
+
+        String hierarchicalPath = buildHierarchicalPathForAssignment(existingAssignment);
+        response.put("hierarchicalPath", hierarchicalPath);
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes) {
+        if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+            throw new LIMSRuntimeException("SampleItem ID is required");
+        }
+        // Remove existing assignment if present
+        SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItemId);
+        if (existingAssignment != null) {
+            sampleStorageAssignmentDAO.delete(existingAssignment);
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("disposalId", (String) null);
+        response.put("sampleItemId", sampleItemId);
+        response.put("status", "disposed");
+        response.put("previousLocation", (String) null);
+        response.put("disposedDate", new Timestamp(System.currentTimeMillis()).toString());
+        response.put("reason", reason);
+        response.put("method", method);
+        if (notes != null) {
+            response.put("notes", notes);
+        }
+        return response;
+    }
+
     /**
      * Build hierarchical path for an assignment based on its locationType.
      */
@@ -287,8 +351,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             return room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel()
                     + " > " + box.getLabel();
         } else if (device != null && shelf != null) {
-            return device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel() + " > "
-                    + box.getLabel();
+            return device.getName() + " > " + shelf.getLabel() + " > " + rack.getLabel() + " > " + box.getLabel();
         } else if (shelf != null) {
             return shelf.getLabel() + " > " + rack.getLabel() + " > " + box.getLabel();
         } else {
@@ -312,8 +375,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // Validate locationType is valid enum
             if (!locationType.equals("device") && !locationType.equals("shelf") && !locationType.equals("rack")
                     && !locationType.equals("box")) {
-                throw new LIMSRuntimeException(
-                        "Invalid location type: " + locationType + ". Must be one of: 'device', 'shelf', 'rack', 'box'");
+                throw new LIMSRuntimeException("Invalid location type: " + locationType
+                        + ". Must be one of: 'device', 'shelf', 'rack', 'box'");
             }
 
             // Resolve SampleItem: accept either SampleItem ID or accession number
@@ -441,15 +504,15 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 effectiveCoordinate = box.getLabel();
             }
 
-            // Validate coordinate is not already occupied (for box assignments with coordinates)
+            // Validate coordinate is not already occupied (for box assignments with
+            // coordinates)
             if ("box".equals(locationType) && effectiveCoordinate != null && !effectiveCoordinate.trim().isEmpty()) {
                 SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO
                         .findByBoxAndCoordinate(locationIdInt, effectiveCoordinate.trim());
                 if (existingAssignment != null) {
-                    throw new LIMSRuntimeException(
-                            String.format(
-                                    "Position %s is already occupied by another sample. Please select a different position.",
-                                    effectiveCoordinate.trim()));
+                    throw new LIMSRuntimeException(String.format(
+                            "Position %s is already occupied by another sample. Please select a different position.",
+                            effectiveCoordinate.trim()));
                 }
             }
 
@@ -510,7 +573,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
-            movement.setReason(reason);
+            movement.setReason(notes);
             movement.setMovedByUserId(1); // Default to system user for tests
 
             // Log movement audit record for debugging
@@ -547,7 +610,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Override
     @Transactional
     public String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
-            String positionCoordinate, String reason) {
+            String positionCoordinate, String reason, String notes) {
         try {
             // Validate inputs
             if (locationId == null || locationId.trim().isEmpty()) {
@@ -671,8 +734,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     existingAssignment.setPositionCoordinate(null);
                 }
                 existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-            if (reason != null) {
-                existingAssignment.setNotes(reason);
+                if (reason != null) {
+                    existingAssignment.setNotes(reason);
                 }
                 sampleStorageAssignmentDAO.update(existingAssignment);
 
@@ -698,8 +761,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     assignment.setPositionCoordinate(effectiveCoordinate.trim());
                 }
                 assignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-            if (reason != null) {
-                assignment.setNotes(reason);
+                if (reason != null) {
+                    assignment.setNotes(reason);
                 }
                 assignment.setAssignedByUserId(1); // Default to system user for tests
                 sampleStorageAssignmentDAO.insert(assignment);
@@ -932,8 +995,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     }
                 }
             }
-            String coord = positionCoordinate != null && !positionCoordinate.trim().isEmpty()
-                    ? positionCoordinate
+            String coord = positionCoordinate != null && !positionCoordinate.trim().isEmpty() ? positionCoordinate
                     : box.getLabel();
             StringBuilder builder = new StringBuilder();
             if (room != null) {
@@ -998,12 +1060,13 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     /**
      * Resolve SampleItem from accession number or external reference number
-     * Frontend users only have access to accession numbers or external reference numbers,
-     * not internal SampleItem IDs.
+     * Frontend users only have access to accession numbers or external reference
+     * numbers, not internal SampleItem IDs.
      * 
      * @param identifier Accession number or external reference number
      * @return SampleItem entity
-     * @throws LIMSRuntimeException if SampleItem not found or multiple SampleItems match
+     * @throws LIMSRuntimeException if SampleItem not found or multiple SampleItems
+     *                              match
      */
     private SampleItem resolveSampleItem(String identifier) {
         if (identifier == null || identifier.trim().isEmpty()) {
@@ -1023,10 +1086,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     }
                     return sampleItems.get(0);
                 } else {
-                    throw new LIMSRuntimeException(
-                            String.format(
-                                    "Sample with accession number '%s' has %d SampleItems. Please provide the external reference number to identify the specific specimen.",
-                                    trimmedId, sampleItems.size()));
+                    throw new LIMSRuntimeException(String.format(
+                            "Sample with accession number '%s' has %d SampleItems. Please provide the external reference number to identify the specific specimen.",
+                            trimmedId, sampleItems.size()));
                 }
             }
         }
@@ -1040,17 +1102,15 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 }
                 return sampleItemsByExtId.get(0);
             } else {
-                throw new LIMSRuntimeException(
-                        String.format(
-                                "Multiple SampleItems found with external reference '%s'. This should not happen - external references should be unique.",
-                                trimmedId));
+                throw new LIMSRuntimeException(String.format(
+                        "Multiple SampleItems found with external reference '%s'. This should not happen - external references should be unique.",
+                        trimmedId));
             }
         }
 
         // Not found by any method
-        throw new LIMSRuntimeException(
-                String.format(
-                        "Sample not found with identifier '%s'. Please check the accession number or external reference number.",
-                        trimmedId));
+        throw new LIMSRuntimeException(String.format(
+                "Sample not found with identifier '%s'. Please check the accession number or external reference number.",
+                trimmedId));
     }
 }

@@ -1365,7 +1365,7 @@ const StorageDashboard = () => {
               occupied: occupiedIds.has(box.id?.toString()),
             })) || [];
           setBoxes(merged);
-          
+
           // Update selected box with fresh data if one is selected
           if (selectedBoxId) {
             const updatedBox = merged.find((box) => box.id === selectedBoxId);
@@ -1445,7 +1445,7 @@ const StorageDashboard = () => {
             defaultMessage:
               "Position {coordinate} is already occupied. Please select a different position.",
           },
-          { coordinate }
+          { coordinate },
         ),
       });
       return;
@@ -1474,13 +1474,13 @@ const StorageDashboard = () => {
             id: "storage.boxes.assign.success",
             defaultMessage: "Sample assigned to {coordinate} in {boxLabel}.",
           },
-          { coordinate: selectedCoordinate, boxLabel: selectedBox.label }
+          { coordinate: selectedCoordinate, boxLabel: selectedBox.label },
         ),
       });
       setAssignSampleId("");
       setAssignNotes("");
       setSelectedCoordinate("");
-      
+
       // Refresh boxes data to update occupancy status
       await fetchBoxesForRack(selectedRackIdForGrid);
     } catch (error) {
@@ -2681,12 +2681,10 @@ const StorageDashboard = () => {
                     occupied && tooltip
                       ? `Sample: ${tooltip}`
                       : occupied
-                        ? intl.formatMessage(
-                            {
-                              id: "storage.boxes.status.occupied",
-                              defaultMessage: "Occupied",
-                            },
-                          )
+                        ? intl.formatMessage({
+                            id: "storage.boxes.status.occupied",
+                            defaultMessage: "Occupied",
+                          })
                         : undefined
                   }
                   aria-label={
@@ -2694,16 +2692,14 @@ const StorageDashboard = () => {
                       ? intl.formatMessage(
                           {
                             id: "storage.boxes.grid.occupied",
-                            defaultMessage:
-                              "Position {coordinate} (occupied)",
+                            defaultMessage: "Position {coordinate} (occupied)",
                           },
                           { coordinate },
                         )
                       : intl.formatMessage(
                           {
                             id: "storage.boxes.grid.available",
-                            defaultMessage:
-                              "Position {coordinate} (available)",
+                            defaultMessage: "Position {coordinate} (available)",
                           },
                           { coordinate },
                         )
@@ -4178,8 +4174,7 @@ const StorageDashboard = () => {
                         selectedBoxId
                           ? boxDropdownItems.find(
                               (b) =>
-                                b.id?.toString() ===
-                                selectedBoxId?.toString(),
+                                b.id?.toString() === selectedBoxId?.toString(),
                             )
                           : null
                       }

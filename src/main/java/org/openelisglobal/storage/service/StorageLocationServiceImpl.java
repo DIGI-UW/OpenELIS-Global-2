@@ -338,7 +338,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             StorageBox box = (StorageBox) entity;
             // Validate grid dimensions (boxes are gridded containers)
             if (box.getRows() == null || box.getColumns() == null || box.getRows() < 0 || box.getColumns() < 0) {
-                throw new IllegalArgumentException("Box must have valid grid dimensions (rows and columns cannot be negative)");
+                throw new IllegalArgumentException(
+                        "Box must have valid grid dimensions (rows and columns cannot be negative)");
             }
             return storageBoxDAO.insert(box);
         }
@@ -453,25 +454,6 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingRack.setLabel(rack.getLabel());
             existingRack.setShortCode(rack.getShortCode());
             existingRack.setActive(rack.getActive());
-
-            // Code is editable - validate if provided
-            if (rack.getCode() != null && !rack.getCode().equals(existingRack.getCode())) {
-                String normalizedCode = codeValidationService.autoUppercase(rack.getCode());
-                CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
-                if (!formatResult.isValid()) {
-                    throw new LIMSRuntimeException(formatResult.getErrorMessage());
-                }
-                CodeValidationResult lengthResult = codeValidationService.validateLength(normalizedCode);
-                if (!lengthResult.isValid()) {
-                    throw new LIMSRuntimeException(lengthResult.getErrorMessage());
-                }
-                CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "rack",
-                        String.valueOf(rack.getId()), String.valueOf(existingRack.getParentShelf().getId()));
-                if (!uniquenessResult.isValid()) {
-                    throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
-                }
-                existingRack.setCode(normalizedCode);
-            }
             // Note: Code does NOT regenerate when label changes - only updates if
             // explicitly provided
 
@@ -493,8 +475,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingBox.setShortCode(box.getShortCode());
             existingBox.setActive(box.getActive());
             // Validate grid dimensions
-            if (existingBox.getRows() == null || existingBox.getColumns() == null || 
-                existingBox.getRows() < 0 || existingBox.getColumns() < 0) {
+            if (existingBox.getRows() == null || existingBox.getColumns() == null || existingBox.getRows() < 0
+                    || existingBox.getColumns() < 0) {
                 throw new IllegalArgumentException("Box must have valid grid dimensions");
             }
             storageBoxDAO.update(existingBox);
@@ -547,10 +529,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
      * FR-062b). Returns null if capacity cannot be determined.
      * 
      * Tier 1: If capacity_limit is set, use that value (manual/static limit) Tier
-     * 2: If capacity_limit is NULL, calculate from child racks and their boxes:
-     *   - Racks are simple containers
-     *   - Boxes within racks have grid dimensions (rows × columns)
-     *   - Sum all box capacities across all racks
+     * 2: If capacity_limit is NULL, calculate from child racks and their boxes: -
+     * Racks are simple containers - Boxes within racks have grid dimensions (rows ×
+     * columns) - Sum all box capacities across all racks
      * 
      * @param shelf The shelf to calculate capacity for
      * @return Integer capacity value, or null if capacity cannot be determined

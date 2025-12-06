@@ -107,4 +107,3 @@ public class StorageBoxDAOImpl extends BaseDAOImpl<StorageBox, Integer> implemen
         }
     }
 }
-

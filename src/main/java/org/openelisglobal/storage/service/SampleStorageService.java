@@ -47,13 +47,19 @@ public interface SampleStorageService {
      *
      * @param sampleItemId       SampleItem ID
      * @param locationId         Target location ID (device, shelf, rack, or box ID)
-     * @param locationType       Target location type: 'device', 'shelf', 'rack', or 'box'
+     * @param locationType       Target location type: 'device', 'shelf', 'rack', or
+     *                           'box'
      * @param positionCoordinate Optional text-based coordinate (max 50 chars)
      * @param reason             Optional reason for movement
      * @return Movement ID
      */
     String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
-            String positionCoordinate, String reason);
+            String positionCoordinate, String reason, String notes);
+
+    java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
+            String notes);
+
+    java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes);
 
     /**
      * Get storage location for a specific SampleItem

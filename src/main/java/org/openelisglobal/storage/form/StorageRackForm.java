@@ -4,8 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Form object for StorageRack entity.
- * Note: Racks are simple containers - grid dimensions are now on StorageBox (the gridded container).
+ * Form object for StorageRack entity. Note: Racks are simple containers - grid
+ * dimensions are now on StorageBox (the gridded container).
  */
 public class StorageRackForm {
 

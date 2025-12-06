@@ -18,4 +18,3 @@ public interface StorageBoxDAO extends BaseDAO<StorageBox, Integer> {
 
     int countOccupiedInDevice(Integer deviceId);
 }
-

@@ -6,8 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * Form object for StorageBox entity.
- * Represents a gridded container (e.g., 96-well plate, sample box) within a rack.
+ * Form object for StorageBox entity. Represents a gridded container (e.g.,
+ * 96-well plate, sample box) within a rack.
  */
 public class StorageBoxForm {
 

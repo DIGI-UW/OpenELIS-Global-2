@@ -6,8 +6,8 @@ import org.openelisglobal.storage.dao.StorageDeviceDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
-import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageBox;
+import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -291,8 +291,7 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                         firstMissingLevel = "position";
                     }
                 } else {
-                    response.addValidComponent("box",
-                            createComponentMap(box.getId(), box.getLabel(), box.getLabel()));
+                    response.addValidComponent("box", createComponentMap(box.getId(), box.getLabel(), box.getLabel()));
                 }
             } else {
                 // Rack is missing, so position can't be validated - already tracked rack as
