@@ -720,8 +720,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                         + ". Must be one of: 'device', 'shelf', 'rack', 'box'");
             }
 
-            // Resolve SampleItem: accept either SampleItem ID or accession number
+            // Resolve SampleItem: accept either accession number or external ID
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
+            // Get the actual numeric ID from the resolved SampleItem for database lookups
+            String resolvedSampleItemId = sampleItem.getId();
 
             // Load target location entity based on locationType
             Integer locationIdInt = Integer.parseInt(locationId);
@@ -793,8 +795,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
             // No occupancy tracking - position is just a text field
 
-            // Find existing assignment for SampleItem
-            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItemId);
+            // Find existing assignment for SampleItem (using resolved numeric ID)
+            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(resolvedSampleItemId);
 
             // Store previous location details BEFORE updating (for movement audit log)
             Integer previousLocationId = null;

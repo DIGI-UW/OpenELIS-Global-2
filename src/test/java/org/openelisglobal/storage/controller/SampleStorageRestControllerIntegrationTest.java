@@ -156,19 +156,24 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         } else {
             typeOfSampleId = typeOfSampleIds.get(0);
         }
+        // Create external_id for the sample item (used by resolveSampleItem to look up
+        // the sample)
+        String externalId = "TEST-SAMPLE-" + timestamp + "-TUBE-1";
         jdbcTemplate.update(
                 "INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, status_id, lastupdated) VALUES (?, ?, 1, NULL, ?, ?, ?, CURRENT_TIMESTAMP)",
-                sampleItemId, sampleId, "TEST-SAMPLE-" + timestamp + "-TUBE-1", typeOfSampleId, statusId);
+                sampleItemId, sampleId, externalId, typeOfSampleId, statusId);
 
         // Assign SampleItem to position using flexible assignment API
         // API expects locationId (rack ID) and locationType="rack", with
         // positionCoordinate
         // Positions are coordinates within a rack, not separate entities
+        // Use external_id instead of numeric sampleItemId (resolveSampleItem only
+        // accepts accession numbers or external IDs)
         MvcResult assignmentResult = mockMvc.perform(post("/rest/storage/sample-items/assign")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(String.format(
                         "{\"sampleItemId\":\"%s\",\"locationId\":\"%d\",\"locationType\":\"rack\",\"positionCoordinate\":\"A1\",\"notes\":\"Integration test assignment\"}",
-                        String.valueOf(sampleItemId), rackId)))
+                        externalId, rackId)))
                 .andReturn();
 
         int status = assignmentResult.getResponse().getStatus();

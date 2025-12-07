@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.util.Map;
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -59,6 +58,8 @@ public class SampleStorageServiceDisposalTest {
     private StorageDevice testDevice;
     private StorageRoom testRoom;
     private static final String DISPOSED_STATUS_ID = "24";
+    private static final String TEST_ACCESSION_NUMBER = "ACC-2024-001";
+    private static final String TEST_SAMPLE_ITEM_ID = "123";
 
     @Before
     public void setUp() {
@@ -78,8 +79,9 @@ public class SampleStorageServiceDisposalTest {
         testDevice.setActive(true);
 
         testSampleItem = new SampleItem();
-        testSampleItem.setId("sample-item-123");
+        testSampleItem.setId(TEST_SAMPLE_ITEM_ID);
         testSampleItem.setStatusId("1"); // Active status
+        testSampleItem.setExternalId(TEST_ACCESSION_NUMBER); // Use accession number as external ID for lookup
 
         testAssignment = new SampleStorageAssignment();
         testAssignment.setId(1);
@@ -93,23 +95,26 @@ public class SampleStorageServiceDisposalTest {
         lenient().when(statusService.getStatusID(SampleStatus.Disposed)).thenReturn(DISPOSED_STATUS_ID);
         // Default: non-disposed statuses don't match Disposed status
         lenient().when(statusService.matches(anyString(), eq(SampleStatus.Disposed))).thenReturn(false);
+
+        // Mock external ID lookup for resolveSampleItem (ID lookup has been removed)
+        lenient().when(sampleItemService.getSampleItemsByExternalID(TEST_ACCESSION_NUMBER))
+                .thenReturn(java.util.Collections.singletonList(testSampleItem));
     }
 
     @Test
     public void testDisposeSampleItem_SetsCorrectNumericStatusId() {
-        // Arrange
-        when(sampleItemDAO.get("sample-item-123")).thenReturn(Optional.of(testSampleItem));
-        when(sampleStorageAssignmentDAO.findBySampleItemId("sample-item-123")).thenReturn(null);
+        // Arrange - external ID lookup is mocked in setUp()
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(null);
         // No movement record created when there's no previous assignment (no previous location)
 
         // Act
-        Map<String, Object> result = sampleStorageService.disposeSampleItem("sample-item-123", "expired", "autoclave",
+        Map<String, Object> result = sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave",
                 "Test disposal");
 
         // Assert
         verify(sampleItemDAO).update(testSampleItem);
         assertEquals("Status ID should be set to disposed status ID", DISPOSED_STATUS_ID, testSampleItem.getStatusId());
-        assertEquals("sample-item-123", result.get("sampleItemId"));
+        assertEquals(TEST_SAMPLE_ITEM_ID, result.get("sampleItemId"));
         assertEquals("disposed", result.get("status"));
         // Verify no movement record was created (no previous location to track)
         verify(sampleStorageMovementDAO, never()).insert(any(SampleStorageMovement.class));
@@ -117,14 +122,13 @@ public class SampleStorageServiceDisposalTest {
 
     @Test
     public void testDisposeSampleItem_ClearsStorageAssignment() {
-        // Arrange
-        when(sampleItemDAO.get("sample-item-123")).thenReturn(Optional.of(testSampleItem));
-        when(sampleStorageAssignmentDAO.findBySampleItemId("sample-item-123")).thenReturn(testAssignment);
+        // Arrange - external ID lookup is mocked in setUp()
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(testAssignment);
         when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
         when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
 
         // Act
-        sampleStorageService.disposeSampleItem("sample-item-123", "expired", "autoclave", null);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
 
         // Assert
         verify(sampleStorageAssignmentDAO).delete(testAssignment);
@@ -133,14 +137,13 @@ public class SampleStorageServiceDisposalTest {
 
     @Test
     public void testDisposeSampleItem_CreatesMovementAuditRecord() {
-        // Arrange
-        when(sampleItemDAO.get("sample-item-123")).thenReturn(Optional.of(testSampleItem));
-        when(sampleStorageAssignmentDAO.findBySampleItemId("sample-item-123")).thenReturn(testAssignment);
+        // Arrange - external ID lookup is mocked in setUp()
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(testAssignment);
         when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
         when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
 
         // Act
-        sampleStorageService.disposeSampleItem("sample-item-123", "expired", "autoclave", "Test notes");
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test notes");
 
         // Assert
         verify(sampleStorageMovementDAO).insert(any(SampleStorageMovement.class));
@@ -148,18 +151,17 @@ public class SampleStorageServiceDisposalTest {
 
     @Test(expected = LIMSRuntimeException.class)
     public void testDisposeSampleItem_AlreadyDisposed_ThrowsException() {
-        // Arrange
+        // Arrange - external ID lookup is mocked in setUp()
         testSampleItem.setStatusId(DISPOSED_STATUS_ID);
-        when(sampleItemDAO.get("sample-item-123")).thenReturn(Optional.of(testSampleItem));
 
         // Act
-        sampleStorageService.disposeSampleItem("sample-item-123", "expired", "autoclave", null);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
     }
 
     @Test(expected = LIMSRuntimeException.class)
     public void testDisposeSampleItem_InvalidSampleId_ThrowsException() {
-        // Arrange
-        when(sampleItemDAO.get("invalid-id")).thenReturn(Optional.empty());
+        // Arrange - mock external ID lookup to return empty list (not found)
+        when(sampleItemService.getSampleItemsByExternalID("invalid-id")).thenReturn(java.util.Collections.emptyList());
 
         // Act
         sampleStorageService.disposeSampleItem("invalid-id", "expired", "autoclave", null);
@@ -168,12 +170,12 @@ public class SampleStorageServiceDisposalTest {
     @Test(expected = LIMSRuntimeException.class)
     public void testDisposeSampleItem_MissingReason_ThrowsException() {
         // Act
-        sampleStorageService.disposeSampleItem("sample-item-123", null, "autoclave", null);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, null, "autoclave", null);
     }
 
     @Test(expected = LIMSRuntimeException.class)
     public void testDisposeSampleItem_MissingMethod_ThrowsException() {
         // Act
-        sampleStorageService.disposeSampleItem("sample-item-123", "expired", null, null);
+        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", null, null);
     }
 }
