@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class InventoryStorageLocationDAOImpl extends BaseDAOImpl<InventoryStorageLocation, String>
+public class InventoryStorageLocationDAOImpl extends BaseDAOImpl<InventoryStorageLocation, Long>
         implements InventoryStorageLocationDAO {
 
     public InventoryStorageLocationDAOImpl() {
@@ -49,7 +49,7 @@ public class InventoryStorageLocationDAOImpl extends BaseDAOImpl<InventoryStorag
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryStorageLocation> getChildLocations(String parentLocationId) throws LIMSRuntimeException {
+    public List<InventoryStorageLocation> getChildLocations(Long parentLocationId) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryStorageLocation s WHERE s.parentLocation.id = :parentId AND s.isActive = true ORDER BY s.name";
             Query<InventoryStorageLocation> query = entityManager.unwrap(Session.class).createQuery(hql,

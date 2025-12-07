@@ -36,7 +36,7 @@ public class InventoryLotRestController extends BaseRestController {
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<InventoryLot> getById(@PathVariable String id) {
         try {
-            InventoryLot lot = inventoryLotService.get(id);
+            InventoryLot lot = inventoryLotService.get(Long.valueOf(id));
             if (lot == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -50,7 +50,7 @@ public class InventoryLotRestController extends BaseRestController {
     @GetMapping(value = "/item/{itemId}/available", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getAvailableLotsFEFO(@PathVariable String itemId) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(itemId);
+            List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(Long.valueOf(itemId));
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -61,7 +61,7 @@ public class InventoryLotRestController extends BaseRestController {
     @GetMapping(value = "/item/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getByItemId(@PathVariable String itemId) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getByInventoryItemId(itemId);
+            List<InventoryLot> lots = inventoryLotService.getByInventoryItemId(Long.valueOf(itemId));
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -72,7 +72,7 @@ public class InventoryLotRestController extends BaseRestController {
     @GetMapping(value = "/location/{locationId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getByLocationId(@PathVariable String locationId) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getByStorageLocationId(locationId);
+            List<InventoryLot> lots = inventoryLotService.getByStorageLocationId(Long.valueOf(locationId));
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -119,7 +119,7 @@ public class InventoryLotRestController extends BaseRestController {
     @GetMapping(value = "/item/{itemId}/total-quantity", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<QuantityResponse> getTotalQuantity(@PathVariable String itemId) {
         try {
-            Double quantity = inventoryLotService.getTotalCurrentQuantity(itemId);
+            Double quantity = inventoryLotService.getTotalCurrentQuantity(Long.valueOf(itemId));
             return ResponseEntity.ok(new QuantityResponse(quantity));
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -146,14 +146,14 @@ public class InventoryLotRestController extends BaseRestController {
     public ResponseEntity<InventoryLot> update(@PathVariable String id, @Valid @RequestBody InventoryLot lot,
             HttpServletRequest request) {
         try {
-            InventoryLot existingLot = inventoryLotService.get(id);
+            InventoryLot existingLot = inventoryLotService.get(Long.valueOf(id));
             if (existingLot == null) {
                 return ResponseEntity.notFound().build();
             }
 
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
-            lot.setId(id);
+            lot.setId(Long.valueOf(id));
             lot.setSysUserId(sysUserId);
 
             InventoryLot updatedLot = inventoryLotService.update(lot);
@@ -174,7 +174,7 @@ public class InventoryLotRestController extends BaseRestController {
             Timestamp openedDate = request != null && request.getOpenedDate() != null ? request.getOpenedDate()
                     : new Timestamp(System.currentTimeMillis());
 
-            InventoryLot lot = inventoryLotService.openLot(id, openedDate, sysUserId);
+            InventoryLot lot = inventoryLotService.openLot(Long.valueOf(id), openedDate, sysUserId);
             return ResponseEntity.ok(lot);
         } catch (IllegalArgumentException | IllegalStateException e) {
             LogEvent.logError(e);
@@ -192,7 +192,7 @@ public class InventoryLotRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
-            InventoryLot lot = inventoryLotService.updateQCStatus(id, request.getQcStatus(), sysUserId);
+            InventoryLot lot = inventoryLotService.updateQCStatus(Long.valueOf(id), request.getQcStatus(), sysUserId);
             return ResponseEntity.ok(lot);
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
@@ -210,7 +210,7 @@ public class InventoryLotRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
-            InventoryLot lot = inventoryLotService.updateLotStatus(id, request.getStatus(), sysUserId);
+            InventoryLot lot = inventoryLotService.updateLotStatus(Long.valueOf(id), request.getStatus(), sysUserId);
             return ResponseEntity.ok(lot);
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
@@ -228,8 +228,8 @@ public class InventoryLotRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
-            InventoryLot lot = inventoryLotService.adjustLotQuantity(id, request.getNewQuantity(), request.getReason(),
-                    sysUserId);
+            InventoryLot lot = inventoryLotService.adjustLotQuantity(Long.valueOf(id), request.getNewQuantity(),
+                    request.getReason(), sysUserId);
             return ResponseEntity.ok(lot);
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
@@ -248,7 +248,7 @@ public class InventoryLotRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
             String reason = request != null ? request.getReason() : null;
-            InventoryLot lot = inventoryLotService.disposeLot(id, reason, sysUserId);
+            InventoryLot lot = inventoryLotService.disposeLot(Long.valueOf(id), reason, sysUserId);
             return ResponseEntity.ok(lot);
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);

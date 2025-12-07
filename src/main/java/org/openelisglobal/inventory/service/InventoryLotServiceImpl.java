@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<InventoryLot, String>
+public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<InventoryLot, Long>
         implements InventoryLotService {
 
     @Autowired
@@ -35,19 +35,19 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getAvailableLotsByItemFEFO(String itemId) {
+    public List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId) {
         return inventoryLotDAO.getAvailableLotsByItemFEFO(itemId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getByInventoryItemId(String itemId) {
+    public List<InventoryLot> getByInventoryItemId(Long itemId) {
         return inventoryLotDAO.getByInventoryItemId(itemId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(String locationId) {
+    public List<InventoryLot> getByStorageLocationId(Long locationId) {
         return inventoryLotDAO.getByStorageLocationId(locationId);
     }
 
@@ -77,14 +77,14 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
-    public Double getTotalCurrentQuantity(String itemId) {
+    public Double getTotalCurrentQuantity(Long itemId) {
         Integer total = inventoryLotDAO.getTotalCurrentQuantity(itemId);
         return total != null ? total.doubleValue() : 0.0;
     }
 
     @Override
     @Transactional
-    public InventoryLot openLot(String lotId, Timestamp openedDate, String sysUserId) {
+    public InventoryLot openLot(Long lotId, Timestamp openedDate, String sysUserId) {
         InventoryLot lot = get(lotId);
         if (lot == null) {
             throw new IllegalArgumentException("Lot not found: " + lotId);
@@ -120,7 +120,7 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional
-    public InventoryLot updateQCStatus(String lotId, QCStatus qcStatus, String sysUserId) {
+    public InventoryLot updateQCStatus(Long lotId, QCStatus qcStatus, String sysUserId) {
         InventoryLot lot = get(lotId);
         if (lot == null) {
             throw new IllegalArgumentException("Lot not found: " + lotId);
@@ -142,7 +142,7 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional
-    public InventoryLot updateLotStatus(String lotId, LotStatus status, String sysUserId) {
+    public InventoryLot updateLotStatus(Long lotId, LotStatus status, String sysUserId) {
         InventoryLot lot = get(lotId);
         if (lot == null) {
             throw new IllegalArgumentException("Lot not found: " + lotId);
@@ -158,7 +158,7 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional
-    public InventoryLot adjustLotQuantity(String lotId, Double newQuantity, String reason, String sysUserId) {
+    public InventoryLot adjustLotQuantity(Long lotId, Double newQuantity, String reason, String sysUserId) {
         InventoryLot lot = get(lotId);
         if (lot == null) {
             throw new IllegalArgumentException("Lot not found: " + lotId);
@@ -191,7 +191,7 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional
-    public InventoryLot disposeLot(String lotId, String reason, String sysUserId) {
+    public InventoryLot disposeLot(Long lotId, String reason, String sysUserId) {
         InventoryLot lot = get(lotId);
         if (lot == null) {
             throw new IllegalArgumentException("Lot not found: " + lotId);
@@ -213,14 +213,14 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isLotExpired(String lotId) {
+    public boolean isLotExpired(Long lotId) {
         InventoryLot lot = get(lotId);
         return lot != null && lot.isExpired();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isLotAvailable(String lotId) {
+    public boolean isLotAvailable(Long lotId) {
         InventoryLot lot = get(lotId);
         return lot != null && lot.isAvailableForUse();
     }

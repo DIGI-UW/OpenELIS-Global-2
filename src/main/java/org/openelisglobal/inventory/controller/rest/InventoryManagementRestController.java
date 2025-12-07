@@ -35,8 +35,9 @@ public class InventoryManagementRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
-            List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO(request.getItemId(),
-                    request.getQuantity(), request.getTestResultId(), request.getAnalysisId(), sysUserId);
+            List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO(
+                    Long.valueOf(request.getItemId()), request.getQuantity(), request.getTestResultId(),
+                    request.getAnalysisId(), sysUserId);
 
             return ResponseEntity.ok(new ConsumeResponse(records));
         } catch (IllegalArgumentException e) {
@@ -74,7 +75,8 @@ public class InventoryManagementRestController extends BaseRestController {
     public ResponseEntity<AvailabilityResponse> checkAvailability(@RequestParam String itemId,
             @RequestParam Double quantity) {
         try {
-            boolean isAvailable = inventoryManagementService.isSufficientInventoryAvailable(itemId, quantity);
+            boolean isAvailable = inventoryManagementService.isSufficientInventoryAvailable(Long.valueOf(itemId),
+                    quantity);
             return ResponseEntity.ok(new AvailabilityResponse(isAvailable, itemId, quantity));
         } catch (Exception e) {
             LogEvent.logError(e);

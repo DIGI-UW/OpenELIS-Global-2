@@ -5,7 +5,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
-public interface InventoryItemService extends BaseObjectService<InventoryItem, String> {
+public interface InventoryItemService extends BaseObjectService<InventoryItem, Long> {
 
     /**
      * Get all active inventory items
@@ -41,15 +41,15 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, S
     /**
      * Calculate total current stock quantity for an item across all available lots
      */
-    Double getTotalCurrentStock(String itemId);
+    Double getTotalCurrentStock(Long itemId);
 
     /**
      * Check if an item is currently in stock (has available lots)
      */
-    boolean isInStock(String itemId);
+    boolean isInStock(Long itemId);
 
     /**
      * Deactivate an item (soft delete)
      */
-    void deactivateItem(String itemId, String sysUserId);
+    void deactivateItem(Long itemId, String sysUserId);
 }

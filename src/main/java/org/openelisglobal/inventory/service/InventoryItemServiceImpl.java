@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<InventoryItem, String>
+public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<InventoryItem, Long>
         implements InventoryItemService {
 
     @Autowired
@@ -68,14 +68,14 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     @Override
     @Transactional(readOnly = true)
-    public Double getTotalCurrentStock(String itemId) {
+    public Double getTotalCurrentStock(Long itemId) {
         Integer total = inventoryLotDAO.getTotalCurrentQuantity(itemId);
         return total != null ? total.doubleValue() : 0.0;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isInStock(String itemId) {
+    public boolean isInStock(Long itemId) {
         List<org.openelisglobal.inventory.valueholder.InventoryLot> availableLots = inventoryLotDAO
                 .getAvailableLotsByItemFEFO(itemId);
         return availableLots != null && !availableLots.isEmpty();
@@ -83,7 +83,7 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     @Override
     @Transactional
-    public void deactivateItem(String itemId, String sysUserId) {
+    public void deactivateItem(Long itemId, String sysUserId) {
         InventoryItem item = get(itemId);
         if (item != null) {
             item.setIsActive("N");

@@ -45,7 +45,7 @@ public class InventoryItemRestController extends BaseRestController {
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<InventoryItem> getById(@PathVariable String id) {
         try {
-            InventoryItem item = inventoryItemService.get(id);
+            InventoryItem item = inventoryItemService.get(Long.valueOf(id));
             if (item == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -103,8 +103,8 @@ public class InventoryItemRestController extends BaseRestController {
     @GetMapping(value = "/{id}/stock", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<StockResponse> getTotalStock(@PathVariable String id) {
         try {
-            Double stock = inventoryItemService.getTotalCurrentStock(id);
-            boolean inStock = inventoryItemService.isInStock(id);
+            Double stock = inventoryItemService.getTotalCurrentStock(Long.valueOf(id));
+            boolean inStock = inventoryItemService.isInStock(Long.valueOf(id));
             return ResponseEntity.ok(new StockResponse(stock, inStock));
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -131,14 +131,14 @@ public class InventoryItemRestController extends BaseRestController {
     public ResponseEntity<InventoryItem> update(@PathVariable String id, @Valid @RequestBody InventoryItem item,
             HttpServletRequest request) {
         try {
-            InventoryItem existingItem = inventoryItemService.get(id);
+            InventoryItem existingItem = inventoryItemService.get(Long.valueOf(id));
             if (existingItem == null) {
                 return ResponseEntity.notFound().build();
             }
 
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
-            item.setId(id);
+            item.setId(Long.valueOf(id));
             item.setSysUserId(sysUserId);
 
             InventoryItem updatedItem = inventoryItemService.update(item);
@@ -155,7 +155,7 @@ public class InventoryItemRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
-            inventoryItemService.deactivateItem(id, sysUserId);
+            inventoryItemService.deactivateItem(Long.valueOf(id), sysUserId);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             LogEvent.logError(e);

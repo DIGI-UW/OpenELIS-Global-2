@@ -16,7 +16,7 @@ public interface InventoryManagementService {
      * @param sysUserId      The user performing the action
      * @return List of lots consumed with quantities
      */
-    List<ConsumptionRecord> consumeInventoryFEFO(String itemId, Double quantityNeeded, String testResultId,
+    List<ConsumptionRecord> consumeInventoryFEFO(Long itemId, Double quantityNeeded, String testResultId,
             String analysisId, String sysUserId);
 
     /**
@@ -35,7 +35,7 @@ public interface InventoryManagementService {
      * @param quantityNeeded The quantity needed
      * @return true if sufficient inventory is available
      */
-    boolean isSufficientInventoryAvailable(String itemId, Double quantityNeeded);
+    boolean isSufficientInventoryAvailable(Long itemId, Double quantityNeeded);
 
     /**
      * Get inventory alerts (low stock, expiring soon, expired)
@@ -50,23 +50,23 @@ public interface InventoryManagementService {
      * Record to track consumption from multiple lots
      */
     class ConsumptionRecord {
-        private String lotId;
+        private Long lotId;
         private String lotNumber;
         private Double quantityConsumed;
         private Double remainingQuantity;
 
-        public ConsumptionRecord(String lotId, String lotNumber, Double quantityConsumed, Double remainingQuantity) {
+        public ConsumptionRecord(Long lotId, String lotNumber, Double quantityConsumed, Double remainingQuantity) {
             this.lotId = lotId;
             this.lotNumber = lotNumber;
             this.quantityConsumed = quantityConsumed;
             this.remainingQuantity = remainingQuantity;
         }
 
-        public String getLotId() {
+        public Long getLotId() {
             return lotId;
         }
 
-        public void setLotId(String lotId) {
+        public void setLotId(Long lotId) {
             this.lotId = lotId;
         }
 

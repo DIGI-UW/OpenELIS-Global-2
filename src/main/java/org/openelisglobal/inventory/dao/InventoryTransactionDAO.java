@@ -7,12 +7,12 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 
-public interface InventoryTransactionDAO extends BaseDAO<InventoryTransaction, String> {
+public interface InventoryTransactionDAO extends BaseDAO<InventoryTransaction, Long> {
 
     /**
      * Get transactions by lot ID, ordered by date descending
      */
-    List<InventoryTransaction> getByLotId(String lotId) throws LIMSRuntimeException;
+    List<InventoryTransaction> getByLotId(Long lotId) throws LIMSRuntimeException;
 
     /**
      * Get transactions by transaction type

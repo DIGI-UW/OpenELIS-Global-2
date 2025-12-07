@@ -6,7 +6,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LocationType;
 import org.openelisglobal.inventory.valueholder.InventoryStorageLocation;
 
-public interface InventoryStorageLocationDAO extends BaseDAO<InventoryStorageLocation, String> {
+public interface InventoryStorageLocationDAO extends BaseDAO<InventoryStorageLocation, Long> {
 
     /**
      * Get all active storage locations
@@ -21,7 +21,7 @@ public interface InventoryStorageLocationDAO extends BaseDAO<InventoryStorageLoc
     /**
      * Get child locations of a parent location
      */
-    List<InventoryStorageLocation> getChildLocations(String parentLocationId) throws LIMSRuntimeException;
+    List<InventoryStorageLocation> getChildLocations(Long parentLocationId) throws LIMSRuntimeException;
 
     /**
      * Get top-level locations (no parent)

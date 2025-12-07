@@ -44,7 +44,7 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<InventoryStorageLocation> getById(@PathVariable String id) {
         try {
-            InventoryStorageLocation location = storageLocationService.get(id);
+            InventoryStorageLocation location = storageLocationService.get(Long.valueOf(id));
             if (location == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -69,7 +69,7 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     @GetMapping(value = "/{parentId}/children", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryStorageLocation>> getChildren(@PathVariable String parentId) {
         try {
-            List<InventoryStorageLocation> locations = storageLocationService.getChildLocations(parentId);
+            List<InventoryStorageLocation> locations = storageLocationService.getChildLocations(Long.valueOf(parentId));
             return ResponseEntity.ok(locations);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -105,7 +105,7 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     @GetMapping(value = "/{id}/path", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PathResponse> getPath(@PathVariable String id) {
         try {
-            String path = storageLocationService.getLocationPath(id);
+            String path = storageLocationService.getLocationPath(Long.valueOf(id));
             return ResponseEntity.ok(new PathResponse(path));
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -116,7 +116,7 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     @GetMapping(value = "/{id}/has-active-lots", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<HasActiveLotsResponse> hasActiveLots(@PathVariable String id) {
         try {
-            boolean hasLots = storageLocationService.hasActiveLots(id);
+            boolean hasLots = storageLocationService.hasActiveLots(Long.valueOf(id));
             return ResponseEntity.ok(new HasActiveLotsResponse(hasLots));
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -144,14 +144,14 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     public ResponseEntity<InventoryStorageLocation> update(@PathVariable String id,
             @Valid @RequestBody InventoryStorageLocation location, HttpServletRequest request) {
         try {
-            InventoryStorageLocation existingLocation = storageLocationService.get(id);
+            InventoryStorageLocation existingLocation = storageLocationService.get(Long.valueOf(id));
             if (existingLocation == null) {
                 return ResponseEntity.notFound().build();
             }
 
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
-            location.setId(id);
+            location.setId(Long.valueOf(id));
             location.setSysUserId(sysUserId);
 
             InventoryStorageLocation updatedLocation = storageLocationService.update(location);
@@ -168,7 +168,7 @@ public class InventoryStorageLocationRestController extends BaseRestController {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
-            storageLocationService.deactivateLocation(id, sysUserId);
+            storageLocationService.deactivateLocation(Long.valueOf(id), sysUserId);
             return ResponseEntity.ok().build();
         } catch (IllegalStateException e) {
             LogEvent.logError(e);

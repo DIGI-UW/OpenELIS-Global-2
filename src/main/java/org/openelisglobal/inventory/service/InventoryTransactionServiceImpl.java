@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class InventoryTransactionServiceImpl extends AuditableBaseObjectServiceImpl<InventoryTransaction, String>
+public class InventoryTransactionServiceImpl extends AuditableBaseObjectServiceImpl<InventoryTransaction, Long>
         implements InventoryTransactionService {
 
     @Autowired
@@ -34,7 +34,7 @@ public class InventoryTransactionServiceImpl extends AuditableBaseObjectServiceI
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryTransaction> getByLotId(String lotId) {
+    public List<InventoryTransaction> getByLotId(Long lotId) {
         return inventoryTransactionDAO.getByLotId(lotId);
     }
 
@@ -58,7 +58,7 @@ public class InventoryTransactionServiceImpl extends AuditableBaseObjectServiceI
 
     @Override
     @Transactional
-    public InventoryTransaction recordTransaction(String lotId, TransactionType transactionType, Double quantityChange,
+    public InventoryTransaction recordTransaction(Long lotId, TransactionType transactionType, Double quantityChange,
             Double quantityAfter, String referenceId, String referenceType, String notes, String sysUserId) {
 
         InventoryLot lot = inventoryLotDAO.get(lotId)
@@ -78,7 +78,7 @@ public class InventoryTransactionServiceImpl extends AuditableBaseObjectServiceI
         transaction.setTransactionDate(new Timestamp(System.currentTimeMillis()));
         transaction.setSysUserId(sysUserId);
 
-        String id = insert(transaction);
+        Long id = insert(transaction);
         return get(id);
     }
 }

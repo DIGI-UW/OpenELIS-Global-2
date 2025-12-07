@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class InventoryStorageLocationServiceImpl extends
-        AuditableBaseObjectServiceImpl<InventoryStorageLocation, String> implements InventoryStorageLocationService {
+public class InventoryStorageLocationServiceImpl extends AuditableBaseObjectServiceImpl<InventoryStorageLocation, Long>
+        implements InventoryStorageLocationService {
 
     @Autowired
     private InventoryStorageLocationDAO storageLocationDAO;
@@ -46,7 +46,7 @@ public class InventoryStorageLocationServiceImpl extends
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryStorageLocation> getChildLocations(String parentLocationId) {
+    public List<InventoryStorageLocation> getChildLocations(Long parentLocationId) {
         return storageLocationDAO.getChildLocations(parentLocationId);
     }
 
@@ -70,7 +70,7 @@ public class InventoryStorageLocationServiceImpl extends
 
     @Override
     @Transactional
-    public void deactivateLocation(String locationId, String sysUserId) {
+    public void deactivateLocation(Long locationId, String sysUserId) {
         InventoryStorageLocation location = get(locationId);
         if (location != null) {
             // Check if location has active lots
@@ -88,7 +88,7 @@ public class InventoryStorageLocationServiceImpl extends
 
     @Override
     @Transactional(readOnly = true)
-    public boolean hasActiveLots(String locationId) {
+    public boolean hasActiveLots(Long locationId) {
         List<InventoryLot> lots = inventoryLotDAO.getByStorageLocationId(locationId);
         if (lots == null || lots.isEmpty()) {
             return false;
@@ -106,7 +106,7 @@ public class InventoryStorageLocationServiceImpl extends
 
     @Override
     @Transactional(readOnly = true)
-    public String getLocationPath(String locationId) {
+    public String getLocationPath(Long locationId) {
         InventoryStorageLocation location = get(locationId);
         if (location == null) {
             return "";

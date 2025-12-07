@@ -4,7 +4,7 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 
-public interface InventoryUsageService extends BaseObjectService<InventoryUsage, String> {
+public interface InventoryUsageService extends BaseObjectService<InventoryUsage, Long> {
 
     /**
      * Get usage records by test result ID (for Lot Traceability Report)
@@ -14,12 +14,12 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
     /**
      * Get usage records by lot ID
      */
-    List<InventoryUsage> getByLotId(String lotId);
+    List<InventoryUsage> getByLotId(Long lotId);
 
     /**
      * Get usage records by inventory item ID
      */
-    List<InventoryUsage> getByInventoryItemId(String itemId);
+    List<InventoryUsage> getByInventoryItemId(Long itemId);
 
     /**
      * Get usage records by analysis ID
@@ -28,7 +28,7 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
 
     /**
      * Record inventory usage for a test result
-     * 
+     *
      * @param lotId        The lot ID used
      * @param itemId       The inventory item ID
      * @param quantityUsed The quantity consumed
@@ -37,6 +37,6 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
      * @param sysUserId    The user performing the action
      * @return The created usage record
      */
-    InventoryUsage recordUsage(String lotId, String itemId, Double quantityUsed, String testResultId, String analysisId,
+    InventoryUsage recordUsage(Long lotId, Long itemId, Double quantityUsed, String testResultId, String analysisId,
             String sysUserId);
 }

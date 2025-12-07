@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<InventoryUsage, String>
+public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<InventoryUsage, Long>
         implements InventoryUsageService {
 
     @Autowired
@@ -43,13 +43,13 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryUsage> getByLotId(String lotId) {
+    public List<InventoryUsage> getByLotId(Long lotId) {
         return inventoryUsageDAO.getByLotId(lotId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryUsage> getByInventoryItemId(String itemId) {
+    public List<InventoryUsage> getByInventoryItemId(Long itemId) {
         return inventoryUsageDAO.getByInventoryItemId(itemId);
     }
 
@@ -61,7 +61,7 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
 
     @Override
     @Transactional
-    public InventoryUsage recordUsage(String lotId, String itemId, Double quantityUsed, String testResultId,
+    public InventoryUsage recordUsage(Long lotId, Long itemId, Double quantityUsed, String testResultId,
             String analysisId, String sysUserId) {
 
         InventoryLot lot = inventoryLotDAO.get(lotId)
@@ -83,7 +83,7 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
         usage.setUsageDate(new Timestamp(System.currentTimeMillis()));
         usage.setSysUserId(sysUserId);
 
-        String id = insert(usage);
+        Long id = insert(usage);
         return get(id);
     }
 }

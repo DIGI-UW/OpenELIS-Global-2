@@ -24,7 +24,7 @@ public class InventoryUsageRestController extends BaseRestController {
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<InventoryUsage> getById(@PathVariable String id) {
         try {
-            InventoryUsage usage = usageService.get(id);
+            InventoryUsage usage = usageService.get(Long.valueOf(id));
             if (usage == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -49,7 +49,7 @@ public class InventoryUsageRestController extends BaseRestController {
     @GetMapping(value = "/lot/{lotId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryUsage>> getByLotId(@PathVariable String lotId) {
         try {
-            List<InventoryUsage> usageList = usageService.getByLotId(lotId);
+            List<InventoryUsage> usageList = usageService.getByLotId(Long.valueOf(lotId));
             return ResponseEntity.ok(usageList);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -60,7 +60,7 @@ public class InventoryUsageRestController extends BaseRestController {
     @GetMapping(value = "/item/{itemId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryUsage>> getByItemId(@PathVariable String itemId) {
         try {
-            List<InventoryUsage> usageList = usageService.getByInventoryItemId(itemId);
+            List<InventoryUsage> usageList = usageService.getByInventoryItemId(Long.valueOf(itemId));
             return ResponseEntity.ok(usageList);
         } catch (Exception e) {
             LogEvent.logError(e);

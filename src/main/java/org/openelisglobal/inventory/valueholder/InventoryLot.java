@@ -6,10 +6,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.Min;
@@ -17,20 +19,26 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 
+@Getter
+@Setter
 @Entity
 @Access(AccessType.FIELD)
 @Table(name = "inventory_lot")
-public class InventoryLot extends BaseObject<String> {
+public class InventoryLot extends BaseObject<Long> {
 
     private static final long serialVersionUID = 1L;
 
     @Id
-    @Column(name = "id", length = 36)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "inventory_lot_generator")
+    @SequenceGenerator(name = "inventory_lot_generator", sequenceName = "inventory_lot_seq", allocationSize = 1)
+    @Column(name = "id")
+    private Long id;
 
     @Column(name = "fhir_uuid", nullable = false, unique = true)
     private UUID fhirUuid;
@@ -88,16 +96,6 @@ public class InventoryLot extends BaseObject<String> {
     @Column(name = "version", nullable = false)
     private Integer version = 0;
 
-    @PrePersist
-    public void prePersist() {
-        if (id == null) {
-            id = UUID.randomUUID().toString();
-        }
-        if (fhirUuid == null) {
-            fhirUuid = UUID.randomUUID();
-        }
-    }
-
     // Business logic helper methods
 
     /**
@@ -139,129 +137,5 @@ public class InventoryLot extends BaseObject<String> {
      */
     public boolean isOpened() {
         return dateOpened != null;
-    }
-
-    // Getters and Setters
-
-    @Override
-    public String getId() {
-        return id;
-    }
-
-    @Override
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public UUID getFhirUuid() {
-        return fhirUuid;
-    }
-
-    public void setFhirUuid(UUID fhirUuid) {
-        this.fhirUuid = fhirUuid;
-    }
-
-    public InventoryItem getInventoryItem() {
-        return inventoryItem;
-    }
-
-    public void setInventoryItem(InventoryItem inventoryItem) {
-        this.inventoryItem = inventoryItem;
-    }
-
-    public InventoryStorageLocation getStorageLocation() {
-        return storageLocation;
-    }
-
-    public void setStorageLocation(InventoryStorageLocation storageLocation) {
-        this.storageLocation = storageLocation;
-    }
-
-    public String getLotNumber() {
-        return lotNumber;
-    }
-
-    public void setLotNumber(String lotNumber) {
-        this.lotNumber = lotNumber;
-    }
-
-    public Timestamp getExpirationDate() {
-        return expirationDate;
-    }
-
-    public void setExpirationDate(Timestamp expirationDate) {
-        this.expirationDate = expirationDate;
-    }
-
-    public Timestamp getDateOpened() {
-        return dateOpened;
-    }
-
-    public void setDateOpened(Timestamp dateOpened) {
-        this.dateOpened = dateOpened;
-    }
-
-    public Timestamp getCalculatedExpiryAfterOpening() {
-        return calculatedExpiryAfterOpening;
-    }
-
-    public void setCalculatedExpiryAfterOpening(Timestamp calculatedExpiryAfterOpening) {
-        this.calculatedExpiryAfterOpening = calculatedExpiryAfterOpening;
-    }
-
-    public Timestamp getReceiptDate() {
-        return receiptDate;
-    }
-
-    public void setReceiptDate(Timestamp receiptDate) {
-        this.receiptDate = receiptDate;
-    }
-
-    public Double getInitialQuantity() {
-        return initialQuantity;
-    }
-
-    public void setInitialQuantity(Double initialQuantity) {
-        this.initialQuantity = initialQuantity;
-    }
-
-    public Double getCurrentQuantity() {
-        return currentQuantity;
-    }
-
-    public void setCurrentQuantity(Double currentQuantity) {
-        this.currentQuantity = currentQuantity;
-    }
-
-    public QCStatus getQcStatus() {
-        return qcStatus;
-    }
-
-    public void setQcStatus(QCStatus qcStatus) {
-        this.qcStatus = qcStatus;
-    }
-
-    public LotStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(LotStatus status) {
-        this.status = status;
-    }
-
-    public String getBarcode() {
-        return barcode;
-    }
-
-    public void setBarcode(String barcode) {
-        this.barcode = barcode;
-    }
-
-    public Integer getVersion() {
-        return version;
-    }
-
-    public void setVersion(Integer version) {
-        this.version = version;
     }
 }

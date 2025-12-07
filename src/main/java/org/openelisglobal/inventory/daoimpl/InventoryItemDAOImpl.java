@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, String> implements InventoryItemDAO {
+public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> implements InventoryItemDAO {
 
     public InventoryItemDAOImpl() {
         super(InventoryItem.class);

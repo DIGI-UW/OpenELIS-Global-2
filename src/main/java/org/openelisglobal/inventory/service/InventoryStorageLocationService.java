@@ -8,7 +8,7 @@ import org.openelisglobal.inventory.valueholder.InventoryStorageLocation;
 /**
  * Service interface for InventoryStorageLocation operations
  */
-public interface InventoryStorageLocationService extends BaseObjectService<InventoryStorageLocation, String> {
+public interface InventoryStorageLocationService extends BaseObjectService<InventoryStorageLocation, Long> {
 
     /**
      * Get all active storage locations
@@ -23,7 +23,7 @@ public interface InventoryStorageLocationService extends BaseObjectService<Inven
     /**
      * Get child locations of a parent location
      */
-    List<InventoryStorageLocation> getChildLocations(String parentLocationId);
+    List<InventoryStorageLocation> getChildLocations(Long parentLocationId);
 
     /**
      * Get top-level locations (no parent)
@@ -43,15 +43,15 @@ public interface InventoryStorageLocationService extends BaseObjectService<Inven
     /**
      * Deactivate a storage location (soft delete)
      */
-    void deactivateLocation(String locationId, String sysUserId);
+    void deactivateLocation(Long locationId, String sysUserId);
 
     /**
      * Check if a location has any active lots stored
      */
-    boolean hasActiveLots(String locationId);
+    boolean hasActiveLots(Long locationId);
 
     /**
      * Get full location path (e.g., "Main Lab > Refrigerator > Shelf A")
      */
-    String getLocationPath(String locationId);
+    String getLocationPath(Long locationId);
 }

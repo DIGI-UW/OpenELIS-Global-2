@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, String> implements InventoryUsageDAO {
+public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, Long> implements InventoryUsageDAO {
 
     public InventoryUsageDAOImpl() {
         super(InventoryUsage.class);
@@ -33,7 +33,7 @@ public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, String> i
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryUsage> getByLotId(String lotId) throws LIMSRuntimeException {
+    public List<InventoryUsage> getByLotId(Long lotId) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryUsage u WHERE u.lot.id = :lotId ORDER BY u.usageDate DESC";
             Query<InventoryUsage> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryUsage.class);
@@ -46,7 +46,7 @@ public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, String> i
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryUsage> getByInventoryItemId(String itemId) throws LIMSRuntimeException {
+    public List<InventoryUsage> getByInventoryItemId(Long itemId) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryUsage u WHERE u.inventoryItem.id = :itemId ORDER BY u.usageDate DESC";
             Query<InventoryUsage> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryUsage.class);

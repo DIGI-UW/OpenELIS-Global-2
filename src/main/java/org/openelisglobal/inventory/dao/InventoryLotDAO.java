@@ -7,18 +7,18 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 
-public interface InventoryLotDAO extends BaseDAO<InventoryLot, String> {
+public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
 
     /**
      * Get all lots for a specific inventory item
      */
-    List<InventoryLot> getByInventoryItemId(String itemId) throws LIMSRuntimeException;
+    List<InventoryLot> getByInventoryItemId(Long itemId) throws LIMSRuntimeException;
 
     /**
      * Get available lots by item ID, sorted by expiration date (FEFO) Only includes
      * lots with status ACTIVE/IN_USE, QC PASSED, and currentQuantity > 0
      */
-    List<InventoryLot> getAvailableLotsByItemFEFO(String itemId) throws LIMSRuntimeException;
+    List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId) throws LIMSRuntimeException;
 
     /**
      * Get lots expiring within specified days
@@ -43,7 +43,7 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, String> {
     /**
      * Get lots by storage location
      */
-    List<InventoryLot> getByStorageLocationId(String locationId) throws LIMSRuntimeException;
+    List<InventoryLot> getByStorageLocationId(Long locationId) throws LIMSRuntimeException;
 
     /**
      * Get lots by QC status
@@ -58,7 +58,7 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, String> {
     /**
      * Get total current quantity for an inventory item across all lots
      */
-    Integer getTotalCurrentQuantity(String itemId) throws LIMSRuntimeException;
+    Integer getTotalCurrentQuantity(Long itemId) throws LIMSRuntimeException;
 
     /**
      * Get lot by FHIR UUID

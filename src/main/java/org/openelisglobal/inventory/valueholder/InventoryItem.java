@@ -15,9 +15,13 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "inventory_item")
 @Access(AccessType.FIELD)
@@ -133,185 +137,5 @@ public class InventoryItem extends BaseObject<Long> {
 
     public boolean isActive() {
         return "Y".equals(isActive);
-    }
-
-    // Getters and Setters
-
-    @Override
-    public Long getId() {
-        return id;
-    }
-
-    @Override
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public UUID getFhirUuid() {
-        return fhirUuid;
-    }
-
-    public void setFhirUuid(UUID fhirUuid) {
-        this.fhirUuid = fhirUuid;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public ItemType getItemType() {
-        return itemType;
-    }
-
-    public void setItemType(ItemType itemType) {
-        this.itemType = itemType;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
-    public String getManufacturer() {
-        return manufacturer;
-    }
-
-    public void setManufacturer(String manufacturer) {
-        this.manufacturer = manufacturer;
-    }
-
-    public String getCatalogNumber() {
-        return catalogNumber;
-    }
-
-    public void setCatalogNumber(String catalogNumber) {
-        this.catalogNumber = catalogNumber;
-    }
-
-    public String getStorageRequirements() {
-        return storageRequirements;
-    }
-
-    public void setStorageRequirements(String storageRequirements) {
-        this.storageRequirements = storageRequirements;
-    }
-
-    public Integer getQuantityPerUnit() {
-        return quantityPerUnit;
-    }
-
-    public void setQuantityPerUnit(Integer quantityPerUnit) {
-        this.quantityPerUnit = quantityPerUnit;
-    }
-
-    public String getUnits() {
-        return units;
-    }
-
-    public void setUnits(String units) {
-        this.units = units;
-    }
-
-    public Integer getLowStockThreshold() {
-        return lowStockThreshold;
-    }
-
-    public void setLowStockThreshold(Integer lowStockThreshold) {
-        this.lowStockThreshold = lowStockThreshold;
-    }
-
-    public Integer getExpirationAlertDays() {
-        return expirationAlertDays;
-    }
-
-    public void setExpirationAlertDays(Integer expirationAlertDays) {
-        this.expirationAlertDays = expirationAlertDays;
-    }
-
-    public Integer getStabilityAfterOpening() {
-        return stabilityAfterOpening;
-    }
-
-    public void setStabilityAfterOpening(Integer stabilityAfterOpening) {
-        this.stabilityAfterOpening = stabilityAfterOpening;
-    }
-
-    public String getDilutionNotes() {
-        return dilutionNotes;
-    }
-
-    public void setDilutionNotes(String dilutionNotes) {
-        this.dilutionNotes = dilutionNotes;
-    }
-
-    public String getCompatibleAnalyzers() {
-        return compatibleAnalyzers;
-    }
-
-    public void setCompatibleAnalyzers(String compatibleAnalyzers) {
-        this.compatibleAnalyzers = compatibleAnalyzers;
-    }
-
-    public String getCalibrationRequired() {
-        return calibrationRequired;
-    }
-
-    public void setCalibrationRequired(String calibrationRequired) {
-        this.calibrationRequired = calibrationRequired;
-    }
-
-    public Integer getTestsPerKit() {
-        return testsPerKit;
-    }
-
-    public void setTestsPerKit(Integer testsPerKit) {
-        this.testsPerKit = testsPerKit;
-    }
-
-    public String getIndividualTracking() {
-        return individualTracking;
-    }
-
-    public void setIndividualTracking(String individualTracking) {
-        this.individualTracking = individualTracking;
-    }
-
-    public String getSourceOrganization() {
-        return sourceOrganization;
-    }
-
-    public void setSourceOrganization(String sourceOrganization) {
-        this.sourceOrganization = sourceOrganization;
-    }
-
-    public String getKitTestType() {
-        return kitTestType;
-    }
-
-    public void setKitTestType(String kitTestType) {
-        this.kitTestType = kitTestType;
-    }
-
-    public String getIsActive() {
-        return isActive;
-    }
-
-    public void setIsActive(String isActive) {
-        this.isActive = isActive;
     }
 }

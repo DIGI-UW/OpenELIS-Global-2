@@ -6,7 +6,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
-public interface InventoryItemDAO extends BaseDAO<InventoryItem, String> {
+public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
 
     /**
      * Get all active inventory items

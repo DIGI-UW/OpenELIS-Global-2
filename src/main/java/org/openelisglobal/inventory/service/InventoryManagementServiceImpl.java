@@ -29,7 +29,7 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Override
     @Transactional
-    public List<ConsumptionRecord> consumeInventoryFEFO(String itemId, Double quantityNeeded, String testResultId,
+    public List<ConsumptionRecord> consumeInventoryFEFO(Long itemId, Double quantityNeeded, String testResultId,
             String analysisId, String sysUserId) {
 
         if (quantityNeeded <= 0) {
@@ -125,7 +125,7 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isSufficientInventoryAvailable(String itemId, Double quantityNeeded) {
+    public boolean isSufficientInventoryAvailable(Long itemId, Double quantityNeeded) {
         if (quantityNeeded <= 0) {
             return true;
         }

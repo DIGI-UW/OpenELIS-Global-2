@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class InventoryTransactionDAOImpl extends BaseDAOImpl<InventoryTransaction, String>
+public class InventoryTransactionDAOImpl extends BaseDAOImpl<InventoryTransaction, Long>
         implements InventoryTransactionDAO {
 
     public InventoryTransactionDAOImpl() {
@@ -23,7 +23,7 @@ public class InventoryTransactionDAOImpl extends BaseDAOImpl<InventoryTransactio
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryTransaction> getByLotId(String lotId) throws LIMSRuntimeException {
+    public List<InventoryTransaction> getByLotId(Long lotId) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryTransaction t WHERE t.lot.id = :lotId ORDER BY t.transactionDate DESC";
             Query<InventoryTransaction> query = entityManager.unwrap(Session.class).createQuery(hql,

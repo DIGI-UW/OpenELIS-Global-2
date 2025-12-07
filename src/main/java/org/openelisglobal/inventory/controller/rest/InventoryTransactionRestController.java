@@ -28,7 +28,7 @@ public class InventoryTransactionRestController extends BaseRestController {
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<InventoryTransaction> getById(@PathVariable String id) {
         try {
-            InventoryTransaction transaction = transactionService.get(id);
+            InventoryTransaction transaction = transactionService.get(Long.valueOf(id));
             if (transaction == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -42,7 +42,7 @@ public class InventoryTransactionRestController extends BaseRestController {
     @GetMapping(value = "/lot/{lotId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryTransaction>> getByLotId(@PathVariable String lotId) {
         try {
-            List<InventoryTransaction> transactions = transactionService.getByLotId(lotId);
+            List<InventoryTransaction> transactions = transactionService.getByLotId(Long.valueOf(lotId));
             return ResponseEntity.ok(transactions);
         } catch (Exception e) {
             LogEvent.logError(e);

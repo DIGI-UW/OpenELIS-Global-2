@@ -5,7 +5,7 @@ import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 
-public interface InventoryUsageDAO extends BaseDAO<InventoryUsage, String> {
+public interface InventoryUsageDAO extends BaseDAO<InventoryUsage, Long> {
 
     /**
      * Get usage records by test result ID (for Lot Traceability Report)
@@ -15,12 +15,12 @@ public interface InventoryUsageDAO extends BaseDAO<InventoryUsage, String> {
     /**
      * Get usage records by lot ID
      */
-    List<InventoryUsage> getByLotId(String lotId) throws LIMSRuntimeException;
+    List<InventoryUsage> getByLotId(Long lotId) throws LIMSRuntimeException;
 
     /**
      * Get usage records by inventory item ID
      */
-    List<InventoryUsage> getByInventoryItemId(String itemId) throws LIMSRuntimeException;
+    List<InventoryUsage> getByInventoryItemId(Long itemId) throws LIMSRuntimeException;
 
     /**
      * Get usage records by analysis ID
