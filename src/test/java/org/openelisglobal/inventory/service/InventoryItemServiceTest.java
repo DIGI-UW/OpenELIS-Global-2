@@ -24,7 +24,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void get_shouldReturnInventoryItemWhenExists() {
-        InventoryItem item = inventoryItemService.get("test-item-1");
+        InventoryItem item = inventoryItemService.get(1L);
 
         assertNotNull("Item should be loaded from dataset", item);
         assertEquals("Test Reagent A", item.getName());
@@ -34,7 +34,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void get_shouldReturnCorrectItemDetails() {
-        InventoryItem item = inventoryItemService.get("test-item-2");
+        InventoryItem item = inventoryItemService.get(2L);
 
         assertNotNull("Should find test item 2", item);
         assertEquals("Test RDT Kit", item.getName());
@@ -53,7 +53,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
     @Test
     @org.junit.Ignore("Optimistic lock issue - needs investigation")
     public void update_shouldUpdateInventoryItem() {
-        InventoryItem item = inventoryItemService.get("test-item-1");
+        InventoryItem item = inventoryItemService.get(1L);
         item.setDescription("Updated description for testing");
 
         InventoryItem updatedItem = inventoryItemService.update(item);
@@ -64,7 +64,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getTotalCurrentStock_shouldCalculateStockFromLots() {
-        Double totalStock = inventoryItemService.getTotalCurrentStock("test-item-1");
+        Double totalStock = inventoryItemService.getTotalCurrentStock(1L);
 
         assertNotNull("Total stock should not be null", totalStock);
         assertEquals("Total stock should be sum of all lots", Double.valueOf(150.0), totalStock);
@@ -78,7 +78,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
         newItem.setUnits("pieces");
         newItem.setIsActive("Y");
 
-        String insertedId = inventoryItemService.insert(newItem);
+        Long insertedId = inventoryItemService.insert(newItem);
 
         assertNotNull("Inserted ID should not be null", insertedId);
 
