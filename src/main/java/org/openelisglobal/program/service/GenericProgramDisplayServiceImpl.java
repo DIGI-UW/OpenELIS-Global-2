@@ -45,7 +45,7 @@ public class GenericProgramDisplayServiceImpl implements GenericProgramDisplaySe
     @Transactional
     public DashboardSummary getAllProgramSamples() {
 
-        List<ProgramSample> samples = programSampleService.getAllProgramSamples();
+        List<ProgramSample> samples = programSampleService.getAll();
 
         DashboardSummary summary = new DashboardSummary();
 
@@ -124,6 +124,7 @@ public class GenericProgramDisplayServiceImpl implements GenericProgramDisplaySe
         item.setProgramCode(ps.getProgram().getCode());
         item.setReceivedDate(ps.getSample().getReceivedDate());
         item.setAccessionNumber(ps.getSample().getAccessionNumber());
+        item.setQuestionnaireResponseUuid(ps.getQuestionnaireResponseUuid());
 
         return item;
     }

@@ -54,9 +54,9 @@ const ProgramCaseView = () => {
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return null;
   if (error) return <p>{error}</p>;
-  if (!programSampleData) return <p>No data found.</p>;
+  if (!programSampleData) return;
 
   const patientHeaderProps = {
     id:
@@ -95,6 +95,7 @@ const ProgramCaseView = () => {
               <div className="patient-header-2">
                 {questionnaireResponse && (
                   <QuestionnaireResponse
+                    key={questionnaireResponse.programSampleId}
                     questionnaireResponse={questionnaireResponse}
                   />
                 )}

@@ -77,4 +77,5 @@ public class ProgramSample extends BaseObject<Integer> {
     public void setQuestionnaireResponseUuid(UUID questionnaireResponseUuid) {
         this.questionnaireResponseUuid = questionnaireResponseUuid;
     }
+
 }

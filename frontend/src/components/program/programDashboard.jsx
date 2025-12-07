@@ -51,7 +51,8 @@ const ProgramDashboard = () => {
         programName: item.programName || "",
         programCode: item.programCode || "",
         accession: item.accessionNumber || "",
-        receivedDate: item.receivedDate || "",
+        receivedDate: new Date(item.receivedDate).toLocaleDateString() || "",
+        questionnaireResponseUuid: item.questionnaireResponseUuid || "",
       }));
 
       setTableRows(formatted);
@@ -79,6 +80,10 @@ const ProgramDashboard = () => {
     {
       key: "receivedDate",
       header: <FormattedMessage id="label.audittrailreport.receiveddate" />,
+    },
+    {
+      key: "questionnaireResponseUuid",
+      header: <FormattedMessage id="notebook.label.questionnaire" />,
     },
   ];
 

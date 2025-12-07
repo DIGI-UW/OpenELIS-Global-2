@@ -1859,7 +1859,7 @@
   "sidenav.label.storage.coldstorage.tooltip": "Monitor temperature and humidity of freezers and refrigerators",
   "sidenav.label.storage.management": "Storage Management",
   "sidenav.label.storage.management.tooltip": "Manage storage locations and devices",
-  "banner.menu.results.questionnaires": "Questionnaires"
+  "banner.menu.results.questionnaires": "Questionnaires",
   "banner.menu.generic.sample.results": "Enter Results",
   "tooltip.banner.menu.generic.sample.results": "Enter test results for generic samples",
   "banner.menu.sampleManagement": "Sample Management",

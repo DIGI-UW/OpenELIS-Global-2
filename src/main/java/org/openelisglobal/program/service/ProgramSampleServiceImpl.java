@@ -1,6 +1,5 @@
 package org.openelisglobal.program.service;
 
-import java.util.List;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.program.dao.ProgramSampleDAO;
 import org.openelisglobal.program.valueholder.ProgramSample;
@@ -26,12 +25,6 @@ public class ProgramSampleServiceImpl extends AuditableBaseObjectServiceImpl<Pro
     @Override
     public ProgramSample getProgrammeSampleBySample(Integer sampleId, String programName) {
         return getBaseObjectDAO().getProgrammeSampleBySample(sampleId, programName);
-    }
-
-    @Override
-    public List<ProgramSample> getAllProgramSamples() {
-        return getBaseObjectDAO().fetchAllProgramSamples();
-
     }
 
 }

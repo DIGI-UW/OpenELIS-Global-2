@@ -2,6 +2,7 @@ package org.openelisglobal.program.bean;
 
 import java.sql.Date;
 import java.util.List;
+import java.util.UUID;
 
 public class DashboardSummary {
 
@@ -49,6 +50,7 @@ public class DashboardSummary {
         private String programCode;
         private Date receivedDate;
         private String accessionNumber;
+        private UUID questionnaireResponseUuid;
 
         public int getProgramSampleId() {
             return programSampleId;
@@ -88,6 +90,14 @@ public class DashboardSummary {
 
         public void setAccessionNumber(String accessionNumber) {
             this.accessionNumber = accessionNumber;
+        }
+
+        public UUID getQuestionnaireResponseUuid() {
+            return questionnaireResponseUuid;
+        }
+
+        public void setQuestionnaireResponseUuid(UUID questionnaireResponseUuid) {
+            this.questionnaireResponseUuid = questionnaireResponseUuid;
         }
     }
 }
