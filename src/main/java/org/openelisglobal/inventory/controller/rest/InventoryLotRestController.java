@@ -33,6 +33,17 @@ public class InventoryLotRestController extends BaseRestController {
     @Autowired
     private InventoryLotService inventoryLotService;
 
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<InventoryLot>> getAll() {
+        try {
+            List<InventoryLot> lots = inventoryLotService.getAll();
+            return ResponseEntity.ok(lots);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<InventoryLot> getById(@PathVariable String id) {
         try {

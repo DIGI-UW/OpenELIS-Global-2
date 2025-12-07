@@ -5,6 +5,7 @@ import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
+import InventoryManagement from "./components/inventory/InventoryManagement";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import { Admin } from "./components";
@@ -469,6 +470,12 @@ export default function App() {
                   path="/Storage/:tab"
                   component={() => <StorageDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/inventory"
+                  exact
+                  component={() => <InventoryManagement />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/SampleManagement"

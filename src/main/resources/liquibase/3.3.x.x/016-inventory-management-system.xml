@@ -526,4 +526,48 @@
         </sql>
     </changeSet>
 
+    <!-- ========================================
+         PHASE 4: MENU CONFIGURATION
+         ======================================== -->
+
+    <changeSet author="mherman22" id="inventory-009-add-inventory-menu-item">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_inventory';
+            </sqlCheck>
+        </preConditions>
+        <comment>Add top-level Inventory menu entry (expandable parent, no action URL)</comment>
+        <insert schemaName="clinlims" tableName="menu">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="presentation_order" value="127"/>
+            <column name="element_id" value="menu_inventory"/>
+            <column name="display_key" value="sidenav.label.inventory"/>
+            <column name="tool_tip_key" value="sidenav.label.inventory.tooltip"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="action_url" value=""/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="mherman22" id="inventory-010-add-inventory-management-submenu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_inventory_management';
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Inventory Management Dashboard as child of Inventory menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_inventory')" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_inventory_management" />
+            <column name="action_url" value="/inventory" />
+            <column name="display_key" value="sidenav.label.inventory.management" />
+            <column name="tool_tip_key" value="sidenav.label.inventory.management.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
 </databaseChangeLog>

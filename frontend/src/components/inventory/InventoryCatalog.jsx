@@ -1,0 +1,391 @@
+import React, { useState, useEffect, useContext } from "react";
+import {
+  DataTable,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
+  TableToolbar,
+  TableToolbarContent,
+  TableToolbarSearch,
+  Button,
+  Dropdown,
+  OverflowMenu,
+  OverflowMenuItem,
+  Pagination,
+  Tag,
+} from "@carbon/react";
+import { Add } from "@carbon/icons-react";
+import { FormattedMessage, useIntl } from "react-intl";
+import { NotificationContext } from "../layout/Layout";
+import { InventoryItemAPI } from "./InventoryService";
+import InventoryItemForm from "./InventoryItemForm";
+
+const InventoryCatalog = () => {
+  const intl = useIntl();
+  const { addNotification } = useContext(NotificationContext);
+
+  // Data state
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ACTIVE");
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  // Modal state
+  const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  // Item types for filter dropdown
+  const itemTypes = [
+    { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
+    { id: "REAGENT", text: "Reagent" },
+    { id: "RDT", text: "RDT" },
+    { id: "CARTRIDGE", text: "Cartridge" },
+  ];
+
+  // Status options for filter
+  const statusOptions = [
+    { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
+    { id: "ACTIVE", text: "Active" },
+    { id: "INACTIVE", text: "Inactive" },
+  ];
+
+  // Table headers
+  const headers = [
+    {
+      key: "name",
+      header: intl.formatMessage({ id: "catalog.item.name" }),
+    },
+    {
+      key: "itemType",
+      header: intl.formatMessage({ id: "catalog.item.type" }),
+    },
+    {
+      key: "units",
+      header: intl.formatMessage({ id: "catalog.item.units" }),
+    },
+    {
+      key: "minimumStockLevel",
+      header: intl.formatMessage({ id: "catalog.item.minimumStock" }),
+    },
+    {
+      key: "reorderLevel",
+      header: intl.formatMessage({ id: "catalog.item.reorderLevel" }),
+    },
+    {
+      key: "status",
+      header: intl.formatMessage({ id: "catalog.item.status" }),
+    },
+    {
+      key: "actions",
+      header: intl.formatMessage({ id: "label.button.action" }),
+    },
+  ];
+
+  // Fetch data on mount and when filters change
+  useEffect(() => {
+    fetchItems();
+  }, [typeFilter, statusFilter]);
+
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+      const response = await InventoryItemAPI.getAll();
+      // Convert isActive from "Y"/"N" to boolean
+      const processedItems = (response || []).map((item) => ({
+        ...item,
+        isActive: item.isActive === "Y" || item.isActive === true,
+      }));
+      setItems(processedItems);
+    } catch (error) {
+      console.error("Error fetching catalog items:", error);
+      setItems([]);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: "Error loading catalog items",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter items
+  const getFilteredItems = () => {
+    let filtered = items;
+
+    // Filter by search term
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter((item) =>
+        item.name?.toLowerCase().includes(searchLower),
+      );
+    }
+
+    // Filter by type
+    if (typeFilter !== "ALL") {
+      filtered = filtered.filter((item) => item.itemType === typeFilter);
+    }
+
+    // Filter by status
+    if (statusFilter !== "ALL") {
+      filtered = filtered.filter((item) => {
+        if (statusFilter === "ACTIVE") return item.isActive;
+        if (statusFilter === "INACTIVE") return !item.isActive;
+        return true;
+      });
+    }
+
+    return filtered;
+  };
+
+  const filteredItems = getFilteredItems();
+
+  // Paginate
+  const paginatedItems = filteredItems.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
+
+  // Convert to table rows
+  const rows = paginatedItems.map((item) => ({
+    id: String(item.id), // Carbon DataTable requires string IDs
+    name: item.name,
+    itemType: item.itemType,
+    units: item.units,
+    minimumStockLevel: item.lowStockThreshold || "-",
+    reorderLevel: item.reorderLevel || "-",
+    status: item.isActive ? "Active" : "Inactive",
+  }));
+
+  // Handle item save (from modal)
+  const handleItemSaved = () => {
+    setItemModalOpen(false);
+    setSelectedItem(null);
+    fetchItems();
+    addNotification({
+      kind: "success",
+      title: intl.formatMessage({ id: "notification.success" }),
+      message: intl.formatMessage({ id: "catalog.item.save.success" }),
+    });
+  };
+
+  // Handle edit item
+  const handleEditItem = (item) => {
+    setSelectedItem(item);
+    setItemModalOpen(true);
+  };
+
+  // Handle deactivate item
+  const handleDeactivateItem = async (item) => {
+    try {
+      await InventoryItemAPI.deactivate(item.id);
+      fetchItems();
+      addNotification({
+        kind: "success",
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage({ id: "catalog.item.deactivate.success" }),
+      });
+    } catch (error) {
+      console.error("Error deactivating item:", error);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: "Error deactivating item",
+      });
+    }
+  };
+
+  return (
+    <>
+      <DataTable rows={rows} headers={headers} isSortable>
+        {({
+          rows,
+          headers,
+          getHeaderProps,
+          getRowProps,
+          getTableProps,
+          getTableContainerProps,
+        }) => (
+          <TableContainer title="" description="" {...getTableContainerProps()}>
+            <TableToolbar>
+              <TableToolbarContent>
+                <TableToolbarSearch
+                  placeholder={intl.formatMessage({
+                    id: "catalog.search.placeholder",
+                  })}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={searchTerm}
+                />
+
+                <Dropdown
+                  id="type-filter"
+                  titleText=""
+                  label={intl.formatMessage({ id: "inventory.filter.type" })}
+                  items={itemTypes}
+                  itemToString={(item) => (item ? item.text : "")}
+                  selectedItem={itemTypes.find((t) => t.id === typeFilter)}
+                  onChange={({ selectedItem }) =>
+                    setTypeFilter(selectedItem.id)
+                  }
+                  size="md"
+                />
+
+                <Dropdown
+                  id="status-filter"
+                  titleText=""
+                  label={intl.formatMessage({ id: "inventory.filter.status" })}
+                  items={statusOptions}
+                  itemToString={(item) => (item ? item.text : "")}
+                  selectedItem={statusOptions.find(
+                    (s) => s.id === statusFilter,
+                  )}
+                  onChange={({ selectedItem }) =>
+                    setStatusFilter(selectedItem.id)
+                  }
+                  size="md"
+                />
+
+                <Button
+                  renderIcon={Add}
+                  onClick={() => {
+                    setSelectedItem(null);
+                    setItemModalOpen(true);
+                  }}
+                >
+                  <FormattedMessage id="inventory.addItem.button" />
+                </Button>
+              </TableToolbarContent>
+            </TableToolbar>
+
+            <Table {...getTableProps()}>
+              <TableHead>
+                <TableRow>
+                  {headers.map((header) => (
+                    <TableHeader
+                      key={header.key}
+                      {...getHeaderProps({ header })}
+                    >
+                      {header.header}
+                    </TableHeader>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={headers.length}>Loading...</TableCell>
+                  </TableRow>
+                ) : rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={headers.length}>
+                      No catalog items found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  rows.map((row, rowIndex) => {
+                    const item = paginatedItems[rowIndex];
+                    return (
+                      <TableRow key={row.id} {...getRowProps({ row })}>
+                        {row.cells.map((cell) => {
+                          if (cell.info.header === "status") {
+                            return (
+                              <TableCell key={cell.id}>
+                                <Tag
+                                  type={
+                                    cell.value === "Active" ? "green" : "gray"
+                                  }
+                                >
+                                  {cell.value}
+                                </Tag>
+                              </TableCell>
+                            );
+                          }
+
+                          if (cell.info.header === "actions") {
+                            return (
+                              <TableCell key={cell.id}>
+                                <OverflowMenu
+                                  size="sm"
+                                  flipped
+                                  ariaLabel={intl.formatMessage({
+                                    id: "label.button.action",
+                                  })}
+                                >
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "button.edit",
+                                    })}
+                                    onClick={() => handleEditItem(item)}
+                                  />
+                                  {item && item.isActive && (
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "button.deactivate",
+                                      })}
+                                      onClick={() => handleDeactivateItem(item)}
+                                      isDelete
+                                    />
+                                  )}
+                                </OverflowMenu>
+                              </TableCell>
+                            );
+                          }
+
+                          return (
+                            <TableCell key={cell.id}>{cell.value}</TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+
+            {!loading && rows.length > 0 && (
+              <Pagination
+                backwardText="Previous page"
+                forwardText="Next page"
+                itemsPerPageText="Items per page:"
+                page={page}
+                pageSize={pageSize}
+                pageSizes={[10, 20, 30, 40, 50]}
+                totalItems={filteredItems.length}
+                onChange={({ page, pageSize }) => {
+                  setPage(page);
+                  setPageSize(pageSize);
+                }}
+              />
+            )}
+          </TableContainer>
+        )}
+      </DataTable>
+
+      {/* Item Form Modal */}
+      {itemModalOpen && (
+        <InventoryItemForm
+          open={itemModalOpen}
+          onClose={() => {
+            setItemModalOpen(false);
+            setSelectedItem(null);
+          }}
+          onSave={handleItemSaved}
+          item={selectedItem}
+        />
+      )}
+    </>
+  );
+};
+
+export default InventoryCatalog;
