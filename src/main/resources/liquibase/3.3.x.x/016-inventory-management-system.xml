@@ -517,7 +517,7 @@
                 'PASSED',
                 CASE
                     WHEN old_loc.expiration_date IS NOT NULL
-                         AND old_loc.expiration_date < NOW() THEN 'EXPIRED'
+                         AND old_loc.expiration_date &lt; NOW() THEN 'EXPIRED'
                     ELSE 'ACTIVE'
                 END
             FROM clinlims.inventory_location_backup_20251207 old_loc
