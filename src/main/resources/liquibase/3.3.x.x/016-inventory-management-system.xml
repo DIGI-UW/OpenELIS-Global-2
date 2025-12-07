@@ -473,11 +473,10 @@
         <!-- Migrate inventory items (HIV/Syphilis kits) -->
         <sql>
             INSERT INTO clinlims.inventory_item (
-                id, fhir_uuid, name, description, item_type,
+                fhir_uuid, name, description, item_type,
                 units, is_active, kit_test_type
             )
             SELECT
-                uuid_generate_v4()::text,
                 uuid_generate_v4(),
                 COALESCE(description, 'Unknown Kit'),
                 description,
@@ -501,19 +500,18 @@
         <!-- Migrate inventory locations to lots -->
         <sql>
             INSERT INTO clinlims.inventory_lot (
-                id, fhir_uuid, inventory_item_id, lot_number,
+                fhir_uuid, inventory_item_id, lot_number,
                 expiration_date, receipt_date, initial_quantity, current_quantity,
                 qc_status, status
             )
             SELECT
-                uuid_generate_v4()::text,
                 uuid_generate_v4(),
                 new_item.id,
                 COALESCE(old_loc.lot_number, 'UNKNOWN'),
                 old_loc.expiration_date,
-                old_loc.receive_date,
-                COALESCE(old_loc.quantity, 100),
-                COALESCE(old_loc.quantity, 100),
+                NOW(),
+                COALESCE(old_loc.quantity_onhand, 100),
+                COALESCE(old_loc.quantity_onhand, 100),
                 'PASSED',
                 CASE
                     WHEN old_loc.expiration_date IS NOT NULL
