@@ -83,11 +83,14 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         logger.info("getAllSamplesWithAssignments: Found {} total sample items", allSampleItems.size());
 
         // Get all assignments and build a map by sampleItemId for efficient lookup
+        // SampleItem.id is String but assignment.sampleItemId is Integer (DB column is
+        // numeric)
         List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.getAll();
         java.util.Map<String, SampleStorageAssignment> assignmentsBySampleItemId = new java.util.HashMap<>();
         for (SampleStorageAssignment assignment : assignments) {
-            if (assignment.getSampleItem() != null && assignment.getSampleItem().getId() != null) {
-                assignmentsBySampleItemId.put(assignment.getSampleItem().getId(), assignment);
+            if (assignment.getSampleItemId() != null) {
+                // Convert Integer to String for map key (SampleItem.id is String)
+                assignmentsBySampleItemId.put(assignment.getSampleItemId().toString(), assignment);
             }
         }
         logger.info("getAllSamplesWithAssignments: Found {} total assignments", assignments.size());
@@ -1165,23 +1168,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
         String trimmedId = identifier.trim();
 
-        // Step 1: Try internal ID lookup (for programmatic/test access)
-        try {
-            java.util.Optional<SampleItem> sampleItemOpt = sampleItemDAO.get(trimmedId);
-            if (sampleItemOpt.isPresent()) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Found SampleItem by internal ID: {}", trimmedId);
-                }
-                return sampleItemOpt.get();
-            }
-        } catch (Exception e) {
-            // Not a valid internal ID, continue to other methods
-            if (logger.isDebugEnabled()) {
-                logger.debug("Identifier '{}' is not a valid internal ID, trying other methods", trimmedId);
-            }
-        }
-
-        // Step 2: Try accession number lookup (Sample → SampleItems)
+        // Step 1: Try accession number lookup (Sample → SampleItems)
         Sample sample = sampleService.getSampleByAccessionNumber(trimmedId);
         if (sample != null) {
             List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
@@ -1199,7 +1186,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
         }
 
-        // Step 3: Try external reference lookup (direct SampleItem lookup)
+        // Step 2: Try external reference lookup (direct SampleItem lookup)
         List<SampleItem> sampleItemsByExtId = sampleItemService.getSampleItemsByExternalID(trimmedId);
         if (sampleItemsByExtId != null && !sampleItemsByExtId.isEmpty()) {
             if (sampleItemsByExtId.size() == 1) {
@@ -1216,7 +1203,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
         // Not found by any method
         throw new LIMSRuntimeException(String.format(
-                "Sample not found with identifier '%s'. Please check the ID, accession number, or external reference number.",
+                "Sample not found with identifier '%s'. Please check the accession number or external reference number.",
                 trimmedId));
     }
 }

@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@Transactional
 public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAssignment, Integer>
         implements SampleStorageAssignmentDAO {
 
@@ -26,19 +25,25 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
     @Override
     @Transactional(readOnly = true)
     public SampleStorageAssignment findBySampleItemId(String sampleItemId) {
-        int parsedId;
+        if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+            return null;
+        }
+
+        // Parse String to Integer since DB column is numeric
+        Integer sampleItemIdInt;
         try {
-            parsedId = Integer.parseInt(sampleItemId);
+            sampleItemIdInt = Integer.parseInt(sampleItemId.trim());
         } catch (NumberFormatException e) {
             logger.warn("Invalid SampleItem ID format (must be numeric): {}", sampleItemId);
             return null;
         }
 
         try {
-            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.sampleItem.id = :sampleItemId";
+            // Query directly using sampleItemId column (no join to HBM-mapped entity)
+            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.sampleItemId = :sampleItemId";
             Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     SampleStorageAssignment.class);
-            query.setParameter("sampleItemId", parsedId);
+            query.setParameter("sampleItemId", sampleItemIdInt);
             query.setMaxResults(1);
 
             List<SampleStorageAssignment> results = query.list();
@@ -142,20 +147,27 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
                 return result;
             }
 
-            String hql = "SELECT ssa FROM SampleStorageAssignment ssa " + "LEFT JOIN FETCH ssa.sampleItem si "
-                    + "WHERE ssa.locationType = 'box' " + "AND ssa.locationId = :boxId "
-                    + "AND ssa.positionCoordinate IS NOT NULL";
-            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
-                    SampleStorageAssignment.class);
-            query.setParameter("boxId", boxId);
-            java.util.List<SampleStorageAssignment> assignments = query.list();
+            // Use native SQL to join sample_storage_assignment with sample_item
+            // to get the external_id (SampleItem uses HBM mapping, can't use HQL join)
+            String sql = "SELECT ssa.position_coordinate, ssa.sample_item_id, si.external_id "
+                    + "FROM sample_storage_assignment ssa " + "LEFT JOIN sample_item si ON ssa.sample_item_id = si.id "
+                    + "WHERE ssa.location_type = 'box' " + "AND ssa.location_id = :boxId "
+                    + "AND ssa.position_coordinate IS NOT NULL";
 
-            for (SampleStorageAssignment assignment : assignments) {
-                if (assignment.getPositionCoordinate() != null && assignment.getSampleItem() != null) {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.unwrap(Session.class).createNativeQuery(sql)
+                    .setParameter("boxId", boxId).list();
+
+            for (Object[] row : rows) {
+                String positionCoordinate = (String) row[0];
+                Number sampleItemIdNum = (Number) row[1];
+                String externalId = (String) row[2];
+
+                if (positionCoordinate != null && sampleItemIdNum != null) {
                     java.util.Map<String, String> sampleInfo = new java.util.HashMap<>();
-                    sampleInfo.put("externalId", assignment.getSampleItem().getExternalId());
-                    sampleInfo.put("sampleItemId", assignment.getSampleItem().getId());
-                    result.put(assignment.getPositionCoordinate(), sampleInfo);
+                    sampleInfo.put("sampleItemId", sampleItemIdNum.toString());
+                    sampleInfo.put("externalId", externalId != null ? externalId : "");
+                    result.put(positionCoordinate, sampleInfo);
                 }
             }
         } catch (Exception e) {
