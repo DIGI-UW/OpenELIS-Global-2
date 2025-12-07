@@ -75,8 +75,11 @@
         description="Blood Sample Localization" english="Blood" french="Sang"
         lastupdated="2025-01-01 12:00:00" />
 
-    <!-- Reference Data: Status of Sample entries are managed by Liquibase and
-        preserved by cleanRowsInCurrentConnection (reference tables are not truncated) -->
+    <!-- Reference Data: Status of Sample entries (required by sample foreign keys) -->
+    <!-- ID 1 = "Entered" status for SAMPLE type -->
+    <status_of_sample id="1" name="Entered" description="Entered"
+        code="1" status_type="SAMPLE" display_key="status.sample.entered"
+        is_active="Y" lastupdated="2025-01-01 12:00:00" />
 
     <!-- Reference Data: Type of Sample entries (required by sample_item foreign
         keys) -->
