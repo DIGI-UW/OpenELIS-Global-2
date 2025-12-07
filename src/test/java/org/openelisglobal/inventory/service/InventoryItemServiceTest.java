@@ -24,7 +24,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void get_shouldReturnInventoryItemWhenExists() {
-        InventoryItem item = inventoryItemService.get(1L);
+        InventoryItem item = inventoryItemService.get(1000L);
 
         assertNotNull("Item should be loaded from dataset", item);
         assertEquals("Test Reagent A", item.getName());
@@ -34,7 +34,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void get_shouldReturnCorrectItemDetails() {
-        InventoryItem item = inventoryItemService.get(2L);
+        InventoryItem item = inventoryItemService.get(1001L);
 
         assertNotNull("Should find test item 2", item);
         assertEquals("Test RDT Kit", item.getName());
@@ -53,7 +53,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
     @Test
     @org.junit.Ignore("Optimistic lock issue - needs investigation")
     public void update_shouldUpdateInventoryItem() {
-        InventoryItem item = inventoryItemService.get(1L);
+        InventoryItem item = inventoryItemService.get(1000L);
         item.setDescription("Updated description for testing");
 
         InventoryItem updatedItem = inventoryItemService.update(item);
@@ -64,7 +64,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getTotalCurrentStock_shouldCalculateStockFromLots() {
-        Double totalStock = inventoryItemService.getTotalCurrentStock(1L);
+        Double totalStock = inventoryItemService.getTotalCurrentStock(1000L);
 
         assertNotNull("Total stock should not be null", totalStock);
         assertEquals("Total stock should be sum of all lots", Double.valueOf(150.0), totalStock);
