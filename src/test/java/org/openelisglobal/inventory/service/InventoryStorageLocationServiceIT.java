@@ -99,8 +99,7 @@ public class InventoryStorageLocationServiceIT extends BaseWebContextSensitiveTe
         InventoryStorageLocation updatedLocation = storageLocationService.update(location);
 
         assertNotNull("Updated location should not be null", updatedLocation);
-        assertEquals("Updated description for testing",
-                storageLocationService.get(1L).getDescription());
+        assertEquals("Updated description for testing", storageLocationService.get(1L).getDescription());
     }
 
     @Test
