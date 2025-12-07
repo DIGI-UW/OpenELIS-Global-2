@@ -85,7 +85,7 @@
 
         <createTable tableName="inventory_item" schemaName="clinlims">
             <!-- Core Fields -->
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="fhir_uuid" type="UUID">
@@ -153,6 +153,9 @@
             CHECK (individual_tracking IN ('Y', 'N'));
         </sql>
 
+        <!-- Sequence -->
+        <createSequence sequenceName="inventory_item_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
         <!-- Indexes -->
         <createIndex indexName="idx_inventory_item_type" tableName="inventory_item" schemaName="clinlims">
             <column name="item_type"/>
@@ -174,7 +177,7 @@
         <comment>Create hierarchical storage location table</comment>
 
         <createTable tableName="inventory_storage_location" schemaName="clinlims">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="fhir_uuid" type="UUID">
@@ -192,7 +195,7 @@
             <column name="description" type="TEXT"/>
             <column name="temperature_min" type="DECIMAL(5,2)"/>
             <column name="temperature_max" type="DECIMAL(5,2)"/>
-            <column name="parent_location_id" type="VARCHAR(36)">
+            <column name="parent_location_id" type="BIGINT">
                 <constraints nullable="true"
                     foreignKeyName="fk_storage_location_parent"
                     references="clinlims.inventory_storage_location(id)"
@@ -220,6 +223,9 @@
         <createIndex indexName="idx_storage_location_active" tableName="inventory_storage_location" schemaName="clinlims">
             <column name="is_active"/>
         </createIndex>
+
+        <!-- Sequence -->
+        <createSequence sequenceName="inventory_storage_location_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
     </changeSet>
 
     <changeSet id="inventory-005-create-lot-table" author="mherman22">
@@ -231,19 +237,19 @@
         <comment>Create inventory lot table for tracking specific batches</comment>
 
         <createTable tableName="inventory_lot" schemaName="clinlims">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="fhir_uuid" type="UUID">
                 <constraints nullable="false" unique="true"/>
             </column>
-            <column name="inventory_item_id" type="VARCHAR(36)">
+            <column name="inventory_item_id" type="BIGINT">
                 <constraints nullable="false"
                     foreignKeyName="fk_lot_inventory_item"
                     references="clinlims.inventory_item(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="storage_location_id" type="VARCHAR(36)">
+            <column name="storage_location_id" type="BIGINT">
                 <constraints nullable="true"
                     foreignKeyName="fk_lot_storage_location"
                     references="clinlims.inventory_storage_location(id)"
@@ -312,6 +318,9 @@
         <createIndex indexName="idx_lot_number" tableName="inventory_lot" schemaName="clinlims">
             <column name="lot_number"/>
         </createIndex>
+
+        <!-- Sequence -->
+        <createSequence sequenceName="inventory_lot_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
     </changeSet>
 
     <changeSet id="inventory-006-create-transaction-table" author="mherman22">
@@ -323,10 +332,10 @@
         <comment>Create transaction table for audit trail</comment>
 
         <createTable tableName="inventory_transaction" schemaName="clinlims">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="lot_id" type="VARCHAR(36)">
+            <column name="lot_id" type="BIGINT">
                 <constraints nullable="false"
                     foreignKeyName="fk_transaction_lot"
                     references="clinlims.inventory_lot(id)"
@@ -344,7 +353,7 @@
             <column name="transaction_date" type="TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
-            <column name="reference_id" type="VARCHAR(36)"/>
+            <column name="reference_id" type="BIGINT"/>
             <column name="reference_type" type="VARCHAR(50)"/>
             <column name="notes" type="TEXT"/>
             <column name="performed_by_user" type="INT">
@@ -378,6 +387,9 @@
             <column name="reference_id"/>
             <column name="reference_type"/>
         </createIndex>
+
+        <!-- Sequence -->
+        <createSequence sequenceName="inventory_transaction_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
     </changeSet>
 
     <changeSet id="inventory-007-create-usage-table" author="mherman22">
@@ -389,23 +401,23 @@
         <comment>Create usage table for linking inventory to test results</comment>
 
         <createTable tableName="inventory_usage" schemaName="clinlims">
-            <column name="id" type="VARCHAR(36)">
+            <column name="id" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="inventory_item_id" type="VARCHAR(36)">
+            <column name="inventory_item_id" type="BIGINT">
                 <constraints nullable="false"
                     foreignKeyName="fk_usage_inventory_item"
                     references="clinlims.inventory_item(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="lot_id" type="VARCHAR(36)">
+            <column name="lot_id" type="BIGINT">
                 <constraints nullable="false"
                     foreignKeyName="fk_usage_lot"
                     references="clinlims.inventory_lot(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="test_result_id" type="VARCHAR(36)"/>
-            <column name="analysis_id" type="VARCHAR(36)"/>
+            <column name="test_result_id" type="BIGINT"/>
+            <column name="analysis_id" type="BIGINT"/>
             <column name="quantity_used" type="DECIMAL(10,2)">
                 <constraints nullable="false"/>
             </column>
@@ -440,6 +452,9 @@
         <createIndex indexName="idx_usage_analysis" tableName="inventory_usage" schemaName="clinlims">
             <column name="analysis_id"/>
         </createIndex>
+
+        <!-- Sequence -->
+        <createSequence sequenceName="inventory_usage_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
     </changeSet>
 
     <!-- ========================================

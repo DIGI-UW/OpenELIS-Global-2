@@ -6,8 +6,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -19,13 +21,15 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 @Entity
 @Table(name = "inventory_item")
 @Access(AccessType.FIELD)
-public class InventoryItem extends BaseObject<String> {
+public class InventoryItem extends BaseObject<Long> {
 
     private static final long serialVersionUID = 1L;
 
     @Id
-    @Column(name = "id", length = 36)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "inventory_item_generator")
+    @SequenceGenerator(name = "inventory_item_generator", sequenceName = "inventory_item_seq", allocationSize = 1)
+    @Column(name = "id")
+    private Long id;
 
     @Column(name = "fhir_uuid", nullable = false, unique = true)
     private UUID fhirUuid;
@@ -106,16 +110,6 @@ public class InventoryItem extends BaseObject<String> {
     @Column(name = "is_active", length = 1, nullable = false)
     private String isActive = "Y";
 
-    @PrePersist
-    public void prePersist() {
-        if (id == null) {
-            id = UUID.randomUUID().toString();
-        }
-        if (fhirUuid == null) {
-            fhirUuid = UUID.randomUUID();
-        }
-    }
-
     // Business logic helper methods
     public boolean isReagent() {
         return itemType == ItemType.REAGENT;
@@ -144,12 +138,12 @@ public class InventoryItem extends BaseObject<String> {
     // Getters and Setters
 
     @Override
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
     @Override
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
