@@ -2,6 +2,13 @@
 description:
   Execute the implementation plan by processing and executing all tasks defined
   in tasks.md
+scripts:
+  sh:
+    .specify/scripts/bash/check-prerequisites.sh --json --require-tasks
+    --include-tasks
+  ps:
+    .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks
+    -IncludeTasks
 ---
 
 ## User Input
@@ -14,11 +21,9 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-1. Run
-   `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
-   from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must
-   be absolute. For single quotes in args like "I'm Groot", use escape syntax:
-   e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. Run `{SCRIPT}` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list.
+   All paths must be absolute. For single quotes in args like "I'm Groot", use
+   escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Check checklists status** (if FEATURE_DIR/checklists/ exists):
 
@@ -66,45 +71,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **IF EXISTS**: Read research.md for technical decisions and constraints
    - **IF EXISTS**: Read quickstart.md for integration scenarios
 
-4. **PR Scope Validation** (Constitution Principle IX):
-
-   **Before starting implementation, verify scope is appropriate:**
-
-   - **Detect Current Branch**: Run `git branch --show-current`
-   - **If on milestone branch** (feat/{issue}/m{N}-\*):
-     - Extract milestone ID from branch name (e.g., M1, M2)
-     - Filter tasks.md to ONLY tasks for that milestone
-     - **WARN** if tasks from other milestones are detected
-     - **ERROR** if no Milestone Plan exists in plan.md
-   - **If on feature branch** (feat/{issue}-{name}):
-     - Check if Milestone Plan exists in plan.md
-     - If exists: Prompt user to create milestone branch first
-     - If not exists (small feature <3 days): Proceed with all tasks
-   - **Task Count Check**:
-     - Count tasks for current scope
-     - **WARN** if >30 tasks (PR likely too large)
-     - **WARN** if >20 files will be modified (PR likely too large)
-     - Suggest splitting into sub-milestones if threshold exceeded
-   - **User Story Alignment**:
-     - Verify current milestone's user stories match implementation scope
-     - **WARN** if implementing code for user stories not in current milestone
-
-   **Scope Validation Output**:
-
-   ```
-   PR Scope Check:
-   - Current Branch: feat/OG-009-sidenav/m1-backend
-   - Milestone: M1 (Backend Core)
-   - User Stories: P1, P2 (backend portions)
-   - Tasks in scope: 18 ✓
-   - Files to modify: 12 ✓
-   - Status: PROCEED
-   ```
-
-   **If validation fails**: Display warnings and ask user to confirm before
-   proceeding. Do NOT auto-proceed if >30 tasks or >20 files.
-
-5. **Project Setup Verification**:
+4. **Project Setup Verification**:
 
    - **REQUIRED**: Create/verify ignore files based on actual project setup:
 
@@ -119,7 +86,9 @@ You **MUST** consider the user input before proceeding (if not empty).
 
    - Check if Dockerfile\* exists or Docker in plan.md → create/verify
      .dockerignore
-   - Check if .eslintrc*or eslint.config.* exists → create/verify .eslintignore
+   - Check if .eslintrc\* exists → create/verify .eslintignore
+   - Check if eslint.config.\* exists → ensure the config's `ignores` entries
+     cover required patterns
    - Check if .prettierrc\* exists → create/verify .prettierignore
    - Check if .npmrc or package.json exists → create/verify .npmignore (if
      publishing)
@@ -168,28 +137,58 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Kubernetes/k8s**: `*.secret.yaml`, `secrets/`, `.kube/`, `kubeconfig*`,
      `*.key`, `*.crt`
 
-6. Parse tasks.md structure and extract:
+5. Parse tasks.md structure and extract:
 
    - **Task phases**: Setup, Tests, Core, Integration, Polish
    - **Task dependencies**: Sequential vs parallel execution rules
    - **Task details**: ID, description, file paths, parallel markers [P]
    - **Execution flow**: Order and dependency requirements
 
+6. **PR Scope Validation (Constitution Principle IX)**: **Before starting
+   implementation, verify scope is appropriate:**
+
+   - **Detect Current Branch**: Run `git branch --show-current`
+   - **If on milestone branch** (feat/{issue}/m{N}-\*):
+     - Extract milestone ID from branch name (e.g., M1, M2)
+     - Filter tasks.md to ONLY tasks for that milestone
+     - **WARN** if tasks from other milestones are detected
+     - **ERROR** if no Milestone Plan exists in plan.md
+   - **If on feature branch** (feat/{issue}-{name}):
+     - Check if Milestone Plan exists in plan.md
+     - If exists: Prompt user to create milestone branch first
+     - If not exists (small feature <3 days): Proceed with all tasks
+   - **Task Count Check**:
+     - Count tasks for current scope
+     - **WARN** if >30 tasks (PR likely too large)
+     - **WARN** if >20 files will be modified (PR likely too large)
+     - Suggest splitting into sub-milestones if threshold exceeded
+   - **User Story Alignment**:
+     - Verify current milestone's user stories match implementation scope
+     - **WARN** if implementing code for user stories not in current milestone
+
+   **Scope Validation Output**:
+
+   ```
+   PR Scope Check:
+   - Current Branch: feat/OG-009-sidenav/m1-backend
+   - Milestone: M1 (Backend Core)
+   - User Stories: P1, P2 (backend portions)
+   - Tasks in scope: 18 ✓
+   - Files to modify: 12 ✓
+   - Status: PROCEED
+   ```
+
+   **If validation fails**: Display warnings and ask user to confirm before
+   proceeding. Do NOT auto-proceed if >30 tasks or >20 files.
+
 7. Execute implementation following the task plan:
 
    - **Phase-by-phase execution**: Complete each phase before moving to the next
+
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P]
      can run together
-   - **Follow TDD approach (MANDATORY)**:
-     - Execute test tasks BEFORE their corresponding implementation tasks
-     - Write failing tests first (Red), then implement to make them pass
-       (Green), then refactor
-     - Use test templates from `.specify/templates/testing/` when generating
-       test code
-     - Reference Testing Roadmap (`.specify/guides/testing-roadmap.md`) for
-       patterns
-     - At checkpoint validations: Tests MUST pass before proceeding to next
-       phase
+   - **Follow TDD approach**: Execute test tasks before their corresponding
+     implementation tasks
    - **File-based coordination**: Tasks affecting the same files must run
      sequentially
    - **Validation checkpoints**: Verify each phase completion before proceeding
@@ -217,44 +216,37 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 10. Completion validation:
 
-- Verify all required tasks are completed
-- Check that implemented features match the original specification
-- Validate that tests pass and coverage meets requirements
-- Confirm the implementation follows the technical plan
-- Report final status with summary of completed work
+    - Verify all required tasks are completed
+    - Check that implemented features match the original specification
+    - Validate that tests pass and coverage meets requirements
+    - Confirm the implementation follows the technical plan
+    - Report final status with summary of completed work
 
-11. **Milestone Completion & PR Prompt** (Constitution Principle IX):
+11. **Milestone Completion & PR Prompt** (Constitution Principle IX): **When all
+    tasks for current milestone are complete:**
 
-    **When all tasks for current milestone are complete:**
+    - Run final tests for the milestone
+    - Display completion summary:
 
-- Run final tests for the milestone
-- Display completion summary:
+      ```
+      Milestone M1 (Backend Core) Complete!
+      ────────────────────────────────────
+      Tasks completed: 18/18
+      Tests passing: 12/12
+      User Stories covered: P1, P2 (backend)
 
-  ```
-  Milestone M1 (Backend Core) Complete!
-  ────────────────────────────────────
-  Tasks completed: 18/18
-  Tests passing: 12/12
-  User Stories covered: P1, P2 (backend)
+      Next Steps:
+      1. Review changes: git diff feat/OG-009-sidenav
+      2. Create PR: gh pr create --base feat/OG-009-sidenav --title "feat(OG-009): M1 - Backend Core"
+      3. After PR merged, start next milestone:
+         git checkout feat/OG-009-sidenav
+         git pull
+         git checkout -b feat/OG-009-sidenav/m2-frontend
+      ```
 
-  Next Steps:
-  1. Review changes: git diff feat/OG-009-sidenav
-  2. Create PR: gh pr create --base feat/OG-009-sidenav --title "feat(OG-009): M1 - Backend Core"
-  3. After PR merged, start next milestone:
-     git checkout feat/OG-009-sidenav
-     git pull
-     git checkout -b feat/OG-009-sidenav/m2-frontend
-  ```
-
-- **Prompt user**: "Milestone complete. Would you like me to create the PR?"
-- If user confirms: Use GitHub CLI to create PR with milestone details
-- **Do NOT auto-proceed to next milestone** - wait for PR review/merge
-
-**Branch Management**:
-
-- If branch doesn't exist when starting milestone: Create it automatically
-- If branch exists: Verify it's the correct milestone branch
-- After milestone PR merged: Guide user to next milestone branch
+    - **Prompt user**: "Milestone complete. Would you like me to create the PR?"
+    - If user confirms: Use GitHub CLI to create PR with milestone details
+    - **Do NOT auto-proceed to next milestone** - wait for PR review/merge
 
 Note: This command assumes a complete task breakdown exists in tasks.md. If
 tasks are incomplete or missing, suggest running `/speckit.tasks` first to

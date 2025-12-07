@@ -72,45 +72,82 @@ check_feature_branch() {
         return 0
     fi
 
-    # Support flexible branch patterns:
-    # - Feature branch: 001-feature-name
-    # - Fix branch: fix/001-feature-name
-    # - Hotfix branch: hotfix/001-bug-fix
-    # - Enhancement: enhance/001-feature-name
-    # - Phase branch: 001-feature-name-phase2
-    # Pattern matches NNN- at start of branch OR after a / prefix
-    if [[ ! "$branch" =~ (^|/)[0-9]{3}- ]]; then
-        echo "ERROR: Not on a feature branch. Current branch: $branch" >&2
-        echo "Feature branches should contain a 3-digit prefix like:" >&2
-        echo "  - 001-feature-name (feature branch)" >&2
-        echo "  - fix/001-feature-name (fix branch)" >&2
-        echo "  - hotfix/001-bug-fix (hotfix branch)" >&2
-        echo "  - enhance/001-feature-name (enhancement branch)" >&2
-        return 1
+    # Support flexible branch patterns (Constitution Principle IX):
+    #
+    # Legacy format (still supported):
+    # - 001-feature-name
+    # - fix/001-feature-name
+    # - hotfix/001-bug-fix
+    #
+    # New Principle IX format:
+    # - spec/OGC-009-sidenav or spec/009-sidenav
+    # - feat/OGC-009-sidenav
+    # - feat/OGC-009-sidenav/m1-core (milestone branch)
+    # - hotfix/OGC-123-fix-login
+    # - fix/OGC-456-null-check
+    #
+    # Pattern matches:
+    # 1. NNN- at start or after / (legacy)
+    # 2. OGC-NNN- or similar Jira prefix after / (new)
+    # 3. spec/, feat/, fix/, hotfix/ prefixes with issue ID
+    if [[ "$branch" =~ (^|/)[0-9]{3}- ]] || \
+       [[ "$branch" =~ ^(spec|feat|fix|hotfix)/[A-Z]+-[0-9]+- ]] || \
+       [[ "$branch" =~ ^(spec|feat|fix|hotfix)/[0-9]{3}- ]]; then
+        return 0
     fi
 
-    return 0
+    echo "ERROR: Not on a feature branch. Current branch: $branch" >&2
+    echo "Feature branches should match one of these patterns:" >&2
+    echo "" >&2
+    echo "  Legacy format:" >&2
+    echo "    - 001-feature-name" >&2
+    echo "    - fix/001-feature-name" >&2
+    echo "" >&2
+    echo "  Principle IX format (Jira: OGC-###, GitHub: ###):" >&2
+    echo "    - spec/OGC-009-sidenav or spec/009-sidenav" >&2
+    echo "    - feat/OGC-009-sidenav" >&2
+    echo "    - feat/OGC-009-sidenav/m1-core (milestone)" >&2
+    echo "    - hotfix/OGC-123-fix-login" >&2
+    echo "    - fix/OGC-456-null-check" >&2
+    return 1
 }
 
 get_feature_dir() { echo "$1/specs/$2"; }
 
 # Find feature directory by numeric prefix instead of exact branch match
 # This allows multiple branches to work on the same spec (e.g., 004-fix-bug, 004-add-feature)
-# Supports: 001-feature, fix/001-feature, hotfix/001-bug, enhance/001-feature
+#
+# Supports (Constitution Principle IX):
+# - Legacy: 001-feature, fix/001-feature, hotfix/001-bug
+# - New: spec/OGC-009-sidenav, feat/OGC-009-sidenav, feat/OGC-009-sidenav/m1-core
 find_feature_dir_by_prefix() {
     local repo_root="$1"
     local branch_name="$2"
     local specs_dir="$repo_root/specs"
+    local prefix=""
 
     # Extract numeric prefix from branch
-    # Supports: "004-whatever" OR "fix/004-whatever" OR "hotfix/004-whatever"
-    if [[ ! "$branch_name" =~ (^|/)([0-9]{3})- ]]; then
-        # If branch doesn't have numeric prefix, fall back to exact match
+    # Priority order for pattern matching:
+    #
+    # 1. Principle IX Jira format: spec/OGC-009-sidenav, feat/OGC-009-sidenav/m1-core
+    #    Extract "009" from "OGC-009"
+    if [[ "$branch_name" =~ ^(spec|feat|fix|hotfix)/[A-Z]+-([0-9]+)- ]]; then
+        prefix="${BASH_REMATCH[2]}"
+        # Pad to 3 digits if needed (009, not 9)
+        prefix=$(printf "%03d" "$((10#$prefix))")
+    # 2. Principle IX GitHub format: spec/009-sidenav, feat/009-sidenav/m1-core
+    elif [[ "$branch_name" =~ ^(spec|feat|fix|hotfix)/([0-9]{3})- ]]; then
+        prefix="${BASH_REMATCH[2]}"
+    # 3. Legacy format: 004-whatever, fix/004-whatever
+    elif [[ "$branch_name" =~ (^|/)([0-9]{3})- ]]; then
+        prefix="${BASH_REMATCH[2]}"
+    fi
+
+    # If no prefix found, fall back to exact match
+    if [[ -z "$prefix" ]]; then
         echo "$specs_dir/$branch_name"
         return
     fi
-
-    local prefix="${BASH_REMATCH[2]}"
 
     # Search for directories in specs/ that start with this prefix
     local matches=()

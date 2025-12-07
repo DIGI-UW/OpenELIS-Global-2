@@ -666,6 +666,7 @@
   "login.timeout": "Tiempo de Espera de Usuario (minutos)",
   "login.timeout.placeholder": "Ingresar en ms",
   "login.title": "Iniciar sesión",
+  "login.redirecting.sso": "Redirecting to Single Sign-On...",
   "manage.testing.algorithms.add.reflex.tests": "Administrar Algoritmos de Pruebas y Pruebas de Reflejo",
   "master.lists.page": "Página de Listas Maestras",
   "master.lists.page.analyzer": "Menú de Nombres de Pruebas del Analizador",

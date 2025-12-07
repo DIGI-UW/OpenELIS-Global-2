@@ -666,6 +666,7 @@
   "login.timeout": "User Time Out (minutes)",
   "login.timeout.placeholder": "Enter in ms",
   "login.title": "Login",
+  "login.redirecting.sso": "Redirecting to Single Sign-On...",
   "manage.testing.algorithms.add.reflex.tests": "Manage Testing Algorithms and Reflex tests",
   "master.lists.page": "Master Lists Page",
   "master.lists.page.analyzer": "Analyzer TestName Menu",

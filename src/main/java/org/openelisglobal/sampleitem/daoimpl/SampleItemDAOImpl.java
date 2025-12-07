@@ -17,6 +17,7 @@ package org.openelisglobal.sampleitem.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -314,5 +315,36 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
         String updateQuery = "UPDATE analysis SET sampitem_id = :aliquotId WHERE id IN (:analysisIds)";
         entityManager.createNativeQuery(updateQuery).setParameter("aliquotId", aliquotIdInt)
                 .setParameter("analysisIds", analysisIdInts).executeUpdate();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleItem> getSampleItemsWithHierarchy(List<String> sampleItemIds) throws LIMSRuntimeException {
+        if (sampleItemIds == null || sampleItemIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        try {
+            // Use JOIN FETCH to eagerly load parent and child aliquots in a single query
+            // This prevents LazyInitializationException when DTOs are compiled outside
+            // transaction boundaries (per Constitution III.7)
+            String hql = "SELECT DISTINCT si FROM SampleItem si" + " LEFT JOIN FETCH si.parentSampleItem"
+                    + " LEFT JOIN FETCH si.childAliquots" + " WHERE si.id IN (:ids)";
+
+            Query<SampleItem> query = entityManager.unwrap(Session.class).createQuery(hql, SampleItem.class);
+            // Convert String IDs to Integer to match database numeric type (same pattern as
+            // AnalysisDAOImpl line 1511)
+            query.setParameterList("ids",
+                    sampleItemIds.stream().map(e -> Integer.parseInt(e)).collect(Collectors.toList()));
+
+            // Use LinkedHashSet to remove duplicates caused by JOIN FETCH on collections
+            // while preserving insertion order. Hibernate's DISTINCT doesn't always work
+            // with collection fetches.
+            List<SampleItem> results = query.list();
+            return new ArrayList<>(new LinkedHashSet<>(results));
+        } catch (HibernateException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItemDAO getSampleItemsWithHierarchy()", e);
+        }
     }
 }

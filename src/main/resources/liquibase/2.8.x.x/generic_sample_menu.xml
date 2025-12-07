@@ -84,6 +84,26 @@
         </insert>
     </changeSet>
 
+    <!-- Add Generic Sample Results submenu item -->
+    <changeSet author="Generic Sample Developer" id="2025120101">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_generic_sample_results'</sqlCheck>
+        </preConditions>
+        <comment>Add menu entry for Generic Sample Results</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_generic_sample')"/>
+            <column name="presentation_order" value="4"/>
+            <column name="element_id" value="menu_generic_sample_results"/>
+            <column name="action_url" value="/GenericSample/Results"/>
+            <column name="display_key" value="banner.menu.generic.sample.results"/>
+            <column name="tool_tip_key" value="tooltip.banner.menu.generic.sample.results"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+    </changeSet>
+
     <!-- Add system module for Generic Sample -->
     <changeSet author="Generic Sample Developer" id="2025110705">
         <preConditions onFail="MARK_RAN">

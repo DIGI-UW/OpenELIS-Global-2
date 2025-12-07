@@ -666,6 +666,7 @@
   "login.timeout": "Timp de inactivitate utilizator (minute)",
   "login.timeout.placeholder": "Introduceți în ms",
   "login.title": "Autentificare",
+  "login.redirecting.sso": "Redirecting to Single Sign-On...",
   "manage.testing.algorithms.add.reflex.tests": "Gestionează algoritmi de testare și teste reflex",
   "master.lists.page": "Pagină liste master",
   "master.lists.page.analyzer": "Meniu Nume test analizor",
