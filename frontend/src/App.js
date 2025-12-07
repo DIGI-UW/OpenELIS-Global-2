@@ -49,7 +49,9 @@ import ReferredOutTests from "./components/resultPage/resultsReferredOut/Referre
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
+import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
+import SampleManagement from "./components/sampleManagement/SampleManagement";
 
 export default function App() {
   let i18nConfig = {
@@ -370,6 +372,18 @@ export default function App() {
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
+                  path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
+                  exact
+                  component={() => <NotebookSampleOrder />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NotebookSampleOrder/:notebookId"
+                  exact
+                  component={() => <NotebookSampleOrder />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
                   path="/CytologyCaseView/:cytologySampleId"
                   exact
                   component={() => <CytologyCaseView />}
@@ -455,6 +469,22 @@ export default function App() {
                   path="/Storage/:tab"
                   component={() => <StorageDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleManagement"
+                  exact
+                  component={() => <SampleManagement />}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                />
+                <SecureRoute
+                  path="/GenericSample/Results"
+                  exact
+                  component={() => {
+                    const GenericSampleResults =
+                      require("./components/genericSample/GenericSampleResults").default;
+                    return <GenericSampleResults />;
+                  }}
+                  role={[Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/PatientHistory"
