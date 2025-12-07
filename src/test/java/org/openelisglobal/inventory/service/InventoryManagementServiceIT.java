@@ -40,43 +40,43 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
 
     @Test
     public void consumeInventoryFEFO_shouldConsumeFromEarliestExpiringLot() {
-        List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO("test-item-1", 25.0,
+        List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO(1L, 25.0,
                 "test-result-1", "analysis-1", "1");
 
         assertNotNull("Consumption records should not be null", records);
         assertEquals("Should have 1 consumption record", 1, records.size());
 
         ConsumptionRecord record = records.getFirst();
-        assertEquals("Should consume from earliest expiring lot", "test-lot-2", record.getLotId());
+        assertEquals("Should consume from earliest expiring lot", Long.valueOf(2L), record.getLotId());
         assertEquals(Double.valueOf(25.0), record.getQuantityConsumed());
 
-        InventoryLot updatedLot = inventoryLotService.get("test-lot-2");
+        InventoryLot updatedLot = inventoryLotService.get(2L);
         assertEquals("Lot quantity should be reduced", Double.valueOf(25.0), updatedLot.getCurrentQuantity());
     }
 
     @Test
     public void consumeInventoryFEFO_shouldConsumeFromMultipleLotsWhenNeeded() {
-        List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO("test-item-1", 120.0,
+        List<ConsumptionRecord> records = inventoryManagementService.consumeInventoryFEFO(1L, 120.0,
                 "test-result-2", "analysis-2", "1");
 
         assertNotNull("Consumption records should not be null", records);
         assertEquals("Should have 2 consumption records", 2, records.size());
 
-        assertEquals("test-lot-2", records.get(0).getLotId());
+        assertEquals(Long.valueOf(2L), records.get(0).getLotId());
         assertEquals(Double.valueOf(50.0), records.get(0).getQuantityConsumed());
 
-        assertEquals("test-lot-1", records.get(1).getLotId());
+        assertEquals(Long.valueOf(1L), records.get(1).getLotId());
         assertEquals(Double.valueOf(70.0), records.get(1).getQuantityConsumed());
 
-        assertEquals(Double.valueOf(0.0), inventoryLotService.get("test-lot-2").getCurrentQuantity());
-        assertEquals(Double.valueOf(30.0), inventoryLotService.get("test-lot-1").getCurrentQuantity());
+        assertEquals(Double.valueOf(0.0), inventoryLotService.get(2L).getCurrentQuantity());
+        assertEquals(Double.valueOf(30.0), inventoryLotService.get(1L).getCurrentQuantity());
     }
 
     @Test
     public void consumeInventoryFEFO_shouldCreateTransactionRecords() {
-        inventoryManagementService.consumeInventoryFEFO("test-item-1", 25.0, "test-result-3", "analysis-3", "1");
+        inventoryManagementService.consumeInventoryFEFO(1L, 25.0, "test-result-3", "analysis-3", "1");
 
-        List<InventoryTransaction> transactions = transactionService.getByLotId("test-lot-2");
+        List<InventoryTransaction> transactions = transactionService.getByLotId(2L);
 
         InventoryTransaction consumptionTx = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.CONSUMPTION).findFirst().orElse(null);
@@ -88,7 +88,7 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
 
     @Test
     public void consumeInventoryFEFO_shouldCreateUsageRecords() {
-        inventoryManagementService.consumeInventoryFEFO("test-item-1", 25.0, "test-result-4", "analysis-4", "1");
+        inventoryManagementService.consumeInventoryFEFO(1L, 25.0, "test-result-4", "analysis-4", "1");
 
         List<InventoryUsage> usageRecords = usageService.getByTestResultId("test-result-4");
 
@@ -96,21 +96,21 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
         assertFalse("Should have usage record", usageRecords.isEmpty());
 
         InventoryUsage usage = usageRecords.getFirst();
-        assertEquals("test-lot-2", usage.getLot().getId());
+        assertEquals(Long.valueOf(2L), usage.getLot().getId());
         assertEquals(Double.valueOf(25.0), usage.getQuantityUsed());
         assertEquals("test-result-4", usage.getTestResultId());
     }
 
     @Test(expected = IllegalStateException.class)
     public void consumeInventoryFEFO_shouldThrowExceptionWhenInsufficientStock() {
-        inventoryManagementService.consumeInventoryFEFO("test-item-1", 200.0, // More than available
+        inventoryManagementService.consumeInventoryFEFO(1L, 200.0, // More than available
                 "test-result-5", "analysis-5", "1");
 
     }
 
     @Test
     public void getInventoryAlerts_shouldIdentifyLowStockItems() {
-        inventoryManagementService.consumeInventoryFEFO("test-item-1", 145.0, null, null, "1");
+        inventoryManagementService.consumeInventoryFEFO(1L, 145.0, null, null, "1");
 
         InventoryAlerts alerts = inventoryManagementService.getInventoryAlerts(30);
 
@@ -120,7 +120,7 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
     @Test
     public void receiveInventory_shouldCreateLotAndTransaction() {
         InventoryLot newLot = new InventoryLot();
-        newLot.setInventoryItem(inventoryItemService.get("test-item-1"));
+        newLot.setInventoryItem(inventoryItemService.get(1L));
         newLot.setLotNumber("LOT-NEW-001");
         newLot.setInitialQuantity(200.0);
         newLot.setCurrentQuantity(200.0);
@@ -143,13 +143,13 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
 
     @Test
     public void isSufficientInventoryAvailable_shouldReturnTrueWhenSufficient() {
-        boolean available = inventoryManagementService.isSufficientInventoryAvailable("test-item-1", 100.0);
+        boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 100.0);
         assertTrue("Should have sufficient inventory", available);
     }
 
     @Test
     public void isSufficientInventoryAvailable_shouldReturnFalseWhenInsufficient() {
-        boolean available = inventoryManagementService.isSufficientInventoryAvailable("test-item-1", 200.0);
+        boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 200.0);
         assertFalse("Should not have sufficient inventory", available);
     }
 }

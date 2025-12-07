@@ -23,7 +23,7 @@ public class InventoryStorageLocationServiceIT extends BaseWebContextSensitiveTe
 
     @Test
     public void testGetStorageLocation_LoadedFromDataset() {
-        InventoryStorageLocation location = storageLocationService.get("test-storage-loc-1");
+        InventoryStorageLocation location = storageLocationService.get(1L);
 
         assertNotNull("Location should be loaded", location);
         assertEquals("Test Refrigerator 1", location.getName());
@@ -44,13 +44,13 @@ public class InventoryStorageLocationServiceIT extends BaseWebContextSensitiveTe
         InventoryStorageLocation location = storageLocationService.getByLocationCode("TEST-ROOM-01");
 
         assertNotNull("Should find location by code", location);
-        assertEquals("test-storage-loc-2", location.getId());
+        assertEquals(Long.valueOf(2L), location.getId());
         assertEquals("Test Room Temperature", location.getName());
     }
 
     @Test
     public void get_shouldReturnStorageLocationWhenExists() {
-        InventoryStorageLocation location = storageLocationService.get("test-storage-loc-1");
+        InventoryStorageLocation location = storageLocationService.get(1L);
 
         assertNotNull("Location should be loaded from dataset", location);
         assertEquals("Test Refrigerator 1", location.getName());
@@ -63,7 +63,7 @@ public class InventoryStorageLocationServiceIT extends BaseWebContextSensitiveTe
         InventoryStorageLocation location = storageLocationService.getByLocationCode("TEST-ROOM-01");
 
         assertNotNull("Should find location by code", location);
-        assertEquals("test-storage-loc-2", location.getId());
+        assertEquals(Long.valueOf(2L), location.getId());
         assertEquals("Test Room Temperature", location.getName());
     }
 
@@ -84,7 +84,7 @@ public class InventoryStorageLocationServiceIT extends BaseWebContextSensitiveTe
         assertFalse("Should have at least 1 refrigerator", refrigerators.isEmpty());
 
         // Verify it's actually a refrigerator
-        InventoryStorageLocation fridge = refrigerators.stream().filter(loc -> "test-storage-loc-1".equals(loc.getId()))
+        InventoryStorageLocation fridge = refrigerators.stream().filter(loc -> Long.valueOf(1L).equals(loc.getId()))
                 .findFirst().orElse(null);
 
         assertNotNull("Should find test refrigerator", fridge);
@@ -93,14 +93,14 @@ public class InventoryStorageLocationServiceIT extends BaseWebContextSensitiveTe
 
     @Test
     public void update_shouldUpdateStorageLocation() {
-        InventoryStorageLocation location = storageLocationService.get("test-storage-loc-1");
+        InventoryStorageLocation location = storageLocationService.get(1L);
         location.setDescription("Updated description for testing");
 
         InventoryStorageLocation updatedLocation = storageLocationService.update(location);
 
         assertNotNull("Updated location should not be null", updatedLocation);
         assertEquals("Updated description for testing",
-                storageLocationService.get("test-storage-loc-1").getDescription());
+                storageLocationService.get(1L).getDescription());
     }
 
     @Test
@@ -112,7 +112,7 @@ public class InventoryStorageLocationServiceIT extends BaseWebContextSensitiveTe
         newLocation.setIsActive(true);
         newLocation.setSysUserId("1");
 
-        String insertedId = storageLocationService.insert(newLocation);
+        Long insertedId = storageLocationService.insert(newLocation);
 
         assertNotNull("Inserted ID should not be null", insertedId);
 
