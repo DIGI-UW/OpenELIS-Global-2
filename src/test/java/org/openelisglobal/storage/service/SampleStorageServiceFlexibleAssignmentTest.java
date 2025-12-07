@@ -253,7 +253,8 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         existingAssignment.setLocationId(10);
         existingAssignment.setLocationType("device");
 
-        // Note: findBySampleItemId is called with the RESOLVED numeric ID (TEST_SAMPLE_ITEM_ID),
+        // Note: findBySampleItemId is called with the RESOLVED numeric ID
+        // (TEST_SAMPLE_ITEM_ID),
         // not the external ID that was passed to the method
         when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(existingAssignment);
         when(storageLocationService.get(20, StorageShelf.class)).thenReturn(testShelf);
@@ -284,7 +285,8 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         existingAssignment.setLocationId(10);
         existingAssignment.setLocationType("device");
 
-        // Note: findBySampleItemId is called with the RESOLVED numeric ID (TEST_SAMPLE_ITEM_ID),
+        // Note: findBySampleItemId is called with the RESOLVED numeric ID
+        // (TEST_SAMPLE_ITEM_ID),
         // not the external ID that was passed to the method
         when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(existingAssignment);
         when(storageLocationService.get(30, StorageRack.class)).thenReturn(testRack);

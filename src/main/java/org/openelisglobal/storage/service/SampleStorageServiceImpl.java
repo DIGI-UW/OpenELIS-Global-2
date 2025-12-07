@@ -796,7 +796,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // No occupancy tracking - position is just a text field
 
             // Find existing assignment for SampleItem (using resolved numeric ID)
-            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(resolvedSampleItemId);
+            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO
+                    .findBySampleItemId(resolvedSampleItemId);
 
             // Store previous location details BEFORE updating (for movement audit log)
             Integer previousLocationId = null;
