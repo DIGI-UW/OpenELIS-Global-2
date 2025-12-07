@@ -488,7 +488,7 @@
                     ELSE 'HIV_KIT'
                 END,
                 'kits',
-                CASE WHEN is_active THEN 'Y' ELSE 'N' END,
+                COALESCE(is_active, 'Y'),
                 CASE
                     WHEN UPPER(COALESCE(description, '')) LIKE '%HIV%' THEN 'HIV'
                     WHEN UPPER(COALESCE(description, '')) LIKE '%SYPHILIS%'
