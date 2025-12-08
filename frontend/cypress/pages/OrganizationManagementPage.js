@@ -57,29 +57,15 @@ class OrganizationManagementPage {
   }
 
   searchOrganzation() {
-    // Wait for the Search component wrapper to be visible first
-    cy.get(this.selectors.orgSearchBar, { timeout: 10000 }).should(
-      "be.visible",
-    );
-    // Then find the input inside - Carbon Search renders input with class .cds--search-input
-    cy.get(`${this.selectors.orgSearchBar} .cds--search-input`)
-      .should("be.visible")
-      .should("not.be.disabled")
-      .focus()
+    // The input has id="org-name-search-bar" directly on it
+    cy.get(this.selectors.orgSearchBar)
       .clear({ force: true })
       .type("CAMES MAN", { force: true });
   }
 
   searchInstitute() {
-    // Wait for the Search component wrapper to be visible first
-    cy.get(this.selectors.orgSearchBar, { timeout: 10000 }).should(
-      "be.visible",
-    );
-    // Then find the input inside - Carbon Search renders input with class .cds--search-input
-    cy.get(`${this.selectors.orgSearchBar} .cds--search-input`)
-      .should("be.visible")
-      .should("not.be.disabled")
-      .focus()
+    // The input has id="org-name-search-bar" directly on it
+    cy.get(this.selectors.orgSearchBar)
       .clear({ force: true })
       .type("CEDRES", { force: true });
   }
