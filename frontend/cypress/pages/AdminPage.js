@@ -38,21 +38,21 @@ class AdminPage {
 
   goToProviderManagementPage() {
     cy.get(this.selectors.providerManagement).should("be.visible").click();
-    cy.url().should("include", "#providerMenu");
+    cy.url().should("include", "/providerMenu");
     cy.contains("Provider Management").should("be.visible");
     return new ProviderManagementPage();
   }
 
   goToOrganizationManagement() {
     cy.get(this.selectors.organizationManagement).should("be.visible").click();
-    cy.url().should("include", "#organizationManagement");
+    cy.url().should("include", "/organizationManagement");
     cy.contains("Organization Management").should("be.visible");
     return new OrganizationManagementPage();
   }
 
   goToLabNumberManagementPage() {
     cy.get(this.selectors.labNumberManagement).should("be.visible").click();
-    cy.url().should("include", "#labNumber");
+    cy.url().should("include", "/labNumber");
     cy.contains("Lab Number Management").should("be.visible");
     return new LabNumberManagementPage();
   }
@@ -60,7 +60,7 @@ class AdminPage {
   goToGlobalMenuConfigPage() {
     cy.contains(this.selectors.span, "Menu Configuration").click();
     cy.get(this.selectors.globalMenuManagement).should("be.visible").click();
-    cy.url().should("include", "#globalMenuManagement");
+    cy.url().should("include", "/globalMenuManagement");
     cy.contains("Global Menu Management").should("be.visible");
 
     return new MenuConfigPage();

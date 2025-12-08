@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import config from "../../config.json";
 import { FormattedMessage, useIntl, injectIntl } from "react-intl";
-import { Switch, Route, useRouteMatch } from "react-router-dom";
+import { Switch, Route, useRouteMatch, useHistory } from "react-router-dom";
 import "../Style.css";
 import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
 import ProgramManagement from "./program/ProgramManagement";
@@ -93,7 +93,14 @@ import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
 function Admin() {
   const intl = useIntl();
   const { path } = useRouteMatch();
+  const history = useHistory();
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+
+  // Navigation handler to prevent page reload
+  const handleNavigation = (targetPath) => (e) => {
+    e.preventDefault();
+    history.push(targetPath);
+  };
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 1024px)"); //applicable for medium screen and below  for only small screen set max-width: 768px
@@ -119,89 +126,92 @@ function Admin() {
             renderIcon={Microscope}
             title={intl.formatMessage({ id: "sidenav.label.admin.testmgt" })}
           >
-            <SideNavMenuItem data-cy="reflex" href={`${path}/reflex`}>
+            <SideNavMenuItem
+              data-cy="reflex"
+              onClick={handleNavigation(`${path}/reflex`)}
+            >
               <FormattedMessage id="sidenav.label.admin.testmgt.reflex" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="calculatedValue"
-              href={`${path}/calculatedValue`}
+              onClick={handleNavigation(`${path}/calculatedValue`)}
             >
               <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
             </SideNavMenuItem>
           </SideNavMenu>
           <SideNavLink
-            href={`${path}/AnalyzerTestName`}
             renderIcon={ListDropdown}
+            onClick={handleNavigation(`${path}/AnalyzerTestName`)}
           >
             <FormattedMessage id="sidenav.label.admin.analyzerTest" />
           </SideNavLink>
           <SideNavLink
             data-cy="labNumberMgmnt"
-            href={`${path}/labNumber`}
             renderIcon={CharacterWholeNumber}
+            onClick={handleNavigation(`${path}/labNumber`)}
           >
             <FormattedMessage id="sidenav.label.admin.labNumber" />
           </SideNavLink>
           <SideNavLink
             data-cy="programEntry"
             renderIcon={ChartBubble}
-            href={`${path}/program`}
+            onClick={handleNavigation(`${path}/program`)}
           >
             <FormattedMessage id="sidenav.label.admin.program" />
           </SideNavLink>
           <SideNavLink
             data-cy="providerMgmnt"
             renderIcon={CicsSystemGroup}
-            href={`${path}/providerMenu`}
+            onClick={handleNavigation(`${path}/providerMenu`)}
           >
             <FormattedMessage id="provider.browse.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="barcodeConfig"
             renderIcon={QrCode}
-            href={`${path}/barcodeConfiguration`}
+            onClick={handleNavigation(`${path}/barcodeConfiguration`)}
           >
             <FormattedMessage id="sidenav.label.admin.barcodeconfiguration" />
           </SideNavLink>
           <SideNavLink
             data-cy="pluginFile"
-            href={`${path}/PluginFile`}
             renderIcon={BootVolumeAlt}
+            onClick={handleNavigation(`${path}/PluginFile`)}
           >
             <FormattedMessage id="sidenav.label.admin.Listplugin" />
           </SideNavLink>
           <SideNavLink
             data-cy="orgMgmnt"
             renderIcon={ContainerSoftware}
-            href={`${path}/organizationManagement`}
+            onClick={handleNavigation(`${path}/organizationManagement`)}
           >
             <FormattedMessage id="organization.main.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="resultReportingConfiguration"
             renderIcon={Report}
-            href={`${path}/resultReportingConfiguration`}
+            onClick={handleNavigation(`${path}/resultReportingConfiguration`)}
           >
             <FormattedMessage id="resultreporting.browse.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="userMgmnt"
             renderIcon={User}
-            href={`${path}/userManagement`}
+            onClick={handleNavigation(`${path}/userManagement`)}
           >
             <FormattedMessage id="unifiedSystemUser.browser.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="batchTestReassignment"
             renderIcon={BatchJob}
-            href={`${path}/batchTestReassignment`}
+            onClick={handleNavigation(`${path}/batchTestReassignment`)}
           >
             <FormattedMessage id="configuration.batch.test.reassignment" />
           </SideNavLink>
           <SideNavLink
             data-cy="testManagementConfigMenu"
             renderIcon={ResultNew}
-            href={`${path}/testManagementConfigMenu`}
+            onClick={handleNavigation(`${path}/testManagementConfigMenu`)}
           >
             <FormattedMessage id="master.lists.page.test.management" />
           </SideNavLink>
@@ -211,31 +221,31 @@ function Admin() {
           >
             <SideNavMenuItem
               data-cy="globalMenuMgmnt"
-              href={`${path}/globalMenuManagement`}
+              onClick={handleNavigation(`${path}/globalMenuManagement`)}
             >
               <FormattedMessage id="sidenav.label.admin.menu.global" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="billingMenuMgmnt"
-              href={`${path}/billingMenuManagement`}
+              onClick={handleNavigation(`${path}/billingMenuManagement`)}
             >
               <FormattedMessage id="sidenav.label.admin.menu.billing" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="nonConformMenuMgmnt"
-              href={`${path}/nonConformityMenuManagement`}
+              onClick={handleNavigation(`${path}/nonConformityMenuManagement`)}
             >
               <FormattedMessage id="sidenav.label.admin.menu.nonconform" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="patientMenuMgmnt"
-              href={`${path}/patientMenuManagement`}
+              onClick={handleNavigation(`${path}/patientMenuManagement`)}
             >
               <FormattedMessage id="sidenav.label.admin.menu.patient" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="studyMenuMgmnt"
-              href={`${path}/studyMenuManagement`}
+              onClick={handleNavigation(`${path}/studyMenuManagement`)}
             >
               <FormattedMessage id="sidenav.label.admin.menu.study" />
             </SideNavMenuItem>
@@ -247,89 +257,96 @@ function Admin() {
           >
             <SideNavMenuItem
               data-cy="nonConformConfig"
-              href={`${path}/NonConformityConfigurationMenu`}
+              onClick={handleNavigation(
+                `${path}/NonConformityConfigurationMenu`,
+              )}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.nonconformityconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="menuStatementConfig"
-              href={`${path}/MenuStatementConfigMenu`}
+              onClick={handleNavigation(`${path}/MenuStatementConfigMenu`)}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.menustatementconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="workPlanConfig"
-              href={`${path}/WorkPlanConfigurationMenu`}
+              onClick={handleNavigation(`${path}/WorkPlanConfigurationMenu`)}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.Workplanconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="siteInfoMenu"
-              href={`${path}/SiteInformationMenu`}
+              onClick={handleNavigation(`${path}/SiteInformationMenu`)}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.siteInfoconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="resultConfigMenu"
-              href={`${path}/ResultConfigurationMenu`}
+              onClick={handleNavigation(`${path}/ResultConfigurationMenu`)}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.resultConfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="patientConfigMenu"
-              href={`${path}/PatientConfigurationMenu`}
+              onClick={handleNavigation(`${path}/PatientConfigurationMenu`)}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.patientconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="printedReportsConfigMenu"
-              href={`${path}/PrintedReportsConfigurationMenu`}
+              onClick={handleNavigation(
+                `${path}/PrintedReportsConfigurationMenu`,
+              )}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.PrintedReportsconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="sampleEntryConfigMenu"
-              href={`${path}/SampleEntryConfigurationMenu`}
+              onClick={handleNavigation(`${path}/SampleEntryConfigurationMenu`)}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.sampleEntryconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="validationConfigMenu"
-              href={`${path}/ValidationConfigurationMenu`}
+              onClick={handleNavigation(`${path}/ValidationConfigurationMenu`)}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.validationconfig" />
             </SideNavMenuItem>
           </SideNavMenu>
 
-          <SideNavLink href={`${path}/commonproperties`} renderIcon={Settings}>
+          <SideNavLink
+            renderIcon={Settings}
+            onClick={handleNavigation(`${path}/commonproperties`)}
+          >
             <FormattedMessage
               id="sidenav.label.admin.commonproperties"
               defaultMessage={"Common Properties"}
             />
           </SideNavLink>
           <SideNavLink
-            href={`${path}/testNotificationConfigMenu`}
             renderIcon={Popup}
+            onClick={handleNavigation(`${path}/testNotificationConfigMenu`)}
           >
             <FormattedMessage id="testnotificationconfig.browse.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="dictMenu"
-            href={`${path}/DictionaryMenu`}
             renderIcon={CharacterWholeNumber}
+            onClick={handleNavigation(`${path}/DictionaryMenu`)}
           >
             <FormattedMessage id="dictionary.label.modify" />
           </SideNavLink>
           <SideNavLink
             data-cy="notifyUser"
-            href={`${path}/NotifyUser`}
             renderIcon={Bullhorn}
+            onClick={handleNavigation(`${path}/NotifyUser`)}
           >
             <FormattedMessage id="notify.main.title" />
           </SideNavLink>
           <SideNavLink
-            href={`${path}/SearchIndexManagement`}
             renderIcon={Search}
+            onClick={handleNavigation(`${path}/SearchIndexManagement`)}
           >
             <FormattedMessage id="searchindexmanagement.label" />
           </SideNavLink>
