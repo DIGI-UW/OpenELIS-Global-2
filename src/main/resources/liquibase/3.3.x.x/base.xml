@@ -22,4 +22,8 @@
   <include relativeToChangelogFile="true" file="014-rename-print-history-short-code-to-location-code.xml"/>
   <include relativeToChangelogFile="true" file="011-freezer-monitoring-schema.xml"/>
   <include relativeToChangelogFile="true" file="015-add-sample-disposed-status.xml"/>
+  
+  <!-- Site Branding / White Labeling (001-site-branding) -->
+  <include relativeToChangelogFile="true" file="../sitebranding/001-create-site-branding-table.xml"/>
+  <include relativeToChangelogFile="true" file="../sitebranding/002-rename-lastupdated-to-last-updated.xml"/>
 </databaseChangeLog>

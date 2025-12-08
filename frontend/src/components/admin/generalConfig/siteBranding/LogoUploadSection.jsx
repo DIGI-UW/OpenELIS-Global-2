@@ -227,7 +227,8 @@ function LogoUploadSection({
           {!(type === "login" && useHeaderLogoForLogin) && (
             <FileUploader
               buttonLabel={intl.formatMessage({ id: "site.branding.upload.logo" })}
-              filenameStatus={file ? "complete" : ""}
+              iconDescription={intl.formatMessage({ id: "site.branding.upload.logo" })}
+              filenameStatus={file ? "complete" : undefined}
               accept={["image/png", "image/svg+xml", "image/jpeg", "image/jpg"]}
               multiple={false}
               onChange={handleFileChange}

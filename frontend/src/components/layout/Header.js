@@ -50,6 +50,7 @@ function OEHeader(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
   const [headerLogoUrl, setHeaderLogoUrl] = useState(null);
+  const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
 
   const userSwitchRef = createRef();
   const headerPanelRef = createRef();
@@ -87,12 +88,14 @@ function OEHeader(props) {
 
   // Load branding configuration for header logo and colors
   // Task Reference: T085 - Apply branding to header component
-  useEffect(() => {
+  const loadBranding = () => {
     if (userSessionDetails.authenticated) {
       getBranding((response) => {
         if (response) {
           if (response.headerLogoUrl) {
             setHeaderLogoUrl(response.headerLogoUrl);
+            // Increment version to force logo reload
+            setLogoVersion(prev => prev + 1);
           }
 
           // Apply custom colors to header
@@ -111,6 +114,21 @@ function OEHeader(props) {
         }
       });
     }
+  };
+
+  useEffect(() => {
+    loadBranding();
+  }, [userSessionDetails.authenticated]);
+
+  // Listen for branding update events to refresh logo and colors
+  useEffect(() => {
+    const handleBrandingUpdate = () => {
+      loadBranding();
+    };
+    window.addEventListener('branding-updated', handleBrandingUpdate);
+    return () => {
+      window.removeEventListener('branding-updated', handleBrandingUpdate);
+    };
   }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
@@ -203,8 +221,9 @@ function OEHeader(props) {
 
   const logo = () => {
     // Use custom header logo if available, otherwise use default
+    // Add cache-busting parameter to prevent stale logo display after upload
     const logoSrc = headerLogoUrl 
-      ? `../api${headerLogoUrl}` 
+      ? `../api${headerLogoUrl}?v=${logoVersion}` 
       : `../images/openelis_logo.png`;
     
     return (

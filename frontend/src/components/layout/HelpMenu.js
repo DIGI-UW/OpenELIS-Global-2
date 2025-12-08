@@ -17,7 +17,12 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
 
   // Fetch help URLs on mount
   useEffect(() => {
+    let isMounted = true;
+    
     getFromOpenElisServer("/rest/properties", (properties, err) => {
+      // Only update state if component is still mounted
+      if (!isMounted) return;
+      
       if (err) {
         setError(err);
         console.error("Failed to fetch help URLs:", err);
@@ -30,6 +35,11 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
         });
       }
     });
+    
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {

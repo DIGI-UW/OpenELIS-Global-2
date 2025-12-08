@@ -30,6 +30,7 @@ function Login(props) {
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
   const [loginLogoUrl, setLoginLogoUrl] = useState(null);
+  const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
   const firstInput = createRef();
 
   useEffect(() => {
@@ -51,9 +52,11 @@ function Login(props) {
         if (response.useHeaderLogoForLogin && response.headerLogoUrl) {
           // Use header logo for login page
           setLoginLogoUrl(response.headerLogoUrl);
+          setLogoVersion(prev => prev + 1); // Increment version to force logo reload
         } else if (response.loginLogoUrl) {
           // Use dedicated login logo
           setLoginLogoUrl(response.loginLogoUrl);
+          setLogoVersion(prev => prev + 1); // Increment version to force logo reload
         }
         // If neither exists, loginLogoUrl remains null and default logo will be used
 
@@ -86,8 +89,9 @@ function Login(props) {
 
   const loginMessage = () => {
     // Task Reference: T041 - Use custom login logo if available, otherwise default
+    // Add cache-busting parameter to prevent stale logo display after upload
     const logoSrc = loginLogoUrl 
-      ? `../api${loginLogoUrl}` 
+      ? `../api${loginLogoUrl}?v=${logoVersion}` 
       : `images/openelis_logo_full.png`;
     
     return (

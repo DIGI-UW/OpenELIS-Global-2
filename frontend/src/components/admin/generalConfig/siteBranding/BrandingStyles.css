@@ -1,0 +1,155 @@
+/**
+ * Branding Styles CSS
+ * 
+ * Applies branding colors to Carbon Design System components
+ * Uses CSS custom properties set by BrandingStyles.jsx and SiteBrandingConfig.jsx
+ */
+
+/* Primary Color - Applied to header, primary buttons, active menu items, links */
+.cds--header,
+.cds--header__global-bar,
+header.cds--header {
+  background-color: var(--cds-interactive-01, #1d4ed8) !important;
+}
+
+/* Header global bar background */
+.cds--header__global-bar {
+  background-color: var(--cds-interactive-01, #1d4ed8) !important;
+}
+
+/* Primary buttons */
+.cds--btn--primary,
+button.cds--btn--primary {
+  background-color: var(--cds-interactive-01, #1d4ed8) !important;
+  border-color: var(--cds-interactive-01, #1d4ed8) !important;
+}
+
+.cds--btn--primary:hover,
+button.cds--btn--primary:hover {
+  background-color: var(--cds-interactive-01, #1d4ed8) !important;
+  opacity: 0.9;
+}
+
+.cds--btn--primary:active,
+button.cds--btn--primary:active {
+  background-color: var(--cds-interactive-01, #1d4ed8) !important;
+  opacity: 0.8;
+}
+
+/* Active menu items and links */
+.cds--side-nav__item--active .cds--side-nav__link,
+.cds--side-nav__item--active .cds--side-nav__link:hover {
+  background-color: var(--cds-interactive-01, #1d4ed8) !important;
+}
+
+a:not(.cds--link--disabled),
+.cds--link {
+  color: var(--cds-interactive-01, #1d4ed8) !important;
+}
+
+a:not(.cds--link--disabled):hover,
+.cds--link:hover {
+  color: var(--cds-interactive-01, #1d4ed8) !important;
+  opacity: 0.9;
+}
+
+/* Secondary Color - Applied to secondary buttons, borders, inactive states */
+.cds--btn--secondary,
+button.cds--btn--secondary {
+  border-color: var(--cds-interactive-02, #64748b) !important;
+  color: var(--cds-interactive-02, #64748b) !important;
+}
+
+.cds--btn--secondary:hover,
+button.cds--btn--secondary:hover {
+  background-color: var(--cds-interactive-02, #64748b) !important;
+  border-color: var(--cds-interactive-02, #64748b) !important;
+}
+
+/* Borders and inactive states */
+.cds--side-nav__item:not(.cds--side-nav__item--active) .cds--side-nav__link {
+  color: var(--cds-interactive-02, #64748b) !important;
+}
+
+.cds--side-nav__item:not(.cds--side-nav__item--active) .cds--side-nav__link:hover {
+  background-color: color-mix(in srgb, var(--cds-interactive-02, #64748b) 10%, transparent) !important;
+}
+
+/* Table borders and dividers */
+.cds--data-table th,
+.cds--data-table td {
+  border-bottom-color: var(--cds-interactive-02, #64748b) !important;
+}
+
+.cds--structured-list-item {
+  border-bottom-color: var(--cds-interactive-02, #64748b) !important;
+}
+
+/* Accent Color - Applied to notifications, badges, focus states, alerts */
+.cds--inline-notification--info,
+.cds--inline-notification--info .cds--inline-notification__icon {
+  background-color: var(--cds-support-01, #0891b2) !important;
+  border-color: var(--cds-support-01, #0891b2) !important;
+}
+
+.cds--toast-notification--info,
+.cds--toast-notification--info .cds--toast-notification__icon {
+  background-color: var(--cds-support-01, #0891b2) !important;
+  border-color: var(--cds-support-01, #0891b2) !important;
+}
+
+.cds--badge {
+  background-color: var(--cds-support-01, #0891b2) !important;
+}
+
+.cds--tag {
+  background-color: var(--cds-support-01, #0891b2) !important;
+}
+
+/* Focus states for all form inputs */
+.cds--text-input:focus,
+.cds--select:focus,
+.cds--text-area:focus,
+.cds--number-input:focus,
+.cds--date-picker__input:focus,
+.cds--search-input:focus,
+.cds--dropdown:focus,
+.cds--list-box:focus {
+  outline-color: var(--cds-support-01, #0891b2) !important;
+  box-shadow: 0 0 0 2px var(--cds-support-01, #0891b2) !important;
+}
+
+/* Alerts and warning states */
+.cds--inline-notification--warning,
+.cds--inline-notification--warning .cds--inline-notification__icon {
+  border-left-color: var(--cds-support-01, #0891b2) !important;
+}
+
+.cds--inline-notification--error,
+.cds--inline-notification--error .cds--inline-notification__icon {
+  border-left-color: var(--cds-support-01, #0891b2) !important;
+}
+
+/* Progress indicators and loading states */
+.cds--progress-bar,
+.cds--progress-bar .cds--progress-bar__bar {
+  background-color: var(--cds-support-01, #0891b2) !important;
+}
+
+.cds--loading__svg circle {
+  stroke: var(--cds-support-01, #0891b2) !important;
+}
+
+/* Apply to any element using site branding custom properties */
+[style*="--site-branding-primary"] {
+  color: var(--site-branding-primary) !important;
+}
+
+[style*="--site-branding-secondary"] {
+  color: var(--site-branding-secondary) !important;
+}
+
+[style*="--site-branding-accent"] {
+  color: var(--site-branding-accent) !important;
+}
+
