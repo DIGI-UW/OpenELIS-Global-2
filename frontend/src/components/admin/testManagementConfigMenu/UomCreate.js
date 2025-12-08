@@ -209,7 +209,9 @@ function UomCreate() {
                 <FormattedMessage id="next.action.button" />
               </Button>{" "}
               <Button
-                onClick={() => window.location.replace("/MasterListsPage/UomManagement")}
+                onClick={() =>
+                  window.location.replace("/MasterListsPage/UomManagement")
+                }
                 kind="tertiary"
                 type="button"
               >
