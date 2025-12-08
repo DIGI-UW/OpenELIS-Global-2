@@ -82,9 +82,12 @@ are straightforward removals + rename.
 ### 1.2 Virtual Position (Develop Implementation)
 
 - `StoragePosition` entity is **removed** (no table).
-- Position is stored as `position_coordinate` (text) on `SampleStorageAssignment`.
-- `location_type` enum includes `'box'`; occupancy is derived from assignments to a Box ID.
-- Supports free-text positions at any hierarchy level (rack/shelf/box) without pre-generating empty slots.
+- Position is stored as `position_coordinate` (text) on
+  `SampleStorageAssignment`.
+- `location_type` enum includes `'box'`; occupancy is derived from assignments
+  to a Box ID.
+- Supports free-text positions at any hierarchy level (rack/shelf/box) without
+  pre-generating empty slots.
 
 ---
 
@@ -280,12 +283,12 @@ result.setBox(box);
 
 **Example Behaviors**:
 
-| Barcode                | Valid Segments | Autofilled Levels                         | Warning                                 |
-| ---------------------- | -------------- | ----------------------------------------- | --------------------------------------- |
-| `LAB-F1-S1-R1-BOX1-A5` | All 6          | Room, Device, Shelf, Rack, Box, Position  | None                                    |
-| `LAB-F1-S1-R1-INVALID` | 4 of 5         | Room, Device, Shelf, Rack                 | "Box 'INVALID' not found in Rack 'R1'"  |
-| `LAB-F1-S1-R1`         | All 4          | Room, Device, Shelf, Rack                 | None (valid 4-level)                    |
-| `LAB-INVALID`          | 1 of 2         | Room                                      | "Device 'INVALID' not found in Room 'LAB'" |
+| Barcode                | Valid Segments | Autofilled Levels                        | Warning                                    |
+| ---------------------- | -------------- | ---------------------------------------- | ------------------------------------------ |
+| `LAB-F1-S1-R1-BOX1-A5` | All 6          | Room, Device, Shelf, Rack, Box, Position | None                                       |
+| `LAB-F1-S1-R1-INVALID` | 4 of 5         | Room, Device, Shelf, Rack                | "Box 'INVALID' not found in Rack 'R1'"     |
+| `LAB-F1-S1-R1`         | All 4          | Room, Device, Shelf, Rack                | None (valid 4-level)                       |
+| `LAB-INVALID`          | 1 of 2         | Room                                     | "Device 'INVALID' not found in Room 'LAB'" |
 
 ---
 
@@ -294,36 +297,52 @@ result.setBox(box);
 ### 2.1 Backend Files Affected
 
 **Entities (Valueholders)**:
+
 - `StorageRack` — remove grid fields, rename `label` → `name`.
 - `StorageBox` — new entity (grid dimensions, barcode, parent_rack_id).
-- `SampleStorageAssignment` — add location_type = 'box', store `position_coordinate` text.
+- `SampleStorageAssignment` — add location_type = 'box', store
+  `position_coordinate` text.
 - `SampleStorageMovement` — extend location_type enums to include 'box'.
 
 **DAOs**:
+
 - `StorageRackDAO/Impl` — queries without grid fields.
 - `StorageBoxDAO/Impl` — new DAO for boxes and occupancy.
 - `SampleStorageAssignmentDAO/Impl` — box lookups, occupied coordinates.
 
 **Services**:
+
 - `StorageLocationService/Impl` — Box CRUD, rack path building.
 - `StorageDashboardService/Impl` — box metrics.
-- `BarcodeValidationServiceImpl` — 5-level barcode (Room→Device→Shelf→Rack→Box + optional coordinate).
-- `SampleStorageService/Impl` — assignments/movements for box, virtual positions, disposal support.
-- `LabelManagementServiceImpl` — barcode generation with rack shortCode + box code.
+- `BarcodeValidationServiceImpl` — 5-level barcode (Room→Device→Shelf→Rack→Box +
+  optional coordinate).
+- `SampleStorageService/Impl` — assignments/movements for box, virtual
+  positions, disposal support.
+- `LabelManagementServiceImpl` — barcode generation with rack shortCode + box
+  code.
 
 **Controllers**:
-- `StorageLocationRestController` — Box endpoints (create/update/get), rack payload uses shortCode.
-- `SampleStorageRestController` — assignment APIs accept box + position coordinate.
+
+- `StorageLocationRestController` — Box endpoints (create/update/get), rack
+  payload uses shortCode.
+- `SampleStorageRestController` — assignment APIs accept box + position
+  coordinate.
 - `LabelManagementRestController` — barcode generation uses rack shortCode.
 
 **Forms**:
-- `StorageRackForm` — simplified (no rows/columns/position_schema_hint, uses shortCode).
-- `StorageBoxForm` — new (rows, columns, position_schema_hint, shortCode, parent_rack_id).
+
+- `StorageRackForm` — simplified (no rows/columns/position_schema_hint, uses
+  shortCode).
+- `StorageBoxForm` — new (rows, columns, position_schema_hint, shortCode,
+  parent_rack_id).
 
 **FHIR**:
-- `StorageLocationFhirTransform` — rack without grid extensions; box transform with grid + schema-hint extensions.
+
+- `StorageLocationFhirTransform` — rack without grid extensions; box transform
+  with grid + schema-hint extensions.
 
 **Tests**:
+
 - Rack/controller/service tests updated for shortCode and box path.
 - Assignment/disposal tests updated to use box + position_coordinate.
 
@@ -333,20 +352,27 @@ result.setBox(box);
 
 **Storage Dashboard / Selector**:
 
-- `frontend/src/components/storage/StorageDashboard/StorageDashboard.jsx` — Boxes tab, rack→box dropdowns, grid preview and assignment form.
-- `frontend/src/components/storage/StorageDashboard/StorageLocationsMetricCard.jsx` — include box counts.
-- `frontend/src/components/storage/StorageLocationHierarchy.jsx` / tables — render Box level.
-- `frontend/src/components/storage/StorageDashboard/StorageAssignmentModal.jsx` — select Box + position text coordinate.
-- `frontend/src/components/storage/StorageLocationSelector/UnifiedBarcodeInput.jsx` — parse 5-level barcode + optional coordinate.
+- `frontend/src/components/storage/StorageDashboard/StorageDashboard.jsx` —
+  Boxes tab, rack→box dropdowns, grid preview and assignment form.
+- `frontend/src/components/storage/StorageDashboard/StorageLocationsMetricCard.jsx`
+  — include box counts.
+- `frontend/src/components/storage/StorageLocationHierarchy.jsx` / tables —
+  render Box level.
+- `frontend/src/components/storage/StorageDashboard/StorageAssignmentModal.jsx`
+  — select Box + position text coordinate.
+- `frontend/src/components/storage/StorageLocationSelector/UnifiedBarcodeInput.jsx`
+  — parse 5-level barcode + optional coordinate.
 
 **Location Management**:
 
-- `frontend/src/components/storage/LocationManagement/EditLocationModal.jsx` — rack fields simplified (no grid).
+- `frontend/src/components/storage/LocationManagement/EditLocationModal.jsx` —
+  rack fields simplified (no grid).
 - Box create/edit modal for dimensions and schema hint.
 
 **Internationalization**:
 
-- `frontend/src/languages/en.json`, `frontend/src/languages/fr.json` — box tab, grid labels, position strings.
+- `frontend/src/languages/en.json`, `frontend/src/languages/fr.json` — box tab,
+  grid labels, position strings.
 
 ---
 
@@ -354,11 +380,14 @@ result.setBox(box);
 
 **Liquibase Changesets**:
 
-- Existing storage changelog (`src/main/resources/liquibase/3.3.x.x/`) drops rack grid columns, creates `storage_box`, and extends location_type checks/indexes/seeds for `'box'`.
+- Existing storage changelog (`src/main/resources/liquibase/3.3.x.x/`) drops
+  rack grid columns, creates `storage_box`, and extends location_type
+  checks/indexes/seeds for `'box'`.
 
 **Persistence Configuration**:
 
-- No new `persistence.xml` entries required (Box entity discovered via package scan).
+- No new `persistence.xml` entries required (Box entity discovered via package
+  scan).
 
 ---
 

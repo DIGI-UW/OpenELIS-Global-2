@@ -8,18 +8,20 @@
 ## Executive Summary
 
 This document details the database schema changes required to implement the
-Box/Plate hierarchy enhancement (OGC-149). The
-enhancement adds a fifth persistent hierarchy level (Box) between Rack and the
-virtual Position coordinate, enabling accurate representation of laboratory
-storage without persisting empty position rows.
+Box/Plate hierarchy enhancement (OGC-149). The enhancement adds a fifth
+persistent hierarchy level (Box) between Rack and the virtual Position
+coordinate, enabling accurate representation of laboratory storage without
+persisting empty position rows.
 
 **Key Changes**:
 
 - **StorageRack**: Remove grid fields (`rows`, `columns`,
   `position_schema_hint`), rename `label` → `name`
 - **StorageBox**: New entity with grid dimensions and barcode support
-- **StoragePosition**: **Removed** (positions are virtual text coordinates stored on assignments)
-- **SampleStorageAssignment**: Extend `location_type` enum to include `'box'`; add text position coordinate
+- **StoragePosition**: **Removed** (positions are virtual text coordinates
+  stored on assignments)
+- **SampleStorageAssignment**: Extend `location_type` enum to include `'box'`;
+  add text position coordinate
 
 ---
 
@@ -142,7 +144,8 @@ structure. Holds the grid dimensions previously on Rack.
 ### Relationships
 
 - **Many-to-One** with `StorageRack` (parent)
-- **One-to-Many** with `SampleStorageAssignment` (via location_id/location_type="box" and position_coordinate for occupancy)
+- **One-to-Many** with `SampleStorageAssignment` (via
+  location_id/location_type="box" and position_coordinate for occupancy)
 
 ### Calculated Fields
 
@@ -190,22 +193,22 @@ flexible assignment to any hierarchy level with virtual coordinates.
 
 ### Schema Changes
 
-| Change Type | Field           | Action      | Description                     |
-| ----------- | --------------- | ----------- | ------------------------------- |
-| **UPDATE**  | `location_type` | Extend enum | Add 'box' to valid values       |
+| Change Type | Field           | Action      | Description               |
+| ----------- | --------------- | ----------- | ------------------------- |
+| **UPDATE**  | `location_type` | Extend enum | Add 'box' to valid values |
 
 ### Updated Schema
 
-| Field                 | Type            | Constraints             | Description                                                 |
-| --------------------- | --------------- | ----------------------- | ----------------------------------------------------------- |
-| `id`                  | INTEGER         | PK, AUTO                | Primary key                                                 |
-| `sample_item_id`      | INTEGER         | NOT NULL, UNIQUE        | SampleItem reference                                        |
-| `location_id`         | INTEGER         | NOT NULL                | Polymorphic location ID                                     |
-| **`location_type`**   | **VARCHAR(20)** | **NOT NULL**            | **Type: 'device', 'shelf', 'rack', 'box'**                  |
-| `position_coordinate` | VARCHAR(50)     | NULL                    | Optional text-based position coordinate                     |
-| `assigned_by_user_id` | INTEGER         | NOT NULL, FK            | User who assigned                                           |
-| `assigned_date`       | TIMESTAMP       | NOT NULL, DEFAULT NOW() | Assignment timestamp                                        |
-| `notes`               | TEXT            | NULL                    | Optional assignment notes                                   |
+| Field                 | Type            | Constraints             | Description                                |
+| --------------------- | --------------- | ----------------------- | ------------------------------------------ |
+| `id`                  | INTEGER         | PK, AUTO                | Primary key                                |
+| `sample_item_id`      | INTEGER         | NOT NULL, UNIQUE        | SampleItem reference                       |
+| `location_id`         | INTEGER         | NOT NULL                | Polymorphic location ID                    |
+| **`location_type`**   | **VARCHAR(20)** | **NOT NULL**            | **Type: 'device', 'shelf', 'rack', 'box'** |
+| `position_coordinate` | VARCHAR(50)     | NULL                    | Optional text-based position coordinate    |
+| `assigned_by_user_id` | INTEGER         | NOT NULL, FK            | User who assigned                          |
+| `assigned_date`       | TIMESTAMP       | NOT NULL, DEFAULT NOW() | Assignment timestamp                       |
+| `notes`               | TEXT            | NULL                    | Optional assignment notes                  |
 
 ### Constraints
 
@@ -535,7 +538,8 @@ backward compatibility and flexibility. Key highlights:
 - **StorageRack simplified**: Removes grid complexity, now a pure container
 - **StorageBox introduced**: Captures grid dimensions, supports 6 standard
   presets + custom
-- **Positions virtualized**: Coordinates stored on assignments (no position table)
+- **Positions virtualized**: Coordinates stored on assignments (no position
+  table)
 - **Migration**: Destructive (safe since Feature 001 not in production)
 - **Storage impact**: Minimal (~50 KB for 1,000 boxes)
 - **FHIR compliance**: Location resource for Box with grid extensions

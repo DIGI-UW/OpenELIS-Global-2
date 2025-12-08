@@ -1,11 +1,11 @@
      1|# Feature Specification: Box/Plate Storage Hierarchy Enhancement
      2|
-     3|**Feature Branch**: `fix/spec-alignment-ogc-149`  
-     4|**Created**: December 5, 2025  
+     3|**Feature Branch**: `fix/spec-alignment-ogc-149`
+     4|**Created**: December 5, 2025
      5|**Updated**: December 9, 2025
-     6|**Status**: Draft  
-     7|**Jira Ticket**: [OGC-149](https://uwdigi.atlassian.net/browse/OGC-149)  
-     8|**Parent Feature**: `001-sample-storage` (Sample Storage Management)  
+     6|**Status**: Draft
+     7|**Jira Ticket**: [OGC-149](https://uwdigi.atlassian.net/browse/OGC-149)
+     8|**Parent Feature**: `001-sample-storage` (Sample Storage Management)
      9|**Figma Design**:
     10|[Storage Management System](https://www.figma.com/make/11G8EahqJUgoP55pJy7ivz/Storage-Management-System)
     11|
@@ -97,49 +97,33 @@
     97|- **FR-002**: Rack MUST retain only: name, code, status, parent_shelf_id,
     98|  barcode identifier
     99|
-   100|**StorageBox Entity:**
-   101|
-   102|- **FR-004**: System MUST create a new `StorageBox` entity with: id, name, code,
-   103|  rows (integer), columns (integer), position_schema_hint (optional), active
-   104|  (boolean), parent_rack_id, barcode_identifier
-   105|- **FR-005**: Box code MUST be unique within its parent Rack scope
-   106|- **FR-006**: Box dimensions MUST be at least 1x1
-   107|
-   108|**Virtual Positioning (Architecture Change):**
-   109|
-   110|- **FR-021**: The `StoragePosition` entity table MUST be removed to optimize performance.
-   111|- **FR-022**: Sample assignments MUST store position information as a `position_coordinate`
-   112|  text field on the `SampleStorageAssignment` table.
-   113|- **FR-023**: The system MUST calculate occupancy by counting assignments linked to
-   114|  a specific Box ID, rather than querying child position entities.
-   115|
-   116|**Sample Assignment:**
-   117|
-   118|- **FR-024**: `SampleStorageAssignment.location_type` MUST include `'box'` as a valid value.
-   119|- **FR-025**: Assignments to a Box MUST populate `location_id` with the Box ID and
-   120|  `location_type` with "box".
-   121|
-   122|### Key Entities
-   123|
-   124|- **StorageRack (modified)**: Simplified container.
-   125|  - **Removed**: `rows`, `columns`.
-   126|  - **Relationship**: One-to-Many with `StorageBox`.
-   127|
-   128|- **StorageBox (new)**: The grid container.
-   129|  - **Fields**: `name`, `code`, `rows`, `columns`, `parent_rack_id`.
-   130|  - **Leaf Node**: This is the lowest persistent entity in the hierarchy.
-   131|
-   132|- **StoragePosition (DELETED)**:
-   133|  - **Status**: Removed from data model.
-   134|  - **Replacement**: Virtual coordinates on Assignments.
-   135|
-   136|- **SampleStorageAssignment (modified)**:
-   137|  - **location_type**: Added `'box'`.
-   138|  - **position_coordinate**: Stores the specific slot (e.g., "A1", "1-1") within the location.
-   139|
-   140|## Success Criteria
-   141|
-   142|- **SC-001**: Performance: Page load times for storage dashboard < 2s with 100k+ samples.
-   143|- **SC-002**: Capability: Users can define 96-well plates and assign samples to specific wells.
-   144|- **SC-003**: Migration: Database schema successfully transitions from Positions table to Box table.
-   145|
+
+100|**StorageBox Entity:** 101| 102|- **FR-004**: System MUST create a new
+`StorageBox` entity with: id, name, code, 103| rows (integer), columns
+(integer), position_schema_hint (optional), active 104| (boolean),
+parent_rack_id, barcode_identifier 105|- **FR-005**: Box code MUST be unique
+within its parent Rack scope 106|- **FR-006**: Box dimensions MUST be at least
+1x1 107| 108|**Virtual Positioning (Architecture Change):** 109| 110|-
+**FR-021**: The `StoragePosition` entity table MUST be removed to optimize
+performance. 111|- **FR-022**: Sample assignments MUST store position
+information as a `position_coordinate` 112| text field on the
+`SampleStorageAssignment` table. 113|- **FR-023**: The system MUST calculate
+occupancy by counting assignments linked to 114| a specific Box ID, rather than
+querying child position entities. 115| 116|**Sample Assignment:** 117| 118|-
+**FR-024**: `SampleStorageAssignment.location_type` MUST include `'box'` as a
+valid value. 119|- **FR-025**: Assignments to a Box MUST populate `location_id`
+with the Box ID and 120| `location_type` with "box". 121| 122|### Key Entities
+123| 124|- **StorageRack (modified)**: Simplified container. 125| - **Removed**:
+`rows`, `columns`. 126| - **Relationship**: One-to-Many with `StorageBox`. 127|
+128|- **StorageBox (new)**: The grid container. 129| - **Fields**: `name`,
+`code`, `rows`, `columns`, `parent_rack_id`. 130| - **Leaf Node**: This is the
+lowest persistent entity in the hierarchy. 131| 132|- **StoragePosition
+(DELETED)**: 133| - **Status**: Removed from data model. 134| - **Replacement**:
+Virtual coordinates on Assignments. 135| 136|- **SampleStorageAssignment
+(modified)**: 137| - **location_type**: Added `'box'`. 138| -
+**position_coordinate**: Stores the specific slot (e.g., "A1", "1-1") within the
+location. 139| 140|## Success Criteria 141| 142|- **SC-001**: Performance: Page
+load times for storage dashboard < 2s with 100k+ samples. 143|- **SC-002**:
+Capability: Users can define 96-well plates and assign samples to specific
+wells. 144|- **SC-003**: Migration: Database schema successfully transitions
+from Positions table to Box table. 145|
