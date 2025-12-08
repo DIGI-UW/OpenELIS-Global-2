@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import config from "../../config.json";
 import { FormattedMessage, useIntl, injectIntl } from "react-intl";
+import { Switch, Route, useRouteMatch } from "react-router-dom";
 import "../Style.css";
 import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
 import ProgramManagement from "./program/ProgramManagement";
@@ -33,7 +34,6 @@ import {
   Popup,
   Search,
 } from "@carbon/icons-react";
-import PathRoute from "../utils/PathRoute";
 import CalculatedValue from "./calculatedValue/CalculatedValueForm";
 import {
   SideNav,
@@ -92,6 +92,7 @@ import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
 
 function Admin() {
   const intl = useIntl();
+  const { path } = useRouteMatch();
   const [isSmallScreen, setIsSmallScreen] = useState(false);
 
   useEffect(() => {
@@ -118,19 +119,25 @@ function Admin() {
             renderIcon={Microscope}
             title={intl.formatMessage({ id: "sidenav.label.admin.testmgt" })}
           >
-            <SideNavMenuItem data-cy="reflex" href="#reflex">
+            <SideNavMenuItem data-cy="reflex" href={`${path}/reflex`}>
               <FormattedMessage id="sidenav.label.admin.testmgt.reflex" />
             </SideNavMenuItem>
-            <SideNavMenuItem data-cy="calculatedValue" href="#calculatedValue">
+            <SideNavMenuItem
+              data-cy="calculatedValue"
+              href={`${path}/calculatedValue`}
+            >
               <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
             </SideNavMenuItem>
           </SideNavMenu>
-          <SideNavLink href="#AnalyzerTestName" renderIcon={ListDropdown}>
+          <SideNavLink
+            href={`${path}/AnalyzerTestName`}
+            renderIcon={ListDropdown}
+          >
             <FormattedMessage id="sidenav.label.admin.analyzerTest" />
           </SideNavLink>
           <SideNavLink
             data-cy="labNumberMgmnt"
-            href="#labNumber"
+            href={`${path}/labNumber`}
             renderIcon={CharacterWholeNumber}
           >
             <FormattedMessage id="sidenav.label.admin.labNumber" />
@@ -138,27 +145,27 @@ function Admin() {
           <SideNavLink
             data-cy="programEntry"
             renderIcon={ChartBubble}
-            href="#program"
+            href={`${path}/program`}
           >
             <FormattedMessage id="sidenav.label.admin.program" />
           </SideNavLink>
           <SideNavLink
             data-cy="providerMgmnt"
             renderIcon={CicsSystemGroup}
-            href="#providerMenu"
+            href={`${path}/providerMenu`}
           >
             <FormattedMessage id="provider.browse.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="barcodeConfig"
             renderIcon={QrCode}
-            href="#barcodeConfiguration"
+            href={`${path}/barcodeConfiguration`}
           >
             <FormattedMessage id="sidenav.label.admin.barcodeconfiguration" />
           </SideNavLink>
           <SideNavLink
             data-cy="pluginFile"
-            href="#PluginFile"
+            href={`${path}/PluginFile`}
             renderIcon={BootVolumeAlt}
           >
             <FormattedMessage id="sidenav.label.admin.Listplugin" />
@@ -166,35 +173,35 @@ function Admin() {
           <SideNavLink
             data-cy="orgMgmnt"
             renderIcon={ContainerSoftware}
-            href="#organizationManagement"
+            href={`${path}/organizationManagement`}
           >
             <FormattedMessage id="organization.main.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="resultReportingConfiguration"
             renderIcon={Report}
-            href="#resultReportingConfiguration"
+            href={`${path}/resultReportingConfiguration`}
           >
             <FormattedMessage id="resultreporting.browse.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="userMgmnt"
             renderIcon={User}
-            href="#userManagement"
+            href={`${path}/userManagement`}
           >
             <FormattedMessage id="unifiedSystemUser.browser.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="batchTestReassignment"
             renderIcon={BatchJob}
-            href="#batchTestReassignment"
+            href={`${path}/batchTestReassignment`}
           >
             <FormattedMessage id="configuration.batch.test.reassignment" />
           </SideNavLink>
           <SideNavLink
             data-cy="testManagementConfigMenu"
             renderIcon={ResultNew}
-            href="#testManagementConfigMenu"
+            href={`${path}/testManagementConfigMenu`}
           >
             <FormattedMessage id="master.lists.page.test.management" />
           </SideNavLink>
@@ -204,31 +211,31 @@ function Admin() {
           >
             <SideNavMenuItem
               data-cy="globalMenuMgmnt"
-              href="#globalMenuManagement"
+              href={`${path}/globalMenuManagement`}
             >
               <FormattedMessage id="sidenav.label.admin.menu.global" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="billingMenuMgmnt"
-              href="#billingMenuManagement"
+              href={`${path}/billingMenuManagement`}
             >
               <FormattedMessage id="sidenav.label.admin.menu.billing" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="nonConformMenuMgmnt"
-              href="#nonConformityMenuManagement"
+              href={`${path}/nonConformityMenuManagement`}
             >
               <FormattedMessage id="sidenav.label.admin.menu.nonconform" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="patientMenuMgmnt"
-              href="#patientMenuManagement"
+              href={`${path}/patientMenuManagement`}
             >
               <FormattedMessage id="sidenav.label.admin.menu.patient" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="studyMenuMgmnt"
-              href="#studyMenuManagement"
+              href={`${path}/studyMenuManagement`}
             >
               <FormattedMessage id="sidenav.label.admin.menu.study" />
             </SideNavMenuItem>
@@ -240,81 +247,90 @@ function Admin() {
           >
             <SideNavMenuItem
               data-cy="nonConformConfig"
-              href="#NonConformityConfigurationMenu"
+              href={`${path}/NonConformityConfigurationMenu`}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.nonconformityconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="menuStatementConfig"
-              href="#MenuStatementConfigMenu"
+              href={`${path}/MenuStatementConfigMenu`}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.menustatementconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="workPlanConfig"
-              href="#WorkPlanConfigurationMenu"
+              href={`${path}/WorkPlanConfigurationMenu`}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.Workplanconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem data-cy="siteInfoMenu" href="#SiteInformationMenu">
+            <SideNavMenuItem
+              data-cy="siteInfoMenu"
+              href={`${path}/SiteInformationMenu`}
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.siteInfoconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="resultConfigMenu"
-              href="#ResultConfigurationMenu"
+              href={`${path}/ResultConfigurationMenu`}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.resultConfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="patientConfigMenu"
-              href="#PatientConfigurationMenu"
+              href={`${path}/PatientConfigurationMenu`}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.patientconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="printedReportsConfigMenu"
-              href="#PrintedReportsConfigurationMenu"
+              href={`${path}/PrintedReportsConfigurationMenu`}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.PrintedReportsconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="sampleEntryConfigMenu"
-              href="#SampleEntryConfigurationMenu"
+              href={`${path}/SampleEntryConfigurationMenu`}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.sampleEntryconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="validationConfigMenu"
-              href="#ValidationConfigurationMenu"
+              href={`${path}/ValidationConfigurationMenu`}
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.validationconfig" />
             </SideNavMenuItem>
           </SideNavMenu>
 
-          <SideNavLink href="#commonproperties" renderIcon={Settings}>
+          <SideNavLink href={`${path}/commonproperties`} renderIcon={Settings}>
             <FormattedMessage
               id="sidenav.label.admin.commonproperties"
               defaultMessage={"Common Properties"}
             />
           </SideNavLink>
-          <SideNavLink href="#testNotificationConfigMenu" renderIcon={Popup}>
+          <SideNavLink
+            href={`${path}/testNotificationConfigMenu`}
+            renderIcon={Popup}
+          >
             <FormattedMessage id="testnotificationconfig.browse.title" />
           </SideNavLink>
           <SideNavLink
             data-cy="dictMenu"
-            href="#DictionaryMenu"
+            href={`${path}/DictionaryMenu`}
             renderIcon={CharacterWholeNumber}
           >
             <FormattedMessage id="dictionary.label.modify" />
           </SideNavLink>
           <SideNavLink
             data-cy="notifyUser"
-            href="#NotifyUser"
+            href={`${path}/NotifyUser`}
             renderIcon={Bullhorn}
           >
             <FormattedMessage id="notify.main.title" />
           </SideNavLink>
-          <SideNavLink href="#SearchIndexManagement" renderIcon={Search}>
+          <SideNavLink
+            href={`${path}/SearchIndexManagement`}
+            renderIcon={Search}
+          >
             <FormattedMessage id="searchindexmanagement.label" />
           </SideNavLink>
           <SideNavLink
@@ -327,235 +343,228 @@ function Admin() {
         </SideNavItems>
       </SideNav>
 
-      <PathRoute path="#reflex">
-        <ReflexTestManagement />
-      </PathRoute>
-      <PathRoute path="#calculatedValue">
-        <CalculatedValue />
-      </PathRoute>
-      <PathRoute path="#TestCatalog">
-        <TestCatalog />
-      </PathRoute>
-      <PathRoute path="#MethodManagement">
-        <ManageMethod />
-      </PathRoute>
-      <PathRoute path="#AnalyzerTestName">
-        <AnalyzerTestName />
-      </PathRoute>
-      <PathRoute path="#labNumber">
-        <LabNumberManagement />
-      </PathRoute>
-      <PathRoute path="#program">
-        <ProgramManagement />
-      </PathRoute>
-      <PathRoute path="#providerMenu">
-        <ProviderMenu />
-      </PathRoute>
-      <PathRoute path="#NotifyUser">
-        <PushNotificationPage />
-      </PathRoute>
-      <PathRoute path="#barcodeConfiguration">
-        <BarcodeConfiguration />
-      </PathRoute>
-      <PathRoute path="#organizationManagement">
-        <OrganizationManagement />
-      </PathRoute>
-      <PathRoute path="#organizationEdit">
-        <OrganizationAddModify />
-      </PathRoute>
-      <PathRoute path="#resultReportingConfiguration">
-        <ResultReportingConfiguration />
-      </PathRoute>
-      <PathRoute data-cy="userMgmnt" path="#userManagement">
-        <UserManagement />
-      </PathRoute>
-      <PathRoute path="#batchTestReassignment">
-        <BatchTestReassignmentAndCancelation />
-      </PathRoute>
-      <PathRoute path="#userEdit">
-        <UserAddModify />
-      </PathRoute>
-      <PathRoute path="#globalMenuManagement">
-        <GlobalMenuManagement />
-      </PathRoute>
-      <PathRoute path="#billingMenuManagement">
-        <BillingMenuManagement />
-      </PathRoute>
-      <PathRoute path="#nonConformityMenuManagement">
-        <NonConformityMenuManagement />
-      </PathRoute>
-      <PathRoute path="#patientMenuManagement">
-        <PatientMenuManagement />
-      </PathRoute>
-      <PathRoute path="#studyMenuManagement">
-        <StudyMenuManagement />
-      </PathRoute>
-      <PathRoute path="#commonproperties">
-        <CommonProperties />
-      </PathRoute>
-      <PathRoute path="#testManagementConfigMenu">
-        <TestManagementConfigMenu />
-      </PathRoute>
-      <PathRoute path="#ResultSelectListAdd">
-        <ResultSelectListAdd />
-      </PathRoute>
-      <PathRoute path="#TestAdd">
-        <TestAdd />
-      </PathRoute>
-      <PathRoute path="#TestModifyEntry">
-        <TestModifyEntry />
-      </PathRoute>
-      <PathRoute path="#TestOrderability">
-        <TestOrderability />
-      </PathRoute>
-      <PathRoute path="#MethodCreate">
-        <MethodCreate />
-      </PathRoute>
-      <PathRoute path="#TestSectionManagement">
-        <TestSectionManagement />
-      </PathRoute>
-      <PathRoute path="#TestSectionCreate">
-        <TestSectionCreate />
-      </PathRoute>
-      <PathRoute path="#TestSectionOrder">
-        <TestSectionOrder />
-      </PathRoute>
-      <PathRoute path="#TestSectionTestAssign">
-        <TestSectionTestAssign />
-      </PathRoute>
-      <PathRoute path="#SampleTypeManagement">
-        <SampleTypeManagement />
-      </PathRoute>
-      <PathRoute path="#SampleTypeCreate">
-        <SampleTypeCreate />
-      </PathRoute>
-      <PathRoute path="#SampleTypeOrder">
-        <SampleTypeOrder />
-      </PathRoute>
-      <PathRoute path="#SampleTypeTestAssign">
-        <SampleTypeTestAssign />
-      </PathRoute>
-      <PathRoute path="#UomManagement">
-        <UomManagement />
-      </PathRoute>
-      <PathRoute path="#UomCreate">
-        <UomCreate />
-      </PathRoute>
-      <PathRoute path="#PanelManagement">
-        <PanelManagement />
-      </PathRoute>
-      <PathRoute path="#PanelCreate">
-        <PanelCreate />
-      </PathRoute>
-      <PathRoute path="#PanelOrder">
-        <PanelOrder />
-      </PathRoute>
-      <PathRoute path="#PanelTestAssign">
-        <PanelTestAssign />
-      </PathRoute>
-      <PathRoute path="#TestActivation">
-        <TestActivation />
-      </PathRoute>
-      <PathRoute path="#TestRenameEntry">
-        <TestRenameEntry />
-      </PathRoute>
-      <PathRoute path="#PanelRenameEntry">
-        <PanelRenameEntry />
-      </PathRoute>
-      <PathRoute path="#SampleTypeRenameEntry">
-        <SampleTypeRenameEntry />
-      </PathRoute>
-      <PathRoute path="#TestSectionRenameEntry">
-        <TestSectionRenameEntry />
-      </PathRoute>
-      <PathRoute path="#UomRenameEntry">
-        <UomRenameEntry />
-      </PathRoute>
-      <PathRoute path="#SelectListRenameEntry">
-        <SelectListRenameEntry />
-      </PathRoute>
-      <PathRoute path="#MethodRenameEntry">
-        <MethodRenameEntry />
-      </PathRoute>
-
-      <PathRoute path="#NonConformityConfigurationMenu">
-        <ConfigMenuDisplay
-          menuType="NonConformityConfigurationMenu"
-          label="Non Conformity Configuration Menu"
-          id="sidenav.label.admin.formEntry.nonconformityconfig"
+      <Switch>
+        <Route path={`${path}/reflex`} component={ReflexTestManagement} />
+        <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
+        <Route path={`${path}/TestCatalog`} component={TestCatalog} />
+        <Route path={`${path}/MethodManagement`} component={ManageMethod} />
+        <Route path={`${path}/AnalyzerTestName`} component={AnalyzerTestName} />
+        <Route path={`${path}/labNumber`} component={LabNumberManagement} />
+        <Route path={`${path}/program`} component={ProgramManagement} />
+        <Route path={`${path}/providerMenu`} component={ProviderMenu} />
+        <Route path={`${path}/NotifyUser`} component={PushNotificationPage} />
+        <Route
+          path={`${path}/barcodeConfiguration`}
+          component={BarcodeConfiguration}
         />
-      </PathRoute>
-      <PathRoute path="#MenuStatementConfigMenu">
-        <ConfigMenuDisplay
-          menuType="MenuStatementConfigMenu"
-          label="Menu Statement Configuration Menu"
-          id="sidenav.label.admin.formEntry.menustatementconfig"
+        <Route
+          path={`${path}/organizationManagement`}
+          component={OrganizationManagement}
         />
-      </PathRoute>
-      <PathRoute path="#ValidationConfigurationMenu">
-        <ConfigMenuDisplay
-          menuType="ValidationConfigurationMenu"
-          label="Validation Configuration Menu"
-          id="sidenav.label.admin.formEntry.validationconfig"
+        <Route
+          path={`${path}/organizationEdit`}
+          component={OrganizationAddModify}
         />
-      </PathRoute>
-      <PathRoute path="#SampleEntryConfigurationMenu">
-        <ConfigMenuDisplay
-          menuType="SampleEntryConfigMenu"
-          label="Sample Entry Configuration Menu"
-          id="sidenav.label.admin.formEntry.sampleEntryconfig"
+        <Route
+          path={`${path}/resultReportingConfiguration`}
+          component={ResultReportingConfiguration}
         />
-      </PathRoute>
-      <PathRoute path="#WorkPlanConfigurationMenu">
-        <ConfigMenuDisplay
-          menuType="WorkplanConfigurationMenu"
-          label="WorkPlan Configuration Menu"
-          id="sidenav.label.admin.formEntry.Workplanconfig"
+        <Route path={`${path}/userManagement`} component={UserManagement} />
+        <Route
+          path={`${path}/batchTestReassignment`}
+          component={BatchTestReassignmentAndCancelation}
         />
-      </PathRoute>
-      <PathRoute path="#SiteInformationMenu">
-        <ConfigMenuDisplay
-          menuType="SiteInformationMenu"
-          label="Site Information Menu"
-          id="sidenav.label.admin.formEntry.siteInfoconfig"
+        <Route path={`${path}/userEdit`} component={UserAddModify} />
+        <Route
+          path={`${path}/globalMenuManagement`}
+          component={GlobalMenuManagement}
         />
-      </PathRoute>
-      <PathRoute path="#ResultConfigurationMenu">
-        <ConfigMenuDisplay
-          menuType="ResultConfigurationMenu"
-          label="Result Configuration Menu"
-          id="sidenav.label.admin.formEntry.resultConfig"
+        <Route
+          path={`${path}/billingMenuManagement`}
+          component={BillingMenuManagement}
         />
-      </PathRoute>
-      <PathRoute path="#PatientConfigurationMenu">
-        <ConfigMenuDisplay
-          menuType="PatientConfigurationMenu"
-          label="Patient Configuration Menu"
-          id="sidenav.label.admin.formEntry.patientconfig"
+        <Route
+          path={`${path}/nonConformityMenuManagement`}
+          component={NonConformityMenuManagement}
         />
-      </PathRoute>
-      <PathRoute path="#PrintedReportsConfigurationMenu">
-        <ConfigMenuDisplay
-          menuType="PrintedReportsConfigurationMenu"
-          label="PrintedReports Configuration Menu"
-          id="sidenav.label.admin.formEntry.PrintedReportsconfig"
+        <Route
+          path={`${path}/patientMenuManagement`}
+          component={PatientMenuManagement}
         />
-      </PathRoute>
-      <PathRoute path="#testNotificationConfigMenu">
-        <TestNotificationConfigMenu />
-      </PathRoute>
-      <PathRoute path="#testNotificationConfig">
-        <TestNotificationConfigEdit />
-      </PathRoute>
-      <PathRoute path="#DictionaryMenu">
-        <DictionaryManagement />
-      </PathRoute>
-      <PathRoute path="#PluginFile">
-        <PluginList />
-      </PathRoute>
-      <PathRoute path="#SearchIndexManagement">
-        <SearchIndexManagement />
-      </PathRoute>
+        <Route
+          path={`${path}/studyMenuManagement`}
+          component={StudyMenuManagement}
+        />
+        <Route path={`${path}/commonproperties`} component={CommonProperties} />
+        <Route
+          path={`${path}/testManagementConfigMenu`}
+          component={TestManagementConfigMenu}
+        />
+        <Route
+          path={`${path}/ResultSelectListAdd`}
+          component={ResultSelectListAdd}
+        />
+        <Route path={`${path}/TestAdd`} component={TestAdd} />
+        <Route path={`${path}/TestModifyEntry`} component={TestModifyEntry} />
+        <Route path={`${path}/TestOrderability`} component={TestOrderability} />
+        <Route path={`${path}/MethodCreate`} component={MethodCreate} />
+        <Route
+          path={`${path}/TestSectionManagement`}
+          component={TestSectionManagement}
+        />
+        <Route
+          path={`${path}/TestSectionCreate`}
+          component={TestSectionCreate}
+        />
+        <Route path={`${path}/TestSectionOrder`} component={TestSectionOrder} />
+        <Route
+          path={`${path}/TestSectionTestAssign`}
+          component={TestSectionTestAssign}
+        />
+        <Route
+          path={`${path}/SampleTypeManagement`}
+          component={SampleTypeManagement}
+        />
+        <Route path={`${path}/SampleTypeCreate`} component={SampleTypeCreate} />
+        <Route path={`${path}/SampleTypeOrder`} component={SampleTypeOrder} />
+        <Route
+          path={`${path}/SampleTypeTestAssign`}
+          component={SampleTypeTestAssign}
+        />
+        <Route path={`${path}/UomManagement`} component={UomManagement} />
+        <Route path={`${path}/UomCreate`} component={UomCreate} />
+        <Route path={`${path}/PanelManagement`} component={PanelManagement} />
+        <Route path={`${path}/PanelCreate`} component={PanelCreate} />
+        <Route path={`${path}/PanelOrder`} component={PanelOrder} />
+        <Route path={`${path}/PanelTestAssign`} component={PanelTestAssign} />
+        <Route path={`${path}/TestActivation`} component={TestActivation} />
+        <Route path={`${path}/TestRenameEntry`} component={TestRenameEntry} />
+        <Route path={`${path}/PanelRenameEntry`} component={PanelRenameEntry} />
+        <Route
+          path={`${path}/SampleTypeRenameEntry`}
+          component={SampleTypeRenameEntry}
+        />
+        <Route
+          path={`${path}/TestSectionRenameEntry`}
+          component={TestSectionRenameEntry}
+        />
+        <Route path={`${path}/UomRenameEntry`} component={UomRenameEntry} />
+        <Route
+          path={`${path}/SelectListRenameEntry`}
+          component={SelectListRenameEntry}
+        />
+        <Route
+          path={`${path}/MethodRenameEntry`}
+          component={MethodRenameEntry}
+        />
+        <Route
+          path={`${path}/NonConformityConfigurationMenu`}
+          component={() => (
+            <ConfigMenuDisplay
+              menuType="NonConformityConfigurationMenu"
+              label="Non Conformity Configuration Menu"
+              id="sidenav.label.admin.formEntry.nonconformityconfig"
+            />
+          )}
+        />
+        <Route
+          path={`${path}/MenuStatementConfigMenu`}
+          component={() => (
+            <ConfigMenuDisplay
+              menuType="MenuStatementConfigMenu"
+              label="Menu Statement Configuration Menu"
+              id="sidenav.label.admin.formEntry.menustatementconfig"
+            />
+          )}
+        />
+        <Route
+          path={`${path}/ValidationConfigurationMenu`}
+          component={() => (
+            <ConfigMenuDisplay
+              menuType="ValidationConfigurationMenu"
+              label="Validation Configuration Menu"
+              id="sidenav.label.admin.formEntry.validationconfig"
+            />
+          )}
+        />
+        <Route
+          path={`${path}/SampleEntryConfigurationMenu`}
+          component={() => (
+            <ConfigMenuDisplay
+              menuType="SampleEntryConfigMenu"
+              label="Sample Entry Configuration Menu"
+              id="sidenav.label.admin.formEntry.sampleEntryconfig"
+            />
+          )}
+        />
+        <Route
+          path={`${path}/WorkPlanConfigurationMenu`}
+          component={() => (
+            <ConfigMenuDisplay
+              menuType="WorkplanConfigurationMenu"
+              label="WorkPlan Configuration Menu"
+              id="sidenav.label.admin.formEntry.Workplanconfig"
+            />
+          )}
+        />
+        <Route
+          path={`${path}/SiteInformationMenu`}
+          component={() => (
+            <ConfigMenuDisplay
+              menuType="SiteInformationMenu"
+              label="Site Information Menu"
+              id="sidenav.label.admin.formEntry.siteInfoconfig"
+            />
+          )}
+        />
+        <Route
+          path={`${path}/ResultConfigurationMenu`}
+          component={() => (
+            <ConfigMenuDisplay
+              menuType="ResultConfigurationMenu"
+              label="Result Configuration Menu"
+              id="sidenav.label.admin.formEntry.resultConfig"
+            />
+          )}
+        />
+        <Route
+          path={`${path}/PatientConfigurationMenu`}
+          component={() => (
+            <ConfigMenuDisplay
+              menuType="PatientConfigurationMenu"
+              label="Patient Configuration Menu"
+              id="sidenav.label.admin.formEntry.patientconfig"
+            />
+          )}
+        />
+        <Route
+          path={`${path}/PrintedReportsConfigurationMenu`}
+          component={() => (
+            <ConfigMenuDisplay
+              menuType="PrintedReportsConfigurationMenu"
+              label="PrintedReports Configuration Menu"
+              id="sidenav.label.admin.formEntry.PrintedReportsconfig"
+            />
+          )}
+        />
+        <Route
+          path={`${path}/testNotificationConfigMenu`}
+          component={TestNotificationConfigMenu}
+        />
+        <Route
+          path={`${path}/testNotificationConfig`}
+          component={TestNotificationConfigEdit}
+        />
+        <Route
+          path={`${path}/DictionaryMenu`}
+          component={DictionaryManagement}
+        />
+        <Route path={`${path}/PluginFile`} component={PluginList} />
+        <Route
+          path={`${path}/SearchIndexManagement`}
+          component={SearchIndexManagement}
+        />
+      </Switch>
     </>
   );
 }
