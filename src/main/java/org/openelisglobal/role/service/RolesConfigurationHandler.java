@@ -44,6 +44,11 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
     }
 
     @Override
+    public int getLoadOrder() {
+        return 300; // Independent higher-level configuration
+    }
+
+    @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 

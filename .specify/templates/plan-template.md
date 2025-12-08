@@ -85,11 +85,11 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 
 ### Milestone Table
 
-| ID     | Branch Suffix | Scope                    | Verification           | Depends On |
-| ------ | ------------- | ------------------------ | ---------------------- | ---------- |
-| M1     | m1-[name]     | [Layers/Stories covered] | [Tests that must pass] | -          |
-| [P] M2 | m2-[name]     | [Layers/Stories covered] | [Tests that must pass] | -          |
-| M3     | m3-[name]     | [Layers/Stories covered] | [Tests that must pass] | M1, M2     |
+| ID     | Branch Suffix | Scope                    | User Stories | Verification           | Depends On |
+| ------ | ------------- | ------------------------ | ------------ | ---------------------- | ---------- |
+| M1     | m1-[name]     | [Layers/Stories covered] | [Stories]    | [Tests that must pass] | -          |
+| [P] M2 | m2-[name]     | [Layers/Stories covered] | [Stories]    | [Tests that must pass] | -          |
+| M3     | m3-[name]     | [Layers/Stories covered] | [Stories]    | [Tests that must pass] | M1, M2     |
 
 **Legend**:
 
@@ -116,165 +116,6 @@ graph LR
 
 **Small Features (<3 days)**: May use single `feat/{issue-id}-{name}` branch
 without milestones.
-
-## Testing Strategy
-
-**Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
-
-**MANDATORY**: Every plan MUST include a complete testing strategy that
-references the Testing Roadmap and documents test coverage goals, test types,
-data management, and checkpoint validations.
-
-### Coverage Goals
-
-- **Backend**: >80% code coverage (measured via JaCoCo)
-- **Frontend**: >70% code coverage (measured via Jest)
-- **Critical Paths**: 100% coverage (authentication, authorization, data
-  validation)
-
-### Test Types
-
-Document which test types will be used for this feature:
-
-- [ ] **Unit Tests**: Service layer business logic (JUnit 4 + Mockito)
-  - Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`
-  - **Reference**:
-    [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
-    for detailed patterns
-  - **Reference**:
-    [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
-    for quick reference
-  - **Coverage Goal**: >80% (measured via JaCoCo)
-  - **SDD Checkpoint**: After Phase 2 (Services), all unit tests MUST pass
-  - **TDD Workflow**: Red-Green-Refactor cycle for complex logic
-  - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit
-    tests (NOT `@SpringBootTest`)
-  - **Mocking**: Use `@Mock` (NOT `@MockBean`) for isolated unit tests
-- [ ] **DAO Tests**: Persistence layer testing (@DataJpaTest)
-  - Template: `.specify/templates/testing/DataJpaTestDao.java.template`
-  - **Reference**:
-    [Testing Roadmap - @DataJpaTest (DAO/Repository Layer)](.specify/guides/testing-roadmap.md#datajpatest-daorepository-layer)
-    for detailed patterns
-  - **Reference**:
-    [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
-    for quick reference
-  - **Test Slicing**: Use `@DataJpaTest` for DAO testing (NOT
-    `@SpringBootTest` - faster execution)
-  - **Test Data**: Use `TestEntityManager` (NOT JdbcTemplate) for test data
-    setup
-  - **Transaction Management**: Automatic rollback (no manual cleanup needed)
-- [ ] **Controller Tests**: REST API endpoints (@WebMvcTest)
-  - Template: `.specify/templates/testing/WebMvcTestController.java.template`
-  - **Reference**:
-    [Testing Roadmap - @WebMvcTest (Controller Layer)](.specify/guides/testing-roadmap.md#webmvctest-controller-layer)
-    for detailed patterns
-  - **Reference**:
-    [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
-    for quick reference
-  - **Test Slicing**: Use `@WebMvcTest` for controller testing (NOT
-    `@SpringBootTest` - faster execution)
-  - **Mocking**: Use `@MockBean` (NOT `@Mock`) for Spring context mocking
-  - **HTTP Testing**: Use `MockMvc` for HTTP request/response testing
-- [ ] **ORM Validation Tests**: Entity mapping validation (Constitution V.4)
-  - **Reference**:
-    [Testing Roadmap - ORM Validation Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
-    for detailed patterns
-  - **SDD Checkpoint**: After Phase 1 (Entities), ORM validation tests MUST pass
-  - **Requirements**: MUST execute in <5 seconds, MUST NOT require database
-    connection
-- [ ] **Integration Tests**: Full workflow testing (@SpringBootTest)
-  - **Reference**:
-    [Testing Roadmap - @SpringBootTest (Full Integration)](.specify/guides/testing-roadmap.md#springboottest-full-integration)
-    for detailed patterns
-  - **Reference**:
-    [Backend Testing Best Practices](.specify/guides/backend-testing-best-practices.md)
-    for quick reference
-  - **Test Slicing**: Use `@SpringBootTest` only when full application context
-    is required
-  - **Transaction Management**: Use `@Transactional` for automatic rollback
-    (preferred)
-  - **SDD Checkpoint**: After Phase 3 (Controllers), integration tests MUST pass
-- [ ] **Frontend Unit Tests**: React component logic (Jest + React Testing
-      Library)
-  - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
-  - **Reference**:
-    [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
-    for detailed patterns
-  - **Reference**: [Jest Best Practices](.specify/guides/jest-best-practices.md)
-    for quick reference
-  - **Coverage Goal**: >70% (measured via Jest)
-  - **SDD Checkpoint**: After Phase 4 (Frontend), all unit tests MUST pass
-  - **TDD Workflow**: Red-Green-Refactor cycle for complex logic
-- [ ] **E2E Tests**: Critical user workflows (Cypress)
-  - Template: `.specify/templates/testing/CypressE2E.cy.js.template`
-  - **Reference**:
-    [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
-    for functional requirements
-  - **Reference**:
-    [Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
-    for detailed patterns
-  - **Reference**:
-    [Cypress Best Practices](.specify/guides/cypress-best-practices.md) for
-    quick reference
-
-### Test Data Management
-
-Document how test data will be created and cleaned up:
-
-- **Backend**:
-
-  - **Unit Tests (JUnit 4 + Mockito)**:
-    - [ ] Use builders/factories for test data (NOT hardcoded values)
-    - [ ] Use mock data builders/factories for reusable test data
-    - [ ] Test edge cases (null, empty, boundary values)
-  - **DAO Tests (@DataJpaTest)**:
-    - [ ] Use `TestEntityManager` for test data setup (NOT JdbcTemplate)
-    - [ ] Use builders/factories for test entities
-    - [ ] Automatic transaction rollback (no manual cleanup needed)
-  - **Controller Tests (@WebMvcTest)**:
-    - [ ] Use builders/factories for test data
-    - [ ] Mock service layer (use `@MockBean`)
-  - **Integration Tests (@SpringBootTest)**:
-    - [ ] Use builders/factories for test data
-    - [ ] Use `@Transactional` for automatic rollback (preferred)
-    - [ ] Use `@Sql` scripts for complex data setup (if needed)
-  - **Legacy Integration Tests (BaseWebContextSensitiveTest)**:
-    - [ ] Use DBUnit for complex test data (via
-          `executeDataSetWithStateManagement()`)
-    - [ ] Manual cleanup in `@After` methods (when `@Transactional` doesn't
-          work)
-
-- **Frontend**:
-  - **E2E Tests (Cypress)**:
-    - [ ] Use API-based setup via `cy.request()` (NOT slow UI interactions) -
-          10x faster
-    - [ ] Use fixtures with `cy.intercept()` for consistent test data
-    - [ ] Use `cy.session()` for login state (10-20x faster than per-test login)
-    - [ ] Use custom Cypress commands for reusable setup/cleanup
-  - **Unit Tests (Jest)**:
-    - [ ] Use mock data builders/factories (per Medium article - use generic
-          cases)
-    - [ ] Use `setupApiMocks()` helper for consistent API mocking
-    - [ ] Test edge cases (null, empty, boundary values)
-    - [ ] Use `renderWithIntl()` helper for consistent component rendering
-
-### Checkpoint Validations
-
-Document which tests must pass at each SDD phase checkpoint:
-
-- [ ] **After Phase 1 (Entities)**: ORM validation tests must pass
-- [ ] **After Phase 2 (Services)**: Backend unit tests must pass
-- [ ] **After Phase 3 (Controllers)**: Integration tests must pass
-- [ ] **After Phase 4 (Frontend)**: Frontend unit tests (Jest) AND E2E tests
-      (Cypress) must pass
-
-### TDD Workflow
-
-- [ ] **TDD Mandatory**: Red-Green-Refactor cycle for complex logic
-- [ ] **Test Tasks First**: Test tasks MUST appear before implementation tasks
-      in tasks.md
-- [ ] **Checkpoint Enforcement**: Tests must pass before proceeding to next
-      phase
 
 ## Project Structure
 
@@ -346,3 +187,114 @@ directories captured above]
 | -------------------------- | ------------------ | ------------------------------------ |
 | [e.g., 4th project]        | [current need]     | [why 3 projects insufficient]        |
 | [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient]  |
+
+## Testing Strategy
+
+**Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
+
+**MANDATORY**: Every plan MUST include a complete testing strategy that
+references the Testing Roadmap and documents test coverage goals, test types,
+data management, and checkpoint validations.
+
+### Coverage Goals
+
+- **Backend**: >80% code coverage (measured via JaCoCo)
+- **Frontend**: >70% code coverage (measured via Jest)
+- **Critical Paths**: 100% coverage (authentication, authorization, data
+  validation)
+
+### Test Types
+
+Document which test types will be used for this feature:
+
+- [ ] **Unit Tests**: Service layer business logic (JUnit 4 + Mockito)
+
+  - Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`
+  - **Reference**:
+    [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
+  - **Coverage Goal**: >80% (measured via JaCoCo)
+  - **SDD Checkpoint**: After Phase 2 (Services), all unit tests MUST pass
+  - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit
+    tests (NOT `@SpringBootTest`)
+  - **Mocking**: Use `@Mock` (NOT `@MockBean`) for isolated unit tests
+
+- [ ] **DAO Tests**: Persistence layer testing (@DataJpaTest)
+
+  - Template: `.specify/templates/testing/DataJpaTestDao.java.template`
+  - **Reference**:
+    [Testing Roadmap - @DataJpaTest (DAO/Repository Layer)](.specify/guides/testing-roadmap.md#datajpatest-daorepository-layer)
+  - **Test Slicing**: Use `@DataJpaTest` for DAO testing (NOT
+    `@SpringBootTest` - faster execution)
+  - **Test Data**: Use `TestEntityManager` (NOT JdbcTemplate) for test data
+    setup
+  - **Transaction Management**: Automatic rollback (no manual cleanup needed)
+
+- [ ] **Controller Tests**: REST API endpoints (@WebMvcTest)
+
+  - Template: `.specify/templates/testing/WebMvcTestController.java.template`
+  - **Reference**:
+    [Testing Roadmap - @WebMvcTest (Controller Layer)](.specify/guides/testing-roadmap.md#webmvctest-controller-layer)
+  - **Test Slicing**: Use `@WebMvcTest` for controller testing (NOT
+    `@SpringBootTest` - faster execution)
+  - **Mocking**: Use `@MockBean` (NOT `@Mock`) for Spring context mocking
+  - **HTTP Testing**: Use `MockMvc` for HTTP request/response testing
+
+- [ ] **ORM Validation Tests**: Entity mapping validation (Constitution V.4)
+
+  - **Reference**:
+    [Testing Roadmap - ORM Validation Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
+  - **SDD Checkpoint**: After Phase 1 (Entities), ORM validation tests MUST pass
+  - **Requirements**: MUST execute in <5 seconds, MUST NOT require database
+    connection
+
+- [ ] **Integration Tests**: Full workflow testing (@SpringBootTest)
+
+  - **Reference**:
+    [Testing Roadmap - @SpringBootTest (Full Integration)](.specify/guides/testing-roadmap.md#springboottest-full-integration)
+  - **Test Slicing**: Use `@SpringBootTest` only when full application context
+    is required
+  - **Transaction Management**: Use `@Transactional` for automatic rollback
+    (preferred)
+  - **SDD Checkpoint**: After Phase 3 (Controllers), integration tests MUST pass
+
+- [ ] **Frontend Unit Tests**: React component logic (Jest + React Testing
+      Library)
+
+  - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+  - **Reference**:
+    [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
+  - **Coverage Goal**: >70% (measured via Jest)
+  - **SDD Checkpoint**: After Phase 4 (Frontend), all unit tests MUST pass
+
+- [ ] **E2E Tests**: Critical user workflows (Cypress)
+  - Template: `.specify/templates/testing/CypressE2E.cy.js.template`
+  - **Reference**:
+    [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
+  - **Reference**:
+    [Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
+
+### Test Data Management
+
+Document how test data will be created and cleaned up:
+
+- **Backend**:
+
+  - **Unit Tests**: Use builders/factories for test data (NOT hardcoded values)
+  - **DAO/Integration**: Use `TestEntityManager` or `@Transactional` rollback
+
+- **Frontend**:
+  - **E2E Tests (Cypress)**:
+    - [ ] Use API-based setup via `cy.request()` (NOT slow UI interactions) -
+          10x faster
+    - [ ] Use fixtures with `cy.intercept()` for consistent test data
+    - [ ] Use `cy.session()` for login state (10-20x faster than per-test login)
+
+### Checkpoint Validations
+
+Document which tests must pass at each SDD phase checkpoint:
+
+- [ ] **After Phase 1 (Entities)**: ORM validation tests must pass
+- [ ] **After Phase 2 (Services)**: Backend unit tests must pass
+- [ ] **After Phase 3 (Controllers)**: Integration tests must pass
+- [ ] **After Phase 4 (Frontend)**: Frontend unit tests (Jest) AND E2E tests
+      (Cypress) must pass

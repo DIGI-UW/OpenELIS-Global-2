@@ -8,7 +8,7 @@ import {
   Button,
   InlineLoading,
 } from "@carbon/react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomDatePicker from "../common/CustomDatePicker";
 import CustomTimePicker from "../common/CustomTimePicker";
@@ -18,7 +18,54 @@ import Questionnaire from "../common/Questionnaire";
 import { getFromOpenElisServer } from "../utils/Utils";
 import config from "../../config.json";
 
-export default function GenericSampleOrderEdit() {
+/**
+ * GenericSampleOrderEdit - Configurable sample order edit component
+ *
+ * @param {Object} props - Component configuration
+ * @param {string} props.title - Page title (i18n key)
+ * @param {string} props.titleDefault - Default page title
+ * @param {Array} props.breadcrumbs - Custom breadcrumb array [{label, link}]
+ * @param {string} props.searchEndpoint - API endpoint for search (default: "/rest/GenericSampleOrder")
+ * @param {string} props.saveEndpoint - API endpoint for saving (default: "/rest/GenericSampleOrder")
+ * @param {boolean} props.showBreadcrumbs - Show breadcrumbs (default: true)
+ * @param {boolean} props.showNotebookSelection - Show notebook selection (default: true)
+ * @param {boolean} props.showSampleType - Show sample type field (default: true)
+ * @param {boolean} props.showQuantity - Show quantity field (default: true)
+ * @param {boolean} props.showUom - Show unit of measure field (default: true)
+ * @param {boolean} props.showFrom - Show from field (default: true)
+ * @param {boolean} props.showCollector - Show collector field (default: true)
+ * @param {boolean} props.showCollectionDate - Show collection date field (default: true)
+ * @param {boolean} props.showCollectionTime - Show collection time field (default: true)
+ * @param {boolean} props.showQuestionnaire - Show FHIR questionnaire section (default: true)
+ * @param {Function} props.onSearchComplete - Callback after search completes (data) => void
+ * @param {Function} props.onSaveSuccess - Callback after successful save (data) => void
+ * @param {Function} props.onSaveError - Callback after save error (error) => void
+ * @param {Array} props.additionalFields - Additional custom fields to render [{id, labelText, type, options}]
+ * @param {Function} props.renderCustomContent - Render function for custom content (formData, updateField) => React.Node
+ */
+export default function GenericSampleOrderEdit({
+  title = "genericSample.edit.title",
+  titleDefault = "Generic Sample - Edit Order",
+  breadcrumbs: customBreadcrumbs,
+  searchEndpoint = "/rest/GenericSampleOrder",
+  saveEndpoint = "/rest/GenericSampleOrder",
+  showBreadcrumbs = true,
+  showNotebookSelection = true,
+  showSampleType = true,
+  showQuantity = true,
+  showUom = true,
+  showFrom = true,
+  showCollector = true,
+  showCollectionDate = true,
+  showCollectionTime = true,
+  showQuestionnaire = true,
+  onSearchComplete,
+  onSaveSuccess,
+  onSaveError,
+  additionalFields = [],
+  renderCustomContent,
+}) {
+  const intl = useIntl();
   // Search state
   const [searchAccessionNumber, setSearchAccessionNumber] = useState("");
   const [searching, setSearching] = useState(false);
@@ -51,24 +98,33 @@ export default function GenericSampleOrderEdit() {
   const [uoms, setUoms] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  const breadcrumbs = [
+  // Breadcrumbs
+  const defaultBreadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "menu.genericSample" },
     { label: "menu.genericSample.edit" },
   ];
 
+  const breadcrumbs = customBreadcrumbs || defaultBreadcrumbs;
+
   // Load default data
   useEffect(() => {
-    // Load default dropdown data
-    getFromOpenElisServer("/rest/user-sample-types", (res) => {
-      setSampleTypes(res || []);
-    });
-    getFromOpenElisServer("/rest/UomCreate", (res) => {
-      setUoms(res.existingUomList || []);
-    });
-    getFromOpenElisServer("/rest/notebook/list", (res) => {
-      setNotebooks(res || []);
-    });
+    // Load default dropdown data conditionally
+    if (showSampleType) {
+      getFromOpenElisServer("/rest/user-sample-types", (res) => {
+        setSampleTypes(res || []);
+      });
+    }
+    if (showUom) {
+      getFromOpenElisServer("/rest/UomCreate", (res) => {
+        setUoms(res.existingUomList || []);
+      });
+    }
+    if (showNotebookSelection) {
+      getFromOpenElisServer("/rest/notebook/list", (res) => {
+        setNotebooks(res || []);
+      });
+    }
 
     // Check if accession number is in URL params
     const urlParams = new URLSearchParams(window.location.search);
@@ -77,24 +133,26 @@ export default function GenericSampleOrderEdit() {
       setSearchAccessionNumber(accessionNumberParam);
       handleSearch(accessionNumberParam);
     }
-  }, []);
+  }, [showSampleType, showUom, showNotebookSelection]);
 
   // Load questionnaire when notebook is selected (but not on initial load from backend)
   const [notebookChangedByUser, setNotebookChangedByUser] = useState(false);
 
   useEffect(() => {
+    if (!showQuestionnaire) return;
+
     if (selectedNotebookId && notebookChangedByUser) {
       // User manually changed the notebook, so clear responses and load new questionnaire
       setFhirResponses({});
       loadFhirQuestionnaireForNotebook(selectedNotebookId);
-    } else if (selectedNotebookId && !notebookChangedByUser) {
-      // Notebook loaded from backend, just load the questionnaire without clearing responses
-      loadFhirQuestionnaireForNotebook(selectedNotebookId);
-    } else {
+    } else if (!selectedNotebookId) {
+      // No notebook selected, clear questionnaire
       setFhirQuestionnaire(null);
       setFhirResponses({});
     }
-  }, [selectedNotebookId, notebookChangedByUser]);
+    // When notebook loaded from backend (!notebookChangedByUser), do NOT reload
+    // the questionnaire - it was already set from the search response
+  }, [selectedNotebookId, notebookChangedByUser, showQuestionnaire]);
 
   const loadFhirQuestionnaireForNotebook = (notebookId) => {
     setQuestionnaireLoading(true);
@@ -127,7 +185,7 @@ export default function GenericSampleOrderEdit() {
     const baseAccessionNumber = accessionNumber.split("-")[0];
 
     getFromOpenElisServer(
-      `/rest/GenericSampleOrder?accessionNumber=${encodeURIComponent(baseAccessionNumber)}`,
+      `${searchEndpoint}?accessionNumber=${encodeURIComponent(baseAccessionNumber)}`,
       (data) => {
         setSearching(false);
         if (data && data.defaultFields && data.defaultFields.labNo) {
@@ -161,6 +219,11 @@ export default function GenericSampleOrderEdit() {
 
           setOrderFound(true);
           setSearchAccessionNumber(baseAccessionNumber);
+
+          // Call callback if provided
+          if (onSearchComplete) {
+            onSearchComplete(data);
+          }
         } else {
           setSearchError(
             data?.error || "No sample found with this accession number",
@@ -230,30 +293,49 @@ export default function GenericSampleOrderEdit() {
 
     fetch(
       config.serverBaseUrl +
-        `/rest/GenericSampleOrder/${encodeURIComponent(searchAccessionNumber)}`,
+        `${saveEndpoint}/${encodeURIComponent(searchAccessionNumber)}`,
       options,
     )
       .then((response) => response.json())
       .then((data) => {
         setSaving(false);
         if (data && data.success) {
-          alert(
-            "Sample order updated successfully! Accession Number: " +
-              (data.accessionNumber || searchAccessionNumber),
-          );
+          if (onSaveSuccess) {
+            onSaveSuccess(data);
+          } else {
+            alert(
+              intl.formatMessage(
+                { id: "genericSample.edit.success" },
+                {
+                  accessionNumber:
+                    data.accessionNumber || searchAccessionNumber,
+                },
+              ),
+            );
+          }
           // Optionally reload the data
           handleSearch(searchAccessionNumber);
         } else {
-          alert(
-            "Error updating sample order: " + (data?.error || "Unknown error"),
-          );
+          const errorMsg = data?.error || "Unknown error";
+          if (onSaveError) {
+            onSaveError(errorMsg);
+          } else {
+            alert(
+              intl.formatMessage({ id: "error.save.sample" }) + ": " + errorMsg,
+            );
+          }
         }
       })
       .catch((error) => {
         setSaving(false);
-        alert(
-          "Error updating sample order: " + (error.message || "Unknown error"),
-        );
+        const errorMsg = error.message || "Unknown error";
+        if (onSaveError) {
+          onSaveError(errorMsg);
+        } else {
+          alert(
+            intl.formatMessage({ id: "error.save.sample" }) + ": " + errorMsg,
+          );
+        }
       });
   };
 
@@ -264,15 +346,12 @@ export default function GenericSampleOrderEdit() {
 
   return (
     <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      {showBreadcrumbs && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <Section>
             <Heading>
-              <FormattedMessage
-                id="genericSample.edit.title"
-                defaultMessage="Generic Sample - Edit Order"
-              />
+              <FormattedMessage id={title} defaultMessage={titleDefault} />
             </Heading>
           </Section>
         </Column>
@@ -377,163 +456,228 @@ export default function GenericSampleOrderEdit() {
                 readOnly
               />
             </Column>
-            <Column lg={8} md={8} sm={4}>
-              <CustomSelect
-                id="sampleType"
-                labelText={
-                  <FormattedMessage
-                    id="sample.type"
-                    defaultMessage="Sample Type"
-                  />
-                }
-                value={defaultForm.sampleTypeId}
-                onChange={(v) => updateDefaultField("sampleTypeId", v)}
-                options={sampleTypes.map((s) => ({ id: s.id, value: s.value }))}
-                placeholder="Select sample type"
-              />
-            </Column>
+            {showSampleType && (
+              <Column lg={8} md={8} sm={4}>
+                <CustomSelect
+                  id="sampleType"
+                  labelText={
+                    <FormattedMessage
+                      id="sample.type"
+                      defaultMessage="Sample Type"
+                    />
+                  }
+                  value={defaultForm.sampleTypeId}
+                  onChange={(v) => updateDefaultField("sampleTypeId", v)}
+                  options={sampleTypes.map((s) => ({
+                    id: s.id,
+                    value: s.value,
+                  }))}
+                  placeholder="Select sample type"
+                />
+              </Column>
+            )}
           </Grid>
 
           {/* Row 2: Quantity, Sample Unit Of Measure */}
-          <Grid fullWidth={true}>
-            <Column lg={8} md={8} sm={4}>
-              <TextInput
-                id="quantity"
-                labelText={
-                  <FormattedMessage
-                    id="sample.quantity.label"
-                    defaultMessage="Quantity"
+          {(showQuantity || showUom) && (
+            <Grid fullWidth={true}>
+              {showQuantity && (
+                <Column lg={8} md={8} sm={4}>
+                  <TextInput
+                    id="quantity"
+                    labelText={
+                      <FormattedMessage
+                        id="sample.quantity.label"
+                        defaultMessage="Quantity"
+                      />
+                    }
+                    type="number"
+                    value={defaultForm.quantity}
+                    onChange={(e) =>
+                      updateDefaultField("quantity", e.target.value)
+                    }
                   />
-                }
-                type="number"
-                value={defaultForm.quantity}
-                onChange={(e) => updateDefaultField("quantity", e.target.value)}
-              />
-            </Column>
-            <Column lg={8} md={8} sm={4}>
-              <CustomSelect
-                id="sampleUnitOfMeasure"
-                labelText={
-                  <FormattedMessage
-                    id="sample.uom.label"
-                    defaultMessage="Sample Unit Of Measure"
+                </Column>
+              )}
+              {showUom && (
+                <Column lg={8} md={8} sm={4}>
+                  <CustomSelect
+                    id="sampleUnitOfMeasure"
+                    labelText={
+                      <FormattedMessage
+                        id="sample.uom.label"
+                        defaultMessage="Sample Unit Of Measure"
+                      />
+                    }
+                    value={defaultForm.sampleUnitOfMeasure}
+                    onChange={(v) =>
+                      updateDefaultField("sampleUnitOfMeasure", v)
+                    }
+                    options={uoms.map((u) => ({ id: u.id, value: u.value }))}
+                    placeholder="Select units"
                   />
-                }
-                value={defaultForm.sampleUnitOfMeasure}
-                onChange={(v) => updateDefaultField("sampleUnitOfMeasure", v)}
-                options={uoms.map((u) => ({ id: u.id, value: u.value }))}
-                placeholder="Select units"
-              />
-            </Column>
-          </Grid>
+                </Column>
+              )}
+            </Grid>
+          )}
 
           {/* Row 3: From, Collector */}
-          <Grid fullWidth={true}>
-            <Column lg={8} md={8} sm={4}>
-              <TextInput
-                id="from"
-                labelText={
-                  <FormattedMessage
-                    id="genericSample.field.from"
-                    defaultMessage="From"
+          {(showFrom || showCollector) && (
+            <Grid fullWidth={true}>
+              {showFrom && (
+                <Column lg={8} md={8} sm={4}>
+                  <TextInput
+                    id="from"
+                    labelText={
+                      <FormattedMessage
+                        id="genericSample.field.from"
+                        defaultMessage="From"
+                      />
+                    }
+                    value={defaultForm.from}
+                    onChange={(e) => updateDefaultField("from", e.target.value)}
                   />
-                }
-                value={defaultForm.from}
-                onChange={(e) => updateDefaultField("from", e.target.value)}
-              />
-            </Column>
-            <Column lg={8} md={8} sm={4}>
-              <TextInput
-                id="collector"
-                labelText={
-                  <FormattedMessage
-                    id="collector.label"
-                    defaultMessage="Collector"
+                </Column>
+              )}
+              {showCollector && (
+                <Column lg={8} md={8} sm={4}>
+                  <TextInput
+                    id="collector"
+                    labelText={
+                      <FormattedMessage
+                        id="collector.label"
+                        defaultMessage="Collector"
+                      />
+                    }
+                    value={defaultForm.collector}
+                    onChange={(e) =>
+                      updateDefaultField("collector", e.target.value)
+                    }
                   />
-                }
-                value={defaultForm.collector}
-                onChange={(e) =>
-                  updateDefaultField("collector", e.target.value)
-                }
-              />
-            </Column>
-          </Grid>
+                </Column>
+              )}
+            </Grid>
+          )}
 
           {/* Row 4: Collection date, Collection time */}
-          <Grid fullWidth={true}>
-            <Column lg={8} md={8} sm={4}>
-              <CustomDatePicker
-                id="collectionDate"
-                labelText={
-                  <FormattedMessage
-                    id="sample.collection.date"
-                    defaultMessage="Collection Date"
+          {(showCollectionDate || showCollectionTime) && (
+            <Grid fullWidth={true}>
+              {showCollectionDate && (
+                <Column lg={8} md={8} sm={4}>
+                  <CustomDatePicker
+                    id="collectionDate"
+                    labelText={
+                      <FormattedMessage
+                        id="sample.collection.date"
+                        defaultMessage="Collection Date"
+                      />
+                    }
+                    value={defaultForm.collectionDate}
+                    onChange={(v) => updateDefaultField("collectionDate", v)}
                   />
-                }
-                value={defaultForm.collectionDate}
-                onChange={(v) => updateDefaultField("collectionDate", v)}
-              />
-            </Column>
-            <Column lg={8} md={8} sm={4}>
-              <CustomTimePicker
-                id="collectionTime"
-                labelText={
-                  <FormattedMessage
-                    id="sample.collection.time"
-                    defaultMessage="Collection Time"
+                </Column>
+              )}
+              {showCollectionTime && (
+                <Column lg={8} md={8} sm={4}>
+                  <CustomTimePicker
+                    id="collectionTime"
+                    labelText={
+                      <FormattedMessage
+                        id="sample.collection.time"
+                        defaultMessage="Collection Time"
+                      />
+                    }
+                    value={defaultForm.collectionTime}
+                    onChange={(v) => updateDefaultField("collectionTime", v)}
                   />
-                }
-                value={defaultForm.collectionTime}
-                onChange={(v) => updateDefaultField("collectionTime", v)}
-              />
-            </Column>
-          </Grid>
+                </Column>
+              )}
+            </Grid>
+          )}
 
           {/* Row 5: Notebook Selection */}
-          <Grid fullWidth={true}>
-            <Column lg={8} md={8} sm={4}>
-              <CustomSelect
-                id="notebookSelect"
-                labelText={
-                  <FormattedMessage
-                    id="genericSample.notebook.label"
-                    defaultMessage="Select Notebook"
-                  />
-                }
-                value={selectedNotebookId || ""}
-                onChange={(v) => {
-                  setNotebookChangedByUser(true);
-                  setSelectedNotebookId(v);
-                }}
-                options={notebooks.map((n) => ({ id: n.id, value: n.title }))}
-                placeholder="Select a notebook (optional)"
-              />
-            </Column>
-          </Grid>
+          {showNotebookSelection && (
+            <Grid fullWidth={true}>
+              <Column lg={8} md={8} sm={4}>
+                <CustomSelect
+                  id="notebookSelect"
+                  labelText={
+                    <FormattedMessage
+                      id="genericSample.notebook.label"
+                      defaultMessage="Select Notebook"
+                    />
+                  }
+                  value={selectedNotebookId || ""}
+                  onChange={(v) => {
+                    setNotebookChangedByUser(true);
+                    setSelectedNotebookId(v);
+                  }}
+                  options={notebooks.map((n) => ({ id: n.id, value: n.title }))}
+                  placeholder="Select a notebook (optional)"
+                />
+              </Column>
+            </Grid>
+          )}
+
+          {/* Additional custom fields */}
+          {additionalFields.length > 0 && (
+            <Grid fullWidth={true}>
+              {additionalFields.map((field) => (
+                <Column key={field.id} lg={8} md={8} sm={4}>
+                  {field.type === "select" ? (
+                    <CustomSelect
+                      id={field.id}
+                      labelText={field.labelText}
+                      value={defaultForm[field.id] || ""}
+                      onChange={(v) => updateDefaultField(field.id, v)}
+                      options={field.options || []}
+                      placeholder={field.placeholder}
+                    />
+                  ) : (
+                    <TextInput
+                      id={field.id}
+                      labelText={field.labelText}
+                      type={field.type || "text"}
+                      value={defaultForm[field.id] || ""}
+                      onChange={(e) =>
+                        updateDefaultField(field.id, e.target.value)
+                      }
+                    />
+                  )}
+                </Column>
+              ))}
+            </Grid>
+          )}
+
+          {/* Custom content render */}
+          {renderCustomContent &&
+            renderCustomContent(defaultForm, updateDefaultField)}
 
           {/* FHIR QUESTIONNAIRE SECTION */}
-          <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
-              <Section>
-                <Heading>
-                  <FormattedMessage
-                    id="fhir.questionnaire.title"
-                    defaultMessage="Additional Information"
-                  />
-                </Heading>
-              </Section>
+          {showQuestionnaire && (
+            <Grid fullWidth={true}>
+              <Column lg={16} md={8} sm={4}>
+                <Section>
+                  <Heading>
+                    <FormattedMessage
+                      id="fhir.questionnaire.title"
+                      defaultMessage="Additional Information"
+                    />
+                  </Heading>
+                </Section>
 
-              {questionnaireLoading ? (
-                <div>Loading questionnaire...</div>
-              ) : (
-                <Questionnaire
-                  questionnaire={fhirQuestionnaire}
-                  onAnswerChange={handleAnswerChange}
-                  getAnswer={getAnswer}
-                />
-              )}
-            </Column>
-          </Grid>
+                {questionnaireLoading ? (
+                  <div>Loading questionnaire...</div>
+                ) : (
+                  <Questionnaire
+                    questionnaire={fhirQuestionnaire}
+                    onAnswerChange={handleAnswerChange}
+                    getAnswer={getAnswer}
+                  />
+                )}
+              </Column>
+            </Grid>
+          )}
 
           {/* Action buttons */}
           <Grid fullWidth={true}>

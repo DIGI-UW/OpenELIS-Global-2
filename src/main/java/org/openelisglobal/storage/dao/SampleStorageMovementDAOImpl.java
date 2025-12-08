@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@Transactional
 public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovement, Integer>
         implements SampleStorageMovementDAO {
 
@@ -21,19 +20,25 @@ public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovem
     @Override
     @Transactional(readOnly = true)
     public List<SampleStorageMovement> findBySampleItemId(String sampleItemId) {
+        if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+
+        // Parse String to Integer since DB column is numeric
+        Integer sampleItemIdInt;
         try {
-            // Note: SampleItem.id uses LIMSStringNumberUserType (String in Java, numeric in
-            // DB)
-            // When querying through relationships, we must parse String to Integer for the
-            // parameter
-            // This matches the pattern in SampleItemDAOImpl.getSampleItemsBySampleId()
-            String hql = "FROM SampleStorageMovement ssm WHERE ssm.sampleItem.id = :sampleItemId ORDER BY ssm.movementDate DESC";
-            Query<SampleStorageMovement> query = entityManager.unwrap(Session.class).createQuery(hql,
-                    SampleStorageMovement.class);
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
-            return query.list();
+            sampleItemIdInt = Integer.parseInt(sampleItemId.trim());
         } catch (NumberFormatException e) {
             throw new LIMSRuntimeException("Invalid SampleItem ID format (must be numeric): " + sampleItemId, e);
+        }
+
+        try {
+            // Query directly using sampleItemId column (no join to HBM-mapped entity)
+            String hql = "FROM SampleStorageMovement ssm WHERE ssm.sampleItemId = :sampleItemId ORDER BY ssm.movementDate DESC";
+            Query<SampleStorageMovement> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageMovement.class);
+            query.setParameter("sampleItemId", sampleItemIdInt);
+            return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding SampleStorageMovements by SampleItem ID: " + sampleItemId, e);
         }

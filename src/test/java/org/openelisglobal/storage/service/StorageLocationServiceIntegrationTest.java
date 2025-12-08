@@ -489,9 +489,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         StorageRack rack = new StorageRack();
         rack.setLabel("TEST-RACK01");
         rack.setParentShelf(parentShelf);
-        rack.setRows(8);
-        rack.setColumns(12);
-        rack.setCode("test-rkr01"); // Lowercase, should be converted
+        rack.setShortCode("test-rkr01"); // Lowercase, should be converted
         rack.setActive(true);
         rack.setSysUserIdValue(1); // Required field
 
@@ -504,7 +502,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Retrieve rack and verify shortCode was normalized
         StorageRack retrieved = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
         assertNotNull("Retrieved rack should not be null", retrieved);
-        assertEquals("Short code should be normalized to uppercase", "TEST-RKR01", retrieved.getCode());
+        assertEquals("Short code should be normalized to uppercase", "TEST-RKR01", retrieved.getShortCode());
     }
 
     /**
@@ -554,9 +552,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         StorageRack rack = new StorageRack();
         rack.setLabel("TEST-RACK02");
         rack.setParentShelf(parentShelf);
-        rack.setRows(8);
-        rack.setColumns(12);
-        rack.setCode("TEST-OLD3");
+        rack.setShortCode("TEST-OLD3");
         rack.setActive(true);
         rack.setSysUserIdValue(1); // Required field
         Integer rackId = storageLocationService.insert(rack);
@@ -564,7 +560,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
 
         // Given: Update rack with new shortCode
         StorageRack updatedRack = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
-        updatedRack.setCode("TEST-NEW3");
+        updatedRack.setShortCode("TEST-NEW3");
 
         // When: Update rack through service layer
         storageLocationService.update(updatedRack);
@@ -572,6 +568,6 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         // Then: Retrieve rack and verify shortCode was updated
         StorageRack retrieved = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
         assertNotNull("Retrieved rack should not be null", retrieved);
-        assertEquals("Short code should be updated", "TEST-NEW3", retrieved.getCode());
+        assertEquals("Short code should be updated", "TEST-NEW3", retrieved.getShortCode());
     }
 }

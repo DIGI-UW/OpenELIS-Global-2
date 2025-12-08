@@ -69,84 +69,43 @@
 
     <storage_rack id="5000"
         fhir_uuid="00000000-0000-0000-0000-000000004000" label="Rack R1"
-        code="TEST-RR1" rows="8" columns="12" position_schema_hint="A1"
-        parent_shelf_id="5000" active="true" sys_user_id="1"
+        code="TEST-RR1" parent_shelf_id="5000" active="true" sys_user_id="1"
         last_updated="2024-01-01 00:00:00" />
 
     <storage_rack id="5001"
         fhir_uuid="00000000-0000-0000-0000-000000004001" label="Rack R2"
-        code="TEST-RR2" rows="10" columns="10" position_schema_hint="1-1"
-        parent_shelf_id="5000" active="true" sys_user_id="1"
+        code="TEST-RR2" parent_shelf_id="5000" active="true" sys_user_id="1"
         last_updated="2024-01-01 00:00:00" />
 
     <storage_rack id="5002"
         fhir_uuid="00000000-0000-0000-0000-000000004002" label="Rack R3"
-        code="TEST-RR3" rows="6" columns="8" parent_shelf_id="5001"
-        active="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+        code="TEST-RR3" parent_shelf_id="5001" active="true" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
 
     <storage_rack id="5003"
         fhir_uuid="00000000-0000-0000-0000-000000004003" label="Rack Flexible"
-        code="TEST-RF" rows="0" columns="0" parent_shelf_id="5002"
-        active="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
-
-    <storage_position id="5000"
-        fhir_uuid="00000000-0000-0000-0000-000000005000" coordinate="A1"
-        row_index="1" column_index="1" parent_device_id="5000"
-        parent_shelf_id="5000" parent_rack_id="5000" sys_user_id="1"
+        code="TEST-RF" parent_shelf_id="5002" active="true" sys_user_id="1"
         last_updated="2024-01-01 00:00:00" />
 
-    <storage_position id="5001"
-        fhir_uuid="00000000-0000-0000-0000-000000005001" coordinate="A2"
-        row_index="1" column_index="2" parent_device_id="5000"
-        parent_shelf_id="5000" parent_rack_id="5000" sys_user_id="1"
-        last_updated="2024-01-01 00:00:00" />
 
-    <storage_position id="5002"
-        fhir_uuid="00000000-0000-0000-0000-000000005002" coordinate="A3"
-        row_index="1" column_index="3" parent_device_id="5000"
-        parent_shelf_id="5000" parent_rack_id="5000" sys_user_id="1"
-        last_updated="2024-01-01 00:00:00" />
 
-    <storage_position id="5003"
-        fhir_uuid="00000000-0000-0000-0000-000000005003" coordinate="1-1"
-        row_index="1" column_index="1" parent_device_id="5000"
-        parent_shelf_id="5000" parent_rack_id="5001" sys_user_id="1"
-        last_updated="2024-01-01 00:00:00" />
 
-    <storage_position id="5004"
-        fhir_uuid="00000000-0000-0000-0000-000000005004" coordinate="1-2"
-        row_index="1" column_index="2" parent_device_id="5000"
-        parent_shelf_id="5000" parent_rack_id="5001" sys_user_id="1"
-        last_updated="2024-01-01 00:00:00" />
 
-    <storage_position id="5005"
-        fhir_uuid="00000000-0000-0000-0000-000000005005" coordinate="RED-01"
-        parent_device_id="5001" parent_shelf_id="5002" parent_rack_id="5003"
-        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
 
-    <storage_position id="5006"
-        fhir_uuid="00000000-0000-0000-0000-000000005006" coordinate="RED-01"
-        parent_device_id="5001" parent_shelf_id="5002" parent_rack_id="5003"
-        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
-
-    <storage_position id="5007"
-        fhir_uuid="00000000-0000-0000-0000-000000005007" coordinate="BLUE-01"
-        parent_device_id="5001" parent_shelf_id="5002" parent_rack_id="5003"
-        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
 
     <sample id="50000" accession_number="TEST-SAMPLE-001"
         fhir_uuid="00000000-0000-0000-0000-000000010000" domain="H"
-        status_id="1" entered_date="2024-01-01 00:00:00"
+        status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
         received_date="2024-01-01 00:00:00" is_confirmation="false" />
 
     <sample id="50001" accession_number="TEST-SAMPLE-002"
         fhir_uuid="00000000-0000-0000-0000-000000010001" domain="H"
-        status_id="1" entered_date="2024-01-01 00:00:00"
+        status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
         received_date="2024-01-01 00:00:00" is_confirmation="false" />
 
     <sample id="50002" accession_number="TEST-SAMPLE-003"
         fhir_uuid="00000000-0000-0000-0000-000000010002" domain="H"
-        status_id="1" entered_date="2024-01-01 00:00:00"
+        status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
         received_date="2024-01-01 00:00:00" is_confirmation="false" />
 
     <sample_item id="60000" samp_id="50000" sort_order="1"

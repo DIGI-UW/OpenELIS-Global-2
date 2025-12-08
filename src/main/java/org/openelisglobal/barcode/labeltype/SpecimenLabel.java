@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.LabelField;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -196,6 +197,114 @@ public class SpecimenLabel extends Label {
         // add code
         String sampleCode = sampleItem.getSortOrder();
         setCode(labNo + "." + sampleCode);
+
+        setValueFont(new Font(FontFamily.HELVETICA, 7, Font.NORMAL));
+        setNameFont(new Font(FontFamily.HELVETICA, 7, Font.BOLD));
+    }
+
+    /**
+     * Constructor for generic samples with sample type, quantity, and from
+     * information (no patient info).
+     *
+     * @param sampleItem The sample item to create label for
+     * @param labNo      Lab/accession number
+     * @param sampleType Sample type description
+     * @param quantity   Quantity with unit of measure
+     * @param from       Source/origin of the sample
+     */
+    public SpecimenLabel(SampleItem sampleItem, String labNo, String sampleType, String quantity, String from) {
+        // set dimensions
+        try {
+            width = Float.parseFloat(
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_BARCODE_WIDTH));
+            height = Float.parseFloat(
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_BARCODE_HEIGHT));
+        } catch (Exception e) {
+            LogEvent.logError("SpecimenLabel", "SpecimenLabel(SampleItem, labNo, sampleType, quantity, from)",
+                    "Error parsing specimen barcode dimensions: " + e.toString());
+            // Use default dimensions if configuration is not set
+            width = 2.0f;
+            height = 1.0f;
+        }
+
+        // adding fields above bar code
+        aboveFields = new ArrayList<>();
+
+        // Sample Type field
+        if (!StringUtil.isNullorNill(sampleType)) {
+            LabelField sampleTypeField = new LabelField(MessageUtil.getMessage("barcode.label.info.sampletype"),
+                    StringUtils.substring(sampleType, 0, 25), 10);
+            sampleTypeField.setDisplayFieldName(true);
+            aboveFields.add(sampleTypeField);
+        }
+
+        // Quantity field
+        if (!StringUtil.isNullorNill(quantity)) {
+            LabelField quantityField = new LabelField(MessageUtil.getMessage("barcode.label.info.quantity"),
+                    StringUtils.substring(quantity, 0, 15), 10);
+            quantityField.setDisplayFieldName(true);
+            aboveFields.add(quantityField);
+        }
+
+        // From/Source field
+        if (!StringUtil.isNullorNill(from)) {
+            LabelField fromField = new LabelField(MessageUtil.getMessage("barcode.label.info.from"),
+                    StringUtils.substring(from, 0, 25), 10);
+            fromField.setDisplayFieldName(true);
+            aboveFields.add(fromField);
+        }
+
+        // getting fields for below bar code
+        Timestamp timestamp = sampleItem.getCollectionDate();
+        String collectionDate = DateUtil.convertTimestampToStringDate(timestamp);
+        String collectionTime = DateUtil.convertTimestampToStringTime(timestamp);
+        String collector = sampleItem.getCollector();
+
+        // Get tests for this specimen
+        StringBuilder tests = new StringBuilder();
+        String seperator = "";
+        List<Analysis> analysisList = analysisService.getAnalysesBySampleItem(sampleItem);
+        for (Analysis analysis : analysisList) {
+            tests.append(seperator);
+            tests.append(TestServiceImpl.getUserLocalizedTestName(analysis.getTest()));
+            seperator = ", ";
+        }
+
+        // adding fields below bar code
+        belowFields = new ArrayList<>();
+        String useDateTime = ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_FIELD_DATE);
+        String useCollectedBy = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.SPECIMEN_FIELD_COLLECTED_BY);
+        String useTests = ConfigurationProperties.getInstance().getPropertyValue(Property.SPECIMEN_FIELD_TESTS);
+
+        if ("true".equals(useDateTime)) {
+            LabelField dateField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectiondate"),
+                    collectionDate, 6);
+            dateField.setDisplayFieldName(true);
+            belowFields.add(dateField);
+            dateField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectiontime"),
+                    StringUtil.replaceNullWithEmptyString(collectionTime), 4);
+            belowFields.add(dateField);
+        }
+        if ("true".equals(useCollectedBy)) {
+            LabelField collectorField = new LabelField(MessageUtil.getMessage("barcode.label.info.collectorid"),
+                    StringUtils.substring(StringUtil.replaceNullWithEmptyString(collector), 0, 15), 6);
+            collectorField.setDisplayFieldName(true);
+            belowFields.add(collectorField);
+        }
+        if ("true".equals(useTests)) {
+            LabelField testsField = new LabelField(MessageUtil.getMessage("barcode.label.info.tests"),
+                    StringUtil.replaceNullWithEmptyString(tests.toString()), 20);
+            testsField.setStartNewline(true);
+            belowFields.add(testsField);
+        }
+
+        // add code - use external ID if available, otherwise labNo.sortOrder
+        String sampleCode = sampleItem.getExternalId();
+        if (StringUtil.isNullorNill(sampleCode)) {
+            sampleCode = labNo + "." + sampleItem.getSortOrder();
+        }
+        setCode(sampleCode);
 
         setValueFont(new Font(FontFamily.HELVETICA, 7, Font.NORMAL));
         setNameFont(new Font(FontFamily.HELVETICA, 7, Font.BOLD));

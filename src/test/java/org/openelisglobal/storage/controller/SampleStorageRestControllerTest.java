@@ -59,7 +59,7 @@ public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest
             // Preserves fixture data (IDs 1-999)
             jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE id::integer >= 1000 OR id LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id::integer >= 1000 OR id LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000 OR coordinate LIKE 'TEST-%'");
+            jdbcTemplate.execute("DELETE FROM storage_box WHERE id::integer >= 1000 OR label LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
@@ -132,10 +132,11 @@ public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest
     }
 
     private String createRackAndGetId(String label, int rows, int columns, String shelfId) throws Exception {
+        // Note: Racks are now simple containers (no rows/columns)
+        // rows/columns parameters are ignored - kept for backward compatibility
         org.openelisglobal.storage.form.StorageRackForm form = new org.openelisglobal.storage.form.StorageRackForm();
         form.setLabel(label);
-        form.setRows(rows);
-        form.setColumns(columns);
+        form.setShortCode(label.substring(0, Math.min(10, label.length())).toUpperCase());
         form.setParentShelfId(shelfId);
         form.setActive(true);
 
