@@ -58,18 +58,22 @@ class OrganizationManagementPage {
 
   searchOrganzation() {
     // The input has id="org-name-search-bar" directly on it
-    // Click first to ensure focus, then type
+    // Ensure it's visible and interactable, then type with force
     cy.get(this.selectors.orgSearchBar)
-      .click()
+      .should("be.visible")
+      .scrollIntoView()
+      .click({ force: true })
       .clear({ force: true })
       .type("CAMES MAN", { force: true });
   }
 
   searchInstitute() {
     // The input has id="org-name-search-bar" directly on it
-    // Click first to ensure focus, then type
+    // Ensure it's visible and interactable, then type with force
     cy.get(this.selectors.orgSearchBar)
-      .click()
+      .should("be.visible")
+      .scrollIntoView()
+      .click({ force: true })
       .clear({ force: true })
       .type("CEDRES", { force: true });
   }
