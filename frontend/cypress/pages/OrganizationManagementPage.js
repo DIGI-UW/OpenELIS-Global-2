@@ -57,23 +57,39 @@ class OrganizationManagementPage {
   }
 
   searchOrganzation() {
-    // Target the input directly by ID - ensure we're clicking the input, not the label or icon
+    // Break up the chain to avoid detached DOM issues
+    // First, ensure the element is visible and scroll into view
     cy.get(`input${this.selectors.orgSearchBar}`)
       .should("be.visible")
-      .scrollIntoView()
-      .click({ force: true })
-      .clear({ force: true })
-      .type("CAMES MAN", { force: true });
+      .scrollIntoView();
+
+    // Re-query after scroll (page may have updated)
+    cy.get(`input${this.selectors.orgSearchBar}`)
+      .focus()
+      .clear({ force: true });
+
+    // Re-query again before typing
+    cy.get(`input${this.selectors.orgSearchBar}`).type("CAMES MAN", {
+      force: true,
+    });
   }
 
   searchInstitute() {
-    // Target the input directly by ID - ensure we're clicking the input, not the label or icon
+    // Break up the chain to avoid detached DOM issues
+    // First, ensure the element is visible and scroll into view
     cy.get(`input${this.selectors.orgSearchBar}`)
       .should("be.visible")
-      .scrollIntoView()
-      .click({ force: true })
-      .clear({ force: true })
-      .type("CEDRES", { force: true });
+      .scrollIntoView();
+
+    // Re-query after scroll (page may have updated)
+    cy.get(`input${this.selectors.orgSearchBar}`)
+      .focus()
+      .clear({ force: true });
+
+    // Re-query again before typing
+    cy.get(`input${this.selectors.orgSearchBar}`).type("CEDRES", {
+      force: true,
+    });
   }
 
   confirmOrganization() {
