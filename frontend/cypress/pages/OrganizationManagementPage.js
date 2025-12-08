@@ -57,11 +57,27 @@ class OrganizationManagementPage {
   }
 
   searchOrganzation() {
-    cy.get(this.selectors.orgSearchBar).should("be.visible").type("CAMES MAN");
+    // Wait for page to be ready, then target the input inside Carbon Search component
+    cy.get(this.selectors.orgSearchBar)
+      .should("be.visible")
+      .find("input")
+      .should("be.visible")
+      .should("not.be.disabled")
+      .focus()
+      .clear({ force: true })
+      .type("CAMES MAN", { force: true });
   }
 
   searchInstitute() {
-    cy.get(this.selectors.orgSearchBar).should("be.visible").type("CEDRES");
+    // Wait for page to be ready, then target the input inside Carbon Search component
+    cy.get(this.selectors.orgSearchBar)
+      .should("be.visible")
+      .find("input")
+      .should("be.visible")
+      .should("not.be.disabled")
+      .focus()
+      .clear({ force: true })
+      .type("CEDRES", { force: true });
   }
 
   confirmOrganization() {
