@@ -43,23 +43,23 @@ public class GenericProgramDisplayServiceImpl implements GenericProgramDisplaySe
 
     @Override
     @Transactional
-    public DashboardSummary getAllProgramSamples() {
+    public DashboardSummary getAllProgramSamples(String filter, int size, int page) {
+        int startIndex = (page - 1) * size;
+        List<ProgramSample> samples;
 
-        List<ProgramSample> samples = programSampleService.getAll();
+        if (filter != null && !filter.isEmpty()) {
+            samples = programSampleService.searchProgramSamples(filter, startIndex, size);
+        } else {
+            samples = programSampleService.getPaginatedProgramSamples(startIndex, size);
+        }
+
+        int totalEntries = programSampleService.getCount();
 
         DashboardSummary summary = new DashboardSummary();
-
         List<DashboardSummary.ViewItems> viewItems = samples.stream().map(this::convertToViewItem).toList();
 
         summary.setProgramSample(viewItems);
-        summary.setTotalEntries(viewItems.size());
-
-        long completed = samples.stream().filter(ps -> ps.getQuestionnaireResponseUuid() != null).count();
-
-        long inProgress = samples.stream().filter(ps -> ps.getQuestionnaireResponseUuid() == null).count();
-
-        summary.setCompletedEntries(completed);
-        summary.setInProgressEntries(inProgress);
+        summary.setTotalEntries(totalEntries);
 
         return summary;
     }

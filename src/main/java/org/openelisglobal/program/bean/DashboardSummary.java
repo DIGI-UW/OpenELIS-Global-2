@@ -6,34 +6,15 @@ import java.util.UUID;
 
 public class DashboardSummary {
 
-    private long totalEntries;
-    private long inProgressEntries;
-    private long completedEntries;
-
+    private int totalEntries;
     private List<ViewItems> programSample;
 
-    public long getTotalEntries() {
+    public int getTotalEntries() {
         return totalEntries;
     }
 
-    public void setTotalEntries(long totalEntries) {
+    public void setTotalEntries(int totalEntries) {
         this.totalEntries = totalEntries;
-    }
-
-    public long getInProgressEntries() {
-        return inProgressEntries;
-    }
-
-    public void setInProgressEntries(long inProgressEntries) {
-        this.inProgressEntries = inProgressEntries;
-    }
-
-    public long getCompletedEntries() {
-        return completedEntries;
-    }
-
-    public void setCompletedEntries(long completedEntries) {
-        this.completedEntries = completedEntries;
     }
 
     public List<ViewItems> getProgramSample() {

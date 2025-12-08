@@ -18,7 +18,7 @@ import {
 
 import "./programCaseView.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];
 
@@ -27,23 +27,24 @@ const ProgramDashboard = () => {
 
   const [summary, setSummary] = useState({
     totalEntries: 0,
-    inProgressEntries: 0,
-    completedEntries: 0,
   });
 
   const [tableRows, setTableRows] = useState([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [searchTerm, setSearchTerm] = useState("");
+  const intel = useIntl();
 
-  const fetchDashBoard = () => {
-    getFromOpenElisServer(programDashboardUrl, (response) => {
+  const fetchDashBoard = (page, pageSize, filter) => {
+    const url = `${programDashboardUrl}?size=${pageSize}&page=${page}${
+      filter ? `&filter=${encodeURIComponent(filter)}` : ""
+    }`;
+
+    getFromOpenElisServer(url, (response) => {
       if (!response || !response.programSample) return;
 
       setSummary({
         totalEntries: response.totalEntries || 0,
-        inProgressEntries: response.inProgressEntries || 0,
-        completedEntries: response.completedEntries || 0,
       });
 
       const formatted = response.programSample.map((item) => ({
@@ -64,8 +65,8 @@ const ProgramDashboard = () => {
   };
 
   useEffect(() => {
-    fetchDashBoard();
-  }, []);
+    fetchDashBoard(page, pageSize, searchTerm);
+  }, [page, pageSize, searchTerm]);
 
   const headers = [
     {
@@ -87,27 +88,15 @@ const ProgramDashboard = () => {
     },
   ];
 
-  const filteredRows = tableRows.filter((row) =>
-    row.programName.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const handlePageChange = (pageInfo) => {
-    if (page !== pageInfo.page) setPage(pageInfo.page);
-    if (pageSize !== pageInfo.pageSize) setPageSize(pageInfo.pageSize);
+  const handlePageChange = ({ page: newPage, pageSize: newSize }) => {
+    setPage(newPage);
+    setPageSize(newSize);
   };
 
   const tileList = [
     {
       title: <FormattedMessage id="notebook.label.total" />,
       count: summary.totalEntries,
-    },
-    {
-      title: <FormattedMessage id="notebook.page.completed" />,
-      count: summary.completedEntries,
-    },
-    {
-      title: <FormattedMessage id="dashboard.in.progress.label" />,
-      count: summary.inProgressEntries,
     },
   ];
 
@@ -128,8 +117,12 @@ const ProgramDashboard = () => {
           <div className="table-item">
             <Search
               size="lg"
-              labelText="Search Program Name"
-              placeHolderText="Search by program name..."
+              labelText={intel.formatMessage({
+                id: "sampleManagement.search.label",
+              })}
+              placeholder={intel.formatMessage({
+                id: "sampleManagement.search.label",
+              })}
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -137,11 +130,7 @@ const ProgramDashboard = () => {
               }}
             />
 
-            <DataTable
-              rows={filteredRows.slice((page - 1) * pageSize, page * pageSize)}
-              headers={headers}
-              isSortable
-            >
+            <DataTable rows={tableRows} headers={headers} isSortable>
               {({ rows, headers, getHeaderProps, getTableProps }) => (
                 <>
                   <TableContainer>
@@ -178,8 +167,8 @@ const ProgramDashboard = () => {
                   <Pagination
                     page={page}
                     pageSize={pageSize}
-                    totalItems={filteredRows.length}
-                    pageSizes={[10, 20, 30, 50, 100]}
+                    totalItems={summary.totalEntries}
+                    pageSizes={[5, 10, 20, 30, 50, 100]}
                     onChange={handlePageChange}
                   />
                 </>

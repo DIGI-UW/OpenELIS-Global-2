@@ -7,6 +7,6 @@ public interface GenericProgramDisplayService {
 
     ProgramSampleDisplayItem getProgramSampleById(Integer programSampleId);
 
-    DashboardSummary getAllProgramSamples();
+    DashboardSummary getAllProgramSamples(String filter, int size, int page);
 
 }
