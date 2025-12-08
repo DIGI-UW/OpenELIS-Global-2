@@ -13,6 +13,8 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.valueholder.*;
+import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +48,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Autowired
     private StorageLocationService storageLocationService;
+
+    @Autowired
+    private StatusService statusService;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
