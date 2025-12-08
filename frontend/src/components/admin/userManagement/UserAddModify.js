@@ -18,6 +18,7 @@ import {
   FormGroup,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import {
   AlertDialog,
@@ -85,12 +86,12 @@ function UserAddModify() {
     confirmPassword: false,
   });
 
+  const location = useLocation();
   const ID = (() => {
-    const hash = window.location.hash;
-    if (hash.includes("?")) {
-      const queryParams = hash.split("?")[1];
-      const urlParams = new URLSearchParams(queryParams);
-      return urlParams.get("ID");
+    const search = location.search;
+    if (search) {
+      const urlParams = new URLSearchParams(search);
+      return urlParams.get("ID") || "0";
     }
     return "0";
   })();
@@ -98,7 +99,7 @@ function UserAddModify() {
   useEffect(() => {
     componentMounted.current = true;
     setIsLoading(true);
-    if (ID) {
+    if (ID && ID !== "0") {
       getFromOpenElisServer(
         `/rest/UnifiedSystemUser?ID=${ID}&startingRecNo=1&roleFilter=`,
         handleUserData,
@@ -112,7 +113,7 @@ function UserAddModify() {
       componentMounted.current = false;
       setIsLoading(false);
     };
-  }, [ID]);
+  }, [ID, location.search]);
 
   const handleUserData = (res) => {
     if (!res) {

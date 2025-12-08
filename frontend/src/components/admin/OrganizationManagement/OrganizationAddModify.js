@@ -37,6 +37,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import AutoComplete from "../../common/AutoComplete.js";
 
@@ -73,12 +74,12 @@ function OrganizationAddModify() {
   const [typeOfActivity, setTypeOfActivity] = useState();
   const [typeOfActivityShow, setTypeOfActivityShow] = useState([]);
 
+  const location = useLocation();
   const ID = (() => {
-    const hash = window.location.hash;
-    if (hash.includes("?")) {
-      const queryParams = hash.split("?")[1];
-      const urlParams = new URLSearchParams(queryParams);
-      return urlParams.get("ID");
+    const search = location.search;
+    if (search) {
+      const urlParams = new URLSearchParams(search);
+      return urlParams.get("ID") || "0";
     }
     return "0";
   })();
@@ -86,7 +87,7 @@ function OrganizationAddModify() {
   useEffect(() => {
     componentMounted.current = true;
     setLoading(true);
-    if (ID) {
+    if (ID && ID !== "0") {
       getFromOpenElisServer(
         `/rest/Organization?ID=${ID}&startingRecNo=1`,
         handleMenuItems,
@@ -99,7 +100,7 @@ function OrganizationAddModify() {
     return () => {
       componentMounted.current = false;
     };
-  }, [ID]);
+  }, [ID, location.search]);
 
   const handleMenuItems = (res) => {
     if (!res) {
