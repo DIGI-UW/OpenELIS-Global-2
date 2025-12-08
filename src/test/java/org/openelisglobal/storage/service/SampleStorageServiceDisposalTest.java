@@ -131,7 +131,14 @@ public class SampleStorageServiceDisposalTest {
         sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
 
         // Assert
-        verify(sampleStorageAssignmentDAO).delete(testAssignment);
+        // OGC-144: Assignment should be updated with null location, not deleted
+        verify(sampleStorageAssignmentDAO).update(testAssignment);
+        verify(sampleStorageAssignmentDAO, never()).delete(any(SampleStorageAssignment.class));
+        
+        assertNull("Location ID should be null", testAssignment.getLocationId());
+        assertNull("Location Type should be null", testAssignment.getLocationType());
+        assertNull("Position Coordinate should be null", testAssignment.getPositionCoordinate());
+
         verify(sampleItemDAO).update(testSampleItem);
     }
 

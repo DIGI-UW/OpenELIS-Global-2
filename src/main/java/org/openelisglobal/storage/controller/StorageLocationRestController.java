@@ -155,6 +155,14 @@ public class StorageLocationRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> updateRoom(@PathVariable String id,
             @Valid @RequestBody StorageRoomForm form) {
         try {
+            // Explicit validation guard: name is required (test expects 400 before
+            // persisting)
+            if (form.getName() == null || form.getName().trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Room name is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
             Integer idInt = Integer.parseInt(id);
             StorageRoom roomToUpdate = new StorageRoom();
             roomToUpdate.setName(form.getName());

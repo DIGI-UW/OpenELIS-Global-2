@@ -81,6 +81,24 @@ const StorageDashboard = () => {
     storageLocations: 0,
   });
 
+  // Callback for child components to refresh metrics (OGC-144: real-time updates per FR-057b, FR-057c)
+  const refreshMetrics = useCallback(() => {
+    getFromOpenElisServer(
+      "/rest/storage/sample-items?countOnly=true",
+      (response) => {
+        if (componentMounted.current && response) {
+          const metricsData = Array.isArray(response) ? response[0] : response;
+          setMetrics({
+            totalSamples: metricsData?.totalSampleItems || 0,
+            active: metricsData?.active || 0,
+            disposed: metricsData?.disposed || 0,
+            storageLocations: metricsData?.storageLocations || 0,
+          });
+        }
+      },
+    );
+  }, [componentMounted]);
+
   // Tab state - derive from URL
   const getTabFromUrl = () => {
     const pathParts = location.pathname.split("/");
@@ -453,7 +471,7 @@ const StorageDashboard = () => {
         );
 
         loadSamples();
-        loadMetrics();
+        refreshMetrics(); // OGC-144: Use refreshMetrics for optimistic update (FR-057b, FR-057c)
 
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
@@ -553,7 +571,7 @@ const StorageDashboard = () => {
         const response = await assignSampleItem(locationPayload);
 
         loadSamples();
-        loadMetrics();
+        refreshMetrics(); // OGC-144: Use refreshMetrics for optimistic update (FR-057b, FR-057c)
 
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
@@ -585,7 +603,7 @@ const StorageDashboard = () => {
         const response = await moveSampleItem(locationPayload);
 
         loadSamples();
-        loadMetrics();
+        refreshMetrics(); // OGC-144: Use refreshMetrics for optimistic update (FR-057b, FR-057c)
 
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
@@ -683,9 +701,9 @@ const StorageDashboard = () => {
       setNotificationVisible(true);
       handleDisposeModalClose();
 
-      // OGC-73: Refresh sample list and metrics to show updated status
+      // OGC-73 & OGC-144: Refresh sample list and metrics to show updated status (FR-057b, FR-057c)
       loadSamples();
-      loadMetrics();
+      refreshMetrics(); // OGC-144: Use refreshMetrics for optimistic update
     } catch (error) {
       console.error("Error disposing sample:", error);
       addNotification({
@@ -1249,12 +1267,12 @@ const StorageDashboard = () => {
               });
             }
 
-            // Apply status filter
+            // Apply status filter for Samples tab
             if (filterStatus && visibleFilters.status) {
               const statusFilter =
-                filterStatus === "true"
+                filterStatus === "active"
                   ? "active"
-                  : filterStatus === "false"
+                  : filterStatus === "disposed"
                     ? "disposed"
                     : null;
               if (statusFilter) {
@@ -1292,11 +1310,11 @@ const StorageDashboard = () => {
         }
       }
 
-      // Convert status filter: "true" -> "active", "false" -> "disposed", "" -> no filter
+      // Convert status filter for Samples tab: "active" or "disposed"
       if (filterStatus && visibleFilters.status) {
-        if (filterStatus === "true") {
+        if (filterStatus === "active") {
           params.append("status", "active");
-        } else if (filterStatus === "false") {
+        } else if (filterStatus === "disposed") {
           params.append("status", "disposed");
         }
         // If filterStatus is empty string, don't add status param (show all)
@@ -2939,38 +2957,77 @@ const StorageDashboard = () => {
                               titleText={intl.formatMessage({
                                 id: "storage.filter.status",
                               })}
-                              items={[
-                                {
-                                  id: "",
-                                  label: intl.formatMessage({
-                                    id: "label.all",
-                                  }),
-                                },
-                                {
-                                  id: "true",
-                                  label: intl.formatMessage({
-                                    id: "label.active",
-                                  }),
-                                },
-                                {
-                                  id: "false",
-                                  label: intl.formatMessage({
-                                    id: "label.inactive",
-                                  }),
-                                },
-                              ]}
+                              items={
+                                selectedTab === 0
+                                  ? [
+                                      // Samples tab: active/disposed
+                                      {
+                                        id: "",
+                                        label: intl.formatMessage({
+                                          id: "label.all",
+                                        }),
+                                      },
+                                      {
+                                        id: "active",
+                                        label: intl.formatMessage({
+                                          id: "label.active",
+                                        }),
+                                      },
+                                      {
+                                        id: "disposed",
+                                        label: intl.formatMessage({
+                                          id: "storage.status.disposed",
+                                          defaultMessage: "Disposed",
+                                        }),
+                                      },
+                                    ]
+                                  : [
+                                      // Other tabs: active/inactive
+                                      {
+                                        id: "",
+                                        label: intl.formatMessage({
+                                          id: "label.all",
+                                        }),
+                                      },
+                                      {
+                                        id: "true",
+                                        label: intl.formatMessage({
+                                          id: "label.active",
+                                        }),
+                                      },
+                                      {
+                                        id: "false",
+                                        label: intl.formatMessage({
+                                          id: "label.inactive",
+                                        }),
+                                      },
+                                    ]
+                              }
                               selectedItem={
                                 filterStatus
                                   ? {
                                       id: filterStatus,
                                       label:
-                                        filterStatus === "true"
-                                          ? intl.formatMessage({
-                                              id: "label.active",
-                                            })
-                                          : intl.formatMessage({
-                                              id: "label.inactive",
-                                            }),
+                                        selectedTab === 0
+                                          ? filterStatus === "active"
+                                            ? intl.formatMessage({
+                                                id: "label.active",
+                                              })
+                                            : filterStatus === "disposed"
+                                              ? intl.formatMessage({
+                                                  id: "storage.status.disposed",
+                                                  defaultMessage: "Disposed",
+                                                })
+                                              : intl.formatMessage({
+                                                  id: "label.all",
+                                                })
+                                          : filterStatus === "true"
+                                            ? intl.formatMessage({
+                                                id: "label.active",
+                                              })
+                                            : intl.formatMessage({
+                                                id: "label.inactive",
+                                              }),
                                     }
                                   : {
                                       id: "",
@@ -4392,6 +4449,7 @@ const StorageDashboard = () => {
         })()}
         onClose={handleLocationModalClose}
         onConfirm={handleLocationModalConfirm}
+        onAssignmentSuccess={refreshMetrics}
       />
       <DisposeSampleModal
         open={disposeModalOpen && !!selectedSampleForDispose}
@@ -4403,6 +4461,7 @@ const StorageDashboard = () => {
         }
         onClose={handleDisposeModalClose}
         onConfirm={handleDisposeModalConfirm}
+        onDisposalSuccess={refreshMetrics}
       />
     </div>
   );

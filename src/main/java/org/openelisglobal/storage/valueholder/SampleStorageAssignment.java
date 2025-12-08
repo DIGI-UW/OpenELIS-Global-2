@@ -41,10 +41,12 @@ public class SampleStorageAssignment extends BaseObject<Integer> {
     private SampleItem sampleItem;
 
     // Simplified polymorphic location relationship
-    @Column(name = "LOCATION_ID", nullable = false)
+    // OGC-144: nullable = true to support disposal (location cleared but assignment
+    // preserved)
+    @Column(name = "LOCATION_ID", nullable = true)
     private Integer locationId; // Can reference device, shelf, or rack ID
 
-    @Column(name = "LOCATION_TYPE", length = 20, nullable = false)
+    @Column(name = "LOCATION_TYPE", length = 20, nullable = true)
     private String locationType; // Enum: 'device', 'shelf', 'rack'
 
     @Column(name = "POSITION_COORDINATE", length = 50)
