@@ -3,12 +3,12 @@
 **Feature**: 149-box-plate-hierarchy  
 **Parent Feature**: 001-sample-storage  
 **Date**: December 9, 2025  
-**Status**: Draft (Aligned with `develop`)
+**Status**: Draft
 
 ## Executive Summary
 
 This document details the database schema changes required to implement the
-Box/Plate hierarchy enhancement (OGC-149) **as implemented in `develop`**. The
+Box/Plate hierarchy enhancement (OGC-149). The
 enhancement adds a fifth persistent hierarchy level (Box) between Rack and the
 virtual Position coordinate, enabling accurate representation of laboratory
 storage without persisting empty position rows.

@@ -2,7 +2,7 @@
      2|
      3|**Feature Branch**: `fix/spec-alignment-ogc-149`  
      4|**Created**: December 5, 2025  
-     5|**Updated**: December 9, 2025 (Aligned with `develop` implementation)
+     5|**Updated**: December 9, 2025
      6|**Status**: Draft  
      7|**Jira Ticket**: [OGC-149](https://uwdigi.atlassian.net/browse/OGC-149)  
      8|**Parent Feature**: `001-sample-storage` (Sample Storage Management)  

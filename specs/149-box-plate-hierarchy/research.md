@@ -93,7 +93,7 @@ are straightforward removals + rename.
 **File**:
 `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java`
 
-**Rack Transform Pattern (develop)**:
+**Rack Transform Pattern**:
 
 ```java
 public Location transformRackToLocation(StorageRack rack) {
@@ -122,7 +122,7 @@ public Location transformRackToLocation(StorageRack rack) {
 }
 ```
 
-**Box Transform Pattern** (develop):
+**Box Transform Pattern**:
 
 ```java
 public Location transformBoxToLocation(StorageBox box) {
@@ -291,7 +291,7 @@ result.setBox(box);
 
 ## 2. Impact Analysis
 
-### 2.1 Backend Files Affected (aligned to develop)
+### 2.1 Backend Files Affected
 
 **Entities (Valueholders)**:
 - `StorageRack` — remove grid fields, rename `label` → `name`.
@@ -323,13 +323,13 @@ result.setBox(box);
 **FHIR**:
 - `StorageLocationFhirTransform` — rack without grid extensions; box transform with grid + schema-hint extensions.
 
-**Tests** (updated in develop):
+**Tests**:
 - Rack/controller/service tests updated for shortCode and box path.
 - Assignment/disposal tests updated to use box + position_coordinate.
 
 ---
 
-### 2.2 Frontend Files Affected (aligned to develop)
+### 2.2 Frontend Files Affected
 
 **Storage Dashboard / Selector**:
 
@@ -354,7 +354,7 @@ result.setBox(box);
 
 **Liquibase Changesets**:
 
-- Existing storage changelog (`src/main/resources/liquibase/3.3.x.x/`) updated in develop to drop rack grid columns, create `storage_box`, and extend location_type checks/indexes/seeds for `'box'`.
+- Existing storage changelog (`src/main/resources/liquibase/3.3.x.x/`) drops rack grid columns, creates `storage_box`, and extends location_type checks/indexes/seeds for `'box'`.
 
 **Persistence Configuration**:
 
