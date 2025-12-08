@@ -113,7 +113,7 @@ function ColorPickerSection({
               placeholder="#RRGGBB"
               invalid={!!error}
               invalidText={error}
-              helperText={helperText || intl.formatMessage({ id: "site.branding.colorPicker.helperText" })}
+              helperText={helperText || intl.formatMessage({ id: "site.branding.colorPicker.helperText", defaultMessage: "Enter a hex color code (e.g., #1d4ed8)" })}
               style={{ flex: 1, maxWidth: "200px" }}
             />
           </div>

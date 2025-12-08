@@ -38,7 +38,7 @@
             <column name="sys_user_id" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>

@@ -50,6 +50,10 @@ public class SiteBranding extends BaseObject<String> {
     @Column(name = "color_mode", length = 10, nullable = false)
     private String colorMode = "light";
 
+    // Override BaseObject's @Transient sysUserId to map to actual database column
+    @Column(name = "sys_user_id", length = 255, nullable = false)
+    private String sysUserId;
+
     @Override
     public String getId() {
         return id;
@@ -122,6 +126,17 @@ public class SiteBranding extends BaseObject<String> {
 
     public void setColorMode(String colorMode) {
         this.colorMode = colorMode;
+    }
+
+    // Override BaseObject's sysUserId methods to use the mapped field
+    @Override
+    public String getSysUserId() {
+        return sysUserId;
+    }
+
+    @Override
+    public void setSysUserId(String sysUserId) {
+        this.sysUserId = sysUserId;
     }
 }
 
