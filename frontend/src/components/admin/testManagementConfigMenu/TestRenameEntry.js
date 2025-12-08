@@ -222,7 +222,7 @@ function TestRenameEntry() {
                     type="button"
                     onClick={() => openAppModle(test)}
                     style={{
-                      color: "/000000",
+                      color: "#000000",
                       width: "auto",
                       whiteSpace: "pre-line",
                       textAlign: "left",
