@@ -88,7 +88,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
     private void cleanStorageTestData() {
         try {
             jdbcTemplate.execute("DELETE FROM storage_location_print_history WHERE location_id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000");
+            jdbcTemplate.execute("DELETE FROM storage_box WHERE id::integer >= 1000");
             jdbcTemplate.execute("DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%'");
             jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
@@ -158,8 +158,9 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
                 "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (nextval('storage_device_seq'), ?, ?, 'freezer', ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
                 "Test Device No SC", deviceCode, roomId, true, 1);
-        Integer id = jdbcTemplate.queryForObject("SELECT id FROM storage_device WHERE name = ? AND code = ?",
-                Integer.class, "Test Device No SC", deviceCode);
+        Integer id = jdbcTemplate.queryForObject(
+                "SELECT id FROM storage_device WHERE name = ? AND code = ? ORDER BY id LIMIT 1", Integer.class,
+                "Test Device No SC", deviceCode);
 
         return String.valueOf(id);
     }

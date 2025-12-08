@@ -21,13 +21,10 @@ public class FreezerThresholdProfileDAOImpl extends BaseDAOImpl<FreezerThreshold
 
     @Override
     public List<FreezerThresholdProfile> findActiveAssignments(Long freezerId, OffsetDateTime at) {
-        String hql = """
-                FROM FreezerThresholdProfile ftp
-                WHERE ftp.freezer.id = :freezerId
-                  AND ftp.effectiveStart <= :timestamp
-                  AND (ftp.effectiveEnd IS NULL OR ftp.effectiveEnd > :timestamp)
-                ORDER BY ftp.effectiveStart DESC
-                """;
+        String hql = "FROM FreezerThresholdProfile ftp " + "WHERE ftp.freezer.id = :freezerId "
+                + "AND ftp.effectiveStart <= :timestamp "
+                + "AND (ftp.effectiveEnd IS NULL OR ftp.effectiveEnd > :timestamp) "
+                + "ORDER BY ftp.effectiveStart DESC";
         Query<FreezerThresholdProfile> query = entityManager.unwrap(Session.class).createQuery(hql,
                 FreezerThresholdProfile.class);
         query.setParameter("freezerId", freezerId);

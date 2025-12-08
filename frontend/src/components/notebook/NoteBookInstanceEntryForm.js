@@ -68,6 +68,9 @@ import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFor
 import { SearchResults } from "../resultPage/SearchResultForm";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
+import GenericSampleOrder from "../genericSample/GenericSampleOrder";
+import GenericSampleOrderEdit from "../genericSample/GenericSampleOrderEdit";
+import GenericSampleOrderImport from "../genericSample/GenericSampleOrderImport";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -139,6 +142,9 @@ const NoteBookInstanceEntryForm = () => {
   const [param, setParam] = useState("&accessionNumber=");
   const [projectTags, setProjectTags] = useState([]); // Template tags (for display only)
   const [projectFiles, setProjectFiles] = useState([]); // Template files (for display only)
+  const [showSampleCreationForm, setShowSampleCreationForm] = useState(false); // Toggle sample creation form
+  const [showSampleEditForm, setShowSampleEditForm] = useState(false); // Toggle sample edit form
+  const [showSampleImportForm, setShowSampleImportForm] = useState(false); // Toggle sample import form
 
   const handleSubmit = () => {
     if (isSubmitting) {
@@ -833,6 +839,84 @@ const NoteBookInstanceEntryForm = () => {
     return statusColors[status] || "gray";
   };
 
+  // Toggle sample creation form visibility
+  const handleCreateSample = () => {
+    setShowSampleCreationForm(true);
+  };
+
+  // Handle successful sample creation - hide form and refresh sample list
+  const handleSampleCreationSuccess = (data) => {
+    setShowSampleCreationForm(false);
+    refreshSampleList();
+    // Show success notification
+    addNotification({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage(
+        { id: "genericSample.order.success.message" },
+        { accessionNumber: data.accessionNumber },
+      ),
+    });
+    setNotificationVisible(true);
+  };
+
+  // Toggle sample edit form visibility
+  const handleEditSample = () => {
+    setShowSampleEditForm(true);
+  };
+
+  // Handle successful sample edit - hide form and refresh sample list
+  const handleSampleEditSuccess = (data) => {
+    setShowSampleEditForm(false);
+    refreshSampleList();
+    // Show success notification
+    addNotification({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage(
+        { id: "genericSample.edit.success" },
+        { accessionNumber: data.accessionNumber },
+      ),
+    });
+    setNotificationVisible(true);
+  };
+
+  // Toggle sample import form visibility
+  const handleImportSamples = () => {
+    setShowSampleImportForm(true);
+  };
+
+  // Handle successful sample import - hide form and refresh sample list
+  const handleSampleImportSuccess = (data) => {
+    setShowSampleImportForm(false);
+    refreshSampleList();
+    // Show success notification
+    addNotification({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage(
+        { id: "genericSample.import.success" },
+        { count: data.totalCreated || 0 },
+      ),
+    });
+    setNotificationVisible(true);
+  };
+
+  // Refresh sample list for this notebook
+  const refreshSampleList = () => {
+    if (noteBookData.templateId || notebookid) {
+      getFromOpenElisServer(
+        "/rest/notebook/notebooksamples?noteBookId=" +
+          (noteBookData.templateId || notebookid),
+        (samples) => {
+          if (samples && Array.isArray(samples)) {
+            setSampleList(samples);
+          }
+        },
+      );
+    }
+  };
+
   // Fetch location for a SampleItem
   const fetchSampleLocation = (sampleItemId) => {
     // Skip if already fetched or no sampleItemId
@@ -1333,180 +1417,344 @@ const NoteBookInstanceEntryForm = () => {
         )}
         {selectedTab === TABS.SAMPLES && (
           <Column lg={16} md={8} sm={4}>
-            <Grid fullWidth={true} className="gridBoundary">
-              <Column lg={8} md={8} sm={4}>
-                <h5>
-                  {" "}
-                  <FormattedMessage id="notebook.label.sampleManagement" />
-                </h5>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br></br>
-              </Column>
-
-              <Column lg={8} md={8} sm={4}>
-                <CustomLabNumberInput
-                  id="accession"
-                  name="accession"
-                  value={accession}
-                  placeholder={intl.formatMessage({
-                    id: "notebook.search.byAccession",
-                  })}
-                  onChange={handleAccesionChange}
-                />
-              </Column>
-              <Column lg={8} md={8} sm={4}>
-                <Button
-                  size="md"
-                  onClick={handleAccesionSearch}
-                  labelText={intl.formatMessage({
-                    id: "label.button.search",
-                  })}
-                >
-                  <FormattedMessage id="label.button.search" />
-                </Button>
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
-                <br></br>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                {orderFormValues?.sampleOrderItems.labNo === accession &&
-                  accession != "" && (
-                    <Accordion>
-                      <AccordionItem title="Add Sample">
-                        <Grid className="gridBoundary">
-                          <Column lg={16} md={8} sm={4}>
-                            <AddSample
-                              error={elementError}
-                              setSamples={setSamples}
-                              samples={samples}
-                            />
-                          </Column>
-                          <Column lg={16} md={8} sm={4}>
-                            <Button
-                              data-cy="submit-order"
-                              kind="primary"
-                              className="forwardButton"
-                              onClick={handleSubmitOrderForm}
-                              disabled={isSubmittingSample}
-                            >
-                              <FormattedMessage id="label.button.submit" />
-                            </Button>
-                          </Column>
-                        </Grid>
-                      </AccordionItem>
-                    </Accordion>
-                  )}
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
-                <br></br>
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
-                <h5>
-                  {intl.formatMessage({ id: "notebook.samples.available" })}
-                </h5>
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
-                <Grid className="gridBoundary">
-                  {sampleList?.length === 0 && (
-                    <Column lg={16} md={8} sm={4}>
-                      <InlineNotification
-                        kind="info"
-                        title={intl.formatMessage({
-                          id: "notebook.samples.none.title",
-                        })}
-                        subtitle={intl.formatMessage({
-                          id: "notebook.samples.none.subtitle",
-                        })}
+            {/* Sample Creation Form - embedded GenericSampleOrder */}
+            {showSampleCreationForm && (
+              <Grid fullWidth={true} className="gridBoundary">
+                <Column lg={16} md={8} sm={4}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <h5>
+                      <FormattedMessage
+                        id="notebook.sample.create.title"
+                        defaultMessage="Create New Sample"
                       />
-                    </Column>
-                  )}
-                  {sampleList?.map((sample) => (
-                    <Column key={sample.id} lg={16} md={8} sm={12}>
-                      <Grid fullWidth={true} className="gridBoundary">
+                    </h5>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => setShowSampleCreationForm(false)}
+                    >
+                      <FormattedMessage
+                        id="button.cancel"
+                        defaultMessage="Cancel"
+                      />
+                    </Button>
+                  </div>
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  <GenericSampleOrder
+                    title="notebook.sample.order.title"
+                    titleDefault="Create Sample for Notebook"
+                    showBreadcrumbs={false}
+                    showNotebookSelection={false}
+                    showSampleType={true}
+                    showQuantity={true}
+                    showUom={true}
+                    showFrom={true}
+                    showCollector={true}
+                    showCollectionDate={true}
+                    showCollectionTime={true}
+                    showQuestionnaire={true}
+                    showSuccessScreen={false}
+                    saveEndpoint="/rest/GenericSampleOrder"
+                    initialValues={{
+                      notebookId:
+                        noteBookData.templateId || notebookid
+                          ? parseInt(noteBookData.templateId || notebookid)
+                          : null,
+                      notebookEntryId: notebookentryid
+                        ? parseInt(notebookentryid)
+                        : null,
+                    }}
+                    onSaveSuccess={handleSampleCreationSuccess}
+                    onSaveError={(error) => {
+                      addNotification({
+                        kind: NotificationKinds.error,
+                        title: intl.formatMessage({ id: "notification.title" }),
+                        message: error,
+                      });
+                      setNotificationVisible(true);
+                    }}
+                    renderCustomContent={(formData, updateField) => (
+                      <Grid fullWidth={true}>
                         <Column lg={16} md={8} sm={4}>
-                          <h5>
-                            {sample.sampleType} - {sample.externalId}
-                          </h5>
-                        </Column>
-                        <Column lg={2} md={8} sm={4}>
-                          <h6>
-                            {intl.formatMessage({
-                              id: "sample.collection.date",
-                            })}
-                          </h6>
-                        </Column>
-                        <Column lg={14} md={8} sm={4}>
-                          {sample.collectionDate ||
-                            intl.formatMessage({ id: "not.available" })}
-                        </Column>
-
-                        <Column lg={2} md={8} sm={4}>
-                          <h6>
-                            {intl.formatMessage({
-                              id: "notebook.samples.resultsRecorded",
-                            })}
-                          </h6>
-                        </Column>
-                        <Column lg={14} md={8} sm={4}>
-                          {sample.results.length}
-                        </Column>
-                        <Column lg={16} md={8} sm={4}>
-                          <Button
-                            kind="primary"
-                            disabled={isViewMode || isSampleAdded(sample)}
-                            size="sm"
-                            onClick={() => handleAddSample(sample)}
+                          <div
+                            style={{
+                              marginBottom: "1rem",
+                              padding: "0.5rem",
+                              backgroundColor: "#f4f4f4",
+                              borderRadius: "4px",
+                            }}
                           >
-                            <Add /> <FormattedMessage id="label.button.add" />
-                          </Button>
+                            <p style={{ margin: 0, fontSize: "0.875rem" }}>
+                              <FormattedMessage
+                                id="notebook.sample.order.info"
+                                defaultMessage="This sample will be associated with the current notebook."
+                              />
+                            </p>
+                          </div>
                         </Column>
                       </Grid>
-                    </Column>
-                  ))}
-                </Grid>
-              </Column>
+                    )}
+                  />
+                </Column>
+              </Grid>
+            )}
 
-              <Column lg={16} md={8} sm={4}>
-                <h5>
-                  {intl.formatMessage({ id: "notebook.samples.selected" })}
-                </h5>
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
-                {noteBookData?.samples?.length === 0 && (
-                  <Grid className="gridBoundary">
-                    <Column lg={16} md={8} sm={4}>
-                      <InlineNotification
-                        kind="info"
-                        title={intl.formatMessage({
-                          id: "notebook.samples.none.title.selected",
-                        })}
-                        subtitle={intl.formatMessage({
-                          id: "notebook.samples.none.subtitle.selected",
-                        })}
+            {/* Sample Edit Form - embedded GenericSampleOrderEdit */}
+            {showSampleEditForm && (
+              <Grid fullWidth={true} className="gridBoundary">
+                <Column lg={16} md={8} sm={4}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <h5>
+                      <FormattedMessage
+                        id="notebook.sample.edit.title"
+                        defaultMessage="Edit Sample"
                       />
-                    </Column>
-                  </Grid>
-                )}
-                {noteBookData?.samples?.length > 0 && (
-                  <>
+                    </h5>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => setShowSampleEditForm(false)}
+                    >
+                      <FormattedMessage
+                        id="button.cancel"
+                        defaultMessage="Cancel"
+                      />
+                    </Button>
+                  </div>
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  <GenericSampleOrderEdit
+                    title="notebook.sample.edit.title"
+                    titleDefault="Edit Sample"
+                    showBreadcrumbs={false}
+                    showNotebookSelection={false}
+                    showSampleType={true}
+                    showQuantity={true}
+                    showUom={true}
+                    showFrom={true}
+                    showCollector={true}
+                    showCollectionDate={true}
+                    showCollectionTime={true}
+                    showQuestionnaire={true}
+                    onSaveSuccess={handleSampleEditSuccess}
+                    onSaveError={(error) => {
+                      addNotification({
+                        kind: NotificationKinds.error,
+                        title: intl.formatMessage({ id: "notification.title" }),
+                        message: error,
+                      });
+                      setNotificationVisible(true);
+                    }}
+                  />
+                </Column>
+              </Grid>
+            )}
+
+            {/* Sample Import Form - embedded GenericSampleOrderImport */}
+            {showSampleImportForm && (
+              <Grid fullWidth={true} className="gridBoundary">
+                <Column lg={16} md={8} sm={4}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <h5>
+                      <FormattedMessage
+                        id="notebook.sample.import.title"
+                        defaultMessage="Import Samples"
+                      />
+                    </h5>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => setShowSampleImportForm(false)}
+                    >
+                      <FormattedMessage
+                        id="button.cancel"
+                        defaultMessage="Cancel"
+                      />
+                    </Button>
+                  </div>
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  <GenericSampleOrderImport
+                    title="notebook.sample.import.title"
+                    titleDefault="Import Samples"
+                    showBreadcrumbs={false}
+                    showPrintBarcodes={true}
+                    onImportSuccess={handleSampleImportSuccess}
+                    onImportError={(error) => {
+                      addNotification({
+                        kind: NotificationKinds.error,
+                        title: intl.formatMessage({ id: "notification.title" }),
+                        message: error,
+                      });
+                      setNotificationVisible(true);
+                    }}
+                  />
+                </Column>
+              </Grid>
+            )}
+
+            {/* Sample Management UI - default view */}
+            {!showSampleCreationForm &&
+              !showSampleEditForm &&
+              !showSampleImportForm && (
+                <Grid fullWidth={true} className="gridBoundary">
+                  <Column lg={8} md={8} sm={4}>
+                    <h5>
+                      {" "}
+                      <FormattedMessage id="notebook.label.sampleManagement" />
+                    </h5>
+                  </Column>
+                  <Column lg={8} md={8} sm={4}>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <Button
+                        kind="primary"
+                        size="sm"
+                        onClick={handleCreateSample}
+                        disabled={isViewMode}
+                        renderIcon={Add}
+                      >
+                        <FormattedMessage
+                          id="notebook.sample.create"
+                          defaultMessage="Create"
+                        />
+                      </Button>
+                      <Button
+                        kind="secondary"
+                        size="sm"
+                        onClick={handleEditSample}
+                        disabled={isViewMode}
+                      >
+                        <FormattedMessage
+                          id="notebook.sample.edit"
+                          defaultMessage="Edit"
+                        />
+                      </Button>
+                      <Button
+                        kind="tertiary"
+                        size="sm"
+                        onClick={handleImportSamples}
+                        disabled={isViewMode}
+                      >
+                        <FormattedMessage
+                          id="notebook.sample.import"
+                          defaultMessage="Import"
+                        />
+                      </Button>
+                    </div>
+                  </Column>
+                  <Column lg={16} md={8} sm={4}>
+                    <br></br>
+                  </Column>
+
+                  <Column lg={8} md={8} sm={4}>
+                    <CustomLabNumberInput
+                      id="accession"
+                      name="accession"
+                      value={accession}
+                      placeholder={intl.formatMessage({
+                        id: "notebook.search.byAccession",
+                      })}
+                      onChange={handleAccesionChange}
+                    />
+                  </Column>
+                  <Column lg={8} md={8} sm={4}>
+                    <Button
+                      size="md"
+                      onClick={handleAccesionSearch}
+                      labelText={intl.formatMessage({
+                        id: "label.button.search",
+                      })}
+                    >
+                      <FormattedMessage id="label.button.search" />
+                    </Button>
+                  </Column>
+
+                  <Column lg={16} md={8} sm={4}>
+                    <br></br>
+                  </Column>
+                  <Column lg={16} md={8} sm={4}>
+                    {orderFormValues?.sampleOrderItems.labNo === accession &&
+                      accession != "" && (
+                        <Accordion>
+                          <AccordionItem title="Add Sample">
+                            <Grid className="gridBoundary">
+                              <Column lg={16} md={8} sm={4}>
+                                <AddSample
+                                  error={elementError}
+                                  setSamples={setSamples}
+                                  samples={samples}
+                                />
+                              </Column>
+                              <Column lg={16} md={8} sm={4}>
+                                <Button
+                                  data-cy="submit-order"
+                                  kind="primary"
+                                  className="forwardButton"
+                                  onClick={handleSubmitOrderForm}
+                                  disabled={isSubmittingSample}
+                                >
+                                  <FormattedMessage id="label.button.submit" />
+                                </Button>
+                              </Column>
+                            </Grid>
+                          </AccordionItem>
+                        </Accordion>
+                      )}
+                  </Column>
+
+                  <Column lg={16} md={8} sm={4}>
+                    <br></br>
+                  </Column>
+
+                  <Column lg={16} md={8} sm={4}>
+                    <h5>
+                      {intl.formatMessage({ id: "notebook.samples.available" })}
+                    </h5>
+                  </Column>
+
+                  <Column lg={16} md={8} sm={4}>
                     <Grid className="gridBoundary">
-                      {noteBookData.samples.map((sample) => (
-                        <Column
-                          key={sample.id || Math.random()}
-                          lg={16}
-                          md={8}
-                          sm={4}
-                        >
+                      {sampleList?.length === 0 && (
+                        <Column lg={16} md={8} sm={4}>
+                          <InlineNotification
+                            kind="info"
+                            title={intl.formatMessage({
+                              id: "notebook.samples.none.title",
+                            })}
+                            subtitle={intl.formatMessage({
+                              id: "notebook.samples.none.subtitle",
+                            })}
+                          />
+                        </Column>
+                      )}
+                      {sampleList?.map((sample) => (
+                        <Column key={sample.id} lg={16} md={8} sm={12}>
                           <Grid fullWidth={true} className="gridBoundary">
                             <Column lg={16} md={8} sm={4}>
                               <h5>
-                                {sample.sampleType} - {sample.externalId}{" "}
+                                {sample.sampleType} - {sample.externalId}
                               </h5>
                             </Column>
                             <Column lg={2} md={8} sm={4}>
@@ -1517,7 +1765,8 @@ const NoteBookInstanceEntryForm = () => {
                               </h6>
                             </Column>
                             <Column lg={14} md={8} sm={4}>
-                              {sample.collectionDate}
+                              {sample.collectionDate ||
+                                intl.formatMessage({ id: "not.available" })}
                             </Column>
 
                             <Column lg={2} md={8} sm={4}>
@@ -1528,150 +1777,239 @@ const NoteBookInstanceEntryForm = () => {
                               </h6>
                             </Column>
                             <Column lg={14} md={8} sm={4}>
-                              {sample.results &&
-                              Array.isArray(sample.results) &&
-                              sample.results.length > 0 ? (
-                                <div>
-                                  {sample.results.map((result, resultIndex) => (
-                                    <Tile
-                                      key={resultIndex}
-                                      style={{
-                                        marginBottom: "0.5rem",
-                                        padding: "0.75rem",
-                                      }}
-                                    >
-                                      <div style={{ marginBottom: "0.25rem" }}>
-                                        <strong>
-                                          {result.test ||
-                                            intl.formatMessage({
-                                              id: "not.available",
-                                            })}
-                                        </strong>
-                                      </div>
-                                      <div
-                                        style={{
-                                          marginBottom: "0.25rem",
-                                          color: "#525252",
-                                        }}
-                                      >
-                                        {intl.formatMessage({
-                                          id: "column.name.result",
-                                        })}
-                                        :{" "}
-                                        {result.result ||
-                                          intl.formatMessage({
-                                            id: "not.available",
-                                          })}
-                                      </div>
-                                      <div
-                                        style={{
-                                          fontSize: "0.875rem",
-                                          color: "#525252",
-                                        }}
-                                      >
-                                        {intl.formatMessage({
-                                          id: "notebook.sample.result.dateCreated",
-                                        })}
-                                        :{" "}
-                                        {result.dateCreated
-                                          ? new Date(
-                                              result.dateCreated,
-                                            ).toLocaleString()
-                                          : intl.formatMessage({
-                                              id: "not.available",
-                                            })}
-                                      </div>
-                                    </Tile>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span>
-                                  {intl.formatMessage({
-                                    id: "notebook.results.none.title",
-                                  })}
-                                </span>
-                              )}
-                            </Column>
-                            {sample.voided && (
-                              <>
-                                <Column lg={16} md={8} sm={4}>
-                                  <InlineNotification
-                                    kind="warning"
-                                    title={intl.formatMessage({
-                                      id: "sample.voided.title",
-                                    })}
-                                    subtitle={sample.voidReason}
-                                    hideCloseButton
-                                  />
-                                </Column>
-                                <Column lg={16} md={8} sm={4}>
-                                  <br></br>
-                                </Column>
-                              </>
-                            )}
-                            {/* Storage Location Widget */}
-                            <Column lg={16} md={8} sm={4}>
-                              <br />
-                              <StorageLocationSelector
-                                workflow="results"
-                                showQuickFind={true}
-                                sampleInfo={{
-                                  sampleItemId:
-                                    sample.sampleItemId || sample.id,
-                                  sampleItemExternalId:
-                                    sample.externalId || null,
-                                  sampleAccessionNumber:
-                                    sample.accessionNumber || "",
-                                  sampleId: sample.sampleItemId || sample.id,
-                                  type: sample.sampleType || "",
-                                  status: sample.sampleStatus || "Active",
-                                }}
-                                hierarchicalPath={
-                                  sampleLocations[
-                                    sample.sampleItemId || sample.id
-                                  ]?.locationPath || ""
-                                }
-                                onLocationChange={(locationData) => {
-                                  handleLocationAssignment(
-                                    locationData,
-                                    sample.sampleItemId || sample.id,
-                                  );
-                                }}
-                              />
+                              {sample.results.length}
                             </Column>
                             <Column lg={16} md={8} sm={4}>
                               <Button
                                 kind="primary"
+                                disabled={isViewMode || isSampleAdded(sample)}
                                 size="sm"
-                                onClick={() => handleOpenResultsModal(sample)}
-                                style={{ marginRight: "0.5rem" }}
+                                onClick={() => handleAddSample(sample)}
                               >
-                                <FormattedMessage
-                                  id={
-                                    sample.results &&
-                                    Array.isArray(sample.results) &&
-                                    sample.results.length > 0
-                                      ? "notebook.button.editResults"
-                                      : "notebook.button.enterResults"
-                                  }
-                                />
-                              </Button>
-                              <Button
-                                kind="danger--tertiary"
-                                size="sm"
-                                onClick={() => handleRemoveSample(sample.id)}
-                              >
-                                <FormattedMessage id="label.button.remove" />
+                                <Add />{" "}
+                                <FormattedMessage id="label.button.add" />
                               </Button>
                             </Column>
                           </Grid>
                         </Column>
                       ))}
                     </Grid>
-                  </>
-                )}
-              </Column>
-            </Grid>
+                  </Column>
+
+                  <Column lg={16} md={8} sm={4}>
+                    <h5>
+                      {intl.formatMessage({ id: "notebook.samples.selected" })}
+                    </h5>
+                  </Column>
+
+                  <Column lg={16} md={8} sm={4}>
+                    {noteBookData?.samples?.length === 0 && (
+                      <Grid className="gridBoundary">
+                        <Column lg={16} md={8} sm={4}>
+                          <InlineNotification
+                            kind="info"
+                            title={intl.formatMessage({
+                              id: "notebook.samples.none.title.selected",
+                            })}
+                            subtitle={intl.formatMessage({
+                              id: "notebook.samples.none.subtitle.selected",
+                            })}
+                          />
+                        </Column>
+                      </Grid>
+                    )}
+                    {noteBookData?.samples?.length > 0 && (
+                      <>
+                        <Grid className="gridBoundary">
+                          {noteBookData.samples.map((sample) => (
+                            <Column
+                              key={sample.id || Math.random()}
+                              lg={16}
+                              md={8}
+                              sm={4}
+                            >
+                              <Grid fullWidth={true} className="gridBoundary">
+                                <Column lg={16} md={8} sm={4}>
+                                  <h5>
+                                    {sample.sampleType} -{" "}
+                                    {sample.externalId}{" "}
+                                  </h5>
+                                </Column>
+                                <Column lg={2} md={8} sm={4}>
+                                  <h6>
+                                    {intl.formatMessage({
+                                      id: "sample.collection.date",
+                                    })}
+                                  </h6>
+                                </Column>
+                                <Column lg={14} md={8} sm={4}>
+                                  {sample.collectionDate}
+                                </Column>
+
+                                <Column lg={2} md={8} sm={4}>
+                                  <h6>
+                                    {intl.formatMessage({
+                                      id: "notebook.samples.resultsRecorded",
+                                    })}
+                                  </h6>
+                                </Column>
+                                <Column lg={14} md={8} sm={4}>
+                                  {sample.results &&
+                                  Array.isArray(sample.results) &&
+                                  sample.results.length > 0 ? (
+                                    <div>
+                                      {sample.results.map(
+                                        (result, resultIndex) => (
+                                          <Tile
+                                            key={resultIndex}
+                                            style={{
+                                              marginBottom: "0.5rem",
+                                              padding: "0.75rem",
+                                            }}
+                                          >
+                                            <div
+                                              style={{
+                                                marginBottom: "0.25rem",
+                                              }}
+                                            >
+                                              <strong>
+                                                {result.test ||
+                                                  intl.formatMessage({
+                                                    id: "not.available",
+                                                  })}
+                                              </strong>
+                                            </div>
+                                            <div
+                                              style={{
+                                                marginBottom: "0.25rem",
+                                                color: "#525252",
+                                              }}
+                                            >
+                                              {intl.formatMessage({
+                                                id: "column.name.result",
+                                              })}
+                                              :{" "}
+                                              {result.result ||
+                                                intl.formatMessage({
+                                                  id: "not.available",
+                                                })}
+                                            </div>
+                                            <div
+                                              style={{
+                                                fontSize: "0.875rem",
+                                                color: "#525252",
+                                              }}
+                                            >
+                                              {intl.formatMessage({
+                                                id: "notebook.sample.result.dateCreated",
+                                              })}
+                                              :{" "}
+                                              {result.dateCreated
+                                                ? new Date(
+                                                    result.dateCreated,
+                                                  ).toLocaleString()
+                                                : intl.formatMessage({
+                                                    id: "not.available",
+                                                  })}
+                                            </div>
+                                          </Tile>
+                                        ),
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span>
+                                      {intl.formatMessage({
+                                        id: "notebook.results.none.title",
+                                      })}
+                                    </span>
+                                  )}
+                                </Column>
+                                {sample.voided && (
+                                  <>
+                                    <Column lg={16} md={8} sm={4}>
+                                      <InlineNotification
+                                        kind="warning"
+                                        title={intl.formatMessage({
+                                          id: "sample.voided.title",
+                                        })}
+                                        subtitle={sample.voidReason}
+                                        hideCloseButton
+                                      />
+                                    </Column>
+                                    <Column lg={16} md={8} sm={4}>
+                                      <br></br>
+                                    </Column>
+                                  </>
+                                )}
+                                {/* Storage Location Widget */}
+                                <Column lg={16} md={8} sm={4}>
+                                  <br />
+                                  <StorageLocationSelector
+                                    workflow="results"
+                                    showQuickFind={true}
+                                    sampleInfo={{
+                                      sampleItemId:
+                                        sample.sampleItemId || sample.id,
+                                      sampleItemExternalId:
+                                        sample.externalId || null,
+                                      sampleAccessionNumber:
+                                        sample.accessionNumber || "",
+                                      sampleId:
+                                        sample.sampleItemId || sample.id,
+                                      type: sample.sampleType || "",
+                                      status: sample.sampleStatus || "Active",
+                                    }}
+                                    hierarchicalPath={
+                                      sampleLocations[
+                                        sample.sampleItemId || sample.id
+                                      ]?.locationPath || ""
+                                    }
+                                    onLocationChange={(locationData) => {
+                                      handleLocationAssignment(
+                                        locationData,
+                                        sample.sampleItemId || sample.id,
+                                      );
+                                    }}
+                                  />
+                                </Column>
+                                <Column lg={16} md={8} sm={4}>
+                                  <Button
+                                    kind="primary"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleOpenResultsModal(sample)
+                                    }
+                                    style={{ marginRight: "0.5rem" }}
+                                  >
+                                    <FormattedMessage
+                                      id={
+                                        sample.results &&
+                                        Array.isArray(sample.results) &&
+                                        sample.results.length > 0
+                                          ? "notebook.button.editResults"
+                                          : "notebook.button.enterResults"
+                                      }
+                                    />
+                                  </Button>
+                                  <Button
+                                    kind="danger--tertiary"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleRemoveSample(sample.id)
+                                    }
+                                  >
+                                    <FormattedMessage id="label.button.remove" />
+                                  </Button>
+                                </Column>
+                              </Grid>
+                            </Column>
+                          ))}
+                        </Grid>
+                      </>
+                    )}
+                  </Column>
+                </Grid>
+              )}
           </Column>
         )}
         {selectedTab === TABS.ATTACHMENTS && (

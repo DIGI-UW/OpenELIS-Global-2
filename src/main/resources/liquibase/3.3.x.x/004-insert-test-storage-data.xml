@@ -148,55 +148,50 @@
     </changeSet>
 
     <changeSet id="storage-test-004-insert-test-racks" author="sample-storage-feature" context="test">
-        <comment>Insert test racks with various grid configurations</comment>
+        <comment>Insert test racks (simple containers for boxes/plates)</comment>
 
-        <!-- 8x12 grid rack (96 positions) -->
+        <!-- Rack 1 in Shelf-A -->
         <insert tableName="storage_rack">
             <column name="id" value="30"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
             <column name="label" value="Rack R1"/>
-            <column name="rows" value="8"/>
-            <column name="columns" value="12"/>
-            <column name="position_schema_hint" value="A1"/>
+            <column name="short_code" value="R1"/>
             <column name="active" valueBoolean="true"/>
             <column name="parent_shelf_id" value="20"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
 
-        <!-- 10x10 grid rack (100 positions) -->
+        <!-- Rack 2 in Shelf-A -->
         <insert tableName="storage_rack">
             <column name="id" value="31"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
             <column name="label" value="Rack R2"/>
-            <column name="rows" value="10"/>
-            <column name="columns" value="10"/>
-            <column name="position_schema_hint" value="1-1"/>
+            <column name="short_code" value="R2"/>
             <column name="active" valueBoolean="true"/>
             <column name="parent_shelf_id" value="20"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
 
-        <!-- No grid rack (flexible positions) -->
+        <!-- Rack 3 in Shelf-B -->
         <insert tableName="storage_rack">
             <column name="id" value="32"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
             <column name="label" value="Rack R3"/>
-            <column name="rows" value="0"/>
-            <column name="columns" value="0"/>
+            <column name="short_code" value="R3"/>
             <column name="active" valueBoolean="true"/>
             <column name="parent_shelf_id" value="21"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
 
+        <!-- Rack 4 in Shelf-1 (Refrigerator) -->
         <insert tableName="storage_rack">
             <column name="id" value="33"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
             <column name="label" value="Rack R1"/>
-            <column name="rows" value="8"/>
-            <column name="columns" value="12"/>
+            <column name="short_code" value="R1"/>
             <column name="active" valueBoolean="true"/>
             <column name="parent_shelf_id" value="22"/>
             <column name="sys_user_id" value="1"/>
@@ -204,163 +199,191 @@
         </insert>
     </changeSet>
 
-    <changeSet id="storage-test-005-insert-test-positions" author="sample-storage-feature" context="test">
-        <comment>Insert test positions - occupancy now calculated from SampleStorageAssignment</comment>
+    <changeSet id="storage-test-005-insert-test-boxes" author="sample-storage-feature" context="test">
+        <comment>Insert test boxes (gridded containers like 96-well plates)</comment>
 
-        <!-- Rack R1 (8x12 grid) - First few positions -->
+        <!-- Rack R1 -> 96-well plate (Box A) -->
         <!-- Rack 30 -> Shelf 20 -> Device 10 -->
-        <insert tableName="storage_position">
+        <insert tableName="storage_box">
             <column name="id" value="100"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
-            <column name="coordinate" value="A1"/>
-            <column name="row_index" value="1"/>
-            <column name="column_index" value="1"/>
+            <column name="label" value="Plate A"/>
+            <column name="type" value="96-well"/>
+            <column name="rows" value="8"/>
+            <column name="columns" value="12"/>
+            <column name="position_schema_hint" value="letter-number"/>
+            <column name="short_code" value="PA"/>
+            <column name="active" valueBoolean="true"/>
             <column name="parent_rack_id" value="30"/>
-            <column name="parent_shelf_id" value="20"/>
-            <column name="parent_device_id" value="10"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
 
-        <insert tableName="storage_position">
+        <!-- Rack R1 -> 96-well plate (Box B) -->
+        <insert tableName="storage_box">
             <column name="id" value="101"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
-            <column name="coordinate" value="A2"/>
-            <column name="row_index" value="1"/>
-            <column name="column_index" value="2"/>
+            <column name="label" value="Plate B"/>
+            <column name="type" value="96-well"/>
+            <column name="rows" value="8"/>
+            <column name="columns" value="12"/>
+            <column name="position_schema_hint" value="letter-number"/>
+            <column name="short_code" value="PB"/>
+            <column name="active" valueBoolean="true"/>
             <column name="parent_rack_id" value="30"/>
-            <column name="parent_shelf_id" value="20"/>
-            <column name="parent_device_id" value="10"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
 
-        <insert tableName="storage_position">
+        <!-- Rack R1 -> 384-well plate (Box C) -->
+        <insert tableName="storage_box">
             <column name="id" value="102"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
-            <column name="coordinate" value="A3"/>
-            <column name="row_index" value="1"/>
-            <column name="column_index" value="3"/>
+            <column name="label" value="Plate C"/>
+            <column name="type" value="384-well"/>
+            <column name="rows" value="16"/>
+            <column name="columns" value="24"/>
+            <column name="position_schema_hint" value="letter-number"/>
+            <column name="short_code" value="PC"/>
+            <column name="active" valueBoolean="true"/>
             <column name="parent_rack_id" value="30"/>
-            <column name="parent_shelf_id" value="20"/>
-            <column name="parent_device_id" value="10"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
 
-        <insert tableName="storage_position">
-            <column name="id" value="103"/>
-            <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
-            <column name="coordinate" value="A4"/>
-            <column name="row_index" value="1"/>
-            <column name="column_index" value="4"/>
-            <column name="parent_rack_id" value="30"/>
-            <column name="parent_shelf_id" value="20"/>
-            <column name="parent_device_id" value="10"/>
-            <column name="sys_user_id" value="1"/>
-            <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
-        </insert>
-
-        <insert tableName="storage_position">
-            <column name="id" value="104"/>
-            <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
-            <column name="coordinate" value="A5"/>
-            <column name="row_index" value="1"/>
-            <column name="column_index" value="5"/>
-            <column name="parent_rack_id" value="30"/>
-            <column name="parent_shelf_id" value="20"/>
-            <column name="parent_device_id" value="10"/>
-            <column name="sys_user_id" value="1"/>
-            <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
-        </insert>
-
-        <!-- Rack R2 positions -->
+        <!-- Rack R2 -> 9x9 sample box (Box 1) -->
         <!-- Rack 31 -> Shelf 20 -> Device 10 -->
-        <insert tableName="storage_position">
+        <insert tableName="storage_box">
             <column name="id" value="105"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
-            <column name="coordinate" value="1-1"/>
-            <column name="row_index" value="1"/>
-            <column name="column_index" value="1"/>
+            <column name="label" value="Box 1"/>
+            <column name="type" value="9x9"/>
+            <column name="rows" value="9"/>
+            <column name="columns" value="9"/>
+            <column name="position_schema_hint" value="number-number"/>
+            <column name="short_code" value="B1"/>
+            <column name="active" valueBoolean="true"/>
             <column name="parent_rack_id" value="31"/>
-            <column name="parent_shelf_id" value="20"/>
-            <column name="parent_device_id" value="10"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
 
-        <!-- Rack R3 (no grid) - flexible positions -->
+        <!-- Rack R3 -> 10x10 sample box (Box A) -->
         <!-- Rack 32 -> Shelf 21 -> Device 10 -->
-        <insert tableName="storage_position">
+        <insert tableName="storage_box">
             <column name="id" value="110"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
-            <column name="coordinate" value="RED-01"/>
+            <column name="label" value="Box A"/>
+            <column name="type" value="10x10"/>
+            <column name="rows" value="10"/>
+            <column name="columns" value="10"/>
+            <column name="position_schema_hint" value="number-number"/>
+            <column name="short_code" value="BA"/>
+            <column name="active" valueBoolean="true"/>
             <column name="parent_rack_id" value="32"/>
-            <column name="parent_shelf_id" value="21"/>
-            <column name="parent_device_id" value="10"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
 
-        <insert tableName="storage_position">
+        <!-- Rack R3 -> 10x10 sample box (Box B) -->
+        <insert tableName="storage_box">
             <column name="id" value="111"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
-            <column name="coordinate" value="RED-02"/>
+            <column name="label" value="Box B"/>
+            <column name="type" value="10x10"/>
+            <column name="rows" value="10"/>
+            <column name="columns" value="10"/>
+            <column name="position_schema_hint" value="number-number"/>
+            <column name="short_code" value="BB"/>
+            <column name="active" valueBoolean="true"/>
             <column name="parent_rack_id" value="32"/>
-            <column name="parent_shelf_id" value="21"/>
-            <column name="parent_device_id" value="10"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
 
-        <!-- Test duplicate coordinates (allowed per FR-014) -->
-        <insert tableName="storage_position">
+        <!-- Rack R3 -> 10x10 sample box (Box C) -->
+        <insert tableName="storage_box">
             <column name="id" value="112"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
-            <column name="coordinate" value="RED-01"/>
+            <column name="label" value="Box C"/>
+            <column name="type" value="10x10"/>
+            <column name="rows" value="10"/>
+            <column name="columns" value="10"/>
+            <column name="position_schema_hint" value="number-number"/>
+            <column name="short_code" value="BC"/>
+            <column name="active" valueBoolean="true"/>
             <column name="parent_rack_id" value="32"/>
-            <column name="parent_shelf_id" value="21"/>
-            <column name="parent_device_id" value="10"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
 
-        <!-- Position in inactive location -->
+        <!-- Rack R1 (Refrigerator) -> 96-well plate (Plate X) -->
         <!-- Rack 33 -> Shelf 22 -> Device 11 -->
-        <insert tableName="storage_position">
+        <insert tableName="storage_box">
             <column name="id" value="120"/>
             <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
-            <column name="coordinate" value="X1"/>
+            <column name="label" value="Plate X"/>
+            <column name="type" value="96-well"/>
+            <column name="rows" value="8"/>
+            <column name="columns" value="12"/>
+            <column name="position_schema_hint" value="letter-number"/>
+            <column name="short_code" value="PX"/>
+            <column name="active" valueBoolean="true"/>
             <column name="parent_rack_id" value="33"/>
-            <column name="parent_shelf_id" value="22"/>
-            <column name="parent_device_id" value="11"/>
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
     </changeSet>
 
-    <changeSet id="storage-test-006-insert-additional-positions-for-capacity" author="sample-storage-feature" context="test">
-        <comment>Insert additional positions for capacity testing - occupancy now calculated from SampleStorageAssignment</comment>
+    <changeSet id="storage-test-006-insert-additional-boxes-for-capacity" author="sample-storage-feature" context="test">
+        <comment>Insert additional boxes for capacity testing - boxes are now gridded containers</comment>
 
-        <!-- Add 80 more positions to Rack R2 to test capacity warnings -->
+        <!-- Add more 9x9 boxes to Rack R2 to test capacity -->
         <!-- Rack 31 -> Shelf 20 -> Device 10 -->
-        <sql><![CDATA[
-            INSERT INTO storage_position (id, fhir_uuid, coordinate, row_index, column_index, parent_rack_id, parent_shelf_id, parent_device_id, sys_user_id, last_updated)
-            SELECT
-                200 + row_num * 10 + col_num,
-                gen_random_uuid(),
-                row_num || '-' || col_num,
-                row_num,
-                col_num,
-                31,
-                20,
-                10,
-                1,
-                CURRENT_TIMESTAMP
-            FROM generate_series(1, 10) AS row_num
-            CROSS JOIN generate_series(2, 10) AS col_num
-            WHERE (row_num * 10 + col_num) <= 100;
-        ]]></sql>
+        <insert tableName="storage_box">
+            <column name="id" value="200"/>
+            <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
+            <column name="label" value="Box 2"/>
+            <column name="type" value="9x9"/>
+            <column name="rows" value="9"/>
+            <column name="columns" value="9"/>
+            <column name="position_schema_hint" value="number-number"/>
+            <column name="short_code" value="B2"/>
+            <column name="active" valueBoolean="true"/>
+            <column name="parent_rack_id" value="31"/>
+            <column name="sys_user_id" value="1"/>
+            <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
+        </insert>
+
+        <insert tableName="storage_box">
+            <column name="id" value="201"/>
+            <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
+            <column name="label" value="Box 3"/>
+            <column name="type" value="9x9"/>
+            <column name="rows" value="9"/>
+            <column name="columns" value="9"/>
+            <column name="position_schema_hint" value="number-number"/>
+            <column name="short_code" value="B3"/>
+            <column name="active" valueBoolean="true"/>
+            <column name="parent_rack_id" value="31"/>
+            <column name="sys_user_id" value="1"/>
+            <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
+        </insert>
+
+        <insert tableName="storage_box">
+            <column name="id" value="202"/>
+            <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
+            <column name="label" value="Box 4"/>
+            <column name="type" value="9x9"/>
+            <column name="rows" value="9"/>
+            <column name="columns" value="9"/>
+            <column name="position_schema_hint" value="number-number"/>
+            <column name="short_code" value="B4"/>
+            <column name="active" valueBoolean="true"/>
+            <column name="parent_rack_id" value="31"/>
+            <column name="sys_user_id" value="1"/>
+            <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
+        </insert>
     </changeSet>
 
     <changeSet id="storage-test-007-update-sequences" author="sample-storage-feature" context="test">
@@ -371,7 +394,7 @@
             SELECT setval('storage_device_seq', 1000, false);
             SELECT setval('storage_shelf_seq', 1000, false);
             SELECT setval('storage_rack_seq', 1000, false);
-            SELECT setval('storage_position_seq', 10000, false);
+            SELECT setval('storage_box_seq', 10000, false);
         </sql>
     </changeSet>
 
@@ -379,7 +402,7 @@
     <changeSet id="storage-test-rollback-all" author="sample-storage-feature" context="test">
         <comment>Rollback all test data (for cleanup)</comment>
         <rollback>
-            DELETE FROM storage_position WHERE id BETWEEN 100 AND 10000;
+            DELETE FROM storage_box WHERE id BETWEEN 100 AND 10000;
             DELETE FROM storage_rack WHERE id BETWEEN 30 AND 100;
             DELETE FROM storage_shelf WHERE id BETWEEN 20 AND 100;
             DELETE FROM storage_device WHERE id BETWEEN 10 AND 100;
