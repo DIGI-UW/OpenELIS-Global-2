@@ -79,7 +79,7 @@ function OrganizationAddModify() {
     const search = location.search;
     if (search) {
       const urlParams = new URLSearchParams(search);
-      return urlParams.get("ID") || "0";
+      return urlParams.get("ID");
     }
     return "0";
   })();
@@ -87,7 +87,7 @@ function OrganizationAddModify() {
   useEffect(() => {
     componentMounted.current = true;
     setLoading(true);
-    if (ID && ID !== "0") {
+    if (ID) {
       getFromOpenElisServer(
         `/rest/Organization?ID=${ID}&startingRecNo=1`,
         handleMenuItems,
@@ -100,7 +100,7 @@ function OrganizationAddModify() {
     return () => {
       componentMounted.current = false;
     };
-  }, [ID, location.search]);
+  }, [ID]);
 
   const handleMenuItems = (res) => {
     if (!res) {

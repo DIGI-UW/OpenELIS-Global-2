@@ -91,7 +91,7 @@ function UserAddModify() {
     const search = location.search;
     if (search) {
       const urlParams = new URLSearchParams(search);
-      return urlParams.get("ID") || "0";
+      return urlParams.get("ID");
     }
     return "0";
   })();
@@ -99,7 +99,7 @@ function UserAddModify() {
   useEffect(() => {
     componentMounted.current = true;
     setIsLoading(true);
-    if (ID && ID !== "0") {
+    if (ID) {
       getFromOpenElisServer(
         `/rest/UnifiedSystemUser?ID=${ID}&startingRecNo=1&roleFilter=`,
         handleUserData,
@@ -113,7 +113,7 @@ function UserAddModify() {
       componentMounted.current = false;
       setIsLoading(false);
     };
-  }, [ID, location.search]);
+  }, [ID]);
 
   const handleUserData = (res) => {
     if (!res) {
