@@ -38,4 +38,6 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
      * with InventoryLot to calculate total stock
      */
     List<InventoryItem> getLowStockItems() throws LIMSRuntimeException;
+
+    List<ItemType> getAllItemTypes();
 }

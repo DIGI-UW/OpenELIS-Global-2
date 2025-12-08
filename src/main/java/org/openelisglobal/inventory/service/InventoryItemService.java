@@ -7,6 +7,8 @@ import org.openelisglobal.inventory.valueholder.InventoryItem;
 
 public interface InventoryItemService extends BaseObjectService<InventoryItem, Long> {
 
+    List<ItemType> getAllItemTypes();
+
     /**
      * Get all active inventory items
      */

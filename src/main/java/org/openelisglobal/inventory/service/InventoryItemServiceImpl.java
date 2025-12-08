@@ -32,6 +32,12 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     @Override
     @Transactional(readOnly = true)
+    public List<ItemType> getAllItemTypes() {
+        return inventoryItemDAO.getAllItemTypes();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<InventoryItem> getAllActive() {
         return inventoryItemDAO.getAllActive();
     }

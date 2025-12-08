@@ -22,6 +22,12 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
 
     @Override
     @Transactional(readOnly = true)
+    public List<ItemType> getAllItemTypes() {
+        return java.util.Arrays.asList(ItemType.values());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<InventoryItem> getAllActive() throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();

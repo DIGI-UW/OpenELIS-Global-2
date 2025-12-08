@@ -31,6 +31,17 @@ public class InventoryItemRestController extends BaseRestController {
     @Autowired
     private InventoryItemService inventoryItemService;
 
+    @GetMapping(value = "/types", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<ItemType>> getAllItemTypes() {
+        try {
+            List<ItemType> types = inventoryItemService.getAllItemTypes();
+            return ResponseEntity.ok(types);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryItem>> getAllActive() {
         try {
@@ -136,12 +147,25 @@ public class InventoryItemRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
 
+            // Update only the fields that can be changed
+            existingItem.setName(item.getName());
+            existingItem.setItemType(item.getItemType());
+            existingItem.setCategory(item.getCategory());
+            existingItem.setManufacturer(item.getManufacturer());
+            existingItem.setUnits(item.getUnits());
+            existingItem.setLowStockThreshold(item.getLowStockThreshold());
+
+            // Type-specific fields
+            existingItem.setStabilityAfterOpening(item.getStabilityAfterOpening());
+            existingItem.setStorageRequirements(item.getStorageRequirements());
+            existingItem.setCompatibleAnalyzers(item.getCompatibleAnalyzers());
+            existingItem.setTestsPerKit(item.getTestsPerKit());
+
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
-            item.setId(Long.valueOf(id));
-            item.setSysUserId(sysUserId);
+            existingItem.setSysUserId(sysUserId);
 
-            InventoryItem updatedItem = inventoryItemService.update(item);
+            InventoryItem updatedItem = inventoryItemService.update(existingItem);
             return ResponseEntity.ok(updatedItem);
         } catch (Exception e) {
             LogEvent.logError(e);
