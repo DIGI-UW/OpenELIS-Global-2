@@ -5,7 +5,7 @@ org.openelisglobal.common.util.ConfigurationProperties.Property,
 org.openelisglobal.common.util.Versioning" %> <%@ page isELIgnored="false" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%> <%@
 taglib prefix="spring" uri="http://www.springframework.org/tags"%> <%@ taglib
-prefix="c" uri="http://java.sun.com/jsp/jstl/core"%> <%@ taglib prefix="ajax"
+prefix="c" uri="jakarta.tags.core"%> <%@ taglib prefix="ajax"
 uri="/tags/ajaxtags" %>
 
 <bean:define

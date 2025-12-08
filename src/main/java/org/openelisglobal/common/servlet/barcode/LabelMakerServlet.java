@@ -1,15 +1,18 @@
 package org.openelisglobal.common.servlet.barcode;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.BarcodeLabelMaker;
+import org.openelisglobal.barcode.labeltype.Label;
+import org.openelisglobal.barcode.labeltype.OrderLabel;
+import org.openelisglobal.barcode.labeltype.SpecimenLabel;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
@@ -24,6 +27,9 @@ import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -79,11 +85,81 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
     private void printPathologyBarcodeLabel(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         // create requested labels as pdf stream
+        // In printPathologyBarcodeLabel method:
         BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
         UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
         labelMaker.setSysUserId(String.valueOf(usd.getSystemUserId()));
 
         labelMaker.generateGenericBarcodeLabel(request.getParameter("code"), request.getParameter("labelType"));
+        ByteArrayOutputStream labelAsOutputStream = labelMaker.createLabelsAsStream();
+
+        response.setContentType("application/pdf");
+        response.addHeader("Content-Disposition", "inline; filename=" + "barcode.pdf");
+        response.setContentLength(labelAsOutputStream.size());
+        labelAsOutputStream.writeTo(response.getOutputStream());
+        response.getOutputStream().flush();
+        response.getOutputStream().close();
+    }
+
+    /**
+     * Print barcode label for generic samples with custom fields (sample type,
+     * quantity, from)
+     *
+     * @param request        HTTP request
+     * @param response       HTTP response
+     * @param labNo          Lab/accession number for barcode
+     * @param sampleType     Sample type description
+     * @param sampleQuantity Quantity with unit of measure
+     * @param from           Source/origin of sample
+     * @param numLabels      Number of labels to print
+     * @throws IOException
+     */
+    private void printGenericSampleLabel(HttpServletRequest request, HttpServletResponse response, String labNo,
+            String sampleType, String sampleQuantity, String from, String numLabels) throws IOException {
+
+        ArrayList<Label> labels = new ArrayList<>();
+
+        // Fetch sample and sample items to create specimen labels
+        SampleService sampleService = SpringContext.getBean(SampleService.class);
+        SampleItemService sampleItemService = SpringContext.getBean(SampleItemService.class);
+        Sample sample = sampleService.getSampleByAccessionNumber(labNo);
+
+        if (sample != null) {
+            LogEvent.logInfo("LabelMakerServlet", "printGenericSampleLabel",
+                    "Found sample with ID: " + sample.getId() + " for accession: " + labNo);
+
+            // Get all sample items for this sample
+            List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+            LogEvent.logInfo("LabelMakerServlet", "printGenericSampleLabel",
+                    "Found " + sampleItems.size() + " sample items for sample ID: " + sample.getId());
+
+            // Create a SpecimenLabel for each sample item (specimen labels come first)
+            for (SampleItem sampleItem : sampleItems) {
+                LogEvent.logInfo("LabelMakerServlet", "printGenericSampleLabel",
+                        "Creating specimen label for sample item: " + sampleItem.getId() + " externalId: "
+                                + sampleItem.getExternalId());
+                SpecimenLabel specimenLabel = new SpecimenLabel(sampleItem, labNo, sampleType, sampleQuantity, from);
+                specimenLabel.setNumLabels(1);
+                labels.add(specimenLabel);
+            }
+        } else {
+            LogEvent.logWarn("LabelMakerServlet", "printGenericSampleLabel",
+                    "No sample found for accession number: " + labNo);
+        }
+
+        // Create OrderLabel with generic sample details (1 copy) - order label comes
+        // after specimens
+        OrderLabel orderLabel = new OrderLabel(labNo, sampleType, sampleQuantity, from);
+        orderLabel.setNumLabels(1);
+        labels.add(orderLabel);
+
+        LogEvent.logInfo("LabelMakerServlet", "printGenericSampleLabel", "Total labels to print: " + labels.size());
+
+        // Create label maker with all labels and generate PDF
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker(labels);
+        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+        labelMaker.setSysUserId(String.valueOf(usd.getSystemUserId()));
+
         ByteArrayOutputStream labelAsOutputStream = labelMaker.createLabelsAsStream();
 
         response.setContentType("application/pdf");
@@ -137,6 +213,11 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
         String type = request.getParameter("type");
         String quantity = request.getParameter("quantity");
         String override = request.getParameter("override");
+        // Additional parameters for generic sample labels
+        String sampleType = request.getParameter("sampleType");
+        String sampleQuantity = request.getParameter("sampleQuantity");
+        String from = request.getParameter("from");
+
         if (StringUtils.isEmpty(labNo)) { // get last used accession number if none provided
             labNo = (String) request.getSession().getAttribute("lastAccessionNumber");
             labNo = StringUtil.replaceNullWithEmptyString(labNo);
@@ -154,6 +235,12 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
         // correct incorrect formatting of specimen number
         if (labNo.contains("-") && !labNo.contains(".")) {
             labNo = labNo.replace('-', '.');
+        }
+
+        // For generic sample labels, skip validation and use custom label generation
+        if ("generic".equals(type)) {
+            printGenericSampleLabel(request, response, labNo, sampleType, sampleQuantity, from, quantity);
+            return;
         }
 
         // validate the given parameters

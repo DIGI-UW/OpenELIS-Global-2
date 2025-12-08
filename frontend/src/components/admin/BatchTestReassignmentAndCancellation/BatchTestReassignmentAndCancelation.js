@@ -50,6 +50,39 @@ function BatchTestReassignmentAndCancelation() {
 
   const componentMounted = useRef(false);
   const intl = useIntl();
+  const resetToDefault = () => {
+    setSaveButton(true);
+    setIsLoading(true);
+    setCurrentTest(true);
+    setReplaceWith(true);
+    setBatchTestGet(null);
+    setBatchTestPost(null);
+    setSampleTypeListShow([]);
+    setSampleTypeToGetId(null);
+    setSampleTypeToGetIdData({});
+    setSampleTypeToGetIdDataTag({});
+    setSampleTestTypeToGetPending(null);
+    setSampleTypeTestIdToGetIdPendingData({});
+    setSampleTestTypeToGetTagList([]);
+    setJsonWad({
+      current: "",
+      sampleType: "",
+      changeNotStarted: [],
+      changeTechReject: [],
+      changeBioReject: [],
+      changeNotValidated: [],
+      noChangeNotStarted: [],
+      noChangeTechReject: [],
+      noChangeBioReject: [],
+      noChangeNotValidated: [],
+    });
+    setChangesToShow(false);
+
+    getFromOpenElisServer(
+      `/rest/BatchTestReassignment`,
+      handleBatchTestReassignment,
+    );
+  };
 
   const [saveButton, setSaveButton] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -766,6 +799,7 @@ function BatchTestReassignmentAndCancelation() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <Button
+                data-cy="okButton"
                 disabled={saveButton}
                 onClick={() => {
                   setChangesToShow(true);
@@ -779,11 +813,13 @@ function BatchTestReassignmentAndCancelation() {
                 <FormattedMessage id="label.button.ok" />
               </Button>{" "}
               <Button
-                onClick={() =>
+                data-cy="cancelButton"
+                onClick={() => {
+                  resetToDefault();
                   window.location.assign(
                     "/MasterListsPage#batchTestReassignment",
-                  )
-                }
+                  );
+                }}
                 kind="tertiary"
                 type="button"
               >

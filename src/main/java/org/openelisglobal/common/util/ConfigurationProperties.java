@@ -205,6 +205,10 @@ public abstract class ConfigurationProperties {
         BLOCK_BARCODE_WIDTH("widthBlockLabels", "text"), //
         SLIDE_BARCODE_HEIGHT("heightSlideLabels", "text"), //
         SLIDE_BARCODE_WIDTH("widthSlideLabels", "text"), //
+        STORAGE_LOCATION_BARCODE_HEIGHT("heightStorageLocationLabels", "text"), // Height of storage location barcode
+                                                                                // labels
+        STORAGE_LOCATION_BARCODE_WIDTH("widthStorageLocationLabels", "text"), // Width of storage location barcode
+                                                                              // labels
         ALT_ACCESSION_PREFIX("prePrintAltAccessionPrefix", "text"), //
         USE_ALT_ACCESSION_PREFIX("prePrintUseAltAccession", "text"), //
         USE_ALPHANUM_ACCESSION_PREFIX("useAlphanumAccessionPrefix", "text"), //
@@ -229,8 +233,10 @@ public abstract class ConfigurationProperties {
         PATIENT_RESULTS_SMTP_ENABLED("patientresultssmtp.enabled", "text"), //
         CONTACT_TRACING("contactTracingEnabled", "text"), //
         REQUIRE_LAB_UNIT_AT_LOGIN("requireLabUnitAtLogin", "text"), //
-        ENABLE_CLIENT_REGISTRY("enableClientRegistry", "text"); // if true, then client registry search option is
-                                                                // visible on
+        ENABLE_CLIENT_REGISTRY("enableClientRegistry", "text"), // if true, then client registry search option is
+        BAR_CODE_TYPE("BarCodeType", "text");
+
+        // visible on
         // the ui
 
         private String dbName;

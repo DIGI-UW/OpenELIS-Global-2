@@ -26,6 +26,10 @@ let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
+    label: "master.lists.page.test.management",
+    link: "/MasterListsPage#testManagementConfigMenu",
+  },
+  {
     label: "sidenav.label.admin.testmgt.ManageMethod",
     link: "/MasterListsPage#MethodManagment",
   },
@@ -166,16 +170,13 @@ function ManageMethod() {
           <h4 style={{ color: "#3366B3" }}>
             <FormattedMessage id="label.existing.methods" />
           </h4>
-          <div style={{ display: "flex", flexWrap: "wrap", marginTop: "1rem" }}>
+          <Grid fullWidth={true}>
             {existingMethods.map((method) => (
-              <div
-                key={method.id}
-                style={{ width: "25%", padding: "0.5rem 0" }}
-              >
-                {method.value}
-              </div>
+              <Column key={method.id} sm={4} md={4} lg={3}>
+                <div style={{ padding: "0.5rem 0" }}>{method.value}</div>
+              </Column>
             ))}
-          </div>
+          </Grid>
           <hr />
           <h4 style={{ color: "#3366B3" }}>
             <FormattedMessage id="label.inactive.methods" />

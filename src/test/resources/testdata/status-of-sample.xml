@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Required for BarcodeLabelMaker static initializer: SampleStatus.Entered -->
+    <!-- Using high ID (100) to avoid interfering with test ordering expectations -->
+    <status_of_sample id="100"
+        description="The sample has been entered into the system" code="1"
+        status_type="SAMPLE" lastupdated="2012-05-14 11:24:08.768263"
+        name="SampleEntered" display_key="status.sample.entered" is_active="Y" />
+    <status_of_sample id="2"
+        description="Sample Description 1" code="1" status_type="SampleType1"
+        lastupdated="2025-03-18" name="Status 1"
+        display_key="sample_display_key_1" is_active="Y" />
+    <status_of_sample id="3"
+        description="Sample Description 2" code="1" status_type="SampleType2"
+        lastupdated="2025-03-18" name="Status 2"
+        display_key="sample_display_key_2" is_active="Y" />
+    <status_of_sample id="4"
+        description="SampleDescription3" code="1" status_type="SampleType3"
+        lastupdated="2025-03-18" name="Status 3"
+        display_key="sample_display_key_3" is_active="Y" />
+    <status_of_sample id="5"
+        description="Sample Description 4" code="1" status_type="SampleType4"
+        lastupdated="2025-03-18" name="Status 4"
+        display_key="sample_display_key_4" is_active="Y" />
+</dataset>

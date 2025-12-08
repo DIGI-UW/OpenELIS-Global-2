@@ -16,13 +16,13 @@
 
 package org.openelisglobal.sample.bean;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
-import javax.validation.constraints.Email;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.util.IdValuePair;
@@ -209,6 +209,7 @@ public class SampleOrderItem implements Serializable {
 
     private String contactTracingIndexName;
 
+    private String provisionalClinicalDiagnosis;
     private String contactTracingIndexRecordNumber;
 
     private QuestionnaireResponse additionalQuestions;
@@ -254,6 +255,14 @@ public class SampleOrderItem implements Serializable {
 
     public String getOrderType() {
         return orderType;
+    }
+
+    public String getProvisionalClinicalDiagnosis() {
+        return provisionalClinicalDiagnosis;
+    }
+
+    public void setProvisionalClinicalDiagnosis(String provisionalClinicalDiagnosis) {
+        this.provisionalClinicalDiagnosis = provisionalClinicalDiagnosis;
     }
 
     public void setOrderType(String orderType) {

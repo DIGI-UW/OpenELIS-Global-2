@@ -32,6 +32,7 @@ import {
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
+import CustomDatePicker from "../../common/CustomDatePicker.js";
 import AutoComplete from "../../common/AutoComplete.js";
 
 const breadcrumbs = [
@@ -118,14 +119,16 @@ function UserAddModify() {
       setIsLoading(true);
     } else {
       setUserData(res);
-      setValidation({
-        validatepassword: true,
-        password: true,
-        password2: true,
-        loginName: true,
-        firstName: true,
-        secondName: true,
-      });
+      if (res.loginUserId) {
+        setValidation({
+          validatepassword: true,
+          password: true,
+          password2: true,
+          loginName: true,
+          firstName: true,
+          secondName: true,
+        });
+      }
       var KeyList = [];
       Object.keys(res.selectedTestSectionLabUnits).map((key) =>
         KeyList.push(key),
@@ -137,7 +140,7 @@ function UserAddModify() {
   useEffect(() => {
     componentMounted.current = true;
     setIsLoading(true);
-    getFromOpenElisServer(`/rest/rest/users`, handleCopyUserPermissionsList);
+    getFromOpenElisServer(`/rest/users`, handleCopyUserPermissionsList);
     return () => {
       componentMounted.current = false;
       setIsLoading(false);
@@ -377,7 +380,7 @@ function UserAddModify() {
     const value = e.target.value.trim();
     const isValid = loginNameRegex.test(value);
 
-    if (value && !isValid) {
+    if (!value || (value && !isValid)) {
       if (!notificationVisible) {
         setNotificationVisible(true);
         addNotification({
@@ -484,7 +487,7 @@ function UserAddModify() {
     const value = e.target.value;
     const isValid = nameRegex.test(value);
 
-    if (value && !isValid) {
+    if (!value || (value && !isValid)) {
       if (!notificationVisible) {
         setNotificationVisible(true);
         addNotification({
@@ -517,7 +520,7 @@ function UserAddModify() {
     const value = e.target.value;
     const isValid = nameRegex.test(value);
 
-    if (value && !isValid) {
+    if (!value || (value && !isValid)) {
       if (!notificationVisible) {
         setNotificationVisible(true);
         addNotification({
@@ -546,16 +549,16 @@ function UserAddModify() {
     }));
   }
 
-  function handleExpirationDateChange(e) {
+  function handleExpirationDateChange(date) {
     setSaveButton(false);
     setValidation({ ...validation, expDate: true });
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
-      expirationDate: e.target.value,
+      expirationDate: date,
     }));
     setUserDataShow((prevUserData) => ({
       ...prevUserData,
-      expirationDate: e.target.value,
+      expirationDate: date,
     }));
   }
 
@@ -888,6 +891,7 @@ function UserAddModify() {
                     />
                   </Column>
                 </Grid>
+                <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -913,8 +917,9 @@ function UserAddModify() {
                           !passwordPatternRegex.test(
                             userDataShow.confirmPassword,
                           )) ||
-                        userDataShow.confirmPassword !==
-                          userDataShow.userPassword
+                        (passwordTouched.confirmPassword &&
+                          userDataShow.confirmPassword !==
+                            userDataShow.userPassword)
                       }
                       // invalidText={errors.order}
                       value={
@@ -927,7 +932,7 @@ function UserAddModify() {
                   </Column>
                 </Grid>
                 <br />
-                <br />
+
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -960,6 +965,7 @@ function UserAddModify() {
                     />
                   </Column>
                 </Grid>
+                <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -992,6 +998,7 @@ function UserAddModify() {
                     />
                   </Column>
                 </Grid>
+                <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -1000,26 +1007,23 @@ function UserAddModify() {
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
-                    <TextInput
+                    <CustomDatePicker
                       id="password-expire-date"
                       className="defalut"
-                      type="text"
                       labelText=""
-                      placeholder={intl.formatMessage({
-                        id: "login.password.expired.date.placeholder",
-                      })}
                       required={true}
-                      // invalid={errors.order && touched.order}
-                      // invalidText={errors.order}
+                      disallowPastDate={true}
+                      updateStateValue={true}
                       value={
                         userDataShow && userDataShow.expirationDate
                           ? userDataShow.expirationDate
                           : ""
                       }
-                      onChange={(e) => handleExpirationDateChange(e)}
+                      onChange={(date) => handleExpirationDateChange(date)}
                     />
                   </Column>
                 </Grid>
+                <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
@@ -1031,12 +1035,13 @@ function UserAddModify() {
                     <TextInput
                       id="login-timeout"
                       className="defalut"
-                      type="text"
-                      labelText=""
+                      type="number"
                       placeholder={intl.formatMessage({
                         id: "login.timeout.placeholder",
                       })}
                       required={true}
+                      labelText=""
+                      min={0}
                       // invalid={errors.order && touched.order}
                       // invalidText={errors.order}
                       value={
@@ -1183,7 +1188,7 @@ function UserAddModify() {
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
-                      <FormattedMessage id="systemuserrole.copypermisions" /> :
+                      <FormattedMessage id="systemuserrole.copypermissions" /> :
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
@@ -1207,6 +1212,7 @@ function UserAddModify() {
                   </Column>
                   <br />
                   <Button
+                    data-cy="apply-button"
                     disabled={copyUserPermission === "0"}
                     type="button"
                     onClick={() => {
@@ -1390,6 +1396,7 @@ function UserAddModify() {
                       </Column>
                       <Column lg={4} md={4} sm={4}>
                         <Button
+                          data-cy="removePermission"
                           onClick={() => removeSection(key)}
                           kind="tertiary"
                           type="button"
@@ -1402,7 +1409,11 @@ function UserAddModify() {
                 </>
                 <Grid fullWidth={true}>
                   <Column lg={16} md={8} sm={4}>
-                    <Button onClick={addNewSection} type="button">
+                    <Button
+                      data-cy="addNewPermission"
+                      onClick={addNewSection}
+                      type="button"
+                    >
                       <FormattedMessage id="systemuserrole.newpermissions" />
                     </Button>
                   </Column>
@@ -1415,6 +1426,7 @@ function UserAddModify() {
                       disabled={Object.values(validation).some(
                         (value) => !value,
                       )}
+                      data-cy="saveButton"
                       onClick={userSavePostCall}
                       type="button"
                     >
@@ -1426,6 +1438,7 @@ function UserAddModify() {
                           "/MasterListsPage#userManagement",
                         )
                       }
+                      data-cy="exitButton"
                       kind="tertiary"
                       type="button"
                     >

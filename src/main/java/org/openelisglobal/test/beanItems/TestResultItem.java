@@ -17,11 +17,13 @@ package org.openelisglobal.test.beanItems;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
-import javax.validation.constraints.Pattern;
+import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.IdValuePair;
@@ -116,7 +118,7 @@ public class TestResultItem implements ResultItem, Serializable {
     private double lowerCritical;
     private double higherCritical;
 
-    private int significantDigits = -1;
+    private int significantDigits = 0;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String shadowResultValue;
@@ -131,6 +133,11 @@ public class TestResultItem implements ResultItem, Serializable {
 
     private boolean reportable;
     private String patientName;
+
+    private String patientId;
+
+    @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
+    private String sampleItemId;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { WorkplanForm.PrintWorkplan.class })
     private String patientInfo;
@@ -148,6 +155,8 @@ public class TestResultItem implements ResultItem, Serializable {
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisId;
+
+    private String sampleItemExternalId;
 
     private String analysisStatusId;
 
@@ -232,6 +241,7 @@ public class TestResultItem implements ResultItem, Serializable {
     private String defaultResultValue;
 
     private ReferralItem referralItem;
+    private ResultFileForm resultFile;
 
     public String getConsiderRejectReason() {
         return considerRejectReason;
@@ -618,6 +628,14 @@ public class TestResultItem implements ResultItem, Serializable {
         this.analysisId = analysisId;
     }
 
+    public String getSampleItemExternalId() {
+        return sampleItemExternalId;
+    }
+
+    public void setSampleItemExternalId(String sampleItemExternalId) {
+        this.sampleItemExternalId = sampleItemExternalId;
+    }
+
     public void setAnalysisStatusId(String analysisStatusId) {
         this.analysisStatusId = analysisStatusId;
     }
@@ -975,5 +993,50 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setReferralItem(ReferralItem referralItem) {
         this.referralItem = referralItem;
+    }
+
+    public String getPatientId() {
+        return patientId;
+    }
+
+    public void setPatientId(String patientId) {
+        this.patientId = patientId;
+    }
+
+    public String getSampleItemId() {
+        return sampleItemId;
+    }
+
+    public void setSampleItemId(String sampleItemId) {
+        this.sampleItemId = sampleItemId;
+    }
+
+    public ResultFileForm getResultFile() {
+        return resultFile;
+    }
+
+    public void setResultFile(ResultFileForm resultFile) {
+        this.resultFile = resultFile;
+    }
+
+    public static class ResultFileForm extends ResultFile {
+        private static final long serialVersionUID = 3142138533368581327L;
+
+        private String base64Content;
+
+        public String getBase64Content() {
+            return base64Content;
+        }
+
+        public void setBase64Content(String base64Content) {
+            this.base64Content = base64Content;
+            if (base64Content != null && base64Content.contains(";base64,")) {
+                String[] contentInfo = base64Content.split(";base64,", 2);
+                setFileType(contentInfo[0]);
+                setContent(Base64.getDecoder().decode(contentInfo[1]));
+
+            }
+        }
+
     }
 }

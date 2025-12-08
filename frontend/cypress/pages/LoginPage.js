@@ -1,60 +1,104 @@
 import HomePage from "./HomePage";
 import TestProperties from "../common/TestProperties";
 
+const SELECTORS = {
+  USERNAME: "#loginName",
+  PASSWORD: "#password",
+  LOGIN_BUTTON: "[data-cy='loginButton']",
+  USER_ICON: "#user-Icon",
+  LOGOUT: "[data-cy='logOut']",
+  CHANGE_PASSWORD: "[data-cy='changePassword']",
+  CURRENT_PASSWORD: "#current-password",
+};
 class LoginPage {
-  testProperties = null;
-
-  constructor() {
-    this.testProperties = new TestProperties();
-  }
+  testProperties = new TestProperties();
 
   visit() {
     cy.visit("/login");
   }
 
   getUsernameElement() {
-    return cy.getElement("#loginName");
+    return cy.get(SELECTORS.USERNAME);
   }
 
   getPasswordElement() {
-    return cy.getElement("#password");
+    return cy.get(SELECTORS.PASSWORD);
   }
 
   enterUsername(value) {
-    const field = this.getUsernameElement();
-    field.should("be.visible").clear();
+    cy.wait(3000);
+    this.getUsernameElement().should("be.visible");
     this.getUsernameElement().type(value);
-    return this;
+    this.getUsernameElement().should("have.value", value);
   }
 
   enterPassword(value) {
-    const field = this.getPasswordElement();
-    field.should("be.visible").clear();
+    this.getPasswordElement().should("be.visible");
     this.getPasswordElement().type(value);
-    return this;
+    this.getPasswordElement().should("have.value", value);
   }
 
   signIn() {
-    const button = cy.getElement(`[type='submit']`);
-    button.click();
+    cy.get(SELECTORS.LOGIN_BUTTON).should("be.visible");
+    cy.get(SELECTORS.LOGIN_BUTTON).click();
   }
 
-  acceptSelfAssignedCert() {
-    const detailsOption = cy.get(`#details-button`);
-    detailsOption.click();
-    const link = cy.get(`#proceed-link`);
-    link.click();
+  signOut() {
+    cy.get(SELECTORS.USER_ICON).should("be.visible");
+    cy.get(SELECTORS.USER_ICON).click();
+    cy.wait(200);
+    cy.get(SELECTORS.LOGOUT).should("be.visible");
+    cy.get(SELECTORS.LOGOUT).click();
+    cy.wait(1000);
+  }
+
+  changingPassword() {
+    cy.get(SELECTORS.CHANGE_PASSWORD).click();
+    cy.wait(500);
+  }
+
+  enterCurrentPassword(value) {
+    cy.get(SELECTORS.CURRENT_PASSWORD).should("be.visible");
+    cy.get(SELECTORS.CURRENT_PASSWORD).type(value);
+  }
+
+  enterNewPassword(value) {
+    cy.get("#new-password").should("be.visible");
+    cy.get("#new-password").type(value);
+  }
+
+  repeatNewPassword(value) {
+    cy.get("#repeat-new-password").should("be.visible");
+    cy.get("#repeat-new-password").type(value);
+  }
+
+  submitNewPassword() {
+    cy.get("[data-cy='submitNewPassword']").should("be.visible");
+    cy.get("[data-cy='submitNewPassword']").click();
+    cy.wait(800);
+  }
+
+  clickExitPasswordReset() {
+    cy.get("[data-cy='exitPasswordReset']").should("be.visible");
+    cy.get("[data-cy='exitPasswordReset']").click();
+    cy.wait(800);
+  }
+  clearInputs() {
+    this.getUsernameElement().clear();
+    this.getPasswordElement().clear();
   }
 
   goToHomePage() {
     cy.wait(1000);
     cy.url().then((url) => {
       if (url.includes("/login")) {
+        cy.contains("button", "Login", { timeout: 10000 }).should("be.visible");
         this.enterUsername(this.testProperties.getUsername());
         this.enterPassword(this.testProperties.getPassword());
         this.signIn();
       }
     });
+    cy.wait(5000);
     return new HomePage();
   }
 }

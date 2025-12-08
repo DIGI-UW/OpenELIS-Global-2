@@ -1,5 +1,6 @@
 package org.openelisglobal.login.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
@@ -17,6 +17,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.login.bean.UserSession;
+import org.openelisglobal.login.bean.UserSession.LoginMethod;
 import org.openelisglobal.login.form.LoginForm;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.role.service.RoleService;
@@ -95,6 +96,12 @@ public class LoginPageController extends BaseController {
             return new ModelAndView(findForward(HOME_PAGE));
         }
 
+        // Store redirect parameter in session for SAML success handler to check
+        String redirectParam = request.getParameter("redirect");
+        if ("true".equals(redirectParam)) {
+            request.getSession().setAttribute("saml_full_page_redirect", true);
+        }
+
         String forward = FWD_SUCCESS;
         LoginForm form = new LoginForm();
         if (useSAML) {
@@ -135,6 +142,7 @@ public class LoginPageController extends BaseController {
         session.setSessionId(request.getSession().getId());
         if (authenticated) {
             SystemUser user = systemUserService.get(getSysUserId(request));
+            setLoginMethod(request, session);
             session.setUserId(user.getId());
             session.setLoginName(user.getLoginName());
             session.setFirstName(user.getFirstName());
@@ -152,6 +160,16 @@ public class LoginPageController extends BaseController {
             setLabunitRolesForExistingUser(request, session);
         }
         return session;
+    }
+
+    private void setLoginMethod(HttpServletRequest request, UserSession session) {
+        if (Boolean.TRUE.equals(request.getSession().getAttribute("samlSession"))) {
+            session.setLoginMethod(LoginMethod.SAML);
+        } else if (Boolean.TRUE.equals(request.getSession().getAttribute("oauthSession"))) {
+            session.setLoginMethod(LoginMethod.OAUTH);
+        } else {
+            session.setLoginMethod(LoginMethod.FORM);
+        }
     }
 
     private void setLabunitRolesForExistingUser(HttpServletRequest request, UserSession session) {

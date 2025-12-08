@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <person id="701" last_name="Cobby" first_name="Peters"
+        email="cobpeters@peters.com" />
+    <person id="702" last_name="Nesty" first_name="Covers"
+        email="nestycovers@covers.com" />
+    <person id="703" last_name="Imani" first_name="Lanky"
+        email="imanilanki@lanky.com" />
+    <person id="704" last_name="Cobby" first_name="Peters"
+        email="cobpeters@peters.com" />
+    <person id="705" last_name="Nesty" first_name="Covers"
+        email="nestycovers@covers.com" />
+    <person id="706" last_name="Imani" first_name="Lanky"
+        email="imanilanki@lanky.com" />
+
+    <patient id="3001" person_id="701" race="White" gender="F" />
+    <patient id="3002" person_id="701" race="black" gender="M" />
+    <patient id="3003" person_id="701" race="White" gender="M" />
+    <patient id="3004" person_id="701" race="black" gender="M" />
+    <patient id="3005" person_id="701" race="Austd" gender="F" />
+    <patient id="3006" person_id="701" race="black" gender="F" />
+    <patient id="3007" person_id="701" race="Asian" gender="M" />
+    <patient id="3008" person_id="701" race="black" gender="F" />
+    <patient id="3009" person_id="701" race="Asian" gender="M" />
+    <patient id="3010" person_id="701" race="black" gender="F" />
+
+    <patient_contact id="8001"
+        lastupdated="2025-06-22 11:30:00" patient_id="3001" person_id="701" />
+    <patient_contact id="8002"
+        lastupdated="2024-06-10 11:45:00" patient_id="3001" person_id="701" />
+    <patient_contact id="8013"
+        lastupdated="2025-06-22 11:30:00" patient_id="3001" person_id="701" />
+    <patient_contact id="8012"
+        lastupdated="2024-06-10 11:45:00" patient_id="3002" person_id="702" />
+    <patient_contact id="8003"
+        lastupdated="2023-06-22 11:30:00" patient_id="3003" person_id="703" />
+    <patient_contact id="8004"
+        lastupdated="2024-06-10 11:45:00" patient_id="3004" person_id="704" />
+    <patient_contact id="8005"
+        lastupdated="2025-06-22 11:30:00" patient_id="3005" person_id="705" />
+    <patient_contact id="8006"
+        lastupdated="2024-06-10 11:45:00" patient_id="3007" person_id="706" />
+    <patient_contact id="8007"
+        lastupdated="2024-06-10 11:45:00" patient_id="3008" person_id="706" />
+    <patient_contact id="8008"
+        lastupdated="2025-06-22 11:30:00" patient_id="3009" person_id="706" />
+    <patient_contact id="8009"
+        lastupdated="2024-06-10 11:45:00" patient_id="3010" person_id="703" />
+    <patient_contact id="8010"
+        lastupdated="2025-06-22 11:30:00" patient_id="3005" person_id="704" />
+    <patient_contact id="8011"
+        lastupdated="2024-06-10 11:45:00" patient_id="3005" person_id="701" />
+
+</dataset>

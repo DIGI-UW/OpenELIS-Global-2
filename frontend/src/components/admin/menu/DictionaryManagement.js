@@ -1,5 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import "../../Style.css";
+import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import {
   Button,
   Column,
@@ -8,7 +7,6 @@ import {
   Form,
   Grid,
   Heading,
-  Link,
   Modal,
   Pagination,
   Search,
@@ -23,19 +21,20 @@ import {
   TableSelectRow,
   TextInput,
 } from "@carbon/react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
+import {
+  AlertDialog,
+  NotificationKinds,
+} from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import "../../Style.css";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
-import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 
 function DictionaryManagement() {
   const intl = useIntl();
@@ -58,13 +57,14 @@ function DictionaryManagement() {
   const [dictionaryEntry, setDictionaryEntry] = useState("");
   const [localAbbreviation, setLocalAbbreviation] = useState("");
   const [isActive, setIsActive] = useState("");
+  const [loincCode, setLoincCode] = useState("");
 
   const [fromRecordCount, setFromRecordCount] = useState("1");
   const [toRecordCount, setToRecordCount] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
-
-  const [selectedRowId, setSelectedRowId] = useState(null);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [modifyButton, setModifyButton] = useState(true);
+  const [deactivateButton, setDeactivateButton] = useState(true);
   const [editMode, setEditMode] = useState(true);
 
   const [paging, setPaging] = useState(null);
@@ -72,6 +72,14 @@ function DictionaryManagement() {
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [searchedMenuList, setSearchedMenuList] = useState([]);
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 530);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 530);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -84,14 +92,29 @@ function DictionaryManagement() {
     };
   }, [paging, startingRecNo]);
 
+  useEffect(() => {
+    if (selectedRowIds.length === 1) {
+      setModifyButton(false);
+    } else {
+      setModifyButton(true);
+    }
+    if (selectedRowIds.length === 0) {
+      setDeactivateButton(true);
+    } else {
+      setDeactivateButton(false);
+    }
+  }, [selectedRowIds]);
+
   const handleNextPage = () => {
     setPaging((pager) => Math.max(pager, 2));
     setStartingRecNo(fromRecordCount);
+    setSelectedRowIds([]);
   };
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
     setStartingRecNo(Math.max(fromRecordCount, 1));
+    setSelectedRowIds([]);
   };
 
   const yesOrNo = [
@@ -133,6 +156,7 @@ function DictionaryManagement() {
             dictEntry: item.dictEntry,
             localAbbreviation: item.localAbbreviation,
             isActive: item.isActive,
+            loincCode: item.loincCode || "",
             categoryName: item.dictionaryCategory
               ? item.dictionaryCategory.categoryName
               : "not available",
@@ -179,6 +203,7 @@ function DictionaryManagement() {
             dictEntry: item.dictEntry,
             localAbbreviation: item.localAbbreviation,
             isActive: item.isActive,
+            loincCode: item.loincCode || "",
             categoryName: item.dictionaryCategory
               ? item.dictionaryCategory.categoryName
               : "not available",
@@ -215,6 +240,8 @@ function DictionaryManagement() {
     dictEntry: dictionaryEntry,
     localAbbreviation: localAbbreviation,
     isActive: isActive.id,
+    loincCode: loincCode.trim() || null,
+    dirtyFormFields: "",
   };
 
   async function displayStatus(res) {
@@ -232,7 +259,7 @@ function DictionaryManagement() {
         message: intl.formatMessage({ id: "error.add.edited.msg" }),
       });
     }
-    reloadConfiguration();
+    window.location.reload();
   }
 
   const handleSubmitModal = (e) => {
@@ -271,11 +298,12 @@ function DictionaryManagement() {
       dictEntry: dictionaryEntry,
       localAbbreviation: localAbbreviation,
       isActive: isActive.id,
+      loincCode: loincCode.trim() || null,
       dirtyFormFields: dirtyFields,
     };
 
     postToOpenElisServerFullResponse(
-      `/rest/Dictionary?ID=${selectedRowId}&startingRecNo=${startingRecNo}`,
+      `/rest/Dictionary?ID=${selectedRowIds[0]}&startingRecNo=${startingRecNo}`,
       JSON.stringify(updateData),
       displayStatus,
     );
@@ -288,13 +316,16 @@ function DictionaryManagement() {
         <TableSelectRow
           key={cell.id}
           id={cell.id}
-          radio={true}
-          checked={selectedRowId === row.id}
+          checked={selectedRowIds.includes(row.id)}
           name="selectRowRadio"
           ariaLabel="selectRow"
-          onSelect={() => {
-            setModifyButton(false);
-            setSelectedRowId(row.id);
+          onSelect={(e) => {
+            e.stopPropagation();
+            if (selectedRowIds.includes(row.id)) {
+              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
+            } else {
+              setSelectedRowIds([...selectedRowIds, row.id]);
+            }
           }}
         />
       );
@@ -313,7 +344,11 @@ function DictionaryManagement() {
         </TableCell>
       );
     }
-    return <TableCell key={cell.id}>{cell.value}</TableCell>;
+    return (
+      <TableCell key={cell.id} data-cy={`cell-${cell.info.header}-${row.id}`}>
+        {cell.value}
+      </TableCell>
+    );
   };
 
   const handleDictionaryMenuItems = (res) => {
@@ -323,14 +358,15 @@ function DictionaryManagement() {
       setDictionaryEntry(res.dictEntry);
       setIsActive(yesOrNo.find((item) => item.id === res.isActive));
       setLocalAbbreviation(res.localAbbreviation);
+      setLoincCode(res.loincCode || "");
     }
   };
 
   const handleOnClickOnModification = async (event) => {
     event.preventDefault();
-    if (selectedRowId) {
+    if (selectedRowIds.length == 1) {
       const selectedItem = dictionaryMenuList.find(
-        (item) => item.id === selectedRowId,
+        (item) => item.id === selectedRowIds[0],
       );
 
       if (selectedItem) {
@@ -339,12 +375,13 @@ function DictionaryManagement() {
         setDictionaryEntry(selectedItem.dictEntry);
         setLocalAbbreviation(selectedItem.localAbbreviation);
         setIsActive(yesOrNo.find((item) => item.id === selectedItem.isActive));
+        setLoincCode(selectedItem.loincCode);
         setOpen(true);
         setEditMode(false);
       }
 
       getFromOpenElisServer(
-        `/rest/Dictionary?ID=${selectedRowId}&startingRecNo=${startingRecNo}`,
+        `/rest/Dictionary?ID=${selectedRowIds[0]}&startingRecNo=${startingRecNo}`,
         handleDictionaryMenuItems,
       );
       setOpen(true);
@@ -354,12 +391,9 @@ function DictionaryManagement() {
 
   const handleDeactivation = async (event) => {
     event.preventDefault();
-    const list = [...dictionaryMenuList];
-    list.splice(selectedRowId, 1);
-    setDictionaryMenuList(list);
-    if (selectedRowId) {
+    if (selectedRowIds) {
       postToOpenElisServer(
-        `/rest/delete-dictionary?selectedIDs=${selectedRowId}`,
+        `/rest/DeleteDictionary?ID=${selectedRowIds.join(",")}`,
         {},
         handleDelete,
       );
@@ -384,6 +418,7 @@ function DictionaryManagement() {
         message: intl.formatMessage({ id: "dictionary.menu.deactivate.fail" }),
       });
     }
+    window.location.reload();
   };
 
   const handlePanelSearchChange = (event) => {
@@ -410,7 +445,7 @@ function DictionaryManagement() {
         ]}
       />
       <Grid fullWidth={true}>
-        <Column lg={16}>
+        <Column lg={16} md={8} sm={4}>
           <Section>
             <Heading>
               <FormattedMessage id="dictionary.label.modify" />
@@ -421,28 +456,44 @@ function DictionaryManagement() {
             <Form
               style={{
                 display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                gap: isMobile ? "1rem" : "2rem",
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: isMobile ? "stretch" : "center",
+                flexWrap: "wrap",
               }}
             >
               <Column
                 lg={16}
                 md={8}
                 sm={4}
-                style={{ display: "flex", gap: "10px" }}
+                style={{
+                  display: "flex",
+                  gap: isMobile ? "0.75rem" : "0.5rem",
+                  flexDirection: isMobile ? "column" : "row",
+                  width: isMobile ? "100%" : "auto",
+                  margin: "0",
+                }}
               >
-                <Button disabled={!editMode} onClick={() => setOpen(true)}>
+                <Button
+                  data-cy="addButton"
+                  style={{ width: isMobile ? "100%" : "auto" }}
+                  disabled={!editMode}
+                  onClick={() => setOpen(true)}
+                >
                   {intl.formatMessage({
                     id: "admin.page.configuration.formEntryConfigMenu.button.add",
                   })}
-                </Button>{" "}
+                </Button>
                 <Button
+                  data-cy="modifyButton"
+                  style={{ width: isMobile ? "100%" : "auto" }}
                   disabled={modifyButton}
                   type="submit"
                   onClick={handleOnClickOnModification}
                 >
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
-                </Button>{" "}
+                </Button>
                 <Modal
                   open={open}
                   size="sm"
@@ -459,6 +510,7 @@ function DictionaryManagement() {
                     id="dictNumber"
                     labelText="Dictionary Number"
                     disabled
+                    value={dictionaryNumber}
                     onChange={(e) => setDictionaryNumber(e.target.value)}
                     style={{
                       marginBottom: "1rem",
@@ -514,32 +566,68 @@ function DictionaryManagement() {
                       marginBottom: "1rem",
                     }}
                   />
+
+                  <TextInput
+                    id="loincCode"
+                    labelText="LOINC Code"
+                    value={loincCode}
+                    onChange={(e) => setLoincCode(e.target.value)}
+                    // invalid={!/^(?!-)(?:\d+-)*\d*$/.test(loincCode)}
+                    // invalidText={
+                    //   <FormattedMessage id="dictionary.loincCode.invalid" />
+                    // }
+                    style={{
+                      marginBottom: "1rem",
+                    }}
+                  />
                 </Modal>
                 <Button
-                  disabled={modifyButton}
+                  data-cy="deactivateButton"
+                  style={{ width: isMobile ? "100%" : "auto" }}
+                  disabled={deactivateButton}
                   onClick={handleDeactivation}
                   type="submit"
                 >
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
                 </Button>
               </Column>
+
               <Column
                 lg={16}
                 md={8}
                 sm={4}
                 style={{
                   display: "flex",
-                  flexDirection: "column",
+                  flexDirection: isMobile ? "column" : "row",
                   alignItems: "center",
-                  gap: "10px",
+                  justifyContent: "center",
+                  gap: isMobile ? "0.75rem" : "0.5rem",
                 }}
               >
-                <Link>
+                <h4
+                  style={{
+                    margin: 0,
+                    fontSize: isMobile ? "1.2rem" : "1.2rem",
+                    textAlign: isMobile ? "center" : "left",
+                  }}
+                >
                   Showing {fromRecordCount} - {toRecordCount} of{" "}
                   {totalRecordCount}
-                </Link>
-                <div style={{ display: "flex", gap: "10px" }}>
+                </h4>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   <Button
+                    style={{
+                      minWidth: isMobile ? "2rem" : "2.5rem",
+                      minHeight: isMobile ? "2rem" : "2.5rem",
+                      padding: "0.5rem",
+                    }}
                     hasIconOnly
                     iconDescription="previous"
                     disabled={parseInt(fromRecordCount) <= 1}
@@ -547,13 +635,18 @@ function DictionaryManagement() {
                     renderIcon={ArrowLeft}
                   />
                   <Button
+                    style={{
+                      minWidth: isMobile ? "2rem" : "2.5rem",
+                      minHeight: isMobile ? "2rem" : "2.5rem",
+                      padding: "0.5rem",
+                    }}
                     hasIconOnly
                     iconDescription="next"
+                    renderIcon={ArrowRight}
+                    onClick={handleNextPage}
                     disabled={
                       parseInt(toRecordCount) >= parseInt(totalRecordCount)
                     }
-                    renderIcon={ArrowRight}
-                    onClick={handleNextPage}
                   />
                 </div>
               </Column>
@@ -573,12 +666,7 @@ function DictionaryManagement() {
                   id: "search.by.dictionary.entry",
                 })}
                 onChange={handlePanelSearchChange}
-                value={(() => {
-                  if (panelSearchTerm) {
-                    return panelSearchTerm;
-                  }
-                  return "";
-                })()}
+                value={panelSearchTerm || ""}
               ></Search>
             </Section>
           </Column>
@@ -628,6 +716,11 @@ function DictionaryManagement() {
                     id: "dictionary.category.isActive",
                   }),
                 },
+
+                {
+                  key: "loincCode",
+                  header: "LOINC",
+                },
               ]}
               isSortable
             >
@@ -650,12 +743,7 @@ function DictionaryManagement() {
                       </TableHead>
                       <TableBody>
                         {rows.map((row) => (
-                          <TableRow
-                            key={row.id}
-                            onClick={() => {
-                              setSelectedRowId(row.id);
-                            }}
-                          >
+                          <TableRow key={row.id}>
                             {row.cells.map((cell) => renderCell(cell, row))}
                           </TableRow>
                         ))}

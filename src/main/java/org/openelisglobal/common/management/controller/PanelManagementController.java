@@ -1,6 +1,6 @@
 package org.openelisglobal.common.management.controller;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.management.form.PanelManagementForm;
 import org.springframework.stereotype.Controller;

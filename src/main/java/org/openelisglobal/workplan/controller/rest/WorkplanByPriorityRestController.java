@@ -1,9 +1,9 @@
 package org.openelisglobal.workplan.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -41,7 +41,7 @@ public class WorkplanByPriorityRestController extends WorkplanRestController {
     @Autowired
     private UserService userService;
 
-    @RequestMapping(value = "/rest/workplan-by-priority", method = RequestMethod.GET)
+    @RequestMapping(value = "/rest/WorkPlanByPriority", method = RequestMethod.GET)
     public WorkplanForm showWorkPlanByPriority(HttpServletRequest request,
             @RequestParam(name = "priority", defaultValue = "") OrderPriority priority)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {

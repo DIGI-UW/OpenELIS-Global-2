@@ -67,7 +67,7 @@ public class DictionaryCategoryDAOImpl extends BaseDAOImpl<DictionaryCategory, S
             if (!StringUtil.isNullorNill(dictionaryCategory.getId())) {
                 dictId = dictionaryCategory.getId();
             }
-            query.setParameter("param3", dictId);
+            query.setParameter("param3", Integer.parseInt(dictId));
 
             list = query.list();
 

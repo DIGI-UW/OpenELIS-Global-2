@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+    * Version 1.1 (the "License"); you may not use this file except in * compliance
+    with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+    * * Software distributed under the License is distributed on an "AS IS" *
+    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+    License for the specific language governing rights and limitations under
+    * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+    ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+    <!--localization category entries -->
+    <localization id="1" description=" this is for therapy"
+        english="therapy Method" french="méthode de thérapie"
+        lastUpdated="2023-10-01 12:00:00" />
+    <localization id="2" description=" this is for imagining"
+        english="imagining Method" french="méthode de thérapie"
+        lastUpdated="2023-10-01 12:00:00" />
+    <localization id="3" description=" this is for hologram"
+        english="hologram Method" french="méthode de thérapie"
+        lastUpdated="2023-10-01 12:00:00" />
+    <localization id="4" description=" this is for surgery"
+        english="surgery Method" french="méthode de thérapie"
+        lastUpdated="2023-10-01 12:00:00" />
+
+    <!--method category entries -->
+    <method id="1" name="therapy" description="using therapy"
+        name_localization_id="1" reporting_description="" is_active="Y"
+        active_begin="2012-11-01" lastUpdated="2023-10-01 12:00:00" />
+    <method id="2" name="imagining" description="scanning the body"
+        name_localization_id="2" reporting_description="" is_active="N"
+        active_begin="2013-11-01" active_end="2013-12-01"
+        lastUpdated="2023-10-01 12:00:00" />
+    <method id="3" name="hologram" description="hologram method"
+        name_localization_id="3" reporting_description="" is_active="Y"
+        active_begin="2016-11-01" active_end="2016-11-04"
+        lastUpdated="2023-10-01 12:00:00" />
+    <method id="4" name="surgery"
+        description="operation on the body" name_localization_id="4"
+        reporting_description="" is_active="Y" active_begin="2023-11-01"
+        lastUpdated="2023-10-01 12:00:00" />
+</dataset>

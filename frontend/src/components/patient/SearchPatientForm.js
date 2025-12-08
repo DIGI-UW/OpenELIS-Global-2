@@ -34,6 +34,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
+import AsyncAvatar from "./photoManagement/photoAvatar/AyncAvatar";
 
 function SearchPatientForm(props) {
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -58,6 +59,8 @@ function SearchPatientForm(props) {
   const [searchFormValues, setSearchFormValues] = useState(
     SearchPatientFormValues,
   );
+  const [prevfirstName, setPrevfirstName] = useState("");
+  const [prevlastName, setPrevlastName] = useState("");
 
   const handlePatientImport = (patientId) => {
     console.log("Import button clicked, patientId:", patientId);
@@ -108,7 +111,7 @@ function SearchPatientForm(props) {
     console.log("Data to send:", dataToSend);
 
     postToOpenElisServer(
-      "/rest/patient-management",
+      "/rest/PatientManagement",
       JSON.stringify(dataToSend),
       (status) => {
         handlePost(status, patientId);
@@ -224,12 +227,46 @@ function SearchPatientForm(props) {
   };
 
   const fetchPatientDetails = (patientDetails) => {
+    getFromOpenElisServer(
+      `/rest/patient-photos/${patientDetails.patientPK}/${false}`,
+      (response) => {
+        if (response && response.data) {
+          patientDetails.photo = response.data;
+        }
+      },
+    );
     props.getSelectedPatient(patientDetails);
   };
 
   const handleDatePickerChange = (date) => {
     setDob(date);
   };
+
+  function handleFirstNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.FIRST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevfirstName;
+    }
+    setPrevfirstName(event.target.value);
+  }
+
+  function handleLastNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.LAST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevlastName;
+    }
+    setPrevlastName(event.target.value);
+  }
 
   const patientSelected = (e) => {
     const patientSelected = patientSearchResults.find((patient) => {
@@ -349,6 +386,7 @@ function SearchPatientForm(props) {
                         defaultMessage: "Last Name",
                       })}
                       id={field.name}
+                      onChange={(e) => handleLastNameChange(e)}
                     />
                   )}
                 </Field>
@@ -366,6 +404,7 @@ function SearchPatientForm(props) {
                         defaultMessage: "First Name",
                       })}
                       id={field.name}
+                      onChange={(e) => handleFirstNameChange(e)}
                     />
                   )}
                 </Field>
@@ -433,6 +472,7 @@ function SearchPatientForm(props) {
                   id="local_search"
                   kind="tertiary"
                   type="submit"
+                  data-cy="searchPatientButton"
                   onClick={() => setFieldValue("suppressExternalSearch", true)}
                 >
                   <FormattedMessage id="label.button.search" />
@@ -547,17 +587,35 @@ function SearchPatientForm(props) {
                     const dataSourceName = row.cells.find(
                       (cell) => cell.info.header === "dataSourceName",
                     )?.value;
+                    const firstName =
+                      row.cells.find((cell) => cell.info.header === "firstName")
+                        ?.value || "";
+                    const lastName =
+                      row.cells.find((cell) => cell.info.header === "lastName")
+                        ?.value || "";
+                    const patientName =
+                      `${firstName} ${lastName}`.trim() || "Patient";
 
                     return (
                       <TableRow key={row.id}>
                         <TableCell>
                           {dataSourceName === "OpenElis" ? (
-                            <RadioButton
-                              name="radio-group"
-                              onClick={patientSelected}
-                              labelText=""
-                              id={row.id}
-                            />
+                            <div
+                              style={{ display: "flex", flexDirection: "row" }}
+                            >
+                              <RadioButton
+                                data-cy="radioButton"
+                                name="radio-group"
+                                onClick={patientSelected}
+                                labelText=""
+                                id={row.id}
+                              />
+                              <AsyncAvatar
+                                patientId={row.id}
+                                hasPhoto={true}
+                                patientName={patientName}
+                              />
+                            </div>
                           ) : (
                             <span></span>
                           )}

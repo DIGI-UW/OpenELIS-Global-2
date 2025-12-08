@@ -33,6 +33,10 @@ let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
+    label: "master.lists.page.test.management",
+    link: "/MasterListsPage#testManagementConfigMenu",
+  },
+  {
     label: "sidenav.label.admin.testmgt.ViewtestCatalog",
     link: "/MasterListsPage#TestCatalog",
   },
@@ -242,7 +246,7 @@ const TestCatalog = () => {
         field: intl.formatMessage({ id: "field.uom" }),
         value: item.uom,
       },
-      {
+      item.resultType == "N" && {
         id: `${item.id}-significantDigits`,
         field: intl.formatMessage({ id: "field.significantDigits" }),
         value: item.significantDigits,
@@ -331,25 +335,29 @@ const TestCatalog = () => {
       <br />
       <div className="orderLegendBody">
         <Grid fullWidth={true}>
-          <Column lg={12}>
+          <Column lg={12} md={6} sm={3}>
             <h1>
               {" "}
               <FormattedMessage id="label.viewtestCatalog" />
             </h1>
           </Column>
-          <Column lg={4} md={8} sm={12}>
-            <Toggle id="toggle" labelText="Show Guide" onClick={handleToggle} />
+          <Column lg={12} md={6} sm={3}>
+            <Toggle
+              id="toggle"
+              labelText={<FormattedMessage id="test.show.guide" />}
+              onClick={handleToggle}
+            />
           </Column>
         </Grid>
         <hr />
         <Grid>
-          <Column lg={11}>
+          <Column lg={11} md={6} sm={3}>
             <br />
             <h5>
               <FormattedMessage id="label.selectTestSectionCatalog" />
             </h5>
           </Column>
-          <Column lg={5}>
+          <Column lg={5} md={2} sm={1}>
             <FilterableMultiSelect
               type="inline"
               id="carbon-multiselect-example-3"
@@ -382,8 +390,12 @@ const TestCatalog = () => {
             <StructuredListWrapper ariaLabel="Structured list">
               <StructuredListHead>
                 <StructuredListRow head>
-                  <StructuredListCell head>Field</StructuredListCell>
-                  <StructuredListCell head>Description</StructuredListCell>
+                  <StructuredListCell head>
+                    <FormattedMessage id="label.button.field" />
+                  </StructuredListCell>
+                  <StructuredListCell head>
+                    <FormattedMessage id="label.button.descritpion" />
+                  </StructuredListCell>
                 </StructuredListRow>
               </StructuredListHead>
               <StructuredListBody>

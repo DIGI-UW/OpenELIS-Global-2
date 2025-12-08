@@ -1,9 +1,9 @@
 package org.openelisglobal.testconfiguration.form;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import java.util.Map;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.validation.annotations.SafeHtml;
@@ -30,6 +30,8 @@ public class PanelCreateForm extends BaseForm {
     // for display
     private String existingFrenchNames;
 
+    private String existingLoinc;
+
     @NotBlank
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String panelEnglishName;
@@ -40,6 +42,10 @@ public class PanelCreateForm extends BaseForm {
     @NotBlank
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String sampleTypeId;
+
+    @NotBlank
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String panelLoinc;
 
     public PanelCreateForm() {
         setFormName("panelCreateForm");
@@ -123,5 +129,21 @@ public class PanelCreateForm extends BaseForm {
 
     public void setSampleTypeId(String sampleTypeId) {
         this.sampleTypeId = sampleTypeId;
+    }
+
+    public String getExistingLoinc() {
+        return existingLoinc;
+    }
+
+    public void setExistingLoinc(String existingLoinc) {
+        this.existingLoinc = existingLoinc;
+    }
+
+    public String getPanelLoinc() {
+        return panelLoinc;
+    }
+
+    public void setPanelLoinc(String panelLoinc) {
+        this.panelLoinc = panelLoinc;
     }
 }

@@ -26,7 +26,7 @@ package org.openelisglobal.patient.saving;
 
 import static org.openelisglobal.common.services.StatusService.RecordStatus.NotRegistered;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.patient.form.PatientEntryByProjectForm;
 import org.springframework.context.annotation.Scope;

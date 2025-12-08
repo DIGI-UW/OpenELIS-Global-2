@@ -1,0 +1,403 @@
+import React, { useContext, useState, useEffect, useRef } from "react";
+import {
+  Form,
+  Heading,
+  Button,
+  Loading,
+  Grid,
+  Column,
+  Section,
+  DataTable,
+  Table,
+  TableHead,
+  TableRow,
+  TableBody,
+  TableHeader,
+  TableCell,
+  TableSelectRow,
+  TableSelectAll,
+  TableContainer,
+  Pagination,
+  Search,
+  Select,
+  SelectItem,
+  Stack,
+  ClickableTile,
+  Modal,
+} from "@carbon/react";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+  postToOpenElisServerFormData,
+  postToOpenElisServerFullResponse,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils.js";
+import { NotificationContext } from "../../layout/Layout.js";
+import {
+  AlertDialog,
+  NotificationKinds,
+} from "../../common/CustomNotification.js";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import CustomCheckBox from "../../common/CustomCheckBox.js";
+import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
+
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "master.lists.page.test.management",
+    link: "/MasterListsPage#testManagementConfigMenu",
+  },
+  {
+    label: "configuration.testUnit.manage",
+    link: "/MasterListsPage#TestSectionManagement",
+  },
+  {
+    label: "configuration.panel.assign",
+    link: "/MasterListsPage#TestSectionTestAssign",
+  },
+];
+
+function TestSectionTestAssign() {
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+
+  const intl = useIntl();
+  const [isLoading, setIsLoading] = useState(false);
+  const [confirmation, setConfirmation] = useState(false);
+  const [testSectionTestAssignModal, setTestSectionTestAssignModal] =
+    useState(false);
+  const [testSectionTestAssign, setTestSectionTestAssign] = useState({});
+  const [testSectionTestAssignPost, setTestSectionTestAssignPost] = useState({
+    testSectionIdNew: "",
+    testSectionNameNew: "",
+    testId: "",
+    testValue: "",
+    testSectionNameOld: "",
+    testSectionIdOld: "",
+  });
+  const componentMounted = useRef(false);
+
+  const handleTestSectionTestAssignList = (res) => {
+    if (!res) {
+      setIsLoading(true);
+    } else {
+      setTestSectionTestAssign(res);
+    }
+  };
+
+  const handlePostTestSectionTestAssignListCall = () => {
+    if (
+      !testSectionTestAssignPost.testId ||
+      !testSectionTestAssignPost.testSectionIdNew
+    ) {
+      window.location.reload();
+      return;
+    }
+    postToOpenElisServerJsonResponse(
+      "/rest/TestSectionTestAssign",
+      JSON.stringify({
+        testId: testSectionTestAssignPost.testId,
+        testSectionId: testSectionTestAssignPost.testSectionIdNew,
+        deactivateTestSectionId: "", //TODO: need to check backend
+      }),
+      (res) => {
+        handlePostTestSectionTestAssignListCallBack(res);
+      },
+    );
+  };
+
+  const handlePostTestSectionTestAssignListCallBack = (res) => {
+    if (res) {
+      setIsLoading(false);
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.title",
+        }),
+        message: intl.formatMessage({
+          id: "notification.user.post.delete.success",
+        }),
+        kind: NotificationKinds.success,
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 200);
+    } else {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "server.error.msg" }),
+      });
+      setNotificationVisible(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 200);
+    }
+  };
+
+  useEffect(() => {
+    componentMounted.current = true;
+    setIsLoading(true);
+    getFromOpenElisServer(
+      `/rest/TestSectionTestAssign`,
+      handleTestSectionTestAssignList,
+    );
+    return () => {
+      componentMounted.current = false;
+      setIsLoading(false);
+    };
+  }, []);
+
+  if (!isLoading) {
+    return (
+      <>
+        <Loading />
+      </>
+    );
+  }
+
+  return (
+    <>
+      {notificationVisible === true ? <AlertDialog /> : ""}
+      <div className="adminPageContent">
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <div className="orderLegendBody">
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="label.button.select" />
+                </Heading>
+              </Section>
+            </Column>
+          </Grid>
+          <br />
+          <hr />
+          <br />
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <Section>
+                  <Section>
+                    <Heading>
+                      <FormattedMessage id="configuration.panel.assign" />
+                    </Heading>
+                  </Section>
+                </Section>
+              </Section>
+            </Column>
+          </Grid>
+          <br />
+          <hr />
+          <br />
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <Section>
+                  <Section>
+                    <Section>
+                      <Heading>
+                        <FormattedMessage id="configuration.panel.assign.explain" />
+                      </Heading>
+                    </Section>
+                  </Section>
+                </Section>
+              </Section>
+            </Column>
+          </Grid>
+          <br />
+          <Grid fullWidth={true}>
+            {testSectionTestAssign &&
+            testSectionTestAssign?.sectionTestList &&
+            Object.keys(testSectionTestAssign?.sectionTestList).length > 0 ? (
+              <>
+                {Object.entries(testSectionTestAssign?.sectionTestList).map(
+                  ([sectionKey, tests]) => {
+                    const sectionId = sectionKey
+                      .split(", value=")[0]
+                      .split("id=")[1];
+                    const sectionName = sectionKey.split(", value=")[1];
+                    return (
+                      <React.Fragment key={`${sectionKey}-${sectionId}`}>
+                        <Column lg={16} md={8} sm={4}>
+                          <h4>{sectionName}</h4>
+                        </Column>
+                        {tests.map((test) => (
+                          <Column
+                            style={{ margin: "2px" }}
+                            key={`${sectionId}-${test.id}`}
+                            lg={4}
+                            md={4}
+                            sm={4}
+                          >
+                            <ClickableTile
+                              onClick={() => {
+                                (setTestSectionTestAssignModal(true),
+                                  setTestSectionTestAssignPost({
+                                    testId: test.id,
+                                    testValue: test.value,
+                                    testSectionNameOld: sectionName,
+                                    testSectionIdOld: sectionId,
+                                  }));
+                              }}
+                            >
+                              {test.value}
+                            </ClickableTile>
+                          </Column>
+                        ))}
+                      </React.Fragment>
+                    );
+                  },
+                )}
+              </>
+            ) : (
+              <></>
+            )}
+          </Grid>
+        </div>
+      </div>
+
+      <Modal
+        open={testSectionTestAssignModal}
+        size="md"
+        modalHeading={
+          confirmation
+            ? `${intl.formatMessage({
+                id: "uom.create.heading.confirmation",
+              })}`
+            : `${intl.formatMessage({
+                id: "banner.menu.patientEdit",
+              })}`
+        }
+        primaryButtonText={
+          confirmation
+            ? intl.formatMessage({ id: "accept.action.button" })
+            : intl.formatMessage({ id: "label.button.save" })
+        }
+        secondaryButtonText={
+          confirmation
+            ? intl.formatMessage({ id: "reject.action.button" })
+            : intl.formatMessage({ id: "label.button.cancel" })
+        }
+        onRequestSubmit={() => {
+          if (confirmation) {
+            setTestSectionTestAssignModal(false);
+            handlePostTestSectionTestAssignListCall();
+          } else {
+            setConfirmation(true);
+          }
+        }}
+        onRequestClose={() => {
+          setTestSectionTestAssignModal(false);
+          window.location.reload();
+        }}
+        preventCloseOnClickOutside={true}
+        shouldSubmitOnEnter={true}
+      >
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="configuration.panel.assign" />
+                </Heading>
+              </Section>
+            </Section>
+            <br />
+            <Section>
+              <Section>
+                <Section>
+                  <Heading>
+                    <FormattedMessage id="Test" /> :{" "}
+                    {testSectionTestAssignPost?.testValue}
+                  </Heading>
+                </Section>
+              </Section>
+            </Section>
+            <br />
+            <Section>
+              {testSectionTestAssign?.testSectionList &&
+              testSectionTestAssign?.testSectionList?.length > 0 ? (
+                <Select
+                  size="sm"
+                  id="testSectionListSelect"
+                  labelText={
+                    <span style={{ fontSize: "1.2rem", fontWeight: 500 }}>
+                      {`${intl.formatMessage({ id: "configuration.testUnit.assign.new.unit" })} : `}
+                    </span>
+                  }
+                  onChange={(e) => {
+                    const selectedOption = e.target.selectedOptions[0];
+                    const selectedId = selectedOption.value;
+                    const selectedValue = selectedOption.dataset.value;
+
+                    setTestSectionTestAssignPost((prev) => ({
+                      ...prev,
+                      testSectionIdNew: selectedId,
+                      testSectionNameNew: selectedValue,
+                    }));
+                  }}
+                >
+                  {testSectionTestAssign?.testSectionList.map((item) => (
+                    <SelectItem
+                      key={item.id}
+                      value={item.id}
+                      text={item.value}
+                      data-value={item.value}
+                    />
+                  ))}
+                </Select>
+              ) : (
+                ""
+              )}
+            </Section>
+            <br />
+            {confirmation &&
+              testSectionTestAssignPost &&
+              testSectionTestAssignPost?.testValue &&
+              testSectionTestAssignPost?.testSectionNameOld &&
+              testSectionTestAssignPost.testSectionNameNew && (
+                <Section>
+                  <Section>
+                    <Section>
+                      <Heading>
+                        <span
+                          style={{
+                            fontWeight: "bold",
+                            textDecoration: "underline",
+                          }}
+                        >
+                          {testSectionTestAssignPost?.testValue}
+                        </span>{" "}
+                        {"will be moved from"}{" "}
+                        <span
+                          style={{
+                            fontWeight: "bold",
+                            textDecoration: "underline",
+                          }}
+                        >
+                          {testSectionTestAssignPost?.testSectionNameOld}
+                        </span>{" "}
+                        {"to"}{" "}
+                        <span
+                          style={{
+                            fontWeight: "bold",
+                            textDecoration: "underline",
+                          }}
+                        >
+                          {testSectionTestAssignPost?.testSectionNameNew}
+                        </span>
+                      </Heading>
+                    </Section>
+                  </Section>
+                </Section>
+              )}
+          </Column>
+        </Grid>
+      </Modal>
+    </>
+  );
+}
+
+export default injectIntl(TestSectionTestAssign);

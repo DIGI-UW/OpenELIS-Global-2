@@ -1,7 +1,7 @@
 package org.openelisglobal.analyzer.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.analyzer.form.ListPluginForm;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.internationalization.MessageUtil;

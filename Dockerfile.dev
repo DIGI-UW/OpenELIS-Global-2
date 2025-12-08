@@ -1,14 +1,33 @@
 ##
 # Build Stage
 #
-FROM maven:3-jdk-11 as build
+FROM maven:3-eclipse-temurin-21 AS build
+COPY ./dataexport /build/dataexport
+##
+# Build DataExport
+
+WORKDIR /build/dataexport/dataexport-core
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn dependency:go-offline 
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn clean install -DskipTests
+WORKDIR /build/dataexport/
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn dependency:go-offline 
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn clean install -DskipTests
+
+
 
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
-    && apt-get -y update \
+    && apt-get clean \
+    && apt-get -y update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 --allow-releaseinfo-change || \
+       (sleep 5 && apt-get -y update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 --allow-releaseinfo-change) \
     && apt-get -y --no-install-recommends install \
     git apache2-utils 
+
 
 ##
 # Copy Source Code
@@ -16,7 +35,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 ADD ./pom.xml /build/pom.xml
 ADD ./tools /build/tools
 ADD ./src /build/src
-# ADD ./dataexport /build/dataexport
+ADD ./dataexport /build/dataexport
 
 WORKDIR /build
 
@@ -25,19 +44,6 @@ ARG DEFAULT_PW="adminADMIN!"
 ADD ./install/createDefaultPassword.sh /build/install/createDefaultPassword.sh
 RUN ./install/createDefaultPassword.sh -c -p ${DEFAULT_PW}
 
-##
-# Build DataExport
-#
-# WORKDIR /build/dataexport/dataexport-core
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn dependency:go-offline 
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn clean install -DskipTests
-# WORKDIR /build/dataexport/
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn dependency:go-offline 
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn clean install -DskipTests
 
 ##
 # Build the Project
@@ -48,12 +54,12 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn dependency:go-offline 
 
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn clean install -DskipTests -Dspotless.check.skip=true
+    mvn clean install -DskipTests -Dspotless.check.skip=true -Dmaven.test.skip=true
 
 ##
 # Run Stage
 #
-FROM tomcat:8.5-jdk11
+FROM tomcat:10-jre21
 
 ADD install/createDefaultPassword.sh ./
 

@@ -1,0 +1,61 @@
+<dataset>
+    <status_of_sample id="7001"
+        description="Sample Description 1" code="1" status_type="SampleType1"
+        lastupdated="2025-03-18" name="Status 1"
+        display_key="sample_display_key_1" is_active="Y" />
+    <status_of_sample id="7002"
+        description="Sample Description 2" code="1" status_type="SampleType2"
+        lastupdated="2025-03-18" name="Status 2"
+        display_key="sample_display_key_2" is_active="Y" />
+
+    <test id="4001" description="Blood Test" loinc="123456"
+        reporting_description="Complete Blood Count" sticker_req_flag="Y"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2025-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2025-03-20 12:00:00"
+        local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
+        orderable="true" guid="abc-123" antimicrobial_resistance="true" />
+
+    <test id="4002" description="Urine Test" loinc="543216"
+        reporting_description="Urinalysis" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-02-01 12:00:00" active_end="2025-12-31 12:00:00"
+        is_reportable="Y" time_holding="25" time_wait="10"
+        time_ta_average="50" time_ta_warning="70" time_ta_max="90"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="UA"
+        sort_order="2147483646" name="Urinalysis" orderable="true"
+        guid="def-456" antimicrobial_resistance="false" />
+
+    <!-- Analyzer data -->
+    <analyzer id="2001" name="Cobas 6800"
+        machine_id="COBAS6800-001" analyzer_type="MOLECULAR"
+        description="Automated molecular analyzer for PCR testing"
+        location="Main Laboratory - Room 101" is_active="true"
+        has_setup_page="true" lastupdated="2023-01-01 12:00:00" />
+    <analyzer id="2002" name="ABL800 FLEX" machine_id="ABL800-123"
+        analyzer_type="CHEMISTRY"
+        description="Blood gas and electrolyte analyzer"
+        location="Emergency Department - Station 3" is_active="true"
+        has_setup_page="false" lastupdated="2023-01-01 12:30:00" />
+
+    <analyzer_results id="1001" analyzer_id="2001"
+        accession_number="ACC123456" test_name="Glucose" result="5.6"
+        units="mmol/L" iscontrol="false" lastupdated="2025-07-01 08:00:00"
+        read_only="false" duplicate_id="1001" positive="false"
+        complete_date="2025-07-01 08:15:00" test_result_type="N"
+        test_id="4001" />
+
+    <analyzer_results id="1002" analyzer_id="2002"
+        accession_number="ACC789012" test_name="Hemoglobin" result="13.2"
+        units="g/dL" iscontrol="false" lastupdated="2025-07-01 08:30:00"
+        read_only="true" duplicate_id="1002" positive="true"
+        complete_date="2025-07-01 09:15:00" test_result_type="N"
+        test_id="4002" />
+
+    <analyzer_results id="1003" analyzer_id="2002"
+        accession_number="ACC345678" test_name="Cholesterol" result="190"
+        units="mg/dL" iscontrol="false" lastupdated="2025-07-01 09:00:00"
+        read_only="false" duplicate_id="1003" positive="false"
+        complete_date="2025-07-01 09:15:00" test_result_type="N"
+        test_id="4002" />
+</dataset>

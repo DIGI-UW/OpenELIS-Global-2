@@ -13,10 +13,10 @@
  */
 package org.openelisglobal.result.action.util;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.paging.IPageDivider;
 import org.openelisglobal.common.paging.IPageFlattener;
@@ -37,12 +37,19 @@ public class ResultsPaging {
     public void setDatabaseResults(HttpServletRequest request, ResultsPagingForm form, List<TestResultItem> tests)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "setDatabaseResults",
+                "Input tests size: " + (tests != null ? tests.size() : 0));
         paging.setDatabaseResults(request.getSession(), tests, pagingHelper);
 
         List<TestResultItem> resultPage = paging.getPage(1, request.getSession());
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "setDatabaseResults",
+                "getPage(1) returned: " + (resultPage != null ? resultPage.size() + " items" : "null"));
         if (resultPage != null) {
             form.setTestResult(resultPage);
             form.setPaging(paging.getPagingBeanWithSearchMapping(1, request.getSession()));
+        } else {
+            org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(), "setDatabaseResults",
+                    "getPage(1) returned null - form.getTestResult() will be null/empty");
         }
     }
 

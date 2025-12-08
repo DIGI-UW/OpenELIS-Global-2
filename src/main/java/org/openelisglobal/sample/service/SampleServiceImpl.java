@@ -1,12 +1,12 @@
 package org.openelisglobal.sample.service;
 
+import jakarta.annotation.PostConstruct;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import javax.annotation.PostConstruct;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -114,10 +114,22 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Override
     @Transactional(readOnly = true)
     public Sample getSampleByAccessionNumber(String labNumber) {
+        String originalLabNumber = labNumber;
         if (labNumber != null && labNumber.contains(".")) {
             labNumber = labNumber.substring(0, labNumber.indexOf('.'));
         }
-        return getMatch("accessionNumber", labNumber).orElse(null);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getSampleByAccessionNumber",
+                "Searching for sample with accessionNumber: " + labNumber + " (original: " + originalLabNumber + ")");
+        Sample sample = getMatch("accessionNumber", labNumber).orElse(null);
+        if (sample != null) {
+            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
+                    "getSampleByAccessionNumber",
+                    "Found sample: id=" + sample.getId() + ", accessionNumber=" + sample.getAccessionNumber());
+        } else {
+            org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(),
+                    "getSampleByAccessionNumber", "No sample found for accessionNumber: " + labNumber);
+        }
+        return sample;
     }
 
     @Override

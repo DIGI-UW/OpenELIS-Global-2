@@ -1,10 +1,10 @@
 package org.openelisglobal.dictionary.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.constants.Constants;
@@ -177,7 +177,7 @@ public class DictionaryRestController extends BaseController {
                 // UPDATE
                 // bugzilla 2062
                 boolean isDictionaryFrozenCheckRequired = checkForDictionaryFrozenCheck(form);
-                dictionaryService.update(dictionary, isDictionaryFrozenCheckRequired);
+                dictionaryService.update(dictionary);
             } else {
                 // INSERT
                 dictionaryService.insert(dictionary);

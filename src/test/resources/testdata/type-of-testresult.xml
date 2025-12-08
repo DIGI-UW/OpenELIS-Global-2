@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Type of Test Result test data matching exactly the ResultType enum
+        defined in TypeOfTestResultServiceImpl -->
+    <type_of_test_result id="1" description="Numeric"
+        test_result_type="N" hl7_value="NM" lastupdated="2023-11-01 12:00:00" />
+    <type_of_test_result id="2" description="Alpha"
+        test_result_type="A" hl7_value="ST" lastupdated="2023-11-01 12:00:00" />
+    <type_of_test_result id="3"
+        description="Dictionary" test_result_type="D" hl7_value="CE"
+        lastupdated="2023-11-01 12:00:00" />
+    <type_of_test_result id="4"
+        description="Multiselect" test_result_type="M" hl7_value="XP"
+        lastupdated="2023-11-01 12:00:00" />
+    <type_of_test_result id="5"
+        description="Cascading Multiselect" test_result_type="C"
+        hl7_value="SU" lastupdated="2023-11-01 12:00:00" />
+    <type_of_test_result id="6" description="Remark"
+        test_result_type="R" hl7_value="TX" lastupdated="2023-11-01 12:00:00" />
+    <type_of_test_result id="7" description="Titer"
+        test_result_type="T" hl7_value="SN" lastupdated="2023-11-01 12:00:00" />
+</dataset>

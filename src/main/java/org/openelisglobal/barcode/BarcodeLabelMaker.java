@@ -1,26 +1,32 @@
 package org.openelisglobal.barcode;
 
-import com.lowagie.text.BadElementException;
-import com.lowagie.text.Chunk;
-import com.lowagie.text.Document;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.Image;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.Rectangle;
-import com.lowagie.text.pdf.Barcode;
-import com.lowagie.text.pdf.Barcode128;
-import com.lowagie.text.pdf.PdfContentByte;
-import com.lowagie.text.pdf.PdfPCell;
-import com.lowagie.text.pdf.PdfPTable;
-import com.lowagie.text.pdf.PdfTemplate;
-import com.lowagie.text.pdf.PdfWriter;
-import com.lowagie.text.pdf.draw.LineSeparator;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.itextpdf.text.BadElementException;
+import com.itextpdf.text.Chunk;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Rectangle;
+import com.itextpdf.text.pdf.Barcode;
+import com.itextpdf.text.pdf.Barcode128;
+import com.itextpdf.text.pdf.PdfContentByte;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfTemplate;
+import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.text.pdf.draw.LineSeparator;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import org.openelisglobal.barcode.labeltype.BlankLabel;
 import org.openelisglobal.barcode.labeltype.BlockLabel;
 import org.openelisglobal.barcode.labeltype.Label;
@@ -54,6 +60,29 @@ import org.openelisglobal.test.valueholder.Test;
  */
 public class BarcodeLabelMaker {
 
+    public enum BarcodeType {
+        BARCODE, QR;
+
+        public static BarcodeType fromString(String value) {
+            for (BarcodeType type : BarcodeType.values()) {
+                if (type.name().equalsIgnoreCase(value)) {
+                    return type;
+                }
+            }
+            return BARCODE;
+        }
+    }
+
+    private BarcodeType barcodeType = BarcodeType.BARCODE;
+
+    public BarcodeType getBarcodeType() {
+        return barcodeType;
+    }
+
+    public void setBarcodeType(BarcodeType barcodeType) {
+        this.barcodeType = barcodeType;
+    }
+
     // number of columns for label layout grid
     private static int NUM_COLUMNS = 20;
 
@@ -66,26 +95,94 @@ public class BarcodeLabelMaker {
     // for audit trail when incrementing num printed
     private String sysUserId;
 
-    private BarcodeLabelInfoService barcodeLabelService = SpringContext.getBean(BarcodeLabelInfoService.class);
+    private BarcodeLabelInfoService barcodeLabelService;
+
+    /**
+     * Lazy initialization of barcodeLabelService. Initializes on first use to
+     * ensure SpringContext is ready.
+     * 
+     * @return BarcodeLabelInfoService instance
+     */
+    private BarcodeLabelInfoService getBarcodeLabelService() {
+        if (barcodeLabelService == null) {
+            try {
+                barcodeLabelService = SpringContext.getBean(BarcodeLabelInfoService.class);
+            } catch (Exception e) {
+                LogEvent.logError("BarcodeLabelMaker", "getBarcodeLabelService",
+                        "Failed to get BarcodeLabelInfoService from SpringContext: " + e.getMessage());
+                throw new RuntimeException("BarcodeLabelInfoService not available", e);
+            }
+        }
+        return barcodeLabelService;
+    }
 
     private static final Set<Integer> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
+    private static volatile boolean initialized = false;
 
-    static {
-        ENTERED_STATUS_SAMPLE_LIST
-                .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered)));
+    /**
+     * Lazy initialization of ENTERED_STATUS_SAMPLE_LIST. Initializes on first use
+     * to ensure SpringContext is ready. Thread-safe using double-checked locking
+     * pattern.
+     * 
+     * @return Set containing the status ID for SampleStatus.Entered, or empty set
+     *         if initialization fails
+     */
+    private static Set<Integer> getEnteredStatusSampleList() {
+        if (!initialized) {
+            synchronized (ENTERED_STATUS_SAMPLE_LIST) {
+                if (!initialized) {
+                    try {
+                        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+                        if (statusService != null) {
+                            String statusId = statusService.getStatusID(SampleStatus.Entered);
+
+                            if (statusId != null && !statusId.equals("-1") && !statusId.trim().isEmpty()) {
+                                ENTERED_STATUS_SAMPLE_LIST.add(Integer.parseInt(statusId));
+                            } else {
+                                LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
+                                        "SampleStatus.Entered not found in database. Status ID: " + statusId);
+                            }
+                        } else {
+                            LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
+                                    "IStatusService bean not available from SpringContext");
+                        }
+                    } catch (NumberFormatException e) {
+                        LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
+                                "Failed to parse status ID: " + e.getMessage());
+                    } catch (Exception e) {
+                        LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
+                                "Failed to initialize ENTERED_STATUS_SAMPLE_LIST: " + e.getMessage());
+                    } finally {
+                        // Mark as initialized to prevent repeated attempts, even if initialization
+                        // failed
+                        // This prevents performance issues from repeated synchronization attempts
+                        initialized = true;
+                    }
+                }
+            }
+        }
+        return ENTERED_STATUS_SAMPLE_LIST;
     }
 
     public BarcodeLabelMaker() {
         labels = new ArrayList<>();
+        this.barcodeType = BarcodeType
+                .fromString(ConfigurationProperties.getInstance().getPropertyValue(Property.BAR_CODE_TYPE));
     }
 
     public BarcodeLabelMaker(Label label) {
         labels = new ArrayList<>();
         labels.add(label);
+        // Initialize barcodeType from configuration (same as no-arg constructor)
+        this.barcodeType = BarcodeType
+                .fromString(ConfigurationProperties.getInstance().getPropertyValue(Property.BAR_CODE_TYPE));
     }
 
     public BarcodeLabelMaker(ArrayList<Label> labels) {
         this.labels = labels;
+        // Initialize barcodeType from configuration (same as no-arg constructor)
+        this.barcodeType = BarcodeType
+                .fromString(ConfigurationProperties.getInstance().getPropertyValue(Property.BAR_CODE_TYPE));
     }
 
     public void generateGenericBarcodeLabel(String code, String type) {
@@ -116,7 +213,6 @@ public class BarcodeLabelMaker {
             // orderLabel.setSysUserId(sysUserId);
             // if (orderLabel.checkIfPrintable() || "true".equals(override)) {
             labels.add(orderLabel);
-            // }
 
             SpecimenLabel specimenLabel = new SpecimenLabel(accessionNumber, facilityName, tests);
             specimenLabel.setNumLabels(numSpecimenLabelsPerSet);
@@ -178,7 +274,7 @@ public class BarcodeLabelMaker {
 
             // 1 specimen label per sampleitem
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    ENTERED_STATUS_SAMPLE_LIST);
+                    getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                         labNo);
@@ -209,7 +305,7 @@ public class BarcodeLabelMaker {
             labNo = labNo.substring(0, labNo.lastIndexOf("."));
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    ENTERED_STATUS_SAMPLE_LIST);
+                    getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 // get only the sample item matching the specimen number
                 if (sampleItem.getSortOrder().equals(specimenNumber)) {
@@ -245,12 +341,14 @@ public class BarcodeLabelMaker {
     public ByteArrayOutputStream createLabelsAsStream() {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         if (labels.isEmpty()) {
+            LogEvent.logError("BarcodeLabelMaker", "createLabelsAsStream", "Labels list is empty!");
             return stream;
         }
         try {
             Document document = new Document();
             PdfWriter writer = PdfWriter.getInstance(document, stream);
             document.open();
+
             for (Label label : labels) {
                 for (int i = 0; i < label.getNumLabels(); ++i) {
                     // a ratio is used with set width so that font size
@@ -297,7 +395,7 @@ public class BarcodeLabelMaker {
                         label.incrementNumPrinted();
                     }
                 }
-                barcodeLabelService.save(label.getLabelInfo());
+                getBarcodeLabelService().save(label.getLabelInfo());
             }
             document.close();
             writer.close();
@@ -323,46 +421,107 @@ public class BarcodeLabelMaker {
         Rectangle rec = new Rectangle(label.pdfWidth, label.pdfHeight);
         document.setPageSize(rec);
         document.newPage();
-        PdfPTable table = new PdfPTable(NUM_COLUMNS);
-        table.getDefaultCell().setBorder(Rectangle.NO_BORDER);
-        table.setTotalWidth(label.pdfWidth - (2 * label.getMargin()));
-        table.setLockedWidth(true);
 
-        // add above fields into table
-        Iterable<LabelField> fields = label.getAboveFields();
-        if (fields != null) {
-            for (LabelField field : fields) {
-                if (field.isStartNewline()) {
-                    table.completeRow();
+        if (barcodeType == BarcodeType.BARCODE) {
+            PdfPTable table = new PdfPTable(NUM_COLUMNS);
+            table.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+            table.setTotalWidth(label.pdfWidth - (2 * label.getMargin()));
+            table.setLockedWidth(true);
+
+            // add above fields into table
+            Iterable<LabelField> fields = label.getAboveFields();
+            if (fields != null) {
+                for (LabelField field : fields) {
+                    if (field.isStartNewline()) {
+                        table.completeRow();
+                    }
+                    table.addCell(createFieldAsPDFField(label, field));
                 }
-                table.addCell(createFieldAsPDFField(label, field));
+                table.completeRow();
             }
-            table.completeRow();
-        }
 
-        // add bar code
-        if (label.getScaledBarcodeSpace() != NUM_COLUMNS) {
-            table.addCell(createSpacerCell((NUM_COLUMNS - label.getScaledBarcodeSpace()) / 2));
-            table.addCell(create128Barcode(label, writer, label.getScaledBarcodeSpace()));
-            table.addCell(createSpacerCell((NUM_COLUMNS - label.getScaledBarcodeSpace()) / 2));
+            // add bar code
+            if (label.getScaledBarcodeSpace() != NUM_COLUMNS) {
+                table.addCell(createSpacerCell((NUM_COLUMNS - label.getScaledBarcodeSpace()) / 2));
+                table.addCell(create128Barcode(label, writer, label.getScaledBarcodeSpace()));
+                table.addCell(createSpacerCell((NUM_COLUMNS - label.getScaledBarcodeSpace()) / 2));
+            } else {
+                table.addCell(create128Barcode(label, writer, label.getScaledBarcodeSpace()));
+            }
+
+            // add below fields into table
+            Iterable<LabelField> belowFields = label.getBelowFields();
+            if (belowFields != null) {
+                for (LabelField field : belowFields) {
+                    if (field.isStartNewline()) {
+                        table.completeRow();
+                    }
+                    table.addCell(createFieldAsPDFField(label, field));
+                }
+                table.completeRow();
+            }
+
+            // convert table to image, scale image, and center it on document
+            document.add(scaleCentreTableAsImage(label, writer, table));
         } else {
-            table.addCell(create128Barcode(label, writer, label.getScaledBarcodeSpace()));
-        }
+            // QR code layout with QR on left, fields on right
+            PdfPTable mainTable = new PdfPTable(2); // 2 columns for QR and fields
+            mainTable.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+            mainTable.setTotalWidth(label.pdfWidth - (2 * label.getMargin()));
+            mainTable.setLockedWidth(true);
+            float[] columnWidths = { 0.4f, 0.6f }; // 40% for QR, 60% for fields
+            mainTable.setWidths(columnWidths);
 
-        // add below fields into table
-        Iterable<LabelField> belowFields = label.getBelowFields();
-        if (belowFields != null) {
-            for (LabelField field : belowFields) {
-                if (field.isStartNewline()) {
-                    table.completeRow();
-                }
-                table.addCell(createFieldAsPDFField(label, field));
+            // Left column - QR Code
+            PdfPCell qrCell = createQRCode(label, writer, 1);
+            qrCell.setHorizontalAlignment(PdfPCell.ALIGN_CENTER);
+            qrCell.setVerticalAlignment(PdfPCell.ALIGN_MIDDLE);
+            mainTable.addCell(qrCell);
+
+            // Right column - Fields Table
+            PdfPTable fieldsTable = new PdfPTable(1);
+            fieldsTable.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+            fieldsTable.setWidthPercentage(100);
+
+            // Add code text in larger font and bold
+            com.itextpdf.text.Font boldFont = new com.itextpdf.text.Font(label.getValueFont());
+            boldFont.setSize(15); // Larger font size
+            boldFont.setStyle(com.lowagie.text.Font.BOLD);
+
+            String codeForText = label.getCode();
+            if (codeForText == null) {
+                codeForText = "";
             }
-            table.completeRow();
-        }
+            Paragraph codeText = new Paragraph(codeForText, boldFont);
+            codeText.setAlignment(Paragraph.ALIGN_CENTER);
+            PdfPCell codeCell = new PdfPCell(codeText);
+            codeCell.setBorder(Rectangle.NO_BORDER);
+            codeCell.setPadding(1);
+            fieldsTable.addCell(codeCell);
 
-        // convert table to image, scale image, and center it on document
-        document.add(scaleCentreTableAsImage(label, writer, table));
+            // Add above fields
+            Iterable<LabelField> fields = label.getAboveFields();
+            if (fields != null) {
+                for (LabelField field : fields) {
+                    fieldsTable.addCell(createFieldAsPDFField(label, field));
+                }
+            }
+
+            // Add below fields
+            Iterable<LabelField> belowFields = label.getBelowFields();
+            if (belowFields != null) {
+                for (LabelField field : belowFields) {
+                    fieldsTable.addCell(createFieldAsPDFField(label, field));
+                }
+            }
+
+            PdfPCell fieldsCell = new PdfPCell(fieldsTable);
+            fieldsCell.setBorder(Rectangle.NO_BORDER);
+            fieldsCell.setPadding(5);
+            mainTable.addCell(fieldsCell);
+
+            document.add(scaleCentreTableAsImage(label, writer, mainTable));
+        }
     }
 
     /**
@@ -400,8 +559,16 @@ public class BarcodeLabelMaker {
 
         Barcode128 barcode = new Barcode128();
         barcode.setCodeType(Barcode.CODE128);
-        barcode.setCode(label.getCode());
-        barcode.setAltText(label.getCodeLabel());
+        String code = label.getCode();
+        if (code == null || code.trim().isEmpty()) {
+            code = ""; // Use empty string if code is null
+        }
+        barcode.setCode(code);
+        String codeLabel = label.getCodeLabel();
+        if (codeLabel == null) {
+            codeLabel = code;
+        }
+        barcode.setAltText(codeLabel);
         // shrink bar code height inversely with number of text rows
         barcode.setBarHeight((10 - (label.getNumTextRowsBefore() + label.getNumTextRowsAfter())) * 30 / 10);
         PdfPCell cell = new PdfPCell(barcode.createImageWithBarcode(writer.getDirectContent(), null, null), true);
@@ -427,7 +594,11 @@ public class BarcodeLabelMaker {
             throws DocumentException, IOException {
         Barcode128 barcode = new Barcode128();
         barcode.setCodeType(Barcode.CODE128);
-        barcode.setCode(label.getCode());
+        String code = label.getCode();
+        if (code == null || code.trim().isEmpty()) {
+            code = ""; // Use empty string if code is null
+        }
+        barcode.setCode(code);
         barcode.setFont(null);
         // shrink bar code height inversely with number of text rows
         barcode.setBarHeight((10 - (label.getNumTextRowsBefore() + label.getNumTextRowsAfter())) * 30 / 10);
@@ -502,6 +673,64 @@ public class BarcodeLabelMaker {
             return null;
         } else {
             return patient;
+        }
+    }
+
+    private PdfPCell createQRCode(Label label, PdfWriter writer, int colspan) throws DocumentException, IOException {
+        try {
+            // Increased base size for QR code
+            int qrSize = 1000; // Further increased for higher quality
+
+            String code = label.getCode();
+            if (code == null || code.trim().isEmpty()) {
+                code = ""; // Use empty string if code is null
+            }
+
+            QRCodeWriter qrCodeWriter = new QRCodeWriter();
+            BitMatrix bitMatrix = qrCodeWriter.encode(code, BarcodeFormat.QR_CODE, qrSize, qrSize);
+
+            BufferedImage qrImage = new BufferedImage(qrSize, qrSize, BufferedImage.TYPE_INT_RGB);
+            Graphics2D graphics = qrImage.createGraphics();
+            graphics.setColor(java.awt.Color.WHITE);
+            graphics.fillRect(0, 0, qrSize, qrSize);
+            graphics.setColor(java.awt.Color.BLACK);
+
+            for (int x = 0; x < qrSize; x++) {
+                for (int y = 0; y < qrSize; y++) {
+                    if (bitMatrix.get(x, y)) {
+                        graphics.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(qrImage, "png", baos);
+            Image qrCodeImage = Image.getInstance(baos.toByteArray());
+
+            // Adjust cell to take up more space with minimal margins
+            float availableWidth = (label.pdfWidth * 0.4f) - 4; // Reduced margin from 20 to 4
+            float availableHeight = label.pdfHeight - 4; // Reduced margin from 20 to 4
+
+            // Scale QR code to fill more space
+            qrCodeImage.scaleToFit(availableWidth, availableHeight);
+
+            PdfPCell cell = new PdfPCell(qrCodeImage, true);
+            cell.setBorder(Rectangle.NO_BORDER);
+            cell.setColspan(colspan);
+            cell.setPadding(1); // Reduced padding from 5 to 2
+            cell.setVerticalAlignment(PdfPCell.ALIGN_MIDDLE);
+            cell.setHorizontalAlignment(PdfPCell.ALIGN_CENTER);
+
+            if (label.getCodeLabel() != null && !label.getCodeLabel().isEmpty()) {
+                Paragraph textPara = new Paragraph(label.getCodeLabel(), label.getValueFont());
+                cell.addElement(textPara);
+            }
+
+            return cell;
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            throw new DocumentException("Failed to create QR code: " + e.getMessage());
         }
     }
 

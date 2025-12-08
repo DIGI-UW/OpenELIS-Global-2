@@ -22,7 +22,8 @@
             <column name="SAMPLE_ID" precision="10" scale="0" />
         </many-to-one>
         <many-to-one name="qaEvent"
-            class="org.openelisglobal.qaevent.valueholder.QaEvent" fetch="select" lazy="false">
+            class="org.openelisglobal.qaevent.valueholder.QaEvent" fetch="select"
+            lazy="false">
             <column name="QA_EVENT_ID" precision="10" scale="0" />
         </many-to-one>
         <many-to-one name="sampleItem"

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -100,6 +101,7 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
         dictionary.setDictEntry(form.getNameEnglish());
         dictionary.setLocalAbbreviation(form.getNameEnglish());
         dictionary.setSysUserId(currentUserId);
+        dictionary.setLoincCode(form.getLoincCode() != null ? form.getLoincCode() : "");
         dictionary.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("Test Result"));
 
         Localization localization = new Localization();
@@ -115,9 +117,17 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
 
         JSONParser parser = new JSONParser();
         try {
-            JSONObject obj = (JSONObject) parser.parse(s);
-            String testsStr = (String) obj.get("tests");
-            JSONArray tests = (JSONArray) parser.parse(testsStr);
+            Object parsed = parser.parse(s);
+            JSONArray tests;
+            if (parsed instanceof JSONArray) {
+                tests = (JSONArray) parsed;
+            } else if (parsed instanceof JSONObject) {
+                JSONObject obj = (JSONObject) parsed;
+                String testsStr = (String) obj.get("tests");
+                tests = (JSONArray) parser.parse(testsStr);
+            } else {
+                throw new IllegalArgumentException("Invalid testSelectListJson format");
+            }
             for (int j = 0; j < tests.size(); j++) {
                 JSONObject testObject = (JSONObject) tests.get(j);
 
@@ -132,11 +142,15 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
                         Map<String, Object> filter = new HashMap<>();
                         filter.put("test.id", testId);
                         filter.put("value", object.get("id"));
-                        TestResult testResult = resultService.getMatch(filter).get(); // get((String) object.get("id"));
+                        Optional<TestResult> testResult = resultService.getMatch(filter); // get((String)
+                                                                                          // object.get("id"));
                         long order = (Long) object.get("order");
-                        testResult.setSortOrder(String.valueOf(10 * order));
-                        testResult.setSysUserId(currentUserId);
-                        resultService.save(testResult);
+                        if (testResult.isPresent()) {
+                            testResult.get().setSortOrder(String.valueOf(10 * order));
+                            testResult.get().setSysUserId(currentUserId);
+                            resultService.save(testResult.get());
+                        }
+
                     } else {
                         TestResult testResult = new TestResult();
                         testResult.setIsQuantifiable((Boolean) object.get("qualifiable"));

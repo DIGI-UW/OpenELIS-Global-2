@@ -264,7 +264,7 @@ function TestNotificationConfigEdit() {
           <br />
           {testNotificationConfigEditDataPost?.config && (
             <Grid fullWidth={true}>
-              <Column lg={4} md={2} sm={2}>
+              <Column lg={4} md={4} sm={2}>
                 <Checkbox
                   id="patientEmail"
                   labelText={
@@ -277,7 +277,7 @@ function TestNotificationConfigEdit() {
                   onChange={handleCheckboxChange}
                 />
               </Column>
-              <Column lg={4} md={2} sm={2}>
+              <Column lg={4} md={4} sm={2}>
                 <Checkbox
                   id="patientSMS"
                   labelText={
@@ -290,7 +290,7 @@ function TestNotificationConfigEdit() {
                   onChange={handleCheckboxChange}
                 />
               </Column>
-              <Column lg={4} md={2} sm={2}>
+              <Column lg={4} md={4} sm={2}>
                 <Checkbox
                   id="providerSMS"
                   labelText={
@@ -303,7 +303,7 @@ function TestNotificationConfigEdit() {
                   onChange={handleCheckboxChange}
                 />
               </Column>
-              <Column lg={4} md={2} sm={2}>
+              <Column lg={4} md={4} sm={2}>
                 <Checkbox
                   // key={section.elementID}
                   // id={section.elementID}
@@ -378,7 +378,7 @@ function TestNotificationConfigEdit() {
           <br />
           <div>
             <Grid fullWidth={true}>
-              <Column lg={14} md={6} sm={2}>
+              <Column lg={14} md={8} sm={4}>
                 <Section>
                   <Section>
                     <Section>
@@ -389,7 +389,7 @@ function TestNotificationConfigEdit() {
                   </Section>
                 </Section>
               </Column>
-              <Column lg={2} md={2} sm={2}>
+              <Column lg={2} md={8} sm={4}>
                 <Button
                   onClick={() => {
                     setSysDefaultMsg(!sysDefaultMsg);
@@ -551,7 +551,7 @@ function TestNotificationConfigEdit() {
           <br />
           <div>
             <Grid fullWidth={true}>
-              <Column lg={14} md={6} sm={2}>
+              <Column lg={14} md={8} sm={4}>
                 <Section>
                   <Section>
                     <Section>
@@ -565,44 +565,44 @@ function TestNotificationConfigEdit() {
             </Grid>
             <br />
             <Grid fullWidth={true}>
-              <Column lg={4} md={4} sm={2}>
+              <Column lg={4} md={8} sm={4}>
                 <Button
                   onClick={() => {
                     setIndMsg("0");
                   }}
                   kind="tertiary"
                 >
-                  <FormattedMessage id="testnotification.patient.email" />
+                  <FormattedMessage id="testnotification.provider.email" />
                 </Button>
               </Column>{" "}
-              <Column lg={4} md={4} sm={2}>
+              <Column lg={4} md={8} sm={4}>
                 <Button
                   onClick={() => {
                     setIndMsg("1");
                   }}
                   kind="tertiary"
                 >
-                  <FormattedMessage id="testnotification.patient.sms" />
+                  <FormattedMessage id="testnotification.provider.sms" />
                 </Button>
               </Column>{" "}
-              <Column lg={4} md={4} sm={2}>
+              <Column lg={4} md={8} sm={4}>
                 <Button
                   onClick={() => {
                     setIndMsg("2");
                   }}
                   kind="tertiary"
                 >
-                  <FormattedMessage id="testnotification.provider.email" />
+                  <FormattedMessage id="testnotification.patient.email" />
                 </Button>
               </Column>{" "}
-              <Column lg={4} md={4} sm={2}>
+              <Column lg={4} md={8} sm={4}>
                 <Button
                   onClick={() => {
                     setIndMsg("3");
                   }}
                   kind="tertiary"
                 >
-                  <FormattedMessage id="testnotification.provider.sms" />
+                  <FormattedMessage id="testnotification.patient.sms" />
                 </Button>
               </Column>
             </Grid>

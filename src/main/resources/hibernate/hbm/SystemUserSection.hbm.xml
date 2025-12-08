@@ -41,10 +41,10 @@
             <column name="TEST_SECTION_ID" precision="10" scale="0" />
         </many-to-one>
     </class>
-<!-- 	<query name="systemusersection.getNext"> -->
-<!-- 		from SystemUserSection s -->
-<!-- 	</query> -->
-<!-- 	<query name="systemusersection.getPrevious"> -->
-<!-- 		from SystemUserSection s -->
-<!-- 	</query> -->
+    <!-- <query name="systemusersection.getNext"> -->
+    <!-- from SystemUserSection s -->
+    <!-- </query> -->
+    <!-- <query name="systemusersection.getPrevious"> -->
+    <!-- from SystemUserSection s -->
+    <!-- </query> -->
 </hibernate-mapping>

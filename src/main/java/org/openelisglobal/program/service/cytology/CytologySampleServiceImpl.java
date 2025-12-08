@@ -1,11 +1,11 @@
 package org.openelisglobal.program.service.cytology;
 
+import jakarta.transaction.Transactional;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
-import javax.transaction.Transactional;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -113,6 +113,7 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
     public void assignCytoPathologist(Integer cytologySampleId, SystemUser systemUser) {
         CytologySample cytologySample = get(cytologySampleId);
         cytologySample.setCytoPathologist(systemUser);
+        update(cytologySample);
     }
 
     @Override
@@ -146,9 +147,10 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
         }
 
         cytologySample.getReports().removeAll(cytologySample.getReports());
-        if (form.getReports() != null)
+        if (form.getReports() != null) {
             form.getReports().stream().forEach(e -> e.setId(null));
-        cytologySample.getReports().addAll(form.getReports());
+            cytologySample.getReports().addAll(form.getReports());
+        }
 
         if (form.getDiagnosis() != null) {
             cytologySample.setDiagnosis(form.getDiagnosis());

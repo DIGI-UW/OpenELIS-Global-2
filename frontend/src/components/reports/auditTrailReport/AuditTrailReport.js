@@ -56,7 +56,7 @@ const AuditTrailReport = ({ id }) => {
       "/rest/AuditTrailReport?accessionNumber=" + labNo,
       (data) => {
         if (!data.log) {
-          setIsLabNoError("labe.audittrail.labNo.invalidaccessionnumber");
+          setIsLabNoError("label.audittrail.labNo.invalidaccessionnumber");
           setData(null);
           setAuditTrailItems([]);
           setIsLoading(false);
@@ -117,7 +117,9 @@ const AuditTrailReport = ({ id }) => {
                 defaultMessage: "Lab No",
               })}
               value={labNo}
-              onChange={(event, rowValue) => setLabNo(rowValue)}
+              onChange={(event, rowVal) =>
+                setLabNo(rowVal ? rowVal : event?.target?.value)
+              }
               invalid={
                 isLabNoError
                   ? intl.formatMessage({

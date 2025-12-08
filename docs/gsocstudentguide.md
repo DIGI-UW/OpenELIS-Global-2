@@ -26,8 +26,8 @@ and also follow our Guidelines will be Selected
     [Developer](https://docs.openelis-global.org/en/latest/dev_setup/)
     Instructions
 1.  Review project [ideas](./gsoc.md) & ask questions
-1.  Work on [Introductory Issues](https://github.com/orgs/I-TECH-UW/projects/6)
-    to get Familiar with the Project
+1.  Work on [Introductory Issues](https://github.com/orgs/DIGI-UW/projects/6) to
+    get Familiar with the Project
 
 ## Proposal Template
 
@@ -44,7 +44,7 @@ and also follow our Guidelines will be Selected
    Updates weekly
 1. Contact your mentor immediately. Make a plan to communicate with them
    regularly.
-1. Review any [Issues ](https://github.com/orgs/I-TECH-UW/projects/3) related to
+1. Review any [Issues ](https://github.com/orgs/DIGI-UW/projects/3) related to
    your project
 1. Prepare a detailed project plan together with your mentor.
 

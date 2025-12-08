@@ -4,7 +4,7 @@ class BatchOrderEntry {
   }
 
   checkNextButtonDisabled() {
-    cy.get(":nth-child(12) > .cds--btn").should("be.disabled");
+    cy.get("[data-testid='next-button-BatchOrderEntry']").should("be.disabled");
   }
 
   selectForm(formTypeRoutine) {
@@ -36,7 +36,7 @@ class BatchOrderEntry {
   }
 
   checkNextLabel() {
-    return cy.get(":nth-child(8) > .cds--btn");
+    return cy.get("[data-testid='next-button-BatchOrderEntry']");
   }
 
   //clickSavePatientButton() {
@@ -44,7 +44,7 @@ class BatchOrderEntry {
   // }
 
   clickGenerateButton() {
-    cy.get(":nth-child(2) > .cds--link").click();
+    cy.get("[data-testid='generate-barcode-btn-BatchOrderEntry']").click();
   }
 
   selectMethod(method) {
@@ -60,15 +60,19 @@ class BatchOrderEntry {
   }
 
   enterSiteName(siteName) {
-    cy.get("#siteName").type(siteName);
-    cy.get(".suggestion-active").should("be.visible").click();
+    cy.get("#siteName").should("be.visible").clear().type(siteName, {
+      delay: 0,
+    });
+    cy.get('[data-cy="auto-suggestion"]', { timeout: 15000 })
+      .should("exist")
+      .first()
+      .click({ force: true });
   }
 
   typeLabNumber(labNumber) {
-    cy.wait(10000);
-    cy.get('[placeholder="Enter Lab Number"]')
-      .should("be.visible")
-      .type(labNumber);
+    cy.wait(200);
+    cy.get("#labNo").should("be.visible");
+    cy.get("#labNo").type(labNumber);
   }
 
   uniqueHealthIDNum(healthID) {
@@ -103,7 +107,7 @@ class BatchOrderEntry {
     cy.contains("span", "Female").click();
   }
   checkNextButtonEnabled() {
-    cy.contains("button", "Next").wait(10000).click();
+    cy.get("[data-testid='next-button-BatchOrderEntry']").wait(500).click();
   }
 
   selectDNAPCRTest() {
@@ -119,19 +123,24 @@ class BatchOrderEntry {
   }
 
   clickNewPatientButton() {
-    cy.contains("button", "New Patient").click();
+    cy.get('[data-cy="newPatientTabButton"]', { timeout: 15000 })
+      .should("be.visible")
+      .click();
   }
 
   clickSearchPatientButton() {
-    cy.contains("button", "Search for Patient").click();
+    cy.get('[data-cy="searchPatientTabButton"]', { timeout: 15000 })
+      .should("be.visible")
+      .click();
   }
 
   localSearchButton() {
     cy.get("#local_search").click();
+    cy.get('[data-cy="radioButton"]', { timeout: 10000 }).should("exist");
   }
 
   checkPatientRadio() {
-    cy.get("#2").check({ force: true });
+    cy.get('[data-cy="radioButton"]').first().click({ force: true });
   }
 
   visitBatchOrderEntryPage() {
@@ -139,15 +148,15 @@ class BatchOrderEntry {
   }
 
   clickGenerateAndSaveBarcode() {
-    cy.get(".cds--link > p").click();
+    cy.get("[data-testid='generate-barcode-link-BatchOrderEntry']").click();
   }
 
   saveOrder() {
-    cy.get(":nth-child(6) > .cds--btn").click();
+    cy.get("[data-testid='generate-barcode-btn-BatchOrderEntry']").click();
   }
 
   clickFinishButton() {
-    cy.contains("button", "Finish").click();
+    cy.get("[data-cy='finishButton']").click();
   }
 }
 

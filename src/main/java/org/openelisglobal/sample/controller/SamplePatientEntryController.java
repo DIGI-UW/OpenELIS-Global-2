@@ -1,13 +1,13 @@
 package org.openelisglobal.sample.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Pattern;
 import java.lang.reflect.InvocationTargetException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.constraints.Pattern;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
@@ -386,6 +386,16 @@ public class SamplePatientEntryController extends BaseSampleEntryController {
                     if (organization != null) {
                         form.getSampleOrderItems().setReferringSiteName(organization.getOrganizationName());
                         form.getSampleOrderItems().setReferringSiteId(organization.getId());
+                    }
+                }
+                if (!task.getOwner().isEmpty()) {
+                    if (StringUtils.isBlank(form.getSampleOrderItems().getProviderPersonId())) {
+                        Reference providerReference = task.getOwner();
+                        Provider provider = providerService.getProviderByFhirId(
+                                UUID.fromString(providerReference.getReferenceElement().getIdPart()));
+                        if (provider != null) {
+                            form.getSampleOrderItems().setProviderPersonId(provider.getPerson().getId());
+                        }
                     }
                 }
             }

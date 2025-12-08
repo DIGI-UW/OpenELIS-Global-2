@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <barcode_label_info id="1" code="ABC123"
+        numprinted="100" type="Standard" lastupdated="2023-04-01 12:00:00" />
+    <barcode_label_info id="2" code="XYZ456"
+        numprinted="150" type="Custom" lastupdated="2023-04-02 14:00:00" />
+    <barcode_label_info id="3" code="LMN789"
+        numprinted="200" type="Standard" lastupdated="2023-04-03 16:00:00" />
+</dataset>

@@ -8,6 +8,7 @@ import org.openelisglobal.menu.service.MenuService;
 import org.openelisglobal.menu.util.MenuItem;
 import org.openelisglobal.menu.util.MenuUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,12 +21,12 @@ public class MenuController {
     @Autowired
     private MenuService menuService;
 
-    @GetMapping("/rest/menu")
+    @GetMapping(value = "/rest/menu", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<MenuItem> getMenuTree() {
         return MenuUtil.getMenuTree();
     }
 
-    @GetMapping("/rest/menu/{elementId}")
+    @GetMapping(value = "/rest/menu/{elementId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public Optional<MenuItem> getMenuTree(@PathVariable String elementId) {
         return findMenuItem(elementId, MenuUtil.getMenuTree());
     }

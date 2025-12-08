@@ -155,6 +155,13 @@ function ResultReportingConfiguration() {
     setSaveButton(false);
   };
 
+  const resetToDefault = () => {
+    setReportsShow(reportsResp.reports);
+    setReportsShowHourList(reportsResp.hourList);
+    setReportsShowMinList(reportsResp.minList);
+    setSaveButton(true);
+  };
+
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/ResultReportingConfiguration", fetchPrograms);
@@ -251,6 +258,7 @@ function ResultReportingConfiguration() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <Button
+                data-cy="saveButton"
                 disabled={saveButton}
                 onClick={handleSubmit}
                 type="button"
@@ -258,11 +266,8 @@ function ResultReportingConfiguration() {
                 <FormattedMessage id="label.button.save" />
               </Button>{" "}
               <Button
-                onClick={() =>
-                  window.location.assign(
-                    "/MasterListsPage#resultReportingConfiguration",
-                  )
-                }
+                data-cy="cancelButton"
+                onClick={resetToDefault}
                 kind="tertiary"
                 type="button"
               >

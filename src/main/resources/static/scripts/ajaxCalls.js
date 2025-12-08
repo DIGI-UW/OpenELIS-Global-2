@@ -32,7 +32,7 @@ function getProviderInfo( providerId, success, failure){
 		return;
 	}
 
-	new Ajax.Request('Provider/' + providerId,
+	new Ajax.Request('rest/Provider/raw/' + providerId,
 			{
 				method : 'get', 
 			    //indicator: 'throbbing',
@@ -53,7 +53,7 @@ function getProviderInfoByPersonId( personId, success, failure){
 		return;
 	}
 
-	new Ajax.Request('Provider/Person/' + personId,
+	new Ajax.Request('rest/Provider/Person/' + personId,
 			{
 				method : 'get', 
 			    //indicator: 'throbbing',

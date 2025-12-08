@@ -1,8 +1,8 @@
 package org.openelisglobal.program.service;
 
+import jakarta.transaction.Transactional;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import javax.transaction.Transactional;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
@@ -88,6 +88,7 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
         displayItem.setLastName(patient.getPerson().getLastName());
         displayItem.setLabNumber(immunohistochemistrySample.getSample().getAccessionNumber());
         displayItem.setImmunohistochemistrySampleId(immunohistochemistrySample.getId());
+        displayItem.setPatientPK(patient.getId());
         displayItem.setProgramQuestionnaire(fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)
                 .withId(immunohistochemistrySample.getProgram().getQuestionnaireUUID().toString()).execute());
         displayItem.setProgramQuestionnaireResponse(
@@ -100,7 +101,7 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
         if (StringUtils.isNotBlank(sampleItem.getReferringSiteDepartmentId())) {
             Organization org = organizationService.get(sampleItem.getReferringSiteDepartmentId());
             if (org != null) {
-                displayItem.setDepartment(org.getLocalizedName());
+                displayItem.setDepartment(org.getOrganizationName());
             }
         }
         displayItem.setRequester(sampleItem.getProviderLastName() + " " + sampleItem.getProviderFirstName());

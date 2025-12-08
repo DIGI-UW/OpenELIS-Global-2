@@ -1,5 +1,6 @@
 package org.openelisglobal.analysis.service;
 
+import jakarta.annotation.PostConstruct;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -7,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import javax.annotation.PostConstruct;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.dao.AnalysisDAO;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -713,11 +713,22 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     public List<Analysis> getPageAnalysisByStatusFromAccession(List<Integer> analysisStatusList,
             List<Integer> sampleStatusList, String accessionNumber) {
+        String originalAccessionNumber = accessionNumber;
         if (accessionNumber != null && accessionNumber.contains(".")) {
             accessionNumber = accessionNumber.substring(0, accessionNumber.indexOf('.'));
         }
-        return baseObjectDAO.getPageAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList,
-                accessionNumber);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
+                "getPageAnalysisByStatusFromAccession",
+                "Searching analyses for accessionNumber: " + accessionNumber + " (original: " + originalAccessionNumber
+                        + "), " + "analysisStatusList size: "
+                        + (analysisStatusList != null ? analysisStatusList.size() : 0) + ", "
+                        + "sampleStatusList size: " + (sampleStatusList != null ? sampleStatusList.size() : 0));
+        List<Analysis> results = baseObjectDAO.getPageAnalysisByStatusFromAccession(analysisStatusList,
+                sampleStatusList, accessionNumber);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
+                "getPageAnalysisByStatusFromAccession", "Found " + (results != null ? results.size() : 0)
+                        + " analyses for accessionNumber: " + accessionNumber);
+        return results;
     }
 
     @Override
@@ -776,5 +787,11 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     public String getMethodId(Analysis analysis) {
         return analysis == null ? "" : analysis.getMethod() == null ? "" : analysis.getMethod().getId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Analysis getAnalysisBySampleItemAndTest(String sampleItemId, String testId) {
+        return baseObjectDAO.getAnalysisBySampleItemAndTest(sampleItemId, testId);
     }
 }

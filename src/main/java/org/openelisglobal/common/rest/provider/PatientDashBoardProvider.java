@@ -1,6 +1,7 @@
 package org.openelisglobal.common.rest.provider;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -10,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Coding;
@@ -267,21 +267,24 @@ public class PatientDashBoardProvider {
                 orderBean.setLabNumber(sample.getAccessionNumber());
             }
 
-            IGenericClient fhirClient = fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());
-            ServiceRequest serviceRequest = fhirClient.read().resource(ServiceRequest.class)
-                    .withId(eOrder.getExternalId()).execute();
-
             Test test = null;
-            for (Coding coding : serviceRequest.getCode().getCoding()) {
-                if (coding.hasSystem()) {
-                    if (coding.getSystem().equalsIgnoreCase("http://loinc.org")) {
-                        List<Test> tests = testService.getActiveTestsByLoinc(coding.getCode());
-                        if (tests.size() != 0) {
-                            test = tests.get(0);
-                            break;
+            try {
+                IGenericClient fhirClient = fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());
+                ServiceRequest serviceRequest = fhirClient.read().resource(ServiceRequest.class)
+                        .withId(eOrder.getExternalId()).execute();
+                for (Coding coding : serviceRequest.getCode().getCoding()) {
+                    if (coding.hasSystem()) {
+                        if (coding.getSystem().equalsIgnoreCase("http://loinc.org")) {
+                            List<Test> tests = testService.getActiveTestsByLoinc(coding.getCode());
+                            if (tests.size() != 0) {
+                                test = tests.get(0);
+                                break;
+                            }
                         }
                     }
                 }
+            } catch (Exception e) {
+
             }
             if (test != null) {
                 orderBean.setTestName(test.getLocalizedTestName().getLocalizedValue());

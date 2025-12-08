@@ -2,12 +2,12 @@ package org.openelisglobal.dataexchange.order.controller;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Bundle;
@@ -181,7 +181,7 @@ public class StudyElectronicOrdersController extends BaseController {
             electronicOrders = electronicOrderService.searchForElectronicOrders(form);
             eOrderDisplayItems = convertToDisplayItem(electronicOrders, form.getUseAllInfo());
             form.setSearchFinished(true);
-            form.setEOrders(eOrderDisplayItems);
+            form.seteOrders(eOrderDisplayItems);
         }
 
         return findForward(FWD_SUCCESS, form);

@@ -1,5 +1,6 @@
 package org.openelisglobal.sample.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -8,7 +9,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -54,6 +54,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -112,7 +113,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
     @Autowired
     private UserService userService;
 
-    @GetMapping(value = "sample-edit", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public SampleEditForm showSampleEdit(HttpServletRequest request,
             @RequestParam(required = false) String accessionNumber, @RequestParam(required = false) String patientId)
@@ -187,7 +188,28 @@ public class SampleEditRestController extends BaseSampleEntryController {
         return form;
     }
 
-    @PostMapping(value = "sample-edit", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "patientByLabNumer", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Patient> getPatientByLabNumber(HttpServletRequest request,
+            @RequestParam(required = false) String accessionNumber) {
+        if (GenericValidator.isBlankOrNull(accessionNumber)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Sample sample = getSample(accessionNumber);
+        if (sample == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(patient);
+    }
+
+    @PostMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public void saveSampleEdit(HttpServletRequest request,
             @Validated(SampleEdit.class) @RequestBody SampleEditForm form, BindingResult result)

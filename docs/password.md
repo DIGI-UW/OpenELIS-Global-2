@@ -35,9 +35,9 @@ possible that an attacker compromised their old password.
 ## Run the Password Migration tool
 
 1. Download the
-   [Password Migration](https://github.com/I-TECH-UW/Password-Migrator) tool and
+   [Password Migration](https://github.com/DIGI-UW/Password-Migrator) tool and
    unpack it
-   1. `wget https://github.com/I-TECH-UW/Password-Migrator/archive/master.tar.gz`
+   1. `wget https://github.com/DIGI-UW/Password-Migrator/archive/master.tar.gz`
    1. `tar -xvzf master.tar.gz`
 1. Run the tool and follow instructions
    1. `python2 Password-Migrator-master/migrator/migrate.py`

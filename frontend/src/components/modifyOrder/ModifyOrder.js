@@ -21,22 +21,12 @@ import { FormattedMessage, useIntl } from "react-intl";
 import PatientHeader from "../common/PatientHeader";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import ModifyOrderEntryValidationSchema from "../formModel/validationSchema/ModifyOrderEntryValidationSchema";
+import { sampleObject } from "../addOrder/Index";
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "sample.label.search.Order", link: "/SampleEdit" },
 ];
 
-export let sampleObject = {
-  index: 0,
-  sampleRejected: false,
-  rejectionReason: "",
-  sampleTypeId: "",
-  sampleXML: null,
-  panels: [],
-  tests: [],
-  requestReferralEnabled: false,
-  referralItems: [],
-};
 const ModifyOrder = () => {
   const componentMounted = useRef(false);
 
@@ -54,20 +44,41 @@ const ModifyOrder = () => {
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [patientId, setPatientId] = useState("");
+  const [changed, setChanged] = useState({
+    "sampleOrderItems.providerFirstName": false,
+    "sampleOrderItems.providerLastName": false,
+    "sampleOrderItems.labNo": false,
+  });
 
   useEffect(() => {
     componentMounted.current = true;
-    let patientId = new URLSearchParams(window.location.search).get(
+    let patientIdParam = new URLSearchParams(window.location.search).get(
       "patientId",
     );
     let accessionNumber = new URLSearchParams(window.location.search).get(
       "accessionNumber",
     );
     accessionNumber = accessionNumber ? accessionNumber : "";
-    patientId = patientId ? patientId : "";
+    patientIdParam = patientIdParam ? patientIdParam : "";
+
+    // If searching by accession number and no patientId, fetch patient from accession number
+    if (!patientIdParam && accessionNumber) {
+      getFromOpenElisServer(
+        "/rest/patientByLabNumer?accessionNumber=" + accessionNumber,
+        (response) => {
+          if (componentMounted.current && response && response.id) {
+            setPatientId(response.id);
+          }
+        },
+      );
+    } else {
+      setPatientId(patientIdParam);
+    }
+
     getFromOpenElisServer(
-      "/rest/sample-edit?patientId=" +
-        patientId +
+      "/rest/SampleEdit?patientId=" +
+        patientIdParam +
         "&accessionNumber=" +
         accessionNumber,
       loadOrderValues,
@@ -89,7 +100,7 @@ const ModifyOrder = () => {
         setErrors(errors);
         console.error("Validation Errors:", errors.errors);
       });
-  }, [orderFormValues]);
+  }, [changed, orderFormValues]);
 
   const loadOrderValues = (data) => {
     if (componentMounted.current) {
@@ -143,7 +154,7 @@ const ModifyOrder = () => {
     orderFormValues.sampleOrderItems.testLocationCodeList = [];
     console.log(JSON.stringify(orderFormValues));
     postToOpenElisServer(
-      "/rest/sample-edit",
+      "/rest/SampleEdit",
       JSON.stringify(orderFormValues),
       handlePost,
     );
@@ -180,7 +191,15 @@ const ModifyOrder = () => {
                 return sampleItem.tests[i].id;
               })
               .join(",");
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''/>`;
+
+            // Extract storage location data if present
+            const storageLocation = sampleItem.sampleXML?.storageLocation;
+            const storageLocationId = storageLocation?.id || "";
+            const storageLocationType = storageLocation?.type || "";
+            const storagePositionCoordinate =
+              storageLocation?.positionCoordinate || "";
+
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' />`;
           }
           if (sampleItem.referralItems.length > 0) {
             const referredInstitutes = Object.keys(sampleItem.referralItems)
@@ -246,7 +265,7 @@ const ModifyOrder = () => {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
       <PatientHeader
-        id={orderFormValues?.nationalId}
+        id={patientId}
         patientName={orderFormValues?.patientName}
         gender={orderFormValues?.gender}
         dob={orderFormValues?.dob}
@@ -310,6 +329,8 @@ const ModifyOrder = () => {
                   samples={samples}
                   error={elementError}
                   isModifyOrder={true}
+                  changed={changed}
+                  setChanged={setChanged}
                 />
               )}
 
@@ -330,6 +351,7 @@ const ModifyOrder = () => {
 
                 {page < orderPageNumber && (
                   <Button
+                    data-cy="next-button"
                     kind="primary"
                     className="forwardButton"
                     onClick={() => navigateForward()}
@@ -340,6 +362,7 @@ const ModifyOrder = () => {
 
                 {page === orderPageNumber && (
                   <Button
+                    data-cy="submit-order"
                     kind="primary"
                     className="forwardButton"
                     onClick={handleSubmitOrderForm}

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Remove occupied column from storage_position table -->
+    <!-- Occupancy is now calculated dynamically from SampleStorageAssignment records -->
+    <changeSet id="storage-014-remove-occupied-column" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_position" columnName="occupied"/>
+        </preConditions>
+        <comment>Remove occupied column - occupancy now calculated from SampleStorageAssignment</comment>
+        <dropIndex indexName="idx_position_occupied" tableName="storage_position"/>
+        <dropColumn tableName="storage_position" columnName="occupied"/>
+        <rollback>
+            <addColumn tableName="storage_position">
+                <column name="occupied" type="BOOLEAN" defaultValueBoolean="false">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+            <createIndex indexName="idx_position_occupied" tableName="storage_position">
+                <column name="parent_rack_id"/>
+                <column name="occupied"/>
+            </createIndex>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -16,10 +16,10 @@
 
 package org.openelisglobal.common.services;
 
+import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import javax.annotation.PostConstruct;
 import org.openelisglobal.menu.service.MenuService;
 import org.openelisglobal.menu.util.MenuUtil;
 import org.openelisglobal.menu.valueholder.Menu;

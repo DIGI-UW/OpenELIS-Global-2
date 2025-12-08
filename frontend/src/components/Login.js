@@ -28,7 +28,30 @@ function Login(props) {
 
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
+  const [samlRedirectInitiated, setSamlRedirectInitiated] = useState(false);
   const firstInput = createRef();
+
+  // Auto-redirect to SAML if configured to bypass login page
+  useEffect(() => {
+    if (
+      configurationProperties?.useSaml === "true" &&
+      configurationProperties?.useSamlLoginPage === "false" &&
+      !samlRedirectInitiated &&
+      !userSessionDetails.authenticated
+    ) {
+      // Mark as initiated to prevent multiple redirects
+      setSamlRedirectInitiated(true);
+
+      // Use full-page redirect instead of popup to avoid popup blockers
+      // Add 'redirect=true' parameter to tell backend to redirect to dashboard after auth
+      window.location.href =
+        config.serverBaseUrl + "/LoginPage?useSAML=true&redirect=true";
+    }
+  }, [
+    configurationProperties,
+    samlRedirectInitiated,
+    userSessionDetails.authenticated,
+  ]);
 
   useEffect(() => {
     firstInput?.current?.focus();
@@ -53,7 +76,8 @@ function Login(props) {
   const loginMessage = () => {
     return (
       <>
-        <div>
+        <Column lg={6} md={0} sm={0} />
+        <Column lg={4} md={8} sm={4}>
           <picture>
             <img
               src={`images/openelis_logo_full.png`}
@@ -62,11 +86,13 @@ function Login(props) {
               height="56"
             />
           </picture>
-        </div>
-        <br></br>
-        <div>
+        </Column>
+        <Column lg={6} md={0} sm={0} />
+        <Column lg={6} md={0} sm={0} />
+        <Column lg={4} md={8} sm={4}>
           <FormattedMessage id="login.notice.message" />
-        </div>
+        </Column>
+        <Column lg={6} md={0} sm={0} />
       </>
     );
   };
@@ -152,116 +178,149 @@ function Login(props) {
 
   return (
     <>
-      <div className="loginPageContent">
+      <div data-cy="login-Page-Content" className="loginPageContent">
         {notificationVisible === true ? <AlertDialog /> : ""}
-        <Grid fullWidth={true}>
-          <Column lg={0} md={0} sm={4}>
-            {loginMessage()}
+        <Grid fullWidth={true}>{loginMessage()}</Grid>
+        <Grid fullWidth={false}>
+          <Column lg={16}>
+            <br />
+            <br />
           </Column>
-          <Column lg={4} md={4} sm={4}>
+          <Column lg={6} md={0} sm={0} />
+          <Column lg={4} md={8} sm={4}>
             <Section>
-              <Formik
-                initialValues={{
-                  username: "",
-                  password: "",
-                }}
-                onSubmit={(values) => {
-                  fetch(config.serverBaseUrl + "/LoginPage", {
-                    //includes the browser sessionId in the Header for Authentication on the backend server
-                    credentials: "include",
-                    method: "GET",
-                  })
-                    .then((response) => response.status)
-                    .then(() => {
-                      doLogin(values);
+              {samlRedirectInitiated ? (
+                <Stack gap={5}>
+                  <FormLabel>
+                    <Heading>
+                      <FormattedMessage id="login.title" />
+                    </Heading>
+                  </FormLabel>
+                  <div style={{ textAlign: "center", padding: "2rem" }}>
+                    <Loading
+                      description={props.intl.formatMessage({
+                        id: "login.redirecting.sso",
+                      })}
+                      withOverlay={false}
+                    />
+                    <p style={{ marginTop: "1rem" }}>
+                      <FormattedMessage id="login.redirecting.sso" />
+                    </p>
+                  </div>
+                </Stack>
+              ) : (
+                <Formik
+                  initialValues={{
+                    username: "",
+                    password: "",
+                  }}
+                  onSubmit={(values) => {
+                    doLogin(values);
+                    fetch(config.serverBaseUrl + "/LoginPage", {
+                      //includes the browser sessionId in the Header for Authentication on the backend server
+                      credentials: "include",
+                      method: "GET",
                     })
-                    .catch((error) => {
-                      console.error(error);
-                    });
-                }}
-              >
-                {({ isValid, handleChange, handleSubmit }) => (
-                  <Form onSubmit={handleSubmit} onChange={handleChange}>
-                    <Stack gap={5}>
-                      <FormLabel>
-                        <Heading>
-                          <FormattedMessage id="login.title" />
-                        </Heading>
-                      </FormLabel>
-                      {configurationProperties?.useFormLogin == "true" && (
-                        <>
-                          <TextInput
-                            id="loginName"
-                            invalidText={props.intl.formatMessage({
-                              id: "login.msg.username.missing",
-                            })}
-                            labelText={props.intl.formatMessage({
-                              id: "login.msg.username",
-                            })}
-                            hideLabel={true}
-                            placeholder={props.intl.formatMessage({
-                              id: "login.msg.username",
-                            })}
-                            autoComplete="off"
-                            ref={firstInput}
-                          />
-                          <TextInput.PasswordInput
-                            id="password"
-                            invalidText={props.intl.formatMessage({
-                              id: "login.msg.password.missing",
-                            })}
-                            labelText={props.intl.formatMessage({
-                              id: "login.msg.password",
-                            })}
-                            hideLabel={true}
-                            placeholder={props.intl.formatMessage({
-                              id: "login.msg.password",
-                            })}
-                          />
-                          <Button type="submit" disabled={!isValid}>
-                            <FormattedMessage id="label.button.login" />
-                            <Loading
-                              small={true}
-                              withOverlay={false}
-                              className={submitting ? "show" : "hidden"}
+                      .then((response) => response.status)
+                      .then(() => {
+                        doLogin(values);
+                      })
+                      .catch((error) => {
+                        console.error(error);
+                      });
+                  }}
+                >
+                  {({ isValid, handleChange, handleSubmit }) => (
+                    <Form onSubmit={handleSubmit} onChange={handleChange}>
+                      <Stack gap={5}>
+                        <FormLabel>
+                          <Heading>
+                            <FormattedMessage id="login.title" />
+                          </Heading>
+                        </FormLabel>
+                        {configurationProperties?.useFormLogin == "true" && (
+                          <>
+                            <TextInput
+                              id="loginName"
+                              invalidText={props.intl.formatMessage({
+                                id: "login.msg.username.missing",
+                              })}
+                              labelText={props.intl.formatMessage({
+                                id: "login.msg.username",
+                              })}
+                              hideLabel={true}
+                              placeholder={props.intl.formatMessage({
+                                id: "login.msg.username",
+                              })}
+                              autoComplete="off"
+                              ref={firstInput}
                             />
-                          </Button>
-                        </>
-                      )}
-                      {configurationProperties?.useSaml == "true" && (
-                        <Button
-                          type="button"
-                          renderIcon={HardwareSecurityModule}
-                          onClick={() => {
-                            const POPUP_HEIGHT = 700;
-                            const POPUP_WIDTH = 600;
-                            const top =
-                              window.outerHeight / 2 +
-                              window.screenY -
-                              POPUP_HEIGHT / 2;
-                            const left =
-                              window.outerWidth / 2 +
-                              window.screenX -
-                              POPUP_WIDTH / 2;
-                            window.open(
-                              config.serverBaseUrl + "/LoginPage?useSAML=true",
-                              "SAML Popup",
-                              `height=${POPUP_HEIGHT},width=${POPUP_WIDTH},top=${top},left=${left}`,
-                            );
-                          }}
-                        >
-                          <FormattedMessage id="label.button.login.sso" />
-                        </Button>
-                      )}
-                      {configurationProperties?.useOauth == "true" &&
-                        renderOauthButtons()}
-                    </Stack>
-                  </Form>
-                )}
-              </Formik>
+                            <TextInput.PasswordInput
+                              id="password"
+                              invalidText={props.intl.formatMessage({
+                                id: "login.msg.password.missing",
+                              })}
+                              labelText={props.intl.formatMessage({
+                                id: "login.msg.password",
+                              })}
+                              hideLabel={true}
+                              placeholder={props.intl.formatMessage({
+                                id: "login.msg.password",
+                              })}
+                            />
+                            <Stack orientation="horizontal">
+                              <Button
+                                type="submit"
+                                disabled={!isValid}
+                                data-cy="loginButton"
+                              >
+                                <FormattedMessage id="label.button.login" />
+                                <Loading
+                                  small={true}
+                                  withOverlay={false}
+                                  className={submitting ? "show" : "hidden"}
+                                />
+                              </Button>
+
+                              <Button
+                                data-cy="changePassword"
+                                type="button"
+                                onClick={() => {
+                                  window.location.href = "/ChangePasswordLogin";
+                                }}
+                              >
+                                <FormattedMessage id="label.button.changepassword" />
+                              </Button>
+                            </Stack>
+                          </>
+                        )}
+                        {configurationProperties?.useSaml == "true" &&
+                          configurationProperties?.useSamlLoginPage !==
+                            "false" && (
+                            <Button
+                              type="button"
+                              renderIcon={HardwareSecurityModule}
+                              onClick={() => {
+                                // Use full-page redirect instead of popup to avoid popup blockers
+                                window.location.href =
+                                  config.serverBaseUrl +
+                                  "/LoginPage?useSAML=true&redirect=true";
+                              }}
+                            >
+                              <FormattedMessage id="label.button.login.sso" />
+                            </Button>
+                          )}
+                        {configurationProperties?.useOauth == "true" &&
+                          renderOauthButtons()}
+                      </Stack>
+                    </Form>
+                  )}
+                </Formik>
+              )}
             </Section>
           </Column>
-          <Column lg={8} md={4} sm={0}>
+          <Column lg={6} md={0} sm={0} />
+          <Column lg={0} md={0} sm={0}>
             {loginMessage()}
           </Column>
         </Grid>

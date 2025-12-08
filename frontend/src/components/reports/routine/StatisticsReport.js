@@ -288,7 +288,11 @@ const StatisticsReport = () => {
             <br />
             <Section>
               <br />
-              <Button type="button" onClick={handleSubmit}>
+              <Button
+                data-cy="printableVersion"
+                type="button"
+                onClick={handleSubmit}
+              >
                 <FormattedMessage
                   id="label.button.generatePrintableVersion"
                   defaultMessage="Generate printable version"

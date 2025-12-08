@@ -35,6 +35,7 @@
         <property name="openInNewWindow" column="new_window"
             type="boolean" />
         <property name="isActive" column="is_active" type="boolean" />
-        <property name="hideInOldUI" column="hide_in_old_ui" type="boolean" />
+        <property name="hideInOldUI" column="hide_in_old_ui"
+            type="boolean" />
     </class>
 </hibernate-mapping>

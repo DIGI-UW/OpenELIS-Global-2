@@ -1,8 +1,8 @@
 package org.openelisglobal.notification.service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Optional;
-import javax.annotation.PostConstruct;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;

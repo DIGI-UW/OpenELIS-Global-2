@@ -1,11 +1,12 @@
 package org.openelisglobal.analyzerimport.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.action.beans.NamedAnalyzerTestMapping;
@@ -87,8 +88,18 @@ public class AnalyzerTestNameMenuRestController extends BaseMenuController<Named
             }
         }
 
+        String analyzerId = request.getParameter("analyzerId");
         List<NamedAnalyzerTestMapping> mappedTestNameList = new ArrayList<>();
-        List<String> analyzerList = AnalyzerTestNameCache.getInstance().getAnalyzerNames();
+        List<String> analyzerList = new ArrayList<>();
+        if (StringUtils.isNotBlank(analyzerId)) {
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer != null) {
+                analyzerList.add(analyzer.getName());
+            }
+        } else {
+            analyzerList = AnalyzerTestNameCache.getInstance().getAnalyzerNames();
+        }
+
         Analyzer analyzer = new Analyzer();
 
         for (String analyzerName : analyzerList) {
@@ -101,7 +112,7 @@ public class AnalyzerTestNameMenuRestController extends BaseMenuController<Named
             }
         }
 
-        setDisplayPageBounds(request, mappedTestNameList.size(), startingRecNo);
+        setDisplayPageBounds(request, mappedTestNameList.size(), startingRecNo, form);
 
         return mappedTestNameList.subList(Math.min(mappedTestNameList.size(), startingRecNo - 1),
                 Math.min(mappedTestNameList.size(), startingRecNo + getPageSize()));
@@ -125,8 +136,8 @@ public class AnalyzerTestNameMenuRestController extends BaseMenuController<Named
         return namedMappingList;
     }
 
-    private void setDisplayPageBounds(HttpServletRequest request, int listSize, int startingRecNo)
-            throws LIMSRuntimeException {
+    private void setDisplayPageBounds(HttpServletRequest request, int listSize, int startingRecNo,
+            AdminOptionMenuForm<NamedAnalyzerTestMapping> form) throws LIMSRuntimeException {
         request.setAttribute(MENU_TOTAL_RECORDS, String.valueOf(listSize));
         request.setAttribute(MENU_FROM_RECORD, String.valueOf(startingRecNo));
 
@@ -139,6 +150,9 @@ public class AnalyzerTestNameMenuRestController extends BaseMenuController<Named
 
         int endingRecNo = startingRecNo + numOfRecs;
         request.setAttribute(MENU_TO_RECORD, String.valueOf(endingRecNo));
+        form.setToRecordCount(String.valueOf(endingRecNo));
+        form.setFromRecordCount(String.valueOf(startingRecNo));
+        form.setTotalRecordCount(String.valueOf(listSize));
     }
 
     @Override

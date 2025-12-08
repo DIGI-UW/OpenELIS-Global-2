@@ -1,0 +1,20 @@
+testName,sampleType
+Complete Blood Count,Whole Blood
+Hemoglobin,Whole Blood
+Hemoglobin,Serum
+Glucose,Serum
+Glucose,Plasma
+Glucose,Whole Blood
+Urinalysis,Urine
+HIV Rapid Test,Whole Blood
+HIV Rapid Test,Serum
+HIV Rapid Test,Plasma
+Malaria Rapid Test,Whole Blood
+Hepatitis B Surface Antigen,Serum
+Hepatitis B Surface Antigen,Plasma
+Liver Function Tests,Serum
+Renal Function Tests,Serum
+Renal Function Tests,Plasma
+Lipid Profile,Serum
+Lipid Profile,Plasma
+Saliva Profile,Saliva

@@ -1,0 +1,49 @@
+on:
+  workflow_dispatch:  # Allow manual trigger
+  schedule:
+    # Runs daily at 8:30 PM UTC
+    - cron: '30 20 * * *'
+
+name: "Scheduled Transifex Update"
+
+jobs:
+  pull-translations-from-transifex:
+    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
+    name: pull-translations-from-transifex
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: 🌐 Push source file using transifex client
+        uses: transifex/cli-action@v2
+        with:
+          token: ${{ secrets.TRANSIFEX_TOKEN }}
+          args: pull --force --all
+      - name: 🔄 Create PR if necessary
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: 'Update OpenELIS translations from Transifex'
+          title: 'Update OpenELIS translations from Transifex'
+          body: |
+            # OpenELIS Translation Updates
+
+            This PR contains updates to the translations pulled from Transifex
+
+            > This PR was automatically generated and will be automatically merged if checks pass.
+          branch: 'chore/update-transifex'
+          author: 'OpenELIS Bot <ci@uwdigi.org>'
+          token: ${{ secrets.GH_BOT_TOKEN }}
+      - name: ✅ Auto approve PR
+        if: steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated'
+        run: gh pr review --approve "${{ steps.cpr.outputs.pull-request-number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 🔀 Automerge PR
+        if: steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated'
+        run: gh pr merge --auto --squash "${{ steps.cpr.outputs.pull-request-number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GH_BOT_TOKEN }}

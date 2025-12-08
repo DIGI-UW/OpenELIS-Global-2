@@ -1,10 +1,11 @@
 package org.openelisglobal.organization.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Pattern;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.constraints.Pattern;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.controller.BaseMenuController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
@@ -64,7 +65,12 @@ public class OrganizationMenuRestController extends BaseMenuController<Organizat
             request.setAttribute("menuDefinition", "OrganizationMenuDefinition");
             addFlashMsgsToRequest(request);
             // return findForward(forward, form);
-            return ResponseEntity.ok(findForward(forward, form));
+            List<Organization> updatedOrgs = form.getMenuList().stream().peek(org -> {
+                OrganizationRestController.handleSelfReferencingParentOrg(org);
+            }).collect(Collectors.toList());
+
+            form.setMenuList(updatedOrgs);
+            return ResponseEntity.ok(form);
         }
     }
 
@@ -159,7 +165,7 @@ public class OrganizationMenuRestController extends BaseMenuController<Organizat
     // gnr: Deactivate not Delete
     @PostMapping(value = "/DeleteOrganization")
     public ResponseEntity<Object> showDeleteOrganization(HttpServletRequest request,
-            @RequestParam(value = ID, required = false) @Pattern(regexp = "[a-zA-Z0-9 -]*") String id,
+            @RequestParam(value = ID, required = false) @Pattern(regexp = "[a-zA-Z0-9, -]*") String id,
             @RequestBody OrganizationMenuForm form, BindingResult result) throws LIMSRuntimeException {
         if (result.hasErrors()) {
             // redirectAttributes.addFlashAttribute(Constants.REQUEST_ERRORS, result);

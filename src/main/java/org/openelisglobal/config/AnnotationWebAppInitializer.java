@@ -1,8 +1,8 @@
 package org.openelisglobal.config;
 
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRegistration;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRegistration;
 import org.openelisglobal.common.servlet.barcode.LabelMakerServlet;
 import org.openelisglobal.common.servlet.query.AjaxQueryXMLServlet;
 import org.openelisglobal.common.servlet.reports.ReportsServlet;
@@ -36,6 +36,12 @@ public class AnnotationWebAppInitializer implements WebApplicationInitializer {
                 new DispatcherServlet(rootContext));
         dispatcher.setLoadOnStartup(++startupOrder);
         dispatcher.addMapping("/");
+        // Enable Multipart Support
+        dispatcher.setMultipartConfig(new jakarta.servlet.MultipartConfigElement(null, // Location
+                10485760, // Max file size (10MB)
+                20971520, // Max request size (20MB)
+                0 // File size threshold
+        ));
 
         // converted to controller
         // ServletRegistration.Dynamic logoUploadServlet =
@@ -57,15 +63,17 @@ public class AnnotationWebAppInitializer implements WebApplicationInitializer {
         ajaxQueryXMLServlet.setLoadOnStartup(++startupOrder);
         ajaxQueryXMLServlet.addMapping("/ajaxQueryXML");
 
-        ServletRegistration.Dynamic ajaxAutocompleteXMLServlet = servletContext.addServlet("ajaxAutocompleteXML",
-                org.openelisglobal.common.servlet.autocomplete.AjaxXMLServlet.class);
-        ajaxAutocompleteXMLServlet.setLoadOnStartup(++startupOrder);
-        ajaxAutocompleteXMLServlet.addMapping("/ajaxAutocompleteXML");
+        // ServletRegistration.Dynamic ajaxAutocompleteXMLServlet =
+        // servletContext.addServlet("ajaxAutocompleteXML",
+        // org.openelisglobal.common.servlet.autocomplete.AjaxXMLServlet.class);
+        // ajaxAutocompleteXMLServlet.setLoadOnStartup(++startupOrder);
+        // ajaxAutocompleteXMLServlet.addMapping("/ajaxAutocompleteXML");
 
-        ServletRegistration.Dynamic ajaxSelectDropDownXMLServlet = servletContext.addServlet("ajaxSelectDropDownXML",
-                org.openelisglobal.common.servlet.selectdropdown.AjaxXMLServlet.class);
-        ajaxSelectDropDownXMLServlet.setLoadOnStartup(++startupOrder);
-        ajaxSelectDropDownXMLServlet.addMapping("/ajaxSelectDropDownXML");
+        // ServletRegistration.Dynamic ajaxSelectDropDownXMLServlet =
+        // servletContext.addServlet("ajaxSelectDropDownXML",
+        // org.openelisglobal.common.servlet.selectdropdown.AjaxXMLServlet.class);
+        // ajaxSelectDropDownXMLServlet.setLoadOnStartup(++startupOrder);
+        // ajaxSelectDropDownXMLServlet.addMapping("/ajaxSelectDropDownXML");
 
         ServletRegistration.Dynamic reportsServlet = servletContext.addServlet("reportsServlet", ReportsServlet.class);
         reportsServlet.setLoadOnStartup(++startupOrder);

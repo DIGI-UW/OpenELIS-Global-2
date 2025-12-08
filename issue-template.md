@@ -1,8 +1,8 @@
 # Reporting an Issue with OpenELIS Global
 
 If you encounter an issue with OpenELIS Global, please make a
-[new issue](https://github.com/I-TECH-UW/OpenELIS-Global-2/issues/new) and
-include the following information:
+[new issue](https://github.com/DIGI-UW/OpenELIS-Global-2/issues/new) and include
+the following information:
 
 1. Note the section, tab, or page of OpenELIS that is affected by your issue.
    For example, _Patient -> Add/Edit Patient page -> Search Patient Form_

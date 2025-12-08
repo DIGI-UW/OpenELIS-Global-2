@@ -1,14 +1,14 @@
 site_name: OpenELIS Global Documentation
 site_description: "Technical documentation for the OpenELIS Global2"
-site_author: "I‐TECH (DIGI) - University Of Washington"
+site_author: "DIGI - University Of Washington"
 site_url: "https://openelis-global.org/"
 
 # Repository
 repo_name: "OpenELIS-Global-2"
-repo_url: "https://github.com/I-TECH-UW/OpenELIS-Global-2"
+repo_url: "https://github.com/DIGI-UW/OpenELIS-Global-2"
 
 # Copyright
-copyright: "Copyright &copy; 2023 I‐TECH (DIGI) - University Of Washington"
+copyright: "Copyright &copy; 2023 DIGI - University Of Washington"
 nav:
     - Home: index.md
     - About: about.md

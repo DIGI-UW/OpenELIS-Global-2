@@ -25,7 +25,7 @@ public class SampleTracking extends BaseObject<String> implements Serializable {
 
     private SampleTracking sampleTrackingId;
 
-    private String accNum;
+    private String id;
 
     private String patientId;
 
@@ -78,8 +78,8 @@ public class SampleTracking extends BaseObject<String> implements Serializable {
         return sampleTrackingId;
     }
 
-    public String getAccNum() {
-        return accNum;
+    public String getId() {
+        return id;
     }
 
     public String getPatientId() {
@@ -135,8 +135,8 @@ public class SampleTracking extends BaseObject<String> implements Serializable {
         return dateofBirth;
     }
 
-    public void setAccNum(String accNum) {
-        this.accNum = accNum;
+    public void setId(String id) {
+        this.id = id;
     }
 
     public void setPatientId(String patientId) {
@@ -192,13 +192,13 @@ public class SampleTracking extends BaseObject<String> implements Serializable {
         this.dateofBirth = dateofBirth;
     }
 
-    @Override
-    public String getId() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setId(String id) {
-        throw new UnsupportedOperationException();
-    }
+//    @Override
+//    public String getId() {
+//        throw new UnsupportedOperationException();
+//    }
+//
+//    @Override
+//    public void setId(String id) {
+//        throw new UnsupportedOperationException();
+//    }
 }

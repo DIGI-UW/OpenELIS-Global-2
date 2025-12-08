@@ -119,7 +119,7 @@ const NonConformityNotification = (props) => {
         <Grid fullWidth={true}>
           <Column lg={16} md={8} sm={4}>
             <Section>
-              <Button type="submit">
+              <Button data-cy="printableVersion" type="submit">
                 <FormattedMessage id="label.button.generatePrintableVersion" />
               </Button>
             </Section>

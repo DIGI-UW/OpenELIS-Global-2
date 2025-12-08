@@ -98,7 +98,7 @@ public class MethodDAOImpl extends BaseDAOImpl<Method, String> implements Method
 
             // not case sensitive hemolysis and Hemolysis are considered
             // duplicates
-            String sql = "from Method t where trim(lower(t.methodName)) = :param and t.id != :param2";
+            String sql = "from Method t where trim(lower(t.methodName)) = :param AND t.id != CAST(:param2 AS integer)";
             Query<Method> query = entityManager.unwrap(Session.class).createQuery(sql, Method.class);
             query.setParameter("param", method.getMethodName().toLowerCase().trim());
 

@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+    * Version 1.1 (the "License"); you may not use this file except in * compliance
+    with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+    * * Software distributed under the License is distributed on an "AS IS" *
+    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+    License for the specific language governing rights and limitations under
+    * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+    ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+
+<dataset>
+    <!-- Panel table -->
+    <localization id="1" description="Test Description 1"
+        english="TB" french="TB" />
+    <panel id="1" name="Test Panel"
+        description="This is a test panel." is_active="Y"
+        name_localization_id="1" loinc="12345" />
+    <panel id="2" name="Duplicate Panel"
+        description="Duplicate description" is_active="N"
+        name_localization_id="1" loinc="67890" />
+    <panel id="3" name="New Panel Name"
+        description="A test panel from dataset." is_active="Y"
+        name_localization_id="1" loinc="11111" />
+    <panel id="4" name="Unique Panel"
+        description="This panel has a unique name." is_active="Y"
+        name_localization_id="1" loinc="54321" />
+    <!-- Dataset Panel 1 -->
+    <panel id="5" name="Dataset Panel 1"
+        description="This is the first dataset panel." is_active="Y"
+        name_localization_id="1" loinc="98765" />
+    <!-- Add the Duplicate Panel 1 -->
+    <panel id="6" name="Duplicate Panel 1"
+        description="This is a duplicate panel." is_active="Y"
+        name_localization_id="1" loinc="11223" />
+</dataset>

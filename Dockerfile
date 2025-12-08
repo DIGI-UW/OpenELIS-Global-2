@@ -1,7 +1,7 @@
 ##
 # Build Stage
 #
-FROM maven:3-jdk-11 AS build
+FROM maven:3-eclipse-temurin-21 AS build
 
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
@@ -20,17 +20,17 @@ RUN ./install/createDefaultPassword.sh -c -p ${DEFAULT_PW}
 ##
 # Build DataExport
 #
-# COPY ./dataexport /build/dataexport
-# WORKDIR /build/dataexport/dataexport-core
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn dependency:go-offline 
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn clean install -DskipTests
-# WORKDIR /build/dataexport/
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn dependency:go-offline 
-# RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-#     mvn clean install -DskipTests
+COPY ./dataexport /build/dataexport
+WORKDIR /build/dataexport/dataexport-core
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn dependency:go-offline 
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn clean install -DskipTests
+WORKDIR /build/dataexport/
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn dependency:go-offline 
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn clean install -DskipTests
 
 ##
 # Build the Project
@@ -44,12 +44,12 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 ARG SKIP_SPOTLESS="false"
 COPY ./src /build/src
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn clean install -DskipTests -Dspotless.check.skip=${SKIP_SPOTLESS}
+    mvn clean install -Dmaven.test.skip=true -DskipITs=true -Dspotless.check.skip=${SKIP_SPOTLESS}
 
 ##
 # Run Stage
 #
-FROM tomcat:8.5-jdk11
+FROM tomcat:10-jre21
 
 COPY install/createDefaultPassword.sh ./
 
@@ -98,7 +98,9 @@ RUN groupadd tomcat; \
     mkdir -p /var/lib/openelis-global/logs/; \
     chown -R tomcat_admin:tomcat /var/lib/openelis-global/logs/;\
     mkdir -p /var/lib/openelis-global/properties/; \
-    chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/;
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/; \
+    mkdir -p /var/lib/openelis-global/configuration/; \
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/configuration/;
 
 
 COPY install/openelis_healthcheck.sh /healthcheck.sh
@@ -113,6 +115,7 @@ RUN mkdir -p /var/lib/lucene_index; \
     chown -R tomcat_admin:tomcat /var/lib/lucene_index; \
     chmod -R 770 /var/lib/lucene_index;
 
+COPY ./tomcat/oe_server.xml /usr/local/tomcat/conf/server.xml    
 USER tomcat_admin
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]

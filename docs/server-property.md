@@ -77,4 +77,4 @@ being used, it could be that different values are being supplied in
 extra.properties
 
 For a full properties list, please see the
-[wiki entry here](https://github.com/I-TECH-UW/OpenELIS-Global-2/wiki/Properties)
+[wiki entry here](https://github.com/DIGI-UW/OpenELIS-Global-2/wiki/Properties)

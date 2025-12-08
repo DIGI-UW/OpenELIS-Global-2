@@ -59,14 +59,14 @@ Detailed instructions found
 ## Download OpenELIS-Global-2
 
 1. Fork the repo at
-   [https://github.com/I-TECH-UW/OpenELIS-Global-2](https://github.com/I-TECH-UW/OpenELIS-Global-2)
+   [https://github.com/DIGI-UW/OpenELIS-Global-2](https://github.com/DIGI-UW/OpenELIS-Global-2)
 2. `cd /path/to/eclipse/workspace`
 3. `git clone [git@github.com](mailto:git@github.com):{Your_Github_Account}/OpenELIS-Global-2.git --recurse-submodules`
 
 ## Test If OpenELIS-Global-2 Deploys
 
 1. Open terminal to the OpenELIS-Global-2 directory
-2. `docker-compose up -d --build`
+2. `docker compose up -d --build`
 3. Access the application at
    [https://localhost:8443/OpenELIS-Global](https://localhost:8443/OpenELIS-Global)
 4. Might need to dismiss a security warning
@@ -165,7 +165,7 @@ Instructions are here https://projectlombok.org/setup/eclipse
 ### Run Everything but OE in docker
 
 1. Comment out the oe.openelisci.org service in docker-compose.yml
-2. `docker-compose up -d`
+2. `docker compose up -d`
 3. if oe is already running in docker, kill the container
 
 ### Start Tomcat in Eclipse

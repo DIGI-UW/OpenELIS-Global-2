@@ -45,6 +45,7 @@
   border-radius: 5px;
   margin: 2%;
   padding: 2%;
+  padding-right: 2%;
 }
 
 @media (max-width: 1024px) {
@@ -58,6 +59,11 @@
   margin: auto;
   width: 50%;
   padding: 10px;
+}
+@media (max-width: 600px) {
+  .ProgressIndicator {
+    width: 100%;
+  }
 }
 
 .navigationButtonsLayout {
@@ -146,7 +152,6 @@
   width: 220px;
   text-align: center;
 }
-
 .confirmPrintCodeBtn {
   height: 30px;
   width: 70px;
@@ -154,13 +159,11 @@
   margin-top: 26px;
   margin-left: 10px;
 }
-
 .placeAnotherOrderBtn {
   width: 220px;
   text-align: center;
   margin-top: 10px;
 }
-
 .orderReferralSentDate input {
   width: 13rem !important;
 }

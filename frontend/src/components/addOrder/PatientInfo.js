@@ -6,7 +6,8 @@ import { FormattedMessage } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const PatientInfo = (props) => {
-  const { orderFormValues, setOrderFormValues, error } = props;
+  const { orderFormValues, setOrderFormValues, error, setPhoneValidation } =
+    props;
   const componentMounted = useRef(false);
   const [searchPatientTab, setSearchPatientTab] = useState({
     kind: "primary",
@@ -93,6 +94,7 @@ const PatientInfo = (props) => {
             </Column>
             <Column lg={4} md={4} sm={2}>
               <Button
+                data-cy="searchPatientTabButton"
                 kind={searchPatientTab.kind}
                 onClick={handleSearchPatientTab}
               >
@@ -100,7 +102,11 @@ const PatientInfo = (props) => {
               </Button>
             </Column>
             <Column lg={4} md={4} sm={2}>
-              <Button kind={newPatientTab.kind} onClick={handleNewPatientTab}>
+              <Button
+                data-cy="newPatientTabButton"
+                kind={newPatientTab.kind}
+                onClick={handleNewPatientTab}
+              >
                 <FormattedMessage id="new.patient.label" />
               </Button>
             </Column>
@@ -117,6 +123,7 @@ const PatientInfo = (props) => {
                   orderFormValues={orderFormValues}
                   setOrderFormValues={setOrderFormValues}
                   error={error}
+                  setPhoneValidation={setPhoneValidation}
                 />
               )}
             </Column>

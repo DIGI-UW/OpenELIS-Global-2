@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <nc_event id="901" name="Sample Mislabeling"
+        name_of_reporter="Dr. Jane Doe" report_date="2025-04-15"
+        nce_number="1744721660206" date_of_event="2025-04-14"
+        lab_order_number="DEV01250000000000008" prescriber_name="JOHN , SMITH"
+        site="UE - AMBASSADE DES USA"
+        description="Sample was mislabeled at accessioning desk."
+        suspected_causes="Human error during sample reception."
+        proposed_action="Retrain staff on accession procedures."
+        laboratory_component="3" severity_score="5" color_code="RED"
+        corrective_action="Sample re-collection and staff training."
+        control_action="Double-check label against order form."
+        comments="Incident detected early, no patient harm." effective="YES"
+        signature="Jane Doe" date_completed="2025-04-16" status="Resolved"
+        discussion_date="2025-04-17 13:00:00.0" />
+
+    <nc_event id="902" name="Reagent Expiry Overlooked"
+        name_of_reporter="Mr. John Tester" report_date="2025-04-10"
+        nce_number="1744721660205" date_of_event="2025-04-09"
+        lab_order_number="DEV01250000000000002" prescriber_name="ALI , ALICE"
+        site="UE - AMBASSADE DES USA"
+        description="Expired reagent was used for testing."
+        suspected_causes="Inventory tracking failure."
+        proposed_action="Introduce reagent expiry alarms in LIS."
+        laboratory_component="4" severity_score="4" color_code="ORANGE"
+        corrective_action="Retest all affected samples."
+        control_action="Implement expiry checks before use."
+        comments="Issue addressed quickly, no impact on results."
+        effective="YES" signature="John Tester" date_completed="2025-04-12"
+        status="Closed" discussion_date="2025-04-13 13:00:00.0" />
+
+    <nc_event id="903" name="Instrument Calibration Error"
+        name_of_reporter="Dr. Lee" report_date="2025-03-30"
+        nce_number="1744721660208" date_of_event="2025-03-29"
+        lab_order_number="DEV01250000000000003" prescriber_name="KIM , YUN"
+        site="UE - AMBASSADE DES USA"
+        description="Analyzer produced out-of-range values due to missed calibration."
+        suspected_causes="Calibration schedule not followed."
+        proposed_action="Automate calibration reminders."
+        laboratory_component="5" severity_score="3" color_code="YELLOW"
+        corrective_action="Recalibrate instrument and repeat tests."
+        control_action="Enforce pre-run calibration verification."
+        comments="Error identified post-run, corrective action completed."
+        effective="YES" signature="Dr. Lee" date_completed="2025-04-01"
+        status="Resolved" discussion_date="2025-04-02 13:00:00.0" />
+
+
+    <nce_action_log id="1"
+        corrective_action="replace faulty cable" action_type="corrective"
+        person_responsible="jane doe" date_completed="2024-05-01 10:15:00"
+        turn_around_time="40" nce_event_id="901" />
+    <nce_action_log id="2" corrective_action="update SOP"
+        action_type="preventive" person_responsible="john smith"
+        date_completed="2024-05-03 14:00:00" turn_around_time="72"
+        nce_event_id="901" />
+    <nce_action_log id="3"
+        corrective_action="retrain technician" action_type="corrective"
+        person_responsible="alice green" date_completed="2024-05-04 09:45:00"
+        turn_around_time="24" nce_event_id="903" />
+    <nce_action_log id="4"
+        corrective_action="clean incubator" action_type="corrective"
+        person_responsible="mark brown" date_completed="2024-05-05 11:30:00"
+        turn_around_time="36" nce_event_id="903" />
+    <nce_action_log id="5"
+        corrective_action="replace reagent" action_type="corrective"
+        person_responsible="emily white" date_completed="2024-05-06 16:20:00"
+        turn_around_time="40" nce_event_id="902" />
+    <nce_action_log id="6"
+        corrective_action="update software" action_type="preventive"
+        person_responsible="oliver stone" date_completed="2024-05-07 08:10:00"
+        turn_around_time="120" nce_event_id="902" />
+    <nce_action_log id="7"
+        corrective_action="adjust temperature settings"
+        action_type="corrective" person_responsible="mark brown"
+        date_completed="2024-05-08 13:50:00" turn_around_time="30"
+        nce_event_id="901" />
+    <nce_action_log id="8" corrective_action="change filter"
+        action_type="corrective" person_responsible="michael thompson"
+        date_completed="2024-05-09 15:05:00" turn_around_time="40"
+        nce_event_id="901" />
+    <nce_action_log id="9"
+        corrective_action="fix calibration issue" action_type="corrective"
+        person_responsible="mark brown" date_completed="2024-05-10 12:30:00"
+        turn_around_time="96" nce_event_id="901" />
+    <nce_action_log id="10"
+        corrective_action="improve labeling system" action_type="preventive"
+        person_responsible="david reed" date_completed="2024-05-11 10:00:00"
+        turn_around_time="72" nce_event_id="901" />
+</dataset>

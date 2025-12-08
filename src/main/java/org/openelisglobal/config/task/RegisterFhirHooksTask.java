@@ -4,12 +4,12 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
+import jakarta.annotation.PostConstruct;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
@@ -78,6 +78,9 @@ public class RegisterFhirHooksTask {
         if (!(allowHTTP && fhirSubscriber.get().startsWith("http://"))
                 && !fhirSubscriber.get().startsWith("https://")) {
             fhirSubscriber = Optional.of("https://" + fhirSubscriber.get());
+        }
+        if (GenericValidator.isBlankOrNull(localFhirStorePath)) {
+            return;
         }
 
         IGenericClient fhirClient = fhirUtil.getFhirClient(localFhirStorePath);

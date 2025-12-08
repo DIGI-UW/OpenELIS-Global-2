@@ -29,8 +29,15 @@ const AddOrder = (props) => {
 
   const componentMounted = useRef(false);
 
-  const { orderFormValues, setOrderFormValues, samples, error, isModifyOrder } =
-    props;
+  const {
+    orderFormValues,
+    setOrderFormValues,
+    samples,
+    error,
+    isModifyOrder,
+    changed,
+    setChanged,
+  } = props;
   const [otherSamplingVisible, setOtherSamplingVisible] = useState(false);
   const [providers, setProviders] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState([]);
@@ -111,6 +118,17 @@ const AddOrder = (props) => {
     });
   }
 
+  function handleProvisionalClinicalDiagnosisChange(e) {
+    setOrderFormValues({
+      ...orderFormValues,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        provisionalClinicalDiagnosis: e.target.value,
+      },
+    });
+    setNotificationVisible(false);
+  }
+
   function handleRequesterWorkPhone(e) {
     setOrderFormValues({
       ...orderFormValues,
@@ -129,6 +147,13 @@ const AddOrder = (props) => {
         ...orderFormValues.sampleOrderItems,
         providerFirstName: e.target.value,
       },
+    });
+  }
+  function handleChange(path) {
+    console.log([path]);
+    setChanged({
+      ...changed,
+      [path]: true,
     });
   }
 
@@ -302,7 +327,7 @@ const AddOrder = (props) => {
   }
 
   const handleLabNoValidation = () => {
-    if (orderFormValues.sampleOrderItems.labNo !== "") {
+    if (orderFormValues.sampleOrderItems.labNo) {
       getFromOpenElisServer(
         "/rest/SampleEntryAccessionNumberValidation?ignoreYear=false&ignoreUsage=false&field=labNo&accessionNumber=" +
           orderFormValues.sampleOrderItems.labNo,
@@ -312,7 +337,7 @@ const AddOrder = (props) => {
   };
 
   const handleLabNoValidationOnChange = (value) => {
-    if (value !== "") {
+    if (value) {
       getFromOpenElisServer(
         "/rest/SampleEntryAccessionNumberValidation?ignoreYear=false&ignoreUsage=false&field=labNo&accessionNumber=" +
           value,
@@ -484,6 +509,7 @@ const AddOrder = (props) => {
                       : orderFormValues.sampleOrderItems.labNo
                   }
                   //onMouseLeave={handleLabNoValidation}
+                  onClick={() => handleChange("sampleOrderItems.labNo")}
                   onChange={handleLabNo}
                   onKeyPress={handleKeyPress}
                   labelText={
@@ -493,12 +519,21 @@ const AddOrder = (props) => {
                     </>
                   }
                   id="labNo"
-                  invalid={error("sampleOrderItems.labNo") ? true : false}
+                  invalid={
+                    changed["sampleOrderItems.labNo"] &&
+                    error("sampleOrderItems.labNo")
+                      ? true
+                      : false
+                  }
                   invalidText={error("sampleOrderItems.labNo")}
                 />
                 <div>
                   <FormattedMessage id="label.order.scan.text" />{" "}
-                  <Link href="#" onClick={(e) => handleLabNoGeneration(e)}>
+                  <Link
+                    data-cy="generate-labNumber"
+                    href="#"
+                    onClick={(e) => handleLabNoGeneration(e)}
+                  >
                     <FormattedMessage id="sample.label.labnumber.generate" />
                   </Link>
                 </div>
@@ -672,6 +707,22 @@ const AddOrder = (props) => {
                 required
               />
             </Column>
+            <Column lg={8} md={4} sm={4}>
+              <TextInput
+                name="provisionalDiagnosis"
+                placeholder={intl.formatMessage({
+                  id: "input.placeholder.provisionalClinicalDiagnosis",
+                })}
+                onChange={handleProvisionalClinicalDiagnosisChange}
+                value={
+                  orderFormValues.sampleOrderItems.provisionalClinicalDiagnosis
+                }
+                labelText={intl.formatMessage({
+                  id: "order.requester.provisionalDiagnosis.label",
+                })}
+                id="provisionalDiagnosisId"
+              />
+            </Column>
             {/* <Column lg={8} md={4} sm={4}>
               {" "}
             </Column> */}
@@ -696,9 +747,15 @@ const AddOrder = (props) => {
                   "true"
                 }
                 onChange={handleRequesterFirstName}
+                onClick={() =>
+                  handleChange("sampleOrderItems.providerFirstName")
+                }
                 value={orderFormValues.sampleOrderItems.providerFirstName}
                 invalid={
-                  error("sampleOrderItems.providerFirstName") ? true : false
+                  changed["sampleOrderItems.providerFirstName"] &&
+                  error("sampleOrderItems.providerFirstName")
+                    ? true
+                    : false
                 }
                 invalidText={error("sampleOrderItems.providerFirstName")}
                 id="requesterFirstName"
@@ -722,10 +779,16 @@ const AddOrder = (props) => {
                   "true"
                 }
                 value={orderFormValues.sampleOrderItems.providerLastName}
+                onClick={() =>
+                  handleChange("sampleOrderItems.providerLastName")
+                }
                 onChange={handleRequesterLastName}
                 id="requesterLastName"
                 invalid={
-                  error("sampleOrderItems.providerLastName") ? true : false
+                  changed["sampleOrderItems.providerLastName"] &&
+                  error("sampleOrderItems.providerLastName")
+                    ? true
+                    : false
                 }
                 invalidText={error("sampleOrderItems.providerLastName")}
               />

@@ -40,12 +40,20 @@ const Index = () => {
   const samplePageNumber = firstPageNumber + 2;
   const orderPageNumber = firstPageNumber + 3;
   const successMsgPageNumber = lastPageNumber;
-
+  const [changed, setChanged] = useState({
+    "sampleOrderItems.providerFirstName": false,
+    "sampleOrderItems.providerLastName": false,
+    "sampleOrderItems.labNo": false,
+  });
   const [page, setPage] = useState(firstPageNumber);
   const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneValidation, setPhoneValidation] = useState({
+    primaryPhone: { body: "", status: true },
+    contactPhone: { body: "", status: true },
+  });
 
   let SampleTypes = [];
   let sampleTypeMap = {};
@@ -182,14 +190,14 @@ const Index = () => {
 
       const urlParams = new URLSearchParams(window.location.search);
       const externalId = urlParams.get("ID");
-      const labNumber = urlParams.get("labNumber");
 
       newOrderFormValues = {
         ...newOrderFormValues,
         sampleOrderItems: {
           ...newOrderFormValues.sampleOrderItems,
           externalOrderNumber: externalId,
-          labNo: labNumber,
+          // Note: labNo is set by the mount useEffect (line ~631), not here
+          // This avoids redundant state updates and ensures consistent initialization
         },
       };
       setOrderFormValues(newOrderFormValues);
@@ -224,7 +232,7 @@ const Index = () => {
 
   const parsePatient = (newOrderFormValues, patient) => {
     newOrderFormValues.patientProperties = {
-      ...orderFormValues.patientProperties,
+      ...newOrderFormValues.patientProperties,
       guid: patient.guid,
     };
   };
@@ -233,7 +241,7 @@ const Index = () => {
     const providerId = requester.personId;
     if (providerId) {
       newOrderFormValues.sampleOrderItems = {
-        ...orderFormValues.sampleOrderItems,
+        ...newOrderFormValues.sampleOrderItems,
         providerId: providerId,
       };
       getFromOpenElisServer(
@@ -243,7 +251,8 @@ const Index = () => {
             ...orderFormValues,
             sampleOrderItems: {
               ...orderFormValues.sampleOrderItems,
-              providerId: providerId,
+              providerId: data.id,
+              providerPersonId: data.person.id,
               providerFirstName: data.person.firstName,
               providerLastName: data.person.lastName,
               providerWorkPhone: data.person.workPhone,
@@ -255,7 +264,7 @@ const Index = () => {
       );
     } else {
       newOrderFormValues.sampleOrderItems = {
-        ...orderFormValues.sampleOrderItems,
+        ...newOrderFormValues.sampleOrderItems,
         providerFirstName: requester.firstName,
         providerLastName: requester.lastName,
         providerWorkPhone: requester.phone,
@@ -267,7 +276,7 @@ const Index = () => {
 
   const parseRequestingOrg = (newOrderFormValues, requestingOrg) => {
     newOrderFormValues.sampleOrderItems = {
-      ...orderFormValues.sampleOrderItems,
+      ...newOrderFormValues.sampleOrderItems,
       referringSiteId: requestingOrg.id,
     };
     getFromOpenElisServer(
@@ -278,7 +287,7 @@ const Index = () => {
 
   const parseLocation = (newOrderFormValues, location) => {
     newOrderFormValues.sampleOrderItems = {
-      ...orderFormValues.sampleOrderItems,
+      ...newOrderFormValues.sampleOrderItems,
       referringSiteId: location.id,
     };
     getFromOpenElisServer(
@@ -478,6 +487,8 @@ const Index = () => {
       sampleXML: {
         collectionDate: "",
         collector: "",
+        quantity: "",
+        uom: "",
         rejected: false,
         rejectionReason: "",
         collectionTime: "",
@@ -605,6 +616,7 @@ const Index = () => {
   }, [page]);
 
   useEffect(() => {
+    console.log(changed);
     OrderEntryValidationSchema.validate(orderFormValues, { abortEarly: false })
       .then((validData) => {
         setErrors([]);
@@ -614,7 +626,7 @@ const Index = () => {
         setErrors(errors);
         console.error("Validation Errors:", errors.errors);
       });
-  }, [orderFormValues]);
+  }, [changed, orderFormValues]);
 
   useEffect(() => {
     const labNumber = new URLSearchParams(window.location.search).get(
@@ -654,7 +666,14 @@ const Index = () => {
                 })
                 .join(",");
             }
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''/>`;
+            // Extract storage location data if present
+            const storageLocation = sampleItem.sampleXML?.storageLocation;
+            const storageLocationId = storageLocation?.id || "";
+            const storageLocationType = storageLocation?.type || "";
+            const storagePositionCoordinate =
+              storageLocation?.positionCoordinate || "";
+
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}'/>`;
           }
           if (sampleItem.referralItems.length > 0) {
             const referredInstitutes = Object.keys(sampleItem.referralItems)
@@ -755,6 +774,7 @@ const Index = () => {
                 orderFormValues={orderFormValues}
                 setOrderFormValues={setOrderFormValues}
                 error={elementError}
+                setPhoneValidation={setPhoneValidation}
               />
             )}
             {page === programPageNumber && (
@@ -777,6 +797,8 @@ const Index = () => {
                 samples={samples}
                 error={elementError}
                 isModifyOrder={false}
+                changed={changed}
+                setChanged={setChanged}
               />
             )}
 
@@ -810,7 +832,13 @@ const Index = () => {
                   kind="primary"
                   className="forwardButton"
                   disabled={
-                    isSubmitting || errors?.errors?.length > 0 ? true : false
+                    isSubmitting ||
+                    Object.values(phoneValidation).some(
+                      (item) => item.status === false,
+                    ) ||
+                    errors?.errors?.length > 0
+                      ? true
+                      : false
                   }
                   onClick={handleSubmitOrderForm}
                 >

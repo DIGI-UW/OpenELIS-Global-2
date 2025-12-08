@@ -36,6 +36,8 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
+import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
+
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
 
@@ -50,6 +52,10 @@ function CreatePatientForm(props) {
   const [healthDistricts, setHealthDistricts] = useState([]);
   const [educationList, setEducationList] = useState([]);
   const [maritalStatuses, setMaritalStatuses] = useState([]);
+  const [prevfirstName, setPrevfirstName] = useState("");
+  const [prevlastName, setPrevlastName] = useState("");
+  const [prevfirstContactName, setPrevfirstContactName] = useState("");
+  const [prevlastContactName, setPrevlastContactName] = useState("");
   const [formAction, setFormAction] = useState("ADD");
   const [dateOfBirthFormatter, setDateOfBirthFormatter] = useState({
     years: "",
@@ -64,6 +70,16 @@ function CreatePatientForm(props) {
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneValidation, setPhoneValidation] = useState({
+    primaryPhone: { body: "", status: true },
+    contactPhone: { body: "", status: true },
+  });
+
+  const handlePhotoChange = (photo, setFieldValue) => {
+    if (setFieldValue) {
+      setFieldValue("photo", photo);
+    }
+  };
 
   const handleNationalIdChange = (event) => {
     const newValue = event.target.value;
@@ -205,6 +221,76 @@ function CreatePatientForm(props) {
     );
   };
 
+  const handlePhoneValidation = (e) => {
+    const { id, value } = e.target;
+    getFromOpenElisServer(
+      "/rest/PhoneNumberValidationProvider?fieldId=patientPhone&value=" +
+        encodeURIComponent(value),
+      (resp) => {
+        const validation = { ...phoneValidation };
+        validation[id] = resp;
+        setPhoneValidation(validation);
+      },
+    );
+  };
+
+  useEffect(() => {
+    if (typeof props.setPhoneValidation === "function") {
+      props.setPhoneValidation(phoneValidation);
+    }
+  }, [phoneValidation]);
+  function handleFirstNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.FIRST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevfirstName;
+    }
+    setPrevfirstName(event.target.value);
+  }
+
+  function handleLastNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.LAST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevlastName;
+    }
+    setPrevlastName(event.target.value);
+  }
+
+  function handleFirstContactNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.FIRST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevfirstContactName;
+    }
+    setPrevfirstContactName(event.target.value);
+  }
+
+  function handleLastContactNameChange(event) {
+    const regexFlags = "iu";
+    const regex = new RegExp(
+      configurationProperties.LAST_NAME_REGEX,
+      regexFlags,
+    );
+    const value = event.target.value;
+    if (!regex.test(value)) {
+      event.target.value = prevlastContactName;
+    }
+    setPrevlastContactName(event.target.value);
+  }
+
   function fetchHealthDistrictsCallback(res) {
     setHealthDistricts(res);
   }
@@ -221,8 +307,10 @@ function CreatePatientForm(props) {
         //nextState.healthDistricts = [];
         setHealthDistricts([]);
       }
+      //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
       let patient = props.selectedPatient;
       patient.patientUpdateStatus = "UPDATE";
+      patient.photo = "";
       //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
       const patientContactPerson = {
         ...patientDetails?.patientContact?.person,
@@ -245,6 +333,19 @@ function CreatePatientForm(props) {
       });
       getYearsMonthsDaysFromDOB(patient.birthDateForDisplay);
       setFormAction("UPDATE");
+      // Fetch patient photo if patient exists
+      getFromOpenElisServer(
+        `/rest/patient-photos/${patient.patientPK}/${false}`,
+        (response) => {
+          if (response && response.data) {
+            // Update patient details with photo
+            setPatientDetails((prevDetails) => ({
+              ...prevDetails,
+              photo: response.data,
+            }));
+          }
+        },
+      );
     }
   }, [props.selectedPatient]);
 
@@ -347,9 +448,9 @@ function CreatePatientForm(props) {
     if ("days" in values) {
       delete values.days;
     }
-    console.debug(JSON.stringify(values));
+    console.log(JSON.stringify(values));
     postToOpenElisServer(
-      "/rest/patient-management",
+      "/rest/PatientManagement",
       JSON.stringify(values),
       (status) => {
         handlePost(status);
@@ -401,6 +502,7 @@ function CreatePatientForm(props) {
           handleChange,
           handleBlur,
           handleSubmit,
+          setFieldValue,
         }) => (
           <Form
             onSubmit={handleSubmit}
@@ -431,6 +533,13 @@ function CreatePatientForm(props) {
               <Column lg={16} md={8} sm={4}>
                 {" "}
                 <br></br>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <PatientImageSelector
+                  value={values.photo}
+                  onChange={(photo) => handlePhotoChange(photo, setFieldValue)}
+                  required={false}
+                />
               </Column>
               <Column lg={8} md={4} sm={4}>
                 <Field name="subjectNumber">
@@ -525,6 +634,7 @@ function CreatePatientForm(props) {
                       placeholder={intl.formatMessage({
                         id: "patient.information.lastname",
                       })}
+                      onChange={(e) => handleLastNameChange(e)}
                     />
                   )}
                 </Field>
@@ -544,6 +654,7 @@ function CreatePatientForm(props) {
                       placeholder={intl.formatMessage({
                         id: "patient.information.firstname",
                       })}
+                      onChange={(e) => handleFirstNameChange(e)}
                     />
                   )}
                 </Field>
@@ -558,6 +669,10 @@ function CreatePatientForm(props) {
                     <TextInput
                       value={values.primaryPhone || ""}
                       name={field.name}
+                      onBlur={(e) => {
+                        handlePhoneValidation(e);
+                      }}
+                      id="primaryPhone"
                       labelText={intl.formatMessage(
                         {
                           id: "patient.label.primaryphone",
@@ -565,9 +680,12 @@ function CreatePatientForm(props) {
                         },
                         { PHONE_FORMAT: configurationProperties.PHONE_FORMAT },
                       )}
-                      id={field.name}
-                      invalid={errors.primaryPhone && touched.primaryPhone}
-                      invalidText={errors.primaryPhone}
+                      invalid={!phoneValidation.primaryPhone.status}
+                      invalidText={
+                        phoneValidation.primaryPhone.status
+                          ? ""
+                          : phoneValidation.primaryPhone.body
+                      }
                       placeholder={intl.formatMessage({
                         id: "patient.information.primaryphone",
                       })}
@@ -715,6 +833,7 @@ function CreatePatientForm(props) {
                                 id: "patientcontact.person.lastname",
                               })}
                               id={field.name}
+                              onChange={(e) => handleLastContactNameChange(e)}
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.lastname",
                               })}
@@ -734,6 +853,7 @@ function CreatePatientForm(props) {
                                 id: "patientcontact.person.firstname",
                               })}
                               id={field.name}
+                              onChange={(e) => handleFirstContactNameChange(e)}
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.firstname",
                               })}
@@ -775,6 +895,10 @@ function CreatePatientForm(props) {
                                 ""
                               }
                               name={field.name}
+                              id="contactPhone"
+                              onBlur={(e) => {
+                                handlePhoneValidation(e);
+                              }}
                               labelText={intl.formatMessage(
                                 {
                                   id: "patient.label.contactphone",
@@ -786,7 +910,12 @@ function CreatePatientForm(props) {
                                     configurationProperties.PHONE_FORMAT,
                                 },
                               )}
-                              id={field.name}
+                              invalid={!phoneValidation.contactPhone.status}
+                              invalidText={
+                                phoneValidation.contactPhone.status
+                                  ? ""
+                                  : phoneValidation.contactPhone.body
+                              }
                               placeholder={intl.formatMessage({
                                 id: "patient.emergency.phone",
                               })}
@@ -936,7 +1065,7 @@ function CreatePatientForm(props) {
                               value={values.education || ""}
                               name={field.name}
                               labelText={intl.formatMessage({
-                                id: "pateint.eduction",
+                                id: "patient.eduction",
                               })}
                               onChange={() => {}}
                               helperText={intl.formatMessage({
@@ -967,7 +1096,7 @@ function CreatePatientForm(props) {
                               })}
                               onChange={() => {}}
                               helperText={intl.formatMessage({
-                                id: "patient.emergency.additional.maritialstatus",
+                                id: "patient.emergency.additional.maritalstatus",
                               })}
                             >
                               <SelectItem text="" value="" />
@@ -1041,7 +1170,16 @@ function CreatePatientForm(props) {
               {props.showActionsButton && (
                 <>
                   <Column lg={4} md={4} sm={4}>
-                    <Button type="submit" id="submit" disabled={isSubmitting}>
+                    <Button
+                      type="submit"
+                      id="submit"
+                      disabled={
+                        isSubmitting ||
+                        Object.values(phoneValidation).some(
+                          (item) => item.status === false,
+                        )
+                      }
+                    >
                       <FormattedMessage id="label.button.save" />
                     </Button>
                   </Column>

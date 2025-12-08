@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <localization id="1" description=" this is for therapy"
+        english="therapy Method" french="méthode de thérapie"
+        lastUpdated="2023-10-01 12:00:00" />
+    <localization id="2" description=" this is for imagining"
+        english="imagining Method" french="méthode de thérapie"
+        lastUpdated="2023-10-01 12:00:00" />
+
+    <organization id="3" lastupdated="2024-06-03 12:00:00.0"
+        name="Global Health Org" city="New York" zip_code="10001"
+        mls_sentinel_lab_flag="Y" short_name="GHG" multiple_unit="NYC Unit"
+        street_address="123 Health St" state="NY" org_id="3"
+        internet_address="www.globalhealth.org" clia_num="CLIA12345"
+        pws_id="PWS123" mls_lab_flag="Y" is_active="Y" local_abbrev="1"
+        code="GHG001" fhir_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6d3" />
+    <organization id="4" lastupdated="2024-06-04 13:00:00.0"
+        name="Health Services Inc" city="Los Angeles" zip_code="90001"
+        mls_sentinel_lab_flag="N" short_name="HSI" multiple_unit="LA Unit"
+        street_address="456 Wellness Ave" state="CA" org_id="3"
+        internet_address="www.healthservices.org" clia_num="CLIA67890"
+        pws_id="PWS456" mls_lab_flag="N" is_active="Y" local_abbrev="2"
+        code="HSI002" fhir_uuid="a3bdeff8-8d5b-4023-bd7c-932b4b98b6d4" />
+
+    <!-- Insert test entries into the organization_type table -->
+    <organization_type id="1" short_name="Healthcare"
+        description="Healthcare Organization" name_display_key="Healthcare"
+        lastupdated="2025-03-13 12:00:00.0" />
+    <organization_type id="2" short_name="referingClinic"
+        description="ReferingClinic Organization"
+        name_display_key="referingClinic" lastupdated="2025-03-13 12:00:00.0" />
+
+    <!-- Insert test entries into the organization_organization_type table -->
+    <organization_organization_type
+        org_id="3" org_type_id="1" />
+    <organization_organization_type
+        org_id="4" org_type_id="2" />
+
+    <person id="1" last_name="Doe" first_name="John"
+        middle_name="joddy" city="Kampala" state="Kampala metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+    <person id="2" last_name="Mulizi" first_name="James"
+        middle_name="Mark" city="Orion" state="Texas" zip_code="001"
+        country="USA" work_phone="10000001" home_phone="8000001"
+        cell_phone="0000000" primary_phone="10000001" fax="0001"
+        email="james@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+
+    <organization_contact id="1" organization_id="3"
+        person_id="1" position="Manager" />
+    <organization_contact id="2" organization_id="4"
+        person_id="2" position="Coordinator" />
+
+    <test_section id="1" name="SectionName1"
+        description="SectionDescription1" org_id="3" is_external="N"
+        lastupdated="2025-03-20 12:00:00.0" sort_order="2147483647"
+        is_active="Y" name_localization_id="1" display_key="TestKey1" />
+    <test_section id="2" name="SectionName2"
+        description="SectionDescription2" org_id="4" is_external="N"
+        lastupdated="2025-03-21 13:00:00.0" sort_order="2147483646"
+        is_active="Y" name_localization_id="2" display_key="TestKey2" />
+
+    <system_user id="3" external_id="EXT003" login_name="jdoe"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+
+
+    <system_user_section id="1" has_view="Y"
+        has_assign="Y" has_complete="Y" has_release="Y" has_cancel="Y"
+        system_user_id="3" test_section_id="1" />
+    <system_user_section id="2" has_view="Y"
+        has_assign="Y" has_complete="Y" has_release="Y" has_cancel="Y"
+        system_user_id="3" test_section_id="2" />
+</dataset>

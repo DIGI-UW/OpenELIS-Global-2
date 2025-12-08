@@ -32,7 +32,7 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
 
   const [entering, setEntering] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(100);
 
   useEffect(() => {}, []);
 
@@ -125,73 +125,75 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
       return item.id === eOrderId;
     });
 
+    const hasRealizedStatus = row.cells.some(
+      (cell) => cell.info?.header === "status" && cell.value === "Realized",
+    );
+
     return (
       <>
         <div className="formInlineDiv">
-          <div className="formInlineDiv">
-            <CustomLabNumberInput
-              name="labNo"
-              value={eOrders[index].labNo || ""}
-              onBlur={(e) => {
-                handleLabNoValidation(e, index);
+          <CustomLabNumberInput
+            name="labNo"
+            value={eOrders[index].labNo || ""}
+            onBlur={(e) => {
+              handleLabNoValidation(e, index);
+            }}
+            onChange={(e, rawInput) => {
+              handleLabNo(e, rawInput, index);
+            }}
+            onKeyPress={(e) => {
+              handleKeyPress(e, index);
+            }}
+            disabled={hasRealizedStatus}
+            labelText={intl.formatMessage({ id: "sample.label.labnumber" })}
+            id="labNo"
+            helperText={
+              <>
+                <FormattedMessage id="label.order.scan.text" />{" "}
+                <Link
+                  href="#"
+                  disabled={hasRealizedStatus}
+                  onClick={(e) => {
+                    handleLabNoGeneration(e, index);
+                  }}
+                >
+                  <FormattedMessage id="sample.label.labnumber.generate" />
+                </Link>
+              </>
+            }
+            className="inputText"
+          />
+          <span className="middleAlignVertical">
+            <Button
+              type="button"
+              kind="tertiary"
+              label={intl.formatMessage({ id: "eorder.button.editOrder" })}
+              hasIconOnly={true}
+              renderIcon={Edit}
+              disabled={hasRealizedStatus}
+              iconDescription={intl.formatMessage({
+                id: "eorder.button.editOrder",
+              })}
+              onClick={() => {
+                editOrder(electronicOrderUUID, eOrders[index].labNo);
               }}
-              onChange={(e, rawInput) => {
-                handleLabNo(e, rawInput, index);
-              }}
-              onKeyPress={(e) => {
-                handleKeyPress(e, index);
-              }}
-              labelText={intl.formatMessage({ id: "sample.label.labnumber" })}
-              id="labNo"
-              helperText={
-                <>
-                  <FormattedMessage id="label.order.scan.text" />{" "}
-                  <Link
-                    href="#"
-                    onClick={(e) => {
-                      handleLabNoGeneration(e, index);
-                    }}
-                  >
-                    <FormattedMessage id="sample.label.labnumber.generate" />
-                  </Link>
-                </>
-              }
-              className="inputText"
             />
-            <span className="middleAlignVertical">
-              <Button
-                type="button"
-                kind="tertiary"
-                label={intl.formatMessage({ id: "eorder.button.editOrder" })}
-                hasIconOnly={true}
-                renderIcon={Edit}
-                iconDescription={intl.formatMessage({
-                  id: "eorder.button.editOrder",
-                })}
-                onClick={() => {
-                  editOrder(electronicOrderUUID, eOrders[index].labNo);
-                }}
-              />
-              <Button
-                type="button"
-                kind="primary"
-                label={intl.formatMessage({ id: "eorder.button.enterOrder" })}
-                hasIconOnly={true}
-                renderIcon={TaskAdd}
-                iconDescription={intl.formatMessage({
-                  id: "eorder.button.enterOrder",
-                })}
-                onClick={() => {
-                  saveEntry(electronicOrderUUID, eOrders[index].labNo);
-                }}
-              />
-            </span>
-          </div>
-          <div className="formInlineInput">
-            <div className="inputText"></div>
-          </div>
+            <Button
+              type="button"
+              kind="primary"
+              label={intl.formatMessage({ id: "eorder.button.enterOrder" })}
+              hasIconOnly={true}
+              renderIcon={TaskAdd}
+              disabled={hasRealizedStatus}
+              iconDescription={intl.formatMessage({
+                id: "eorder.button.enterOrder",
+              })}
+              onClick={() => {
+                saveEntry(electronicOrderUUID, eOrders[index].labNo);
+              }}
+            />
+          </span>
         </div>
-        <div></div>
       </>
     );
   };
@@ -341,7 +343,7 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
           onChange={handlePageChange}
           page={page}
           pageSize={pageSize}
-          pageSizes={[10, 20, 30]}
+          pageSizes={[10, 20, 30, 50, 100]}
           totalItems={eOrdersCurrent.length}
           forwardText={intl.formatMessage({ id: "pagination.forward" })}
           backwardText={intl.formatMessage({ id: "pagination.backward" })}
@@ -383,14 +385,14 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
   return (
     <div ref={eOrderRef}>
       {eOrders.length > 0 && (
-        <div className="orderLegendBody">
+        <>
           <FormattedMessage id="eorder.instructions.enter1" /> <ChevronDown />{" "}
           <FormattedMessage id="eorder.instructions.enter2" /> <TaskAdd />{" "}
           <FormattedMessage id="eorder.instructions.enter3" /> <Edit />{" "}
           <FormattedMessage id="eorder.instructions.enter4" />
           <br></br>
           {createDataTable(eOrders)}
-        </div>
+        </>
       )}
     </div>
   );

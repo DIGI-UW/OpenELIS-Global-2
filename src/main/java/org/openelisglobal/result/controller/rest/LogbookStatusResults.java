@@ -119,7 +119,13 @@ public class LogbookStatusResults {
 
     private List<Analysis> getAnalysisForCollectionDate(String collectionDate) {
         Date date = DateUtil.convertStringDateToSqlDate(collectionDate);
-        return analysisService.getAnalysisCollectedOnExcludedByStatusId(date, excludedStatusIds);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getAnalysisForCollectionDate",
+                "Searching for collectionDate: " + collectionDate + ", converted to: " + date + ", excludedStatusIds: "
+                        + excludedStatusIds);
+        List<Analysis> analyses = analysisService.getAnalysisCollectedOnExcludedByStatusId(date, excludedStatusIds);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getAnalysisForCollectionDate",
+                "Found " + (analyses != null ? analyses.size() : 0) + " analyses");
+        return analyses;
     }
 
     private List<Analysis> blendLists(List<Analysis> masterList, List<Analysis> newList) {
@@ -147,9 +153,15 @@ public class LogbookStatusResults {
     }
 
     private List<Analysis> getAnalysisForRecievedDate(String recievedDate) {
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getAnalysisForRecievedDate",
+                "Searching for receivedDate: " + recievedDate);
         List<Sample> sampleList = sampleService.getSamplesReceivedOn(recievedDate);
-
-        return getAnalysisListForSampleItems(sampleList);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getAnalysisForRecievedDate",
+                "Found " + (sampleList != null ? sampleList.size() : 0) + " samples");
+        List<Analysis> analyses = getAnalysisListForSampleItems(sampleList);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getAnalysisForRecievedDate",
+                "Found " + (analyses != null ? analyses.size() : 0) + " analyses");
+        return analyses;
     }
 
     private List<Analysis> getAnalysisListForSampleItems(List<Sample> sampleList) {
