@@ -58,9 +58,9 @@ class OrganizationManagementPage {
 
   searchOrganzation() {
     // Wait for page to be ready, then target the input inside Carbon Search component
-    cy.get(this.selectors.orgSearchBar)
-      .should("be.visible")
-      .find("input")
+    // Break up the chain to avoid detached DOM issues
+    cy.get(this.selectors.orgSearchBar).should("be.visible");
+    cy.get(`${this.selectors.orgSearchBar} input`)
       .should("be.visible")
       .should("not.be.disabled")
       .focus()
@@ -70,9 +70,9 @@ class OrganizationManagementPage {
 
   searchInstitute() {
     // Wait for page to be ready, then target the input inside Carbon Search component
-    cy.get(this.selectors.orgSearchBar)
-      .should("be.visible")
-      .find("input")
+    // Break up the chain to avoid detached DOM issues
+    cy.get(this.selectors.orgSearchBar).should("be.visible");
+    cy.get(`${this.selectors.orgSearchBar} input`)
       .should("be.visible")
       .should("not.be.disabled")
       .focus()
