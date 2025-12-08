@@ -1407,6 +1407,14 @@ stories.
   console log review)
 - Full test suite runs only in CI/CD pipeline
 - Code formatting enforced via pre-commit hooks
+- **Optimistic Update Pattern for Metric Cards** (OGC-144 fix): Dashboard metric
+  cards (Total Samples, Active, Disposed, Storage Locations) use optimistic
+  updates per FR-057b and FR-057c. After successful disposal, assignment, or
+  movement operations, the `refreshMetrics()` callback is invoked immediately to
+  update metric counts without requiring page refresh. Implementation uses
+  React's `useCallback` hook to memoize the refresh function and passes it as
+  props (`onDisposalSuccess`, `onAssignmentSuccess`) to child modal components.
+  This provides instant user feedback and improves perceived performance
 
 **Dependencies**: Requires all feature phases (5, 6, 7, 8, 9, 9.5, 10) to
 complete first.

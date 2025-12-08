@@ -120,7 +120,14 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
-            map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
+            // Map status ID to user-friendly name for filtering (OGC-144: FR-056)
+            String statusName = "active"; // Default
+            if (sampleItem.getStatusId() != null) {
+                if (statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {
+                    statusName = "disposed";
+                }
+            }
+            map.put("status", statusName);
 
             // Check if this sample item has an assignment
             SampleStorageAssignment assignment = assignmentsBySampleItemId.get(sampleItem.getId());

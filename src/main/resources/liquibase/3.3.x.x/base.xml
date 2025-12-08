@@ -24,4 +24,5 @@
   <include relativeToChangelogFile="true" file="015-add-sample-disposed-status.xml"/>
   <include relativeToChangelogFile="true" file="016-inventory-management-system.xml"/>
   <include relativeToChangelogFile="true" file="017-inventory-add-last-updated.xml"/>
+  <include relativeToChangelogFile="true" file="018-allow-null-location-for-disposed.xml"/>
 </databaseChangeLog>

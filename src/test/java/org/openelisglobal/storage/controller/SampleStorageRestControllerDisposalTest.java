@@ -64,6 +64,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
             jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id >= 10000");
             jdbcTemplate.execute("DELETE FROM sample_item WHERE id >= 10000");
             jdbcTemplate.execute("DELETE FROM sample WHERE id >= 10000");
+            jdbcTemplate.execute("DELETE FROM storage_device WHERE id >= 10000");
+            jdbcTemplate.execute("DELETE FROM storage_room WHERE id >= 10000");
         } catch (Exception e) {
             // Ignore cleanup errors - data may not exist
         }
@@ -205,10 +207,20 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                 post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isOk());
 
-        // Assert - assignment should be deleted
+        // Assert - assignment should still exist but location should be NULL (FR-056,
+        // FR-057)
         Integer assignmentCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class, numericId);
-        assertEquals("Assignment should be deleted after disposal", Integer.valueOf(0), assignmentCount);
+        assertEquals("Assignment record should still exist after disposal", Integer.valueOf(1), assignmentCount);
+
+        Integer locationId = jdbcTemplate.queryForObject(
+                "SELECT location_id FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class, numericId);
+        assertNull("Location ID should be cleared after disposal", locationId);
+
+        String locationType = jdbcTemplate.queryForObject(
+                "SELECT location_type FROM sample_storage_assignment WHERE sample_item_id = ?", String.class,
+                numericId);
+        assertNull("Location type should be cleared after disposal", locationType);
     }
 
     /**
@@ -352,5 +364,115 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         // When notes is null, format should be: "Disposal: {reason} | Method: {method}"
         String expectedReasonFormat = "Disposal: " + disposalReason + " | Method: " + disposalMethod;
         assertEquals("Reason should match expected format (without notes)", expectedReasonFormat, actualReason);
+    }
+
+    /**
+     * Helper method to create a storage device for assignment tests
+     */
+    private Integer createStorageDevice() throws Exception {
+        Integer deviceId = 10000;
+        // Create a storage room first
+        jdbcTemplate.update(
+                "INSERT INTO storage_room (id, fhir_uuid, name, code, active, sys_user_id, last_updated) VALUES (?, gen_random_uuid(), ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                10000, "Test Room", "TST", true, "1");
+
+        // Create a storage device
+        jdbcTemplate.update(
+                "INSERT INTO storage_device (id, fhir_uuid, name, code, type, parent_room_id, active, sys_user_id, last_updated) VALUES (?, gen_random_uuid(), ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                deviceId, "Test Device", "TST-DEV", "freezer", 10000, true, "1");
+
+        return deviceId;
+    }
+
+    /**
+     * Helper method to assign a sample to a storage device
+     */
+    private void assignSampleToDevice(String sampleItemId, Integer deviceId) throws Exception {
+        jdbcTemplate.update(
+                "INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, assigned_by_user_id, assigned_date, last_updated) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                10001, Integer.parseInt(sampleItemId), deviceId, "device", 1);
+    }
+
+    /**
+     * OGC-144: Test that disposal increments the disposed metric count. Per FR-057,
+     * FR-057b: Metrics MUST update automatically when disposal occurs. This test
+     * verifies the cross-feature integration between disposal workflow and metrics
+     * calculation.
+     */
+    @Test
+    public void testDisposal_IncrementsDisposedMetricCount() throws Exception {
+        // Arrange: Get initial metrics
+        MvcResult initialMetrics = mockMvc.perform(get("/rest/storage/sample-items?countOnly=true"))
+                .andExpect(status().isOk()).andReturn();
+        com.fasterxml.jackson.databind.JsonNode initialJson = objectMapper
+                .readTree(initialMetrics.getResponse().getContentAsString());
+        int initialDisposed = initialJson.get(0).get("disposed").asInt();
+
+        // Create sample, assign to storage, then dispose
+        String sampleItemId = createTestSampleItem();
+        Integer deviceId = createStorageDevice();
+        assignSampleToDevice(sampleItemId, deviceId);
+
+        String disposalRequest = String
+                .format("{\"sampleItemId\":\"%s\",\"reason\":\"expired\",\"method\":\"autoclave\"}", sampleItemId);
+
+        // Act: Dispose the sample
+        mockMvc.perform(post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON)
+                .content(disposalRequest)).andExpect(status().isOk());
+
+        // Assert: Disposed count incremented by 1
+        MvcResult finalMetrics = mockMvc.perform(get("/rest/storage/sample-items?countOnly=true"))
+                .andExpect(status().isOk()).andReturn();
+        com.fasterxml.jackson.databind.JsonNode finalJson = objectMapper
+                .readTree(finalMetrics.getResponse().getContentAsString());
+        int finalDisposed = finalJson.get(0).get("disposed").asInt();
+
+        assertEquals("Disposed count should increment by exactly 1", initialDisposed + 1, finalDisposed);
+
+        // Verify assignment still exists but location is NULL
+        Integer assignmentCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class,
+                Integer.parseInt(sampleItemId));
+        assertEquals("Assignment record should still exist", Integer.valueOf(1), assignmentCount);
+
+        Integer locationId = jdbcTemplate.queryForObject(
+                "SELECT location_id FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class,
+                Integer.parseInt(sampleItemId));
+        assertNull("Location should be cleared after disposal", locationId);
+    }
+
+    /**
+     * OGC-144: Test that disposed samples remain searchable. Per FR-056: "Disposed
+     * samples MUST remain viewable for audit purposes but non-editable"
+     */
+    @Test
+    public void testDisposal_DisposedSampleRemainSearchable() throws Exception {
+        // Arrange: Create, assign, and dispose sample
+        String sampleItemId = createTestSampleItem();
+        Integer deviceId = createStorageDevice();
+        assignSampleToDevice(sampleItemId, deviceId);
+
+        String disposalRequest = String
+                .format("{\"sampleItemId\":\"%s\",\"reason\":\"expired\",\"method\":\"autoclave\"}", sampleItemId);
+        mockMvc.perform(post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON)
+                .content(disposalRequest)).andExpect(status().isOk());
+
+        // Act: Search for disposed samples via filter
+        MvcResult result = mockMvc.perform(get("/rest/storage/sample-items?status=disposed")).andExpect(status().isOk())
+                .andReturn();
+
+        // Assert: Disposed sample appears in results
+        com.fasterxml.jackson.databind.JsonNode samples = objectMapper
+                .readTree(result.getResponse().getContentAsString());
+        boolean found = false;
+        for (com.fasterxml.jackson.databind.JsonNode sample : samples) {
+            if (sampleItemId.equals(sample.get("id").asText())) {
+                found = true;
+                String status = sample.get("status").asText();
+                assertTrue("Status should be 'disposed' or 'Disposed'", "disposed".equalsIgnoreCase(status));
+                break;
+            }
+        }
+        assertTrue("Disposed sample should be searchable per FR-056", found);
     }
 }
