@@ -32,4 +32,22 @@
         </addColumn>
     </changeSet>
 
+    <changeSet id="inventory-add-last-updated-004" author="mherman22">
+        <comment>Add last_updated column to inventory_transaction table</comment>
+        <addColumn tableName="inventory_transaction" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="inventory-add-last-updated-005" author="mherman22">
+        <comment>Add last_updated column to inventory_usage table</comment>
+        <addColumn tableName="inventory_usage" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
 </databaseChangeLog>
