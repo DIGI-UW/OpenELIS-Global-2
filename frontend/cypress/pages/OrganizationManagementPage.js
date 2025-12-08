@@ -58,7 +58,9 @@ class OrganizationManagementPage {
 
   searchOrganzation() {
     // Wait for the Search component wrapper to be visible first
-    cy.get(this.selectors.orgSearchBar, { timeout: 10000 }).should("be.visible");
+    cy.get(this.selectors.orgSearchBar, { timeout: 10000 }).should(
+      "be.visible",
+    );
     // Then find the input inside - Carbon Search renders input with class .cds--search-input
     cy.get(`${this.selectors.orgSearchBar} .cds--search-input`)
       .should("be.visible")
@@ -70,7 +72,9 @@ class OrganizationManagementPage {
 
   searchInstitute() {
     // Wait for the Search component wrapper to be visible first
-    cy.get(this.selectors.orgSearchBar, { timeout: 10000 }).should("be.visible");
+    cy.get(this.selectors.orgSearchBar, { timeout: 10000 }).should(
+      "be.visible",
+    );
     // Then find the input inside - Carbon Search renders input with class .cds--search-input
     cy.get(`${this.selectors.orgSearchBar} .cds--search-input`)
       .should("be.visible")
