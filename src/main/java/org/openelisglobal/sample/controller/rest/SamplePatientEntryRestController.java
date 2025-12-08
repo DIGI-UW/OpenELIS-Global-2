@@ -44,7 +44,6 @@ import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
-import org.openelisglobal.sample.controller.BaseSampleEntryController;
 import org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
@@ -77,8 +76,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.servlet.support.RequestContextUtils;
 
 @Controller
-@RequestMapping(value = "/rest/")
-public class SamplePatientEntryRestController extends BaseSampleEntryController {
+@RequestMapping(value = "/rest")
+public class SamplePatientEntryRestController extends BaseSampleEntryRestController {
 
     @Value("${org.openelisglobal.requester.identifier:}")
     private String requestFhirUuid;
@@ -180,7 +179,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
-    @GetMapping(value = "SamplePatientEntry", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/SamplePatientEntry", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public SamplePatientEntryForm showSamplePatientEntry(HttpServletRequest request,
             @RequestParam(value = ID, required = false) @Pattern(regexp = "[a-zA-Z0-9 -]*") String externalOrderNumber)
@@ -222,7 +221,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         form.setReferralReasons(DisplayListService.getInstance().getList(ListType.REFERRAL_REASONS));
     }
 
-    @PostMapping(value = "SamplePatientEntry", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/SamplePatientEntry", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public SamplePatientEntryForm samplePatientEntrySave(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody SamplePatientEntryForm form,

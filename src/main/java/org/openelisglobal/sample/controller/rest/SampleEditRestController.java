@@ -31,7 +31,6 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.sample.bean.SampleEditItem;
-import org.openelisglobal.sample.controller.BaseSampleEntryController;
 import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.form.SampleEditForm.SampleEdit;
 import org.openelisglobal.sample.service.SampleEditService;
@@ -67,8 +66,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
-@RequestMapping(value = "/rest/")
-public class SampleEditRestController extends BaseSampleEntryController {
+@RequestMapping(value = "/rest")
+public class SampleEditRestController extends BaseSampleEntryRestController {
     @Autowired
     SampleEditFormValidator formValidator;
 
@@ -113,7 +112,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
     @Autowired
     private UserService userService;
 
-    @GetMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public SampleEditForm showSampleEdit(HttpServletRequest request,
             @RequestParam(required = false) String accessionNumber, @RequestParam(required = false) String patientId)
@@ -188,7 +187,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
         return form;
     }
 
-    @GetMapping(value = "patientByLabNumer", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/patientByLabNumer", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Patient> getPatientByLabNumber(HttpServletRequest request,
             @RequestParam(required = false) String accessionNumber) {
@@ -209,7 +208,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
         return ResponseEntity.ok(patient);
     }
 
-    @PostMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public void saveSampleEdit(HttpServletRequest request,
             @Validated(SampleEdit.class) @RequestBody SampleEditForm form, BindingResult result)
