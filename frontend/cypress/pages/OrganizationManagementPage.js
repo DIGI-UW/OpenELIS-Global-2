@@ -57,9 +57,8 @@ class OrganizationManagementPage {
   }
 
   searchOrganzation() {
-    // The input has id="org-name-search-bar" directly on it
-    // Ensure it's visible and interactable, then type with force
-    cy.get(this.selectors.orgSearchBar)
+    // Target the input directly by ID - ensure we're clicking the input, not the label or icon
+    cy.get(`input${this.selectors.orgSearchBar}`)
       .should("be.visible")
       .scrollIntoView()
       .click({ force: true })
@@ -68,9 +67,8 @@ class OrganizationManagementPage {
   }
 
   searchInstitute() {
-    // The input has id="org-name-search-bar" directly on it
-    // Ensure it's visible and interactable, then type with force
-    cy.get(this.selectors.orgSearchBar)
+    // Target the input directly by ID - ensure we're clicking the input, not the label or icon
+    cy.get(`input${this.selectors.orgSearchBar}`)
       .should("be.visible")
       .scrollIntoView()
       .click({ force: true })
