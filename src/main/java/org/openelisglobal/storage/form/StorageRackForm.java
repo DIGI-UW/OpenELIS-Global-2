@@ -1,12 +1,11 @@
 package org.openelisglobal.storage.form;
 
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * Form object for StorageRack entity
+ * Form object for StorageRack entity. Note: Racks are simple containers - grid
+ * dimensions are now on StorageBox (the gridded container).
  */
 public class StorageRackForm {
 
@@ -16,19 +15,8 @@ public class StorageRackForm {
     @Size(max = 100, message = "Rack label must not exceed 100 characters")
     private String label;
 
-    @Size(max = 10, message = "Rack code must not exceed 10 characters")
-    private String code; // Optional - will be auto-generated if not provided
-
-    @NotNull(message = "Rows value is required")
-    @Min(value = 0, message = "Rows must be non-negative")
-    private Integer rows = 0;
-
-    @NotNull(message = "Columns value is required")
-    @Min(value = 0, message = "Columns must be non-negative")
-    private Integer columns = 0;
-
-    @Size(max = 50, message = "Position schema hint must not exceed 50 characters")
-    private String positionSchemaHint;
+    @Size(max = 10, message = "Short code must not exceed 10 characters")
+    private String shortCode;
 
     private Boolean active = true;
 
@@ -53,36 +41,12 @@ public class StorageRackForm {
         this.label = label;
     }
 
-    public String getCode() {
-        return code;
+    public String getShortCode() {
+        return shortCode;
     }
 
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public Integer getRows() {
-        return rows;
-    }
-
-    public void setRows(Integer rows) {
-        this.rows = rows;
-    }
-
-    public Integer getColumns() {
-        return columns;
-    }
-
-    public void setColumns(Integer columns) {
-        this.columns = columns;
-    }
-
-    public String getPositionSchemaHint() {
-        return positionSchemaHint;
-    }
-
-    public void setPositionSchemaHint(String positionSchemaHint) {
-        this.positionSchemaHint = positionSchemaHint;
+    public void setShortCode(String shortCode) {
+        this.shortCode = shortCode;
     }
 
     public Boolean getActive() {

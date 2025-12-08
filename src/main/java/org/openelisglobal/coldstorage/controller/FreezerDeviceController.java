@@ -150,6 +150,15 @@ public class FreezerDeviceController extends BaseRestController {
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/devices/{id}/thresholds")
+    public ResponseEntity<Freezer> updateDeviceThresholds(@PathVariable Long id,
+            @RequestBody @Valid UpdateThresholdsRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {
+        Freezer updated = freezerService.updateThresholds(id, request.getTargetTemperature(),
+                request.getWarningThreshold(), request.getCriticalThreshold(), request.getPollingIntervalSeconds(),
+                getSysUserId(httpRequest));
+        return ResponseEntity.ok(updated);
+    }
+
     private FreezerStatusResponse toStatusResponse(Freezer freezer) {
         FreezerReading latest = freezerReadingService.getLatestReading(freezer.getId()).orElse(null);
         ThresholdProfile profile = resolveActiveProfile(freezer,
@@ -264,5 +273,13 @@ public class FreezerDeviceController extends BaseRestController {
     @Data
     public static class ToggleStatusRequest {
         private Boolean active;
+    }
+
+    @Data
+    public static class UpdateThresholdsRequest {
+        private BigDecimal targetTemperature;
+        private BigDecimal warningThreshold;
+        private BigDecimal criticalThreshold;
+        private Integer pollingIntervalSeconds;
     }
 }

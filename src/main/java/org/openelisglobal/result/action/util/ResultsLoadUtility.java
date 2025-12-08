@@ -220,8 +220,10 @@ public class ResultsLoadUtility {
         }
 
         currentPatient = patient;
-        PersonService personService = SpringContext.getBean(PersonService.class);
-        personService.getData(patient.getPerson());
+        if (patient != null && patient.getPerson() != null) {
+            PersonService personService = SpringContext.getBean(PersonService.class);
+            personService.getData(patient.getPerson());
+        }
 
         return getGroupedTestsForSamples();
     }
@@ -726,6 +728,8 @@ public class ResultsLoadUtility {
         if (analysis.getSampleItem() != null && analysis.getSampleItem().getId() != null) {
             testItem.setSampleItemId(analysis.getSampleItem().getId());
         }
+        testItem.setSampleItemExternalId(
+                analysis.getSampleItem() != null ? analysis.getSampleItem().getExternalId() : null);
         testItem.setSequenceNumber(sequenceNumber);
         testItem.setReceivedDate(receivedDate);
         testItem.setTestName(displayTestName);

@@ -369,7 +369,7 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
             // Delete in order to respect foreign key constraints
             jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id >= 1000");
             jdbcTemplate.execute("DELETE FROM sample WHERE id >= 10000");
-            jdbcTemplate.execute("DELETE FROM storage_position WHERE id >= 1000");
+            jdbcTemplate.execute("DELETE FROM storage_box WHERE id >= 1000");
             jdbcTemplate.execute("DELETE FROM storage_rack WHERE id >= 1000");
             jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id >= 1000");
             jdbcTemplate.execute("DELETE FROM storage_device WHERE id >= 1000");
@@ -416,14 +416,13 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
         // Create rack (code must be ≤10 chars and NOT NULL)
         String rackCode = "RACK" + (timestamp % 1000);
         jdbcTemplate.update(
-                "INSERT INTO storage_rack (id, label, code, rows, columns, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testRackId, "Test Rack", rackCode, 9, 9, testShelfId, true, 1);
+                "INSERT INTO storage_rack (id, label, code, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                testRackId, "Test Rack", rackCode, testShelfId, true, 1);
 
-        // Create position (occupancy is now calculated dynamically from
-        // SampleStorageAssignment)
+        // Create box to hold coordinates (rows/columns define capacity)
         jdbcTemplate.update(
-                "INSERT INTO storage_position (id, coordinate, parent_rack_id, parent_device_id, parent_shelf_id, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testPositionId, "A1", testRackId, testDeviceId, testShelfId, 1);
+                "INSERT INTO storage_box (id, label, short_code, type, rows, columns, parent_rack_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
+                testPositionId, "Box1", "BOX1", "plate", 8, 12, testRackId, true, 1);
 
         // Create sample (following existing integration test pattern - uses
         // lastupdated, not last_updated)

@@ -1,0 +1,673 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="FreezerTemperatureMonitoringReport" pageWidth="842" pageHeight="595" orientation="Landscape"
+              columnWidth="782" leftMargin="30" rightMargin="30" topMargin="20" bottomMargin="20">
+
+    <!-- Parameters -->
+    <parameter name="freezerName" class="java.lang.String"/>
+    <parameter name="facilityName" class="java.lang.String"/>
+    <parameter name="startDate" class="java.lang.String"/>
+    <parameter name="endDate" class="java.lang.String"/>
+    <parameter name="reportDate" class="java.lang.String"/>
+    <parameter name="reportType" class="java.lang.String"/>
+
+    <!-- Fields for Daily Data -->
+    <field name="recordedAt" class="java.lang.String"/>
+    <field name="date" class="java.lang.String"/>
+    <field name="monthYear" class="java.lang.String"/>
+    <field name="weekPeriod" class="java.lang.String"/>
+    <field name="weekNumber" class="java.lang.Integer"/>
+    <field name="year" class="java.lang.Integer"/>
+    <field name="month" class="java.lang.Integer"/>
+    <field name="temperature" class="java.math.BigDecimal"/>
+    <field name="humidity" class="java.math.BigDecimal"/>
+    <field name="status" class="java.lang.String"/>
+    <field name="alertTriggered" class="java.lang.Boolean"/>
+
+    <!-- Fields for Weekly/Monthly Aggregates -->
+    <field name="readingCount" class="java.lang.Integer"/>
+    <field name="avgTemperature" class="java.math.BigDecimal"/>
+    <field name="minTemperature" class="java.math.BigDecimal"/>
+    <field name="maxTemperature" class="java.math.BigDecimal"/>
+    <field name="avgHumidity" class="java.math.BigDecimal"/>
+    <field name="normalCount" class="java.lang.Integer"/>
+    <field name="warningCount" class="java.lang.Integer"/>
+    <field name="criticalCount" class="java.lang.Integer"/>
+    <field name="alertCount" class="java.lang.Integer"/>
+    <field name="daysMonitored" class="java.lang.Integer"/>
+
+    <!-- Variables for Statistics -->
+    <variable name="totalReadings" class="java.lang.Integer" calculation="Count">
+        <variableExpression><![CDATA[$F{recordedAt}]]></variableExpression>
+    </variable>
+
+    <!-- GROUP BY MONTH (for Daily and Weekly reports) -->
+    <group name="MonthGroup" isStartNewPage="false">
+        <groupExpression><![CDATA[$F{monthYear}]]></groupExpression>
+        <groupHeader>
+            <band height="70">
+                <!-- Month Header Box -->
+                <frame>
+                    <reportElement mode="Opaque" x="0" y="10" width="782" height="35" backcolor="#4472C4"/>
+                    <box>
+                        <pen lineWidth="1.0" lineColor="#2E5090"/>
+                    </box>
+                    <textField>
+                        <reportElement x="15" y="5" width="500" height="25" forecolor="#FFFFFF"/>
+                        <textElement verticalAlignment="Middle">
+                            <font size="14" isBold="true" fontName="SansSerif"/>
+                        </textElement>
+                        <textFieldExpression><![CDATA[$F{monthYear}]]></textFieldExpression>
+                    </textField>
+                </frame>
+
+                <!-- Column Headers for Daily Report -->
+                <frame>
+                    <reportElement x="0" y="45" width="782" height="25">
+                        <printWhenExpression><![CDATA[$P{reportType}.toLowerCase().contains("daily")]]></printWhenExpression>
+                    </reportElement>
+                    <staticText>
+                        <reportElement mode="Opaque" x="0" y="0" width="140" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="9" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Date/Time]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="140" y="0" width="100" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="9" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Temperature (°C)]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="240" y="0" width="100" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="9" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Humidity (%)]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="340" y="0" width="342" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="9" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Status]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="682" y="0" width="100" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="9" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Alert]]></text>
+                    </staticText>
+                </frame>
+
+                <!-- Column Headers for Weekly Report -->
+                <frame>
+                    <reportElement x="0" y="45" width="782" height="25">
+                        <printWhenExpression><![CDATA[$P{reportType}.toLowerCase().contains("weekly")]]></printWhenExpression>
+                    </reportElement>
+                    <staticText>
+                        <reportElement mode="Opaque" x="0" y="0" width="180" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="9" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Week Period]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="180" y="0" width="60" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Readings]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="240" y="0" width="85" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Avg Temp (°C)]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="325" y="0" width="80" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Min (°C)]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="405" y="0" width="80" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Max (°C)]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="485" y="0" width="80" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Humidity (%)]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="565" y="0" width="60" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="7" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Normal]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="625" y="0" width="60" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="7" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Warning]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="685" y="0" width="97" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="7" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Critical/Alert]]></text>
+                    </staticText>
+                </frame>
+            </band>
+        </groupHeader>
+        <groupFooter>
+            <band height="10"/>
+        </groupFooter>
+    </group>
+
+    <!-- GROUP BY YEAR (for Monthly reports) -->
+    <group name="YearGroup" isStartNewPage="false">
+        <groupExpression><![CDATA[$F{year}]]></groupExpression>
+        <groupHeader>
+            <band height="70">
+                <printWhenExpression><![CDATA[$P{reportType}.toLowerCase().contains("monthly")]]></printWhenExpression>
+                <!-- Year Header Box -->
+                <frame>
+                    <reportElement mode="Opaque" x="0" y="10" width="782" height="35" backcolor="#2E5090"/>
+                    <box>
+                        <pen lineWidth="1.0" lineColor="#1F3864"/>
+                    </box>
+                    <textField>
+                        <reportElement x="15" y="5" width="500" height="25" forecolor="#FFFFFF"/>
+                        <textElement verticalAlignment="Middle">
+                            <font size="16" isBold="true" fontName="SansSerif"/>
+                        </textElement>
+                        <textFieldExpression><![CDATA["Year " + $F{year}]]></textFieldExpression>
+                    </textField>
+                </frame>
+
+                <!-- Column Headers for Monthly Report -->
+                <frame>
+                    <reportElement x="0" y="45" width="782" height="25"/>
+                    <staticText>
+                        <reportElement mode="Opaque" x="0" y="0" width="130" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="9" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Month]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="130" y="0" width="50" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Days]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="180" y="0" width="70" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Readings]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="250" y="0" width="95" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Avg Temp (°C)]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="345" y="0" width="90" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Min Temp (°C)]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="435" y="0" width="90" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Max Temp (°C)]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="525" y="0" width="75" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="8" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Humidity (%)]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="600" y="0" width="50" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="7" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Normal]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="650" y="0" width="50" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="7" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Warn]]></text>
+                    </staticText>
+                    <staticText>
+                        <reportElement mode="Opaque" x="700" y="0" width="82" height="25" backcolor="#D9E2F3"/>
+                        <box><pen lineWidth="0.5" lineColor="#8FAADC"/></box>
+                        <textElement textAlignment="Center" verticalAlignment="Middle">
+                            <font size="7" isBold="true"/>
+                        </textElement>
+                        <text><![CDATA[Crit/Alert]]></text>
+                    </staticText>
+                </frame>
+            </band>
+        </groupHeader>
+        <groupFooter>
+            <band height="10"/>
+        </groupFooter>
+    </group>
+
+    <title>
+        <band height="110">
+            <!-- Professional Header with Blue Gradient Effect -->
+            <frame>
+                <reportElement mode="Opaque" x="0" y="0" width="782" height="50" backcolor="#4472C4"/>
+                <box>
+                    <pen lineWidth="1.5" lineColor="#2E5090"/>
+                </box>
+                <staticText>
+                    <reportElement x="10" y="5" width="762" height="25" forecolor="#FFFFFF"/>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="18" isBold="true" fontName="SansSerif"/>
+                    </textElement>
+                    <text><![CDATA[Freezer Temperature Monitoring Report]]></text>
+                </staticText>
+                <textField>
+                    <reportElement x="10" y="30" width="762" height="15" forecolor="#FFFFFF"/>
+                    <textElement textAlignment="Center">
+                        <font size="10" isItalic="true"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$P{reportType}.toUpperCase() + " TEMPERATURE LOG"]]></textFieldExpression>
+                </textField>
+            </frame>
+
+            <!-- Report Info Section -->
+            <frame>
+                <reportElement x="0" y="55" width="782" height="50"/>
+                <box>
+                    <pen lineWidth="0.5" lineColor="#8FAADC"/>
+                    <topPen lineWidth="0.0"/>
+                </box>
+                <staticText>
+                    <reportElement x="10" y="5" width="80" height="15"/>
+                    <textElement><font size="9" isBold="true"/></textElement>
+                    <text><![CDATA[Facility:]]></text>
+                </staticText>
+                <textField>
+                    <reportElement x="90" y="5" width="300" height="15"/>
+                    <textElement><font size="9"/></textElement>
+                    <textFieldExpression><![CDATA[$P{facilityName}]]></textFieldExpression>
+                </textField>
+
+                <staticText>
+                    <reportElement x="490" y="5" width="100" height="15"/>
+                    <textElement><font size="9" isBold="true"/></textElement>
+                    <text><![CDATA[Report Date:]]></text>
+                </staticText>
+                <textField>
+                    <reportElement x="590" y="5" width="182" height="15"/>
+                    <textElement><font size="9"/></textElement>
+                    <textFieldExpression><![CDATA[$P{reportDate}]]></textFieldExpression>
+                </textField>
+
+                <staticText>
+                    <reportElement x="10" y="22" width="80" height="15"/>
+                    <textElement><font size="9" isBold="true"/></textElement>
+                    <text><![CDATA[Freezer Unit:]]></text>
+                </staticText>
+                <textField>
+                    <reportElement x="90" y="22" width="300" height="15"/>
+                    <textElement><font size="9"/></textElement>
+                    <textFieldExpression><![CDATA[$P{freezerName}]]></textFieldExpression>
+                </textField>
+
+                <staticText>
+                    <reportElement x="490" y="22" width="100" height="15"/>
+                    <textElement><font size="9" isBold="true"/></textElement>
+                    <text><![CDATA[Period:]]></text>
+                </staticText>
+                <textField>
+                    <reportElement x="590" y="22" width="182" height="15"/>
+                    <textElement><font size="9"/></textElement>
+                    <textFieldExpression><![CDATA[$P{startDate} + " to " + $P{endDate}]]></textFieldExpression>
+                </textField>
+            </frame>
+        </band>
+    </title>
+
+    <detail>
+        <band height="22">
+            <!-- Daily Report Detail -->
+            <frame>
+                <reportElement x="0" y="0" width="782" height="22">
+                    <printWhenExpression><![CDATA[$P{reportType}.toLowerCase().contains("daily")]]></printWhenExpression>
+                </reportElement>
+                <textField>
+                    <reportElement x="0" y="0" width="140" height="22"/>
+                    <box leftPadding="5"><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{recordedAt}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="140" y="0" width="100" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{temperature} != null ? String.format("%.1f", $F{temperature}) : "—"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="240" y="0" width="100" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{humidity} != null ? String.format("%.1f", $F{humidity}) : "—"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="340" y="0" width="342" height="22">
+                        <printWhenExpression><![CDATA[$F{status} != null && $F{status}.equals("CRITICAL")]]></printWhenExpression>
+                    </reportElement>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8" isBold="true"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA["⛔ CRITICAL"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="340" y="0" width="342" height="22">
+                        <printWhenExpression><![CDATA[$F{status} != null && $F{status}.equals("WARNING")]]></printWhenExpression>
+                    </reportElement>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8" isBold="true"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA["⚠ WARNING"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="340" y="0" width="342" height="22">
+                        <printWhenExpression><![CDATA[$F{status} == null || $F{status}.equals("NORMAL")]]></printWhenExpression>
+                    </reportElement>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA["✓ Normal"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="682" y="0" width="100" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{alertTriggered} ? "YES" : "—"]]></textFieldExpression>
+                </textField>
+            </frame>
+
+            <!-- Weekly Report Detail -->
+            <frame>
+                <reportElement x="0" y="0" width="782" height="22">
+                    <printWhenExpression><![CDATA[$P{reportType}.toLowerCase().contains("weekly")]]></printWhenExpression>
+                </reportElement>
+                <textField>
+                    <reportElement x="0" y="0" width="180" height="22"/>
+                    <box leftPadding="10"><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{weekPeriod}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="180" y="0" width="60" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{readingCount}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="240" y="0" width="85" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{avgTemperature} != null ? String.format("%.2f", $F{avgTemperature}) : "—"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="325" y="0" width="80" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{minTemperature} != null ? String.format("%.2f", $F{minTemperature}) : "—"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="405" y="0" width="80" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{maxTemperature} != null ? String.format("%.2f", $F{maxTemperature}) : "—"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="485" y="0" width="80" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{avgHumidity} != null ? String.format("%.1f", $F{avgHumidity}) : "—"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="565" y="0" width="60" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{normalCount}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="625" y="0" width="60" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{warningCount}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="685" y="0" width="97" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="7"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{criticalCount} + " / " + $F{alertCount}]]></textFieldExpression>
+                </textField>
+            </frame>
+
+            <!-- Monthly Report Detail -->
+            <frame>
+                <reportElement x="0" y="0" width="782" height="22">
+                    <printWhenExpression><![CDATA[$P{reportType}.toLowerCase().contains("monthly")]]></printWhenExpression>
+                </reportElement>
+                <textField>
+                    <reportElement x="0" y="0" width="130" height="22"/>
+                    <box leftPadding="10"><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement verticalAlignment="Middle">
+                        <font size="9" isBold="true"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{monthYear}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="130" y="0" width="50" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{daysMonitored}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="180" y="0" width="70" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{readingCount}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="250" y="0" width="95" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{avgTemperature} != null ? String.format("%.2f", $F{avgTemperature}) : "—"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="345" y="0" width="90" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{minTemperature} != null ? String.format("%.2f", $F{minTemperature}) : "—"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="435" y="0" width="90" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{maxTemperature} != null ? String.format("%.2f", $F{maxTemperature}) : "—"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="525" y="0" width="75" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{avgHumidity} != null ? String.format("%.1f", $F{avgHumidity}) : "—"]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="600" y="0" width="50" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{normalCount}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="650" y="0" width="50" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="8"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{warningCount}]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="700" y="0" width="82" height="22"/>
+                    <box><pen lineWidth="0.5" lineColor="#C5D9F1"/></box>
+                    <textElement textAlignment="Center" verticalAlignment="Middle">
+                        <font size="7"/>
+                    </textElement>
+                    <textFieldExpression><![CDATA[$F{criticalCount} + "/" + $F{alertCount}]]></textFieldExpression>
+                </textField>
+            </frame>
+        </band>
+    </detail>
+
+    <pageFooter>
+        <band height="25">
+            <frame>
+                <reportElement mode="Opaque" x="0" y="0" width="782" height="25" backcolor="#F2F2F2"/>
+                <box>
+                    <topPen lineWidth="0.5" lineColor="#8FAADC"/>
+                </box>
+                <textField>
+                    <reportElement x="10" y="5" width="400" height="15"/>
+                    <textElement><font size="7"/></textElement>
+                    <textFieldExpression><![CDATA["Generated: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date())]]></textFieldExpression>
+                </textField>
+                <textField>
+                    <reportElement x="682" y="5" width="90" height="15"/>
+                    <textElement textAlignment="Right"><font size="7"/></textElement>
+                    <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER}]]></textFieldExpression>
+                </textField>
+            </frame>
+        </band>
+    </pageFooter>
+
+    <summary>
+        <band height="70">
+            <frame>
+                <reportElement mode="Opaque" x="0" y="10" width="782" height="50" backcolor="#FFF2CC"/>
+                <box>
+                    <pen lineWidth="1.0" lineColor="#FFD966"/>
+                </box>
+                <staticText>
+                    <reportElement x="10" y="5" width="762" height="15"/>
+                    <textElement textAlignment="Center">
+                        <font size="9" isBold="true"/>
+                    </textElement>
+                    <text><![CDATA[Regulatory Compliance Statement]]></text>
+                </staticText>
+                <staticText>
+                    <reportElement x="10" y="22" width="762" height="25"/>
+                    <textElement textAlignment="Center">
+                        <font size="7" isItalic="true"/>
+                    </textElement>
+                    <text><![CDATA[This report complies with CAP, CLIA, FDA, and WHO guidelines for temperature-controlled storage monitoring.
+All data organized chronologically with hierarchical grouping for regulatory compliance and easy review.]]></text>
+                </staticText>
+            </frame>
+        </band>
+    </summary>
+</jasperReport>

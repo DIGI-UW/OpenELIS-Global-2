@@ -63,7 +63,7 @@
         <class>org.openelisglobal.storage.valueholder.StorageDevice</class>
         <class>org.openelisglobal.storage.valueholder.StorageShelf</class>
         <class>org.openelisglobal.storage.valueholder.StorageRack</class>
-        <class>org.openelisglobal.storage.valueholder.StoragePosition</class>
+        <class>org.openelisglobal.storage.valueholder.StorageBox</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
 

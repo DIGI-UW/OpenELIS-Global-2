@@ -11,6 +11,7 @@ import org.openelisglobal.coldstorage.valueholder.CorrectiveAction;
 import org.openelisglobal.coldstorage.valueholder.CorrectiveActionStatus;
 import org.openelisglobal.coldstorage.valueholder.CorrectiveActionType;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
+import org.openelisglobal.common.rest.BaseRestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,13 +26,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * REST API for managing corrective actions on cold storage devices. Handles
- * creation, updates, status changes, completion, and retraction of actions.
- */
 @RestController
-@RequestMapping("/rest/corrective-actions")
-public class CorrectiveActionRestController {
+@RequestMapping("/rest/coldstorage/corrective-actions")
+public class CorrectiveActionRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(CorrectiveActionRestController.class);
 
@@ -41,23 +38,18 @@ public class CorrectiveActionRestController {
     @Autowired
     private FreezerService freezerService;
 
-    /**
-     * Create a new corrective action for a device. POST /rest/corrective-actions
-     */
     @PostMapping
     public ResponseEntity<CorrectiveActionDTO> createCorrectiveAction(
             @RequestBody CreateCorrectiveActionRequest request) {
 
         try {
-            // Validate freezer exists
             Optional<Freezer> freezerOpt = freezerService.findById(request.getFreezerId());
-            if (!freezerOpt.isPresent()) {
+            if (freezerOpt.isEmpty()) {
                 logger.error("Freezer not found with ID: {}", request.getFreezerId());
                 return ResponseEntity.badRequest().build();
             }
 
             CorrectiveActionType actionType = CorrectiveActionType.valueOf(request.getActionType());
-
             CorrectiveAction createdAction = correctiveActionService.createCorrectiveAction(request.getFreezerId(),
                     actionType, request.getDescription(), request.getCreatedByUserId());
 

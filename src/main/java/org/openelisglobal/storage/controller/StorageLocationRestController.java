@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.openelisglobal.coldstorage.service.FreezerService;
+import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.storage.dao.*;
@@ -25,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * REST Controller for Storage Location management Handles CRUD operations for
- * all storage hierarchy levels: Room, Device, Shelf, Rack, Position
+ * all storage hierarchy levels: Room, Device, Shelf, Rack, Box
  */
 @RestController
 @RequestMapping("/rest/storage")
@@ -54,11 +56,14 @@ public class StorageLocationRestController extends BaseRestController {
     @Autowired
     private UserModuleService userModuleService;
 
+    @Autowired(required = false)
+    private FreezerService freezerService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Helper method to check admin status with graceful error handling
-     * 
+     *
      * @param request HTTP request containing session information
      * @return true if user is admin, false otherwise (defaults to false if session
      *         unavailable)
@@ -96,7 +101,7 @@ public class StorageLocationRestController extends BaseRestController {
             Map<String, Object> response = entityToMap(createdRoom);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error creating room: " + e.getMessage(), e);
+            logger.warn("Validation error creating room: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -164,7 +169,7 @@ public class StorageLocationRestController extends BaseRestController {
             }
             return ResponseEntity.ok(entityToMap(updatedRoom));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error updating room: " + e.getMessage(), e);
+            logger.warn("Validation error updating room: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -259,7 +264,8 @@ public class StorageLocationRestController extends BaseRestController {
 
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error deleting room: " + e.getMessage(), e);
+            logger.warn("Constraint violation deleting room: {}", e.getMessage());
+            // Conflict if room has constraints (checked in service layer)
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Cannot delete room");
             error.put("message", e.getMessage());
@@ -273,7 +279,8 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Device Endpoints ==========
 
     @PostMapping("/devices")
-    public ResponseEntity<Map<String, Object>> createDevice(@Valid @RequestBody StorageDeviceForm form) {
+    public ResponseEntity<Map<String, Object>> createDevice(@Valid @RequestBody StorageDeviceForm form,
+            jakarta.servlet.http.HttpServletRequest request) {
         try {
             // Set parent room first (needed for code generation)
             Integer parentRoomId = form.getParentRoomId() != null ? Integer.parseInt(form.getParentRoomId()) : null;
@@ -303,6 +310,19 @@ public class StorageLocationRestController extends BaseRestController {
             Integer id = storageLocationService.insert(device);
             device.setId(id);
 
+            if (shouldEnableMonitoring(device)) {
+                try {
+                    String sysUserId = getSysUserId(request);
+                    if (sysUserId == null) {
+                        sysUserId = "1"; // Default system user for tests/REST API without session
+                    }
+                    createFreezerMonitoringStub(device, sysUserId);
+                } catch (Exception e) {
+                    logger.warn("Failed to auto-create freezer monitoring stub for device {}: {}", device.getName(),
+                            e.getMessage());
+                }
+            }
+
             Map<String, Object> response = entityToMap(device);
             response.put("parentRoomId", parentRoomId);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -312,7 +332,7 @@ public class StorageLocationRestController extends BaseRestController {
             error.put("error", "Database constraint violation: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error creating device: " + e.getMessage(), e);
+            logger.warn("Validation error creating device: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -392,9 +412,15 @@ public class StorageLocationRestController extends BaseRestController {
 
             storageLocationService.update(deviceToUpdate);
             StorageDevice updatedDevice = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
+
+            // Sync device name to Freezer monitoring if linked
+            if (shouldEnableMonitoring(updatedDevice)) {
+                syncDeviceNameToFreezer(updatedDevice);
+            }
+
             return ResponseEntity.ok(entityToMap(updatedDevice));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error updating device: " + e.getMessage(), e);
+            logger.warn("Validation error updating device: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -486,7 +512,7 @@ public class StorageLocationRestController extends BaseRestController {
 
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error deleting device: " + e.getMessage(), e);
+            logger.warn("Constraint violation deleting device: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Cannot delete device");
             error.put("message", e.getMessage());
@@ -595,7 +621,7 @@ public class StorageLocationRestController extends BaseRestController {
             StorageShelf updatedShelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
             return ResponseEntity.ok(entityToMap(updatedShelf));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error updating shelf: " + e.getMessage(), e);
+            logger.warn("Validation error updating shelf: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -687,7 +713,7 @@ public class StorageLocationRestController extends BaseRestController {
 
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error deleting shelf: " + e.getMessage(), e);
+            logger.warn("Constraint violation deleting shelf: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Cannot delete shelf");
             error.put("message", e.getMessage());
@@ -705,9 +731,7 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             StorageRack rack = new StorageRack();
             rack.setLabel(form.getLabel());
-            rack.setRows(form.getRows());
-            rack.setColumns(form.getColumns());
-            rack.setPositionSchemaHint(form.getPositionSchemaHint());
+            rack.setShortCode(form.getShortCode());
             rack.setActive(form.getActive() != null ? form.getActive() : true);
             rack.setFhirUuid(UUID.randomUUID());
             rack.setSysUserId("1"); // Default system user for REST API
@@ -782,12 +806,9 @@ public class StorageLocationRestController extends BaseRestController {
             Integer idInt = Integer.parseInt(id);
             StorageRack rackToUpdate = new StorageRack();
             rackToUpdate.setLabel(form.getLabel());
-            rackToUpdate.setRows(form.getRows());
-            rackToUpdate.setColumns(form.getColumns());
-            rackToUpdate.setPositionSchemaHint(form.getPositionSchemaHint());
+            rackToUpdate.setShortCode(form.getShortCode());
             // parentShelf is read-only - ignored if provided
             rackToUpdate.setActive(form.getActive());
-            rackToUpdate.setCode(form.getCode());
 
             // Get existing rack to preserve ID
             StorageRack existingRack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
@@ -800,7 +821,7 @@ public class StorageLocationRestController extends BaseRestController {
             StorageRack updatedRack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
             return ResponseEntity.ok(entityToMap(updatedRack));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error updating rack: " + e.getMessage(), e);
+            logger.warn("Validation error updating rack: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -893,7 +914,7 @@ public class StorageLocationRestController extends BaseRestController {
 
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
-            logger.error("Error deleting rack: " + e.getMessage(), e);
+            logger.warn("Constraint violation deleting rack: {}", e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Cannot delete rack");
             error.put("message", e.getMessage());
@@ -904,82 +925,65 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    // ========== Position Endpoints ==========
+    // ========== Box Endpoints ==========
 
-    @PostMapping("/positions")
-    public ResponseEntity<Map<String, Object>> createPosition(@Valid @RequestBody StoragePositionForm form) {
+    @PostMapping("/boxes")
+    public ResponseEntity<Map<String, Object>> createBox(@Valid @RequestBody StorageBoxForm form) {
         try {
-            StoragePosition position = new StoragePosition();
-            position.setCoordinate(form.getCoordinate());
-            position.setRowIndex(form.getRowIndex());
-            position.setColumnIndex(form.getColumnIndex());
-            position.setFhirUuid(UUID.randomUUID());
-            position.setSysUserId("1"); // Default system user for REST API
+            StorageBox box = new StorageBox();
+            box.setLabel(form.getLabel());
+            box.setType(form.getType());
+            box.setRows(form.getRows());
+            box.setColumns(form.getColumns());
+            box.setPositionSchemaHint(form.getPositionSchemaHint());
+            box.setShortCode(form.getShortCode());
+            box.setActive(form.getActive() != null ? form.getActive() : true);
+            box.setFhirUuid(UUID.randomUUID());
+            box.setSysUserId("1"); // Default system user for REST API
 
             Integer parentRackId = form.getParentRackId() != null ? Integer.parseInt(form.getParentRackId()) : null;
             StorageRack parentRack = (StorageRack) storageLocationService.get(parentRackId, StorageRack.class);
             if (parentRack == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent rack not found"));
             }
-            position.setParentRack(parentRack);
+            box.setParentRack(parentRack);
 
-            // StoragePosition requires parentDevice (not-null constraint)
-            // Traverse hierarchy: Rack → Shelf → Device
-            StorageShelf parentShelf = parentRack.getParentShelf();
-            if (parentShelf != null) {
-                position.setParentShelf(parentShelf);
-                StorageDevice parentDevice = parentShelf.getParentDevice();
-                if (parentDevice != null) {
-                    position.setParentDevice(parentDevice);
-                } else {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(Map.of("error", "Parent device not found in hierarchy"));
-                }
-            } else {
-                // If no shelf, we need to get device from rack's shelf relationship
-                // But rack always has a shelf (nullable = false in StorageRack entity)
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("error", "Parent shelf not found in rack hierarchy"));
-            }
+            Integer id = storageLocationService.insert(box);
+            box.setId(id);
 
-            Integer id = storageLocationService.insert(position);
-            position.setId(id);
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(entityToMap(position));
+            return ResponseEntity.status(HttpStatus.CREATED).body(entityToMap(box));
         } catch (Exception e) {
-            logger.error("Error creating position", e);
+            logger.error("Error creating box", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
 
-    @GetMapping("/positions")
-    public ResponseEntity<List<Map<String, Object>>> getPositions(@RequestParam(required = false) String rackId,
+    @GetMapping("/boxes")
+    public ResponseEntity<List<Map<String, Object>>> getBoxes(@RequestParam(required = false) String rackId,
             @RequestParam(required = false) Boolean occupied) {
         try {
-            List<StoragePosition> positions;
+            List<StorageBox> boxes;
             if (rackId != null) {
                 Integer rackIdInt = Integer.parseInt(rackId);
-                positions = storageLocationService.getPositionsByRack(rackIdInt);
+                boxes = storageLocationService.getBoxesByRack(rackIdInt);
                 // Filter by occupied status if specified
-                // Calculate occupied dynamically from SampleStorageAssignment (source of truth)
                 if (occupied != null) {
-                    positions.removeIf(p -> sampleStorageAssignmentDAO.isPositionOccupied(p) != occupied);
+                    boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
                 }
             } else {
-                positions = storageLocationService.getAllPositions();
-                // Filter by occupied status if specified
+                boxes = storageLocationService.getAllBoxes();
                 if (occupied != null) {
-                    positions.removeIf(p -> sampleStorageAssignmentDAO.isPositionOccupied(p) != occupied);
+                    boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
                 }
             }
 
             List<Map<String, Object>> response = new ArrayList<>();
-            for (StoragePosition position : positions) {
-                response.add(entityToMap(position));
+            for (StorageBox box : boxes) {
+                response.add(entityToMap(box));
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            logger.error("Error getting positions", e);
+            logger.error("Error getting boxes", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -1067,19 +1071,75 @@ public class StorageLocationRestController extends BaseRestController {
         return code;
     }
 
+    private boolean shouldEnableMonitoring(StorageDevice device) {
+        if (freezerService == null) {
+            return false;
+        }
+        StorageDevice.DeviceType type = device.getTypeEnum();
+        return type == StorageDevice.DeviceType.FREEZER || type == StorageDevice.DeviceType.REFRIGERATOR;
+    }
+
+    private void createFreezerMonitoringStub(StorageDevice device, String sysUserId) {
+        Freezer freezer = new Freezer();
+        freezer.setName(device.getName());
+        freezer.setStorageDevice(device);
+        freezer.setProtocol(Freezer.Protocol.TCP);
+        freezer.setHost("");
+        freezer.setPort(502);
+        freezer.setSlaveId(1);
+        freezer.setTemperatureRegister(0);
+        freezer.setTemperatureScale(java.math.BigDecimal.ONE);
+        freezer.setTemperatureOffset(java.math.BigDecimal.ZERO);
+        freezer.setHumidityScale(java.math.BigDecimal.ONE);
+        freezer.setHumidityOffset(java.math.BigDecimal.ZERO);
+        freezer.setPollingIntervalSeconds(60);
+        freezer.setActive(false);
+
+        if (device.getTemperatureSetting() != null) {
+            freezer.setTargetTemperature(device.getTemperatureSetting());
+        }
+
+        freezerService.createFreezer(freezer, device.getParentRoom().getId().longValue(), sysUserId);
+        logger.info("Auto-created Freezer monitoring stub for StorageDevice: {} (ID: {})", device.getName(),
+                device.getId());
+    }
+
+    private void syncDeviceNameToFreezer(StorageDevice device) {
+        if (freezerService == null) {
+            return;
+        }
+
+        try {
+            List<Freezer> allFreezers = freezerService.getAllFreezers("");
+            java.util.Optional<Freezer> linkedFreezer = allFreezers.stream()
+                    .filter(f -> f.getStorageDevice() != null && f.getStorageDevice().getId().equals(device.getId()))
+                    .findFirst();
+
+            if (linkedFreezer.isPresent()) {
+                Freezer freezer = linkedFreezer.get();
+                if (!freezer.getName().equals(device.getName())) {
+                    freezer.setName(device.getName()); // Sync name
+                    freezerService.updateFreezer(freezer.getId(), freezer, device.getParentRoom().getId().longValue(),
+                            device.getSysUserId());
+                    logger.info("Synced device name to Freezer: {} (ID: {})", device.getName(), device.getId());
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to sync device name to freezer for device {}: {}", device.getId(), e.getMessage());
+        }
+    }
+
     private Map<String, Object> entityToMap(Object entity) {
         Map<String, Object> map = new HashMap<>();
 
-        if (entity instanceof StorageRoom) {
-            StorageRoom room = (StorageRoom) entity;
+        if (entity instanceof StorageRoom room) {
             map.put("id", room.getId());
             map.put("name", room.getName());
             map.put("code", room.getCode());
             map.put("description", room.getDescription());
             map.put("active", room.getActive());
             map.put("fhirUuid", room.getFhirUuidAsString());
-        } else if (entity instanceof StorageDevice) {
-            StorageDevice device = (StorageDevice) entity;
+        } else if (entity instanceof StorageDevice device) {
             map.put("id", device.getId());
             map.put("name", device.getName());
             map.put("code", device.getCode());
@@ -1128,11 +1188,8 @@ public class StorageLocationRestController extends BaseRestController {
             StorageRack rack = (StorageRack) entity;
             map.put("id", rack.getId());
             map.put("label", rack.getLabel());
-            map.put("rows", rack.getRows());
-            map.put("columns", rack.getColumns());
-            map.put("positionSchemaHint", rack.getPositionSchemaHint());
+            map.put("shortCode", rack.getShortCode());
             map.put("active", rack.getActive());
-            map.put("code", rack.getCode());
             map.put("fhirUuid", rack.getFhirUuidAsString());
 
             // Add parent relationships for filtering (FR-065: filter by room, shelf,
@@ -1195,53 +1252,62 @@ public class StorageLocationRestController extends BaseRestController {
 
             // Set type for consistency
             map.put("type", "rack");
-        } else if (entity instanceof StoragePosition) {
-            StoragePosition position = (StoragePosition) entity;
-            map.put("id", position.getId());
-            map.put("coordinate", position.getCoordinate());
-            map.put("rowIndex", position.getRowIndex());
-            map.put("columnIndex", position.getColumnIndex());
-            // Calculate occupied dynamically from SampleStorageAssignment (source of truth)
-            // instead of using StoragePosition.occupied flag
-            map.put("occupied", sampleStorageAssignmentDAO.isPositionOccupied(position));
-            map.put("fhirUuid", position.getFhirUuidAsString());
+        } else if (entity instanceof StorageBox) {
+            StorageBox box = (StorageBox) entity;
+            map.put("id", box.getId());
+            map.put("label", box.getLabel());
+            map.put("type", box.getType());
+            map.put("rows", box.getRows());
+            map.put("columns", box.getColumns());
+            map.put("capacity", box.getCapacity());
+            map.put("positionSchemaHint", box.getPositionSchemaHint());
+            map.put("shortCode", box.getShortCode());
+            map.put("active", box.getActive());
 
-            // Add parent relationships for hierarchy display
-            StorageRack parentRack = position.getParentRack();
-            StorageShelf parentShelf = position.getParentShelf();
-            StorageDevice parentDevice = position.getParentDevice();
+            // Get occupied coordinates with sample info (external ID, sample item ID)
+            Map<String, Map<String, String>> occupiedCoordinatesMap = sampleStorageAssignmentDAO
+                    .getOccupiedCoordinatesWithSampleInfo(box.getId());
+
+            map.put("occupied", !occupiedCoordinatesMap.isEmpty());
+            map.put("occupiedCoordinates", occupiedCoordinatesMap);
+            map.put("fhirUuid", box.getFhirUuidAsString());
+
+            StorageRack parentRack = box.getParentRack();
+            StorageShelf parentShelf = null;
+            StorageDevice parentDevice = null;
             StorageRoom parentRoom = null;
 
-            if (parentDevice != null) {
-                parentDevice.getName(); // Trigger lazy load
-                map.put("parentDeviceId", parentDevice.getId());
-                map.put("deviceName", parentDevice.getName());
-                map.put("parentDeviceName", parentDevice.getName());
-
-                parentRoom = parentDevice.getParentRoom();
-                if (parentRoom != null) {
-                    parentRoom.getName(); // Trigger lazy load
-                    map.put("parentRoomId", parentRoom.getId());
-                    map.put("roomName", parentRoom.getName());
-                    map.put("parentRoomName", parentRoom.getName());
-                }
-            }
-
-            if (parentShelf != null) {
-                parentShelf.getLabel(); // Trigger lazy load
-                map.put("parentShelfId", parentShelf.getId());
-                map.put("shelfLabel", parentShelf.getLabel());
-                map.put("parentShelfLabel", parentShelf.getLabel());
-            }
-
             if (parentRack != null) {
-                parentRack.getLabel(); // Trigger lazy load
+                parentRack.getLabel();
                 map.put("parentRackId", parentRack.getId());
                 map.put("rackLabel", parentRack.getLabel());
                 map.put("parentRackLabel", parentRack.getLabel());
+                parentShelf = parentRack.getParentShelf();
             }
 
-            // Build hierarchicalPath: Room > Device > Shelf > Rack > Position
+            if (parentShelf != null) {
+                parentShelf.getLabel();
+                map.put("parentShelfId", parentShelf.getId());
+                map.put("shelfLabel", parentShelf.getLabel());
+                map.put("parentShelfLabel", parentShelf.getLabel());
+                parentDevice = parentShelf.getParentDevice();
+            }
+
+            if (parentDevice != null) {
+                parentDevice.getName();
+                map.put("parentDeviceId", parentDevice.getId());
+                map.put("deviceName", parentDevice.getName());
+                map.put("parentDeviceName", parentDevice.getName());
+                parentRoom = parentDevice.getParentRoom();
+            }
+
+            if (parentRoom != null) {
+                parentRoom.getName();
+                map.put("parentRoomId", parentRoom.getId());
+                map.put("roomName", parentRoom.getName());
+                map.put("parentRoomName", parentRoom.getName());
+            }
+
             StringBuilder pathBuilder = new StringBuilder();
             if (parentRoom != null && parentRoom.getName() != null) {
                 pathBuilder.append(parentRoom.getName());
@@ -1264,18 +1330,17 @@ public class StorageLocationRestController extends BaseRestController {
                 }
                 pathBuilder.append(parentRack.getLabel());
             }
-            if (position.getCoordinate() != null) {
+            if (box.getLabel() != null) {
                 if (pathBuilder.length() > 0) {
                     pathBuilder.append(" > ");
                 }
-                pathBuilder.append("Position ").append(position.getCoordinate());
+                pathBuilder.append(box.getLabel());
             }
             if (pathBuilder.length() > 0) {
                 map.put("hierarchicalPath", pathBuilder.toString());
             }
 
-            // Set type for consistency
-            map.put("type", "position");
+            map.put("type", "box");
         }
 
         return map;

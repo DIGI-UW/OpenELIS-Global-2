@@ -10,8 +10,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,7 +53,17 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                 "Starting configuration initialization from " + configurationBaseDir + "...");
 
         try {
-            for (DomainConfigurationHandler handler : domainHandlers) {
+            // Sort handlers by load order to ensure dependencies are loaded first
+            List<DomainConfigurationHandler> sortedHandlers = domainHandlers.stream()
+                    .sorted(Comparator.comparingInt(DomainConfigurationHandler::getLoadOrder))
+                    .collect(Collectors.toList());
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), "onApplicationEvent",
+                    "Loading configuration handlers in order: "
+                            + sortedHandlers.stream().map(h -> h.getDomainName() + "(" + h.getLoadOrder() + ")")
+                                    .collect(Collectors.joining(", ")));
+
+            for (DomainConfigurationHandler handler : sortedHandlers) {
                 try {
                     loadDomainConfiguration(handler);
                 } catch (Exception e) {

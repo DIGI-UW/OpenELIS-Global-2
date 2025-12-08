@@ -26,4 +26,5 @@
   <include relativeToChangelogFile="true" file="enable_client_registry_search.xml" />
   <include relativeToChangelogFile="true" file="sample_item.xml" />
   <include relativeToChangelogFile="true" file="generic_sample_menu.xml" />
+  <include relativeToChangelogFile="true" file="sample-management-001.xml" />
 </databaseChangeLog>

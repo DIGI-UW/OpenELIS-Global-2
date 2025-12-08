@@ -81,10 +81,8 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
     @Override
     @Transactional
     public Alert acknowledgeAlert(Long alertId, Integer userId) {
-        Alert alert = alertDAO.get(alertId).orElse(null);
-        if (alert == null) {
-            throw new IllegalArgumentException("Alert not found: " + alertId);
-        }
+        Alert alert = alertDAO.get(alertId)
+                .orElseThrow(() -> new IllegalArgumentException("Alert not found: " + alertId));
 
         SystemUser user = systemUserService.get(userId.toString());
         if (user == null) {
@@ -95,18 +93,16 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
         alert.setAcknowledgedAt(OffsetDateTime.now());
         alert.setAcknowledgedBy(user);
 
-        alertDAO.update(alert);
-        eventPublisher.publishEvent(new AlertAcknowledgedEvent(this, alert, userId.longValue()));
-        return alert;
+        Alert updatedAlert = alertDAO.update(alert);
+        eventPublisher.publishEvent(new AlertAcknowledgedEvent(this, updatedAlert, userId.longValue()));
+        return updatedAlert;
     }
 
     @Override
     @Transactional
     public Alert resolveAlert(Long alertId, Integer userId, String resolutionNotes) {
-        Alert alert = alertDAO.get(alertId).orElse(null);
-        if (alert == null) {
-            throw new IllegalArgumentException("Alert not found: " + alertId);
-        }
+        Alert alert = alertDAO.get(alertId)
+                .orElseThrow(() -> new IllegalArgumentException("Alert not found: " + alertId));
 
         SystemUser user = systemUserService.get(userId.toString());
         if (user == null) {
@@ -119,9 +115,9 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
         alert.setResolutionNotes(resolutionNotes);
         alert.setEndTime(OffsetDateTime.now());
 
-        alertDAO.update(alert);
-        eventPublisher.publishEvent(new AlertResolvedEvent(this, alert, userId.longValue(), resolutionNotes));
-        return alert;
+        Alert updatedAlert = alertDAO.update(alert);
+        eventPublisher.publishEvent(new AlertResolvedEvent(this, updatedAlert, userId.longValue(), resolutionNotes));
+        return updatedAlert;
     }
 
     @Override

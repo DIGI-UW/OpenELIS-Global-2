@@ -3,6 +3,9 @@ description:
   Identify underspecified areas in the current feature spec by asking up to 5
   highly targeted clarification questions and encoding answers back into the
   spec.
+scripts:
+  sh: .specify/scripts/bash/check-prerequisites.sh --json --paths-only
+  ps: .specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
 ---
 
 ## User Input

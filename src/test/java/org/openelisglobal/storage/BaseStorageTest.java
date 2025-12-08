@@ -137,7 +137,9 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
             // Delete test-created storage data (IDs >= 1000 or codes/names starting with
             // TEST-)
             // This preserves Liquibase foundation data (IDs 1-999)
-            jdbcTemplate.execute("DELETE FROM storage_position WHERE id::integer >= 1000 OR coordinate LIKE 'TEST-%'");
+            // Note: storage_position table has been removed (replaced by StorageBox)
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_box WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
             jdbcTemplate.execute(
                     "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
             jdbcTemplate.execute(

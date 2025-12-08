@@ -3,11 +3,14 @@ package org.openelisglobal.storage;
 import static org.junit.Assert.*;
 
 import javax.sql.DataSource;
+import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.Rollback;
 
 /**
  * Validation test to verify BaseStorageTest loads data correctly via DBUnit
@@ -15,7 +18,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * loaded by Liquibase 2. E2E test data is loaded via DBUnit XML 3. Data
  * validation works correctly
  */
-public class BaseStorageTestValidationTest extends BaseStorageTest {
+@Rollback
+public class BaseStorageTestValidationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private StorageRoomDAO storageRoomDAO;
@@ -23,9 +27,19 @@ public class BaseStorageTestValidationTest extends BaseStorageTest {
     @Autowired
     private DataSource dataSource;
 
+    protected JdbcTemplate jdbcTemplate;
+
+    @Before
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        executeDataSetWithStateManagement("testdata/user-role.xml");
+        executeDataSetWithStateManagement("testdata/storage-e2e.xml");
+    }
+
     @Test
     public void testFoundationDataLoaded() {
-        // Verify foundation data (from Liquibase) exists
         StorageRoom mainRoom = storageRoomDAO.findByCode("MAIN");
         assertNotNull("Main Laboratory room should exist (from Liquibase)", mainRoom);
         assertEquals("Main Laboratory", mainRoom.getName());

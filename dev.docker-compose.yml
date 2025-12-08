@@ -43,7 +43,7 @@ services:
         #     context: .
         #     dockerfile: Dockerfile.dev
         image: itechuw/openelis-global-2-dev:develop  
-        # platform: linux/amd64
+        platform: linux/amd64
         depends_on:
             - db.openelis.org
             - certs
@@ -81,7 +81,7 @@ services:
     fhir.openelis.org:
         container_name: external-fhir-api
         image: hapiproject/hapi:v6.6.0-tomcat
-        # platform: linux/amd64
+        platform: linux/amd64
         depends_on:
             - db.openelis.org
             - certs
@@ -112,7 +112,7 @@ services:
     frontend.openelis.org:
         image: itechuw/openelis-global-2-frontend-dev:develop
         container_name: openelisglobal-front-end
-        # platform: linux/amd64
+        platform: linux/amd64
         networks:
             - default
         volumes:
@@ -128,7 +128,7 @@ services:
         #     context: ./nginx-proxy
         #     dockerfile: Dockerfile
         container_name: openelisglobal-proxy
-        # platform: linux/amd64
+        platform: linux/amd64
         ports:
             - 80:80
             - 443:443
