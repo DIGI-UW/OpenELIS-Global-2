@@ -58,14 +58,18 @@ class OrganizationManagementPage {
 
   searchOrganzation() {
     // The input has id="org-name-search-bar" directly on it
+    // Click first to ensure focus, then type
     cy.get(this.selectors.orgSearchBar)
+      .click()
       .clear({ force: true })
       .type("CAMES MAN", { force: true });
   }
 
   searchInstitute() {
     // The input has id="org-name-search-bar" directly on it
+    // Click first to ensure focus, then type
     cy.get(this.selectors.orgSearchBar)
+      .click()
       .clear({ force: true })
       .type("CEDRES", { force: true });
   }
