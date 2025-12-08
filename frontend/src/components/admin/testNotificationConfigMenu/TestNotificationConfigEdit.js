@@ -47,7 +47,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "testnotificationconfig.browse.title",
-    link: "/MasterListsPage#testNotificationConfigMenu",
+    link: "/MasterListsPage/testNotificationConfigMenu",
   },
 ];
 
@@ -783,7 +783,7 @@ function TestNotificationConfigEdit() {
                 <Button
                   onClick={() =>
                     window.location.assign(
-                      "/MasterListsPage#testNotificationConfigMenu",
+                      "/MasterListsPage/testNotificationConfigMenu",
                     )
                   }
                   kind="tertiary"

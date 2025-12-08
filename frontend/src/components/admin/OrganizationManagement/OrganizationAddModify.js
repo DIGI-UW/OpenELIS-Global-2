@@ -45,7 +45,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "organization.main.title",
-    link: "/MasterListsPage#organizationManagement",
+    link: "/MasterListsPage/organizationManagement",
   },
 ];
 
@@ -93,7 +93,7 @@ function OrganizationAddModify() {
       );
     } else {
       setTimeout(() => {
-        window.location.assign("/MasterListsPage#organizationManagement");
+        window.location.assign("/MasterListsPage/organizationManagement");
       }, 1000);
     }
     return () => {
@@ -389,7 +389,7 @@ function OrganizationAddModify() {
       kind: NotificationKinds.success,
     });
     setTimeout(() => {
-      window.location.assign("/MasterListsPage#organizationManagement");
+      window.location.assign("/MasterListsPage/organizationManagement");
     }, 200);
     setNotificationVisible(true);
   };
@@ -830,7 +830,7 @@ function OrganizationAddModify() {
               <Button
                 onClick={() =>
                   window.location.assign(
-                    "/MasterListsPage#organizationManagement",
+                    "/MasterListsPage/organizationManagement",
                   )
                 }
                 kind="tertiary"

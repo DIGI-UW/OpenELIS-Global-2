@@ -40,7 +40,7 @@ const breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "unifiedSystemUser.browser.title",
-    link: "/MasterListsPage#userManagement",
+    link: "/MasterListsPage/userManagement",
   },
 ];
 
@@ -105,7 +105,7 @@ function UserAddModify() {
       );
     } else {
       setTimeout(() => {
-        window.location.assign("/MasterListsPage#userManagement");
+        window.location.assign("/MasterListsPage/userManagement");
       }, 200);
     }
     return () => {
@@ -1435,7 +1435,7 @@ function UserAddModify() {
                     <Button
                       onClick={() =>
                         window.location.assign(
-                          "/MasterListsPage#userManagement",
+                          "/MasterListsPage/userManagement",
                         )
                       }
                       data-cy="exitButton"

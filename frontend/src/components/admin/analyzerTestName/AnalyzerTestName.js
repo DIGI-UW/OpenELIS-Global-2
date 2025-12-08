@@ -43,7 +43,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.analyzerTest",
-    link: "/MasterListsPage#analyzerMenu",
+    link: "/MasterListsPage/analyzerMenu",
   },
 ];
 function AnalyzerTestName() {

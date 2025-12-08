@@ -26,11 +26,11 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.selectList.rename",
-    link: "/MasterListsPage#SelectListRenameEntry",
+    link: "/MasterListsPage/SelectListRenameEntry",
   },
 ];
 
@@ -225,7 +225,7 @@ function SelectListRenameEntry() {
                       openAppModle(valueItem, index);
                     }}
                     style={{
-                      color: "#000000",
+                      color: "/000000",
                       width: "auto",
                       whiteSpace: "pre-line",
                     }}
