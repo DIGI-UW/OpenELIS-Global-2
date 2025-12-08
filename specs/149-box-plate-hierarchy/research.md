@@ -79,39 +79,12 @@ are straightforward removals + rename.
 
 ---
 
-### 1.2 StoragePosition Entity (Current State)
+### 1.2 Virtual Position (Develop Implementation)
 
-**File**:
-`src/main/java/org/openelisglobal/storage/valueholder/StoragePosition.java`
-
-**Current Parent Hierarchy** (from Feature 001 data-model.md):
-
-```java
-@ManyToOne
-@JoinColumn(name = "PARENT_DEVICE_ID", nullable = false)
-private StorageDevice parentDevice;  // Required - minimum 2 levels
-
-@ManyToOne
-@JoinColumn(name = "PARENT_SHELF_ID")
-private StorageShelf parentShelf;  // Optional - 3+ levels
-
-@ManyToOne
-@JoinColumn(name = "PARENT_RACK_ID")
-private StorageRack parentRack;  // Optional - 4+ levels
-```
-
-**Enhancement Needed**:
-
-```java
-@ManyToOne
-@JoinColumn(name = "PARENT_BOX_PLATE_ID")
-private StorageBoxPlate parentBoxPlate;  // Optional - 5+ levels (NEW)
-```
-
-**Validation Logic**: Already supports flexible hierarchy constraints. New
-constraint needed:
-
-- If `parentBoxPlate` is set, then `parentRack` must also be set (FR-022b)
+- `StoragePosition` entity is **removed** (no table).
+- Position is stored as `position_coordinate` (text) on `SampleStorageAssignment`.
+- `location_type` enum includes `'box'`; occupancy is derived from assignments to a Box ID.
+- Supports free-text positions at any hierarchy level (rack/shelf/box) without pre-generating empty slots.
 
 ---
 
@@ -120,13 +93,13 @@ constraint needed:
 **File**:
 `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java`
 
-**Current Rack Transform Pattern** (simplified):
+**Rack Transform Pattern (develop)**:
 
 ```java
 public Location transformRackToLocation(StorageRack rack) {
     Location location = new Location();
     location.setId(rack.getFhirUuidAsString());
-    location.setName(rack.getLabel());  // ← Will use rack.getName() after rename
+    location.setName(rack.getName());
     location.setStatus(rack.getActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
 
     // Hierarchical identifier
@@ -145,29 +118,23 @@ public Location transformRackToLocation(StorageRack rack) {
     // Parent reference
     location.setPartOf(new Reference("Location/" + rack.getParentShelf().getFhirUuidAsString()));
 
-    // Grid dimensions extension (CURRENT - will be removed)
-    Extension gridExt = new Extension();
-    gridExt.setUrl("http://openelis-global.org/fhir/StructureDefinition/grid-dimensions");
-    gridExt.setValue(new StringType(rack.getRows() + " × " + rack.getColumns()));
-    location.addExtension(gridExt);
-
     return location;
 }
 ```
 
-**Box/Plate Transform Pattern** (new, following same structure):
+**Box Transform Pattern** (develop):
 
 ```java
-public Location transformBoxPlateToLocation(StorageBoxPlate boxPlate) {
+public Location transformBoxToLocation(StorageBox box) {
     Location location = new Location();
-    location.setId(boxPlate.getFhirUuidAsString());
-    location.setName(boxPlate.getName());
-    location.setStatus(boxPlate.getActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
+    location.setId(box.getFhirUuidAsString());
+    location.setName(box.getName());
+    location.setStatus(box.getActive() ? LocationStatus.ACTIVE : LocationStatus.INACTIVE);
 
-    // Hierarchical identifier: Room-Device-Shelf-Rack-BoxPlate
-    String hierarchicalCode = buildBoxPlateCode(boxPlate);
+    // Hierarchical identifier: Room-Device-Shelf-Rack-Box
+    String hierarchicalCode = buildBoxCode(box);
     location.addIdentifier()
-        .setSystem("http://openelis-global.org/storage/box-plate")
+        .setSystem("http://openelis-global.org/storage/box")
         .setValue(hierarchicalCode);
 
     // Physical type
@@ -178,24 +145,17 @@ public Location transformBoxPlateToLocation(StorageBoxPlate boxPlate) {
     location.setPhysicalType(physicalType);
 
     // Parent reference to Rack
-    location.setPartOf(new Reference("Location/" + boxPlate.getParentRack().getFhirUuidAsString()));
+    location.setPartOf(new Reference("Location/" + box.getParentRack().getFhirUuidAsString()));
 
     // Grid dimensions extensions (FR-025)
-    Extension rowsExt = new Extension();
-    rowsExt.setUrl("http://openelis-global.org/fhir/StructureDefinition/storage-grid-rows");
-    rowsExt.setValue(new IntegerType(boxPlate.getRows()));
-    location.addExtension(rowsExt);
+    location.addExtension(new Extension("http://openelis-global.org/fhir/StructureDefinition/storage-grid-rows",
+                                        new IntegerType(box.getRows())));
+    location.addExtension(new Extension("http://openelis-global.org/fhir/StructureDefinition/storage-grid-columns",
+                                        new IntegerType(box.getColumns())));
 
-    Extension columnsExt = new Extension();
-    columnsExt.setUrl("http://openelis-global.org/fhir/StructureDefinition/storage-grid-columns");
-    columnsExt.setValue(new IntegerType(boxPlate.getColumns()));
-    location.addExtension(columnsExt);
-
-    if (boxPlate.getPositionSchemaHint() != null) {
-        Extension schemaExt = new Extension();
-        schemaExt.setUrl("http://openelis-global.org/fhir/StructureDefinition/storage-position-schema-hint");
-        schemaExt.setValue(new StringType(boxPlate.getPositionSchemaHint()));
-        location.addExtension(schemaExt);
+    if (box.getPositionSchemaHint() != null) {
+        location.addExtension(new Extension("http://openelis-global.org/fhir/StructureDefinition/storage-position-schema-hint",
+                                            new StringType(box.getPositionSchemaHint())));
     }
 
     return location;
@@ -290,18 +250,18 @@ public BarcodeValidationResult parseBarcode(String barcode) {
     }
     result.setRack(rack);
 
-    // Segment 4: Box/Plate (stop if invalid) - NEW
+// Segment 4: Box (stop if invalid) - NEW
     if (segments.length < 5) {
         return result.success();  // Valid 4-segment barcode
     }
-    StorageBoxPlate boxPlate = boxPlateDAO.findByCodeAndParent(segments[4], rack.getId());
-    if (boxPlate == null) {
+StorageBox box = boxDAO.findByCodeAndParent(segments[4], rack.getId());
+if (box == null) {
         return result.autofill(room, device, shelf, rack)
-                     .warning("Box/Plate '" + segments[4] + "' not found in Rack '" + rack.getCode() + "'");
+                 .warning("Box '" + segments[4] + "' not found in Rack '" + rack.getCode() + "'");
     }
-    result.setBoxPlate(boxPlate);
+result.setBox(box);
 
-    // Segment 5: Position coordinate (optional text, not validated against DB) - NEW
+// Segment 5: Position coordinate (optional text, not validated against DB) - NEW
     if (segments.length >= 6) {
         result.setPositionCoordinate(segments[5]);
     }
@@ -320,126 +280,73 @@ public BarcodeValidationResult parseBarcode(String barcode) {
 
 **Example Behaviors**:
 
-| Barcode                | Valid Segments | Autofilled Levels                              | Warning                                      |
-| ---------------------- | -------------- | ---------------------------------------------- | -------------------------------------------- |
-| `LAB-F1-S1-R1-BOX1-A5` | All 6          | Room, Device, Shelf, Rack, Box/Plate, Position | None                                         |
-| `LAB-F1-S1-R1-INVALID` | 4 of 5         | Room, Device, Shelf, Rack                      | "Box/Plate 'INVALID' not found in Rack 'R1'" |
-| `LAB-F1-S1-R1`         | All 4          | Room, Device, Shelf, Rack                      | None (valid 4-level)                         |
-| `LAB-INVALID`          | 1 of 2         | Room                                           | "Device 'INVALID' not found in Room 'LAB'"   |
+| Barcode                | Valid Segments | Autofilled Levels                         | Warning                                 |
+| ---------------------- | -------------- | ----------------------------------------- | --------------------------------------- |
+| `LAB-F1-S1-R1-BOX1-A5` | All 6          | Room, Device, Shelf, Rack, Box, Position  | None                                    |
+| `LAB-F1-S1-R1-INVALID` | 4 of 5         | Room, Device, Shelf, Rack                 | "Box 'INVALID' not found in Rack 'R1'"  |
+| `LAB-F1-S1-R1`         | All 4          | Room, Device, Shelf, Rack                 | None (valid 4-level)                    |
+| `LAB-INVALID`          | 1 of 2         | Room                                      | "Device 'INVALID' not found in Room 'LAB'" |
 
 ---
 
 ## 2. Impact Analysis
 
-### 2.1 Backend Files Affected (40+ files)
+### 2.1 Backend Files Affected (aligned to develop)
 
 **Entities (Valueholders)**:
-
-- `src/main/java/org/openelisglobal/storage/valueholder/StorageRack.java` -
-  Modify (remove grid fields, rename label)
-- `src/main/java/org/openelisglobal/storage/valueholder/StorageBoxPlate.java` -
-  NEW
-- `src/main/java/org/openelisglobal/storage/valueholder/StoragePosition.java` -
-  Modify (add parent_box_plate_id)
-- `src/main/java/org/openelisglobal/storage/valueholder/SampleStorageAssignment.java` -
-  Modify (extend enum)
+- `StorageRack` — remove grid fields, rename `label` → `name`.
+- `StorageBox` — new entity (grid dimensions, barcode, parent_rack_id).
+- `SampleStorageAssignment` — add location_type = 'box', store `position_coordinate` text.
+- `SampleStorageMovement` — extend location_type enums to include 'box'.
 
 **DAOs**:
-
-- `src/main/java/org/openelisglobal/storage/dao/StorageRackDAO.java` - Update
-  queries (no grid fields)
-- `src/main/java/org/openelisglobal/storage/dao/StorageRackDAOImpl.java` -
-  Update HQL
-- `src/main/java/org/openelisglobal/storage/dao/StorageBoxPlateDAO.java` - NEW
-- `src/main/java/org/openelisglobal/storage/dao/StorageBoxPlateDAOImpl.java` -
-  NEW
-- `src/main/java/org/openelisglobal/storage/dao/StoragePositionDAO.java` - Add
-  Box/Plate queries
-- `src/main/java/org/openelisglobal/storage/dao/StoragePositionDAOImpl.java` -
-  Implement Box/Plate queries
+- `StorageRackDAO/Impl` — queries without grid fields.
+- `StorageBoxDAO/Impl` — new DAO for boxes and occupancy.
+- `SampleStorageAssignmentDAO/Impl` — box lookups, occupied coordinates.
 
 **Services**:
-
-- `src/main/java/org/openelisglobal/storage/service/StorageLocationService.java` -
-  Add Box/Plate CRUD
-- `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java` -
-  Implement Box/Plate CRUD
-- `src/main/java/org/openelisglobal/storage/service/BarcodeValidationServiceImpl.java` -
-  Extend to 6 levels
-- `src/main/java/org/openelisglobal/storage/service/StorageDashboardService.java` -
-  Add Box/Plate metrics
-- `src/main/java/org/openelisglobal/storage/service/StorageDashboardServiceImpl.java` -
-  Implement Box/Plate queries
-- `src/main/java/org/openelisglobal/storage/service/SampleStorageService.java` -
-  Support box_plate location_type
-- `src/main/java/org/openelisglobal/storage/service/SampleStorageServiceImpl.java` -
-  Validate box_plate assignments
-- `src/main/java/org/openelisglobal/storage/service/LabelManagementService.java` -
-  Add Box/Plate barcode generation
-- `src/main/java/org/openelisglobal/storage/service/LabelManagementServiceImpl.java` -
-  Implement Box/Plate barcodes
-- `src/main/java/org/openelisglobal/storage/service/CodeValidationServiceImpl.java` -
-  Validate Box/Plate codes
+- `StorageLocationService/Impl` — Box CRUD, rack path building.
+- `StorageDashboardService/Impl` — box metrics.
+- `BarcodeValidationServiceImpl` — 5-level barcode (Room→Device→Shelf→Rack→Box + optional coordinate).
+- `SampleStorageService/Impl` — assignments/movements for box, virtual positions, disposal support.
+- `LabelManagementServiceImpl` — barcode generation with rack shortCode + box code.
 
 **Controllers**:
-
-- `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` -
-  Add Box/Plate endpoints
-- `src/main/java/org/openelisglobal/storage/controller/SampleStorageRestController.java` -
-  Support box_plate
-- `src/main/java/org/openelisglobal/storage/controller/LabelManagementRestController.java` -
-  Add Box/Plate label printing
+- `StorageLocationRestController` — Box endpoints (create/update/get), rack payload uses shortCode.
+- `SampleStorageRestController` — assignment APIs accept box + position coordinate.
+- `LabelManagementRestController` — barcode generation uses rack shortCode.
 
 **Forms**:
-
-- `src/main/java/org/openelisglobal/storage/form/StorageRackForm.java` - Remove
-  grid fields, rename label
-- `src/main/java/org/openelisglobal/storage/form/StorageBoxPlateForm.java` - NEW
+- `StorageRackForm` — simplified (no rows/columns/position_schema_hint, uses shortCode).
+- `StorageBoxForm` — new (rows, columns, position_schema_hint, shortCode, parent_rack_id).
 
 **FHIR**:
+- `StorageLocationFhirTransform` — rack without grid extensions; box transform with grid + schema-hint extensions.
 
-- `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java` -
-  Add Box/Plate transform, update Rack transform
-
-**Tests** (40+ test files):
-
-- All existing StorageRack tests need updates
-- New tests for StorageBoxPlate (DAO, Service, Controller, FHIR)
-- Updated tests for StoragePosition (parent hierarchy)
-- Updated tests for barcode validation (6-level support)
-- Updated E2E tests for storage workflows
+**Tests** (updated in develop):
+- Rack/controller/service tests updated for shortCode and box path.
+- Assignment/disposal tests updated to use box + position_coordinate.
 
 ---
 
-### 2.2 Frontend Files Affected
+### 2.2 Frontend Files Affected (aligned to develop)
 
-**Storage Location Selector** (core widget):
+**Storage Dashboard / Selector**:
 
-- `frontend/src/components/storage/StorageLocationSelector/LocationSelectorModal.jsx` -
-  Add Box/Plate dropdown
-- `frontend/src/components/storage/StorageLocationSelector/CascadingDropdownMode.jsx` -
-  Add Box/Plate level
-- `frontend/src/components/storage/StorageLocationSelector/UnifiedBarcodeInput.jsx` -
-  Support 6-level barcodes
-
-**Storage Dashboard**:
-
-- `frontend/src/components/storage/StorageDashboard/StorageDashboard.jsx` - Add
-  "Boxes/Plates" tab
-- `frontend/src/components/storage/StorageDashboard/StorageLocationsMetricCard.jsx` -
-  Add Box/Plate count
+- `frontend/src/components/storage/StorageDashboard/StorageDashboard.jsx` — Boxes tab, rack→box dropdowns, grid preview and assignment form.
+- `frontend/src/components/storage/StorageDashboard/StorageLocationsMetricCard.jsx` — include box counts.
+- `frontend/src/components/storage/StorageLocationHierarchy.jsx` / tables — render Box level.
+- `frontend/src/components/storage/StorageDashboard/StorageAssignmentModal.jsx` — select Box + position text coordinate.
+- `frontend/src/components/storage/StorageLocationSelector/UnifiedBarcodeInput.jsx` — parse 5-level barcode + optional coordinate.
 
 **Location Management**:
 
-- `frontend/src/components/storage/LocationManagement/EditLocationModal.jsx` -
-  Remove Rack grid fields
-- `frontend/src/components/storage/LocationManagement/BoxPlateConfigurationModal.jsx` -
-  NEW (with dimension presets)
+- `frontend/src/components/storage/LocationManagement/EditLocationModal.jsx` — rack fields simplified (no grid).
+- Box create/edit modal for dimensions and schema hint.
 
 **Internationalization**:
 
-- `frontend/src/languages/en.json` - Add Box/Plate message keys
-- `frontend/src/languages/fr.json` - Add Box/Plate translations
+- `frontend/src/languages/en.json`, `frontend/src/languages/fr.json` — box tab, grid labels, position strings.
 
 ---
 
@@ -447,13 +354,11 @@ public BarcodeValidationResult parseBarcode(String barcode) {
 
 **Liquibase Changesets**:
 
-- `src/main/resources/liquibase/storage/010-restructure-rack-add-box-plate.xml` -
-  NEW (5 changesets)
+- Existing storage changelog (`src/main/resources/liquibase/3.3.x.x/`) updated in develop to drop rack grid columns, create `storage_box`, and extend location_type checks/indexes/seeds for `'box'`.
 
 **Persistence Configuration**:
 
-- `src/main/resources/persistence/persistence.xml` - Add StorageBoxPlate entity
-  mapping
+- No new `persistence.xml` entries required (Box entity discovered via package scan).
 
 ---
 
@@ -503,7 +408,7 @@ INPUT: barcode string (e.g., "LAB-F1-S1-R1-BOX1")
       - Segment 1: Device (within parent Room)
       - Segment 2: Shelf (within parent Device)
       - Segment 3: Rack (within parent Shelf)
-      - Segment 4: Box/Plate (within parent Rack)
+      - Segment 4: Box (within parent Rack)
       - Segment 5: Position coordinate (text, not validated)
 
    b. If validation succeeds:
@@ -544,8 +449,8 @@ WHERE code = 'R1'
   AND parent_shelf_id = :shelfId
   AND active = true;
 
--- Segment 4: Box/Plate (requires parent Rack ID) - NEW
-SELECT * FROM storage_box_plate
+-- Segment 4: Box (requires parent Rack ID) - NEW
+SELECT * FROM storage_box
 WHERE code = 'BOX1'
   AND parent_rack_id = :rackId
   AND active = true;
@@ -708,24 +613,24 @@ User scans barcode: LAB-F1-S1-R1-INVALID
 
 **Unit Tests**:
 
-- StorageBoxPlate entity (getters, setters, capacity calculation)
-- Box/Plate DAO (CRUD, findByCodeAndParent)
-- Box/Plate service (validation, code generation)
+- StorageBox entity (getters, setters, capacity calculation)
+- Box DAO (CRUD, findByCodeAndParent)
+- Box service (validation, code generation)
 - Barcode parser (all scenarios documented in 3.4)
 
 **Integration Tests**:
 
-- Box/Plate REST endpoints (POST, GET, PUT, DELETE)
+- Box REST endpoints (POST, GET, PUT, DELETE)
 - Rack simplification (verify grid fields removed)
-- Position hierarchy (verify 6-level support)
-- FHIR transform (verify extensions correct)
+- Box assignment hierarchy (5-level support with position_coordinate)
+- FHIR transform (rack container; box grid extensions)
 
 **E2E Tests**:
 
-- Create Box/Plate via dashboard
-- Assign sample to Box/Plate position
-- Scan barcode with Box/Plate level
-- Dashboard displays Box/Plates tab with data
+- Create Box via dashboard
+- Assign sample to Box position (with coordinate)
+- Scan barcode with Box level
+- Dashboard displays Boxes tab with data
 
 ---
 
@@ -736,7 +641,6 @@ User scans barcode: LAB-F1-S1-R1-INVALID
 **Required from Feature 001**:
 
 - ✅ StorageRack entity implemented
-- ✅ StoragePosition entity implemented
 - ✅ FHIR transform service implemented
 - ✅ Barcode validation service implemented
 - ✅ Storage dashboard implemented
