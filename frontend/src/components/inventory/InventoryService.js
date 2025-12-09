@@ -216,6 +216,10 @@ export const InventoryLotAPI = {
   dispose: (id, reason, notes) =>
     post(`/lots/${id}/dispose`, { reason, notes }),
 
+  // Batch dispose multiple lots
+  batchDispose: (lotIds, reason, notes) =>
+    post("/lots/batch-dispose", { lotIds, reason, notes }),
+
   // Process expired lots (batch operation)
   processExpired: () => post("/lots/process-expired", {}),
 };
@@ -237,6 +241,21 @@ export const InventoryManagementAPI = {
   // Get inventory alerts (low stock, expiring, expired)
   getAlerts: (expirationWarningDays = 30) =>
     get(`/management/alerts?expirationWarningDays=${expirationWarningDays}`),
+};
+
+/**
+ * Inventory Audit Log API
+ */
+export const InventoryAuditLogAPI = {
+  // Get audit trail for item
+  getItemAuditTrail: (itemId) => get(`/audit-logs/item/${itemId}`),
+
+  // Get audit trail for lot
+  getLotAuditTrail: (lotId) => get(`/audit-logs/lot/${lotId}`),
+
+  // Get audit trail for any entity
+  getEntityAuditTrail: (entityType, entityId) =>
+    get(`/audit-logs/entity/${entityType}/${entityId}`),
 };
 
 /**
