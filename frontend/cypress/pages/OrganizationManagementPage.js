@@ -16,38 +16,47 @@ class OrganizationManagementPage {
 
   clickAddOrganization() {
     cy.get(this.selectors.addButton).should("be.visible").click();
+    cy.wait(200);
   }
 
   addOrgName() {
     cy.get(this.selectors.orgName).should("be.visible").type("CAMES MAN");
+    cy.wait(200);
   }
 
   addInstituteName() {
     cy.get(this.selectors.orgName).should("be.visible").type("CEDRES");
+    cy.wait(200);
   }
 
   activateOrganization() {
     cy.get(this.selectors.isActive).clear().type("Y");
+    cy.wait(200);
   }
 
   addPrefix() {
     cy.get(this.selectors.orgPrefix).should("be.visible").type("279");
+    cy.wait(200);
   }
 
   addInstitutePrefix() {
     cy.get(this.selectors.orgPrefix).should("be.visible").clear().type("");
+    cy.wait(200);
   }
 
   checkReferringClinic() {
     cy.get(this.selectors.referringClinic).check({ force: true });
+    cy.wait(200);
   }
 
   checkReferalLab() {
     cy.get(this.selectors.referralLab).check({ force: true });
+    cy.wait(200);
   }
 
   addParentOrg() {
     cy.get(this.selectors.parentOrgName).should("be.visible").type("CAMESM AN");
+    cy.wait(200);
   }
 
   saveOrganization() {
@@ -71,6 +80,7 @@ class OrganizationManagementPage {
     cy.get(`input${this.selectors.orgSearchBar}`).type("CAMES MAN", {
       force: true,
     });
+    cy.wait(200);
   }
 
   searchInstitute() {
@@ -89,6 +99,7 @@ class OrganizationManagementPage {
     cy.get(`input${this.selectors.orgSearchBar}`).type("CEDRES", {
       force: true,
     });
+    cy.wait(200);
   }
 
   confirmOrganization() {
