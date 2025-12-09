@@ -19,6 +19,7 @@ import {
 import { Close } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { TransactionAPI, UsageAPI } from "./InventoryService";
+import AuditLogViewer from "./AuditLogViewer";
 import "./LotDetailsPanel.css";
 
 const LotDetailsPanel = ({ open, onClose, lot }) => {
@@ -26,6 +27,7 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
   const [loading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [usage, setUsage] = useState([]);
+  const [auditLogOpen, setAuditLogOpen] = useState(false);
 
   useEffect(() => {
     if (open && lot) {
@@ -96,6 +98,9 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
               </Tab>
               <Tab>
                 <FormattedMessage id="lot.details.tab.usage" />
+              </Tab>
+              <Tab>
+                <FormattedMessage id="lot.details.tab.audit" />
               </Tab>
             </TabList>
 
@@ -317,10 +322,37 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                   )}
                 </div>
               </TabPanel>
+
+              <TabPanel>
+                <div className="panel-section">
+                  <h4>
+                    <FormattedMessage id="lot.details.section.audit" />
+                  </h4>
+                  <p>
+                    <FormattedMessage id="lot.details.audit.description" />
+                  </p>
+                  <Button
+                    kind="primary"
+                    size="md"
+                    onClick={() => setAuditLogOpen(true)}
+                  >
+                    <FormattedMessage id="lot.details.viewAuditLog" />
+                  </Button>
+                </div>
+              </TabPanel>
             </TabPanels>
           </Tabs>
         )}
       </div>
+
+      {/* Audit Log Modal */}
+      <AuditLogViewer
+        open={auditLogOpen}
+        onClose={() => setAuditLogOpen(false)}
+        entityType="LOT"
+        entityId={lot?.id}
+        entityName={lot?.lotNumber}
+      />
     </div>
   );
 };
