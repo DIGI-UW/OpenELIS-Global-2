@@ -26,6 +26,9 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
     @Autowired
     private InventoryItemDAO inventoryItemDAO;
 
+    @Autowired
+    private InventoryAuditService auditService;
+
     public InventoryUsageServiceImpl() {
         super(InventoryUsage.class);
     }
@@ -74,6 +77,14 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
             throw new IllegalArgumentException("Quantity used must be greater than 0");
         }
 
+        // Check if lot has sufficient quantity
+        Double currentQuantity = lot.getCurrentQuantity();
+        if (currentQuantity == null || currentQuantity < quantityUsed) {
+            throw new IllegalArgumentException(
+                    "Insufficient quantity in lot. Available: " + currentQuantity + ", Requested: " + quantityUsed);
+        }
+
+        // Create usage record
         InventoryUsage usage = new InventoryUsage();
         usage.setLot(lot);
         usage.setInventoryItem(item);
@@ -85,6 +96,22 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
         usage.setPerformedByUser(Integer.valueOf(sysUserId));
 
         Long id = insert(usage);
+
+        // Deduct quantity from lot
+        Double newQuantity = currentQuantity - quantityUsed;
+        lot.setCurrentQuantity(newQuantity);
+        lot.setSysUserId(sysUserId);
+        inventoryLotDAO.update(lot);
+
+        // Update lot status to CONSUMED if quantity reaches zero
+        if (newQuantity <= 0) {
+            lot.setStatus(org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus.CONSUMED);
+            inventoryLotDAO.update(lot);
+        }
+
+        // Log usage in audit trail
+        auditService.logLotUsage(lotId, quantityUsed, testResultId, analysisId, sysUserId);
+
         return get(id);
     }
 }
