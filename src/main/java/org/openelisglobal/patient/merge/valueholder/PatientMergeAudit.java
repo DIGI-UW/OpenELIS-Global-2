@@ -4,10 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import java.sql.Timestamp;
 import org.hibernate.annotations.Type;
+import org.hibernate.annotations.TypeDef;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.type.JsonBinaryType;
 
 @Entity
 @Table(name = "patient_merge_audit")
+@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
 public class PatientMergeAudit extends BaseObject<Long> {
 
     private static final long serialVersionUID = 1L;

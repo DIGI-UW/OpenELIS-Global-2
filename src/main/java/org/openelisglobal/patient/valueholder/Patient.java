@@ -88,7 +88,7 @@ public class Patient extends BaseObject<String> {
 
     private String mergedIntoPatientId;
 
-    private Boolean isMerged;
+    private Boolean isMerged = false;
 
     private Timestamp mergeDate;
 

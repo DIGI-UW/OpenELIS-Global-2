@@ -32,7 +32,6 @@
             </column>
         </addColumn>
 
-        <!-- Add foreign key constraint (self-referencing) -->
         <addForeignKeyConstraint
             baseTableName="patient"
             baseColumnNames="merged_into_patient_id"
@@ -50,12 +49,11 @@
             <column name="merged_into_patient_id"/>
         </createIndex>
 
-        <!-- Add check constraint for merge consistency -->
         <sql>
             ALTER TABLE patient
             ADD CONSTRAINT chk_patient_merge_consistency
             CHECK ((is_merged = TRUE AND merged_into_patient_id IS NOT NULL AND merge_date IS NOT NULL)
-                OR (is_merged = FALSE AND merged_into_patient_id IS NULL AND merge_date IS NULL));
+                OR (is_merged = FALSE));
         </sql>
 
         <!-- Rollback -->
