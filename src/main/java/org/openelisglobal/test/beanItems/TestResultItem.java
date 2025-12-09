@@ -110,6 +110,10 @@ public class TestResultItem implements ResultItem, Serializable {
     private String testKitId;
 
     private boolean testKitInactive = false;
+
+    // Inventory Management: tracks which lot was used for this test result
+    @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
+    private String inventoryLotId;
     private double upperNormalRange = 0;
     private double lowerNormalRange = 0;
     private double upperAbnormalRange;
@@ -383,6 +387,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setTestKitId(String testKitId) {
         this.testKitId = testKitId;
+    }
+
+    public String getInventoryLotId() {
+        return inventoryLotId;
+    }
+
+    public void setInventoryLotId(String inventoryLotId) {
+        this.inventoryLotId = inventoryLotId;
     }
 
     public String getResultDisplayType() {

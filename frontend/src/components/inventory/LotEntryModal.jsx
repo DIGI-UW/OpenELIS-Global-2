@@ -114,10 +114,16 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     }
   };
 
-  const handleLocationCreated = (newLocation) => {
-    setLocationModalOpen(false);
-    fetchLocations();
-    handleChange("storageLocation", newLocation);
+  const handleLocationCreated = async (locationData) => {
+    try {
+      const newLocation = await StorageLocationAPI.create(locationData);
+      setLocationModalOpen(false);
+      await fetchLocations();
+      handleChange("storageLocation", newLocation);
+    } catch (err) {
+      console.error("Error creating storage location:", err);
+      setError("Failed to create storage location");
+    }
   };
 
   const handleChange = (field, value) => {
@@ -349,11 +355,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         </Stack>
       </Modal>
 
-      {/* Storage Location Creation Modal */}
       <StorageLocationModal
-        open={locationModalOpen}
+        isOpen={locationModalOpen}
         onClose={() => setLocationModalOpen(false)}
-        onSave={handleLocationCreated}
+        onSubmit={handleLocationCreated}
       />
     </>
   );

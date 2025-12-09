@@ -21,6 +21,9 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     @Autowired
     private InventoryLotDAO inventoryLotDAO;
 
+    @Autowired
+    private InventoryAuditService auditService;
+
     public InventoryItemServiceImpl() {
         super(InventoryItem.class);
     }
@@ -89,6 +92,28 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
 
     @Override
     @Transactional
+    public Long insert(InventoryItem item) {
+        Long result = super.insert(item);
+        // Log item creation
+        auditService.logItemCreate(item, item.getSysUserId());
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public InventoryItem update(InventoryItem item) {
+        // Get the before state for audit logging
+        InventoryItem before = get(item.getId());
+        InventoryItem result = super.update(item);
+        // Log item update
+        if (before != null) {
+            auditService.logItemUpdate(before, result, item.getSysUserId());
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional
     public void deactivateItem(Long itemId, String sysUserId) {
         InventoryItem item = get(itemId);
         if (item != null) {
@@ -96,6 +121,8 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
             item.setSysUserId(sysUserId);
             item.setLastupdated(new Timestamp(System.currentTimeMillis()));
             update(item);
+            // Log deactivation
+            auditService.logItemDeactivate(item, sysUserId);
         }
     }
 
@@ -108,6 +135,7 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
             item.setSysUserId(sysUserId);
             item.setLastupdated(new Timestamp(System.currentTimeMillis()));
             update(item);
+            // Activation is logged as an UPDATE through the update() method above
         }
     }
 }

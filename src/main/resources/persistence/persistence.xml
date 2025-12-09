@@ -60,6 +60,7 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryAuditLog</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"
