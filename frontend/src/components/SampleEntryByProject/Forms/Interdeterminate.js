@@ -79,11 +79,11 @@ function Indeterminate() {
   };
 
   return (
-    <div className="indeterminate-form">
+    <div>
       <Form onSubmit={handleSubmit}>
         <Grid>
           <Column lg={16}>
-            <h1 className="heading">Indeterminate</h1>
+            <h1>Indeterminate</h1>
           </Column>
 
           {/* First Column */}
@@ -345,7 +345,7 @@ function Indeterminate() {
           </Column>
 
           <Column lg={16}>
-            <div className="button-group">
+            <div>
               <Button kind="primary" type="submit">
                 Save
               </Button>
@@ -354,25 +354,6 @@ function Indeterminate() {
           </Column>
         </Grid>
       </Form>
-
-      <style>{`
-        .indeterminate-form {
-          padding: 1rem;
-        }
-        .heading {
-          font-size: 1.5rem;
-          margin-bottom: 2rem;
-          color: #161616;
-        }
-        .button-group {
-          display: flex;
-          gap: 1rem;
-          margin-top: 2rem;
-        }
-        :global(.cds--form-item) {
-          margin-bottom: 1rem;
-        }
-      `}</style>
     </div>
   );
 }

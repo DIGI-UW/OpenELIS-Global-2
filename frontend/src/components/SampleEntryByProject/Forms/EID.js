@@ -82,23 +82,18 @@ function EID() {
   };
 
   return (
-    <div className="eid-form">
+    <div>
       <Form onSubmit={handleSubmit}>
         <Grid>
           <Column lg={16}>
-            <h1 className="heading">EID</h1>
+            <h1>EID</h1>
           </Column>
 
           <Column lg={16}>
             <Stack gap={5}>
               <TextInput
                 id="received-date"
-                labelText={
-                  <>
-                    Received Date (dd/mm/yyyy){" "}
-                    <span className="required">*</span>
-                  </>
-                }
+                labelText="Received Date (dd/mm/yyyy) *"
                 type="date"
                 name="receivedDate"
                 value={formValues.receivedDate}
@@ -117,11 +112,7 @@ function EID() {
 
               <TextInput
                 id="date-taken"
-                labelText={
-                  <>
-                    Date Taken (dd/mm/yyyy) <span className="required">*</span>
-                  </>
-                }
+                labelText="Date Taken (dd/mm/yyyy) *"
                 type="date"
                 name="dateTaken"
                 value={formValues.dateTaken}
@@ -140,11 +131,7 @@ function EID() {
 
               <Select
                 id="site-name"
-                labelText={
-                  <>
-                    Site Name <span className="required">*</span>
-                  </>
-                }
+                labelText="Site Name *"
                 name="siteName"
                 value={formValues.siteName}
                 onChange={handleInputChange}
@@ -155,11 +142,7 @@ function EID() {
 
               <Select
                 id="site-code"
-                labelText={
-                  <>
-                    Site Code <span className="required">*</span>
-                  </>
-                }
+                labelText="Site Code *"
                 name="siteCode"
                 value={formValues.siteCode}
                 onChange={handleInputChange}
@@ -170,11 +153,7 @@ function EID() {
 
               <TextInput
                 id="dbs-id-number"
-                labelText={
-                  <>
-                    DBS ID Number <span className="required">*</span>
-                  </>
-                }
+                labelText="DBS ID Number *"
                 name="dbsIdNumber"
                 value={formValues.dbsIdNumber}
                 onChange={handleInputChange}
@@ -183,11 +162,7 @@ function EID() {
 
               <TextInput
                 id="dbs-site-id-number"
-                labelText={
-                  <>
-                    DBS Site ID Number <span className="required">*</span>
-                  </>
-                }
+                labelText="DBS Site ID Number *"
                 name="dbsSiteIdNumber"
                 value={formValues.dbsSiteIdNumber}
                 onChange={handleInputChange}
@@ -196,11 +171,7 @@ function EID() {
 
               <TextInput
                 id="lab-no"
-                labelText={
-                  <>
-                    Lab No <span className="required">*</span>
-                  </>
-                }
+                labelText="Lab No *"
                 name="labNo"
                 value={formValues.labNo}
                 onChange={handleInputChange}
@@ -238,7 +209,7 @@ function EID() {
                     onChange={handleInputChange}
                   />
 
-                  <div className="age-inputs">
+                  <div>
                     <TextInput
                       id="infant-age-months"
                       labelText="months"
@@ -418,7 +389,7 @@ function EID() {
           </Column>
 
           <Column lg={16}>
-            <div className="button-group">
+            <div>
               <Button kind="primary" type="submit">
                 Save
               </Button>
@@ -427,32 +398,6 @@ function EID() {
           </Column>
         </Grid>
       </Form>
-
-      <style>{`
-        .eid-form {
-          padding: 1rem;
-        }
-        .heading {
-          font-size: 1.5rem;
-          margin-bottom: 2rem;
-          color: #161616;
-        }
-        .age-inputs {
-          display: flex;
-          gap: 1rem;
-        }
-        .button-group {
-          display: flex;
-          gap: 1rem;
-          margin-top: 2rem;
-        }
-        .required {
-          color: #da1e28;
-        }
-        :global(.cds--form-item) {
-          margin-bottom: 1rem;
-        }
-      `}</style>
     </div>
   );
 }

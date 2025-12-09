@@ -87,7 +87,7 @@ function HPVTesting() {
   };
 
   return (
-    <div className="specimen-collection-form">
+    <div>
       <Form onSubmit={handleSubmit}>
         <Grid>
           <Column lg={16}>
@@ -111,7 +111,7 @@ function HPVTesting() {
               <Section>
                 <FormGroup legendText="Patient Information">
                   <Stack gap={5}>
-                    <div className="lab-no-container">
+                    <div>
                       <TextInput
                         id="lab-no"
                         labelText="* Lab No"
@@ -120,16 +120,16 @@ function HPVTesting() {
                         onChange={handleInputChange}
                         required
                       />
-                      <div className="lab-no-actions">
+                      <div>
                         <Button
                           kind="ghost"
                           hasIconOnly
                           iconDescription="Scan"
                           onClick={handleLabNoScan}
                         />
-                        <span className="or-text">OR</span>
+                        <span>OR</span>
                         <Link onClick={() => {}}>Enter Manually</Link>
-                        <span className="or-text">OR</span>
+                        <span>OR</span>
                         <Link onClick={generateLabNo}>Generate</Link>
                       </div>
                     </div>
@@ -280,32 +280,6 @@ function HPVTesting() {
           </Column>
         </Grid>
       </Form>
-
-      <style>{`
-        .specimen-collection-form {
-          padding: 1rem;
-        }
-        .lab-no-container {
-          display: flex;
-          align-items: flex-end;
-          gap: 1rem;
-        }
-        .lab-no-actions {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        .or-text {
-          color: #525252;
-          margin: 0 0.25rem;
-        }
-        :global(.cds--form-item) {
-          margin-bottom: 1rem;
-        }
-        :global(.cds--fieldset) {
-          margin-bottom: 1.5rem;
-        }
-      `}</style>
     </div>
   );
 }

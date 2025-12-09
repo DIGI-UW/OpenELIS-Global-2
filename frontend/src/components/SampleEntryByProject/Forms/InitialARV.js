@@ -82,11 +82,11 @@ function InitialARV() {
   };
 
   return (
-    <div className="initial-arv-form">
+    <div>
       <Form onSubmit={handleSubmit}>
         <Grid>
           <Column lg={16}>
-            <h1 className="heading">Initial ARV</h1>
+            <h1>Initial ARV</h1>
           </Column>
 
           <Column lg={16}>
@@ -95,7 +95,7 @@ function InitialARV() {
                 id="center-name"
                 labelText={
                   <>
-                    Center Name <span className="required">*</span>
+                    Center Name <span>*</span>
                   </>
                 }
                 name="centerName"
@@ -111,7 +111,7 @@ function InitialARV() {
                 id="center-code"
                 labelText={
                   <>
-                    Center Code <span className="required">*</span>
+                    Center Code <span>*</span>
                   </>
                 }
                 name="centerCode"
@@ -135,8 +135,7 @@ function InitialARV() {
                 id="received-date"
                 labelText={
                   <>
-                    Received Date (dd/mm/yyyy){" "}
-                    <span className="required">*</span>
+                    Received Date (dd/mm/yyyy) <span>*</span>
                   </>
                 }
                 type="date"
@@ -159,7 +158,7 @@ function InitialARV() {
                 id="date-taken"
                 labelText={
                   <>
-                    Date Taken (dd/mm/yyyy) <span className="required">*</span>
+                    Date Taken (dd/mm/yyyy) <span>*</span>
                   </>
                 }
                 type="date"
@@ -182,7 +181,7 @@ function InitialARV() {
                 id="unique-health-id"
                 labelText={
                   <>
-                    Unique Health ID number <span className="required">*</span>
+                    Unique Health ID number <span>*</span>
                   </>
                 }
                 name="uniqueHealthId"
@@ -195,8 +194,7 @@ function InitialARV() {
                 id="site-unique-health-id"
                 labelText={
                   <>
-                    Site Unique Health ID number{" "}
-                    <span className="required">*</span>
+                    Site Unique Health ID number <span>*</span>
                   </>
                 }
                 name="siteUniqueHealthId"
@@ -209,7 +207,7 @@ function InitialARV() {
                 id="lab-no"
                 labelText={
                   <>
-                    Lab No <span className="required">*</span>
+                    Lab No <span>*</span>
                   </>
                 }
                 name="labNo"
@@ -222,7 +220,7 @@ function InitialARV() {
                 id="gender"
                 labelText={
                   <>
-                    Gender <span className="required">*</span>
+                    Gender <span>*</span>
                   </>
                 }
                 name="gender"
@@ -240,8 +238,7 @@ function InitialARV() {
                 id="date-of-birth"
                 labelText={
                   <>
-                    Date of Birth (dd/mm/yyyy){" "}
-                    <span className="required">*</span>
+                    Date of Birth (dd/mm/yyyy) <span>*</span>
                   </>
                 }
                 type="date"
@@ -375,7 +372,7 @@ function InitialARV() {
           </Column>
 
           <Column lg={16}>
-            <div className="button-group">
+            <div>
               <Button kind="primary" type="submit">
                 Save
               </Button>
@@ -384,28 +381,6 @@ function InitialARV() {
           </Column>
         </Grid>
       </Form>
-
-      <style>{`
-        .initial-arv-form {
-          padding: 1rem;
-        }
-        .heading {
-          font-size: 1.5rem;
-          margin-bottom: 2rem;
-          color: #161616;
-        }
-        .button-group {
-          display: flex;
-          gap: 1rem;
-          margin-top: 2rem;
-        }
-        .required {
-          color: #da1e28;
-        }
-        :global(.cds--form-item) {
-          margin-bottom: 1rem;
-        }
-      `}</style>
     </div>
   );
 }

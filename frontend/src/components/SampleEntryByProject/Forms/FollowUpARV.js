@@ -83,11 +83,11 @@ function FollowUpARV() {
   };
 
   return (
-    <div className="followup-arv-form">
+    <div>
       <Form onSubmit={handleSubmit}>
         <Grid>
           <Column lg={16}>
-            <h1 className="heading">Follow-up ARV</h1>
+            <h1>Follow-up ARV</h1>
           </Column>
 
           <Column lg={16}>
@@ -96,7 +96,7 @@ function FollowUpARV() {
                 id="center-name"
                 labelText={
                   <>
-                    Center Name <span className="required">*</span>
+                    Center Name <span>*</span>
                   </>
                 }
                 name="centerName"
@@ -112,7 +112,7 @@ function FollowUpARV() {
                 id="center-code"
                 labelText={
                   <>
-                    Center Code <span className="required">*</span>
+                    Center Code <span>*</span>
                   </>
                 }
                 name="centerCode"
@@ -136,8 +136,7 @@ function FollowUpARV() {
                 id="received-date"
                 labelText={
                   <>
-                    Received Date (dd/mm/yyyy){" "}
-                    <span className="required">*</span>
+                    Received Date (dd/mm/yyyy) <span>*</span>
                   </>
                 }
                 type="date"
@@ -160,7 +159,7 @@ function FollowUpARV() {
                 id="date-taken"
                 labelText={
                   <>
-                    Date Taken (dd/mm/yyyy) <span className="required">*</span>
+                    Date Taken (dd/mm/yyyy) <span>*</span>
                   </>
                 }
                 type="date"
@@ -183,7 +182,7 @@ function FollowUpARV() {
                 id="unique-health-id"
                 labelText={
                   <>
-                    Unique Health ID number <span className="required">*</span>
+                    Unique Health ID number <span>*</span>
                   </>
                 }
                 name="uniqueHealthId"
@@ -196,8 +195,7 @@ function FollowUpARV() {
                 id="site-unique-health-id"
                 labelText={
                   <>
-                    Site Unique Health ID number{" "}
-                    <span className="required">*</span>
+                    Site Unique Health ID number <span>*</span>
                   </>
                 }
                 name="siteUniqueHealthId"
@@ -210,7 +208,7 @@ function FollowUpARV() {
                 id="lab-no"
                 labelText={
                   <>
-                    Lab No <span className="required">*</span>
+                    Lab No <span>*</span>
                   </>
                 }
                 name="labNo"
@@ -223,7 +221,7 @@ function FollowUpARV() {
                 id="gender"
                 labelText={
                   <>
-                    Gender <span className="required">*</span>
+                    Gender <span>*</span>
                   </>
                 }
                 name="gender"
@@ -241,8 +239,7 @@ function FollowUpARV() {
                 id="date-of-birth"
                 labelText={
                   <>
-                    Date of Birth (dd/mm/yyyy){" "}
-                    <span className="required">*</span>
+                    Date of Birth (dd/mm/yyyy) <span>*</span>
                   </>
                 }
                 type="date"
@@ -387,7 +384,7 @@ function FollowUpARV() {
           </Column>
 
           <Column lg={16}>
-            <div className="button-group">
+            <div>
               <Button kind="primary" type="submit">
                 Save
               </Button>
@@ -396,28 +393,6 @@ function FollowUpARV() {
           </Column>
         </Grid>
       </Form>
-
-      <style>{`
-        .followup-arv-form {
-          padding: 1rem;
-        }
-        .heading {
-          font-size: 1.5rem;
-          margin-bottom: 2rem;
-          color: #161616;
-        }
-        .button-group {
-          display: flex;
-          gap: 1rem;
-          margin-top: 2rem;
-        }
-        .required {
-          color: #da1e28;
-        }
-        :global(.cds--form-item) {
-          margin-bottom: 1rem;
-        }
-      `}</style>
     </div>
   );
 }

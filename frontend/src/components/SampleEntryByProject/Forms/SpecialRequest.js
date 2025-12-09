@@ -97,11 +97,11 @@ function SpecialRequest() {
   };
 
   return (
-    <div className="special-request-form">
+    <div>
       <Form onSubmit={handleSubmit}>
         <Grid>
           <Column lg={16}>
-            <h1 className="heading">Special Request</h1>
+            <h1>Special Request</h1>
           </Column>
 
           <Column lg={8} md={4} sm={4}>
@@ -323,7 +323,7 @@ function SpecialRequest() {
           </Column>
 
           <Column lg={16}>
-            <div className="button-group">
+            <div>
               <Button kind="primary" type="submit">
                 Save
               </Button>
@@ -332,25 +332,6 @@ function SpecialRequest() {
           </Column>
         </Grid>
       </Form>
-
-      <style>{`
-        .special-request-form {
-          padding: 1rem;
-        }
-        .heading {
-          font-size: 1.5rem;
-          margin-bottom: 2rem;
-          color: #161616;
-        }
-        .button-group {
-          display: flex;
-          gap: 1rem;
-          margin-top: 2rem;
-        }
-        :global(.cds--form-item) {
-          margin-bottom: 1rem;
-        }
-      `}</style>
     </div>
   );
 }

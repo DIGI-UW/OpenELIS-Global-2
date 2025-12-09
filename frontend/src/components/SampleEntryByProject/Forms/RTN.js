@@ -68,13 +68,11 @@ function RTN() {
   };
 
   return (
-    <div className="rtn-form">
+    <div>
       <Form onSubmit={handleSubmit}>
         <Grid>
           <Column lg={16}>
-            <h1 className="heading">
-              {intl.formatMessage({ id: "RTN.title" })}
-            </h1>
+            <h1>{intl.formatMessage({ id: "RTN.title" })}</h1>
           </Column>
 
           <Column lg={8} md={4} sm={4}>
@@ -136,7 +134,7 @@ function RTN() {
               <FormGroup
                 legendText={intl.formatMessage({ id: "RTN.legendText.age" })}
               >
-                <div className="age-inputs">
+                <div>
                   <TextInput
                     id="age-years"
                     labelText={intl.formatMessage({ id: "RTN.label.year" })}
@@ -265,7 +263,7 @@ function RTN() {
           </Column>
 
           <Column lg={16}>
-            <div className="button-group">
+            <div>
               <Button kind="primary" type="submit">
                 {intl.formatMessage({ id: "RTN.button.save" })}
               </Button>
@@ -276,29 +274,6 @@ function RTN() {
           </Column>
         </Grid>
       </Form>
-
-      <style>{`
-        .rtn-form {
-          padding: 1rem;
-        }
-        .heading {
-          font-size: 1.5rem;
-          margin-bottom: 2rem;
-          color: #161616;
-        }
-        .age-inputs {
-          display: flex;
-          gap: 1rem;
-        }
-        .button-group {
-          display: flex;
-          gap: 1rem;
-          margin-top: 2rem;
-        }
-        :global(.cds--form-item) {
-          margin-bottom: 1rem;
-        }
-      `}</style>
     </div>
   );
 }

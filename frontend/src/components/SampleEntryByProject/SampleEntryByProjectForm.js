@@ -3,7 +3,6 @@ import { Column, Form, Grid, Select, SelectItem } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationKinds, AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
-import "./SampleEntryByProjectForm.css";
 
 import InitialARV from "./Forms/InitialARV";
 import FollowUpARV from "./Forms/FollowUpARV";
@@ -14,6 +13,12 @@ import SpecialRequest from "./Forms/SpecialRequest";
 import ARVViralOverload from "./Forms/ARVViralOverload";
 import RecencyTesting from "./Forms/RecencyTesting";
 import HPVTesting from "./Forms/HPVTesting";
+import PageBreadCrumb from "../common/PageBreadCrumb";
+
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "sampleEntryByProject.page.title", link: "/SampleEntryByProject" },
+];
 
 const initialFormData = {
   type: "",
@@ -96,7 +101,8 @@ const SampleEntryByProjectForm = () => {
   };
 
   return (
-    <div className="edit-record-container">
+    <>
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
       {notificationVisible && <AlertDialog />}
       <Grid fullWidth={true}>
         <Column lg={16}>
@@ -139,7 +145,7 @@ const SampleEntryByProjectForm = () => {
           {selectedForm}
         </Column>
       </Grid>
-    </div>
+    </>
   );
 };
 

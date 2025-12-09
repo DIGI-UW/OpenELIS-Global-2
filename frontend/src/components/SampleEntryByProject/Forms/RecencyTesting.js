@@ -77,7 +77,7 @@ function RecencyTesting() {
   };
 
   return (
-    <div className="recency-testing-form">
+    <div>
       <Form onSubmit={handleSubmit}>
         <Grid>
           <Column lg={16}>
@@ -257,7 +257,7 @@ function RecencyTesting() {
               </Section>
 
               <Section>
-                <div className="button-group">
+                <div>
                   <Button kind="primary" type="submit">
                     Save
                   </Button>
@@ -268,23 +268,6 @@ function RecencyTesting() {
           </Column>
         </Grid>
       </Form>
-
-      <style>{`
-        .recency-testing-form {
-          padding: 1rem;
-        }
-        .button-group {
-          display: flex;
-          gap: 1rem;
-          margin-top: 1rem;
-        }
-        :global(.cds--form-item) {
-          margin-bottom: 1rem;
-        }
-        :global(.cds--fieldset) {
-          margin-bottom: 1.5rem;
-        }
-      `}</style>
     </div>
   );
 }
