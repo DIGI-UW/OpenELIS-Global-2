@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="inventory-add-last-updated-001" author="mherman22">
+        <comment>Add last_updated column to inventory_item table for audit tracking</comment>
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="inventory-add-last-updated-002" author="mherman22">
+        <comment>Add last_updated column to inventory_storage_location table</comment>
+        <addColumn tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="inventory-add-last-updated-003" author="mherman22">
+        <comment>Add last_updated column to inventory_lot table</comment>
+        <addColumn tableName="inventory_lot" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="inventory-add-last-updated-004" author="mherman22">
+        <comment>Add last_updated column to inventory_transaction table</comment>
+        <addColumn tableName="inventory_transaction" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="inventory-add-last-updated-005" author="mherman22">
+        <comment>Add last_updated column to inventory_usage table</comment>
+        <addColumn tableName="inventory_usage" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
