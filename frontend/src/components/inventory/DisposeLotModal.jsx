@@ -10,8 +10,10 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { InventoryLotAPI } from "./InventoryService";
 
-const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
+const DisposeLotModal = ({ open, onClose, onSave, lot, lots }) => {
   const intl = useIntl();
+  const isBatchMode = lots && lots.length > 1;
+  const singleLot = lot || (lots && lots.length === 1 ? lots[0] : null);
 
   const disposalReasons = [
     { id: "EXPIRED", text: "Expired" },
@@ -56,7 +58,29 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
     setError(null);
 
     try {
-      await InventoryLotAPI.dispose(lot.id, formData.reason, formData.notes);
+      if (isBatchMode) {
+        // Batch disposal
+        const lotIds = lots.map((l) => l.id);
+        const response = await InventoryLotAPI.batchDispose(
+          lotIds,
+          formData.reason,
+          formData.notes,
+        );
+
+        if (response.failedCount > 0) {
+          setError(
+            `Disposed ${response.successCount} lots successfully. ${response.failedCount} failed: ${response.errors}`,
+          );
+          // Don't return - still close and refresh
+        }
+      } else {
+        // Single disposal
+        await InventoryLotAPI.dispose(
+          singleLot.id,
+          formData.reason,
+          formData.notes,
+        );
+      }
 
       setFormData({
         reason: "EXPIRED",
@@ -81,14 +105,21 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
     onClose();
   };
 
-  if (!lot) return null;
+  if (!singleLot && !isBatchMode) return null;
 
   return (
     <Modal
       open={open}
       onRequestClose={handleCancel}
       onRequestSubmit={handleSubmit}
-      modalHeading={intl.formatMessage({ id: "disposal.title" })}
+      modalHeading={
+        isBatchMode
+          ? intl.formatMessage(
+              { id: "disposal.batch.title" },
+              { count: lots.length },
+            )
+          : intl.formatMessage({ id: "disposal.title" })
+      }
       primaryButtonText={intl.formatMessage({ id: "button.dispose" })}
       secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
       primaryButtonDisabled={saving}
@@ -99,42 +130,80 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
         <InlineNotification
           kind="warning"
           title={intl.formatMessage({ id: "disposal.warning.title" })}
-          subtitle={intl.formatMessage({ id: "disposal.warning.message" })}
+          subtitle={
+            isBatchMode
+              ? intl.formatMessage(
+                  { id: "disposal.batch.warning.message" },
+                  { count: lots.length },
+                )
+              : intl.formatMessage({ id: "disposal.warning.message" })
+          }
           hideCloseButton
           lowContrast
         />
 
-        <div>
-          <FormLabel>
-            <FormattedMessage id="lot.number" />
-          </FormLabel>
-          <p>
-            <strong>{lot.lotNumber}</strong> - {lot.inventoryItem?.name}
-          </p>
-        </div>
-
-        <div>
-          <FormLabel>
-            <FormattedMessage id="lot.currentQuantity" />
-          </FormLabel>
-          <p>
-            <strong>
-              {lot.currentQuantity} {lot.inventoryItem?.units || "units"}
-            </strong>
-          </p>
-        </div>
-
-        {lot.expirationDate && (
+        {isBatchMode ? (
           <div>
             <FormLabel>
-              <FormattedMessage id="lot.expirationDate" />
+              <FormattedMessage
+                id="disposal.batch.lots"
+                defaultMessage="Selected Lots"
+              />
             </FormLabel>
-            <p>
-              <strong>
-                {new Date(lot.expirationDate).toLocaleDateString()}
-              </strong>
-            </p>
+            <div
+              style={{
+                maxHeight: "200px",
+                overflowY: "auto",
+                padding: "0.5rem",
+                border: "1px solid #e0e0e0",
+                borderRadius: "4px",
+              }}
+            >
+              {lots.map((l, idx) => (
+                <div key={l.id} style={{ marginBottom: "0.5rem" }}>
+                  <strong>{l.lotNumber}</strong> - {l.inventoryItem?.name} (
+                  {l.currentQuantity} {l.inventoryItem?.units || "units"})
+                </div>
+              ))}
+            </div>
           </div>
+        ) : (
+          <>
+            <div>
+              <FormLabel>
+                <FormattedMessage id="lot.number" />
+              </FormLabel>
+              <p>
+                <strong>{singleLot.lotNumber}</strong> -{" "}
+                {singleLot.inventoryItem?.name}
+              </p>
+            </div>
+
+            <div>
+              <FormLabel>
+                <FormattedMessage id="lot.currentQuantity" />
+              </FormLabel>
+              <p>
+                <strong>
+                  {singleLot.currentQuantity}{" "}
+                  {singleLot.inventoryItem?.units || "units"}
+                </strong>
+              </p>
+            </div>
+
+            {singleLot.expirationDate && (
+              <div>
+                <FormLabel>
+                  <FormattedMessage id="lot.expirationDate" />
+                </FormLabel>
+                <p>
+                  <strong>
+                    {new Date(singleLot.expirationDate).toLocaleDateString()}
+                  </strong>
+                </p>
+              </div>
+            )}
+          </>
         )}
 
         <Dropdown

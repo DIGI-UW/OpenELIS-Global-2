@@ -8,9 +8,13 @@ import {
   TableHeader,
   TableBody,
   TableCell,
+  TableSelectAll,
+  TableSelectRow,
   TableToolbar,
   TableToolbarContent,
   TableToolbarSearch,
+  TableBatchActions,
+  TableBatchAction,
   Button,
   Dropdown,
   Tag,
@@ -32,6 +36,7 @@ import LotAdjustmentModal from "./LotAdjustmentModal";
 import DisposeLotModal from "./DisposeLotModal";
 import UpdateQCStatusModal from "./UpdateQCStatusModal";
 import LotDetailsPanel from "./LotDetailsPanel";
+import AuditLogViewer from "./AuditLogViewer";
 import "./InventoryList.css";
 
 const InventoryDashboard = () => {
@@ -76,7 +81,9 @@ const InventoryDashboard = () => {
   const [disposalModalOpen, setDisposalModalOpen] = useState(false);
   const [qcStatusModalOpen, setQcStatusModalOpen] = useState(false);
   const [detailsPanelOpen, setDetailsPanelOpen] = useState(false);
+  const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
+  const [selectedLotsForDisposal, setSelectedLotsForDisposal] = useState([]);
 
   const itemTypes = [
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
@@ -414,203 +421,252 @@ const InventoryDashboard = () => {
         </Column>
       </Grid>
 
-      <DataTable rows={rows} headers={headers} isSortable>
+      <DataTable rows={rows} headers={headers} isSortable radio={false}>
         {({
           rows,
           headers,
           getHeaderProps,
           getRowProps,
+          getSelectionProps,
           getTableProps,
           getTableContainerProps,
-        }) => (
-          <TableContainer title="" description="" {...getTableContainerProps()}>
-            <TableToolbar>
-              <TableToolbarContent>
-                <TableToolbarSearch
-                  placeholder={intl.formatMessage({
-                    id: "inventory.search.placeholder",
-                  })}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  value={searchTerm}
-                />
+          selectedRows,
+          selectRow,
+        }) => {
+          const handleBatchDispose = () => {
+            const selectedLots = selectedRows.map((row) => {
+              const lotIndex = rows.findIndex((r) => r.id === row.id);
+              return paginatedLots[lotIndex];
+            });
+            setSelectedLotsForDisposal(selectedLots);
+            setSelectedLot(null);
+            setDisposalModalOpen(true);
+          };
 
-                <Dropdown
-                  id="type-filter"
-                  titleText=""
-                  label={intl.formatMessage({
-                    id: "inventory.filter.type",
-                  })}
-                  items={itemTypes}
-                  itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={itemTypes.find((t) => t.id === typeFilter)}
-                  onChange={({ selectedItem }) =>
-                    setTypeFilter(selectedItem.id)
-                  }
-                  size="md"
-                />
-
-                <Dropdown
-                  id="status-filter"
-                  titleText=""
-                  label={intl.formatMessage({
-                    id: "inventory.filter.status",
-                  })}
-                  items={statusOptions}
-                  itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={statusOptions.find(
-                    (s) => s.id === statusFilter,
-                  )}
-                  onChange={({ selectedItem }) =>
-                    setStatusFilter(selectedItem.id)
-                  }
-                  size="md"
-                />
-
-                <Button
-                  renderIcon={Add}
-                  onClick={() => {
-                    setSelectedLot(null);
-                    setLotModalOpen(true);
+          return (
+            <TableContainer
+              title=""
+              description=""
+              {...getTableContainerProps()}
+            >
+              <TableToolbar>
+                <TableBatchActions
+                  {...getSelectionProps()}
+                  onSelectAll={() => {
+                    rows.forEach((row) => selectRow(row.id));
                   }}
+                  totalSelected={selectedRows.length}
+                  shouldShowBatchActions={selectedRows.length > 0}
                 >
-                  <FormattedMessage id="inventory.add.button" />
-                </Button>
-              </TableToolbarContent>
-            </TableToolbar>
+                  <TableBatchAction
+                    renderIcon={() => null}
+                    onClick={handleBatchDispose}
+                  >
+                    <FormattedMessage
+                      id="disposal.batch.button"
+                      defaultMessage="Dispose Selected ({count})"
+                      values={{ count: selectedRows.length }}
+                    />
+                  </TableBatchAction>
+                </TableBatchActions>
+                <TableToolbarContent>
+                  <TableToolbarSearch
+                    placeholder={intl.formatMessage({
+                      id: "inventory.search.placeholder",
+                    })}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={searchTerm}
+                  />
 
-            <Table {...getTableProps()}>
-              <TableHead>
-                <TableRow>
-                  {headers.map((header) => (
-                    <TableHeader
-                      key={header.key}
-                      {...getHeaderProps({ header })}
-                    >
-                      {header.header}
-                    </TableHeader>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading ? (
+                  <Dropdown
+                    id="type-filter"
+                    titleText=""
+                    label={intl.formatMessage({
+                      id: "inventory.filter.type",
+                    })}
+                    items={itemTypes}
+                    itemToString={(item) => (item ? item.text : "")}
+                    selectedItem={itemTypes.find((t) => t.id === typeFilter)}
+                    onChange={({ selectedItem }) =>
+                      setTypeFilter(selectedItem.id)
+                    }
+                    size="md"
+                  />
+
+                  <Dropdown
+                    id="status-filter"
+                    titleText=""
+                    label={intl.formatMessage({
+                      id: "inventory.filter.status",
+                    })}
+                    items={statusOptions}
+                    itemToString={(item) => (item ? item.text : "")}
+                    selectedItem={statusOptions.find(
+                      (s) => s.id === statusFilter,
+                    )}
+                    onChange={({ selectedItem }) =>
+                      setStatusFilter(selectedItem.id)
+                    }
+                    size="md"
+                  />
+
+                  <Button
+                    renderIcon={Add}
+                    onClick={() => {
+                      setSelectedLot(null);
+                      setLotModalOpen(true);
+                    }}
+                  >
+                    <FormattedMessage id="inventory.add.button" />
+                  </Button>
+                </TableToolbarContent>
+              </TableToolbar>
+
+              <Table {...getTableProps()}>
+                <TableHead>
                   <TableRow>
-                    <TableCell colSpan={headers.length}>Loading...</TableCell>
+                    <TableSelectAll {...getSelectionProps()} />
+                    {headers.map((header) => (
+                      <TableHeader
+                        key={header.key}
+                        {...getHeaderProps({ header })}
+                      >
+                        {header.header}
+                      </TableHeader>
+                    ))}
                   </TableRow>
-                ) : rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={headers.length}>
-                      No inventory items found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  rows.map((row, rowIndex) => {
-                    const lot = paginatedLots[rowIndex];
-                    return (
-                      <TableRow key={row.id} {...getRowProps({ row })}>
-                        {row.cells.map((cell) => {
-                          if (cell.info.header === "stockStatus") {
-                            const status = cell.value;
+                </TableHead>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={headers.length}>Loading...</TableCell>
+                    </TableRow>
+                  ) : rows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={headers.length}>
+                        No inventory items found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    rows.map((row, rowIndex) => {
+                      const lot = paginatedLots[rowIndex];
+                      return (
+                        <TableRow key={row.id} {...getRowProps({ row })}>
+                          <TableSelectRow {...getSelectionProps({ row })} />
+                          {row.cells.map((cell) => {
+                            if (cell.info.header === "stockStatus") {
+                              const status = cell.value;
+                              return (
+                                <TableCell key={cell.id}>
+                                  {status && (
+                                    <Tag type={status.kind}>{status.label}</Tag>
+                                  )}
+                                </TableCell>
+                              );
+                            }
+
+                            if (cell.info.header === "actions") {
+                              return (
+                                <TableCell key={cell.id}>
+                                  <OverflowMenu
+                                    size="sm"
+                                    flipped
+                                    ariaLabel={intl.formatMessage({
+                                      id: "label.button.action",
+                                    })}
+                                  >
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "lot.details.view",
+                                      })}
+                                      onClick={() => handleViewDetails(lot)}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "button.edit",
+                                      })}
+                                      onClick={() => handleEditLot(lot)}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "usage.record.button",
+                                      })}
+                                      onClick={() => {
+                                        setSelectedLot(lot);
+                                        setUsageModalOpen(true);
+                                      }}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "adjustment.button",
+                                      })}
+                                      onClick={() => {
+                                        setSelectedLot(lot);
+                                        setAdjustmentModalOpen(true);
+                                      }}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "qc.status.update.button",
+                                      })}
+                                      onClick={() => {
+                                        setSelectedLot(lot);
+                                        setQcStatusModalOpen(true);
+                                      }}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "audit.log.view.button",
+                                      })}
+                                      onClick={() => {
+                                        setSelectedLot(lot);
+                                        setAuditLogOpen(true);
+                                      }}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "disposal.button",
+                                      })}
+                                      onClick={() => {
+                                        setSelectedLot(lot);
+                                        setDisposalModalOpen(true);
+                                      }}
+                                      isDelete
+                                    />
+                                  </OverflowMenu>
+                                </TableCell>
+                              );
+                            }
+
                             return (
-                              <TableCell key={cell.id}>
-                                {status && (
-                                  <Tag type={status.kind}>{status.label}</Tag>
-                                )}
-                              </TableCell>
+                              <TableCell key={cell.id}>{cell.value}</TableCell>
                             );
-                          }
+                          })}
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
 
-                          if (cell.info.header === "actions") {
-                            return (
-                              <TableCell key={cell.id}>
-                                <OverflowMenu
-                                  size="sm"
-                                  flipped
-                                  ariaLabel={intl.formatMessage({
-                                    id: "label.button.action",
-                                  })}
-                                >
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "lot.details.view",
-                                    })}
-                                    onClick={() => handleViewDetails(lot)}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "button.edit",
-                                    })}
-                                    onClick={() => handleEditLot(lot)}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "usage.record.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setUsageModalOpen(true);
-                                    }}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "adjustment.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setAdjustmentModalOpen(true);
-                                    }}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "qc.status.update.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setQcStatusModalOpen(true);
-                                    }}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "disposal.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setDisposalModalOpen(true);
-                                    }}
-                                    isDelete
-                                  />
-                                </OverflowMenu>
-                              </TableCell>
-                            );
-                          }
-
-                          return (
-                            <TableCell key={cell.id}>{cell.value}</TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-
-            {!loading && rows.length > 0 && (
-              <Pagination
-                backwardText="Previous page"
-                forwardText="Next page"
-                itemsPerPageText="Items per page:"
-                page={page}
-                pageSize={pageSize}
-                pageSizes={[10, 20, 30, 40, 50]}
-                totalItems={filteredLots.length}
-                onChange={({ page, pageSize }) => {
-                  setPage(page);
-                  setPageSize(pageSize);
-                }}
-              />
-            )}
-          </TableContainer>
-        )}
+              {!loading && rows.length > 0 && (
+                <Pagination
+                  backwardText="Previous page"
+                  forwardText="Next page"
+                  itemsPerPageText="Items per page:"
+                  page={page}
+                  pageSize={pageSize}
+                  pageSizes={[10, 20, 30, 40, 50]}
+                  totalItems={filteredLots.length}
+                  onChange={({ page, pageSize }) => {
+                    setPage(page);
+                    setPageSize(pageSize);
+                  }}
+                />
+              )}
+            </TableContainer>
+          );
+        }}
       </DataTable>
 
       {/* Lot Entry Modal */}
@@ -659,9 +715,17 @@ const InventoryDashboard = () => {
           onClose={() => {
             setDisposalModalOpen(false);
             setSelectedLot(null);
+            setSelectedLotsForDisposal([]);
           }}
           onSave={handleDisposalSaved}
           lot={selectedLot}
+          lots={
+            selectedLotsForDisposal.length > 0
+              ? selectedLotsForDisposal
+              : selectedLot
+                ? [selectedLot]
+                : []
+          }
         />
       )}
 
@@ -686,6 +750,18 @@ const InventoryDashboard = () => {
           setSelectedLot(null);
         }}
         lot={selectedLot}
+      />
+
+      {/* Audit Log Viewer */}
+      <AuditLogViewer
+        open={auditLogOpen}
+        onClose={() => {
+          setAuditLogOpen(false);
+          setSelectedLot(null);
+        }}
+        entityType="LOT"
+        entityId={selectedLot?.id}
+        entityName={selectedLot?.lotNumber}
       />
     </>
   );
