@@ -81,6 +81,13 @@
         <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
         <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
 
+        <!-- Notebook Management entities -->
+        <class>org.openelisglobal.notebook.valueholder.NoteBook</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookPage</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookFile</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookComment</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookSample</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
@@ -89,6 +96,11 @@
             <property
                 name="hibernate.search.backend.analysis.configurer"
                 value="class:org.openelisglobal.hibernate.search.analysis.CustomLuceneAnalysisConfigurer" />
+            <property name="hibernate.hbm2ddl.auto" value="update" />
+            <property
+                name="jakarta.persistence.schema-generation.database.action"
+                value="update" />
+
         </properties>
 
     </persistence-unit>

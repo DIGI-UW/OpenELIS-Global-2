@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <!-- Required users for creator / comments -->
+    <system_user id="1" login_name="alice" first_name="Alice"
+        last_name="Tester" is_active="Y" is_employee="Y" />
+
+    <system_user id="2" login_name="bob" first_name="Bob"
+        last_name="Reviewer" is_active="Y" is_employee="Y" />
+
+    <!-- Dictionary entries (ID ONLY — matches your real schema) -->
+    <dictionary id="100" />
+    <dictionary id="101" />
+    <dictionary id="102" />
+
+    <!-- Notebook 1: Template -->
+    <notebook id="1" title="Test Template Notebook" type="100"
+        protocol="Test Protocol" content="Template content"
+        objective="General Objective" status="DRAFT" is_template="true"
+        technician_id="1" creator_id="1" date_created="2025-01-01 10:00:00"
+        last_updated="2025-01-01 10:00:00" />
+
+    <!-- Notebook 2: Entry notebook linked to template 1 -->
+    <notebook id="2" title="Test Entry Notebook 1" type="100"
+        protocol="Entry Protocol 1" content="Entry content 1"
+        objective="Objective 1" status="DRAFT" is_template="false"
+        technician_id="1" creator_id="1" date_created="2025-01-02 10:00:00"
+        last_updated="2025-01-02 10:00:00" />
+
+    <!-- Notebook 3 -->
+    <notebook id="3" title="Test Entry Notebook 2" type="101"
+        protocol="Entry Protocol 2" content="Entry content 2"
+        objective="Objective 2" status="SUBMITTED" is_template="false"
+        technician_id="2" creator_id="2" date_created="2025-01-03 10:00:00"
+        last_updated="2025-01-03 10:00:00" />
+
+    <!-- Notebook 4 -->
+    <notebook id="4" title="Test Finalized Notebook" type="102"
+        protocol="Finalized Protocol" content="Finalized content"
+        objective="Final Objective" status="FINALIZED" is_template="false"
+        technician_id="1" creator_id="1" date_created="2025-01-04 10:00:00"
+        last_updated="2025-01-04 10:00:00" />
+
+    <!-- Notebook 5 -->
+    <notebook id="5" title="Test Locked Notebook" type="100"
+        protocol="Locked Protocol" content="Locked content"
+        objective="Locked Objective" status="LOCKED" is_template="false"
+        technician_id="2" creator_id="2" date_created="2025-01-05 10:00:00"
+        last_updated="2025-01-05 10:00:00" />
+
+    <!-- Notebook 6 -->
+    <notebook id="6" title="Test Archived Notebook" type="101"
+        protocol="Archived Protocol" content="Archived content"
+        objective="Archived Objective" status="ARCHIVED" is_template="false"
+        technician_id="1" creator_id="1" date_created="2025-01-06 10:00:00"
+        last_updated="2025-01-06 10:00:00" />
+
+    <!-- Notebook 7 -->
+    <notebook id="7" title="Test Template Notebook 2" type="102"
+        protocol="Template Protocol 2" content="Template content 2"
+        objective="Objective T2" status="DRAFT" is_template="true"
+        technician_id="1" creator_id="1" date_created="2025-01-07 10:00:00"
+        last_updated="2025-01-07 10:00:00" />
+
+    <!-- Pages -->
+    <notebook_page id="1" notebook_id="2" page_order="1"
+        content="Page 1" />
+    <notebook_page id="2" notebook_id="2" page_order="2"
+        content="Page 2" />
+
+    <!-- Comments -->
+    <notebook_comment id="1" notebook_id="2"
+        comment_text="First comment" system_user_id="1"
+        date_created="2025-01-02 11:00:00" />
+
+</dataset>

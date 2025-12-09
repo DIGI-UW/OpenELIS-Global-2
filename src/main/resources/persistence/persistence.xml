@@ -47,6 +47,13 @@
         <class>org.openelisglobal.coldstorage.valueholder.ThresholdProfile</class>
         <class>org.openelisglobal.coldstorage.valueholder.FreezerThresholdProfile</class>
 
+        <!-- Notebook Management entities -->
+        <class>org.openelisglobal.notebook.valueholder.NoteBook</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookPage</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookFile</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookComment</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookSample</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
