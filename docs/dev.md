@@ -237,7 +237,7 @@ and security are not comprimised. Classes:
 - `ControllerSetup` – this class configures controllers globally, like trimming
   form strings of whitespace.
 - `DatabaseConfig` – this class configures the connection with the database
-- `HibernateConfig` – configures the entitiy manager and transaction manager
+- `HibernateConfig` – configures the entity manager and transaction manager
   used by Hibernate.
 
 ##
@@ -245,7 +245,7 @@ and security are not comprimised. Classes:
 **Liquibase:**
 
 Location: `org.openelisglobal.liquibase` configures liquibase specifically. This
-calss can be moved into config
+class can be moved into config
 
 ##
 
