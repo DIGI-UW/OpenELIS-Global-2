@@ -32,7 +32,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     private StorageRackDAO storageRackDAO;
 
     @Autowired
-    private StoragePositionDAO storagePositionDAO;
+    private StorageBoxDAO storageBoxDAO;
 
     @Autowired
     private StorageSearchService storageSearchService;
@@ -215,28 +215,28 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     }
 
     @Override
-    public List<StoragePosition> getPositionsByRack(Integer rackId) {
-        return storagePositionDAO.findByParentRackId(rackId);
+    public List<StorageBox> getBoxesByRack(Integer rackId) {
+        return storageBoxDAO.findByParentRackId(rackId);
     }
 
     @Override
-    public List<StoragePosition> getAllPositions() {
-        return storagePositionDAO.getAll();
+    public List<StorageBox> getAllBoxes() {
+        return storageBoxDAO.getAll();
     }
 
     @Override
     public int countOccupiedInDevice(Integer deviceId) {
-        return storagePositionDAO.countOccupiedInDevice(deviceId);
+        return storageBoxDAO.countOccupiedInDevice(deviceId);
     }
 
     @Override
     public int countOccupied(Integer rackId) {
-        return storagePositionDAO.countOccupied(rackId);
+        return storageBoxDAO.countOccupied(rackId);
     }
 
     @Override
     public int countOccupiedInShelf(Integer shelfId) {
-        return storagePositionDAO.countOccupiedInShelf(shelfId);
+        return storageBoxDAO.countOccupiedInShelf(shelfId);
     }
 
     @Override
@@ -334,29 +334,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return storageShelfDAO.insert(shelf);
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
-            // Validate grid dimensions
-            if (rack.getRows() < 0 || rack.getColumns() < 0) {
-                throw new IllegalArgumentException("Grid dimensions cannot be negative");
-            }
-
-            // Auto-generate code from label/name if not provided
-            String rackName = rack.getLabel() != null ? rack.getLabel() : "";
-            if (rack.getCode() == null || rack.getCode().trim().isEmpty()) {
-                String generatedCode = codeGenerationService.generateCodeFromName(rackName, "rack");
-                // Check for conflicts within parent shelf
-                Set<String> existingCodes = new HashSet<>();
-                List<StorageRack> racksInShelf = storageRackDAO.findByParentShelfId(rack.getParentShelf().getId());
-                for (StorageRack r : racksInShelf) {
-                    if (r.getCode() != null) {
-                        existingCodes.add(r.getCode().toUpperCase());
-                    }
-                }
-                String finalCode = codeGenerationService.generateCodeWithConflictResolution(rackName, "rack",
-                        existingCodes);
-                rack.setCode(finalCode);
-            } else {
-                // Validate provided code
-                String normalizedCode = codeValidationService.autoUppercase(rack.getCode());
+            if (rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty()) {
+                String normalizedCode = codeValidationService.autoUppercase(rack.getShortCode());
                 CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
                 if (!formatResult.isValid()) {
                     throw new LIMSRuntimeException(formatResult.getErrorMessage());
@@ -365,17 +344,23 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 if (!lengthResult.isValid()) {
                     throw new LIMSRuntimeException(lengthResult.getErrorMessage());
                 }
+                Integer parentShelfId = rack.getParentShelf() != null ? rack.getParentShelf().getId() : null;
                 CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "rack",
-                        null, String.valueOf(rack.getParentShelf().getId()));
+                        null, parentShelfId != null ? parentShelfId.toString() : null);
                 if (!uniquenessResult.isValid()) {
                     throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
                 }
-                rack.setCode(normalizedCode);
+                rack.setShortCode(normalizedCode);
             }
-
             return storageRackDAO.insert(rack);
-        } else if (entity instanceof StoragePosition) {
-            return storagePositionDAO.insert((StoragePosition) entity);
+        } else if (entity instanceof StorageBox) {
+            StorageBox box = (StorageBox) entity;
+            // Validate grid dimensions (boxes are gridded containers)
+            if (box.getRows() == null || box.getColumns() == null || box.getRows() < 0 || box.getColumns() < 0) {
+                throw new IllegalArgumentException(
+                        "Box must have valid grid dimensions (rows and columns cannot be negative)");
+            }
+            return storageBoxDAO.insert(box);
         }
         throw new LIMSRuntimeException("Unsupported entity type for insert");
     }
@@ -433,7 +418,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
             // Check for active samples when deactivating (null-safe check)
             if (existingDevice.getActive() != null && !existingDevice.getActive()) {
-                int occupiedCount = storagePositionDAO.countOccupiedInDevice(existingDevice.getId());
+                int occupiedCount = storageBoxDAO.countOccupiedInDevice(existingDevice.getId());
                 if (occupiedCount > 0) {
                     throw new LIMSRuntimeException("Warning: Device has " + occupiedCount + " active samples. "
                             + "Please move or dispose samples before deactivating.");
@@ -484,16 +469,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existingRack == null) {
                 throw new LIMSRuntimeException("Rack not found: " + rack.getId());
             }
-            // Update editable fields
-            existingRack.setLabel(rack.getLabel());
-            existingRack.setRows(rack.getRows());
-            existingRack.setColumns(rack.getColumns());
-            existingRack.setPositionSchemaHint(rack.getPositionSchemaHint());
-            existingRack.setActive(rack.getActive());
-
-            // Code is editable - validate if provided
-            if (rack.getCode() != null && !rack.getCode().equals(existingRack.getCode())) {
-                String normalizedCode = codeValidationService.autoUppercase(rack.getCode());
+            if (rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty()) {
+                String normalizedCode = codeValidationService.autoUppercase(rack.getShortCode());
                 CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
                 if (!formatResult.isValid()) {
                     throw new LIMSRuntimeException(formatResult.getErrorMessage());
@@ -502,20 +479,46 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 if (!lengthResult.isValid()) {
                     throw new LIMSRuntimeException(lengthResult.getErrorMessage());
                 }
+                Integer parentShelfId = rack.getParentShelf() != null ? rack.getParentShelf().getId() : null;
                 CodeValidationResult uniquenessResult = codeValidationService.validateUniqueness(normalizedCode, "rack",
-                        String.valueOf(rack.getId()), String.valueOf(existingRack.getParentShelf().getId()));
+                        rack.getId().toString(), parentShelfId != null ? parentShelfId.toString() : null);
                 if (!uniquenessResult.isValid()) {
                     throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
                 }
-                existingRack.setCode(normalizedCode);
+                existingRack.setShortCode(normalizedCode);
+            } else {
+                existingRack.setShortCode(null);
             }
+            // Update editable fields
+            existingRack.setLabel(rack.getLabel());
+            existingRack.setActive(rack.getActive());
+            existingRack.setParentShelf(rack.getParentShelf());
             // Note: Code does NOT regenerate when label changes - only updates if
             // explicitly provided
 
             storageRackDAO.update(existingRack);
             return null;
-        } else if (entity instanceof StoragePosition) {
-            storagePositionDAO.update((StoragePosition) entity);
+        } else if (entity instanceof StorageBox) {
+            StorageBox box = (StorageBox) entity;
+            // Get existing box to preserve read-only fields
+            StorageBox existingBox = storageBoxDAO.get(box.getId()).orElse(null);
+            if (existingBox == null) {
+                throw new LIMSRuntimeException("Box not found: " + box.getId());
+            }
+            // Update editable fields
+            existingBox.setLabel(box.getLabel());
+            existingBox.setType(box.getType());
+            existingBox.setRows(box.getRows());
+            existingBox.setColumns(box.getColumns());
+            existingBox.setPositionSchemaHint(box.getPositionSchemaHint());
+            existingBox.setShortCode(box.getShortCode());
+            existingBox.setActive(box.getActive());
+            // Validate grid dimensions
+            if (existingBox.getRows() == null || existingBox.getColumns() == null || existingBox.getRows() < 0
+                    || existingBox.getColumns() < 0) {
+                throw new IllegalArgumentException("Box must have valid grid dimensions");
+            }
+            storageBoxDAO.update(existingBox);
             return null;
         }
         throw new LIMSRuntimeException("Unsupported entity type for update");
@@ -565,8 +568,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
      * FR-062b). Returns null if capacity cannot be determined.
      * 
      * Tier 1: If capacity_limit is set, use that value (manual/static limit) Tier
-     * 2: If capacity_limit is NULL, calculate from child racks: - Racks always have
-     * defined capacity (rows × columns per FR-017) - Sum all rack capacities
+     * 2: If capacity_limit is NULL, calculate from child racks and their boxes: -
+     * Racks are simple containers - Boxes within racks have grid dimensions (rows ×
+     * columns) - Sum all box capacities across all racks
      * 
      * @param shelf The shelf to calculate capacity for
      * @return Integer capacity value, or null if capacity cannot be determined
@@ -578,7 +582,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return shelf.getCapacityLimit();
         }
 
-        // Tier 2: Calculate from child racks (racks always have defined capacity)
+        // Tier 2: Calculate from child racks and their boxes
         List<StorageRack> racks = storageRackDAO.findByParentShelfId(shelf.getId());
         if (racks == null || racks.isEmpty()) {
             return null; // No children, cannot determine capacity
@@ -586,13 +590,19 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
         int totalCapacity = 0;
         for (StorageRack rack : racks) {
-            // Racks always have defined capacity (rows × columns)
-            int rackCapacity = (rack.getRows() != null ? rack.getRows() : 0)
-                    * (rack.getColumns() != null ? rack.getColumns() : 0);
-            totalCapacity += rackCapacity;
+            // Get all boxes in this rack
+            List<StorageBox> boxes = storageBoxDAO.findByParentRackId(rack.getId());
+            if (boxes != null) {
+                for (StorageBox box : boxes) {
+                    // Boxes have grid dimensions (rows × columns)
+                    int boxCapacity = (box.getRows() != null ? box.getRows() : 0)
+                            * (box.getColumns() != null ? box.getColumns() : 0);
+                    totalCapacity += boxCapacity;
+                }
+            }
         }
 
-        return totalCapacity;
+        return totalCapacity > 0 ? totalCapacity : null;
     }
 
     @Override
@@ -624,12 +634,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             StorageRack managedRack = storageRackDAO.get(rack.getId())
                     .orElseThrow(() -> new LIMSRuntimeException("Rack not found: " + rack.getId()));
             storageRackDAO.delete(managedRack);
-        } else if (entity instanceof StoragePosition) {
-            StoragePosition position = (StoragePosition) entity;
+        } else if (entity instanceof StorageBox) {
+            StorageBox box = (StorageBox) entity;
             // Ensure entity is managed by fetching from database
-            StoragePosition managedPosition = storagePositionDAO.get(position.getId())
-                    .orElseThrow(() -> new LIMSRuntimeException("Position not found: " + position.getId()));
-            storagePositionDAO.delete(managedPosition);
+            StorageBox managedBox = storageBoxDAO.get(box.getId())
+                    .orElseThrow(() -> new LIMSRuntimeException("Box not found: " + box.getId()));
+            storageBoxDAO.delete(managedBox);
         } else {
             throw new LIMSRuntimeException("Unsupported entity type for delete");
         }
@@ -645,37 +655,33 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return storageShelfDAO.get(id).orElse(null);
         } else if (entityClass == StorageRack.class) {
             return storageRackDAO.get(id).orElse(null);
-        } else if (entityClass == StoragePosition.class) {
-            return storagePositionDAO.get(id).orElse(null);
+        } else if (entityClass == StorageBox.class) {
+            return storageBoxDAO.get(id).orElse(null);
         }
         throw new LIMSRuntimeException("Unsupported entity class for get");
     }
 
     @Override
-    public boolean validateLocationActive(StoragePosition position) {
-        if (position == null) {
+    public boolean validateLocationActive(StorageBox box) {
+        if (box == null) {
             return false;
         }
 
-        // Validate parent_device_id exists (minimum 2 levels requirement)
-        if (position.getParentDevice() == null) {
+        // Validate parent rack exists
+        if (box.getParentRack() == null) {
             return false;
         }
 
-        StorageDevice device = position.getParentDevice();
-        if (device.getParentRoom() == null) {
+        StorageRack rack = box.getParentRack();
+        StorageShelf shelf = rack.getParentShelf();
+        StorageDevice device = shelf != null ? shelf.getParentDevice() : null;
+        StorageRoom room = device != null ? device.getParentRoom() : null;
+
+        if (device == null || room == null) {
             return false;
         }
 
-        StorageRoom room = device.getParentRoom();
-
-        // Validate hierarchy integrity: if rack exists, shelf must exist; if coordinate
-        // exists, rack must exist
-        if (!position.validateHierarchyIntegrity()) {
-            return false;
-        }
-
-        // Check room and device are active (minimum 2 levels)
+        // Check room and device are active
         if (room.getActive() == null || !room.getActive()) {
             return false;
         }
@@ -684,18 +690,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
 
         // Check optional parents are active if they exist
-        if (position.getParentShelf() != null) {
-            StorageShelf shelf = position.getParentShelf();
-            if (shelf.getActive() == null || !shelf.getActive()) {
-                return false;
-            }
+        if (shelf != null && (shelf.getActive() == null || !shelf.getActive())) {
+            return false;
         }
 
-        if (position.getParentRack() != null) {
-            StorageRack rack = position.getParentRack();
-            if (rack.getActive() == null || !rack.getActive()) {
-                return false;
-            }
+        if (rack.getActive() == null || !rack.getActive()) {
+            return false;
         }
 
         return true;
@@ -703,40 +703,30 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
     @Override
     @Transactional(readOnly = true)
-    public String buildHierarchicalPath(StoragePosition position) {
-        if (position == null) {
+    public String buildHierarchicalPath(StorageBox box) {
+        if (box == null) {
             return "Unknown Location";
         }
 
-        // Position always has parent_device (required), which has parent_room
-        if (position.getParentDevice() == null) {
+        StorageRack rack = box.getParentRack();
+        if (rack == null || rack.getParentShelf() == null) {
             return "Unknown";
         }
 
-        StorageDevice device = position.getParentDevice();
-        StorageRoom room = device.getParentRoom();
+        StorageShelf shelf = rack.getParentShelf();
+        StorageDevice device = shelf.getParentDevice();
+        StorageRoom room = device != null ? device.getParentRoom() : null;
         if (room == null) {
-            return device.getName();
+            return rack.getLabel();
         }
 
         StringBuilder path = new StringBuilder();
         path.append(room.getName()).append(" > ").append(device.getName());
+        path.append(" > ").append(shelf.getLabel());
+        path.append(" > ").append(rack.getLabel());
 
-        // Add shelf if present (3+ level position)
-        if (position.getParentShelf() != null) {
-            StorageShelf shelf = position.getParentShelf();
-            path.append(" > ").append(shelf.getLabel());
-
-            // Add rack if present (4+ level position)
-            if (position.getParentRack() != null) {
-                StorageRack rack = position.getParentRack();
-                path.append(" > ").append(rack.getLabel());
-
-                // Add coordinate if present (5-level position)
-                if (position.getCoordinate() != null && !position.getCoordinate().isEmpty()) {
-                    path.append(" > Position ").append(position.getCoordinate());
-                }
-            }
+        if (box.getLabel() != null && !box.getLabel().isEmpty()) {
+            path.append(" > ").append(box.getLabel());
         }
 
         return path.toString();
@@ -837,7 +827,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
             // Add occupied count
             try {
-                int occupiedCount = storagePositionDAO.countOccupiedInDevice(device.getId());
+                int occupiedCount = storageBoxDAO.countOccupiedInDevice(device.getId());
                 map.put("occupiedCount", occupiedCount);
             } catch (Exception e) {
                 map.put("occupiedCount", 0);
@@ -911,13 +901,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             // Set type for consistency with searchLocations
             map.put("type", "shelf");
 
-            // Count occupied positions using dedicated method
-            // This handles positions directly under shelf AND positions in racks under
-            // shelf
+            // Count occupied boxes using dedicated method (boxes within racks on shelf)
             try {
                 int occupiedCount = 0;
                 if (shelf.getId() != null) {
-                    occupiedCount = storagePositionDAO.countOccupiedInShelf(shelf.getId());
+                    occupiedCount = storageBoxDAO.countOccupiedInShelf(shelf.getId());
                 }
                 map.put("occupiedCount", occupiedCount);
             } catch (Exception e) {
@@ -957,9 +945,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             Map<String, Object> map = new HashMap<>();
             map.put("id", rack.getId());
             map.put("label", rack.getLabel());
-            map.put("rows", rack.getRows());
-            map.put("columns", rack.getColumns());
-            map.put("positionSchemaHint", rack.getPositionSchemaHint());
+            map.put("shortCode", rack.getShortCode());
             map.put("active", rack.getActive());
             map.put("fhirUuid", rack.getFhirUuidAsString());
 
@@ -1022,7 +1008,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             // Add occupied count
             try {
                 if (rack.getId() != null) {
-                    int occupiedCount = storagePositionDAO.countOccupied(rack.getId());
+                    int occupiedCount = storageBoxDAO.countOccupied(rack.getId());
                     map.put("occupiedCount", occupiedCount);
                 } else {
                     map.put("occupiedCount", 0);
@@ -1030,6 +1016,95 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             } catch (Exception e) {
                 map.put("occupiedCount", 0);
             }
+
+            result.add(map);
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getBoxesForAPI(Integer rackId) {
+        List<StorageBox> boxes;
+        if (rackId != null) {
+            boxes = storageBoxDAO.findByParentRackId(rackId);
+        } else {
+            boxes = storageBoxDAO.getAll();
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (StorageBox box : boxes) {
+            StorageRack parentRack = box.getParentRack();
+            StorageShelf parentShelf = parentRack != null ? parentRack.getParentShelf() : null;
+            StorageDevice parentDevice = parentShelf != null ? parentShelf.getParentDevice() : null;
+            StorageRoom parentRoom = parentDevice != null ? parentDevice.getParentRoom() : null;
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", box.getId());
+            map.put("label", box.getLabel());
+            map.put("type", box.getType());
+            map.put("rows", box.getRows());
+            map.put("columns", box.getColumns());
+            map.put("capacity", box.getCapacity());
+            map.put("positionSchemaHint", box.getPositionSchemaHint());
+            map.put("shortCode", box.getShortCode());
+            map.put("active", box.getActive());
+            map.put("fhirUuid", box.getFhirUuidAsString());
+            map.put("locationType", "box");
+
+            if (parentRack != null) {
+                map.put("parentRackId", parentRack.getId());
+                map.put("rackLabel", parentRack.getLabel());
+            }
+            if (parentShelf != null) {
+                map.put("parentShelfId", parentShelf.getId());
+                map.put("shelfLabel", parentShelf.getLabel());
+            }
+            if (parentDevice != null) {
+                map.put("parentDeviceId", parentDevice.getId());
+                map.put("deviceName", parentDevice.getName());
+            }
+            if (parentRoom != null) {
+                map.put("parentRoomId", parentRoom.getId());
+                map.put("roomName", parentRoom.getName());
+            }
+
+            // Build hierarchical path
+            StringBuilder path = new StringBuilder();
+            if (parentRoom != null && parentRoom.getName() != null) {
+                path.append(parentRoom.getName());
+            }
+            if (parentDevice != null && parentDevice.getName() != null) {
+                if (path.length() > 0) {
+                    path.append(" > ");
+                }
+                path.append(parentDevice.getName());
+            }
+            if (parentShelf != null && parentShelf.getLabel() != null) {
+                if (path.length() > 0) {
+                    path.append(" > ");
+                }
+                path.append(parentShelf.getLabel());
+            }
+            if (parentRack != null && parentRack.getLabel() != null) {
+                if (path.length() > 0) {
+                    path.append(" > ");
+                }
+                path.append(parentRack.getLabel());
+            }
+            if (box.getLabel() != null) {
+                if (path.length() > 0) {
+                    path.append(" > ");
+                }
+                path.append(box.getLabel());
+            }
+            map.put("hierarchicalPath", path.toString());
+
+            // Occupancy
+            boolean occupied = sampleStorageAssignmentDAO.isBoxOccupied(box);
+            map.put("occupied", occupied);
 
             result.add(map);
         }
@@ -1378,13 +1453,12 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                                             if (rack != null && rack.getId() != null) {
                                                 locationIds.add(rack.getId());
 
-                                                // Get positions in this rack
-                                                List<StoragePosition> positions = storagePositionDAO
-                                                        .findByParentRackId(rack.getId());
-                                                if (positions != null) {
-                                                    for (StoragePosition position : positions) {
-                                                        if (position != null && position.getId() != null) {
-                                                            locationIds.add(position.getId());
+                                                // Get boxes in this rack
+                                                List<StorageBox> boxes = storageBoxDAO.findByParentRackId(rack.getId());
+                                                if (boxes != null) {
+                                                    for (StorageBox box : boxes) {
+                                                        if (box != null && box.getId() != null) {
+                                                            locationIds.add(box.getId());
                                                         }
                                                     }
                                                 }

@@ -145,13 +145,13 @@ export default function GenericSampleOrderEdit({
       // User manually changed the notebook, so clear responses and load new questionnaire
       setFhirResponses({});
       loadFhirQuestionnaireForNotebook(selectedNotebookId);
-    } else if (selectedNotebookId && !notebookChangedByUser) {
-      // Notebook loaded from backend, just load the questionnaire without clearing responses
-      loadFhirQuestionnaireForNotebook(selectedNotebookId);
-    } else {
+    } else if (!selectedNotebookId) {
+      // No notebook selected, clear questionnaire
       setFhirQuestionnaire(null);
       setFhirResponses({});
     }
+    // When notebook loaded from backend (!notebookChangedByUser), do NOT reload
+    // the questionnaire - it was already set from the search response
   }, [selectedNotebookId, notebookChangedByUser, showQuestionnaire]);
 
   const loadFhirQuestionnaireForNotebook = (notebookId) => {

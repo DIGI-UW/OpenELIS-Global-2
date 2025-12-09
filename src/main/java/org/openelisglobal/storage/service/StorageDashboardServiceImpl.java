@@ -268,8 +268,7 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
             Map<String, Object> rackMap = new HashMap<>();
             rackMap.put("id", rack.getId());
             rackMap.put("label", rack.getLabel());
-            rackMap.put("rows", rack.getRows());
-            rackMap.put("columns", rack.getColumns());
+            rackMap.put("shortCode", rack.getShortCode());
             rackMap.put("active", rack.getActive());
             rackMap.put("fhirUuid", rack.getFhirUuidAsString());
 

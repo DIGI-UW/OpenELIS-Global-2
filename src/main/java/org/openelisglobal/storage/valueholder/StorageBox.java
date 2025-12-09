@@ -19,50 +19,50 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
 
 /**
- * StoragePosition entity - Storage location representing the lowest level in
- * the hierarchy for a sample assignment. A position can have at most 5 levels
- * (Room → Device → Shelf → Rack → Position) but at least 2 levels (Room →
- * Device). The position represents where in the hierarchy the sample is
- * assigned. Minimum requirement is device level (room + device); cannot be just
- * a room. Position can be at: device level (2 levels), shelf level (3 levels),
- * rack level (4 levels), or position level (5 levels).
- * 
- * Maps to FHIR Location resource with occupancy extension.
+ * StorageBox entity - Gridded container (e.g., 96-well plate, sample box)
+ * within a rack. The grid dimensions (rows × columns) define the internal
+ * coordinate system. Sample assignments reference the box ID + coordinate
+ * (e.g., "A1", "B3"). Hierarchy: Room → Device → Shelf → Rack → Box (gridded
+ * container)
  */
 @Entity
-@Table(name = "STORAGE_POSITION")
+@Table(name = "storage_box")
 @DynamicUpdate
 @org.hibernate.annotations.OptimisticLocking(type = org.hibernate.annotations.OptimisticLockType.VERSION)
-public class StoragePosition extends BaseObject<Integer> {
+public class StorageBox extends BaseObject<Integer> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "storage_position_seq")
-    @SequenceGenerator(name = "storage_position_seq", sequenceName = "storage_position_seq", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "storage_box_seq")
+    @SequenceGenerator(name = "storage_box_seq", sequenceName = "storage_box_seq", allocationSize = 1)
     @Column(name = "ID")
     private Integer id;
 
     @Column(name = "FHIR_UUID", nullable = false, unique = true)
     private UUID fhirUuid;
 
-    @Column(name = "COORDINATE", length = 50, nullable = true)
-    private String coordinate;
+    @Column(name = "LABEL", length = 100, nullable = false)
+    private String label;
 
-    @Column(name = "ROW_INDEX")
-    private Integer rowIndex;
+    @Column(name = "TYPE", length = 50)
+    private String type; // e.g., "96-well", "384-well", "9x9"
 
-    @Column(name = "COLUMN_INDEX")
-    private Integer columnIndex;
+    @Column(name = "ROWS", nullable = false)
+    private Integer rows;
+
+    @Column(name = "COLUMNS", nullable = false)
+    private Integer columns;
+
+    @Column(name = "POSITION_SCHEMA_HINT", length = 50)
+    private String positionSchemaHint; // e.g., "letter-number" for "A1" format
+
+    @Column(name = "SHORT_CODE", length = 10)
+    private String shortCode;
+
+    @Column(name = "ACTIVE", nullable = false)
+    private Boolean active;
 
     @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
-    @JoinColumn(name = "PARENT_DEVICE_ID", nullable = false)
-    private StorageDevice parentDevice;
-
-    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
-    @JoinColumn(name = "PARENT_SHELF_ID", nullable = true)
-    private StorageShelf parentShelf;
-
-    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
-    @JoinColumn(name = "PARENT_RACK_ID", nullable = true)
+    @JoinColumn(name = "PARENT_RACK_ID", nullable = false)
     private StorageRack parentRack;
 
     @Column(name = "SYS_USER_ID", nullable = false)
@@ -86,44 +86,67 @@ public class StoragePosition extends BaseObject<Integer> {
         this.fhirUuid = fhirUuid;
     }
 
-    public String getCoordinate() {
-        return coordinate;
+    public String getLabel() {
+        return label;
     }
 
-    public void setCoordinate(String coordinate) {
-        this.coordinate = coordinate;
+    public void setLabel(String label) {
+        this.label = label;
     }
 
-    public Integer getRowIndex() {
-        return rowIndex;
+    public String getType() {
+        return type;
     }
 
-    public void setRowIndex(Integer rowIndex) {
-        this.rowIndex = rowIndex;
+    public void setType(String type) {
+        this.type = type;
     }
 
-    public Integer getColumnIndex() {
-        return columnIndex;
+    public Integer getRows() {
+        return rows;
     }
 
-    public void setColumnIndex(Integer columnIndex) {
-        this.columnIndex = columnIndex;
+    public void setRows(Integer rows) {
+        this.rows = rows;
     }
 
-    public StorageDevice getParentDevice() {
-        return parentDevice;
+    public Integer getColumns() {
+        return columns;
     }
 
-    public void setParentDevice(StorageDevice parentDevice) {
-        this.parentDevice = parentDevice;
+    public void setColumns(Integer columns) {
+        this.columns = columns;
     }
 
-    public StorageShelf getParentShelf() {
-        return parentShelf;
+    public String getPositionSchemaHint() {
+        return positionSchemaHint;
     }
 
-    public void setParentShelf(StorageShelf parentShelf) {
-        this.parentShelf = parentShelf;
+    public void setPositionSchemaHint(String positionSchemaHint) {
+        this.positionSchemaHint = positionSchemaHint;
+    }
+
+    public String getShortCode() {
+        return shortCode;
+    }
+
+    public void setShortCode(String shortCode) {
+        this.shortCode = shortCode;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
+
+    public Integer getCapacity() {
+        if (rows == null || columns == null || rows == 0 || columns == 0) {
+            return 0;
+        }
+        return rows * columns;
     }
 
     public StorageRack getParentRack() {
@@ -135,22 +158,13 @@ public class StoragePosition extends BaseObject<Integer> {
     }
 
     /**
-     * Validate hierarchy integrity constraints. - If parent_rack_id is NOT NULL,
-     * then parent_shelf_id must also be NOT NULL - If coordinate is NOT NULL, then
-     * parent_rack_id must also be NOT NULL
-     * 
+     * Validate hierarchy integrity constraints. - A box must always have a parent
+     * rack.
+     *
      * @return true if hierarchy integrity is valid, false otherwise
      */
     public boolean validateHierarchyIntegrity() {
-        // Constraint 1: If rack exists, shelf must exist
-        if (parentRack != null && parentShelf == null) {
-            return false;
-        }
-        // Constraint 2: If coordinate exists, rack must exist
-        if (coordinate != null && !coordinate.isEmpty() && parentRack == null) {
-            return false;
-        }
-        return true;
+        return parentRack != null;
     }
 
     public Integer getSysUserIdValue() {

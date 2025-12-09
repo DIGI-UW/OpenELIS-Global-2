@@ -216,22 +216,8 @@ public class StorageLocationFhirTransform {
         partOf.setDisplay(shelf.getLabel());
         location.setPartOf(partOf);
 
-        // Extensions: Grid dimensions
-        if (rack.getRows() != null && rack.getColumns() != null && rack.getRows() > 0 && rack.getColumns() > 0) {
-            Extension gridExt = new Extension(EXT_RACK_GRID_DIMENSIONS);
-            gridExt.setValue(new StringType(rack.getRows() + " × " + rack.getColumns()));
-            location.addExtension(gridExt);
-
-            // Capacity
-            Extension capExt = new Extension(EXT_STORAGE_CAPACITY);
-            capExt.setValue(new IntegerType(rack.getCapacity()));
-            location.addExtension(capExt);
-        }
-        if (rack.getPositionSchemaHint() != null) {
-            Extension hintExt = new Extension(EXT_RACK_POSITION_HINT);
-            hintExt.setValue(new StringType(rack.getPositionSchemaHint()));
-            location.addExtension(hintExt);
-        }
+        // Note: Grid dimensions moved to StorageBox (gridded containers)
+        // Racks are simple containers now
 
         location.getMeta().addProfile(MCSD_PROFILE);
         location.getMeta().addTag(STORAGE_HIERARCHY_TAG_SYSTEM, "rack", "Rack");
@@ -239,54 +225,23 @@ public class StorageLocationFhirTransform {
         return location;
     }
 
-    public Location transformToFhirLocation(StoragePosition position) {
+    public Location transformToFhirLocation(StorageBox box) {
         Location location = new Location();
 
-        location.setId(position.getFhirUuidAsString());
+        location.setId(box.getFhirUuidAsString());
         location.setStatus(LocationStatus.ACTIVE);
         location.setMode(LocationMode.INSTANCE);
 
-        // Position always has parent_device (required)
-        StorageDevice device = position.getParentDevice();
+        StorageRack rack = box.getParentRack();
+        StorageShelf shelf = rack.getParentShelf();
+        StorageDevice device = shelf.getParentDevice();
         StorageRoom room = device.getParentRoom();
 
-        // Build hierarchical identifier based on position level
-        String hierarchicalCode;
-        Reference partOf = new Reference();
-        String locationName;
-
-        if (position.getCoordinate() != null && !position.getCoordinate().isEmpty()
-                && position.getParentRack() != null) {
-            // Position level (5 levels): ROOM-DEVICE-SHELF-RACK-POSITION
-            StorageRack rack = position.getParentRack();
-            StorageShelf shelf = position.getParentShelf();
-            hierarchicalCode = room.getCode() + "-" + device.getCode() + "-" + shelf.getLabel() + "-" + rack.getLabel()
-                    + "-" + position.getCoordinate();
-            partOf.setReference("Location/" + rack.getFhirUuidAsString());
-            partOf.setDisplay(rack.getLabel());
-            locationName = position.getCoordinate();
-        } else if (position.getParentRack() != null) {
-            // Rack level (4 levels): ROOM-DEVICE-SHELF-RACK
-            StorageRack rack = position.getParentRack();
-            StorageShelf shelf = position.getParentShelf();
-            hierarchicalCode = room.getCode() + "-" + device.getCode() + "-" + shelf.getLabel() + "-" + rack.getLabel();
-            partOf.setReference("Location/" + rack.getFhirUuidAsString());
-            partOf.setDisplay(rack.getLabel());
-            locationName = rack.getLabel();
-        } else if (position.getParentShelf() != null) {
-            // Shelf level (3 levels): ROOM-DEVICE-SHELF
-            StorageShelf shelf = position.getParentShelf();
-            hierarchicalCode = room.getCode() + "-" + device.getCode() + "-" + shelf.getLabel();
-            partOf.setReference("Location/" + shelf.getFhirUuidAsString());
-            partOf.setDisplay(shelf.getLabel());
-            locationName = shelf.getLabel();
-        } else {
-            // Device level (2 levels): ROOM-DEVICE
-            hierarchicalCode = room.getCode() + "-" + device.getCode();
-            partOf.setReference("Location/" + device.getFhirUuidAsString());
-            partOf.setDisplay(device.getName());
-            locationName = device.getName();
-        }
+        String hierarchicalCode = room.getCode() + "-" + device.getCode() + "-" + shelf.getLabel() + "-"
+                + rack.getLabel() + "-" + (box.getLabel() != null ? box.getLabel() : "BOX");
+        Reference partOf = new Reference("Location/" + rack.getFhirUuidAsString());
+        partOf.setDisplay(rack.getLabel());
+        String locationName = box.getLabel() != null ? box.getLabel() : rack.getLabel();
 
         location.setName(locationName);
         Identifier identifier = new Identifier();
@@ -294,60 +249,56 @@ public class StorageLocationFhirTransform {
         identifier.setValue(hierarchicalCode);
         location.addIdentifier(identifier);
 
-        // Physical Type: Container
+        // Physical Type: Container (gridded container like 96-well plate)
         CodeableConcept physicalType = new CodeableConcept();
         Coding coding = new Coding();
         coding.setSystem("http://terminology.hl7.org/CodeSystem/location-physical-type");
         coding.setCode("co");
         coding.setDisplay("Container");
         physicalType.addCoding(coding);
-        physicalType.setText("Storage Position");
+        physicalType.setText(box.getType() != null ? box.getType() : "Storage Box");
         location.setPhysicalType(physicalType);
 
-        // Parent reference (device, shelf, or rack depending on position level)
         location.setPartOf(partOf);
 
-        // Extensions: Occupancy and grid position
-        // Calculate occupied dynamically from SampleStorageAssignment (source of truth)
-        // instead of using StoragePosition.occupied flag
-        boolean isOccupied = calculatePositionOccupied(position);
+        // Grid dimensions (boxes are gridded containers)
+        if (box.getRows() != null && box.getColumns() != null && box.getRows() > 0 && box.getColumns() > 0) {
+            Extension gridExt = new Extension(EXT_RACK_GRID_DIMENSIONS);
+            gridExt.setValue(new StringType(box.getRows() + " × " + box.getColumns()));
+            location.addExtension(gridExt);
+
+            // Capacity
+            Extension capExt = new Extension(EXT_STORAGE_CAPACITY);
+            capExt.setValue(new IntegerType(box.getCapacity()));
+            location.addExtension(capExt);
+        }
+        if (box.getPositionSchemaHint() != null) {
+            Extension hintExt = new Extension(EXT_RACK_POSITION_HINT);
+            hintExt.setValue(new StringType(box.getPositionSchemaHint()));
+            location.addExtension(hintExt);
+        }
+
+        boolean isOccupied = calculateBoxOccupied(box);
         Extension occExt = new Extension(EXT_POSITION_OCCUPANCY);
         occExt.setValue(new BooleanType(isOccupied));
         location.addExtension(occExt);
 
-        if (position.getRowIndex() != null) {
-            Extension rowExt = new Extension(EXT_POSITION_GRID_ROW);
-            rowExt.setValue(new IntegerType(position.getRowIndex()));
-            location.addExtension(rowExt);
-        }
-        if (position.getColumnIndex() != null) {
-            Extension colExt = new Extension(EXT_POSITION_GRID_COLUMN);
-            colExt.setValue(new IntegerType(position.getColumnIndex()));
-            location.addExtension(colExt);
-        }
-
         location.getMeta().addProfile(MCSD_PROFILE);
-        location.getMeta().addTag(STORAGE_HIERARCHY_TAG_SYSTEM, "position", "Position");
+        location.getMeta().addTag(STORAGE_HIERARCHY_TAG_SYSTEM, "box", "Box");
 
         return location;
     }
 
     /**
-     * Calculate if a StoragePosition is occupied by checking
-     * SampleStorageAssignment records. This replaces the StoragePosition.occupied
-     * flag which is no longer maintained.
-     * 
-     * @param position StoragePosition to check
-     * @return true if there's a SampleStorageAssignment matching this position,
-     *         false otherwise
+     * Calculate if a StorageBox is occupied by checking SampleStorageAssignment
+     * records.
      */
     @Transactional(readOnly = true)
-    private boolean calculatePositionOccupied(StoragePosition position) {
+    private boolean calculateBoxOccupied(StorageBox box) {
         try {
-            return sampleStorageAssignmentDAO.isPositionOccupied(position);
+            return sampleStorageAssignmentDAO.isBoxOccupied(box);
         } catch (Exception e) {
-            LogEvent.logError("Error calculating position occupancy: " + e.getMessage(), e);
-            // On error, return false (position appears unoccupied)
+            LogEvent.logError("Error calculating box occupancy: " + e.getMessage(), e);
             return false;
         }
     }
@@ -409,12 +360,12 @@ public class StorageLocationFhirTransform {
 
     @Async
     @Transactional(readOnly = true)
-    public void syncToFhir(StoragePosition position, boolean isCreate) {
+    public void syncToFhir(StorageBox box, boolean isCreate) {
         try {
-            Location location = transformToFhirLocation(position);
+            Location location = transformToFhirLocation(box);
             persistLocation(location, isCreate);
         } catch (Exception e) {
-            LogEvent.logError("Error syncing StoragePosition to FHIR: " + e.getMessage(), e);
+            LogEvent.logError("Error syncing StorageBox to FHIR: " + e.getMessage(), e);
         }
     }
 

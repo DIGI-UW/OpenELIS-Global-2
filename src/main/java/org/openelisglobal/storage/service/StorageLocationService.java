@@ -2,8 +2,8 @@ package org.openelisglobal.storage.service;
 
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageDevice;
-import org.openelisglobal.storage.valueholder.StoragePosition;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -35,10 +35,10 @@ public interface StorageLocationService {
 
     List<StorageRack> getAllRacks();
 
-    // Position methods
-    List<StoragePosition> getPositionsByRack(Integer rackId);
+    // Box methods
+    List<StorageBox> getBoxesByRack(Integer rackId);
 
-    List<StoragePosition> getAllPositions();
+    List<StorageBox> getAllBoxes();
 
     // REST API methods - return fully prepared Maps with all relationship data
     List<Map<String, Object>> getRoomsForAPI();
@@ -48,6 +48,8 @@ public interface StorageLocationService {
     List<Map<String, Object>> getShelvesForAPI(Integer deviceId);
 
     List<Map<String, Object>> getRacksForAPI(Integer shelfId);
+
+    List<Map<String, Object>> getBoxesForAPI(Integer rackId);
 
     // Count methods
     int countOccupiedInDevice(Integer deviceId);
@@ -66,9 +68,9 @@ public interface StorageLocationService {
     Object get(Integer id, Class<?> entityClass);
 
     // Validation methods
-    boolean validateLocationActive(StoragePosition position);
+    boolean validateLocationActive(StorageBox box);
 
-    String buildHierarchicalPath(StoragePosition position);
+    String buildHierarchicalPath(StorageBox box);
 
     // Search methods
     /**

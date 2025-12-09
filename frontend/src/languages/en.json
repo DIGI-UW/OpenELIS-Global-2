@@ -1755,6 +1755,7 @@
   "storage.expanded.capacityLimit": "Capacity Limit",
   "storage.expanded.positionSchemaHint": "Position Schema Hint",
   "storage.expanded.notAvailable": "N/A",
+  "storage.boxes.coordinate.occupied": "Position {coordinate} is already occupied. Please select a different position.",
   "storage.delete.location": "Delete Location",
   "storage.delete.checking": "Checking constraints...",
   "storage.delete.are.you.sure": "Are you sure you want to delete",

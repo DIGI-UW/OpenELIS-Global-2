@@ -104,8 +104,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
             throw new IllegalArgumentException("Rack cannot be null");
         }
 
-        // Use code field (always ≤10 chars)
-        String barcodeCode = rack.getCode();
+        // Use shortCode field (always ≤10 chars)
+        String barcodeCode = rack.getShortCode();
         if (barcodeCode == null || barcodeCode.trim().isEmpty()) {
             throw new IllegalArgumentException("Rack code is required for label printing.");
         }
@@ -119,19 +119,19 @@ public class LabelManagementServiceImpl implements LabelManagementService {
                 StorageRoom parentRoom = parentDevice.getParentRoom();
                 if (parentRoom != null && parentRoom.getCode() != null) {
                     hierarchicalPath = parentRoom.getCode() + "-" + parentDevice.getCode() + "-" + parentShelf.getCode()
-                            + "-" + rack.getCode();
+                            + "-" + rack.getShortCode();
                 } else {
-                    hierarchicalPath = parentDevice.getCode() + "-" + parentShelf.getCode() + "-" + rack.getCode();
+                    hierarchicalPath = parentDevice.getCode() + "-" + parentShelf.getCode() + "-" + rack.getShortCode();
                 }
             } else {
-                hierarchicalPath = parentShelf.getCode() + "-" + rack.getCode();
+                hierarchicalPath = parentShelf.getCode() + "-" + rack.getShortCode();
             }
         } else {
-            hierarchicalPath = rack.getCode();
+            hierarchicalPath = rack.getShortCode();
         }
 
-        // Create label using code field
-        StorageLocationLabel label = new StorageLocationLabel(rack.getLabel(), rack.getCode(), hierarchicalPath,
+        // Create label using shortCode field
+        StorageLocationLabel label = new StorageLocationLabel(rack.getLabel(), rack.getShortCode(), hierarchicalPath,
                 barcodeCode);
 
         // Generate PDF using BarcodeLabelMaker
@@ -169,8 +169,8 @@ public class LabelManagementServiceImpl implements LabelManagementService {
                 if (rack == null) {
                     return false;
                 }
-                // Code field is always ≤10 chars and required
-                return rack.getCode() != null && !rack.getCode().trim().isEmpty();
+                // shortCode field is always ≤10 chars and required
+                return rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty();
             default:
                 return false;
             }

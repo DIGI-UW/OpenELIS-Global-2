@@ -39,12 +39,8 @@ public class FreezerReadingDAOImpl extends BaseDAOImpl<FreezerReading, Long> imp
 
     @Override
     public List<FreezerReading> findByFreezerWithin(Long freezerId, OffsetDateTime start, OffsetDateTime end) {
-        String hql = """
-                FROM FreezerReading fr
-                WHERE fr.freezer.id = :freezerId
-                  AND fr.recordedAt BETWEEN :start AND :end
-                ORDER BY fr.recordedAt
-                """;
+        String hql = "FROM FreezerReading fr " + "WHERE fr.freezer.id = :freezerId "
+                + "AND fr.recordedAt BETWEEN :start AND :end " + "ORDER BY fr.recordedAt";
         Query<FreezerReading> query = entityManager.unwrap(Session.class).createQuery(hql, FreezerReading.class);
         query.setParameter("freezerId", freezerId);
         query.setParameter("start", start);

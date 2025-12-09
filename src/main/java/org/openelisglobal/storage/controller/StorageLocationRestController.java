@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * REST Controller for Storage Location management Handles CRUD operations for
- * all storage hierarchy levels: Room, Device, Shelf, Rack, Position
+ * all storage hierarchy levels: Room, Device, Shelf, Rack, Box
  */
 @RestController
 @RequestMapping("/rest/storage")
@@ -731,9 +731,7 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             StorageRack rack = new StorageRack();
             rack.setLabel(form.getLabel());
-            rack.setRows(form.getRows());
-            rack.setColumns(form.getColumns());
-            rack.setPositionSchemaHint(form.getPositionSchemaHint());
+            rack.setShortCode(form.getShortCode());
             rack.setActive(form.getActive() != null ? form.getActive() : true);
             rack.setFhirUuid(UUID.randomUUID());
             rack.setSysUserId("1"); // Default system user for REST API
@@ -808,12 +806,9 @@ public class StorageLocationRestController extends BaseRestController {
             Integer idInt = Integer.parseInt(id);
             StorageRack rackToUpdate = new StorageRack();
             rackToUpdate.setLabel(form.getLabel());
-            rackToUpdate.setRows(form.getRows());
-            rackToUpdate.setColumns(form.getColumns());
-            rackToUpdate.setPositionSchemaHint(form.getPositionSchemaHint());
+            rackToUpdate.setShortCode(form.getShortCode());
             // parentShelf is read-only - ignored if provided
             rackToUpdate.setActive(form.getActive());
-            rackToUpdate.setCode(form.getCode());
 
             // Get existing rack to preserve ID
             StorageRack existingRack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
@@ -930,82 +925,65 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    // ========== Position Endpoints ==========
+    // ========== Box Endpoints ==========
 
-    @PostMapping("/positions")
-    public ResponseEntity<Map<String, Object>> createPosition(@Valid @RequestBody StoragePositionForm form) {
+    @PostMapping("/boxes")
+    public ResponseEntity<Map<String, Object>> createBox(@Valid @RequestBody StorageBoxForm form) {
         try {
-            StoragePosition position = new StoragePosition();
-            position.setCoordinate(form.getCoordinate());
-            position.setRowIndex(form.getRowIndex());
-            position.setColumnIndex(form.getColumnIndex());
-            position.setFhirUuid(UUID.randomUUID());
-            position.setSysUserId("1"); // Default system user for REST API
+            StorageBox box = new StorageBox();
+            box.setLabel(form.getLabel());
+            box.setType(form.getType());
+            box.setRows(form.getRows());
+            box.setColumns(form.getColumns());
+            box.setPositionSchemaHint(form.getPositionSchemaHint());
+            box.setShortCode(form.getShortCode());
+            box.setActive(form.getActive() != null ? form.getActive() : true);
+            box.setFhirUuid(UUID.randomUUID());
+            box.setSysUserId("1"); // Default system user for REST API
 
             Integer parentRackId = form.getParentRackId() != null ? Integer.parseInt(form.getParentRackId()) : null;
             StorageRack parentRack = (StorageRack) storageLocationService.get(parentRackId, StorageRack.class);
             if (parentRack == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent rack not found"));
             }
-            position.setParentRack(parentRack);
+            box.setParentRack(parentRack);
 
-            // StoragePosition requires parentDevice (not-null constraint)
-            // Traverse hierarchy: Rack → Shelf → Device
-            StorageShelf parentShelf = parentRack.getParentShelf();
-            if (parentShelf != null) {
-                position.setParentShelf(parentShelf);
-                StorageDevice parentDevice = parentShelf.getParentDevice();
-                if (parentDevice != null) {
-                    position.setParentDevice(parentDevice);
-                } else {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(Map.of("error", "Parent device not found in hierarchy"));
-                }
-            } else {
-                // If no shelf, we need to get device from rack's shelf relationship
-                // But rack always has a shelf (nullable = false in StorageRack entity)
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("error", "Parent shelf not found in rack hierarchy"));
-            }
+            Integer id = storageLocationService.insert(box);
+            box.setId(id);
 
-            Integer id = storageLocationService.insert(position);
-            position.setId(id);
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(entityToMap(position));
+            return ResponseEntity.status(HttpStatus.CREATED).body(entityToMap(box));
         } catch (Exception e) {
-            logger.error("Error creating position", e);
+            logger.error("Error creating box", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
 
-    @GetMapping("/positions")
-    public ResponseEntity<List<Map<String, Object>>> getPositions(@RequestParam(required = false) String rackId,
+    @GetMapping("/boxes")
+    public ResponseEntity<List<Map<String, Object>>> getBoxes(@RequestParam(required = false) String rackId,
             @RequestParam(required = false) Boolean occupied) {
         try {
-            List<StoragePosition> positions;
+            List<StorageBox> boxes;
             if (rackId != null) {
                 Integer rackIdInt = Integer.parseInt(rackId);
-                positions = storageLocationService.getPositionsByRack(rackIdInt);
+                boxes = storageLocationService.getBoxesByRack(rackIdInt);
                 // Filter by occupied status if specified
-                // Calculate occupied dynamically from SampleStorageAssignment (source of truth)
                 if (occupied != null) {
-                    positions.removeIf(p -> sampleStorageAssignmentDAO.isPositionOccupied(p) != occupied);
+                    boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
                 }
             } else {
-                positions = storageLocationService.getAllPositions();
-                // Filter by occupied status if specified
+                boxes = storageLocationService.getAllBoxes();
                 if (occupied != null) {
-                    positions.removeIf(p -> sampleStorageAssignmentDAO.isPositionOccupied(p) != occupied);
+                    boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
                 }
             }
 
             List<Map<String, Object>> response = new ArrayList<>();
-            for (StoragePosition position : positions) {
-                response.add(entityToMap(position));
+            for (StorageBox box : boxes) {
+                response.add(entityToMap(box));
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            logger.error("Error getting positions", e);
+            logger.error("Error getting boxes", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -1210,11 +1188,8 @@ public class StorageLocationRestController extends BaseRestController {
             StorageRack rack = (StorageRack) entity;
             map.put("id", rack.getId());
             map.put("label", rack.getLabel());
-            map.put("rows", rack.getRows());
-            map.put("columns", rack.getColumns());
-            map.put("positionSchemaHint", rack.getPositionSchemaHint());
+            map.put("shortCode", rack.getShortCode());
             map.put("active", rack.getActive());
-            map.put("code", rack.getCode());
             map.put("fhirUuid", rack.getFhirUuidAsString());
 
             // Add parent relationships for filtering (FR-065: filter by room, shelf,
@@ -1277,53 +1252,62 @@ public class StorageLocationRestController extends BaseRestController {
 
             // Set type for consistency
             map.put("type", "rack");
-        } else if (entity instanceof StoragePosition) {
-            StoragePosition position = (StoragePosition) entity;
-            map.put("id", position.getId());
-            map.put("coordinate", position.getCoordinate());
-            map.put("rowIndex", position.getRowIndex());
-            map.put("columnIndex", position.getColumnIndex());
-            // Calculate occupied dynamically from SampleStorageAssignment (source of truth)
-            // instead of using StoragePosition.occupied flag
-            map.put("occupied", sampleStorageAssignmentDAO.isPositionOccupied(position));
-            map.put("fhirUuid", position.getFhirUuidAsString());
+        } else if (entity instanceof StorageBox) {
+            StorageBox box = (StorageBox) entity;
+            map.put("id", box.getId());
+            map.put("label", box.getLabel());
+            map.put("type", box.getType());
+            map.put("rows", box.getRows());
+            map.put("columns", box.getColumns());
+            map.put("capacity", box.getCapacity());
+            map.put("positionSchemaHint", box.getPositionSchemaHint());
+            map.put("shortCode", box.getShortCode());
+            map.put("active", box.getActive());
 
-            // Add parent relationships for hierarchy display
-            StorageRack parentRack = position.getParentRack();
-            StorageShelf parentShelf = position.getParentShelf();
-            StorageDevice parentDevice = position.getParentDevice();
+            // Get occupied coordinates with sample info (external ID, sample item ID)
+            Map<String, Map<String, String>> occupiedCoordinatesMap = sampleStorageAssignmentDAO
+                    .getOccupiedCoordinatesWithSampleInfo(box.getId());
+
+            map.put("occupied", !occupiedCoordinatesMap.isEmpty());
+            map.put("occupiedCoordinates", occupiedCoordinatesMap);
+            map.put("fhirUuid", box.getFhirUuidAsString());
+
+            StorageRack parentRack = box.getParentRack();
+            StorageShelf parentShelf = null;
+            StorageDevice parentDevice = null;
             StorageRoom parentRoom = null;
 
-            if (parentDevice != null) {
-                parentDevice.getName(); // Trigger lazy load
-                map.put("parentDeviceId", parentDevice.getId());
-                map.put("deviceName", parentDevice.getName());
-                map.put("parentDeviceName", parentDevice.getName());
-
-                parentRoom = parentDevice.getParentRoom();
-                if (parentRoom != null) {
-                    parentRoom.getName(); // Trigger lazy load
-                    map.put("parentRoomId", parentRoom.getId());
-                    map.put("roomName", parentRoom.getName());
-                    map.put("parentRoomName", parentRoom.getName());
-                }
-            }
-
-            if (parentShelf != null) {
-                parentShelf.getLabel(); // Trigger lazy load
-                map.put("parentShelfId", parentShelf.getId());
-                map.put("shelfLabel", parentShelf.getLabel());
-                map.put("parentShelfLabel", parentShelf.getLabel());
-            }
-
             if (parentRack != null) {
-                parentRack.getLabel(); // Trigger lazy load
+                parentRack.getLabel();
                 map.put("parentRackId", parentRack.getId());
                 map.put("rackLabel", parentRack.getLabel());
                 map.put("parentRackLabel", parentRack.getLabel());
+                parentShelf = parentRack.getParentShelf();
             }
 
-            // Build hierarchicalPath: Room > Device > Shelf > Rack > Position
+            if (parentShelf != null) {
+                parentShelf.getLabel();
+                map.put("parentShelfId", parentShelf.getId());
+                map.put("shelfLabel", parentShelf.getLabel());
+                map.put("parentShelfLabel", parentShelf.getLabel());
+                parentDevice = parentShelf.getParentDevice();
+            }
+
+            if (parentDevice != null) {
+                parentDevice.getName();
+                map.put("parentDeviceId", parentDevice.getId());
+                map.put("deviceName", parentDevice.getName());
+                map.put("parentDeviceName", parentDevice.getName());
+                parentRoom = parentDevice.getParentRoom();
+            }
+
+            if (parentRoom != null) {
+                parentRoom.getName();
+                map.put("parentRoomId", parentRoom.getId());
+                map.put("roomName", parentRoom.getName());
+                map.put("parentRoomName", parentRoom.getName());
+            }
+
             StringBuilder pathBuilder = new StringBuilder();
             if (parentRoom != null && parentRoom.getName() != null) {
                 pathBuilder.append(parentRoom.getName());
@@ -1346,18 +1330,17 @@ public class StorageLocationRestController extends BaseRestController {
                 }
                 pathBuilder.append(parentRack.getLabel());
             }
-            if (position.getCoordinate() != null) {
+            if (box.getLabel() != null) {
                 if (pathBuilder.length() > 0) {
                     pathBuilder.append(" > ");
                 }
-                pathBuilder.append("Position ").append(position.getCoordinate());
+                pathBuilder.append(box.getLabel());
             }
             if (pathBuilder.length() > 0) {
                 map.put("hierarchicalPath", pathBuilder.toString());
             }
 
-            // Set type for consistency
-            map.put("type", "position");
+            map.put("type", "box");
         }
 
         return map;

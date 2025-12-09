@@ -3,12 +3,11 @@ package org.openelisglobal.storage.service;
 import java.util.HashMap;
 import java.util.Map;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
-import org.openelisglobal.storage.dao.StoragePositionDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageDevice;
-import org.openelisglobal.storage.valueholder.StoragePosition;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -45,7 +44,7 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
     private StorageRackDAO storageRackDAO;
 
     @Autowired
-    private StoragePositionDAO storagePositionDAO;
+    private org.openelisglobal.storage.dao.StorageBoxDAO storageBoxDAO;
 
     @Override
     public BarcodeValidationResponse validateBarcode(String barcode) {
@@ -263,30 +262,28 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
             }
         }
 
-        // Step 2 & 3: Position validation (existence + hierarchy) - continue even if
-        // rack failed
-        StoragePosition position = null;
+        // Step 2 & 3: Box validation (existence + hierarchy) - continue even if rack
+        // failed
+        StorageBox box = null;
         if (parsed.getPositionCode() != null) {
-            // First check: Does position coordinate exist anywhere?
-            StoragePosition positionAny = storagePositionDAO.findByCoordinates(parsed.getPositionCode());
-            if (positionAny == null) {
-                if (isValid) { // Only record first failure
+            StorageBox boxAny = storageBoxDAO.findByCoordinates(parsed.getPositionCode());
+            if (boxAny == null) {
+                if (isValid) {
                     isValid = false;
                     firstFailedStep = "LOCATION_EXISTENCE";
-                    firstErrorMessage = "Position not found: " + parsed.getPositionCode();
+                    firstErrorMessage = "Box not found: " + parsed.getPositionCode();
                 }
                 // Track first missing level only if we have valid parent levels
                 if (firstMissingLevel == null && hasValidComponents && rack != null) {
                     firstMissingLevel = "position";
                 }
             } else if (rack != null) {
-                // Second check: Does it exist with correct parent?
-                position = storagePositionDAO.findByCoordinatesAndParentRack(parsed.getPositionCode(), rack);
-                if (position == null) {
-                    if (isValid) { // Only record first failure
+                box = storageBoxDAO.findByCoordinatesAndParentRack(parsed.getPositionCode(), rack);
+                if (box == null) {
+                    if (isValid) {
                         isValid = false;
                         firstFailedStep = "HIERARCHY_VALIDATION";
-                        firstErrorMessage = "Position '" + parsed.getPositionCode()
+                        firstErrorMessage = "Box '" + parsed.getPositionCode()
                                 + "' exists but parent hierarchy is incorrect (not in rack '" + rack.getLabel() + "')";
                     }
                     // Hierarchy mismatch - position exists but wrong parent, still track as missing
@@ -294,11 +291,7 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                         firstMissingLevel = "position";
                     }
                 } else {
-                    response.addValidComponent("position",
-                            createComponentMap(position.getId(), position.getCoordinate(), position.getCoordinate()));
-
-                    // Note: StoragePosition doesn't have an active field - it inherits activity
-                    // from its parent hierarchy
+                    response.addValidComponent("box", createComponentMap(box.getId(), box.getLabel(), box.getLabel()));
                 }
             } else {
                 // Rack is missing, so position can't be validated - already tracked rack as

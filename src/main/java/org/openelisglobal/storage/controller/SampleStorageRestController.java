@@ -5,9 +5,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.sampleitem.dao.SampleItemDAO;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.form.SampleDisposalForm;
@@ -46,6 +49,9 @@ public class SampleStorageRestController extends BaseRestController {
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
 
     @Autowired
+    private SampleItemDAO sampleItemDAO;
+
+    @Autowired
     private StorageDashboardService storageDashboardService;
 
     @Autowired
@@ -68,14 +74,27 @@ public class SampleStorageRestController extends BaseRestController {
                 List<SampleStorageAssignment> allAssignments = sampleStorageAssignmentDAO.getAll();
 
                 long totalSampleItems = allAssignments.size();
-                long active = allAssignments.stream()
-                        .filter(a -> a.getSampleItem() != null && (a.getSampleItem().getStatusId() == null
-                                || !statusService.matches(a.getSampleItem().getStatusId(), SampleStatus.Disposed)))
-                        .count();
-                long disposed = allAssignments.stream()
-                        .filter(a -> a.getSampleItem() != null
-                                && statusService.matches(a.getSampleItem().getStatusId(), SampleStatus.Disposed))
-                        .count();
+                long active = 0;
+                long disposed = 0;
+
+                // Load SampleItem for each assignment to check status
+                // sampleItem is now @Transient, so we need to load it manually
+                // assignment.getSampleItemId() is Integer, sampleItemDAO.get() expects String
+                for (SampleStorageAssignment assignment : allAssignments) {
+                    if (assignment.getSampleItemId() != null) {
+                        String sampleItemIdStr = assignment.getSampleItemId().toString();
+                        Optional<SampleItem> sampleItemOpt = sampleItemDAO.get(sampleItemIdStr);
+                        if (sampleItemOpt.isPresent()) {
+                            SampleItem sampleItem = sampleItemOpt.get();
+                            if (sampleItem.getStatusId() == null
+                                    || !statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {
+                                active++;
+                            } else {
+                                disposed++;
+                            }
+                        }
+                    }
+                }
 
                 // Count unique storage locations (rooms, devices, shelves, racks)
                 long storageLocations = storageLocationService.getRooms().size()
@@ -191,6 +210,7 @@ public class SampleStorageRestController extends BaseRestController {
             error.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         } catch (Exception e) {
+            logger.error("Error during sample assignment: " + e.getMessage(), e);
             Map<String, Object> error = new HashMap<>();
             error.put("message", "An error occurred during assignment: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
