@@ -292,17 +292,19 @@ storage visibility.
     `position_coordinate`
   - Rack level: `location_type='rack'`, `location_id=<rack_id>`, optional
     `position_coordinate`
-  - Box level: `location_type='box'`, `location_id=<box_id>`,
+  - Box level: `location_type='box'`, `location_id=<box_id>`, optional
     `position_coordinate=<slot>` (e.g., "A1", "1-1")
-- **FR-027**: `position_coordinate` is a free-text field that can be used at any
-  level:
+- **FR-027**: `position_coordinate` is an optional free-text field that can be
+  used at any level:
   - At Box level: Represents grid slot (e.g., "A1", "B12", "1-5") and MUST be
-    unique within the Box
+    unique within the Box when provided. If omitted, system may use Box label as
+    fallback.
   - At other levels: Optional note/label (e.g., "Top shelf", "Rack 3, Position
     5") with no uniqueness validation
 - **FR-028**: System MUST validate that `position_coordinate` is unique within a
-  Box when `location_type='box'`. When `location_type='box'`,
-  `position_coordinate` is REQUIRED (validation error if missing).
+  Box when `location_type='box'` and `position_coordinate` is provided. When
+  `position_coordinate` is missing at Box level, the system MAY use the Box
+  label as a fallback coordinate.
 - **FR-029**: `SampleStorageAssignment.location_type` MUST include `'box'` as a
   valid value (in addition to 'device', 'shelf', 'rack')
 - **FR-030**: System MUST require minimum 2 hierarchy levels (Room + Device) for
@@ -433,8 +435,8 @@ storage visibility.
   optional `position_coordinate` (e.g., "Front section")
 - What happens if `position_coordinate` is provided at Device/Shelf/Rack level?
   → Treated as optional note/label, no uniqueness validation required
-- What happens if `position_coordinate` is missing at Box level? → Validation
-  error: `position_coordinate` is REQUIRED when `location_type='box'` (FR-028)
+- What happens if `position_coordinate` is missing at Box level? → System uses
+  Box label as fallback coordinate (allows flexible assignment workflows)
 - How is occupancy calculated for a Box? → Count of SampleStorageAssignment
   records where `location_type='box'` AND `location_id=<box_id>` AND
   `position_coordinate=<slot>` (e.g., "A1")
