@@ -1,4 +1,4 @@
-# Research: Box/Plate Hierarchy Enhancement
+# Research: Box Storage Hierarchy Enhancement
 
 **Feature**: 149-box-plate-hierarchy  
 **Parent Feature**: 001-sample-storage  
@@ -8,7 +8,7 @@
 ## Executive Summary
 
 This document provides background research and impact analysis for implementing
-the Box/Plate hierarchy enhancement (OGC-149). It analyzes the current Feature
+the Box Storage Hierarchy Enhancement (OGC-149). It analyzes the current Feature
 001 implementation, identifies affected files, and documents the barcode parsing
 strategy.
 
@@ -17,12 +17,11 @@ strategy.
 - Feature 001 has ~40 backend files that reference StorageRack
 - Rack entity currently has grid fields (rows, columns, positionSchemaHint) that
   need removal
-- Barcode validation service already exists and can be extended for 6-level
-  hierarchy
-- FHIR transform service follows consistent pattern that can be applied to
-  Box/Plate
-- Position hierarchy is already flexible (2-5 levels), extending to 6 levels is
-  straightforward
+- Barcode validation service already exists and can be extended for 5-level
+  hierarchy with optional position coordinate
+- FHIR transform service follows consistent pattern that can be applied to Box
+- Position hierarchy is already flexible (2-4 levels), extending to 5 levels
+  (Box) with virtual positions is straightforward
 
 ---
 
@@ -40,13 +39,13 @@ strategy.
 private String label;  // ← WILL BE RENAMED TO 'name'
 
 @Column(name = "ROWS", nullable = false)
-private Integer rows;  // ← WILL BE REMOVED (moved to Box/Plate)
+private Integer rows;  // ← WILL BE REMOVED (moved to Box)
 
 @Column(name = "COLUMNS", nullable = false)
-private Integer columns;  // ← WILL BE REMOVED (moved to Box/Plate)
+private Integer columns;  // ← WILL BE REMOVED (moved to Box)
 
 @Column(name = "POSITION_SCHEMA_HINT", length = 50)
-private String positionSchemaHint;  // ← WILL BE REMOVED (moved to Box/Plate)
+private String positionSchemaHint;  // ← WILL BE REMOVED (moved to Box)
 ```
 
 **Current Computed Method**:
@@ -56,7 +55,7 @@ public Integer getCapacity() {
     if (rows == null || columns == null || rows == 0 || columns == 0) {
         return 0;
     }
-    return rows * columns;  // ← WILL BE REMOVED (capacity moves to Box/Plate)
+    return rows * columns;  // ← WILL BE REMOVED (capacity moves to Box)
 }
 ```
 
@@ -165,7 +164,7 @@ public Location transformBoxToLocation(StorageBox box) {
 }
 ```
 
-**Impact**: FHIR transform pattern is consistent and well-established. Box/Plate
+**Impact**: FHIR transform pattern is consistent and well-established. Box
 follows same structure with updated extension URIs.
 
 ---
@@ -503,12 +502,12 @@ Input: `LAB-F1-S1-R1-BOX1-A5`
 | 1       | F1    | Device found in LAB        | ✓ Valid |
 | 2       | S1    | Shelf found in F1          | ✓ Valid |
 | 3       | R1    | Rack found in S1           | ✓ Valid |
-| 4       | BOX1  | Box/Plate found in R1      | ✓ Valid |
+| 4       | BOX1  | Box found in R1            | ✓ Valid |
 | 5       | A5    | Position coordinate (text) | ✓ Valid |
 
 **Output**:
 
-- Autofill: Room=LAB, Device=F1, Shelf=S1, Rack=R1, Box/Plate=BOX1, Position=A5
+- Autofill: Room=LAB, Device=F1, Shelf=S1, Rack=R1, Box=BOX1, Position=A5
 - Warning: None
 
 ---
@@ -551,23 +550,23 @@ Input: `LAB-F1-S1-R1`
 
 ---
 
-**Scenario 4: Invalid Box/Plate (stop at segment 4)**
+**Scenario 4: Invalid Box (stop at segment 4)**
 
 Input: `LAB-F1-S1-R1-INVALID-A5`
 
-| Segment | Value   | Validation                | Result           |
-| ------- | ------- | ------------------------- | ---------------- |
-| 0       | LAB     | Room found                | ✓ Valid          |
-| 1       | F1      | Device found in LAB       | ✓ Valid          |
-| 2       | S1      | Shelf found in F1         | ✓ Valid          |
-| 3       | R1      | Rack found in S1          | ✓ Valid          |
-| 4       | INVALID | Box/Plate NOT found in R1 | ✗ Invalid - STOP |
-| 5       | A5      | (Not processed)           | -                |
+| Segment | Value   | Validation          | Result           |
+| ------- | ------- | ------------------- | ---------------- |
+| 0       | LAB     | Room found          | ✓ Valid          |
+| 1       | F1      | Device found in LAB | ✓ Valid          |
+| 2       | S1      | Shelf found in F1   | ✓ Valid          |
+| 3       | R1      | Rack found in S1    | ✓ Valid          |
+| 4       | INVALID | Box NOT found in R1 | ✗ Invalid - STOP |
+| 5       | A5      | (Not processed)     | -                |
 
 **Output**:
 
 - Autofill: Room=LAB, Device=F1, Shelf=S1, Rack=R1
-- Warning: "Box/Plate 'INVALID' not found in Rack 'R1'"
+- Warning: "Box 'INVALID' not found in Rack 'R1'"
 
 ---
 
@@ -589,7 +588,7 @@ User scans barcode: LAB-F1-S1-R1-INVALID
        "rack": { "id": 45, "code": "R1", "name": "Rack R1" }
      },
      "warnings": [
-       "Box/Plate 'INVALID' not found in Rack 'R1'"
+       "Box 'INVALID' not found in Rack 'R1'"
      ]
    }
 5. UI populates dropdowns:
@@ -622,7 +621,7 @@ User scans barcode: LAB-F1-S1-R1-INVALID
 
 - 4-level barcodes (Room-Device-Shelf-Rack) remain valid
 - No special handling needed (generic parser handles 1-6 segments)
-- UI autofills up to 4 levels, user can add Box/Plate manually
+- UI autofills up to 4 levels, user can add Box manually
 
 ### 4.2 Performance Considerations
 
@@ -634,7 +633,7 @@ User scans barcode: LAB-F1-S1-R1-INVALID
 
 **FHIR Sync**:
 
-- Box/Plate creation triggers FHIR Location resource creation
+- Box creation triggers FHIR Location resource creation
 - Follows same pattern as Rack (already proven performant)
 - Async sync possible if needed (not required for POC)
 

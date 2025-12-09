@@ -1,4 +1,4 @@
-# Data Model: Box/Plate Hierarchy Enhancement
+# Data Model: Box Storage Hierarchy Enhancement
 
 **Feature**: 149-box-plate-hierarchy  
 **Parent Feature**: 001-sample-storage  
@@ -7,16 +7,16 @@
 
 ## Executive Summary
 
-This document details the database schema changes required to implement the
-Box/Plate hierarchy enhancement (OGC-149). The enhancement adds a fifth
-persistent hierarchy level (Box) between Rack and the virtual Position
-coordinate, enabling accurate representation of laboratory storage without
-persisting empty position rows.
+This document details the database schema changes required to implement the Box
+Storage Hierarchy Enhancement (OGC-149). The enhancement adds a fifth persistent
+hierarchy level (Box) between Rack and the virtual Position coordinate, enabling
+accurate representation of laboratory storage without persisting empty position
+rows.
 
 **Key Changes**:
 
 - **StorageRack**: Remove grid fields (`rows`, `columns`,
-  `position_schema_hint`), rename `label` → `name`
+  `position_schema_hint`), retain `label` field
 - **StorageBox**: New entity with grid dimensions and barcode support
 - **StoragePosition**: **Removed** (positions are virtual text coordinates
   stored on assignments)
@@ -50,32 +50,32 @@ SampleStorageAssignment
 
 ## 1. StorageRack (Modified)
 
-**Purpose**: Simplified grouping container for Box/Plates. No longer contains
-grid structure.
+**Purpose**: Simplified grouping container for Boxes. No longer contains grid
+structure.
 
 **Table**: `STORAGE_RACK`
 
 ### Schema Changes
 
-| Change Type | Field                  | Action        | Description                           |
-| ----------- | ---------------------- | ------------- | ------------------------------------- |
-| **DROP**    | `rows`                 | Remove column | Grid dimensions moved to Box/Plate    |
-| **DROP**    | `columns`              | Remove column | Grid dimensions moved to Box/Plate    |
-| **DROP**    | `position_schema_hint` | Remove column | Position schema moved to Box/Plate    |
-| **RENAME**  | `LABEL` → `NAME`       | Rename column | Align with Room, Device, Shelf naming |
+| Change Type | Field                  | Action        | Description                  |
+| ----------- | ---------------------- | ------------- | ---------------------------- |
+| **DROP**    | `rows`                 | Remove column | Grid dimensions moved to Box |
+| **DROP**    | `columns`              | Remove column | Grid dimensions moved to Box |
+| **DROP**    | `position_schema_hint` | Remove column | Position schema moved to Box |
+| **RETAIN**  | `LABEL`                | No change     | Field retained (not renamed) |
 
 ### Updated Schema
 
-| Field             | Type         | Constraints             | Description                                 |
-| ----------------- | ------------ | ----------------------- | ------------------------------------------- |
-| `id`              | INTEGER      | PK, AUTO                | Primary key (sequence generator)            |
-| `fhir_uuid`       | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier           |
-| `name`            | VARCHAR(100) | NOT NULL                | Human-readable rack name (formerly `label`) |
-| `code`            | VARCHAR(10)  | NOT NULL                | Unique rack code within parent shelf        |
-| `active`          | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                      |
-| `parent_shelf_id` | INTEGER      | NOT NULL, FK            | Parent shelf reference                      |
-| `sys_user_id`     | INTEGER      | NOT NULL                | User who created/modified                   |
-| `lastupdated`     | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                 |
+| Field             | Type         | Constraints             | Description                          |
+| ----------------- | ------------ | ----------------------- | ------------------------------------ |
+| `id`              | INTEGER      | PK, AUTO                | Primary key (sequence generator)     |
+| `fhir_uuid`       | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier    |
+| `label`           | VARCHAR(100) | NOT NULL                | Human-readable rack name             |
+| `code`            | VARCHAR(10)  | NOT NULL                | Unique rack code within parent shelf |
+| `active`          | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status               |
+| `parent_shelf_id` | INTEGER      | NOT NULL, FK            | Parent shelf reference               |
+| `sys_user_id`     | INTEGER      | NOT NULL                | User who created/modified            |
+| `lastupdated`     | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp          |
 
 ### Constraints
 
@@ -121,7 +121,7 @@ structure. Holds the grid dimensions previously on Rack.
 | ---------------------- | ------------ | ----------------------- | ----------------------------------------------------- |
 | `id`                   | INTEGER      | PK, AUTO                | Primary key (sequence generator)                      |
 | `fhir_uuid`            | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                     |
-| `name`                 | VARCHAR(100) | NOT NULL                | Human-readable box/plate name                         |
+| `label`                | VARCHAR(100) | NOT NULL                | Human-readable box name                               |
 | `code`                 | VARCHAR(10)  | NOT NULL                | Unique code within parent rack                        |
 | `rows`                 | INTEGER      | NOT NULL                | Grid rows (minimum 1)                                 |
 | `columns`              | INTEGER      | NOT NULL                | Grid columns (minimum 1)                              |
@@ -166,7 +166,7 @@ CREATE INDEX idx_box_code ON storage_box(parent_rack_id, code);
 Location.id = fhir_uuid
 Location.identifier[0].system = "http://openelis-global.org/storage/box"
 Location.identifier[0].value = "{room_code}-{device_code}-{shelf_code}-{rack_code}-{box_code}"
-Location.name = name
+Location.name = label
 Location.status = active ? "active" : "inactive"
 Location.type[0].coding[0].system = "http://terminology.hl7.org/CodeSystem/location-physical-type"
 Location.type[0].coding[0].code = "co" (container)
@@ -256,11 +256,10 @@ ALTER TABLE storage_rack DROP COLUMN IF EXISTS columns;
 ALTER TABLE storage_rack DROP COLUMN IF EXISTS position_schema_hint;
 ```
 
-#### Step 3: Rename Rack Label Field
+#### Step 3: Retain Rack Label Field
 
 ```sql
--- Rename LABEL to NAME for consistency
-ALTER TABLE storage_rack RENAME COLUMN label TO name;
+-- No change needed - LABEL field is retained (not renamed)
 ```
 
 #### Step 4: Create StorageBox Table
@@ -270,7 +269,7 @@ ALTER TABLE storage_rack RENAME COLUMN label TO name;
 CREATE TABLE storage_box (
     id INTEGER NOT NULL,
     fhir_uuid UUID NOT NULL UNIQUE,
-    name VARCHAR(100) NOT NULL,
+    label VARCHAR(100) NOT NULL,
     code VARCHAR(10) NOT NULL,
     rows INTEGER NOT NULL CHECK (rows >= 1),
     columns INTEGER NOT NULL CHECK (columns >= 1),
@@ -374,13 +373,8 @@ All migration steps will be implemented as Liquibase changesets:
         <dropColumn tableName="storage_rack" columnName="position_schema_hint"/>
     </changeSet>
 
-    <!-- Changeset 010-2: Rename LABEL to NAME -->
-    <changeSet id="ogc-149-rename-rack-label-to-name" author="openelis">
-        <renameColumn tableName="storage_rack"
-                      oldColumnName="label"
-                      newColumnName="name"
-                      columnDataType="VARCHAR(100)"/>
-    </changeSet>
+    <!-- Changeset 010-2: No rename needed - LABEL field is retained -->
+    <!-- Note: StorageRack.label field is retained (no rename to name) -->
 
     <!-- Changeset 010-3: Create STORAGE_BOX table -->
     <changeSet id="ogc-149-create-storage-box" author="openelis">
@@ -391,7 +385,7 @@ All migration steps will be implemented as Liquibase changesets:
             <column name="fhir_uuid" type="UUID">
                 <constraints nullable="false" unique="true"/>
             </column>
-            <column name="name" type="VARCHAR(100)">
+            <column name="label" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
             <column name="code" type="VARCHAR(10)">
@@ -519,8 +513,7 @@ ADD COLUMN rows INTEGER NOT NULL DEFAULT 0,
 ADD COLUMN columns INTEGER NOT NULL DEFAULT 0,
 ADD COLUMN position_schema_hint VARCHAR(50);
 
--- 3. Rename NAME back to LABEL
-ALTER TABLE storage_rack RENAME COLUMN name TO label;
+-- 3. No label field rename needed (label field was retained, not renamed)
 
 -- 4. Revert location_type enums
 -- (Revert to 'device', 'shelf', 'rack' only)

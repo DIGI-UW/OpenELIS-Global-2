@@ -258,18 +258,18 @@ storage visibility.
 
 **Barcode Parsing Strategy:**
 
-- **FR-029**: Barcode parser MUST use generic left-to-right hierarchical
+- **FR-033**: Barcode parser MUST use generic left-to-right hierarchical
   validation:
   1. Split barcode by delimiter (hyphen `-`), validate each segment against
      database
   2. Stop at first unmatched segment, autofill all preceding valid levels
   3. Display contextual warning message for unmatched segment (e.g., "Device
      'INVALID' not found in Room 'LAB'")
-- **FR-030**: Barcode parser MUST autofill all validated hierarchy levels up to
+- **FR-034**: Barcode parser MUST autofill all validated hierarchy levels up to
   the first unmatched segment
-- **FR-031**: Barcode parser MUST display contextual warning message indicating
+- **FR-035**: Barcode parser MUST display contextual warning message indicating
   which segment failed validation and why
-- **FR-032**: Barcode parser MUST NOT implement special "legacy format"
+- **FR-036**: Barcode parser MUST NOT implement special "legacy format"
   detection - all barcodes follow the same generic left-to-right parsing logic
   regardless of segment count
 
@@ -301,7 +301,8 @@ storage visibility.
   - At other levels: Optional note/label (e.g., "Top shelf", "Rack 3, Position
     5") with no uniqueness validation
 - **FR-028**: System MUST validate that `position_coordinate` is unique within a
-  Box when `location_type='box'`
+  Box when `location_type='box'`. When `location_type='box'`,
+  `position_coordinate` is REQUIRED (validation error if missing).
 - **FR-029**: `SampleStorageAssignment.location_type` MUST include `'box'` as a
   valid value (in addition to 'device', 'shelf', 'rack')
 - **FR-030**: System MUST require minimum 2 hierarchy levels (Room + Device) for
@@ -432,9 +433,8 @@ storage visibility.
   optional `position_coordinate` (e.g., "Front section")
 - What happens if `position_coordinate` is provided at Device/Shelf/Rack level?
   → Treated as optional note/label, no uniqueness validation required
-- What happens if `position_coordinate` is missing at Box level? → System may
-  use Box label or require coordinate based on configuration (validation may
-  warn)
+- What happens if `position_coordinate` is missing at Box level? → Validation
+  error: `position_coordinate` is REQUIRED when `location_type='box'` (FR-028)
 - How is occupancy calculated for a Box? → Count of SampleStorageAssignment
   records where `location_type='box'` AND `location_id=<box_id>` AND
   `position_coordinate=<slot>` (e.g., "A1")
