@@ -10,8 +10,6 @@ class OrganizationManagementPage {
       orgSearchBar: "#org-name-search-bar",
       referringClinic: '[id="5:select"]',
       referralLab: '[id="6:select"]',
-      orgTableRowOne:
-        "div > div.cds--data-table-container > div > table > tbody > tr:nth-child(1)",
       orgTableRow: ".cds--data-table > tbody:nth-child(2)",
     };
   }
@@ -94,7 +92,7 @@ class OrganizationManagementPage {
   }
 
   confirmOrganization() {
-    cy.get(this.selectors.orgTableRowOne)
+    cy.get(this.selectors.orgTableRow)
       .contains("CAMES MAN")
       .should("be.visible");
   }
