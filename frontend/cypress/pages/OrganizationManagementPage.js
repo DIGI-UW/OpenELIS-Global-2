@@ -54,6 +54,7 @@ class OrganizationManagementPage {
 
   saveOrganization() {
     cy.get(this.selectors.saveButton).should("be.visible").click();
+    cy.wait(3000);
   }
 
   searchOrganzation() {
