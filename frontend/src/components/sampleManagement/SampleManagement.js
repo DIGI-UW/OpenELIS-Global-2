@@ -367,274 +367,283 @@ export default function SampleManagement() {
         </Column>
       </Grid>
 
-      {/* Notification (Error or Success) */}
-      {searchError && (
-        <Grid fullWidth={true}>
-          <Column lg={16} md={8} sm={4}>
-            <InlineNotification
-              kind={searchError.kind || "error"}
-              title={intl.formatMessage({
-                id:
-                  searchError.kind === "success"
-                    ? "sample.management.success.title"
-                    : "sample.management.error.title",
-              })}
-              subtitle={searchError.message}
-              onClose={handleDismissError}
-            />
-          </Column>
-        </Grid>
-      )}
-
-      {/* Search Section */}
-      <Grid fullWidth={true}>
-        <Column lg={16} md={8} sm={4}>
-          <Section>
-            <Heading>
-              <FormattedMessage
-                id="sample.management.search.title"
-                defaultMessage="Search Samples"
-              />
-            </Heading>
-          </Section>
-        </Column>
-      </Grid>
-
-      <Grid fullWidth={true}>
-        <Column lg={16} md={8} sm={4}>
-          <SampleSearch
-            onSearchResults={handleSearchResults}
-            includeTests={true}
-          />
-        </Column>
-      </Grid>
-
-      {/* Search Results Metadata */}
-      {searchResponse &&
-        searchResponse.sampleItems &&
-        searchResponse.sampleItems.length > 0 && (
-          <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
-              <div
-                style={{
-                  marginTop: "1rem",
-                  marginBottom: "1rem",
-                  padding: "0.75rem",
-                  backgroundColor: "#f4f4f4",
-                  borderRadius: "4px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    gap: "0.5rem",
-                  }}
-                >
-                  {/* Left side: Summary info */}
-                  <div
-                    style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}
-                  >
-                    <span>
-                      <strong>
-                        <FormattedMessage id="sample.management.results.accessionNumber" />
-                        :
-                      </strong>{" "}
-                      {searchResponse.accessionNumber}
-                    </span>
-                    <span>
-                      <strong>
-                        <FormattedMessage id="sample.management.results.totalCount" />
-                        :
-                      </strong>{" "}
-                      {searchResponse.totalCount}{" "}
-                      {searchResponse.totalCount === 1 ? (
-                        <FormattedMessage id="sample.management.results.item" />
-                      ) : (
-                        <FormattedMessage id="sample.management.results.items" />
-                      )}
-                    </span>
-                    {aliquotStats.aliquotCount > 0 && (
-                      <span>
-                        <Tag type="blue" size="sm">
-                          {aliquotStats.aliquotCount}{" "}
-                          <FormattedMessage id="sample.management.results.aliquots" />
-                        </Tag>
-                      </span>
-                    )}
-                    {selectedSampleIds.length > 0 && (
-                      <span>
-                        <strong>
-                          <FormattedMessage id="sample.management.results.selected" />
-                          :
-                        </strong>{" "}
-                        {selectedSampleIds.length}
-                        {aliquotStats.selectedAliquotCount > 0 && (
-                          <span
-                            style={{ marginLeft: "0.25rem", color: "#0f62fe" }}
-                          >
-                            ({aliquotStats.selectedAliquotCount}{" "}
-                            <FormattedMessage id="sample.management.results.aliquotsSelected" />
-                            )
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Right side: Quick selection buttons */}
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    {aliquotStats.aliquotCount > 0 && (
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        renderIcon={CheckboxChecked}
-                        onClick={handleSelectAllAliquots}
-                        disabled={
-                          aliquotStats.selectedAliquotCount ===
-                          aliquotStats.aliquotCount
-                        }
-                      >
-                        <FormattedMessage id="sample.management.action.selectAllAliquots" />
-                      </Button>
-                    )}
-                    {aliquotStats.parentCount > 0 &&
-                      aliquotStats.aliquotCount > 0 && (
-                        <Button
-                          kind="ghost"
-                          size="sm"
-                          onClick={handleSelectAllParents}
-                          disabled={
-                            aliquotStats.selectedParentCount ===
-                            aliquotStats.parentCount
-                          }
-                        >
-                          <FormattedMessage id="sample.management.action.selectAllParents" />
-                        </Button>
-                      )}
-                    {selectedSampleIds.length > 0 && (
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        onClick={handleClearSelection}
-                      >
-                        <FormattedMessage id="sample.management.action.clearSelection" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </Column>
-          </Grid>
-        )}
-
-      {/* Empty State (when search has been performed but no results) */}
-      {searchResponse &&
-        searchResponse.sampleItems &&
-        searchResponse.sampleItems.length === 0 && (
+      <div className="orderLegendBody">
+        {/* Notification (Error or Success) */}
+        {searchError && (
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <InlineNotification
-                kind="info"
+                kind={searchError.kind || "error"}
                 title={intl.formatMessage({
-                  id: "sample.management.noResults.title",
+                  id:
+                    searchError.kind === "success"
+                      ? "sample.management.success.title"
+                      : "sample.management.error.title",
                 })}
-                subtitle={intl.formatMessage(
-                  { id: "sample.management.noResults.subtitle" },
-                  { accessionNumber: searchResponse.accessionNumber },
-                )}
-                hideCloseButton
+                subtitle={searchError.message}
+                onClose={handleDismissError}
               />
             </Column>
           </Grid>
         )}
 
-      {/* Action Buttons */}
-      {searchResponse &&
-        searchResponse.sampleItems &&
-        searchResponse.sampleItems.length > 0 &&
-        selectedSampleIds.length > 0 && (
-          <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
-              <div
-                style={{
-                  marginTop: "1rem",
-                  marginBottom: "1rem",
-                  display: "flex",
-                  gap: "1rem",
-                }}
-              >
-                {/* Create Aliquot Button (only when single sample selected) */}
-                {selectedSampleIds.length === 1 && selectedSample && (
-                  <Button
-                    kind="primary"
-                    renderIcon={Add}
-                    onClick={handleOpenAliquotModal}
-                    disabled={!selectedSample.hasRemainingQuantity}
-                  >
-                    <FormattedMessage
-                      id="sample.management.action.createAliquot"
-                      defaultMessage="Create Aliquot"
-                    />
-                  </Button>
-                )}
+        {/* Search Section */}
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section>
+              <Heading>
+                <FormattedMessage
+                  id="sample.management.search.title"
+                  defaultMessage="Search Samples"
+                />
+              </Heading>
+            </Section>
+          </Column>
+        </Grid>
 
-                {/* Add Tests Button (available when any samples are selected) */}
-                <Button
-                  kind="secondary"
-                  renderIcon={Chemistry}
-                  onClick={handleOpenAddTestsModal}
-                >
-                  <FormattedMessage
-                    id="sample.management.addTests.button"
-                    defaultMessage="Add Tests"
-                  />
-                </Button>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <SampleSearch
+              onSearchResults={handleSearchResults}
+              includeTests={true}
+            />
+          </Column>
+        </Grid>
 
-                {/* Print Barcode Button */}
-                <Button
-                  kind="tertiary"
-                  renderIcon={Printer}
-                  onClick={handlePrintBarCode}
-                >
-                  <FormattedMessage id="print.barcode" />
-                </Button>
-              </div>
-            </Column>
-          </Grid>
-        )}
-
-      {/* Results Table Section */}
-      {searchResponse &&
-        searchResponse.sampleItems &&
-        searchResponse.sampleItems.length > 0 && (
-          <>
+        {/* Search Results Metadata */}
+        {searchResponse &&
+          searchResponse.sampleItems &&
+          searchResponse.sampleItems.length > 0 && (
             <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
-                <Section>
-                  <Heading>
-                    <FormattedMessage
-                      id="sample.management.results.title"
-                      defaultMessage="Sample Items"
-                    />
-                  </Heading>
-                </Section>
+                <div
+                  style={{
+                    marginTop: "1rem",
+                    marginBottom: "1rem",
+                    padding: "0.75rem",
+                    backgroundColor: "#f4f4f4",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: "0.5rem",
+                    }}
+                  >
+                    {/* Left side: Summary info */}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "1.5rem",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span>
+                        <strong>
+                          <FormattedMessage id="sample.management.results.accessionNumber" />
+                          :
+                        </strong>{" "}
+                        {searchResponse.accessionNumber}
+                      </span>
+                      <span>
+                        <strong>
+                          <FormattedMessage id="sample.management.results.totalCount" />
+                          :
+                        </strong>{" "}
+                        {searchResponse.totalCount}{" "}
+                        {searchResponse.totalCount === 1 ? (
+                          <FormattedMessage id="sample.management.results.item" />
+                        ) : (
+                          <FormattedMessage id="sample.management.results.items" />
+                        )}
+                      </span>
+                      {aliquotStats.aliquotCount > 0 && (
+                        <span>
+                          <Tag type="blue" size="sm">
+                            {aliquotStats.aliquotCount}{" "}
+                            <FormattedMessage id="sample.management.results.aliquots" />
+                          </Tag>
+                        </span>
+                      )}
+                      {selectedSampleIds.length > 0 && (
+                        <span>
+                          <strong>
+                            <FormattedMessage id="sample.management.results.selected" />
+                            :
+                          </strong>{" "}
+                          {selectedSampleIds.length}
+                          {aliquotStats.selectedAliquotCount > 0 && (
+                            <span
+                              style={{
+                                marginLeft: "0.25rem",
+                                color: "#0f62fe",
+                              }}
+                            >
+                              ({aliquotStats.selectedAliquotCount}{" "}
+                              <FormattedMessage id="sample.management.results.aliquotsSelected" />
+                              )
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Right side: Quick selection buttons */}
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      {aliquotStats.aliquotCount > 0 && (
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          renderIcon={CheckboxChecked}
+                          onClick={handleSelectAllAliquots}
+                          disabled={
+                            aliquotStats.selectedAliquotCount ===
+                            aliquotStats.aliquotCount
+                          }
+                        >
+                          <FormattedMessage id="sample.management.action.selectAllAliquots" />
+                        </Button>
+                      )}
+                      {aliquotStats.parentCount > 0 &&
+                        aliquotStats.aliquotCount > 0 && (
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            onClick={handleSelectAllParents}
+                            disabled={
+                              aliquotStats.selectedParentCount ===
+                              aliquotStats.parentCount
+                            }
+                          >
+                            <FormattedMessage id="sample.management.action.selectAllParents" />
+                          </Button>
+                        )}
+                      {selectedSampleIds.length > 0 && (
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          onClick={handleClearSelection}
+                        >
+                          <FormattedMessage id="sample.management.action.clearSelection" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </Column>
             </Grid>
+          )}
 
+        {/* Empty State (when search has been performed but no results) */}
+        {searchResponse &&
+          searchResponse.sampleItems &&
+          searchResponse.sampleItems.length === 0 && (
             <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
-                <SampleResultsTable
-                  sampleItems={searchResponse.sampleItems}
-                  onSelectionChange={handleSelectionChange}
-                  onTestRemoved={handleTestRemoved}
+                <InlineNotification
+                  kind="info"
+                  title={intl.formatMessage({
+                    id: "sample.management.noResults.title",
+                  })}
+                  subtitle={intl.formatMessage(
+                    { id: "sample.management.noResults.subtitle" },
+                    { accessionNumber: searchResponse.accessionNumber },
+                  )}
+                  hideCloseButton
                 />
               </Column>
             </Grid>
-          </>
-        )}
+          )}
+
+        {/* Action Buttons */}
+        {searchResponse &&
+          searchResponse.sampleItems &&
+          searchResponse.sampleItems.length > 0 &&
+          selectedSampleIds.length > 0 && (
+            <Grid fullWidth={true}>
+              <Column lg={16} md={8} sm={4}>
+                <div
+                  style={{
+                    marginTop: "1rem",
+                    marginBottom: "1rem",
+                    display: "flex",
+                    gap: "1rem",
+                  }}
+                >
+                  {/* Create Aliquot Button (only when single sample selected) */}
+                  {selectedSampleIds.length === 1 && selectedSample && (
+                    <Button
+                      kind="primary"
+                      renderIcon={Add}
+                      onClick={handleOpenAliquotModal}
+                      disabled={!selectedSample.hasRemainingQuantity}
+                    >
+                      <FormattedMessage
+                        id="sample.management.action.createAliquot"
+                        defaultMessage="Create Aliquot"
+                      />
+                    </Button>
+                  )}
+
+                  {/* Add Tests Button (available when any samples are selected) */}
+                  <Button
+                    kind="secondary"
+                    renderIcon={Chemistry}
+                    onClick={handleOpenAddTestsModal}
+                  >
+                    <FormattedMessage
+                      id="sample.management.addTests.button"
+                      defaultMessage="Add Tests"
+                    />
+                  </Button>
+
+                  {/* Print Barcode Button */}
+                  <Button
+                    kind="tertiary"
+                    renderIcon={Printer}
+                    onClick={handlePrintBarCode}
+                  >
+                    <FormattedMessage id="print.barcode" />
+                  </Button>
+                </div>
+              </Column>
+            </Grid>
+          )}
+
+        {/* Results Table Section */}
+        {searchResponse &&
+          searchResponse.sampleItems &&
+          searchResponse.sampleItems.length > 0 && (
+            <>
+              <Grid fullWidth={true}>
+                <Column lg={16} md={8} sm={4}>
+                  <Section>
+                    <Heading>
+                      <FormattedMessage
+                        id="sample.management.results.title"
+                        defaultMessage="Sample Items"
+                      />
+                    </Heading>
+                  </Section>
+                </Column>
+              </Grid>
+
+              <Grid fullWidth={true}>
+                <Column lg={16} md={8} sm={4}>
+                  <SampleResultsTable
+                    sampleItems={searchResponse.sampleItems}
+                    onSelectionChange={handleSelectionChange}
+                    onTestRemoved={handleTestRemoved}
+                  />
+                </Column>
+              </Grid>
+            </>
+          )}
+      </div>
 
       {/* Create Aliquot Modal */}
       {selectedSample && (

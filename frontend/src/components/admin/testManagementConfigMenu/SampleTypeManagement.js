@@ -48,11 +48,11 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.sampleType.manage",
-    link: "/MasterListsPage#SampleTypeManagement",
+    link: "/MasterListsPage/SampleTypeManagement",
   },
 ];
 
@@ -86,21 +86,21 @@ function TestSectionManagement() {
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
                 <ClickableTile
-                  href="/MasterListsPage#SampleTypeCreate"
+                  href="/MasterListsPage/SampleTypeCreate"
                   id="SampleTypeCreate"
                 >
                   <FormattedMessage id="configuration.sampleType.create" />
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage#SampleTypeOrder"
+                  href="/MasterListsPage/SampleTypeOrder"
                   id="SampleTypeOrder"
                 >
                   <FormattedMessage id="configuration.sampleType.order" />
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage#SampleTypeTestAssign"
+                  href="/MasterListsPage/SampleTypeTestAssign"
                   id="SampleTypeTestAssign"
                 >
                   <FormattedMessage id="configuration.panel.assign" />

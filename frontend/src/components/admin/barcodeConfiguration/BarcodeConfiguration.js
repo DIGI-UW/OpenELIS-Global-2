@@ -31,7 +31,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.barcodeconfiguration",
-    link: "/MasterListsPage#barcodeConfiguration",
+    link: "/MasterListsPage/barcodeConfiguration",
   },
 ];
 function BarcodeConfiguration() {
