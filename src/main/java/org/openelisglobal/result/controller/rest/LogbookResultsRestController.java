@@ -137,7 +137,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "paging.currentPage", "testResult*.resultFile", "testResult*.resultFile.fileName",
             "testResult*.resultFile.fileType", "testResult*.resultFile.base64Content", "testResult*.refer",
             "testResult*.referralItem.referralReasonId", "testResult*.referralItem.referredInstituteId",
-            "testResult*.referralItem.referredTestId", "testResult*.referralItem.referredSendDate" };
+            "testResult*.referralItem.referredTestId", "testResult*.referralItem.referredSendDate",
+            "testResult*.inventoryLotId" };
 
     @Autowired
     private DictionaryService dictionaryService;
@@ -181,6 +182,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private NotificationDAO notificationDAO;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private org.openelisglobal.inventory.service.InventoryUsageService inventoryUsageService;
+    @Autowired
+    private org.openelisglobal.inventory.service.InventoryLotService inventoryLotService;
 
     private final String RESULT_SUBJECT = "Result Note";
     private final String REFERRAL_CONFORMATION_ID;
@@ -748,6 +753,37 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             ResultFile resultFile = createResultFile(testResultItem.getResultFile());
             if (resultFile != null) {
                 analysis.setResultFile(resultFile);
+            }
+        }
+
+        // Record inventory usage if a lot was selected
+        if (!GenericValidator.isBlankOrNull(testResultItem.getInventoryLotId())) {
+            try {
+                Long lotId = Long.parseLong(testResultItem.getInventoryLotId());
+                org.openelisglobal.inventory.valueholder.InventoryLot lot = inventoryLotService.get(lotId);
+
+                if (lot != null && lot.getInventoryItem() != null) {
+                    // Default quantity used is 1.0 (can be made configurable later)
+                    Double quantityUsed = 1.0;
+                    Long resultId = result.getId() != null ? Long.parseLong(result.getId()) : null;
+                    Long analysisId = !GenericValidator.isBlankOrNull(testResultItem.getAnalysisId())
+                            ? Long.parseLong(testResultItem.getAnalysisId())
+                            : null;
+
+                    inventoryUsageService.recordUsage(lotId, lot.getInventoryItem().getId(), quantityUsed, resultId,
+                            analysisId, getSysUserId(request));
+
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "addResult", "Recorded inventory usage: Lot "
+                            + lot.getLotNumber() + ", Quantity: " + quantityUsed + ", Analysis: " + analysisId);
+                }
+            } catch (NumberFormatException e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "addResult",
+                        "Invalid inventory lot ID format: " + testResultItem.getInventoryLotId());
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "addResult",
+                        "Error recording inventory usage: " + e.getMessage());
+                LogEvent.logError(e);
+                // Don't fail the entire result save if inventory tracking fails
             }
         }
 
