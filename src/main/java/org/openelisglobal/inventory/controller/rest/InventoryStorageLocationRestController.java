@@ -132,6 +132,16 @@ public class InventoryStorageLocationRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
             location.setSysUserId(sysUserId);
 
+            // If parent location is provided, fetch the managed entity
+            if (location.getParentLocation() != null && location.getParentLocation().getId() != null) {
+                InventoryStorageLocation parentLocation = storageLocationService
+                        .get(location.getParentLocation().getId());
+                if (parentLocation == null) {
+                    return ResponseEntity.badRequest().build();
+                }
+                location.setParentLocation(parentLocation);
+            }
+
             InventoryStorageLocation savedLocation = storageLocationService.save(location);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedLocation);
         } catch (Exception e) {
@@ -151,10 +161,31 @@ public class InventoryStorageLocationRestController extends BaseRestController {
 
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
-            location.setId(Long.valueOf(id));
-            location.setSysUserId(sysUserId);
 
-            InventoryStorageLocation updatedLocation = storageLocationService.update(location);
+            // Update fields on the existing (managed) entity to avoid detached entity
+            // issues
+            existingLocation.setName(location.getName());
+            existingLocation.setLocationCode(location.getLocationCode());
+            existingLocation.setLocationType(location.getLocationType());
+            existingLocation.setDescription(location.getDescription());
+            existingLocation.setTemperatureMin(location.getTemperatureMin());
+            existingLocation.setTemperatureMax(location.getTemperatureMax());
+            existingLocation.setIsActive(location.getIsActive());
+            existingLocation.setSysUserId(sysUserId);
+
+            // Handle parent location - fetch managed entity if provided
+            if (location.getParentLocation() != null && location.getParentLocation().getId() != null) {
+                InventoryStorageLocation parentLocation = storageLocationService
+                        .get(location.getParentLocation().getId());
+                if (parentLocation == null) {
+                    return ResponseEntity.badRequest().build();
+                }
+                existingLocation.setParentLocation(parentLocation);
+            } else {
+                existingLocation.setParentLocation(null);
+            }
+
+            InventoryStorageLocation updatedLocation = storageLocationService.update(existingLocation);
             return ResponseEntity.ok(updatedLocation);
         } catch (Exception e) {
             LogEvent.logError(e);
