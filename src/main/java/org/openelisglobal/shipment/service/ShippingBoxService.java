@@ -25,12 +25,12 @@ public interface ShippingBoxService {
     ShippingBox getBoxById(Integer id);
 
     /**
-     * Get shipping box by box ID
+     * Get shipping box by box ID (the string identifier like "BOX-2025-001")
      *
-     * @param boxId Box identifier
+     * @param boxId Box identifier string
      * @return ShippingBox or null if not found
      */
-    ShippingBox getBoxByBoxId(Integer boxId);
+    ShippingBox getBoxByBoxId(String boxId);
 
     /**
      * Get shipping box by FHIR UUID

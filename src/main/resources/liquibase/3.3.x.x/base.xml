@@ -24,5 +24,6 @@
   <include relativeToChangelogFile="true" file="shipment-005-create-indexes.xml"/>
   <include relativeToChangelogFile="true" file="shipment-006-create-foreign-keys.xml"/>
   <include relativeToChangelogFile="true" file="shipment-007-add-menu-and-role.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-008-add-capacity-column.xml"/>
 
 </databaseChangeLog>

@@ -1,0 +1,44 @@
+.sample-assignment-modal {
+  min-height: 400px;
+}
+
+.modal-description {
+  margin-bottom: 1.5rem;
+  color: #525252;
+}
+
+.sample-search {
+  margin-bottom: 1.5rem;
+}
+
+.sample-table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  background: #f4f4f4;
+  border-radius: 4px;
+}
+
+.empty-state p {
+  color: #525252;
+}
+
+.selection-summary {
+  padding: 1rem;
+  background: #e0e0e0;
+  border-radius: 4px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}

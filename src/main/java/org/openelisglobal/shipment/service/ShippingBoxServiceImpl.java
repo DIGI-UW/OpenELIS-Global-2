@@ -57,7 +57,7 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
 
     @Override
     @Transactional(readOnly = true)
-    public ShippingBox getBoxByBoxId(Integer boxId) {
+    public ShippingBox getBoxByBoxId(String boxId) {
         try {
             return shippingBoxDAO.findByBoxId(boxId);
         } catch (Exception e) {

@@ -10,12 +10,12 @@ import org.openelisglobal.shipment.valueholder.ShippingBox;
 public interface ShippingBoxDAO extends BaseDAO<ShippingBox, Integer> {
 
     /**
-     * Find shipping box by box ID
+     * Find shipping box by box ID (the string identifier like "BOX-2025-001")
      *
-     * @param boxId Box identifier
+     * @param boxId Box identifier string
      * @return ShippingBox or null if not found
      */
-    ShippingBox findByBoxId(Integer boxId);
+    ShippingBox findByBoxId(String boxId);
 
     /**
      * Find shipping box by FHIR UUID

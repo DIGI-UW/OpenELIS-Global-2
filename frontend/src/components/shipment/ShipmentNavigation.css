@@ -1,0 +1,29 @@
+.shipment-navigation {
+  margin-bottom: 2rem;
+  margin-top: 1rem;
+}
+
+.shipment-navigation .cds--tabs {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.shipment-navigation .cds--tabs__nav-item--selected {
+  border-bottom: 2px solid #0f62fe;
+}
+
+.shipment-navigation .cds--tab--list {
+  padding-left: 0;
+}
+
+/* Allow tab content to wrap if needed */
+.shipment-navigation .cds--tabs__nav-link {
+  white-space: normal;
+  min-width: auto;
+  padding: 0.75rem 1rem;
+}
+
+.shipment-navigation .cds--tab-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

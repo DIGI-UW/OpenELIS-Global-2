@@ -6,6 +6,9 @@ import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
+import BoxCreation from "./components/shipment/BoxCreation";
+import BoxDetails from "./components/shipment/BoxDetails";
+import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import { Admin } from "./components";
@@ -428,6 +431,23 @@ export default function App() {
                   path="/SampleShipment"
                   exact
                   component={() => <ShipmentDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/box/create"
+                  exact
+                  component={() => <BoxCreation />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/box/:boxId"
+                  component={() => <BoxDetails />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/receive"
+                  exact
+                  component={() => <ReceptionWorkflow />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
