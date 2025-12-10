@@ -1,0 +1,345 @@
+/* StorageLocationModal.css - Tree-based hierarchical location management styles */
+
+.storage-location-modal .cds--modal-container {
+  max-width: 1400px;
+}
+
+.modal-content-split {
+  display: flex;
+  gap: 2rem;
+  min-height: 600px;
+  max-height: 70vh;
+}
+
+.tree-panel {
+  flex: 1;
+  min-width: 450px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  padding-right: 1.5rem;
+}
+
+.tree-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--cds-border-strong-01, #8d8d8d);
+}
+
+.tree-panel-header h5 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.tree-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tree-view {
+  width: 100%;
+}
+
+.empty-tree {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  text-align: center;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}
+
+.tree-help {
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.tree-node-container {
+  width: 100%;
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  min-height: 40px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  border: 2px solid transparent;
+  background-color: transparent;
+}
+
+.tree-node:hover {
+  background-color: var(--cds-layer-hover-01, #e5e5e5);
+}
+
+.tree-node.selected {
+  background-color: var(--cds-layer-selected-01, #e0e0e0);
+  border-color: var(--cds-focus, #0f62fe);
+}
+
+.tree-node.drag-over {
+  border-color: var(--cds-support-success, #24a148);
+  background-color: var(--cds-highlight, #d0e2ff);
+}
+
+.tree-toggle {
+  min-width: 24px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tree-spacer {
+  display: inline-block;
+  min-width: 24px;
+  width: 24px;
+}
+
+.tree-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tree-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--cds-text-primary, #161616);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-type {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--cds-text-secondary, #525252);
+  text-transform: uppercase;
+}
+
+.tree-temp {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+  background-color: var(--cds-layer-01, #f4f4f4);
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tree-actions {
+  display: none;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.tree-node:hover .tree-actions {
+  display: flex;
+}
+
+.tree-children {
+  width: 100%;
+}
+
+.form-panel {
+  flex: 1;
+  min-width: 400px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-left: 0.5rem;
+}
+
+.location-form {
+  width: 100%;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  gap: 1rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.empty-state svg {
+  color: var(--cds-icon-secondary, #525252);
+}
+
+.empty-state h4 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 0.875rem;
+  max-width: 300px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: var(--cds-layer-01, #f4f4f4);
+  border-left: 3px solid var(--cds-border-interactive, #0f62fe);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.temperature-section {
+  padding: 1rem;
+  background-color: var(--cds-layer-01, #f4f4f4);
+  border-radius: 4px;
+}
+
+.temperature-section h5 {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.temperature-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+@media (max-width: 1200px) {
+  .storage-location-modal .cds--modal-container {
+    max-width: 95vw;
+  }
+
+  .modal-content-split {
+    gap: 1.5rem;
+  }
+
+  .tree-panel {
+    min-width: 350px;
+  }
+
+  .form-panel {
+    min-width: 300px;
+  }
+}
+
+@media (max-width: 900px) {
+  .modal-content-split {
+    flex-direction: column;
+    max-height: none;
+  }
+
+  .tree-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+    padding-right: 0;
+    padding-bottom: 1.5rem;
+    min-width: 100%;
+  }
+
+  .form-panel {
+    min-width: 100%;
+    padding-left: 0;
+    padding-top: 1.5rem;
+  }
+
+  .tree-container {
+    max-height: 300px;
+  }
+}
+
+.tree-container::-webkit-scrollbar,
+.form-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tree-container::-webkit-scrollbar-track,
+.form-panel::-webkit-scrollbar-track {
+  background: var(--cds-layer-01, #f4f4f4);
+  border-radius: 4px;
+}
+
+.tree-container::-webkit-scrollbar-thumb,
+.form-panel::-webkit-scrollbar-thumb {
+  background: var(--cds-border-subtle-01, #e0e0e0);
+  border-radius: 4px;
+}
+
+.tree-container::-webkit-scrollbar-thumb:hover,
+.form-panel::-webkit-scrollbar-thumb:hover {
+  background: var(--cds-border-strong-01, #8d8d8d);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.tree-node[draggable="true"]:active {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.tree-node:focus-visible {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: 2px;
+}
+
+.tree-toggle:focus-visible,
+.tree-actions button:focus-visible {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: -2px;
+}
+
+.tree-container .cds--inline-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
