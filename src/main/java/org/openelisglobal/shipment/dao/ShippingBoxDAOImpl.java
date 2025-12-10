@@ -39,7 +39,7 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
 
     @Override
     @Transactional(readOnly = true)
-    public ShippingBox findByBoxId(Integer boxId) {
+    public ShippingBox findByBoxId(String boxId) {
         try {
             String hql = "FROM ShippingBox b WHERE b.boxId = :boxId";
             Query<ShippingBox> query = entityManager.unwrap(Session.class).createQuery(hql, ShippingBox.class);

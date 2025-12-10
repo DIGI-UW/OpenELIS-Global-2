@@ -26,6 +26,9 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
+import { AlertDialog } from "../common/CustomNotification";
+import PageBreadCrumb from "../common/PageBreadCrumb";
+import ShipmentNavigation from "./ShipmentNavigation";
 import "./ShipmentDashboard.css";
 
 const TAB_ROUTES = ["boxes", "unassigned"];
@@ -51,6 +54,14 @@ const ShipmentDashboard = () => {
   const [boxes, setBoxes] = useState([]);
   const [unassignedSamples, setUnassignedSamples] = useState([]);
 
+  // Statistics state
+  const [statistics, setStatistics] = useState({
+    inTransit: 0,
+    delivered: 0,
+    reconciled: 0,
+    totalSamples: 0,
+  });
+
   // Filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [filterState, setFilterState] = useState("");
@@ -64,11 +75,20 @@ const ShipmentDashboard = () => {
   // Box states for filtering
   const boxStates = [
     { id: "", text: intl.formatMessage({ id: "label.all" }) },
-    { id: "DRAFT", text: "Draft" },
-    { id: "READY_TO_SEND", text: "Ready to Send" },
-    { id: "SENT", text: "Sent" },
-    { id: "RECEIVED", text: "Received" },
-    { id: "RECONCILED", text: "Reconciled" },
+    { id: "DRAFT", text: intl.formatMessage({ id: "shipment.state.draft" }) },
+    {
+      id: "READY_TO_SEND",
+      text: intl.formatMessage({ id: "shipment.state.readyToSend" }),
+    },
+    { id: "SENT", text: intl.formatMessage({ id: "shipment.state.sent" }) },
+    {
+      id: "RECEIVED",
+      text: intl.formatMessage({ id: "shipment.state.received" }),
+    },
+    {
+      id: "RECONCILED",
+      text: intl.formatMessage({ id: "shipment.state.reconciled" }),
+    },
   ];
 
   // Update URL when tab changes
@@ -91,6 +111,7 @@ const ShipmentDashboard = () => {
   useEffect(() => {
     if (componentMounted.current) {
       fetchFacilities();
+      fetchStatistics();
     }
     return () => {
       componentMounted.current = false;
@@ -106,81 +127,70 @@ const ShipmentDashboard = () => {
     }
   }, [selectedTab, filterState, filterFacility]);
 
-  const fetchFacilities = async () => {
-    try {
-      const response = await getFromOpenElisServer("/rest/organization");
-      if (componentMounted.current && response) {
-        const facilityOptions = [
-          { id: "", text: intl.formatMessage({ id: "label.all" }) },
-          ...response.map((org) => ({
-            id: org.id,
-            text: org.organizationName,
-          })),
-        ];
-        setFacilities(facilityOptions);
-      }
-    } catch (error) {
-      console.error("Error fetching facilities:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({ id: "error.fetch.facilities" }),
-      });
+  // Refetch statistics when boxes change
+  useEffect(() => {
+    if (selectedTab === 0 && !loading) {
+      fetchStatistics();
     }
+  }, [boxes]);
+
+  const fetchFacilities = () => {
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      (response) => {
+        if (componentMounted.current && response) {
+          const facilityOptions = [
+            { id: "", text: intl.formatMessage({ id: "label.all" }) },
+            ...response.map((org) => ({ id: org.id, text: org.value })),
+          ];
+          setFacilities(facilityOptions);
+        }
+      },
+    );
   };
 
-  const fetchBoxes = async () => {
-    setLoading(true);
-    try {
-      let url = "/rest/shipping-box";
-      if (filterState) {
-        url = `/rest/shipping-box/by-state/${filterState}`;
-      } else if (filterFacility) {
-        url = `/rest/shipping-box/by-facility/${filterFacility}`;
-      }
-
-      const response = await getFromOpenElisServer(url);
+  const fetchStatistics = () => {
+    getFromOpenElisServer("/rest/shipping-box/statistics", (response) => {
       if (componentMounted.current && response) {
-        setBoxes(response);
+        setStatistics(response);
       }
-    } catch (error) {
-      console.error("Error fetching boxes:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({ id: "error.fetch.boxes" }),
-      });
-    } finally {
-      if (componentMounted.current) {
-        setLoading(false);
-      }
-    }
+    });
   };
 
-  const fetchUnassignedSamples = async () => {
+  const fetchBoxes = () => {
     setLoading(true);
-    try {
-      let url = "/rest/unassigned-sample";
-      if (filterFacility) {
-        url = `/rest/unassigned-sample/by-facility/${filterFacility}`;
-      }
+    let url = "/rest/shipping-box";
+    if (filterState) {
+      url = `/rest/shipping-box/by-state/${filterState}`;
+    } else if (filterFacility) {
+      url = `/rest/shipping-box/by-facility/${filterFacility}`;
+    }
 
-      const response = await getFromOpenElisServer(url);
-      if (componentMounted.current && response) {
-        setUnassignedSamples(response);
-      }
-    } catch (error) {
-      console.error("Error fetching unassigned samples:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({ id: "error.fetch.unassignedSamples" }),
-      });
-    } finally {
+    getFromOpenElisServer(url, (response) => {
       if (componentMounted.current) {
+        if (response) {
+          setBoxes(response);
+        }
         setLoading(false);
       }
+    });
+  };
+
+  const fetchUnassignedSamples = () => {
+    setLoading(true);
+    let url = "/rest/unassigned-sample";
+    if (filterFacility) {
+      url = `/rest/unassigned-sample/by-facility/${filterFacility}`;
     }
+
+    getFromOpenElisServer(url, (response) => {
+      if (componentMounted.current) {
+        if (response) {
+          setUnassignedSamples(response);
+        }
+        setLoading(false);
+      }
+    });
   };
 
   // Filter data based on search term
@@ -336,6 +346,14 @@ const ShipmentDashboard = () => {
 
   return (
     <div className="shipment-dashboard">
+      <AlertDialog />
+      <PageBreadCrumb
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          { label: "shipment.breadcrumb", link: "/SampleShipment" },
+        ]}
+      />
+      <ShipmentNavigation />
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
           <Tile className="dashboard-header">
@@ -345,6 +363,41 @@ const ShipmentDashboard = () => {
             <p>
               <FormattedMessage id="shipment.dashboard.description" />
             </p>
+          </Tile>
+        </Column>
+      </Grid>
+
+      <Grid fullWidth className="statistics-cards">
+        <Column lg={4} md={2} sm={4}>
+          <Tile className="stat-card in-transit">
+            <div className="stat-value">{statistics.inTransit}</div>
+            <div className="stat-label">
+              <FormattedMessage id="shipment.stats.inTransit" />
+            </div>
+          </Tile>
+        </Column>
+        <Column lg={4} md={2} sm={4}>
+          <Tile className="stat-card delivered">
+            <div className="stat-value">{statistics.delivered}</div>
+            <div className="stat-label">
+              <FormattedMessage id="shipment.stats.delivered" />
+            </div>
+          </Tile>
+        </Column>
+        <Column lg={4} md={2} sm={4}>
+          <Tile className="stat-card reconciled">
+            <div className="stat-value">{statistics.reconciled}</div>
+            <div className="stat-label">
+              <FormattedMessage id="shipment.stats.reconciled" />
+            </div>
+          </Tile>
+        </Column>
+        <Column lg={4} md={2} sm={4}>
+          <Tile className="stat-card total-samples">
+            <div className="stat-value">{statistics.totalSamples}</div>
+            <div className="stat-label">
+              <FormattedMessage id="shipment.stats.totalSamples" />
+            </div>
           </Tile>
         </Column>
       </Grid>
@@ -384,6 +437,7 @@ const ShipmentDashboard = () => {
                     })}
                     label={intl.formatMessage({ id: "label.select" })}
                     items={boxStates}
+                    itemToString={(item) => (item ? item.text : "")}
                     selectedItem={boxStates.find((s) => s.id === filterState)}
                     onChange={({ selectedItem }) =>
                       setFilterState(selectedItem?.id || "")
@@ -396,6 +450,7 @@ const ShipmentDashboard = () => {
                     })}
                     label={intl.formatMessage({ id: "label.select" })}
                     items={facilities}
+                    itemToString={(item) => (item ? item.text : "")}
                     selectedItem={facilities.find(
                       (f) => f.id === filterFacility,
                     )}

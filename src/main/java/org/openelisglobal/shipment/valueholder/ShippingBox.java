@@ -55,6 +55,9 @@ public class ShippingBox extends BaseObject<Integer> {
     @Column(name = "temperature_requirement", length = 50)
     private String temperatureRequirement;
 
+    @Column(name = "capacity")
+    private Integer capacity;
+
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
@@ -141,6 +144,14 @@ public class ShippingBox extends BaseObject<Integer> {
 
     public void setTemperatureRequirement(String temperatureRequirement) {
         this.temperatureRequirement = temperatureRequirement;
+    }
+
+    public Integer getCapacity() {
+        return capacity;
+    }
+
+    public void setCapacity(Integer capacity) {
+        this.capacity = capacity;
     }
 
     public String getNotes() {

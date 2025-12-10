@@ -22,6 +22,46 @@
   margin-top: 1rem;
 }
 
+.statistics-cards {
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  padding: 1.5rem;
+  background: #f4f4f4;
+  border-left: 4px solid #0f62fe;
+}
+
+.stat-card.in-transit {
+  border-left-color: #8a3ffc;
+}
+
+.stat-card.delivered {
+  border-left-color: #24a148;
+}
+
+.stat-card.reconciled {
+  border-left-color: #009d9a;
+}
+
+.stat-card.total-samples {
+  border-left-color: #0f62fe;
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #161616;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .tab-toolbar {
   display: flex;
   gap: 1rem;

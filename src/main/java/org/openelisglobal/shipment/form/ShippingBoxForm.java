@@ -26,6 +26,8 @@ public class ShippingBoxForm extends BaseForm {
 
     private String temperatureRequirement;
 
+    private Integer capacity;
+
     private String notes;
 
     private Timestamp createdDate;
@@ -154,6 +156,14 @@ public class ShippingBoxForm extends BaseForm {
 
     public void setTemperatureRequirement(String temperatureRequirement) {
         this.temperatureRequirement = temperatureRequirement;
+    }
+
+    public Integer getCapacity() {
+        return capacity;
+    }
+
+    public void setCapacity(Integer capacity) {
+        this.capacity = capacity;
     }
 
     public String getNotes() {
