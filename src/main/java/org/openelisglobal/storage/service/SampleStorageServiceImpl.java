@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -50,7 +50,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     private StorageLocationService storageLocationService;
 
     @Autowired
-    private StatusService statusService;
+    private IStatusService statusService;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
