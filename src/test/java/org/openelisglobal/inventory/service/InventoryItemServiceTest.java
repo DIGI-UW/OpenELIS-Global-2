@@ -77,6 +77,7 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
         newItem.setItemType(ItemType.RDT);
         newItem.setUnits("pieces");
         newItem.setIsActive("Y");
+        newItem.setTestsPerKit(1);
         newItem.setFhirUuid(java.util.UUID.randomUUID());
 
         Long insertedId = inventoryItemService.insert(newItem);
