@@ -1,5 +1,13 @@
 import React, { useState, useContext } from "react";
-import { Column, Form, Grid, Select, SelectItem } from "@carbon/react";
+import {
+  Column,
+  Form,
+  Grid,
+  Heading,
+  Section,
+  Select,
+  SelectItem,
+} from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationKinds, AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
@@ -105,43 +113,44 @@ const SampleEntryByProjectForm = () => {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       {notificationVisible && <AlertDialog />}
       <Grid fullWidth={true}>
-        <Column lg={16}>
-          <h2>
-            <FormattedMessage id="sampleEntryByProject.edit.record.title" />
-          </h2>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Heading>
+              <FormattedMessage id="sampleEntryByProject.edit.record.title" />
+            </Heading>
+          </Section>
         </Column>
-
-        <Column lg={16} md={10} sm={8}>
+      </Grid>
+      <br />
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
           <Form onSubmit={handleSubmit}>
-            <Grid fullWidth={true}>
-              <Column lg={4} md={8}>
-                <Select
-                  id="type"
-                  labelText={intl.formatMessage({
-                    id: "sampleEntryByProject.label.form",
-                  })}
-                  value={formData.type}
-                  onChange={(e) => {
-                    setFormData({
-                      ...formData,
-                      type: e.target.value,
-                    });
-                    handleFormChange(e.target.value);
-                  }}
-                >
-                  {selectOptions.map((option) => (
-                    <SelectItem
-                      key={option.value}
-                      value={option.value}
-                      text={option.text}
-                    />
-                  ))}
-                </Select>
-              </Column>
-            </Grid>
+            <Select
+              id="type"
+              labelText={intl.formatMessage({
+                id: "sampleEntryByProject.label.form",
+              })}
+              value={formData.type}
+              onChange={(e) => {
+                setFormData({
+                  ...formData,
+                  type: e.target.value,
+                });
+                handleFormChange(e.target.value);
+              }}
+            >
+              {selectOptions.map((option) => (
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  text={option.text}
+                />
+              ))}
+            </Select>
           </Form>
-        </Column>
-        <Column lg={16} md={10} sm={8}>
+          <br />
+          <hr />
+          <br />
           {selectedForm}
         </Column>
       </Grid>

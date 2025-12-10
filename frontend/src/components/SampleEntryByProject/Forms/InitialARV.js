@@ -10,6 +10,8 @@ import {
   Button,
   Stack,
   FormGroup,
+  Section,
+  Heading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -83,19 +85,29 @@ function InitialARV() {
 
   return (
     <div>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Section>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="project.ARVStudy.name" />
+                </Heading>
+              </Section>
+            </Section>
+          </Section>
+        </Column>
+      </Grid>
       <Form onSubmit={handleSubmit}>
-        <Grid>
-          <Column lg={16}>
-            <h1>Initial ARV</h1>
-          </Column>
-
-          <Column lg={16}>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
             <Stack gap={5}>
               <Select
                 id="center-name"
                 labelText={
                   <>
-                    Center Name <span>*</span>
+                    <FormattedMessage id="sample.entry.project.ARV.centerCode" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="centerName"
@@ -111,7 +123,8 @@ function InitialARV() {
                 id="center-code"
                 labelText={
                   <>
-                    Center Code <span>*</span>
+                    <FormattedMessage id="sample.entry.project.ARV.centerCode" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="centerCode"
@@ -135,7 +148,8 @@ function InitialARV() {
                 id="received-date"
                 labelText={
                   <>
-                    Received Date (dd/mm/yyyy) <span>*</span>
+                    <FormattedMessage id="RTN.label.received.date" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 type="date"
@@ -158,7 +172,8 @@ function InitialARV() {
                 id="date-taken"
                 labelText={
                   <>
-                    Date Taken (dd/mm/yyyy) <span>*</span>
+                    <FormattedMessage id="RTN.label.date.taken" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 type="date"
@@ -181,7 +196,8 @@ function InitialARV() {
                 id="unique-health-id"
                 labelText={
                   <>
-                    Unique Health ID number <span>*</span>
+                    <FormattedMessage id="patient.subject.number" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="uniqueHealthId"
@@ -194,7 +210,8 @@ function InitialARV() {
                 id="site-unique-health-id"
                 labelText={
                   <>
-                    Site Unique Health ID number <span>*</span>
+                    <FormattedMessage id="patient.site.subject.number" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="siteUniqueHealthId"
@@ -207,7 +224,8 @@ function InitialARV() {
                 id="lab-no"
                 labelText={
                   <>
-                    Lab No <span>*</span>
+                    <FormattedMessage id="RTN.label.lab.no" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="labNo"
@@ -220,7 +238,8 @@ function InitialARV() {
                 id="gender"
                 labelText={
                   <>
-                    Gender <span>*</span>
+                    <FormattedMessage id="RTN.label.gender" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="gender"
@@ -238,7 +257,8 @@ function InitialARV() {
                 id="date-of-birth"
                 labelText={
                   <>
-                    Date of Birth (dd/mm/yyyy) <span>*</span>
+                    <FormattedMessage id="RTN.label.date.of.birth" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 type="date"
@@ -370,8 +390,9 @@ function InitialARV() {
               />
             </Stack>
           </Column>
-
-          <Column lg={16}>
+        </Grid>
+        <Grid>
+          <Column lg={16} md={8} sm={4}>
             <div>
               <Button kind="primary" type="submit">
                 Save
