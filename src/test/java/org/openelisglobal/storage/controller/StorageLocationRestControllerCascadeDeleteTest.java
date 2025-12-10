@@ -30,7 +30,7 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
     }
 
     @Test
-    public void testCanDeleteShelf_ReturnsAdminStatus() throws Exception {
+    public void canDelete_ReturnsAdminStatus_WhenConstraintsExist() throws Exception {
         MvcResult result = mockMvc
                 .perform(get("/rest/storage/shelves/10001/can-delete").contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
@@ -46,7 +46,7 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
     }
 
     @Test
-    public void testGetCascadeDeleteSummary_ReturnsSummary() throws Exception {
+    public void getCascadeDeleteSummary_ReturnsSummary_WhenLocationHasConstraints() throws Exception {
         MvcResult result = mockMvc
                 .perform(get("/rest/storage/shelves/" + 10001 + "/cascade-delete-summary")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -59,7 +59,7 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
     }
 
     @Test
-    public void testDeleteShelf_NonAdminWithConstraints_Returns403() throws Exception {
+    public void deleteShelf_Returns403_WhenNonAdminUserWithConstraints() throws Exception {
         MvcResult result = mockMvc
                 .perform(delete("/rest/storage/shelves/" + 10001).contentType(MediaType.APPLICATION_JSON)).andReturn();
 
@@ -69,7 +69,7 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
     }
 
     @Test
-    public void testDeleteShelfWithCascade_UnassignsAllSamples() throws Exception {
+    public void deleteLocationWithCascade_UnassignsAllSamples_WhenShelfHasAssignedSamples() throws Exception {
         Integer assignmentCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM sample_storage_assignment WHERE location_id = ? AND location_type = 'rack'",
                 Integer.class, 10004);
@@ -85,7 +85,7 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
     }
 
     @Test
-    public void testDeleteShelfWithCascade_DeletesAllChildRacks() throws Exception {
+    public void deleteLocationWithCascade_DeletesAllChildRacks_WhenShelfHasChildRacks() throws Exception {
         Integer rackCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage_rack WHERE id = ?", Integer.class,
                 10004);
         assertEquals("Rack should exist", Integer.valueOf(1), rackCount);

@@ -28,7 +28,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     @Test
-    public void testAssignSample_WithLocationIdAndType_Returns201() throws Exception {
+    public void assignSample_Returns201_WhenLocationIdAndTypeProvided() throws Exception {
         SampleAssignmentForm form = new SampleAssignmentForm();
         form.setSampleItemId("EXT-1000");
         form.setLocationId("1000");
@@ -41,7 +41,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     @Test
-    public void testAssignSample_WithLocationIdAndType_DeviceLevel_Valid() throws Exception {
+    public void assignSample_ReturnsValidResponse_WhenDeviceLevelLocation() throws Exception {
         SampleAssignmentForm form = new SampleAssignmentForm();
         form.setSampleItemId("EXT-1000");
         form.setLocationId("1000");
@@ -61,7 +61,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     @Test
-    public void testAssignSample_WithLocationIdAndType_WithCoordinate_Valid() throws Exception {
+    public void assignSample_ReturnsValidResponse_WhenRackLocationWithCoordinate() throws Exception {
         SampleAssignmentForm form = new SampleAssignmentForm();
         form.setSampleItemId("EXT-1000");
         form.setLocationId("1002");
@@ -80,7 +80,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     @Test
-    public void testAssignSample_MissingLocationIdOrType_Returns400() throws Exception {
+    public void assignSample_Returns400_WhenMissingLocationIdOrType() throws Exception {
         SampleAssignmentForm form = new SampleAssignmentForm();
         form.setSampleItemId("EXT-1000");
         form.setLocationType("device");
@@ -97,7 +97,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     @Test
-    public void testMoveSample_WithLocationIdAndType_Returns200() throws Exception {
+    public void moveSample_Returns200_WhenMovingBetweenLocations() throws Exception {
         SampleAssignmentForm assignForm = new SampleAssignmentForm();
         assignForm.setSampleItemId("EXT-1001");
         assignForm.setLocationId("1000");
@@ -119,7 +119,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     @Test
-    public void testMoveSampleItem_WithStringId_HandlesCorrectly() throws Exception {
+    public void moveSample_Returns200_WhenUsingStringSampleItemId() throws Exception {
         SampleAssignmentForm assignForm = new SampleAssignmentForm();
         assignForm.setSampleItemId("EXT-1001");
         assignForm.setLocationId("1000");
@@ -141,7 +141,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     @Test
-    public void testMoveSample_DeviceToRack_EndToEnd() throws Exception {
+    public void moveSample_CreatesMovementRecord_WhenDeviceToRack() throws Exception {
         SampleAssignmentForm assignForm = new SampleAssignmentForm();
         assignForm.setSampleItemId("EXT-1002");
         assignForm.setLocationId("1000");
@@ -170,7 +170,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     @Test
-    public void testMoveSample_WithLocationIdAndType_DeviceToRack_Valid() throws Exception {
+    public void moveSample_ReturnsValidResponse_WhenDeviceToRackWithCoordinate() throws Exception {
         SampleAssignmentForm assignForm = new SampleAssignmentForm();
         assignForm.setSampleItemId("EXT-1003");
         assignForm.setLocationId("1000");
@@ -202,7 +202,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     @Test
-    public void testAssignSample_WithPositionCoordinate_SavesToDatabase() throws Exception {
+    public void assignSample_SavesToDatabase_WhenWithPositionCoordinate() throws Exception {
         SampleAssignmentForm form = new SampleAssignmentForm();
         form.setSampleItemId("EXT-1004");
         form.setLocationId("1000");
@@ -222,7 +222,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     @Test
-    public void testMoveSample_WithPositionCoordinate_SavesToDatabase() throws Exception {
+    public void moveSample_SavesToDatabase_WhenWithPositionCoordinate() throws Exception {
         SampleAssignmentForm assignForm = new SampleAssignmentForm();
         assignForm.setSampleItemId("EXT-1005");
         assignForm.setLocationId("1000");
