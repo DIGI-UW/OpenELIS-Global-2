@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <system_user id="1" login_name="testadmin"
+        password="hashedpassword" is_admin="Y" is_active="Y" first_name="Test"
+        last_name="Admin" sys_user_id="1" lastupdated="2024-01-01 00:00:00" />
+
+    <storage_room id="10000" name="Test Room" code="TESTROOM"
+        active="Y" fhir_uuid="room-uuid-10000" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <storage_device id="10000" name="Test Device"
+        code="TESTDEV" type="freezer" parent_room_id="10000" active="Y"
+        fhir_uuid="device-uuid-10000" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <storage_shelf id="10000" label="Test Shelf"
+        code="TESTSHELF" parent_device_id="10000" active="Y"
+        fhir_uuid="shelf-uuid-10000" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+    <storage_shelf id="10001" label="Another Shelf"
+        code="TESTSHELF2" parent_device_id="10000" active="Y"
+        fhir_uuid="shelf-uuid-10001" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <storage_rack id="10000" label="Test Rack" code="TESTRACK"
+        parent_shelf_id="10000" parent_device_id="10000"
+        parent_room_id="10000" active="Y" fhir_uuid="rack-uuid-10000"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+    <storage_rack id="10004" label="Another Rack"
+        code="RACK002" parent_shelf_id="10001" parent_device_id="10000"
+        parent_room_id="10000" active="Y" fhir_uuid="rack-uuid-10004"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <sample id="10000" accession_number="TEST-001"
+        received_date="2024-01-01 00:00:00" entered_date="2024-01-01 00:00:00"
+        lastupdated="2024-01-01 00:00:00" sys_user_id="1" />
+
+    <sample_item id="10000" samp_id="10000" sort_order="1"
+        status_id="1" lastupdated="2024-01-01 00:00:00" />
+
+    <sample_storage_assignment id="10000"
+        sample_item_id="10000" location_id="10004" location_type="rack"
+        assigned_by_user_id="1" assigned_date="2024-01-01 00:00:00"
+        last_updated="2024-01-01 00:00:00" />
+
+    <sample_storage_movement id="10000"
+        sample_item_id="10000" from_location_id="10000" to_location_id="10004"
+        from_location_type="rack" to_location_type="rack" moved_by_user_id="1"
+        movement_date="2024-01-01 00:00:00" last_updated="2024-01-01 00:00:00" />
+</dataset>
