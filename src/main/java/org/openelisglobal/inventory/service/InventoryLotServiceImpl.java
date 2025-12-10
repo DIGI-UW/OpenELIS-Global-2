@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -39,6 +40,11 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Override
     @Transactional
     public Long insert(InventoryLot lot) {
+        // Ensure UUID is set before insert
+        if (lot.getFhirUuid() == null) {
+            lot.setFhirUuid(UUID.randomUUID());
+        }
+
         Long result = super.insert(lot);
         auditService.logLotReceive(lot, lot.getSysUserId());
         return result;
