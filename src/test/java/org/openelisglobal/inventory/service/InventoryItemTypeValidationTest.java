@@ -9,7 +9,9 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.annotation.Rollback;
 
+@Rollback
 public class InventoryItemTypeValidationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
