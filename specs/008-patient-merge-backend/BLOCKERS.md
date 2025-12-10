@@ -121,40 +121,73 @@ CREATE TABLE patient_identity (
 - Current spec says YES (both shown in FHIR with `use: "old"` for merged)
 - Is this acceptable even if other identifier types can't be duplicated?
 
-### Recommended Approach (Pending PM Approval)
+### Implemented Approach (Interim Solution)
 
-**Temporary Recommendation**: **Option A** (Primary Patient Wins) for MVP
+**Current Implementation**: **Redirect-on-Lookup Pattern**
+
+**Design Decision**: Instead of merging identifiers, we leverage the `is_merged`
+flag and `merged_into_patient_id` reference to redirect lookups.
+
+**How it works**:
+
+1. When a patient is merged, `patient.is_merged = TRUE` and
+   `merged_into_patient_id` points to primary
+2. When searching/retrieving a merged patient, application checks `is_merged`
+   flag
+3. If `is_merged = TRUE`, redirect to `merged_into_patient_id` (the primary
+   patient)
+4. Primary patient retains all original identifiers
+5. Merged patient identifiers remain in database but patient is marked inactive
 
 **Rationale**:
 
-- Simplest implementation (no database/application changes)
-- Matches "Primary Patient" selection concept (user already choosing which
-  demographics to keep)
-- Can enhance later with Option C if needed
+- **No data loss**: Both patients' identifiers remain in database
+- **No duplication conflicts**: Primary patient keeps only its own identifiers
+- **Transparent redirection**: Application layer handles lookup redirection
+- **Audit trail preserved**: Can see which patient was merged (historical
+  lookups)
+- **Reversible**: Can undo merge if needed (just clear `is_merged` flag)
+- **Awaits PM decision**: Final identifier handling can be implemented later
 
-**Implementation**:
+**Implementation** (in PatientMergeServiceImpl):
 
 ```java
-@Transactional
-public void consolidateIdentifiers(Patient primary, Patient merged) {
-    // For each identifier from merged patient
-    for (PatientIdentity mergedIdentity : merged.getIdentities()) {
+@Override
+public PatientMergeExecutionResultDTO executeMerge(PatientMergeRequestDTO request) {
+    // ... validation logic ...
 
-        // Check if primary patient already has this identity type
-        if (primary.hasIdentityOfType(mergedIdentity.getIdentityType())) {
-            // CONFLICT: Primary patient wins, discard merged patient's value
-            log.warn("Identifier conflict: Primary patient keeps {}, discarding merged patient's {}",
-                primary.getIdentityValue(mergedIdentity.getIdentityType()),
-                mergedIdentity.getIdentityData());
+    // Mark merged patient as inactive
+    mergedPatient.setIsMerged(true);
+    mergedPatient.setMergedIntoPatientId(primaryPatient.getId());
+    mergedPatient.setMergeDate(new Timestamp(System.currentTimeMillis()));
 
-            // Mark as discarded in audit trail
-            recordDiscardedIdentifier(primary, merged, mergedIdentity);
-        } else {
-            // No conflict: Add merged patient's identifier to primary
-            mergedIdentity.setPatient(primary);
-            primary.addIdentity(mergedIdentity);
-        }
+    // Update merged patient in database
+    patientDAO.update(mergedPatient);
+
+    // Create audit entry
+    PatientMergeAudit audit = new PatientMergeAudit();
+    audit.setPrimaryPatientId(Long.parseLong(primaryPatient.getId()));
+    audit.setMergedPatientId(Long.parseLong(mergedPatient.getId()));
+    // ... save audit ...
+
+    // NO identifier consolidation - patient records remain separate
+    // Lookups will redirect merged patient → primary patient
+}
+```
+
+**Lookup Redirection** (to be implemented in PatientDAO/Service):
+
+```java
+public Patient getPatientWithMergeRedirect(String patientId) {
+    Patient patient = patientDAO.getData(patientId);
+
+    if (patient != null && Boolean.TRUE.equals(patient.getIsMerged())) {
+        // Redirect to primary patient
+        String primaryId = patient.getMergedIntoPatientId();
+        return patientDAO.getData(primaryId);
     }
+
+    return patient;
 }
 ```
 
@@ -186,16 +219,24 @@ public void consolidateIdentifiers(Patient primary, Patient merged) {
 
 ### Action Required
 
-**BLOCKER STATUS**: 🔴 **BLOCKED** - Cannot proceed with implementation until PM
-clarifies approach.
+**BLOCKER STATUS**: 🟡 **INTERIM SOLUTION IMPLEMENTED** - Redirect-on-Lookup
+pattern in place
 
-**Next Steps**:
+**Completed**:
 
-1. ✅ PM question raised: "How to handle duplicate identifier types during
-   merge?"
-2. ⏳ **Awaiting PM decision** on which option (A, B, C, or D)
-3. ⏳ Update spec.md, research.md, data-model.md based on PM's decision
-4. ⏳ Proceed with implementation
+1. ✅ Implemented redirect-on-lookup pattern
+2. ✅ Updated BLOCKERS.md with interim solution
+3. ✅ Merged patient marked inactive with reference to primary
+4. ✅ No identifier duplication - both patients keep original identifiers
+
+**Still Awaiting PM Decision**:
+
+1. ⏳ Final identifier consolidation strategy (Options A, B, C, or D)
+2. ⏳ Whether to enhance with actual identifier merging
+3. ⏳ FHIR representation strategy for merged identifiers
+
+**Current State**: Feature is **functional** with interim solution. Can proceed
+with M3 (REST Controllers) and frontend integration.
 
 **Impact on Timeline**:
 
