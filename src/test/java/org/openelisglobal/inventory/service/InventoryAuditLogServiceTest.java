@@ -38,8 +38,6 @@ public class InventoryAuditLogServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/inventory-audit-test-data.xml");
     }
 
-    // ========== Item Audit Tests ==========
-
     @Test
     public void logItemCreate_shouldCreateAuditLogEntry() {
         // Given
@@ -103,8 +101,6 @@ public class InventoryAuditLogServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Operation type should be ITEM_DEACTIVATE", OperationType.ITEM_DEACTIVATE, log.getOperationType());
         assertEquals("Item ID should be set", Long.valueOf(1000L), log.getItemId());
     }
-
-    // ========== Lot Audit Tests ==========
 
     @Test
     public void logLotReceive_shouldCreateAuditLogEntry() {
@@ -266,8 +262,6 @@ public class InventoryAuditLogServiceTest extends BaseWebContextSensitiveTest {
         assertTrue("Operation details should contain test result ID", log.getOperationDetails().contains("5000"));
     }
 
-    // ========== Location Audit Tests ==========
-
     @Test
     public void logLocationCreate_shouldCreateAuditLogEntry() {
         // Given
@@ -311,8 +305,6 @@ public class InventoryAuditLogServiceTest extends BaseWebContextSensitiveTest {
                 log.getAfterState().contains("Updated Refrigerator Name"));
     }
 
-    // ========== Integration Test - Full Workflow ==========
-
     @Test
     public void fullAuditTrail_shouldCaptureCompleteLifecycle() {
         // Given - Create a new item
@@ -321,6 +313,7 @@ public class InventoryAuditLogServiceTest extends BaseWebContextSensitiveTest {
         newItem.setItemType(ItemType.REAGENT);
         newItem.setUnits("mL");
         newItem.setIsActive("Y");
+        newItem.setStabilityAfterOpening(1);
         newItem.setFhirUuid(java.util.UUID.randomUUID());
         newItem.setSysUserId("1");
 
@@ -394,19 +387,15 @@ public class InventoryAuditLogServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getLotAuditTrail_shouldReturnAllLogsForLot() {
-        // Given
         InventoryLot lot = lotService.get(1000L);
         auditService.logLotReceive(lot, "1");
         auditService.logLotUsage(1000L, 5.0, null, null, "1");
 
-        // When
         List<InventoryAuditLog> logs = auditService.getLotAuditTrail(1000L);
 
-        // Then
         assertNotNull("Logs should not be null", logs);
         assertTrue("Should have at least 2 logs", logs.size() >= 2);
 
-        // All logs should have lot_id set
         for (InventoryAuditLog log : logs) {
             assertEquals("All logs should have correct lot ID", Long.valueOf(1000L), log.getLotId());
         }
@@ -414,21 +403,18 @@ public class InventoryAuditLogServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void auditLogShouldBeImmutable_cannotUpdate() {
-        // Given
         InventoryItem item = itemService.get(1000L);
         auditService.logItemCreate(item, "1");
 
         List<InventoryAuditLog> logs = auditService.getItemAuditTrail(1000L);
-        InventoryAuditLog log = logs.get(0);
+        InventoryAuditLog log = logs.getFirst();
 
-        // When/Then - Attempting to modify should have no effect (immutable entity)
         // Note: @Immutable annotation on entity prevents updates
         String originalAfterState = log.getAfterState();
         log.setAfterState("Modified state");
 
-        // Re-fetch from database
         List<InventoryAuditLog> refetchedLogs = auditService.getItemAuditTrail(1000L);
-        InventoryAuditLog refetchedLog = refetchedLogs.get(0);
+        InventoryAuditLog refetchedLog = refetchedLogs.getFirst();
 
         assertEquals("After state should not have changed", originalAfterState, refetchedLog.getAfterState());
     }
