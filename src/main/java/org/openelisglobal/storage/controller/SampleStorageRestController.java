@@ -436,13 +436,15 @@ public class SampleStorageRestController extends BaseRestController {
     }
 
     /**
-     * Dispose SampleItem POST /rest/storage/sample-items/dispose
-     * Marks sample as disposed and clears storage location
+     * Dispose SampleItem POST /rest/storage/sample-items/dispose Marks sample as
+     * disposed and clears storage location
      * 
-     * Accepts: External ID, accession number, or numeric ID (flexible identifier resolution via resolveSampleItem())
-     * Response includes sampleItemId (numeric ID) for consistency with other endpoints.
+     * Accepts: External ID, accession number, or numeric ID (flexible identifier
+     * resolution via resolveSampleItem()) Response includes sampleItemId (numeric
+     * ID) for consistency with other endpoints.
      * 
-     * @param form SampleDisposalForm containing sampleItemId (flexible identifier), reason, method, notes
+     * @param form SampleDisposalForm containing sampleItemId (flexible identifier),
+     *             reason, method, notes
      * @return Disposal details including previous location and disposal timestamp
      */
     @PostMapping("/dispose")

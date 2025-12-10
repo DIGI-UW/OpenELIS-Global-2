@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
-import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.storage.BaseStorageTest;
@@ -15,9 +14,7 @@ import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.form.SampleMovementForm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Integration tests for flexible assignment REST endpoints - Simplified
@@ -31,11 +28,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseStora
     private static final Logger logger = LoggerFactory
             .getLogger(SampleStorageRestControllerFlexibleAssignmentTest.class);
 
-    @Autowired
-    private DataSource dataSource;
-
     private ObjectMapper objectMapper;
-    private JdbcTemplate jdbcTemplate;
 
     @Before
     public void setUp() throws Exception {

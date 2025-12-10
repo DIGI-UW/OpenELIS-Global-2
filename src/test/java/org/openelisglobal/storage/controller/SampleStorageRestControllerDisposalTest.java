@@ -22,7 +22,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseStorageTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(); // BaseStorageTest handles jdbcTemplate initialization and cleanStorageTestData()
+        super.setUp(); // BaseStorageTest handles jdbcTemplate initialization and
+                       // cleanStorageTestData()
         objectMapper = new ObjectMapper();
         // Ensure SampleDisposed status exists (insert if missing, e.g., if
         // status_of_sample was truncated)
