@@ -5,14 +5,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import javax.sql.DataSource;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.openelisglobal.storage.BaseStorageTest;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
@@ -20,22 +16,14 @@ import org.springframework.test.web.servlet.MvcResult;
  * Tests that disposal REST API correctly sets numeric status ID and returns
  * proper responses
  */
-public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensitiveTest {
-
-    @Autowired
-    private DataSource dataSource;
+public class SampleStorageRestControllerDisposalTest extends BaseStorageTest {
 
     private ObjectMapper objectMapper;
-    private JdbcTemplate jdbcTemplate;
 
     @Before
     public void setUp() throws Exception {
-        super.setUp();
-        // Reference data (status_of_sample) is managed by Liquibase and preserved
-        // by cleanRowsInCurrentConnection (reference tables are not truncated)
+        super.setUp(); // BaseStorageTest handles jdbcTemplate initialization and cleanStorageTestData()
         objectMapper = new ObjectMapper();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-        cleanStorageTestData();
         // Ensure SampleDisposed status exists (insert if missing, e.g., if
         // status_of_sample was truncated)
         Integer disposedCount = jdbcTemplate.queryForObject(
@@ -46,28 +34,6 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                     "INSERT INTO status_of_sample (id, description, code, status_type, lastupdated, name, display_key, is_active) "
                             + "VALUES (24, 'Sample has been physically disposed', 1, 'SAMPLE', CURRENT_TIMESTAMP, 'SampleDisposed', 'status.sample.disposed', 'Y') "
                             + "ON CONFLICT (id) DO UPDATE SET name = 'SampleDisposed'");
-        }
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        cleanStorageTestData();
-    }
-
-    /**
-     * Clean up storage-related test data to ensure tests don't pollute the
-     * database.
-     */
-    private void cleanStorageTestData() {
-        try {
-            jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE id >= 10000");
-            jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id >= 10000");
-            jdbcTemplate.execute("DELETE FROM sample_item WHERE id >= 10000");
-            jdbcTemplate.execute("DELETE FROM sample WHERE id >= 10000");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id >= 10000");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE id >= 10000");
-        } catch (Exception e) {
-            // Ignore cleanup errors - data may not exist
         }
     }
 
@@ -93,15 +59,6 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
 
         // Return external_id for use with resolveSampleItem
         return externalId;
-    }
-
-    /**
-     * Helper to get the numeric sample_item.id from the external_id. Used for
-     * database verification queries.
-     */
-    private int getSampleItemNumericId(String externalId) {
-        return jdbcTemplate.queryForObject("SELECT id FROM sample_item WHERE external_id = ?", Integer.class,
-                externalId);
     }
 
     @Test

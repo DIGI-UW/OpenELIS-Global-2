@@ -6,12 +6,16 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.storage.valueholder.SampleStorageMovement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovement, Integer>
         implements SampleStorageMovementDAO {
+
+    private static final Logger logger = LoggerFactory.getLogger(SampleStorageMovementDAOImpl.class);
 
     public SampleStorageMovementDAOImpl() {
         super(SampleStorageMovement.class);
@@ -25,11 +29,16 @@ public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovem
         }
 
         // Parse String to Integer since DB column is numeric
+        // Note: This method requires numeric ID (String that can be parsed to Integer).
+        // External IDs must be resolved via resolveSampleItem() first.
         Integer sampleItemIdInt;
         try {
             sampleItemIdInt = Integer.parseInt(sampleItemId.trim());
         } catch (NumberFormatException e) {
-            throw new LIMSRuntimeException("Invalid SampleItem ID format (must be numeric): " + sampleItemId, e);
+            // Return empty list (consistent with
+            // SampleStorageAssignmentDAO.findBySampleItemId behavior)
+            logger.warn("Invalid SampleItem ID format (must be numeric): {}", sampleItemId);
+            return new java.util.ArrayList<>();
         }
 
         try {

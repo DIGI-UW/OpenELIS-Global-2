@@ -108,8 +108,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             Map<String, Object> map = new java.util.HashMap<>();
+            // Numeric ID (String representation) - primary identifier
             map.put("id", sampleItem.getId());
+            // @deprecated Use 'id' field instead. Kept for backward compatibility only.
+            // This field is identical to 'id' and will be removed in a future release.
             map.put("sampleItemId", sampleItem.getId());
+            // External ID - user-friendly identifier (e.g., "EXT-1765401458866")
             map.put("sampleItemExternalId", sampleItem.getExternalId() != null ? sampleItem.getExternalId() : "");
 
             // Get parent Sample accession number for context
