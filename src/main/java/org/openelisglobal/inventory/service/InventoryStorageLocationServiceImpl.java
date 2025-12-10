@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.dao.InventoryStorageLocationDAO;
@@ -38,6 +39,10 @@ public class InventoryStorageLocationServiceImpl extends AuditableBaseObjectServ
     @Override
     @Transactional
     public Long insert(InventoryStorageLocation location) {
+        // Ensure UUID is set before insert
+        if (location.getFhirUuid() == null) {
+            location.setFhirUuid(UUID.randomUUID());
+        }
         Long result = super.insert(location);
         // Log location creation
         auditService.logLocationCreate(location, location.getSysUserId());
