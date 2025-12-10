@@ -97,17 +97,41 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     }
   };
 
+  // Build hierarchical location tree with indentation
+  const flattenLocationTree = (locations) => {
+    const rootLocations = locations.filter((loc) => !loc.parentLocation);
+
+    const flattenNode = (location, depth = 0) => {
+      const children = locations.filter(
+        (loc) => loc.parentLocation?.id === location.id,
+      );
+
+      const indent = "\u00A0\u00A0".repeat(depth); // Non-breaking spaces
+      const prefix = depth > 0 ? "├─ " : "";
+
+      return [
+        {
+          id: location.id,
+          text: `${indent}${prefix}${location.name}`,
+          location: location,
+          depth: depth,
+        },
+        ...children.flatMap((child) => flattenNode(child, depth + 1)),
+      ];
+    };
+
+    return rootLocations.flatMap((loc) => flattenNode(loc));
+  };
+
   const fetchLocations = async () => {
     try {
       const allLocations = await StorageLocationAPI.getAll();
       const validLocations = Array.isArray(allLocations) ? allLocations : [];
-      setLocations(
-        validLocations.map((loc) => ({
-          id: loc.id,
-          text: loc.name,
-          location: loc,
-        })),
-      );
+
+      // Build hierarchical tree with indentation
+      const hierarchicalLocations = flattenLocationTree(validLocations);
+
+      setLocations(hierarchicalLocations);
     } catch (err) {
       console.error("Error fetching locations:", err);
       setLocations([]);

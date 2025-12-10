@@ -83,6 +83,7 @@ const InventoryDashboard = () => {
   const [detailsPanelOpen, setDetailsPanelOpen] = useState(false);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null); // For item-based FEFO usage
   const [selectedLotsForDisposal, setSelectedLotsForDisposal] = useState([]);
 
   const itemTypes = [
@@ -278,6 +279,7 @@ const InventoryDashboard = () => {
         const item = items[lot.inventoryItem?.id];
         return (
           lot.lotNumber?.toLowerCase().includes(searchLower) ||
+          lot.barcode?.toLowerCase().includes(searchLower) ||
           item?.name?.toLowerCase().includes(searchLower)
         );
       });
@@ -593,6 +595,17 @@ const InventoryDashboard = () => {
                                       })}
                                       onClick={() => {
                                         setSelectedLot(lot);
+                                        setSelectedItem(null);
+                                        setUsageModalOpen(true);
+                                      }}
+                                    />
+                                    <OverflowMenuItem
+                                      itemText={intl.formatMessage({
+                                        id: "usage.record.fefo.button",
+                                      })}
+                                      onClick={() => {
+                                        setSelectedItem(lot.inventoryItem);
+                                        setSelectedLot(null);
                                         setUsageModalOpen(true);
                                       }}
                                     />
@@ -689,9 +702,11 @@ const InventoryDashboard = () => {
           onClose={() => {
             setUsageModalOpen(false);
             setSelectedLot(null);
+            setSelectedItem(null);
           }}
           onSave={handleUsageSaved}
           lot={selectedLot}
+          item={selectedItem}
         />
       )}
 
