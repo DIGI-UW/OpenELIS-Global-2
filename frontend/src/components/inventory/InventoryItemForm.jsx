@@ -7,6 +7,8 @@ import {
   TextArea,
   FormLabel,
   Stack,
+  RadioButtonGroup,
+  RadioButton,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
@@ -38,10 +40,19 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     manufacturer: "",
     units: "",
     lowStockThreshold: 0,
+    // Reagent-specific
     stabilityAfterOpening: 0,
+    dilutionNotes: "",
     storageRequirements: "",
+    // Cartridge-specific
     compatibleAnalyzers: "",
+    calibrationRequired: "N",
+    // RDT-specific
     testsPerKit: 0,
+    individualTracking: "N",
+    // HIV_KIT/SYPHILIS_KIT-specific
+    sourceOrganization: "",
+    kitTestType: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -91,10 +102,19 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         manufacturer: item.manufacturer || "",
         units: item.units || "",
         lowStockThreshold: item.lowStockThreshold || 0,
+        // Reagent-specific
         stabilityAfterOpening: item.stabilityAfterOpening || 0,
+        dilutionNotes: item.dilutionNotes || "",
         storageRequirements: item.storageRequirements || "",
+        // Cartridge-specific
         compatibleAnalyzers: item.compatibleAnalyzers || "",
+        calibrationRequired: item.calibrationRequired || "N",
+        // RDT-specific
         testsPerKit: item.testsPerKit || 0,
+        individualTracking: item.individualTracking || "N",
+        // HIV_KIT/SYPHILIS_KIT-specific
+        sourceOrganization: item.sourceOrganization || "",
+        kitTestType: item.kitTestType || "",
       });
     } else {
       // Reset to initial state when adding new item
@@ -105,10 +125,19 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         manufacturer: "",
         units: "",
         lowStockThreshold: 0,
+        // Reagent-specific
         stabilityAfterOpening: 0,
+        dilutionNotes: "",
         storageRequirements: "",
+        // Cartridge-specific
         compatibleAnalyzers: "",
+        calibrationRequired: "N",
+        // RDT-specific
         testsPerKit: 0,
+        individualTracking: "N",
+        // HIV_KIT/SYPHILIS_KIT-specific
+        sourceOrganization: "",
+        kitTestType: "",
       });
     }
   }, [item, open]);
@@ -153,23 +182,74 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       return false;
     }
 
-    // Type-specific validation
-    if (formData.itemType === "REAGENT" && !formData.stabilityAfterOpening) {
-      setError("Stability after opening is required for reagents");
+    if (!formData.units?.trim()) {
+      setError("Units are required");
       return false;
+    }
+
+    // Type-specific validation
+    if (formData.itemType === "REAGENT") {
+      if (
+        !formData.stabilityAfterOpening ||
+        formData.stabilityAfterOpening <= 0
+      ) {
+        setError(
+          "Stability after opening is required for reagents and must be greater than 0",
+        );
+        return false;
+      }
+    }
+
+    if (formData.itemType === "CARTRIDGE") {
+      if (!formData.compatibleAnalyzers?.trim()) {
+        setError("Compatible analyzers are required for cartridges");
+        return false;
+      }
+      if (
+        formData.calibrationRequired &&
+        formData.calibrationRequired !== "Y" &&
+        formData.calibrationRequired !== "N"
+      ) {
+        setError("Calibration required must be Y or N");
+        return false;
+      }
+    }
+
+    if (formData.itemType === "RDT") {
+      if (!formData.testsPerKit || formData.testsPerKit <= 0) {
+        setError(
+          "Tests per kit is required for RDTs and must be greater than 0",
+        );
+        return false;
+      }
+      if (
+        formData.individualTracking &&
+        formData.individualTracking !== "Y" &&
+        formData.individualTracking !== "N"
+      ) {
+        setError("Individual tracking must be Y or N");
+        return false;
+      }
     }
 
     if (
-      formData.itemType === "CARTRIDGE" &&
-      !formData.compatibleAnalyzers?.trim()
+      formData.itemType === "HIV_KIT" ||
+      formData.itemType === "SYPHILIS_KIT"
     ) {
-      setError("Compatible analyzers are required for cartridges");
-      return false;
-    }
-
-    if (formData.itemType === "RDT" && !formData.testsPerKit) {
-      setError("Tests per kit is required for RDTs");
-      return false;
+      if (!formData.sourceOrganization?.trim()) {
+        setError("Source organization is required for HIV/Syphilis kits");
+        return false;
+      }
+      if (!formData.kitTestType?.trim()) {
+        setError("Kit test type is required for HIV/Syphilis kits");
+        return false;
+      }
+      if (!formData.testsPerKit || formData.testsPerKit <= 0) {
+        setError(
+          "Tests per kit is required for HIV/Syphilis kits and must be greater than 0",
+        );
+        return false;
+      }
     }
 
     return true;
@@ -197,10 +277,20 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       if (formData.itemType === "REAGENT") {
         sanitizedData.stabilityAfterOpening =
           Number(formData.stabilityAfterOpening) || 0;
+        sanitizedData.dilutionNotes = formData.dilutionNotes;
         sanitizedData.storageRequirements = formData.storageRequirements;
       } else if (formData.itemType === "CARTRIDGE") {
         sanitizedData.compatibleAnalyzers = formData.compatibleAnalyzers;
+        sanitizedData.calibrationRequired = formData.calibrationRequired;
       } else if (formData.itemType === "RDT") {
+        sanitizedData.testsPerKit = Number(formData.testsPerKit) || 0;
+        sanitizedData.individualTracking = formData.individualTracking;
+      } else if (
+        formData.itemType === "HIV_KIT" ||
+        formData.itemType === "SYPHILIS_KIT"
+      ) {
+        sanitizedData.sourceOrganization = formData.sourceOrganization;
+        sanitizedData.kitTestType = formData.kitTestType;
         sanitizedData.testsPerKit = Number(formData.testsPerKit) || 0;
       }
 
@@ -306,13 +396,23 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
               label={
                 <FormattedMessage id="catalog.item.stabilityAfterOpening" />
               }
+              helperText="Days until reagent expires after opening"
               value={formData.stabilityAfterOpening ?? 0}
               onChange={(e, { value }) =>
                 handleChange("stabilityAfterOpening", value ?? 0)
               }
-              min={0}
+              min={1}
               max={365}
               required
+            />
+
+            <TextArea
+              id="dilutionNotes"
+              labelText={<FormattedMessage id="catalog.item.dilutionNotes" />}
+              value={formData.dilutionNotes}
+              onChange={(e) => handleChange("dilutionNotes", e.target.value)}
+              placeholder="e.g., Dilute 1:10 with distilled water"
+              rows={2}
             />
 
             <TextArea
@@ -325,35 +425,119 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                 handleChange("storageRequirements", e.target.value)
               }
               placeholder="e.g., Store at 2-8°C, protect from light"
+              rows={2}
             />
           </>
         )}
 
         {formData.itemType === "CARTRIDGE" && (
-          <TextInput
-            id="compatibleAnalyzers"
-            labelText={
-              <FormattedMessage id="catalog.item.compatibleAnalyzers" />
-            }
-            value={formData.compatibleAnalyzers}
-            onChange={(e) =>
-              handleChange("compatibleAnalyzers", e.target.value)
-            }
-            placeholder="e.g., GeneXpert, Cobas"
-            required
-          />
+          <>
+            <TextInput
+              id="compatibleAnalyzers"
+              labelText={
+                <FormattedMessage id="catalog.item.compatibleAnalyzers" />
+              }
+              value={formData.compatibleAnalyzers}
+              onChange={(e) =>
+                handleChange("compatibleAnalyzers", e.target.value)
+              }
+              placeholder="e.g., GeneXpert, Cobas 6800"
+              required
+            />
+
+            <RadioButtonGroup
+              legendText={
+                <FormattedMessage id="catalog.item.calibrationRequired" />
+              }
+              name="calibrationRequired"
+              valueSelected={formData.calibrationRequired}
+              onChange={(value) => handleChange("calibrationRequired", value)}
+            >
+              <RadioButton labelText="Yes" value="Y" id="calibration-yes" />
+              <RadioButton labelText="No" value="N" id="calibration-no" />
+            </RadioButtonGroup>
+          </>
         )}
 
         {formData.itemType === "RDT" && (
-          <NumberInput
-            id="testsPerKit"
-            label={<FormattedMessage id="catalog.item.testsPerKit" />}
-            value={formData.testsPerKit ?? 0}
-            onChange={(e, { value }) => handleChange("testsPerKit", value ?? 0)}
-            min={1}
-            max={1000}
-            required
-          />
+          <>
+            <NumberInput
+              id="testsPerKit"
+              label={<FormattedMessage id="catalog.item.testsPerKit" />}
+              helperText="Number of individual tests in this kit"
+              value={formData.testsPerKit ?? 0}
+              onChange={(e, { value }) =>
+                handleChange("testsPerKit", value ?? 0)
+              }
+              min={1}
+              max={1000}
+              required
+            />
+
+            <RadioButtonGroup
+              legendText={
+                <FormattedMessage id="catalog.item.individualTracking" />
+              }
+              name="individualTracking"
+              valueSelected={formData.individualTracking}
+              onChange={(value) => handleChange("individualTracking", value)}
+            >
+              <RadioButton
+                labelText="Yes - Track each test individually"
+                value="Y"
+                id="tracking-yes"
+              />
+              <RadioButton
+                labelText="No - Track kit as whole"
+                value="N"
+                id="tracking-no"
+              />
+            </RadioButtonGroup>
+          </>
+        )}
+
+        {(formData.itemType === "HIV_KIT" ||
+          formData.itemType === "SYPHILIS_KIT") && (
+          <>
+            <TextInput
+              id="sourceOrganization"
+              labelText={
+                <FormattedMessage id="catalog.item.sourceOrganization" />
+              }
+              value={formData.sourceOrganization}
+              onChange={(e) =>
+                handleChange("sourceOrganization", e.target.value)
+              }
+              placeholder="e.g., WHO, CDC, PEPFAR"
+              required
+            />
+
+            <TextInput
+              id="kitTestType"
+              labelText={<FormattedMessage id="catalog.item.kitTestType" />}
+              value={formData.kitTestType}
+              onChange={(e) => handleChange("kitTestType", e.target.value)}
+              placeholder={
+                formData.itemType === "HIV_KIT"
+                  ? "e.g., HIV-1/2"
+                  : "e.g., RPR, TPHA"
+              }
+              required
+            />
+
+            <NumberInput
+              id="testsPerKit"
+              label={<FormattedMessage id="catalog.item.testsPerKit" />}
+              helperText="Number of individual tests in this kit"
+              value={formData.testsPerKit ?? 0}
+              onChange={(e, { value }) =>
+                handleChange("testsPerKit", value ?? 0)
+              }
+              min={1}
+              max={1000}
+              required
+            />
+          </>
         )}
       </Stack>
     </Modal>

@@ -32,4 +32,5 @@
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="../storage/storage-device-connectivity.xml"/>
   <include relativeToChangelogFile="true" file="018-inventory-audit-log.xml"/>
+  <include relativeToChangelogFile="true" file="019-fix-inventory-menu-order.xml"/>
 </databaseChangeLog>
