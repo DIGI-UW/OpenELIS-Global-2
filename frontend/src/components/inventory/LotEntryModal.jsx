@@ -18,7 +18,7 @@ import {
   InventoryManagementAPI,
   StorageLocationAPI,
 } from "./InventoryService";
-import StorageLocationModal from "./StorageLocationModal";
+import StorageLocationFormModal from "./StorageLocationFormModal";
 
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
@@ -379,10 +379,11 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         </Stack>
       </Modal>
 
-      <StorageLocationModal
+      <StorageLocationFormModal
         isOpen={locationModalOpen}
         onClose={() => setLocationModalOpen(false)}
         onSubmit={handleLocationCreated}
+        mode="create"
       />
     </>
   );

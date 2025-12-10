@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
@@ -111,13 +110,6 @@ public class InventoryAuditLog extends BaseObject<Long> {
 
     public enum EntityType {
         ITEM, LOT, LOCATION, USAGE, TRANSACTION
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        if (timestamp == null) {
-            timestamp = new Timestamp(System.currentTimeMillis());
-        }
     }
 
     // Getters and Setters

@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
@@ -95,6 +96,11 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     public Long insert(InventoryItem item) {
         // Validate type-specific required fields
         validateItemTypeSpecificFields(item);
+
+        // Ensure UUID is set before insert
+        if (item.getFhirUuid() == null) {
+            item.setFhirUuid(UUID.randomUUID());
+        }
 
         Long result = super.insert(item);
         // Log item creation

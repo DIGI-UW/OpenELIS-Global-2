@@ -69,7 +69,7 @@ const InventoryList = () => {
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal state
   const [lotModalOpen, setLotModalOpen] = useState(false);
