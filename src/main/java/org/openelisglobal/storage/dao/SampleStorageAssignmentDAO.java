@@ -5,7 +5,6 @@ import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 import org.openelisglobal.storage.valueholder.StorageBox;
-import org.openelisglobal.storage.valueholder.StoragePosition;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
