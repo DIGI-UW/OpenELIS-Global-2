@@ -122,5 +122,16 @@ guidelines:
 - Investigate failures using "Details" link
 - Run `mvn clean install` locally before pushing
 
+## 16. Project Branch Deployments
+
+For demos needing unreviewed features (per Constitution Principle IX.B):
+
+1. **Keep original PR** to `develop` for proper review
+2. **Create duplicate PR** from same branch → `project/{name}`
+3. **Title format**: `[Project] {Feature} (duplicate of #XXX)`
+4. **Merge conflicts**: Resolve on project branch, not feature branch
+
+See `.specify/guides/project-branch-quickstart.md` for complete workflow.
+
 Remember to review the "Using Git" documentation, particularly the "Submit the
 code" section, before creating pull requests.

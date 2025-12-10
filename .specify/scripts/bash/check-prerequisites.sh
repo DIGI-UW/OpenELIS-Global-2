@@ -26,6 +26,7 @@ JSON_MODE=false
 REQUIRE_TASKS=false
 INCLUDE_TASKS=false
 PATHS_ONLY=false
+CHECK_PROJECT_BRANCHES=false
 
 for arg in "$@"; do
     case "$arg" in
@@ -41,6 +42,9 @@ for arg in "$@"; do
         --paths-only)
             PATHS_ONLY=true
             ;;
+        --check-project-branches)
+            CHECK_PROJECT_BRANCHES=true
+            ;;
         --help|-h)
             cat << 'EOF'
 Usage: check-prerequisites.sh [OPTIONS]
@@ -48,11 +52,12 @@ Usage: check-prerequisites.sh [OPTIONS]
 Consolidated prerequisite checking for Spec-Driven Development workflow.
 
 OPTIONS:
-  --json              Output in JSON format
-  --require-tasks     Require tasks.md to exist (for implementation phase)
-  --include-tasks     Include tasks.md in AVAILABLE_DOCS list
-  --paths-only        Only output path variables (no prerequisite validation)
-  --help, -h          Show this help message
+  --json                    Output in JSON format
+  --require-tasks           Require tasks.md to exist (for implementation phase)
+  --include-tasks           Include tasks.md in AVAILABLE_DOCS list
+  --paths-only              Only output path variables (no prerequisite validation)
+  --check-project-branches  Include active project branches in output
+  --help, -h                Show this help message
 
 EXAMPLES:
   # Check task prerequisites (plan.md required)
@@ -63,6 +68,9 @@ EXAMPLES:
 
   # Get feature paths only (no validation)
   ./check-prerequisites.sh --paths-only
+
+  # Check for project branches (for /speckit.analyze)
+  ./check-prerequisites.sh --json --check-project-branches
 
 EOF
             exit 0
@@ -138,6 +146,13 @@ if $INCLUDE_TASKS && [[ -f "$TASKS" ]]; then
     docs+=("tasks.md")
 fi
 
+# Check for project branches if requested
+PROJECT_BRANCHES=""
+if $CHECK_PROJECT_BRANCHES; then
+    # Get list of remote project branches (strip 'origin/' prefix)
+    PROJECT_BRANCHES=$(git branch -r 2>/dev/null | grep 'origin/project/' | sed 's|.*origin/||' | tr '\n' ',' | sed 's/,$//' || echo "")
+fi
+
 # Output results
 if $JSON_MODE; then
     # Build JSON array of documents
@@ -148,7 +163,13 @@ if $JSON_MODE; then
         json_docs="[${json_docs%,}]"
     fi
 
-    printf '{"FEATURE_DIR":"%s","AVAILABLE_DOCS":%s}\n' "$FEATURE_DIR" "$json_docs"
+    # Build output based on options
+    if $CHECK_PROJECT_BRANCHES; then
+        printf '{"FEATURE_DIR":"%s","AVAILABLE_DOCS":%s,"PROJECT_BRANCHES":"%s"}\n' \
+            "$FEATURE_DIR" "$json_docs" "$PROJECT_BRANCHES"
+    else
+        printf '{"FEATURE_DIR":"%s","AVAILABLE_DOCS":%s}\n' "$FEATURE_DIR" "$json_docs"
+    fi
 else
     # Text output
     echo "FEATURE_DIR:$FEATURE_DIR"
@@ -162,5 +183,15 @@ else
 
     if $INCLUDE_TASKS; then
         check_file "$TASKS" "tasks.md"
+    fi
+
+    if $CHECK_PROJECT_BRANCHES; then
+        echo ""
+        echo "PROJECT_BRANCHES:"
+        if [[ -n "$PROJECT_BRANCHES" ]]; then
+            echo "  $PROJECT_BRANCHES" | tr ',' '\n' | sed 's/^/  ✓ /'
+        else
+            echo "  (none)"
+        fi
     fi
 fi

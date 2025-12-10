@@ -1,6 +1,72 @@
 # OpenELIS Global 3.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Project Branch Deployment & Stable Release Strategy (Principle IX.B & IX.C)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.8.0 → 1.9.0
+Change Type: MINOR - New subsections added to Principle IX for project branch deployment workflow
+Date: 2025-12-10
+
+Added Sections:
+  - Principle IX.B: Project Branch Deployment Strategy
+    * NEW: Branch naming convention for project/demo branches (project/{name})
+    * NEW: PR duplication workflow for maintaining review process
+    * NEW: Dual PR requirement (develop + project branch)
+    * NEW: Merge conflict resolution guidance
+    * NEW: Cleanup strategy for temporary project branches
+
+  - Principle IX.C: Stable Release to Main Strategy
+    * NEW: Main branch preservation strategy for production fallback
+    * NEW: Staleness thresholds (60/90 days advisory/warning)
+    * NEW: Release criteria for develop → main merges
+    * NEW: SpecKit integration for staleness checks
+
+  - Principle IX.D: Feature Naming Convention Standardization
+    * NEW: Standardize to {ISSUE-ID}-{feature-name} format (e.g., OGC-144-sample-storage)
+    * NEW: Enables automated traceability to Jira tickets
+
+  - Development Workflow: Code Quality - Comment Pollution Prevention
+    * NEW: Prohibition of process comments and issue-only references
+    * NEW: Requirement for spec path references in comments
+    * NEW: Validation via ESLint and SpecKit commands
+
+Rationale for Changes:
+  Large demos often require multiple in-progress features that aren't fully 
+  reviewed yet. Creating project-specific branches allows safe demos without 
+  bypassing the review process on `develop`. Additionally, keeping `main` 
+  branch updated with stable releases provides a production fallback if 
+  `develop` becomes unstable.
+
+  This workflow enables:
+  - Safe demo deployments without disrupting develop review process
+  - Proper PR review maintained for all features
+  - Clear project branch lifecycle (create → deploy → cleanup)
+  - Stable production fallback via main branch preservation
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/plan-template.md - Add Project Branch Deployment section
+  ⚠️ .specify/templates/tasks-template.md - Add project branch notes
+  ⚠️ .specify/commands/speckit.analyze.md - Add project branch compatibility checks
+  ⚠️ .specify/commands/speckit.specify.md - Add stable release advisory
+
+Follow-up TODOs:
+  ✅ Update plan-template.md with Project Branch Deployment section
+  ✅ Update speckit.analyze.md with project branch and staleness checks
+  ✅ Create project-branch-quickstart.md guide
+  ✅ Add comment pollution validation to speckit.analyze
+  🔜 Create ESLint rules for comment pollution detection (future PR)
+  🔜 Create /speckit.polish command for automated cleanup (future PR)
+
+Commit Message:
+  docs: amend constitution to v1.9.0 (Project Branch Deployment & Stable Release)
+
+  - Add Principle IX.B: Project Branch Deployment Strategy
+  - Add Principle IX.C: Stable Release to Main Strategy
+  - Define project branch naming: project/{country-or-project}
+  - Support dual PR workflow (develop + project branch)
+  - Add staleness thresholds for main branch (60/90 days)
+  - Enable safe demo deployments without bypassing review process
+
 SYNC IMPACT REPORT - Spec-Driven Iteration (Principle IX)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.7.0 → 1.8.0
@@ -1046,6 +1112,120 @@ delivery enables:
 **Reference**:
 [GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
 
+### IX.B - Project Branch Deployment Strategy (ADDED 2025-12-10)
+
+**PURPOSE**: Enable demo/deployment to specific countries or projects using
+in-progress features while maintaining proper review workflow on `develop`.
+
+**Rules**:
+
+- **Branch Naming**: `project/{country-or-project}` (e.g.,
+  `project/haiti-deployment`, `project/rwanda-demo-2025-12`)
+- **Branch Source**: Flexible - can be created from `develop`, `main`, or
+  specific release tags based on stability needs
+- **PR Duplication**: Manual process - developer creates new PR from same
+  feature branch targeting project branch instead of `develop`
+- **Dual PR Requirement**:
+  - Original PR → `develop` (for proper review)
+  - Duplicate PR → `project/{name}` (for deployment)
+  - Keep both PRs synchronized until develop PR merges
+- **Merge Conflict Resolution**: Allocate time for merge conflict resolution
+  when merging multiple feature PRs to project branch
+- **Cleanup**: Project branches are temporary - delete after demo/deployment
+  completes (optional but recommended)
+- **Deployment**: Deploy from project branch, NOT from `develop` (keeps develop
+  stable)
+
+**Workflow**:
+
+1. Create project branch: `git checkout -b project/{name}` (from
+   develop/main/tag)
+2. For each feature needed in demo:
+   - Create duplicate PR from feature branch → project branch
+   - Keep original PR → develop for proper review
+   - Merge duplicate PR to project branch
+3. Resolve merge conflicts if multiple features combined
+4. Deploy from project branch
+5. After demo: Optionally delete project branch
+
+**Rationale**: Large demos often require multiple in-progress features that
+aren't fully reviewed yet. Creating project-specific branches allows safe demos
+without bypassing the review process on `develop`. Original PRs remain properly
+reviewed before merging to `develop`.
+
+**Anti-Patterns**:
+
+- ❌ Merging unreviewed code directly to `develop` for demos
+- ❌ Creating project branches and forgetting to maintain original PRs to
+  develop
+- ❌ Deploying from `develop` with unreviewed features
+- ❌ Not allocating time for merge conflict resolution
+- ❌ Keeping stale project branches indefinitely
+
+### IX.C - Stable Release to Main Strategy (ADDED 2025-12-10)
+
+**PURPOSE**: Preserve stable, production-ready code in `main` branch as a
+fallback if `develop` becomes unstable.
+
+**Rules**:
+
+- **Main Branch Purpose**: `main` contains latest stable release suitable for
+  production deployment
+- **Update Frequency**: Quarterly or after major milestone completion (whichever
+  comes first)
+- **Review Process**: High-level review via `/speckit.specify` or
+  `/speckit.analyze` checks:
+  - Time since last `develop` → `main` merge
+  - Stability of current `develop` (CI/CD status, test coverage)
+  - Readiness for stable release
+- **Release Criteria**:
+  - All CI/CD checks passing on `develop`
+  - No critical bugs or regressions
+  - Major features completed and tested
+  - Documentation updated
+- **Backport Process**: Manual review by maintainers to select stable
+  commits/features from `develop` to merge to `main`
+
+**Staleness Thresholds**:
+
+- **< 60 days**: Normal (no action needed)
+- **60-90 days**: Advisory (consider stable release soon)
+- **> 90 days**: Warning (stable release overdue - `develop` may diverge
+  significantly)
+
+**Rationale**: If `develop` becomes unstable due to experimental features, teams
+need a stable fallback branch (`main`) for production deployments. Regular
+stable releases prevent excessive divergence and reduce backport complexity.
+
+### IX.D - Feature Naming Convention Standardization (ADDED 2025-12-10)
+
+**PURPOSE**: Standardize feature directory and branch naming to align with Jira
+ticket workflow.
+
+**Rules**:
+
+- **Feature Directory Naming**: Use `{ISSUE-ID}-{feature-name}` format (e.g.,
+  `OGC-144-sample-storage`, `009-carbon-sidenav`)
+- **Issue ID Format**: Jira ticket (`OGC-{###}`) preferred, or GitHub issue
+  number (`{###}`)
+- **Branch Naming**: Include issue ID in branch names (e.g.,
+  `feat/OGC-144-sample-storage`, `fix/OGC-144-disposed-counter-update`)
+- **Spec References**: Reference features by issue ID + name (e.g.,
+  `specs/OGC-144-sample-storage/spec.md`)
+- **Migration**: Existing numeric-prefixed features (`001-sample-storage`) remain
+  valid until migrated
+
+**Benefits**:
+
+- Makes FR references instantly traceable to Jira tickets
+- Aligns with team workflow (Jira primary tracker)
+- Enables automated traceability
+- Single source of truth (issue ID in feature name)
+
+**Rationale**: Current numeric prefixes (`001-`, `002-`) require separate
+mapping to track Jira tickets. Using issue IDs directly in feature names
+creates single source of truth and improves traceability.
+
 ---
 
 ## Technical Stack Constraints
@@ -1182,8 +1362,10 @@ naming conventions and milestone workflow.
 7. **UI Screenshots**: Attach before/after images for UI changes
 8. **Single Concern**: PR addresses ONE issue only (NO mixed refactoring +
    features)
-9. **Constitution Compliance**: Verify adherence to all 8 core principles
-10. **Review Assignment**: Request review from appropriate team members
+9. **Constitution Compliance**: Verify adherence to all core principles
+10. **Comment Quality**: No process comments or issue-only references (see Code
+    Quality section)
+11. **Review Assignment**: Request review from appropriate team members
 
 **CI/CD Pipeline** (GitHub Actions):
 
@@ -1198,7 +1380,7 @@ All checks MUST pass before merge.
 
 **Reviewers MUST verify**:
 
-- ✅ Constitution compliance (all 8 principles)
+- ✅ Constitution compliance (all core principles)
 - ✅ Layered architecture respected (no DAO calls from controllers)
 - ✅ FHIR resources validated if applicable
 - ✅ Internationalization complete (no hardcoded strings)
@@ -1206,8 +1388,38 @@ All checks MUST pass before merge.
 - ✅ Carbon Design System used exclusively for UI
 - ✅ Tests included and passing
 - ✅ No security vulnerabilities (SQL injection, XSS, etc.)
+- ✅ No comment pollution (process comments, issue-only references)
 
 **Approval Required**: Minimum 1 approval from core team before merge.
+
+### Code Quality: Comment Pollution Prevention (ADDED 2025-12-10)
+
+**PURPOSE**: Prevent AI-generated process comments and issue-only references
+that pollute code without adding value.
+
+**Rules**:
+
+- **NO Process Comments**: Comments must explain WHY, not document process
+  - ❌ BAD: "per ibacher PR review", "AI-generated", "per review"
+  - ✅ GOOD: Self-documenting code (no comment needed)
+- **NO Issue-Only References**: Comments referencing issues must include spec
+  path
+  - ❌ BAD: "OGC-144: Use refreshMetrics"
+  - ✅ GOOD: "specs/OGC-144-sample-storage/spec.md FR-057b"
+- **NO Redundant Implementation Details**: Comments should not restate what code
+  does
+  - ❌ BAD: "// Loop through items and add to list"
+  - ✅ GOOD: "// Filter active items before aggregation (FR-042)"
+
+**Validation**:
+
+- **SpecKit Analysis**: `/speckit.analyze` detects comment pollution patterns
+- **Code Review**: Reviewers flag process comments for removal
+- **Future**: ESLint rules and `/speckit.polish` command (planned)
+
+**Rationale**: Process comments and issue-only references add noise without
+improving code understanding. Self-documenting code with spec path references
+provides traceability without pollution.
 
 ### Development Environment Setup
 
@@ -1336,10 +1548,11 @@ sync.
 
 ---
 
-**Version**: 1.8.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-12-04
+**Version**: 1.9.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-12-10
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.9.0: Project Branch Deployment & Stable Release Strategy (Principle IX.B & IX.C) (2025-12-10)
   Amendment v1.8.0: Spec-Driven Iteration (Principle IX) - Milestone-based PR workflow (2025-12-04)
   Amendment v1.7.0: Enhanced Cypress E2E testing workflow and review requirements (2025-11-07)
   Amendment v1.6.0: Cypress E2E testing best practices (2025-11-05)

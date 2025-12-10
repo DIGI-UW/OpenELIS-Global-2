@@ -258,6 +258,40 @@ With multiple developers:
 
 ---
 
+## Project Branch Deployment Notes
+
+_OPTIONAL: Include only if this feature will be deployed to a project/demo
+branch before merging to develop. See Constitution Principle IX.B._
+
+If this feature will be deployed to a project/demo branch:
+
+1. **PR Duplication**: After creating PR to develop, create duplicate PR to
+   project branch
+
+   - Original PR → `develop` (for proper review)
+   - Duplicate PR → `project/{name}` (for deployment)
+
+2. **Merge Conflicts**: Allocate time for resolving conflicts when merging to
+   project branch
+
+   - Multiple features targeting same project branch may conflict
+   - Resolve conflicts on project branch, not on feature branch
+
+3. **Testing**: Run full test suite on project branch after merge (may differ
+   from develop)
+
+   - Project branch may have different combination of features
+   - Verify integration tests pass on project branch
+
+4. **Documentation**: Update deployment docs specific to project branch
+   - Document any project-specific configuration
+   - Note differences from develop environment
+
+See Constitution Principle IX.B for complete workflow. Reference:
+`.specify/guides/project-branch-quickstart.md`
+
+---
+
 ## Notes
 
 - [P] tasks = different files, no dependencies

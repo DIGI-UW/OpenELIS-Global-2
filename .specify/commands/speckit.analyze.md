@@ -163,6 +163,77 @@ in overflow summary.
 - Estimated PR size (LOC if detectable from task descriptions)
 - User stories covered per milestone (should be 1-3 typically)
 
+#### H. Project Branch Compatibility (Constitution Principle IX.B)
+
+**ADVISORY CHECK**: Validate compatibility with active project branches for
+demos/deployments.
+
+- **Active Project Branches**: Check for branches matching `project/*` pattern
+  using `git branch -r | grep 'origin/project/'`
+- **PR Duplication Tracking**: Verify if feature has PRs to both develop AND
+  project branches (informational)
+- **Merge Conflict Risk**: Flag if multiple feature PRs target same project
+  branch (conflict likelihood)
+- **Branch Staleness**: Check age of project branches (warn if >30 days old)
+- **Deployment Readiness**: Validate if current work is demo-ready (tests pass,
+  no critical issues)
+
+**Compatibility Metrics to Report**:
+
+- Active project branches: [list or "None"]
+- PRs targeting project branches: [list or "None"]
+- Merge conflict risk: [High/Medium/Low/None]
+- Demo-ready status: [Yes/No/Partial]
+
+#### I. Stable Release Review (Constitution Principle IX.C)
+
+**ADVISORY CHECK**: Review readiness for stable release from develop → main.
+
+- **Main Branch Staleness**: Calculate days since last develop → main merge
+  using `git log -1 --format="%ct" main`
+- **CI/CD Health**: Check if develop CI/CD is passing (green builds)
+- **Test Coverage**: Verify coverage thresholds met (>80% backend, >70%
+  frontend)
+- **Critical Issues**: Flag if critical bugs/regressions exist in develop
+- **Stable Release Recommendation**: Suggest if stable release is overdue
+
+**Staleness Thresholds**:
+
+- **< 60 days**: Normal (no action needed)
+- **60-90 days**: Advisory (consider stable release soon)
+- **> 90 days**: Warning (stable release overdue)
+
+**Staleness Report**:
+
+- Days since last main update: [N days]
+- Status: [Normal / Advisory / Warning]
+- Recommendation: [No action / Consider stable release / Stable release overdue]
+
+#### J. Comment Pollution Detection (Development Workflow - Code Quality)
+
+**ADVISORY CHECK**: Detect process comments and issue-only references that
+pollute code without adding value.
+
+- **Process Comments**: Flag comments containing "per review", "AI-generated",
+  "per {name} PR review", etc.
+- **Issue-Only References**: Flag comments with "OGC-###:" or issue IDs without
+  spec path context
+- **Redundant Comments**: Flag comments that restate what code does without
+  explaining why
+
+**Comment Pollution Patterns to Flag**:
+
+- ❌ "OGC-144: Use refreshMetrics" → Should be: "specs/OGC-144-sample-storage/spec.md FR-057b"
+- ❌ "per ibacher PR review" → Should be: (removed - self-documenting code)
+- ❌ "// Loop through items" → Should be: (removed - code is self-explanatory)
+
+**Validation Report**:
+
+- Process comments found: [count]
+- Issue-only references: [count]
+- Redundant comments: [count]
+- Recommendation: [None / Manual cleanup required]
+
 ### 5. Severity Assignment
 
 Use this heuristic to prioritize findings:
@@ -218,6 +289,23 @@ Output a Markdown report (no file writes) with the following structure:
 - Parallel milestones with file conflicts: [list or "None"]
 - Missing Milestone Plan: [Yes/No - CRITICAL if Yes for large features]
 
+**Project Branch Compatibility (Principle IX.B):**
+
+- Active project branches: [list or "None"]
+- Recommendation: [None / Coordinate PR duplication / Cleanup stale branches]
+
+**Stable Release Review (Principle IX.C):**
+
+- Days since last main update: [N days]
+- Status: [Normal / Advisory / Warning]
+- Recommendation: [No action / Consider stable release / Stable release overdue]
+
+**Comment Pollution Detection (Code Quality):**
+
+- Process comments found: [count or "None"]
+- Issue-only references: [count or "None"]
+- Recommendation: [None / Manual cleanup required]
+
 ### 7. Provide Next Actions
 
 At end of report, output a concise Next Actions block:
@@ -227,6 +315,11 @@ At end of report, output a concise Next Actions block:
 - Provide explicit command suggestions: e.g., "Run /speckit.specify with
   refinement", "Run /speckit.plan to adjust architecture", "Manually edit
   tasks.md to add coverage for 'performance-metrics'"
+- If project branches detected: Check for PR duplication and merge conflict risk
+- If main staleness > 90 days: Recommend coordinating stable release to main
+  (see Constitution Principle IX.C)
+- If comment pollution detected: Recommend manual cleanup of process comments
+  and issue-only references (see Constitution - Code Quality)
 
 ### 8. Offer Remediation
 

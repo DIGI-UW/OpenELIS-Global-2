@@ -69,6 +69,23 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Rationale: [why chosen]
    - Alternatives considered: [what else evaluated]
 
+4. **Check Project Branch Compatibility** (per Constitution Principle IX.B):
+
+   - List active project branches:
+     ```bash
+     git branch -r | grep 'origin/project/' | sed 's|origin/||'
+     ```
+   - If project branches exist AND feature >3 days:
+     - Display advisory:
+       ```
+       ⚠️ Active project branches detected: [list]
+       If this feature is needed for an upcoming demo, coordinate PR duplication strategy.
+       See Constitution Principle IX.B for project branch workflow.
+       ```
+     - Include note in plan.md about potential demo branch deployment
+     - Populate the "Project Branch Deployment (if applicable)" section in plan.md
+   - If no project branches: Skip this section in plan.md (optional section)
+
 **Output**: research.md with all NEEDS CLARIFICATION resolved
 
 ### Phase 1: Design & Contracts

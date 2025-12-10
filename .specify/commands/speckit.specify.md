@@ -44,7 +44,29 @@ Given that feature description, do this:
    git fetch --all --prune
    ```
 
-   b. Find the highest feature number across all sources for the short-name:
+   b. **Stable Release Review (Principle IX.C)**: Check if stable release to main
+   is overdue before proceeding with new feature specification:
+
+   ```bash
+   # Check main branch staleness
+   LAST_MAIN_COMMIT=$(git log -1 --format="%ct" origin/main 2>/dev/null || echo "0")
+   NOW=$(date +%s)
+   DAYS_SINCE=$((($NOW - $LAST_MAIN_COMMIT) / 86400))
+   ```
+
+   - If DAYS_SINCE > 90: Display advisory message:
+     ```
+     ⚠️ ADVISORY: Main branch is >90 days out of sync with develop.
+     Consider coordinating a stable release (develop → main) before starting new features.
+     See Constitution Principle IX.C for release criteria.
+     ```
+   - If DAYS_SINCE > 60: Display informational message:
+     ```
+     ℹ️ INFO: Main branch is >60 days old. Consider scheduling a stable release soon.
+     ```
+   - Continue with specification (non-blocking - informational only)
+
+   c. Find the highest feature number across all sources for the short-name:
 
    - Remote branches:
      `git ls-remote --heads origin | grep -E 'refs/heads/[0-9]+-<short-name>$'`
@@ -52,13 +74,13 @@ Given that feature description, do this:
    - Specs directories: Check for directories matching
      `specs/[0-9]+-<short-name>`
 
-   c. Determine the next available number:
+   d. Determine the next available number:
 
    - Extract all numbers from all three sources
    - Find the highest number N
    - Use N+1 for the new branch number
 
-   d. Run the script
+   e. Run the script
    `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"` with the
    calculated number and short-name:
 

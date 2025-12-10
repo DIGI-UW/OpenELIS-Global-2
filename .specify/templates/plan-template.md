@@ -117,6 +117,32 @@ graph LR
 **Small Features (<3 days)**: May use single `feat/{issue-id}-{name}` branch
 without milestones.
 
+### Project Branch Deployment (if applicable)
+
+_OPTIONAL: Fill only if feature will be deployed to project/demo branch before
+merging to develop. See Constitution Principle IX.B._
+
+**Active Project Branches**:
+
+- [ ] `project/{name}` - Purpose: [e.g., "Haiti pilot deployment"]
+
+**PR Duplication Strategy**:
+
+- [ ] Original PR → `develop` (for proper review)
+- [ ] Duplicate PR → `project/{name}` (for deployment)
+- [ ] Merge conflict resolution allocated: [N hours/days]
+
+**Demo Readiness Criteria**:
+
+- [ ] All milestone PRs merged to project branch
+- [ ] Integration tests pass on project branch
+- [ ] Deployment documentation updated
+- [ ] Rollback plan documented
+
+**Cleanup Plan**:
+
+- [ ] Delete project branch after: [demo date / deployment complete / N days]
+
 ## Project Structure
 
 ### Documentation (this feature)
