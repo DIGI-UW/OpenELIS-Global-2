@@ -464,7 +464,11 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                 .readTree(result.getResponse().getContentAsString());
         boolean found = false;
         for (com.fasterxml.jackson.databind.JsonNode sample : samples) {
-            if (sampleItemId.equals(sample.get("id").asText())) {
+            // sampleItemId is external ID, compare with sampleItemExternalId field
+            String sampleItemExternalId = sample.has("sampleItemExternalId")
+                    ? sample.get("sampleItemExternalId").asText()
+                    : "";
+            if (sampleItemId.equals(sampleItemExternalId)) {
                 found = true;
                 String status = sample.get("status").asText();
                 assertTrue("Status should be 'disposed' or 'Disposed'", "disposed".equalsIgnoreCase(status));
