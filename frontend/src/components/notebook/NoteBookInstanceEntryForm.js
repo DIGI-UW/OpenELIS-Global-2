@@ -71,6 +71,7 @@ import StorageLocationSelector from "../storage/StorageLocationSelector";
 import GenericSampleOrder from "../genericSample/GenericSampleOrder";
 import GenericSampleOrderEdit from "../genericSample/GenericSampleOrderEdit";
 import GenericSampleOrderImport from "../genericSample/GenericSampleOrderImport";
+import NotebookWorkflowTab from "./workflow/NotebookWorkflowTab";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -2124,224 +2125,235 @@ const NoteBookInstanceEntryForm = () => {
         )}
         {selectedTab === TABS.WORKFLOW && (
           <Column lg={16} md={8} sm={4}>
-            <Grid fullWidth={true} className="gridBoundary">
-              <Column lg={16} md={8} sm={4}>
-                <h5>
-                  {" "}
-                  <FormattedMessage id="notebook.label.pages" />
-                </h5>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br></br>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                {noteBookData?.pages?.length === 0 && (
-                  <InlineNotification
-                    kind="info"
-                    title={intl.formatMessage({
-                      id: "notebook.pages.none.title",
-                    })}
-                    subtitle={intl.formatMessage({
-                      id: "notebook.pages.none.subtitle",
-                    })}
-                  />
-                )}
-                {noteBookData?.pages?.length > 0 && (
-                  <Accordion>
-                    {noteBookData.pages.map((page, index) => (
-                      <AccordionItem
-                        key={index}
-                        style={{ marginBottom: "1rem" }}
-                        title={
-                          <span
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.5rem",
-                            }}
-                          >
-                            {intl.formatMessage(
-                              { id: "pagination.page" },
-                              { page: page.order || index + 1 },
-                            )}
-                            :{" "}
-                            <h5 style={{ margin: 0, display: "inline" }}>
-                              {page.title}
-                            </h5>
-                            {page.completed && (
-                              <Tag type="green" size="sm">
-                                <FormattedMessage id="notebook.page.completed" />
-                              </Tag>
-                            )}
-                          </span>
-                        }
-                      >
-                        <Grid>
-                          <Column lg={2} md={8} sm={4}>
-                            <h6>
-                              {intl.formatMessage({
-                                id: "notebook.page.instructions",
-                              })}
-                            </h6>
-                          </Column>
-                          <Column lg={14} md={8} sm={4}>
-                            {page.instructions}
-                          </Column>
-                          <Column lg={2} md={8} sm={4}>
-                            <h6>
-                              {intl.formatMessage({
-                                id: "notebook.page.content",
-                              })}
-                            </h6>
-                          </Column>
-                          <Column lg={14} md={8} sm={4}>
-                            {page.content}
-                          </Column>
-                          {page.sampleTypeId && (
-                            <>
-                              <Column lg={2} md={8} sm={4}>
-                                <h6>
-                                  {intl.formatMessage({
-                                    id: "sample.type",
-                                  })}
-                                </h6>
-                              </Column>
-                              <Column lg={14} md={8} sm={4}>
-                                <div>
-                                  <span style={{ marginRight: "0.5rem" }}>
-                                    {intl.formatMessage({ id: "sample.type" })}
-                                    :{" "}
-                                  </span>
-                                  {(() => {
-                                    const sampleType = sampleTypes.find(
-                                      (st) => st.id == page.sampleTypeId,
-                                    );
-                                    return sampleType ? (
-                                      <Tag type="blue" size="sm">
-                                        {sampleType.value}
-                                      </Tag>
-                                    ) : (
-                                      <></>
-                                    );
-                                  })()}
-                                </div>
-                              </Column>
-                            </>
-                          )}
-                          {page.panels &&
-                            Array.isArray(page.panels) &&
-                            page.panels.length > 0 && (
+            {/* Use enhanced workflow view for notebook instances (non-templates) */}
+            {noteBookData?.isTemplate !== true && noteBookData?.id && (
+              <NotebookWorkflowTab notebookId={noteBookData.id} />
+            )}
+            {/* Use accordion view for templates or when no ID is available */}
+            {(noteBookData?.isTemplate === true || !noteBookData?.id) && (
+              <Grid fullWidth={true} className="gridBoundary">
+                <Column lg={16} md={8} sm={4}>
+                  <h5>
+                    {" "}
+                    <FormattedMessage id="notebook.label.pages" />
+                  </h5>
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  <br></br>
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  {noteBookData?.pages?.length === 0 && (
+                    <InlineNotification
+                      kind="info"
+                      title={intl.formatMessage({
+                        id: "notebook.pages.none.title",
+                      })}
+                      subtitle={intl.formatMessage({
+                        id: "notebook.pages.none.subtitle",
+                      })}
+                    />
+                  )}
+                  {noteBookData?.pages?.length > 0 && (
+                    <Accordion>
+                      {noteBookData.pages.map((page, index) => (
+                        <AccordionItem
+                          key={index}
+                          style={{ marginBottom: "1rem" }}
+                          title={
+                            <span
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.5rem",
+                              }}
+                            >
+                              {intl.formatMessage(
+                                { id: "pagination.page" },
+                                { page: page.order || index + 1 },
+                              )}
+                              :{" "}
+                              <h5 style={{ margin: 0, display: "inline" }}>
+                                {page.title}
+                              </h5>
+                              {page.completed && (
+                                <Tag type="green" size="sm">
+                                  <FormattedMessage id="notebook.page.completed" />
+                                </Tag>
+                              )}
+                            </span>
+                          }
+                        >
+                          <Grid>
+                            <Column lg={2} md={8} sm={4}>
+                              <h6>
+                                {intl.formatMessage({
+                                  id: "notebook.page.instructions",
+                                })}
+                              </h6>
+                            </Column>
+                            <Column lg={14} md={8} sm={4}>
+                              {page.instructions}
+                            </Column>
+                            <Column lg={2} md={8} sm={4}>
+                              <h6>
+                                {intl.formatMessage({
+                                  id: "notebook.page.content",
+                                })}
+                              </h6>
+                            </Column>
+                            <Column lg={14} md={8} sm={4}>
+                              {page.content}
+                            </Column>
+                            {page.sampleTypeId && (
                               <>
                                 <Column lg={2} md={8} sm={4}>
                                   <h6>
-                                    <FormattedMessage id="sample.label.orderpanel" />
+                                    {intl.formatMessage({
+                                      id: "sample.type",
+                                    })}
                                   </h6>
                                 </Column>
                                 <Column lg={14} md={8} sm={4}>
                                   <div>
                                     <span style={{ marginRight: "0.5rem" }}>
-                                      <FormattedMessage id="sample.label.orderpanel" />
+                                      {intl.formatMessage({
+                                        id: "sample.type",
+                                      })}
                                       :{" "}
                                     </span>
-                                    {page.panels
-                                      .filter((panelId) => panelId != null)
-                                      .map((panelId, panelIndex) => {
-                                        // Try to find panel by ID (handle both string and number)
-                                        const panel = allPanels.find((p) => {
-                                          if (!p || p.id == null) return false;
-                                          // Normalize both to strings for comparison
-                                          const pId = String(p.id).trim();
-                                          const pagePanelId =
-                                            String(panelId).trim();
-                                          // Compare as both string and number
-                                          return (
-                                            pId === pagePanelId ||
-                                            Number(p.id) === Number(panelId) ||
-                                            p.id == panelId
-                                          );
-                                        });
-                                        // Only show panel if found (don't show ID fallback)
-                                        return panel ? (
-                                          <Tag
-                                            key={panelIndex}
-                                            type="green"
-                                            size="sm"
-                                            style={{ marginRight: "0.5rem" }}
-                                          >
-                                            {panel.value}
-                                          </Tag>
-                                        ) : null;
-                                      })
-                                      .filter((tag) => tag !== null)}
-                                  </div>
-                                </Column>
-                              </>
-                            )}
-                          {page.tests &&
-                            Array.isArray(page.tests) &&
-                            page.tests.length > 0 && (
-                              <>
-                                <Column lg={2} md={8} sm={4}>
-                                  <h6>
-                                    {intl.formatMessage({
-                                      id: "barcode.label.info.tests",
-                                    })}
-                                  </h6>
-                                </Column>
-                                <Column lg={14} md={8} sm={4}>
-                                  <div>
-                                    {page.tests.map((testId, testIndex) => {
-                                      const test = allTests.find(
-                                        (t) => t.id == testId,
+                                    {(() => {
+                                      const sampleType = sampleTypes.find(
+                                        (st) => st.id == page.sampleTypeId,
                                       );
-                                      return test ? (
-                                        <Tag
-                                          key={testIndex}
-                                          type="blue"
-                                          size="sm"
-                                        >
-                                          {test.value}
+                                      return sampleType ? (
+                                        <Tag type="blue" size="sm">
+                                          {sampleType.value}
                                         </Tag>
                                       ) : (
                                         <></>
                                       );
-                                    })}
+                                    })()}
                                   </div>
                                 </Column>
                               </>
                             )}
-                          <Column lg={16} md={8} sm={4}>
-                            <br />
-                            {!page.completed ? (
-                              <Button
-                                kind="primary"
-                                size="sm"
-                                onClick={() => handleMarkPageComplete(index)}
-                                style={{ marginRight: "0.5rem" }}
-                                hasIconOnly
-                                renderIcon={Checkmark}
-                                iconDescription={intl.formatMessage({
-                                  id: "notebook.page.markComplete",
-                                })}
-                                disabled={isViewMode}
-                              />
-                            ) : (
-                              <Tag
-                                type="green"
-                                size="sm"
-                                style={{ marginRight: "0.5rem" }}
-                              >
-                                <FormattedMessage id="notebook.page.completed" />
-                              </Tag>
-                            )}
-                          </Column>
-                        </Grid>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                )}
-              </Column>
-            </Grid>
+                            {page.panels &&
+                              Array.isArray(page.panels) &&
+                              page.panels.length > 0 && (
+                                <>
+                                  <Column lg={2} md={8} sm={4}>
+                                    <h6>
+                                      <FormattedMessage id="sample.label.orderpanel" />
+                                    </h6>
+                                  </Column>
+                                  <Column lg={14} md={8} sm={4}>
+                                    <div>
+                                      <span style={{ marginRight: "0.5rem" }}>
+                                        <FormattedMessage id="sample.label.orderpanel" />
+                                        :{" "}
+                                      </span>
+                                      {page.panels
+                                        .filter((panelId) => panelId != null)
+                                        .map((panelId, panelIndex) => {
+                                          // Try to find panel by ID (handle both string and number)
+                                          const panel = allPanels.find((p) => {
+                                            if (!p || p.id == null)
+                                              return false;
+                                            // Normalize both to strings for comparison
+                                            const pId = String(p.id).trim();
+                                            const pagePanelId =
+                                              String(panelId).trim();
+                                            // Compare as both string and number
+                                            return (
+                                              pId === pagePanelId ||
+                                              Number(p.id) ===
+                                                Number(panelId) ||
+                                              p.id == panelId
+                                            );
+                                          });
+                                          // Only show panel if found (don't show ID fallback)
+                                          return panel ? (
+                                            <Tag
+                                              key={panelIndex}
+                                              type="green"
+                                              size="sm"
+                                              style={{ marginRight: "0.5rem" }}
+                                            >
+                                              {panel.value}
+                                            </Tag>
+                                          ) : null;
+                                        })
+                                        .filter((tag) => tag !== null)}
+                                    </div>
+                                  </Column>
+                                </>
+                              )}
+                            {page.tests &&
+                              Array.isArray(page.tests) &&
+                              page.tests.length > 0 && (
+                                <>
+                                  <Column lg={2} md={8} sm={4}>
+                                    <h6>
+                                      {intl.formatMessage({
+                                        id: "barcode.label.info.tests",
+                                      })}
+                                    </h6>
+                                  </Column>
+                                  <Column lg={14} md={8} sm={4}>
+                                    <div>
+                                      {page.tests.map((testId, testIndex) => {
+                                        const test = allTests.find(
+                                          (t) => t.id == testId,
+                                        );
+                                        return test ? (
+                                          <Tag
+                                            key={testIndex}
+                                            type="blue"
+                                            size="sm"
+                                          >
+                                            {test.value}
+                                          </Tag>
+                                        ) : (
+                                          <></>
+                                        );
+                                      })}
+                                    </div>
+                                  </Column>
+                                </>
+                              )}
+                            <Column lg={16} md={8} sm={4}>
+                              <br />
+                              {!page.completed ? (
+                                <Button
+                                  kind="primary"
+                                  size="sm"
+                                  onClick={() => handleMarkPageComplete(index)}
+                                  style={{ marginRight: "0.5rem" }}
+                                  hasIconOnly
+                                  renderIcon={Checkmark}
+                                  iconDescription={intl.formatMessage({
+                                    id: "notebook.page.markComplete",
+                                  })}
+                                  disabled={isViewMode}
+                                />
+                              ) : (
+                                <Tag
+                                  type="green"
+                                  size="sm"
+                                  style={{ marginRight: "0.5rem" }}
+                                >
+                                  <FormattedMessage id="notebook.page.completed" />
+                                </Tag>
+                              )}
+                            </Column>
+                          </Grid>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  )}
+                </Column>
+              </Grid>
+            )}
           </Column>
         )}
         {selectedTab === TABS.COMMENTS && (

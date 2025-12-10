@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-51: Immunology Laboratory Workflow Feature -->
+    <!-- Includes: NotebookPageSample, AnalyzerResultImport, SampleRouting tables -->
+    <!-- and page_type column extension to notebook_page -->
+
+    <include file="liquibase/3.4.x.x/001-notebook-page-sample.xml"/>
+    <include file="liquibase/3.4.x.x/002-analyzer-result-import.xml"/>
+    <include file="liquibase/3.4.x.x/003-sample-routing.xml"/>
+    <include file="liquibase/3.4.x.x/004-notebook-page-type.xml"/>
+    <include file="liquibase/3.4.x.x/005-notebook-entry-refactor.xml"/>
+    <include file="liquibase/3.4.x.x/006-workflow-page-templates.xml"/>
+
+</databaseChangeLog>

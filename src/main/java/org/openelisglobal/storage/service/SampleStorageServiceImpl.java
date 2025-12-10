@@ -1221,6 +1221,20 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
         }
 
+        // Step 3: Try direct SampleItem ID lookup (for internal system calls)
+        try {
+            SampleItem sampleItemById = sampleItemService.get(trimmedId);
+            if (sampleItemById != null) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Found SampleItem by internal ID: {}", trimmedId);
+                }
+                return sampleItemById;
+            }
+        } catch (Exception e) {
+            // ID lookup failed - continue to error
+            logger.debug("Failed to find SampleItem by internal ID '{}': {}", trimmedId, e.getMessage());
+        }
+
         // Not found by any method
         throw new LIMSRuntimeException(String.format(
                 "Sample not found with identifier '%s'. Please check the accession number or external reference number.",
@@ -1231,5 +1245,35 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Transactional(readOnly = true)
     public Page<SampleStorageAssignment> getSampleAssignments(Pageable pageable) {
         return sampleStorageAssignmentDAO.findAll(pageable);
+    
+    @Override
+    @Transactional(readOnly = true)    
+    public SampleStorageAssignment getSampleStorageAssignment(Integer assignmentId) {
+        if (assignmentId == null) {
+            return null;
+        }
+        return sampleStorageAssignmentDAO.get(assignmentId).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleStorageAssignment> getSampleStorageAssignmentsBySampleItem(SampleItem sampleItem) {
+        if (sampleItem == null || sampleItem.getId() == null) {
+            return java.util.Collections.emptyList();
+        }
+        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItem.getId());
+        if (assignment != null) {
+            return java.util.Collections.singletonList(assignment);
+        }
+        return java.util.Collections.emptyList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleStorageMovement> getSampleStorageMovementsBySampleItem(SampleItem sampleItem) {
+        if (sampleItem == null || sampleItem.getId() == null) {
+            return java.util.Collections.emptyList();
+        }
+        return sampleStorageMovementDAO.findBySampleItemId(sampleItem.getId());
     }
 }

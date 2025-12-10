@@ -1,0 +1,6 @@
+GroupID,SampleType,NumOfSamples,CollectionDate,Volume,Notes
+GRP-001,Serum,3,2024-01-15,5ml,Morning collection
+GRP-002,Plasma,2,2024-01-15,3ml,Fasting samples
+GRP-003,Serum,4,2024-01-16,5ml,Afternoon collection
+GRP-004,Whole Blood,1,2024-01-16,10ml,EDTA tube
+GRP-005,Serum,2,2024-01-17,5ml,

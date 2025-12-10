@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- ANALYZER_RESULT_IMPORT TABLE -->
+    <!-- Audit trail for bulk result imports from laboratory analyzers -->
+    <!-- ======================================================== -->
+    <changeSet id="create-analyzer-result-import-sequence" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="analyzer_result_import_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for analyzer_result_import table.</comment>
+        <createSequence sequenceName="analyzer_result_import_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-analyzer-result-import-table" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_result_import" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating ANALYZER_RESULT_IMPORT table for tracking bulk result imports from analyzers.</comment>
+        <createTable tableName="analyzer_result_import">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="analyzer_result_import_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_analyzer_result_import"/>
+            </column>
+            <column name="notebook_page_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="file_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="import_date" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="imported_by" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_rows" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="successful_rows" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="failed_rows" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="column_mapping" type="jsonb">
+                <constraints nullable="true"/>
+            </column>
+            <column name="error_details" type="jsonb">
+                <constraints nullable="true"/>
+            </column>
+            <column name="assay_run_id" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-analyzer-result-import-foreign-keys" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_result_import" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to analyzer_result_import table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="analyzer_result_import"
+            baseColumnNames="notebook_page_id"
+            referencedTableName="notebook_page"
+            referencedColumnNames="id"
+            constraintName="fk_ari_notebook_page"/>
+        <addForeignKeyConstraint
+            baseTableName="analyzer_result_import"
+            baseColumnNames="analyzer_id"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"
+            constraintName="fk_ari_analyzer"/>
+        <addForeignKeyConstraint
+            baseTableName="analyzer_result_import"
+            baseColumnNames="imported_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_ari_imported_by"/>
+    </changeSet>
+
+    <changeSet id="add-analyzer-result-import-indexes" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_result_import" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="analyzer_result_import" indexName="idx_ari_page">
+            <column name="notebook_page_id"/>
+        </createIndex>
+        <createIndex tableName="analyzer_result_import" indexName="idx_ari_date">
+            <column name="import_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-analyzer-result-import-reference-table" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'ANALYZER_RESULT_IMPORT'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating ANALYZER_RESULT_IMPORT reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="ANALYZER_RESULT_IMPORT"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='ANALYZER_RESULT_IMPORT'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- ANALYZER_RESULT_IMPORT ASSAY METADATA COLUMNS -->
+    <!-- Additional columns for assay run metadata (US5 requirements) -->
+    <!-- ======================================================== -->
+    <changeSet id="add-analyzer-result-import-assay-metadata-columns" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_result_import" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="analyzer_result_import" columnName="operator_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding assay metadata columns: operator_id, machine_parameters, reagent_lots, file_format for US5.</comment>
+        <addColumn tableName="analyzer_result_import">
+            <column name="operator_id" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="machine_parameters" type="jsonb">
+                <constraints nullable="true"/>
+            </column>
+            <column name="reagent_lots" type="jsonb">
+                <constraints nullable="true"/>
+            </column>
+            <column name="file_format" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-analyzer-result-import-assay-run-index" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_result_import" schemaName="clinlims"/>
+            <columnExists tableName="analyzer_result_import" columnName="assay_run_id" schemaName="clinlims"/>
+            <not>
+                <indexExists tableName="analyzer_result_import" indexName="idx_ari_assay_run"/>
+            </not>
+        </preConditions>
+        <comment>Creating index on assay_run_id for quick lookup.</comment>
+        <createIndex tableName="analyzer_result_import" indexName="idx_ari_assay_run">
+            <column name="assay_run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Fix column name to match BaseObject convention -->
+    <changeSet id="rename-analyzer-result-import-lastupdated-column" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_result_import" schemaName="clinlims"/>
+            <columnExists tableName="analyzer_result_import" columnName="lastupdated" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="analyzer_result_import" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Renaming lastupdated to last_updated to match BaseObject convention.</comment>
+        <renameColumn tableName="analyzer_result_import" oldColumnName="lastupdated" newColumnName="last_updated" columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+</databaseChangeLog>

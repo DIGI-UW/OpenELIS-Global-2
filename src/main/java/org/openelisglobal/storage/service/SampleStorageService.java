@@ -63,7 +63,7 @@ public interface SampleStorageService {
 
     /**
      * Get storage location for a specific SampleItem
-     * 
+     *
      * @param sampleItemId SampleItem ID
      * @return Map with location details including hierarchicalPath, or empty map if
      *         not assigned
@@ -78,4 +78,29 @@ public interface SampleStorageService {
      */
     org.springframework.data.domain.Page<org.openelisglobal.storage.valueholder.SampleStorageAssignment> getSampleAssignments(
             org.springframework.data.domain.Pageable pageable);
+     /**       
+     * Get a SampleStorageAssignment by ID.
+     *
+     * @param assignmentId the assignment ID
+     * @return the SampleStorageAssignment or null if not found
+     */
+    org.openelisglobal.storage.valueholder.SampleStorageAssignment getSampleStorageAssignment(Integer assignmentId);
+
+    /**
+     * Get all storage assignments for a SampleItem.
+     *
+     * @param sampleItem the sample item
+     * @return list of storage assignments for this sample
+     */
+    java.util.List<org.openelisglobal.storage.valueholder.SampleStorageAssignment> getSampleStorageAssignmentsBySampleItem(
+            org.openelisglobal.sampleitem.valueholder.SampleItem sampleItem);
+
+    /**
+     * Get all storage movements for a SampleItem.
+     *
+     * @param sampleItem the sample item
+     * @return list of storage movements for this sample
+     */
+    java.util.List<org.openelisglobal.storage.valueholder.SampleStorageMovement> getSampleStorageMovementsBySampleItem(
+            org.openelisglobal.sampleitem.valueholder.SampleItem sampleItem);
 }

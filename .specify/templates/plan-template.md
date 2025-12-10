@@ -114,7 +114,6 @@ graph LR
 
 **Small Features (<3 days)**: May use a single milestone-style branch
 (`feat/{NNN}[-{jira}]-{name}-m1-{desc}`) without additional milestones.
-
 ## Project Structure
 
 ### Documentation (this feature)
