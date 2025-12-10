@@ -10,6 +10,8 @@ import {
   Button,
   Stack,
   FormGroup,
+  Section,
+  Heading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -84,19 +86,29 @@ function FollowUpARV() {
 
   return (
     <div>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Section>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="project.ARVFollowupStudy.name" />
+                </Heading>
+              </Section>
+            </Section>
+          </Section>
+        </Column>
+      </Grid>
       <Form onSubmit={handleSubmit}>
-        <Grid>
-          <Column lg={16}>
-            <h1>Follow-up ARV</h1>
-          </Column>
-
-          <Column lg={16}>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
             <Stack gap={5}>
               <Select
                 id="center-name"
                 labelText={
                   <>
-                    Center Name <span>*</span>
+                    <FormattedMessage id="sample.entry.project.ARV.centerCode" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="centerName"
@@ -107,12 +119,12 @@ function FollowUpARV() {
                 <SelectItem value="" text="Choose an option" />
                 {/* Api call to get array of center names and the map to render SelectItem accordingly */}
               </Select>
-
               <Select
                 id="center-code"
                 labelText={
                   <>
-                    Center Code <span>*</span>
+                    <FormattedMessage id="sample.entry.project.ARV.centerCode" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="centerCode"
@@ -123,7 +135,6 @@ function FollowUpARV() {
                 <SelectItem value="" text="Choose an option" />
                 {/* Api call to get array of center codes and the map to render SelectItem accordingly */}
               </Select>
-
               <TextInput
                 id="doctor"
                 labelText="Doctor"
@@ -131,12 +142,12 @@ function FollowUpARV() {
                 value={formValues.doctor}
                 onChange={handleInputChange}
               />
-
               <TextInput
                 id="received-date"
                 labelText={
                   <>
-                    Received Date (dd/mm/yyyy) <span>*</span>
+                    <FormattedMessage id="RTN.label.received.date" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 type="date"
@@ -145,7 +156,6 @@ function FollowUpARV() {
                 onChange={handleInputChange}
                 required
               />
-
               <TextInput
                 id="received-time"
                 labelText="Received Time (HH:mm)"
@@ -154,12 +164,12 @@ function FollowUpARV() {
                 value={formValues.receivedTime}
                 onChange={handleInputChange}
               />
-
               <TextInput
                 id="date-taken"
                 labelText={
                   <>
-                    Date Taken (dd/mm/yyyy) <span>*</span>
+                    <FormattedMessage id="RTN.label.date.taken" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 type="date"
@@ -168,7 +178,6 @@ function FollowUpARV() {
                 onChange={handleInputChange}
                 required
               />
-
               <TextInput
                 id="time-taken"
                 labelText="Time Taken (HH:mm)"
@@ -177,12 +186,12 @@ function FollowUpARV() {
                 value={formValues.timeTaken}
                 onChange={handleInputChange}
               />
-
               <TextInput
                 id="unique-health-id"
                 labelText={
                   <>
-                    Unique Health ID number <span>*</span>
+                    <FormattedMessage id="patient.subject.number" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="uniqueHealthId"
@@ -190,12 +199,12 @@ function FollowUpARV() {
                 onChange={handleInputChange}
                 required
               />
-
               <TextInput
                 id="site-unique-health-id"
                 labelText={
                   <>
-                    Site Unique Health ID number <span>*</span>
+                    <FormattedMessage id="patient.site.subject.number" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="siteUniqueHealthId"
@@ -203,12 +212,12 @@ function FollowUpARV() {
                 onChange={handleInputChange}
                 required
               />
-
               <TextInput
                 id="lab-no"
                 labelText={
                   <>
-                    Lab No <span>*</span>
+                    <FormattedMessage id="RTN.label.lab.no" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="labNo"
@@ -216,12 +225,12 @@ function FollowUpARV() {
                 onChange={handleInputChange}
                 required
               />
-
               <Select
                 id="gender"
                 labelText={
                   <>
-                    Gender <span>*</span>
+                    <FormattedMessage id="RTN.label.gender" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 name="gender"
@@ -234,12 +243,12 @@ function FollowUpARV() {
                 <SelectItem value="F" text="Female" />
                 <SelectItem value="O" text="Other" />
               </Select>
-
               <TextInput
                 id="date-of-birth"
                 labelText={
                   <>
-                    Date of Birth (dd/mm/yyyy) <span>*</span>
+                    <FormattedMessage id="RTN.label.date.of.birth" />
+                    <span style={{ color: "red" }}>*</span>
                   </>
                 }
                 type="date"
@@ -248,7 +257,6 @@ function FollowUpARV() {
                 onChange={handleInputChange}
                 required
               />
-
               <FormGroup legendText="Age">
                 <TextInput
                   id="age-years"
@@ -259,7 +267,6 @@ function FollowUpARV() {
                   onChange={handleInputChange}
                 />
               </FormGroup>
-
               <Select
                 id="hiv-status"
                 labelText="HIV Status"
@@ -270,7 +277,6 @@ function FollowUpARV() {
                 <SelectItem value="" text="Choose an option" />
                 {/* Api call to get array of HIV status and the map to render SelectItem accordingly */}
               </Select>
-
               <FormGroup legendText="Specimens Collected">
                 <Stack gap={2}>
                   <Checkbox
@@ -289,7 +295,6 @@ function FollowUpARV() {
                   />
                 </Stack>
               </FormGroup>
-
               <FormGroup legendText="Dry Tube Tests">
                 <Stack gap={2}>
                   <Checkbox
@@ -322,7 +327,6 @@ function FollowUpARV() {
                   />
                 </Stack>
               </FormGroup>
-
               <FormGroup legendText="EDTA Tube Tests">
                 <Stack gap={2}>
                   <Checkbox
@@ -341,7 +345,6 @@ function FollowUpARV() {
                   />
                 </Stack>
               </FormGroup>
-
               <FormGroup legendText="Other Tests">
                 <Stack gap={2}>
                   <Checkbox
@@ -360,7 +363,6 @@ function FollowUpARV() {
                   />
                 </Stack>
               </FormGroup>
-
               <Select
                 id="under-investigation"
                 labelText="Under Investigation"
@@ -372,7 +374,6 @@ function FollowUpARV() {
                 <SelectItem value="yes" text="Yes" />
                 <SelectItem value="no" text="No" />
               </Select>
-
               <TextInput
                 id="note"
                 labelText="Note"
@@ -380,16 +381,13 @@ function FollowUpARV() {
                 value={formValues.note}
                 onChange={handleInputChange}
               />
+              <div>
+                <Button kind="primary" type="submit">
+                  Save
+                </Button>
+                <Button kind="secondary">Cancel</Button>
+              </div>
             </Stack>
-          </Column>
-
-          <Column lg={16}>
-            <div>
-              <Button kind="primary" type="submit">
-                Save
-              </Button>
-              <Button kind="secondary">Cancel</Button>
-            </div>
           </Column>
         </Grid>
       </Form>

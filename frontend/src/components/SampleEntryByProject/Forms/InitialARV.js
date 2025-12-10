@@ -389,10 +389,6 @@ function InitialARV() {
                 onChange={handleInputChange}
               />
             </Stack>
-          </Column>
-        </Grid>
-        <Grid>
-          <Column lg={16} md={8} sm={4}>
             <div>
               <Button kind="primary" type="submit">
                 Save
