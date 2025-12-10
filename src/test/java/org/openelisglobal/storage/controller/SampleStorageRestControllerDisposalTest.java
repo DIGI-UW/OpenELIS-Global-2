@@ -207,8 +207,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                 post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isOk());
 
-        // Assert - assignment should still exist but location should be NULL (FR-056,
-        // FR-057)
+        // Assert - assignment exists with NULL location
+        // (specs/001-sample-storage/spec.md FR-056)
         Integer assignmentCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class, numericId);
         assertEquals("Assignment record should still exist after disposal", Integer.valueOf(1), assignmentCount);
@@ -394,10 +394,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
     }
 
     /**
-     * OGC-144: Test that disposal increments the disposed metric count. Per FR-057,
-     * FR-057b: Metrics MUST update automatically when disposal occurs. This test
-     * verifies the cross-feature integration between disposal workflow and metrics
-     * calculation.
+     * Verify disposal increments disposed metric count
+     * (specs/001-sample-storage/spec.md FR-057b)
      */
     @Test
     public void testDisposal_IncrementsDisposedMetricCount() throws Exception {
@@ -442,8 +440,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
     }
 
     /**
-     * OGC-144: Test that disposed samples remain searchable. Per FR-056: "Disposed
-     * samples MUST remain viewable for audit purposes but non-editable"
+     * Verify disposed samples remain searchable for audit
+     * (specs/001-sample-storage/spec.md FR-056)
      */
     @Test
     public void testDisposal_DisposedSampleRemainSearchable() throws Exception {

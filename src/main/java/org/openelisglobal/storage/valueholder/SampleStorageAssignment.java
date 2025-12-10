@@ -41,8 +41,8 @@ public class SampleStorageAssignment extends BaseObject<Integer> {
     private SampleItem sampleItem;
 
     // Simplified polymorphic location relationship
-    // OGC-144: nullable = true to support disposal (location cleared but assignment
-    // preserved)
+    // Nullable to support disposal (location cleared but assignment preserved for
+    // audit/metrics)
     @Column(name = "LOCATION_ID", nullable = true)
     private Integer locationId; // Can reference device, shelf, or rack ID
 

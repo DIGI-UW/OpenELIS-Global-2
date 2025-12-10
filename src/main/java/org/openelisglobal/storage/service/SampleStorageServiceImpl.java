@@ -125,7 +125,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
-            // Map status ID to user-friendly name for filtering (OGC-144: FR-056)
+            // Map status ID to user-friendly name for filtering
+            // (specs/001-sample-storage/spec.md FR-056)
             String statusName = "active"; // Default
             if (sampleItem.getStatusId() != null) {
                 if (statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {

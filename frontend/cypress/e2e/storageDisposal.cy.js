@@ -232,9 +232,8 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
   });
 
   /**
-   * OGC-144: Test that Disposed counter increments immediately after disposal
-   * Per FR-057b, FR-057c: Metric cards MUST update automatically when operations complete
-   * without requiring page refresh (optimistic update pattern)
+   * Verify disposed counter increments immediately without page refresh
+   * (specs/001-sample-storage/spec.md FR-057b, FR-057c)
    */
   it("Should increment Disposed counter immediately after disposal without page refresh", function () {
     cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(

@@ -130,8 +130,7 @@ public class SampleStorageServiceDisposalTest {
         // Act
         sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
 
-        // Assert
-        // OGC-144: Assignment should be updated with null location, not deleted
+        // Assert - Assignment updated with null location (not deleted) for audit trail
         verify(sampleStorageAssignmentDAO).update(testAssignment);
         verify(sampleStorageAssignmentDAO, never()).delete(any(SampleStorageAssignment.class));
         

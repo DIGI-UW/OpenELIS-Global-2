@@ -81,8 +81,7 @@ const StorageDashboard = () => {
     storageLocations: 0,
   });
 
-  // Callback for child components to refresh metrics (OGC-144: see specs/001-sample-storage/spec.md FR-057b, FR-057c)
-  // Uses AbortController to cancel in-flight requests on unmount (per ibacher PR review)
+  // Callback for child components to refresh metrics (specs/001-sample-storage/spec.md FR-057b, FR-057c)
   const refreshMetrics = useCallback(() => {
     const controller = new AbortController();
 
@@ -707,9 +706,9 @@ const StorageDashboard = () => {
       setNotificationVisible(true);
       handleDisposeModalClose();
 
-      // OGC-73 & OGC-144: Refresh sample list and metrics to show updated status (FR-057b, FR-057c)
+      // Refresh sample list and metrics to show updated status
       loadSamples();
-      refreshMetrics(); // OGC-144: Use refreshMetrics for optimistic update
+      refreshMetrics();
     } catch (error) {
       console.error("Error disposing sample:", error);
       addNotification({
