@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   Button,
   DataTable,
@@ -32,6 +32,8 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { StorageLocationAPI } from "./InventoryService";
 import StorageLocationFormModal from "./StorageLocationFormModal";
+import { NotificationContext } from "../layout/Layout";
+import { NotificationKinds } from "../common/CustomNotification";
 import "./StorageLocationManagement.css";
 
 const LOCATION_TYPE_OPTIONS = [
@@ -57,12 +59,26 @@ const HIERARCHY_RULES = {
  */
 export default function StorageLocationManagement() {
   const intl = useIntl();
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+
+  const notify = useCallback(
+    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+      setNotificationVisible(true);
+      addNotification({
+        kind,
+        title,
+        subtitle,
+        message,
+      });
+    },
+    [addNotification, setNotificationVisible],
+  );
 
   const [locations, setLocations] = useState([]);
   const [treeData, setTreeData] = useState([]);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [formMode, setFormMode] = useState("create");
@@ -74,7 +90,6 @@ export default function StorageLocationManagement() {
 
   const loadLocations = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const allLocations = await StorageLocationAPI.getAll();
       setLocations(allLocations);
@@ -85,11 +100,15 @@ export default function StorageLocationManagement() {
       setExpandedNodes(new Set(rootIds));
     } catch (err) {
       console.error("Error loading locations:", err);
-      setError("Failed to load storage locations");
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.error" }),
+        subtitle: "Failed to load storage locations",
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [notify, intl]);
 
   useEffect(() => {
     loadLocations();
@@ -178,21 +197,42 @@ export default function StorageLocationManagement() {
         location.id,
       );
       if (hasActiveLots) {
-        setError("Cannot delete location with active inventory lots");
+        notify({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.error" }),
+          subtitle: "Cannot delete location with active inventory lots",
+        });
         return;
       }
 
       await StorageLocationAPI.deactivate(location.id);
       await loadLocations();
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.success" }),
+        subtitle: `Location "${location.name}" deleted successfully`,
+      });
     } catch (err) {
       console.error("Error deleting location:", err);
-      setError(err.message || "Failed to delete location");
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.error" }),
+        subtitle: err.message || "Failed to delete location",
+      });
     }
   };
 
   const handleFormSubmit = async () => {
     await loadLocations();
     setFormModalOpen(false);
+    notify({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.success" }),
+      subtitle:
+        formMode === "create"
+          ? "Location created successfully"
+          : "Location updated successfully",
+    });
   };
 
   // Drag and drop handlers
@@ -237,9 +277,11 @@ export default function StorageLocationManagement() {
 
     const allowedParentTypes = HIERARCHY_RULES[draggedNode.locationType] || [];
     if (!allowedParentTypes.includes(targetNode.locationType)) {
-      setError(
-        `${getLocationLabel(draggedNode.locationType)} cannot be placed under ${getLocationLabel(targetNode.locationType)}`,
-      );
+      notify({
+        kind: NotificationKinds.warning,
+        title: intl.formatMessage({ id: "notification.warning" }),
+        subtitle: `${getLocationLabel(draggedNode.locationType)} cannot be placed under ${getLocationLabel(targetNode.locationType)}`,
+      });
       setDraggedNode(null);
       return;
     }
@@ -252,9 +294,18 @@ export default function StorageLocationManagement() {
       await loadLocations();
       setDraggedNode(null);
       setExpandedNodes((prev) => new Set([...prev, targetNode.id]));
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.success" }),
+        subtitle: `Moved "${draggedNode.name}" to "${targetNode.name}"`,
+      });
     } catch (err) {
       console.error("Error moving location:", err);
-      setError(err.message || "Failed to move location");
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.error" }),
+        subtitle: err.message || "Failed to move location",
+      });
       setDraggedNode(null);
     }
   };
@@ -379,16 +430,6 @@ export default function StorageLocationManagement() {
 
   return (
     <div className="storage-location-management">
-      {error && (
-        <InlineNotification
-          kind="error"
-          title="Error"
-          subtitle={error}
-          onCloseButtonClick={() => setError(null)}
-          style={{ marginBottom: "1rem" }}
-        />
-      )}
-
       <div className="page-header">
         <div className="header-content">
           <h4>Storage Location Management</h4>
