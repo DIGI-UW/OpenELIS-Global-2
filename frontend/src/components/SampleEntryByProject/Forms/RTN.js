@@ -11,6 +11,8 @@ import {
   Stack,
   FormGroup,
   FormLabel,
+  Section,
+  Heading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -69,13 +71,20 @@ function RTN() {
 
   return (
     <div>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Section>
+              <Section>
+                <Heading>{intl.formatMessage({ id: "RTN.title" })}</Heading>
+              </Section>
+            </Section>
+          </Section>
+        </Column>
+      </Grid>
       <Form onSubmit={handleSubmit}>
-        <Grid>
-          <Column lg={16}>
-            <h1>{intl.formatMessage({ id: "RTN.title" })}</h1>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
             <Stack gap={5}>
               <TextInput
                 id="received-date"
@@ -155,11 +164,6 @@ function RTN() {
                   />
                 </div>
               </FormGroup>
-            </Stack>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <Stack gap={5}>
               <Select
                 id="gender"
                 labelText={intl.formatMessage({ id: "RTN.label.gender" })}
@@ -259,18 +263,15 @@ function RTN() {
                 value={formValues.note}
                 onChange={handleInputChange}
               />
+              <div>
+                <Button kind="primary" type="submit">
+                  <FormattedMessage id="button.save" />
+                </Button>
+                <Button kind="secondary">
+                  <FormattedMessage id="button.cancel" />
+                </Button>
+              </div>
             </Stack>
-          </Column>
-
-          <Column lg={16}>
-            <div>
-              <Button kind="primary" type="submit">
-                {intl.formatMessage({ id: "RTN.button.save" })}
-              </Button>
-              <Button kind="secondary">
-                {intl.formatMessage({ id: "RTN.button.cancel" })}
-              </Button>
-            </div>
           </Column>
         </Grid>
       </Form>

@@ -391,9 +391,11 @@ function InitialARV() {
             </Stack>
             <div>
               <Button kind="primary" type="submit">
-                Save
+                <FormattedMessage id="button.save" />
               </Button>
-              <Button kind="secondary">Cancel</Button>
+              <Button kind="secondary">
+                <FormattedMessage id="button.cancel" />
+              </Button>
             </div>
           </Column>
         </Grid>

@@ -10,7 +10,10 @@ import {
   Button,
   Stack,
   FormGroup,
+  Heading,
+  Section,
 } from "@carbon/react";
+import { FormattedMessage } from "react-intl";
 
 const initialFormValues = {
   receivedDate: "",
@@ -83,13 +86,22 @@ function EID() {
 
   return (
     <div>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Section>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="project.EIDStudy.name" />
+                </Heading>
+              </Section>
+            </Section>
+          </Section>
+        </Column>
+      </Grid>
       <Form onSubmit={handleSubmit}>
-        <Grid>
-          <Column lg={16}>
-            <h1>EID</h1>
-          </Column>
-
-          <Column lg={16}>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
             <Stack gap={5}>
               <TextInput
                 id="received-date"
@@ -385,16 +397,15 @@ function EID() {
                   />
                 </Stack>
               </FormGroup>
+              <div>
+                <Button kind="primary" type="submit">
+                  <FormattedMessage id="button.save" />
+                </Button>
+                <Button kind="secondary">
+                  <FormattedMessage id="button.cancel" />
+                </Button>
+              </div>
             </Stack>
-          </Column>
-
-          <Column lg={16}>
-            <div>
-              <Button kind="primary" type="submit">
-                Save
-              </Button>
-              <Button kind="secondary">Cancel</Button>
-            </div>
           </Column>
         </Grid>
       </Form>
