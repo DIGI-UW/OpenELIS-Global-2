@@ -82,11 +82,14 @@ const StorageDashboard = () => {
   });
 
   // Callback for child components to refresh metrics (OGC-144: see specs/001-sample-storage/spec.md FR-057b, FR-057c)
+  // Uses AbortController to cancel in-flight requests on unmount (per ibacher PR review)
   const refreshMetrics = useCallback(() => {
+    const controller = new AbortController();
+
     getFromOpenElisServer(
       "/rest/storage/sample-items?countOnly=true",
       (response) => {
-        if (componentMounted.current && response) {
+        if (response) {
           const metricsData = Array.isArray(response) ? response[0] : response;
           setMetrics({
             totalSamples: metricsData?.totalSampleItems ?? 0,
@@ -96,8 +99,11 @@ const StorageDashboard = () => {
           });
         }
       },
+      controller.signal,
     );
-  }, [componentMounted]);
+
+    return () => controller.abort();
+  }, []);
 
   // Tab state - derive from URL
   const getTabFromUrl = () => {
@@ -791,7 +797,7 @@ const StorageDashboard = () => {
 
   // Load metrics
   useEffect(() => {
-    loadMetrics();
+    const abortMetrics = refreshMetrics();
     loadRooms();
     loadDevices();
     loadShelves();
@@ -800,8 +806,9 @@ const StorageDashboard = () => {
 
     return () => {
       componentMounted.current = false;
+      if (abortMetrics) abortMetrics(); // Cancel metrics request on unmount
     };
-  }, []);
+  }, [refreshMetrics]);
 
   // Reload data when filters change (server-side filtering for all tabs)
   // Note: When searchTerm is present, filters are applied client-side on search results (AND logic)
@@ -898,24 +905,6 @@ const StorageDashboard = () => {
     setSelectedTab(tabIndex);
     const tabName = TAB_ROUTES[tabIndex] || "samples";
     history.push(`/Storage/${tabName}`);
-  };
-
-  const loadMetrics = () => {
-    getFromOpenElisServer(
-      "/rest/storage/sample-items?countOnly=true",
-      (response) => {
-        if (componentMounted.current && response) {
-          // Response is an array with one metrics object
-          const metricsData = Array.isArray(response) ? response[0] : response;
-          setMetrics({
-            totalSamples: metricsData?.totalSampleItems || 0,
-            active: metricsData?.active || 0,
-            disposed: metricsData?.disposed || 0,
-            storageLocations: metricsData?.storageLocations || 0,
-          });
-        }
-      },
-    );
   };
 
   const loadRooms = () => {
