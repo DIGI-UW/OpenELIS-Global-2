@@ -387,10 +387,11 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
     /**
      * Helper method to assign a sample to a storage device
      */
-    private void assignSampleToDevice(String sampleItemId, Integer deviceId) throws Exception {
+    private void assignSampleToDevice(String sampleItemExternalId, Integer deviceId) throws Exception {
+        int numericId = getSampleItemNumericId(sampleItemExternalId);
         jdbcTemplate.update(
                 "INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, assigned_by_user_id, assigned_date, last_updated) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-                10001, Integer.parseInt(sampleItemId), deviceId, "device", 1);
+                10001, numericId, deviceId, "device", 1);
     }
 
     /**
@@ -428,14 +429,13 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         assertEquals("Disposed count should increment by exactly 1", initialDisposed + 1, finalDisposed);
 
         // Verify assignment still exists but location is NULL
+        int numericId = getSampleItemNumericId(sampleItemId);
         Integer assignmentCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class,
-                Integer.parseInt(sampleItemId));
+                "SELECT COUNT(*) FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class, numericId);
         assertEquals("Assignment record should still exist", Integer.valueOf(1), assignmentCount);
 
         Integer locationId = jdbcTemplate.queryForObject(
-                "SELECT location_id FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class,
-                Integer.parseInt(sampleItemId));
+                "SELECT location_id FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class, numericId);
         assertNull("Location should be cleared after disposal", locationId);
     }
 

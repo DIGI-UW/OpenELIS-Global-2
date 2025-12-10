@@ -321,8 +321,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     }
                 }
 
-                // Clear the location (remove assignment)
-                sampleStorageAssignmentDAO.delete(existingAssignment);
+                // Clear the location fields (preserve assignment for audit trail)
+                existingAssignment.setLocationId(null);
+                existingAssignment.setLocationType(null);
+                existingAssignment.setPositionCoordinate(null);
+                sampleStorageAssignmentDAO.update(existingAssignment);
             }
 
             // Update SampleItem status to "disposed" (status_id = 24)
