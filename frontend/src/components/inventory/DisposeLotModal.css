@@ -1,0 +1,87 @@
+/* Disposal Modal Styles - Pattern consistent with DisposeSampleModal */
+
+.dispose-modal-alert {
+  margin-bottom: 1rem;
+}
+
+.dispose-modal-sample-info,
+.dispose-modal-lot-info {
+  margin-bottom: 1rem;
+}
+
+.info-box {
+  background-color: #f4f4f4;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+  min-width: 120px;
+}
+
+.info-value {
+  color: #525252;
+}
+
+.dispose-modal-current-location {
+  margin-bottom: 1rem;
+}
+
+.location-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.location-label {
+  font-weight: 600;
+}
+
+.location-box {
+  background-color: #e5f6ff;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border-left: 3px solid #0f62fe;
+  margin-bottom: 0.5rem;
+}
+
+.location-path {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.875rem;
+}
+
+.location-note {
+  font-size: 0.75rem;
+  color: #525252;
+  font-style: italic;
+}
+
+.dispose-modal-instructions {
+  margin-bottom: 1rem;
+}
+
+.dispose-modal-separator {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 1.5rem 0;
+}
+
+.dispose-modal-fields .form-group {
+  margin-bottom: 1rem;
+}
+
+.dispose-modal-fields .form-group:last-child {
+  margin-bottom: 0;
+}
