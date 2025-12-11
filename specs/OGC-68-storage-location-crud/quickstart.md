@@ -1,8 +1,8 @@
 # Quickstart: Storage Location Management & Configuration
 
-**Feature**: 151-storage-location-crud  
+**Feature**: OGC-68-storage-location-crud  
 **Jira**: [OGC-68](https://uwdigi.atlassian.net/browse/OGC-68)  
-**Branch**: `151-storage-location-crud`
+**Branch**: `OGC-68-storage-location-crud`
 
 ## Prerequisites
 
@@ -17,8 +17,8 @@
 
 | Component      | Location                                                                                 |
 | -------------- | ---------------------------------------------------------------------------------------- |
-| Spec           | `specs/151-storage-location-crud/spec.md`                                                |
-| Plan           | `specs/151-storage-location-crud/plan.md`                                                |
+| Spec           | `specs/OGC-68-storage-location-crud/spec.md`                                                |
+| Plan           | `specs/OGC-68-storage-location-crud/plan.md`                                                |
 | Entity         | `src/main/java/org/openelisglobal/storage/valueholder/StorageDevice.java`                |
 | Service        | `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`       |
 | Controller     | `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` |
@@ -63,7 +63,7 @@ git checkout develop
 git pull
 
 # Create milestone branch (backend first)
-git checkout -b feat/151-storage-location-crud/m1-backend
+git checkout -b feat/OGC-68-storage-location-crud/m1-backend
 ```
 
 ### 2. Backend Development (M1)
@@ -97,7 +97,7 @@ mvn test -Dtest=StorageLocationServiceTest
 ```bash
 # Switch to frontend milestone (can be parallel)
 git checkout develop
-git checkout -b feat/151-storage-location-crud/m2-frontend
+git checkout -b feat/OGC-68-storage-location-crud/m2-frontend
 
 cd frontend
 
@@ -138,11 +138,11 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 
 ```bash
 # Push branch
-git push -u origin feat/151-storage-location-crud/m1-backend
+git push -u origin feat/OGC-68-storage-location-crud/m1-backend
 
 # Create PR targeting develop
 # Title: "feat(OGC-68): Add storage location CRUD backend"
-# Reference: specs/151-storage-location-crud/spec.md
+# Reference: specs/OGC-68-storage-location-crud/spec.md
 ```
 
 ## Testing

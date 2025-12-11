@@ -1,6 +1,6 @@
 # Data Model: Storage Location Management & Configuration
 
-**Feature**: 151-storage-location-crud  
+**Feature**: OGC-68-storage-location-crud  
 **Date**: 2025-12-11  
 **Spec**: [spec.md](./spec.md)
 
