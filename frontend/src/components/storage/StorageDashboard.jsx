@@ -3193,6 +3193,7 @@ const StorageDashboard = () => {
                   {/* OGC-150: Pagination for Samples tab */}
                   <Column lg={16} md={8} sm={4}>
                     <Pagination
+                      data-testid="sample-items-pagination"
                       page={page}
                       pageSize={pageSize}
                       pageSizes={[5, 25, 50, 100]}
