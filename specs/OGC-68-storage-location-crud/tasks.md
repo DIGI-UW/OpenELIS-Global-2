@@ -63,6 +63,9 @@ dependencies between them).
 - [ ] T008 [P] [US2] Write controller test for POST `/rest/storage/devices` with
       connectivity fields in
       `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
+- [ ] T008a [P] [US1] Write controller test verifying non-admin users receive 403
+      Forbidden for CRUD operations in
+      `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
 
 **Checkpoint**: All tests should FAIL (Red phase)
 
@@ -92,6 +95,9 @@ dependencies between them).
 - [ ] T016 [US1] Implement `canDeleteShelf()` method in
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`
 - [ ] T017 [US1] Implement `canDeleteRack()` method in
+      `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`
+- [ ] T017a [US1] Implement uniqueness validation for Location Names within parent
+      scope in
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`
 
 ### M1.6 - Controller Layer [US1]
@@ -181,6 +187,9 @@ work, connectivity fields persist
 - [ ] T038 [US2] Implement IP address validation (IPv4/IPv6 regex) in
       `frontend/src/components/storage/StorageLocationModal.jsx`
 - [ ] T039 [US2] Implement port validation (1-65535) in
+      `frontend/src/components/storage/StorageLocationModal.jsx`
+- [ ] T039a [US1] Implement uniqueness validation for Location Names within parent
+      scope (display error from backend 409 response) in
       `frontend/src/components/storage/StorageLocationModal.jsx`
 - [ ] T040 [US1] Create `DeleteLocationModal.jsx` confirmation component in
       `frontend/src/components/storage/DeleteLocationModal.jsx`
