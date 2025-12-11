@@ -819,6 +819,14 @@ const StorageDashboard = () => {
     setSearchTerm("");
   }, [selectedTab]);
 
+  // OGC-150: Reset pagination to page 1 when filters/search change (prevent empty results)
+  useEffect(() => {
+    if (selectedTab === 0) {
+      // Samples tab - reset pagination when any filter changes
+      setPage(1);
+    }
+  }, [searchTerm, locationFilter, filterStatus, selectedTab]);
+
   // Sync tab with URL changes and handle default route
   useEffect(() => {
     if (location.pathname === "/Storage") {

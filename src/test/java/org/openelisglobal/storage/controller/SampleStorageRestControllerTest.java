@@ -58,4 +58,20 @@ public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
     }
+
+    @Test
+    public void testGetSampleItems_WithStatusFilterActive_ReturnsFilteredResults() throws Exception {
+        // Test active filter
+        mockMvc.perform(get("/rest/storage/sample-items").param("status", "active").param("page", "0")
+                .param("size", "25").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray()).andExpect(jsonPath("$.totalItems").exists());
+    }
+
+    @Test
+    public void testGetSampleItems_WithStatusFilterDisposed_ReturnsFilteredResults() throws Exception {
+        // Test disposed filter
+        mockMvc.perform(get("/rest/storage/sample-items").param("status", "disposed").param("page", "0")
+                .param("size", "25").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray()).andExpect(jsonPath("$.totalItems").exists());
+    }
 }

@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
@@ -25,6 +27,9 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
 
     @Autowired
     private StorageLocationService storageLocationService;
+
+    @Autowired
+    private IStatusService statusService;
 
     @Override
     @Transactional(readOnly = true)
@@ -48,14 +53,24 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
                 }
             }
 
-            // Status filtering: case-insensitive exact match
+            // Status filtering: Use statusService to check if sample is disposed
+            // Frontend sends "active" or "disposed", backend stores status ID
             boolean matchesStatus = true;
             if (status != null && !status.isEmpty()) {
-                String sampleStatus = (String) sample.get("status");
-                if (sampleStatus == null) {
-                    matchesStatus = false;
+                String statusLower = status.trim().toLowerCase();
+                String sampleStatusId = (String) sample.get("status");
+
+                if (sampleStatusId == null || "active".equals(sampleStatusId)) {
+                    // No status ID or explicitly "active" = active by default
+                    matchesStatus = statusLower.equals("active");
+                } else if ("active".equals(statusLower)) {
+                    // Active: status should NOT be disposed
+                    matchesStatus = !statusService.matches(sampleStatusId, SampleStatus.Disposed);
+                } else if ("disposed".equals(statusLower)) {
+                    // Disposed: status should BE disposed
+                    matchesStatus = statusService.matches(sampleStatusId, SampleStatus.Disposed);
                 } else {
-                    matchesStatus = status.trim().equalsIgnoreCase(sampleStatus);
+                    matchesStatus = false; // Unknown status filter value
                 }
             }
 
