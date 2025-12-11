@@ -39,7 +39,18 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
         try {
             InventoryAuditLog auditLog = new InventoryAuditLog();
             auditLog.setTimestamp(new Timestamp(System.currentTimeMillis()));
-            auditLog.setPerformedByUser(Integer.valueOf(sysUserId));
+            // Only set user ID if it's provided and not null
+            if (sysUserId != null && !sysUserId.trim().isEmpty()) {
+                try {
+                    auditLog.setPerformedByUser(Integer.valueOf(sysUserId));
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "logOperation",
+                            "Invalid user ID format: " + sysUserId + ". Audit log will have null user.");
+                    auditLog.setPerformedByUser(null);
+                }
+            } else {
+                auditLog.setPerformedByUser(null);
+            }
             auditLog.setOperationType(operationType);
             auditLog.setEntityType(entityType);
             auditLog.setEntityId(entityId);
