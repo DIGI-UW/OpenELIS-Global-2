@@ -131,15 +131,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
-            // Map status ID to user-friendly name for filtering
-            // (specs/001-sample-storage/spec.md FR-056)
-            String statusName = "active"; // Default
-            if (sampleItem.getStatusId() != null) {
-                if (statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {
-                    statusName = "disposed";
-                }
-            }
-            map.put("status", statusName);
+            // Store actual status ID for filtering (OGC-150: supports all status types from dropdown)
+            // Frontend dropdown loads all status types and filters by ID
+            // Default to "active" if no status ID (backward compatibility)
+            map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
 
             // Check if this sample item has an assignment
             SampleStorageAssignment assignment = assignmentsBySampleItemId.get(sampleItem.getId());
