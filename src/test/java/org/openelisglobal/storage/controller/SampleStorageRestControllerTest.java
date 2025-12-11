@@ -74,4 +74,33 @@ public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest
                 .param("size", "25").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray()).andExpect(jsonPath("$.totalItems").exists());
     }
+
+    @Test
+    public void testGetSampleItems_AssignedSamplesHaveLocation() throws Exception {
+        // CRITICAL: Verify that sample items with storage assignments have location populated
+        // This prevents the "location not showing" bug discovered during manual testing
+        String response = mockMvc
+                .perform(get("/rest/storage/sample-items").param("page", "0").param("size", "25")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items").isArray()).andReturn().getResponse()
+                .getContentAsString();
+
+        // Parse response and verify at least one assigned sample has non-empty location
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(response);
+        com.fasterxml.jackson.databind.JsonNode items = root.get("items");
+
+        boolean foundAssignedWithLocation = false;
+        for (com.fasterxml.jackson.databind.JsonNode item : items) {
+            String location = item.has("location") ? item.get("location").asText() : "";
+            // If location is not empty, it means sample is assigned and location path was built
+            if (location != null && !location.isEmpty() && !location.equals("Unassigned")) {
+                foundAssignedWithLocation = true;
+                break;
+            }
+        }
+
+        assertTrue("At least one assigned sample should have a non-empty location field (hierarchical path)",
+                foundAssignedWithLocation);
+    }
 }
