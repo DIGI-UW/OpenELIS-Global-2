@@ -17,8 +17,8 @@
 
 | Component      | Location                                                                                 |
 | -------------- | ---------------------------------------------------------------------------------------- |
-| Spec           | `specs/OGC-68-storage-location-crud/spec.md`                                                |
-| Plan           | `specs/OGC-68-storage-location-crud/plan.md`                                                |
+| Spec           | `specs/OGC-68-storage-location-crud/spec.md`                                             |
+| Plan           | `specs/OGC-68-storage-location-crud/plan.md`                                             |
 | Entity         | `src/main/java/org/openelisglobal/storage/valueholder/StorageDevice.java`                |
 | Service        | `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`       |
 | Controller     | `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` |

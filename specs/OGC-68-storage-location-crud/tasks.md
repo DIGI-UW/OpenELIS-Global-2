@@ -40,7 +40,8 @@ dependencies between them).
 ### M1.1 - Branch Setup
 
 - [ ] T001 Create milestone branch:
-      `git checkout -b feat/OGC-68-storage-location-crud/m1-backend` from `develop`
+      `git checkout -b feat/OGC-68-storage-location-crud/m1-backend` from
+      `develop`
 
 ### M1.2 - Tests First (TDD) [US1, US2]
 
@@ -63,8 +64,8 @@ dependencies between them).
 - [ ] T008 [P] [US2] Write controller test for POST `/rest/storage/devices` with
       connectivity fields in
       `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
-- [ ] T008a [P] [US1] Write controller test verifying non-admin users receive 403
-      Forbidden for CRUD operations in
+- [ ] T008a [P] [US1] Write controller test verifying non-admin users receive
+      403 Forbidden for CRUD operations in
       `src/test/java/org/openelisglobal/storage/controller/StorageLocationRestControllerTest.java`
 
 **Checkpoint**: All tests should FAIL (Red phase)
@@ -96,8 +97,8 @@ dependencies between them).
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`
 - [ ] T017 [US1] Implement `canDeleteRack()` method in
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`
-- [ ] T017a [US1] Implement uniqueness validation for Location Names within parent
-      scope in
+- [ ] T017a [US1] Implement uniqueness validation for Location Names within
+      parent scope in
       `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`
 
 ### M1.6 - Controller Layer [US1]
@@ -188,8 +189,8 @@ work, connectivity fields persist
       `frontend/src/components/storage/StorageLocationModal.jsx`
 - [ ] T039 [US2] Implement port validation (1-65535) in
       `frontend/src/components/storage/StorageLocationModal.jsx`
-- [ ] T039a [US1] Implement uniqueness validation for Location Names within parent
-      scope (display error from backend 409 response) in
+- [ ] T039a [US1] Implement uniqueness validation for Location Names within
+      parent scope (display error from backend 409 response) in
       `frontend/src/components/storage/StorageLocationModal.jsx`
 - [ ] T040 [US1] Create `DeleteLocationModal.jsx` confirmation component in
       `frontend/src/components/storage/DeleteLocationModal.jsx`
@@ -231,8 +232,9 @@ work, connectivity fields persist
 - [ ] T054 Run `npm run format` and verify all Jest tests pass with `npm test`
 - [ ] T055 Run individual Cypress test:
       `npm run cy:run -- --spec "cypress/e2e/storageLocationCrud.cy.js"`
-- [ ] T056 Create PR: `feat/OGC-68-storage-location-crud/m2-frontend` → `develop`
-      with title "feat(OGC-68): Add storage location CRUD frontend modals"
+- [ ] T056 Create PR: `feat/OGC-68-storage-location-crud/m2-frontend` →
+      `develop` with title "feat(OGC-68): Add storage location CRUD frontend
+      modals"
 
 **Milestone 2 Checkpoint**: All Jest + Cypress tests pass, CRUD modals work for
 all entity types

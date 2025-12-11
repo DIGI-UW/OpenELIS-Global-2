@@ -1021,8 +1021,8 @@ sequential, enabling flexible team coordination.
 
 2. **Implementation Phase** (after spec PR approved OR in parallel):
    - Spec PR does NOT need to be merged before implementation begins
-   - For simple features (1-2 milestones): milestone branches MAY target `develop`
-     directly
+   - For simple features (1-2 milestones): milestone branches MAY target
+     `develop` directly
    - For complex features (3+ milestones): use feature integration branch:
      - Create feature branch `feat/{issue-id}-{name}` from `develop`
      - Milestone branches target feature branch
