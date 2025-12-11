@@ -83,6 +83,12 @@ public class StorageLocationRestController extends BaseRestController {
     @PostMapping("/rooms")
     public ResponseEntity<Map<String, Object>> createRoom(@Valid @RequestBody StorageRoomForm form) {
         try {
+            if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", null)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Room name must be unique");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
+
             StorageRoom room = new StorageRoom();
             room.setName(form.getName());
             // Generate code if not provided
@@ -165,6 +171,11 @@ public class StorageLocationRestController extends BaseRestController {
             }
 
             Integer idInt = Integer.parseInt(id);
+            if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", idInt)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Room name must be unique");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
             StorageRoom roomToUpdate = new StorageRoom();
             roomToUpdate.setName(form.getName());
             // Code is read-only - ignored if provided in form
@@ -244,7 +255,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @DeleteMapping("/rooms/{id}")
-    public ResponseEntity<Map<String, Object>> deleteRoom(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<?> deleteRoom(@PathVariable String id, HttpServletRequest request) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRoom room = storageLocationService.getRoom(idInt);
@@ -253,23 +264,17 @@ public class StorageLocationRestController extends BaseRestController {
             }
 
             boolean isAdmin = checkAdminStatus(request);
-
-            // Check if location can be deleted normally
-            if (!storageLocationService.canDeleteLocation(room)) {
-                // If not admin, return 409 (existing behavior)
-                if (!isAdmin) {
-                    String message = storageLocationService.getDeleteConstraintMessage(room);
-                    Map<String, Object> error = new HashMap<>();
-                    error.put("error", "Cannot delete room");
-                    error.put("message", message);
-                    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-                }
-                // Admin can delete with cascade (new OGC-75 behavior)
-                storageLocationService.deleteLocationWithCascade(idInt, StorageRoom.class);
-            } else {
-                // No constraints, normal delete
-                storageLocationService.deleteRoom(idInt);
+            if (!isAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+
+            DeletionValidationResult validation = storageLocationService.canDeleteRoom(idInt);
+            if (!validation.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
+            }
+
+            // Admin can delete with cascade (new OGC-75 behavior)
+            storageLocationService.deleteLocationWithCascade(idInt, StorageRoom.class);
 
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
@@ -296,6 +301,11 @@ public class StorageLocationRestController extends BaseRestController {
             StorageRoom parentRoom = storageLocationService.getRoom(parentRoomId);
             if (parentRoom == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent room not found"));
+            }
+            if (!storageLocationService.isNameUniqueWithinParent(form.getName(), parentRoomId, "device", null)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Device name must be unique within the room");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
 
             StorageDevice device = new StorageDevice();
@@ -421,6 +431,13 @@ public class StorageLocationRestController extends BaseRestController {
             if (existingDevice == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
+            Integer parentRoomId = existingDevice.getParentRoom() != null ? existingDevice.getParentRoom().getId()
+                    : null;
+            if (!storageLocationService.isNameUniqueWithinParent(form.getName(), parentRoomId, "device", idInt)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Device name must be unique within the room");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
             deviceToUpdate.setId(existingDevice.getId());
 
             storageLocationService.update(deviceToUpdate);
@@ -496,7 +513,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @DeleteMapping("/devices/{id}")
-    public ResponseEntity<Map<String, Object>> deleteDevice(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<?> deleteDevice(@PathVariable String id, HttpServletRequest request) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
@@ -505,23 +522,17 @@ public class StorageLocationRestController extends BaseRestController {
             }
 
             boolean isAdmin = checkAdminStatus(request);
-
-            // Check if location can be deleted normally
-            if (!storageLocationService.canDeleteLocation(device)) {
-                // If not admin, return 409 (existing behavior)
-                if (!isAdmin) {
-                    String message = storageLocationService.getDeleteConstraintMessage(device);
-                    Map<String, Object> error = new HashMap<>();
-                    error.put("error", "Cannot delete device");
-                    error.put("message", message);
-                    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-                }
-                // Admin can delete with cascade (new OGC-75 behavior)
-                storageLocationService.deleteLocationWithCascade(idInt, StorageDevice.class);
-            } else {
-                // No constraints, normal delete
-                storageLocationService.delete(device);
+            if (!isAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+
+            DeletionValidationResult validation = storageLocationService.canDeleteDevice(idInt);
+            if (!validation.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
+            }
+
+            // Admin can delete with cascade (new OGC-75 behavior)
+            storageLocationService.deleteLocationWithCascade(idInt, StorageDevice.class);
 
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
@@ -554,6 +565,11 @@ public class StorageLocationRestController extends BaseRestController {
                     StorageDevice.class);
             if (parentDevice == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent device not found"));
+            }
+            if (!storageLocationService.isNameUniqueWithinParent(form.getLabel(), parentDeviceId, "shelf", null)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Shelf label must be unique within the device");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
             shelf.setParentDevice(parentDevice);
 
@@ -628,6 +644,13 @@ public class StorageLocationRestController extends BaseRestController {
             if (existingShelf == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
+            Integer parentDeviceId = existingShelf.getParentDevice() != null ? existingShelf.getParentDevice().getId()
+                    : null;
+            if (!storageLocationService.isNameUniqueWithinParent(form.getLabel(), parentDeviceId, "shelf", idInt)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Shelf label must be unique within the device");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
             shelfToUpdate.setId(existingShelf.getId());
 
             storageLocationService.update(shelfToUpdate);
@@ -697,7 +720,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @DeleteMapping("/shelves/{id}")
-    public ResponseEntity<Map<String, Object>> deleteShelf(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<?> deleteShelf(@PathVariable String id, HttpServletRequest request) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
@@ -706,23 +729,17 @@ public class StorageLocationRestController extends BaseRestController {
             }
 
             boolean isAdmin = checkAdminStatus(request);
-
-            // Check if location can be deleted normally
-            if (!storageLocationService.canDeleteLocation(shelf)) {
-                // If not admin, return 409 (existing behavior)
-                if (!isAdmin) {
-                    String message = storageLocationService.getDeleteConstraintMessage(shelf);
-                    Map<String, Object> error = new HashMap<>();
-                    error.put("error", "Cannot delete shelf");
-                    error.put("message", message);
-                    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-                }
-                // Admin can delete with cascade (new OGC-75 behavior)
-                storageLocationService.deleteLocationWithCascade(idInt, StorageShelf.class);
-            } else {
-                // No constraints, normal delete
-                storageLocationService.delete(shelf);
+            if (!isAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+
+            DeletionValidationResult validation = storageLocationService.canDeleteShelf(idInt);
+            if (!validation.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
+            }
+
+            // Admin can delete with cascade (new OGC-75 behavior)
+            storageLocationService.deleteLocationWithCascade(idInt, StorageShelf.class);
 
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
@@ -753,6 +770,11 @@ public class StorageLocationRestController extends BaseRestController {
             StorageShelf parentShelf = (StorageShelf) storageLocationService.get(parentShelfId, StorageShelf.class);
             if (parentShelf == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent shelf not found"));
+            }
+            if (!storageLocationService.isNameUniqueWithinParent(form.getLabel(), parentShelfId, "rack", null)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Rack label must be unique within the shelf");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
             rack.setParentShelf(parentShelf);
 
@@ -828,6 +850,13 @@ public class StorageLocationRestController extends BaseRestController {
             if (existingRack == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
+            Integer parentShelfId = existingRack.getParentShelf() != null ? existingRack.getParentShelf().getId()
+                    : null;
+            if (!storageLocationService.isNameUniqueWithinParent(form.getLabel(), parentShelfId, "rack", idInt)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Rack label must be unique within the shelf");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
             rackToUpdate.setId(existingRack.getId());
 
             storageLocationService.update(rackToUpdate);
@@ -898,7 +927,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @DeleteMapping("/racks/{id}")
-    public ResponseEntity<Map<String, Object>> deleteRack(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<?> deleteRack(@PathVariable String id, HttpServletRequest request) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
@@ -907,23 +936,17 @@ public class StorageLocationRestController extends BaseRestController {
             }
 
             boolean isAdmin = checkAdminStatus(request);
-
-            // Check if location can be deleted normally
-            if (!storageLocationService.canDeleteLocation(rack)) {
-                // If not admin, return 409 (existing behavior)
-                if (!isAdmin) {
-                    String message = storageLocationService.getDeleteConstraintMessage(rack);
-                    Map<String, Object> error = new HashMap<>();
-                    error.put("error", "Cannot delete rack");
-                    error.put("message", message);
-                    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-                }
-                // Admin can delete with cascade (new OGC-75 behavior)
-                storageLocationService.deleteLocationWithCascade(idInt, StorageRack.class);
-            } else {
-                // No constraints, normal delete
-                storageLocationService.delete(rack);
+            if (!isAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+
+            DeletionValidationResult validation = storageLocationService.canDeleteRack(idInt);
+            if (!validation.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
+            }
+
+            // Admin can delete with cascade (new OGC-75 behavior)
+            storageLocationService.deleteLocationWithCascade(idInt, StorageRack.class);
 
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
@@ -1161,6 +1184,9 @@ public class StorageLocationRestController extends BaseRestController {
             map.put("capacityLimit", device.getCapacityLimit());
             map.put("active", device.getActive());
             map.put("fhirUuid", device.getFhirUuidAsString());
+            map.put("ipAddress", device.getIpAddress());
+            map.put("port", device.getPort());
+            map.put("communicationProtocol", device.getCommunicationProtocol());
             // Add parent room for filtering (FR-065: filter by room) and display
             StorageRoom parentRoom = device.getParentRoom();
             if (parentRoom != null) {
@@ -1486,93 +1512,4 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    // OGC-68: DELETE endpoints for storage locations
-
-    /**
-     * OGC-68: Delete a Room
-     * 
-     * @param id Room ID
-     * @return 204 No Content if deleted, 409 Conflict if referential integrity
-     *         violation
-     */
-    @DeleteMapping("/rooms/{id}")
-    public ResponseEntity<?> deleteRoom(@PathVariable Integer id) {
-        try {
-            DeletionValidationResult validation = storageLocationService.canDeleteRoom(id);
-            if (!validation.isSuccess()) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
-            }
-            storageLocationService.deleteRoom(id);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            logger.error("Error deleting room {}", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    /**
-     * OGC-68: Delete a Device
-     * 
-     * @param id Device ID
-     * @return 204 No Content if deleted, 409 Conflict if referential integrity
-     *         violation
-     */
-    @DeleteMapping("/devices/{id}")
-    public ResponseEntity<?> deleteDevice(@PathVariable Integer id) {
-        try {
-            DeletionValidationResult validation = storageLocationService.canDeleteDevice(id);
-            if (!validation.isSuccess()) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
-            }
-            storageLocationService.delete(storageLocationService.get(id, StorageDevice.class));
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            logger.error("Error deleting device {}", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    /**
-     * OGC-68: Delete a Shelf
-     * 
-     * @param id Shelf ID
-     * @return 204 No Content if deleted, 409 Conflict if referential integrity
-     *         violation
-     */
-    @DeleteMapping("/shelves/{id}")
-    public ResponseEntity<?> deleteShelf(@PathVariable Integer id) {
-        try {
-            DeletionValidationResult validation = storageLocationService.canDeleteShelf(id);
-            if (!validation.isSuccess()) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
-            }
-            storageLocationService.delete(storageLocationService.get(id, StorageShelf.class));
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            logger.error("Error deleting shelf {}", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    /**
-     * OGC-68: Delete a Rack
-     * 
-     * @param id Rack ID
-     * @return 204 No Content if deleted, 409 Conflict if referential integrity
-     *         violation
-     */
-    @DeleteMapping("/racks/{id}")
-    public ResponseEntity<?> deleteRack(@PathVariable Integer id) {
-        try {
-            DeletionValidationResult validation = storageLocationService.canDeleteRack(id);
-            if (!validation.isSuccess()) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
-            }
-            storageLocationService.delete(storageLocationService.get(id, StorageRack.class));
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            logger.error("Error deleting rack {}", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
 }
