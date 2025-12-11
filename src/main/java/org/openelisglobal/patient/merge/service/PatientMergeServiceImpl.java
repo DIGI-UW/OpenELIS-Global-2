@@ -1,14 +1,19 @@
 package org.openelisglobal.patient.merge.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.merge.dao.PatientMergeAuditDAO;
 import org.openelisglobal.patient.merge.dto.PatientMergeDetailsDTO;
-import org.openelisglobal.systemuser.dao.SystemUserDAO;
-import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.patient.merge.dto.PatientMergeExecutionResultDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeRequestDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeValidationResultDTO;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +35,13 @@ public class PatientMergeServiceImpl implements PatientMergeService {
     private PatientMergeAuditDAO patientMergeAuditDAO;
 
     @Autowired
-    private SystemUserDAO systemUserDAO;
+    private FhirPatientLinkService fhirPatientLinkService;
+
+    @Autowired
+    private PatientMergeConsolidationService consolidationService;
+
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
 
     /**
      * Validates if two patients can be merged. Checks: same patient, patient not
@@ -94,22 +105,103 @@ public class PatientMergeServiceImpl implements PatientMergeService {
     }
 
     /**
-     * Creates data summary for two patients to be merged. TODO: Implement actual
-     * data counting from related tables.
+     * Creates data summary for two patients to be merged. Queries actual counts
+     * from related tables for frontend preview.
      */
     private org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO createDataSummary(Patient patient1,
             Patient patient2) {
         org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO summary = new org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO();
 
-        // Placeholder implementation - actual counts would query related tables
-        summary.setTotalOrders(0);
+        // Count samples for both patients
+        long samplesP1 = countSamplesForPatient(patient1.getId());
+        long samplesP2 = countSamplesForPatient(patient2.getId());
+        summary.setTotalSamples((int) (samplesP1 + samplesP2));
+
+        // Count electronic orders for both patients
+        long ordersP1 = countOrdersForPatient(patient1.getId());
+        long ordersP2 = countOrdersForPatient(patient2.getId());
+        summary.setTotalOrders((int) (ordersP1 + ordersP2));
+
+        // Active orders: Set to 0 for now. To implement:
+        // - Add WHERE status IN ('PENDING', 'IN_PROGRESS', ...) to
+        // countOrdersForPatient
+        // - Requires ElectronicOrder status enum/constants knowledge
         summary.setActiveOrders(0);
+
+        // Count patient contacts for both patients
+        long contactsP1 = countContactsForPatient(patient1.getId());
+        long contactsP2 = countContactsForPatient(patient2.getId());
+        summary.setTotalContacts((int) (contactsP1 + contactsP2));
+
+        // Count patient identities for both patients
+        long identitiesP1 = countIdentitiesForPatient(patient1.getId());
+        long identitiesP2 = countIdentitiesForPatient(patient2.getId());
+        summary.setTotalIdentifiers((int) (identitiesP1 + identitiesP2));
+
+        // Count patient relations for both patients
+        long relationsP1 = countRelationsForPatient(patient1.getId());
+        long relationsP2 = countRelationsForPatient(patient2.getId());
+        summary.setTotalRelations((int) (relationsP1 + relationsP2));
+
+        // Total results: Set to 0 for now. To implement:
+        // - Query result/analysis tables joined through sample_human
+        // - Requires understanding Result/Analysis entity relationships
         summary.setTotalResults(0);
-        summary.setTotalSamples(0);
+
+        // Total documents: Set to 0 for now. To implement:
+        // - Query patient_document or document_track table (if exists)
+        // - Requires understanding document storage model
         summary.setTotalDocuments(0);
-        summary.setTotalIdentifiers(0);
 
         return summary;
+    }
+
+    private long countSamplesForPatient(String patientId) {
+        // Native SQL needed due to String ID vs numeric column type mismatch
+        // Schema name omitted - uses Hibernate's default_schema configuration
+        return ((Number) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM sample_human WHERE patient_id = :patientId")
+                .setParameter("patientId", Long.parseLong(patientId)).getSingleResult()).longValue();
+    }
+
+    private long countOrdersForPatient(String patientId) {
+        // Native SQL needed for ElectronicOrder due to ValueHolder pattern
+        // Schema name omitted - uses Hibernate's default_schema configuration
+        return ((Number) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM electronic_order WHERE patient_id = :patientId")
+                .setParameter("patientId", Long.parseLong(patientId)).getSingleResult()).longValue();
+    }
+
+    private long countContactsForPatient(String patientId) {
+        // Native SQL needed due to String ID vs numeric column type mismatch
+        // Schema name omitted - uses Hibernate's default_schema configuration
+        return ((Number) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM patient_contact WHERE patient_id = :patientId")
+                .setParameter("patientId", Long.parseLong(patientId)).getSingleResult()).longValue();
+    }
+
+    private long countIdentitiesForPatient(String patientId) {
+        // Native SQL needed due to String ID vs numeric column type mismatch
+        // Schema name omitted - uses Hibernate's default_schema configuration
+        return ((Number) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM patient_identity WHERE patient_id = :patientId")
+                .setParameter("patientId", Long.parseLong(patientId)).getSingleResult()).longValue();
+    }
+
+    private long countRelationsForPatient(String patientId) {
+        // Native SQL needed due to String ID vs numeric column type mismatch
+        // Schema name omitted - uses Hibernate's default_schema configuration
+        return ((Number) entityManager.createNativeQuery(
+                "SELECT COUNT(*) FROM patient_relations WHERE pat_id = :patientId OR pat_id_source = :patientId")
+                .setParameter("patientId", Long.parseLong(patientId)).getSingleResult()).longValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<PatientIdentity> getPatientIdentities(String patientId) {
+        // Use native SQL to avoid type mismatch between String ID and numeric column
+        // Schema name omitted - uses Hibernate's default_schema configuration
+        return entityManager.createNativeQuery("SELECT * FROM patient_identity WHERE patient_id = :patientId",
+                PatientIdentity.class).setParameter("patientId", Long.parseLong(patientId)).getResultList();
     }
 
     /**
@@ -123,6 +215,9 @@ public class PatientMergeServiceImpl implements PatientMergeService {
             return null;
         }
 
+        // Note: This method works for both merged and non-merged patients.
+        // It simply returns current patient details regardless of merge history.
+        // The merge workflow uses this to show details of BOTH patients before merging.
         PatientMergeDetailsDTO details = new PatientMergeDetailsDTO();
         details.setPatientId(patient.getId());
         details.setFirstName(patient.getPerson().getFirstName());
@@ -130,11 +225,21 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         details.setGender(patient.getGender());
         details.setBirthDate(patient.getBirthDateForDisplay());
 
-        // Create data summary for this patient
-        PatientMergeDetailsDTO.IdentifierDTO dummyDTO = new PatientMergeDetailsDTO.IdentifierDTO();
-        // Placeholder - actual implementation would populate from patient_identity
-        // table
-        details.getIdentifiers().add(dummyDTO);
+        // Populate actual identifiers from patient_identity table
+        List<PatientIdentity> identities = getPatientIdentities(patient.getId());
+        for (PatientIdentity identity : identities) {
+            PatientMergeDetailsDTO.IdentifierDTO identifierDTO = new PatientMergeDetailsDTO.IdentifierDTO();
+            identifierDTO.setIdentityType(identity.getIdentityTypeId());
+            identifierDTO.setIdentityValue(identity.getIdentityData());
+            details.getIdentifiers().add(identifierDTO);
+        }
+
+        // Populate data summary
+        org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO dataSummary = new org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO();
+        dataSummary.setTotalSamples((int) countSamplesForPatient(patient.getId()));
+        dataSummary.setTotalOrders((int) countOrdersForPatient(patient.getId()));
+        dataSummary.setTotalIdentifiers(identities.size());
+        details.setDataSummary(dataSummary);
 
         return details;
     }
@@ -145,7 +250,7 @@ public class PatientMergeServiceImpl implements PatientMergeService {
      * failure.
      */
     @Override
-    public PatientMergeExecutionResultDTO executeMerge(PatientMergeRequestDTO request) {
+    public PatientMergeExecutionResultDTO executeMerge(PatientMergeRequestDTO request, String sysUserId) {
         long startTime = System.currentTimeMillis();
 
         // Validation 1: Check confirmation
@@ -179,30 +284,87 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         audit.setMergedPatientId(Long.parseLong(mergedPatient.getId()));
         audit.setMergeDate(new java.sql.Timestamp(System.currentTimeMillis()));
         audit.setReason(request.getReason());
-        // Get actual user ID (admin for now)
-        SystemUser systemUser = systemUserDAO.getDataForLoginUser("admin");
-        if (systemUser != null) {
-            audit.setPerformedByUserId(Long.parseLong(systemUser.getId()));
-            audit.setSysUserId(systemUser.getId());
-        } else {
-            // Fallback for tests if admin doesn't exist (though it should)
-            audit.setPerformedByUserId(1L);
-            audit.setSysUserId("1");
+
+        // Use the sysUserId passed from the controller (from session/security context)
+        // Set both performedByUserId and sysUserId to the current user for audit trail
+        audit.setPerformedByUserId(Long.parseLong(sysUserId));
+        audit.setSysUserId(sysUserId);
+
+        // FR-004: Consolidate clinical data (update FKs to point to primary patient)
+        // sysUserId is used for audit trail in consolidation operations
+        PatientMergeConsolidationService.ConsolidationResult consolidationResult = consolidationService
+                .consolidateClinicalData(primaryPatient.getId(), mergedPatient.getId(), sysUserId);
+        LogEvent.logInfo(this.getClass().getName(), "executeMerge",
+                "Data consolidation complete. Total records reassigned: " + consolidationResult.getTotalReassigned());
+
+        // FR-009: Merge demographics (fill gaps in primary with merged patient data)
+        java.util.List<String> mergedDemoFields = consolidationService.mergeDemographics(primaryPatient, mergedPatient);
+        if (!mergedDemoFields.isEmpty()) {
+            // Update primary patient's person record with merged demographics
+            // Yes, this updates the person record with merged demographics AND sets
+            // sysUserId for audit.
+            // mergeDemographics() modified the Person object in-memory (filled gaps),
+            // now we persist those changes to database via personService.update()
+            org.openelisglobal.person.service.PersonService personService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.person.service.PersonService.class);
+            // setSysUserId is required for audit trail (tracks who made the change)
+            // This is standard pattern in OpenELIS for all entity updates
+            primaryPatient.getPerson().setSysUserId(sysUserId);
+            personService.update(primaryPatient.getPerson());
+            LogEvent.logInfo(this.getClass().getName(), "executeMerge",
+                    "Merged " + mergedDemoFields.size() + " demographic fields from patient " + mergedPatient.getId());
         }
 
-        // TODO(BLOCKER-001): Data consolidation placeholder
-        // Actual implementation would:
-        // - Update foreign keys in patient_identity, patient_contact, sample_human,
-        // etc.
-        // - Consolidate identifiers (awaiting PM decision on duplicate handling)
-        // - Update FHIR resources with link relationships
-        // For now, we just mark the patient as merged
+        // FR-016, FR-017: Update FHIR Patient links if both patients have FHIR
+        // resources
+        if (fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
+                && fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
+            try {
+                fhirPatientLinkService.updatePatientLinks(primaryPatient.getId(), mergedPatient.getId(),
+                        primaryPatient.getFhirUuidAsString(), mergedPatient.getFhirUuidAsString());
+                LogEvent.logInfo(this.getClass().getName(), "executeMerge",
+                        "Successfully updated FHIR Patient links for merge: " + primaryPatient.getId() + " <- "
+                                + mergedPatient.getId());
+            } catch (FhirLocalPersistingException e) {
+                // Log error but don't fail the entire merge if FHIR update fails
+                LogEvent.logError(this.getClass().getName(), "executeMerge",
+                        "FHIR link update failed but merge succeeded: " + e.getMessage());
+            }
+        }
+
+        // Create data_summary JSONB for audit trail
+        long duration = System.currentTimeMillis() - startTime;
+        JsonNode dataSummary = createAuditDataSummary(consolidationResult, mergedDemoFields.size(), duration);
+        audit.setDataSummary(dataSummary);
 
         Long auditId = patientMergeAuditDAO.insert(audit);
 
-        long duration = System.currentTimeMillis() - startTime;
-
         return PatientMergeExecutionResultDTO.success(String.valueOf(auditId), primaryPatient.getId(),
                 mergedPatient.getId(), duration);
+    }
+
+    /**
+     * Creates JSONB data summary for audit trail. Captures comprehensive merge
+     * operation statistics.
+     */
+    private JsonNode createAuditDataSummary(PatientMergeConsolidationService.ConsolidationResult consolidation,
+            int mergedDemoFieldsCount, long durationMs) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode summary = mapper.createObjectNode();
+
+        // Clinical data counts
+        summary.put("samples_reassigned", consolidation.getSamplesReassigned());
+        summary.put("contacts_reassigned", consolidation.getContactsReassigned());
+        summary.put("orders_reassigned", consolidation.getOrdersReassigned());
+        summary.put("relations_reassigned", consolidation.getRelationsReassigned());
+        summary.put("total_records_reassigned", consolidation.getTotalReassigned());
+
+        // Demographics merge count
+        summary.put("demographic_fields_merged", mergedDemoFieldsCount);
+
+        // Performance metrics
+        summary.put("merge_duration_ms", durationMs);
+
+        return summary;
     }
 }

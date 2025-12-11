@@ -18,6 +18,8 @@ public class PatientMergeDataSummaryDTO {
     private int totalSamples;
     private int totalDocuments;
     private int totalIdentifiers;
+    private int totalContacts;
+    private int totalRelations;
     private int totalAuditEntries;
 
     private List<String> conflictingFields = new ArrayList<>();

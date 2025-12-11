@@ -112,13 +112,13 @@ authorization, and response formats.
 **Acceptance Scenarios**:
 
 1. **Given** valid patient ID and Global Admin token, **When** calling
-   `GET /api/patient/merge-details/{id}`, **Then** receive patient demographics,
-   data summary, identifiers, and potential conflicts
+   `GET /rest/patient/merge/details/{id}`, **Then** receive patient
+   demographics, data summary, identifiers, and potential conflicts
 2. **Given** two patient IDs and valid token, **When** calling
-   `POST /api/patient/merge/validate`, **Then** receive validation result with
+   `POST /rest/patient/merge/validate`, **Then** receive validation result with
    errors/warnings and consolidated data counts
 3. **Given** valid merge request with confirmation, **When** calling
-   `POST /api/patient/merge/execute`, **Then** merge executes successfully and
+   `POST /rest/patient/merge/execute`, **Then** merge executes successfully and
    returns merge audit ID and success message
 4. **Given** user without Global Admin permission, **When** calling any merge
    endpoint, **Then** receive 403 Forbidden response
@@ -268,13 +268,13 @@ permission checks at service and controller layers.
 - **FR-010**: System MUST create audit trail entries for: merge initiation, each
   table update, FHIR updates, merge completion
 - **FR-011**: System MUST expose RESTful API endpoint
-  `GET /api/patient/merge-details/{patientId}` returning patient demographics,
+  `GET /rest/patient/merge/details/{patientId}` returning patient demographics,
   data summary, identifiers, conflicts
 - **FR-012**: System MUST expose RESTful API endpoint
-  `POST /api/patient/merge/validate` accepting two patient IDs and returning
+  `POST /rest/patient/merge/validate` accepting two patient IDs and returning
   validation results with data summary
 - **FR-013**: System MUST expose RESTful API endpoint
-  `POST /api/patient/merge/execute` accepting patient IDs, primary selection,
+  `POST /rest/patient/merge/execute` accepting patient IDs, primary selection,
   reason, confirmation flag
 - **FR-014**: System MUST enforce Global Administrator permission on all merge
   API endpoints, returning 403 Forbidden if unauthorized

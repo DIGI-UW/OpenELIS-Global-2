@@ -3,7 +3,9 @@ package org.openelisglobal.patient.merge.service;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import org.junit.Before;
@@ -24,6 +26,8 @@ import org.openelisglobal.patient.valueholder.Patient;
  *
  * TDD Phase: RED - These tests should FAIL before implementation exists.
  */
+// TODO: This would be more useful if it was an integration test with some good
+// test data.
 @RunWith(MockitoJUnitRunner.class)
 public class PatientMergeServiceImplTest {
 
@@ -32,6 +36,12 @@ public class PatientMergeServiceImplTest {
 
     @Mock
     private PatientMergeAuditDAO patientMergeAuditDAO;
+
+    @Mock
+    private jakarta.persistence.EntityManager entityManager;
+
+    @Mock
+    private jakarta.persistence.TypedQuery<Long> mockQuery;
 
     @InjectMocks
     private PatientMergeServiceImpl patientMergeService;
@@ -60,6 +70,17 @@ public class PatientMergeServiceImplTest {
         patient2.setId("2");
         patient2.setIsMerged(false);
         patient2.setMergedIntoPatientId(null);
+
+        // Mock EntityManager to return 0 counts for all queries (unit tests don't need
+        // real counts)
+        // Use lenient() to avoid UnnecessaryStubbingException for tests that don't use
+        // all mocks
+        lenient().when(entityManager.createQuery(anyString())).thenReturn(mockQuery);
+        lenient().when(entityManager.createNativeQuery(anyString())).thenReturn(mockQuery);
+        lenient().when(mockQuery.setParameter(anyString(), anyString())).thenReturn(mockQuery);
+        lenient().when(mockQuery.setParameter(anyString(), any(Long.class))).thenReturn(mockQuery);
+        lenient().when(mockQuery.getSingleResult()).thenReturn(0L);
+        lenient().when(mockQuery.getResultList()).thenReturn(java.util.Collections.emptyList());
     }
 
     /**

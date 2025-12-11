@@ -30,6 +30,9 @@ import org.openelisglobal.systemuser.dao.SystemUserDAO;
  *
  * TDD Phase: RED - These tests should FAIL before implementation exists.
  */
+
+// TODO: This would be more useful if it was an integration test with some good
+// test data.
 @RunWith(MockitoJUnitRunner.class)
 public class PatientMergeExecutionTest {
 
@@ -41,6 +44,12 @@ public class PatientMergeExecutionTest {
 
     @Mock
     private SystemUserDAO systemUserDAO;
+
+    @Mock
+    private FhirPatientLinkService fhirPatientLinkService;
+
+    @Mock
+    private PatientMergeConsolidationService consolidationService;
 
     @InjectMocks
     private PatientMergeServiceImpl patientMergeService;
@@ -84,6 +93,14 @@ public class PatientMergeExecutionTest {
         patient2.setIsMerged(false);
         patient2.setMergedIntoPatientId(null);
         patient2.setPerson(person2);
+
+        // Mock FHIR service to return false (no FHIR resources) by default
+        when(fhirPatientLinkService.hasFhirResource(any())).thenReturn(false);
+
+        // Mock consolidation service to return empty result
+        when(consolidationService.consolidateClinicalData(any(), any(), any()))
+                .thenReturn(new PatientMergeConsolidationService.ConsolidationResult());
+        when(consolidationService.mergeDemographics(any(), any())).thenReturn(new java.util.ArrayList<>());
     }
 
     /**
@@ -98,7 +115,7 @@ public class PatientMergeExecutionTest {
         when(patientMergeAuditDAO.insert(any(PatientMergeAudit.class))).thenReturn(123L);
 
         // Act
-        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest);
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest, "1");
 
         // Assert
         assertNotNull("Result should not be null", result);
@@ -121,7 +138,7 @@ public class PatientMergeExecutionTest {
         when(patientMergeAuditDAO.insert(any(PatientMergeAudit.class))).thenReturn(123L);
 
         // Act
-        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest);
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest, "1");
 
         // Assert - Verify merge state for redirect-on-lookup
         assertTrue("Merged patient should be marked as merged", Boolean.TRUE.equals(patient2.getIsMerged()));
@@ -147,7 +164,7 @@ public class PatientMergeExecutionTest {
         when(patientMergeAuditDAO.insert(any(PatientMergeAudit.class))).thenReturn(123L);
 
         // Act
-        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest);
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest, "1");
 
         // Assert
         verify(patientMergeAuditDAO, times(1)).insert(any(PatientMergeAudit.class));
@@ -164,7 +181,7 @@ public class PatientMergeExecutionTest {
         validRequest.setConfirmed(false);
 
         // Act
-        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest);
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest, "1");
 
         // Assert
         assertNotNull("Result should not be null", result);
@@ -183,7 +200,7 @@ public class PatientMergeExecutionTest {
         when(patientDAO.getData("2")).thenReturn(patient2);
 
         // Act
-        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest);
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest, "1");
 
         // Assert
         assertNotNull("Result should not be null", result);
@@ -204,7 +221,7 @@ public class PatientMergeExecutionTest {
         when(patientMergeAuditDAO.insert(any(PatientMergeAudit.class))).thenReturn(123L);
 
         // Act
-        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest);
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest, "1");
 
         // Assert
         assertFalse("Primary patient should NOT be marked as merged", patient1.getIsMerged());

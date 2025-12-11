@@ -34,8 +34,9 @@ public interface PatientMergeService {
      * resources, and creates audit trail. Entire operation runs in a single
      * transaction with rollback on failure.
      *
-     * @param request The merge request with confirmation flag
+     * @param request   The merge request with confirmation flag
+     * @param sysUserId The ID of the user performing the merge (for audit trail)
      * @return Execution result with success status and merge audit ID
      */
-    PatientMergeExecutionResultDTO executeMerge(PatientMergeRequestDTO request);
+    PatientMergeExecutionResultDTO executeMerge(PatientMergeRequestDTO request, String sysUserId);
 }

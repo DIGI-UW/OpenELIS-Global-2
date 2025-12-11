@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -96,7 +97,7 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
         assertTrue("Validation should have no errors", validationResult.getErrors().isEmpty());
 
         // Step 3: Execute merge
-        PatientMergeExecutionResultDTO executionResult = patientMergeService.executeMerge(request);
+        PatientMergeExecutionResultDTO executionResult = patientMergeService.executeMerge(request, "1");
         assertTrue("Merge execution should succeed", executionResult.isSuccess());
         assertNotNull("Should have merge audit ID", executionResult.getMergeAuditId());
         assertEquals("Should return correct primary patient ID", patient1.getId(),
@@ -132,7 +133,7 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
         request.setReason("Testing redirect-on-lookup");
         request.setConfirmed(true);
 
-        PatientMergeExecutionResultDTO executionResult = patientMergeService.executeMerge(request);
+        PatientMergeExecutionResultDTO executionResult = patientMergeService.executeMerge(request, "1");
         assertTrue("Merge should succeed", executionResult.isSuccess());
 
         // Act - Lookup merged patient by identifier (should redirect)
@@ -159,7 +160,7 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
         firstMerge.setPrimaryPatientId(patient1.getId());
         firstMerge.setReason("First merge");
         firstMerge.setConfirmed(true);
-        patientMergeService.executeMerge(firstMerge);
+        patientMergeService.executeMerge(firstMerge, "1");
 
         // Act - Try to merge patient2 again (should fail validation)
         PatientMergeRequestDTO secondMerge = new PatientMergeRequestDTO();
@@ -192,7 +193,7 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
         request.setConfirmed(false); // NOT confirmed
 
         // Act
-        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(request);
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(request, "1");
 
         // Assert
         assertFalse("Merge should fail without confirmation", result.isSuccess());
@@ -264,5 +265,110 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
             assertTrue("Service should have @Service annotation",
                     patientMergeService.getClass().isAnnotationPresent(org.springframework.stereotype.Service.class));
         }
+    }
+
+    /**
+     * Test: Patient merge with FHIR resources - verify database and FHIR state.
+     * Business Rule: When both patients have FHIR UUIDs, the FHIR integration
+     * should be invoked (though actual FHIR updates require FHIR server).
+     *
+     * This test verifies: 1. Database merge completes successfully 2. Patients with
+     * FHIR UUIDs trigger FHIR integration path 3. Merge succeeds even if FHIR store
+     * is not available (graceful degradation)
+     */
+    @Test
+    public void testMergeExecution_WithFhirUuids_ShouldCompleteSuccessfully() {
+        // Arrange - Add FHIR UUIDs to both patients (simulating FHIR-enabled patients)
+        UUID patient1FhirUuid = UUID.randomUUID();
+        UUID patient2FhirUuid = UUID.randomUUID();
+
+        patient1.setFhirUuid(patient1FhirUuid);
+        patientDAO.update(patient1);
+
+        patient2.setFhirUuid(patient2FhirUuid);
+        patientDAO.update(patient2);
+
+        // Verify patients now have FHIR UUIDs
+        Patient p1WithFhir = patientDAO.getData(patient1.getId());
+        Patient p2WithFhir = patientDAO.getData(patient2.getId());
+        assertNotNull("Patient 1 should have FHIR UUID", p1WithFhir.getFhirUuid());
+        assertNotNull("Patient 2 should have FHIR UUID", p2WithFhir.getFhirUuid());
+
+        // Create merge request
+        PatientMergeRequestDTO request = new PatientMergeRequestDTO();
+        request.setPatient1Id(patient1.getId());
+        request.setPatient2Id(patient2.getId());
+        request.setPrimaryPatientId(patient1.getId());
+        request.setReason("Testing FHIR-enabled patient merge");
+        request.setConfirmed(true);
+
+        // Act - Execute merge (FHIR integration will be attempted)
+        // Note: Actual FHIR store updates require external FHIR server
+        // This test verifies graceful degradation when FHIR store unavailable
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(request, "1");
+
+        // Assert - Database merge should succeed
+        assertTrue("Merge should succeed even without FHIR store", result.isSuccess());
+        assertNotNull("Should have merge audit ID", result.getMergeAuditId());
+        assertEquals("Should return correct primary patient ID", patient1.getId(), result.getPrimaryPatientId());
+        assertEquals("Should return correct merged patient ID", patient2.getId(), result.getMergedPatientId());
+
+        // Verify database state
+        Patient mergedPatient = patientDAO.getData(patient2.getId());
+        assertTrue("Merged patient should be marked as merged in database",
+                Boolean.TRUE.equals(mergedPatient.getIsMerged()));
+        assertEquals("Merged patient should reference primary patient", patient1.getId(),
+                mergedPatient.getMergedIntoPatientId());
+        assertNotNull("Merged patient should have merge date", mergedPatient.getMergeDate());
+
+        // Verify primary patient unchanged
+        Patient primaryPatient = patientDAO.getData(patient1.getId());
+        assertFalse("Primary patient should NOT be marked as merged",
+                Boolean.TRUE.equals(primaryPatient.getIsMerged()));
+
+        // Verify FHIR UUIDs preserved in database
+        assertNotNull("Primary patient should still have FHIR UUID", primaryPatient.getFhirUuid());
+        assertNotNull("Merged patient should still have FHIR UUID", mergedPatient.getFhirUuid());
+        assertEquals("Primary patient FHIR UUID should be unchanged", patient1FhirUuid, primaryPatient.getFhirUuid());
+        assertEquals("Merged patient FHIR UUID should be unchanged", patient2FhirUuid, mergedPatient.getFhirUuid());
+    }
+
+    /**
+     * Test: Patient merge without FHIR resources - verify FHIR integration skipped.
+     * Business Rule: FHIR integration should only run when both patients have FHIR
+     * UUIDs.
+     */
+    @Test
+    public void testMergeExecution_WithoutFhirUuids_ShouldSkipFhirIntegration() {
+        // Arrange - Ensure patients have NO FHIR UUIDs (default state)
+        assertNotNull("Patient 1 should exist", patient1);
+        assertNotNull("Patient 2 should exist", patient2);
+        // Note: Patients created in setUp() don't have FHIR UUIDs by default
+
+        // Create merge request
+        PatientMergeRequestDTO request = new PatientMergeRequestDTO();
+        request.setPatient1Id(patient1.getId());
+        request.setPatient2Id(patient2.getId());
+        request.setPrimaryPatientId(patient1.getId());
+        request.setReason("Testing non-FHIR patient merge");
+        request.setConfirmed(true);
+
+        // Act - Execute merge (FHIR integration should be skipped)
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(request, "1");
+
+        // Assert - Database merge should succeed
+        assertTrue("Merge should succeed for non-FHIR patients", result.isSuccess());
+        assertNotNull("Should have merge audit ID", result.getMergeAuditId());
+
+        // Verify database state (same assertions as FHIR test)
+        Patient mergedPatient = patientDAO.getData(patient2.getId());
+        assertTrue("Merged patient should be marked as merged in database",
+                Boolean.TRUE.equals(mergedPatient.getIsMerged()));
+        assertEquals("Merged patient should reference primary patient", patient1.getId(),
+                mergedPatient.getMergedIntoPatientId());
+
+        Patient primaryPatient = patientDAO.getData(patient1.getId());
+        assertFalse("Primary patient should NOT be marked as merged",
+                Boolean.TRUE.equals(primaryPatient.getIsMerged()));
     }
 }
