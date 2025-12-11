@@ -7,4 +7,7 @@
   <include relativeToChangelogFile="true" file="notebook.xml"/>
    <include relativeToChangelogFile="true" file="patient_photo.xml"/>
   <include relativeToChangelogFile="true" file="result_file.xml"/>
+  <include relativeToChangelogFile="true" file="sample_item.xml" />
+  <include relativeToChangelogFile="true" file="generic_sample_menu.xml" />
+  <include relativeToChangelogFile="true" file="sample-management.xml" />
 </databaseChangeLog>

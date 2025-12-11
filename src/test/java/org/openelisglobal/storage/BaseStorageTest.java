@@ -172,4 +172,27 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
         }
     }
 
+    /**
+     * Helper to get the numeric sample_item.id from the external_id. Used for
+     * database verification queries and SQL inserts that require numeric IDs.
+     * 
+     * This method converts external IDs (user-friendly identifiers like "EXT-123")
+     * to numeric IDs (database primary keys) for direct SQL operations.
+     * 
+     * @param externalId The external ID (e.g., "EXT-1765401458866")
+     * @return The numeric ID (integer) for the sample item
+     * @throws IllegalStateException if the external ID is not found in the database
+     * 
+     * @see .specify/guides/sampleitem-id-patterns.md for detailed ID pattern
+     *      documentation
+     */
+    protected int getSampleItemNumericId(String externalId) {
+        Integer numericId = jdbcTemplate.queryForObject("SELECT id FROM sample_item WHERE external_id = ?",
+                Integer.class, externalId);
+        if (numericId == null) {
+            throw new IllegalStateException("SampleItem not found with external ID: " + externalId);
+        }
+        return numericId;
+    }
+
 }

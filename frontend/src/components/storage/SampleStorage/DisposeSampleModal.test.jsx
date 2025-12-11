@@ -156,4 +156,30 @@ describe("DisposeSampleModal", () => {
     // Carbon destructive buttons have kind="danger" or similar
     expect(button).toBeTruthy();
   });
+
+  /**
+   * OGC-144: Test that onDisposalSuccess callback prop is accepted
+   * Note: The actual callback invocation happens in parent (StorageDashboard.jsx)
+   * after successful API response, not in the modal itself.
+   * This test verifies the prop is properly accepted without errors.
+   */
+  test("testAcceptsOnDisposalSuccessCallbackProp", () => {
+    const mockOnDisposalSuccess = jest.fn();
+
+    // Render modal with onDisposalSuccess prop
+    renderWithIntl(
+      <DisposeSampleModal
+        open={true}
+        sample={mockSample}
+        currentLocation={mockCurrentLocation}
+        onClose={mockOnClose}
+        onConfirm={mockOnConfirm}
+        onDisposalSuccess={mockOnDisposalSuccess}
+      />,
+    );
+
+    // Verify modal renders correctly with the new prop
+    expect(screen.getByText(/dispose sample/i)).toBeTruthy();
+    expect(screen.getByText(mockSample.sampleId)).toBeTruthy();
+  });
 });

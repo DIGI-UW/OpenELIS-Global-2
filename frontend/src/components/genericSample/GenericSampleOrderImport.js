@@ -224,284 +224,293 @@ export default function GenericSampleOrderImport({
   const breadcrumbs = customBreadcrumbs || defaultBreadcrumbs;
 
   return (
-    <div className="adminPageContent">
+    <>
       {showBreadcrumbs && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
-      <Section>
-        <Heading>
-          <FormattedMessage id={title} defaultMessage={titleDefault} />
-        </Heading>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Heading>
+              <FormattedMessage id={title} defaultMessage={titleDefault} />
+            </Heading>
+          </Section>
+        </Column>
+      </Grid>
 
-        <Grid fullWidth style={{ marginTop: "2rem" }}>
-          <Column lg={16} md={8} sm={4}>
-            <FileUploader
-              labelTitle="Upload File"
-              labelDescription={`Upload CSV or Excel file (${acceptedFileTypes.join(", ")})`}
-              buttonLabel="Select file"
-              filenameStatus="edit"
-              accept={acceptedFileTypes}
-              multiple={false}
-              onChange={handleFileUpload}
-            />
-          </Column>
-        </Grid>
+      <div className="orderLegendBody">
+        <Section>
+          <Grid fullWidth style={{ marginTop: "2rem" }}>
+            <Column lg={16} md={8} sm={4}>
+              <FileUploader
+                labelTitle="Upload File"
+                labelDescription={`Upload CSV or Excel file (${acceptedFileTypes.join(", ")})`}
+                buttonLabel="Select file"
+                filenameStatus="edit"
+                accept={acceptedFileTypes}
+                multiple={false}
+                onChange={handleFileUpload}
+              />
+            </Column>
+          </Grid>
 
-        <Grid fullWidth style={{ marginTop: "1rem" }}>
-          <Column lg={16} md={8} sm={4}>
-            <Button
-              kind="primary"
-              onClick={handleValidate}
-              disabled={!file || validating}
-            >
-              {validating ? (
-                <InlineLoading description="Validating..." />
-              ) : (
-                <FormattedMessage id="label.button.validate" />
-              )}
-            </Button>
-            <Button
-              kind="primary"
-              onClick={handleImport}
-              disabled={
-                !file ||
-                !validationResult ||
-                !validationResult.valid ||
-                importing
-              }
-              style={{ marginLeft: "1rem" }}
-            >
-              {importing ? (
-                <InlineLoading description="Importing..." />
-              ) : (
-                <FormattedMessage id="label.button.import" />
-              )}
-            </Button>
-          </Column>
-        </Grid>
-
-        {error && (
           <Grid fullWidth style={{ marginTop: "1rem" }}>
             <Column lg={16} md={8} sm={4}>
-              <InlineNotification
-                kind="error"
-                title="Error"
-                subtitle={error}
-                lowContrast
-              />
+              <Button
+                kind="primary"
+                onClick={handleValidate}
+                disabled={!file || validating}
+              >
+                {validating ? (
+                  <InlineLoading description="Validating..." />
+                ) : (
+                  <FormattedMessage id="label.button.validate" />
+                )}
+              </Button>
+              <Button
+                kind="primary"
+                onClick={handleImport}
+                disabled={
+                  !file ||
+                  !validationResult ||
+                  !validationResult.valid ||
+                  importing
+                }
+                style={{ marginLeft: "1rem" }}
+              >
+                {importing ? (
+                  <InlineLoading description="Importing..." />
+                ) : (
+                  <FormattedMessage id="label.button.import" />
+                )}
+              </Button>
             </Column>
           </Grid>
-        )}
 
-        {validationResult && (
-          <Grid fullWidth style={{ marginTop: "2rem" }}>
-            <Column lg={16} md={8} sm={4}>
-              <Heading>
-                <FormattedMessage id="label.validation.results" />
-              </Heading>
-              <div style={{ marginTop: "1rem" }}>
-                <p>
-                  <strong>Total Rows:</strong> {validationResult.totalRows}
-                </p>
-                <p>
-                  <strong>Valid Rows:</strong> {validationResult.validRows}
-                </p>
-                <p>
-                  <strong>Invalid Rows:</strong> {validationResult.invalidRows}
-                </p>
-                <p>
-                  <strong>Total Samples to Create:</strong>{" "}
-                  {validationResult.totalSamplesToCreate}
-                </p>
-                <p>
-                  <strong>Validation Status:</strong>{" "}
-                  {validationResult.valid ? (
-                    <span style={{ color: "green" }}>Valid</span>
-                  ) : (
-                    <span style={{ color: "red" }}>Invalid</span>
-                  )}
-                </p>
-              </div>
+          {error && (
+            <Grid fullWidth style={{ marginTop: "1rem" }}>
+              <Column lg={16} md={8} sm={4}>
+                <InlineNotification
+                  kind="error"
+                  title="Error"
+                  subtitle={error}
+                  lowContrast
+                />
+              </Column>
+            </Grid>
+          )}
 
-              {validationResult.errors &&
-                validationResult.errors.length > 0 && (
-                  <div style={{ marginTop: "2rem" }}>
-                    <Heading>
-                      <FormattedMessage id="label.validation.errors" />
-                    </Heading>
-                    <DataTable
-                      rows={validationResult.errors.map((error, index) => ({
-                        id: index,
-                        rowNumber: error.rowNumber,
-                        field: error.field,
-                        message: error.message,
-                      }))}
-                      headers={getErrorTableHeaders()}
-                    >
-                      {({ rows, headers, getHeaderProps, getTableProps }) => (
-                        <table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              {headers.map((header) => (
-                                <TableHeader
-                                  key={header.key}
-                                  {...getHeaderProps({ header })}
-                                >
-                                  {header.header}
-                                </TableHeader>
-                              ))}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {rows.map((row) => (
-                              <TableRow key={row.id}>
-                                {row.cells.map((cell) => (
-                                  <TableCell key={cell.id}>
-                                    {cell.value}
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </table>
-                      )}
-                    </DataTable>
-                  </div>
-                )}
+          {validationResult && (
+            <Grid fullWidth style={{ marginTop: "2rem" }}>
+              <Column lg={16} md={8} sm={4}>
+                <Heading>
+                  <FormattedMessage id="label.validation.results" />
+                </Heading>
+                <div style={{ marginTop: "1rem" }}>
+                  <p>
+                    <strong>Total Rows:</strong> {validationResult.totalRows}
+                  </p>
+                  <p>
+                    <strong>Valid Rows:</strong> {validationResult.validRows}
+                  </p>
+                  <p>
+                    <strong>Invalid Rows:</strong>{" "}
+                    {validationResult.invalidRows}
+                  </p>
+                  <p>
+                    <strong>Total Samples to Create:</strong>{" "}
+                    {validationResult.totalSamplesToCreate}
+                  </p>
+                  <p>
+                    <strong>Validation Status:</strong>{" "}
+                    {validationResult.valid ? (
+                      <span style={{ color: "green" }}>Valid</span>
+                    ) : (
+                      <span style={{ color: "red" }}>Invalid</span>
+                    )}
+                  </p>
+                </div>
 
-              {validationResult.previewRows &&
-                validationResult.previewRows.length > 0 && (
-                  <div style={{ marginTop: "2rem" }}>
-                    <Heading>
-                      <FormattedMessage id="label.preview.data" />
-                    </Heading>
-                    <DataTable
-                      rows={validationResult.previewRows.map((row, index) => {
-                        const defaultRow = {
+                {validationResult.errors &&
+                  validationResult.errors.length > 0 && (
+                    <div style={{ marginTop: "2rem" }}>
+                      <Heading>
+                        <FormattedMessage id="label.validation.errors" />
+                      </Heading>
+                      <DataTable
+                        rows={validationResult.errors.map((error, index) => ({
                           id: index,
-                          rowNumber: row.rowNumber,
-                          labNo: row.defaultFields?.labNo || "Auto-generated",
-                          sampleType: row.defaultFields?.sampleTypeId || "-",
-                          quantity: row.defaultFields?.quantity || "-",
-                          from: row.defaultFields?.from || "-",
-                          collectionDate:
-                            row.defaultFields?.collectionDate || "-",
-                          sampleQuantity: row.sampleQuantity,
-                        };
-                        return transformPreviewRow
-                          ? transformPreviewRow(defaultRow, row)
-                          : defaultRow;
-                      })}
-                      headers={getPreviewTableHeaders()}
-                    >
-                      {({ rows, headers, getHeaderProps, getTableProps }) => (
-                        <table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              {headers.map((header) => (
-                                <TableHeader
-                                  key={header.key}
-                                  {...getHeaderProps({ header })}
-                                >
-                                  {header.header}
-                                </TableHeader>
-                              ))}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {rows.map((row) => (
-                              <TableRow key={row.id}>
-                                {row.cells.map((cell) => (
-                                  <TableCell key={cell.id}>
-                                    {cell.value}
-                                  </TableCell>
+                          rowNumber: error.rowNumber,
+                          field: error.field,
+                          message: error.message,
+                        }))}
+                        headers={getErrorTableHeaders()}
+                      >
+                        {({ rows, headers, getHeaderProps, getTableProps }) => (
+                          <table {...getTableProps()}>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  <TableHeader
+                                    key={header.key}
+                                    {...getHeaderProps({ header })}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
                                 ))}
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </table>
-                      )}
-                    </DataTable>
-                  </div>
-                )}
-            </Column>
-          </Grid>
-        )}
+                            </TableHead>
+                            <TableBody>
+                              {rows.map((row) => (
+                                <TableRow key={row.id}>
+                                  {row.cells.map((cell) => (
+                                    <TableCell key={cell.id}>
+                                      {cell.value}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </table>
+                        )}
+                      </DataTable>
+                    </div>
+                  )}
 
-        {importResult && (
-          <Grid fullWidth style={{ marginTop: "2rem" }}>
-            <Column lg={16} md={8} sm={4}>
-              <InlineNotification
-                kind={importResult.success ? "success" : "error"}
-                title={
-                  importResult.success ? "Import Successful" : "Import Failed"
-                }
-                subtitle={
-                  importResult.success
-                    ? `${importResult.message || ""} Created: ${importResult.totalCreated}, Failed: ${importResult.totalFailed}`
-                    : importResult.error || "Import failed"
-                }
-                lowContrast
-              />
-              {importResult.success &&
-                importResult.createdAccessionNumbers &&
-                importResult.createdAccessionNumbers.length > 0 && (
+                {validationResult.previewRows &&
+                  validationResult.previewRows.length > 0 && (
+                    <div style={{ marginTop: "2rem" }}>
+                      <Heading>
+                        <FormattedMessage id="label.preview.data" />
+                      </Heading>
+                      <DataTable
+                        rows={validationResult.previewRows.map((row, index) => {
+                          const defaultRow = {
+                            id: index,
+                            rowNumber: row.rowNumber,
+                            labNo: row.defaultFields?.labNo || "Auto-generated",
+                            sampleType: row.defaultFields?.sampleTypeId || "-",
+                            quantity: row.defaultFields?.quantity || "-",
+                            from: row.defaultFields?.from || "-",
+                            collectionDate:
+                              row.defaultFields?.collectionDate || "-",
+                            sampleQuantity: row.sampleQuantity,
+                          };
+                          return transformPreviewRow
+                            ? transformPreviewRow(defaultRow, row)
+                            : defaultRow;
+                        })}
+                        headers={getPreviewTableHeaders()}
+                      >
+                        {({ rows, headers, getHeaderProps, getTableProps }) => (
+                          <table {...getTableProps()}>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  <TableHeader
+                                    key={header.key}
+                                    {...getHeaderProps({ header })}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {rows.map((row) => (
+                                <TableRow key={row.id}>
+                                  {row.cells.map((cell) => (
+                                    <TableCell key={cell.id}>
+                                      {cell.value}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </table>
+                        )}
+                      </DataTable>
+                    </div>
+                  )}
+              </Column>
+            </Grid>
+          )}
+
+          {importResult && (
+            <Grid fullWidth style={{ marginTop: "2rem" }}>
+              <Column lg={16} md={8} sm={4}>
+                <InlineNotification
+                  kind={importResult.success ? "success" : "error"}
+                  title={
+                    importResult.success ? "Import Successful" : "Import Failed"
+                  }
+                  subtitle={
+                    importResult.success
+                      ? `${importResult.message || ""} Created: ${importResult.totalCreated}, Failed: ${importResult.totalFailed}`
+                      : importResult.error || "Import failed"
+                  }
+                  lowContrast
+                />
+                {importResult.success &&
+                  importResult.createdAccessionNumbers &&
+                  importResult.createdAccessionNumbers.length > 0 && (
+                    <div style={{ marginTop: "1rem" }}>
+                      <Heading>
+                        <FormattedMessage id="label.created.samples" />
+                      </Heading>
+                      <p>{importResult.createdAccessionNumbers.join(", ")}</p>
+
+                      {/* Print Barcode Button */}
+                      {showPrintBarcodes && (
+                        <div style={{ marginTop: "1rem" }}>
+                          <Button
+                            kind="primary"
+                            renderIcon={Printer}
+                            onClick={() =>
+                              handlePrintAllBarcodes(
+                                importResult.createdAccessionNumbers,
+                              )
+                            }
+                          >
+                            <FormattedMessage
+                              id="print.barcode.all"
+                              defaultMessage="Print All Barcodes ({count})"
+                              values={{
+                                count:
+                                  importResult.createdAccessionNumbers.length,
+                              }}
+                            />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                {importResult.errors && importResult.errors.length > 0 && (
                   <div style={{ marginTop: "1rem" }}>
                     <Heading>
-                      <FormattedMessage id="label.created.samples" />
+                      <FormattedMessage id="label.import.errors" />
                     </Heading>
-                    <p>{importResult.createdAccessionNumbers.join(", ")}</p>
-
-                    {/* Print Barcode Button */}
-                    {showPrintBarcodes && (
-                      <div style={{ marginTop: "1rem" }}>
-                        <Button
-                          kind="primary"
-                          renderIcon={Printer}
-                          onClick={() =>
-                            handlePrintAllBarcodes(
-                              importResult.createdAccessionNumbers,
-                            )
-                          }
-                        >
-                          <FormattedMessage
-                            id="print.barcode.all"
-                            defaultMessage="Print All Barcodes ({count})"
-                            values={{
-                              count:
-                                importResult.createdAccessionNumbers.length,
-                            }}
-                          />
-                        </Button>
-                      </div>
-                    )}
+                    <ul>
+                      {importResult.errors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
                   </div>
                 )}
-              {importResult.errors && importResult.errors.length > 0 && (
-                <div style={{ marginTop: "1rem" }}>
-                  <Heading>
-                    <FormattedMessage id="label.import.errors" />
-                  </Heading>
-                  <ul>
-                    {importResult.errors.map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </Column>
-          </Grid>
-        )}
+              </Column>
+            </Grid>
+          )}
 
-        {/* Custom content render */}
-        {renderCustomContent &&
-          renderCustomContent({
-            file,
-            validationResult,
-            importResult,
-            error,
-            validating,
-            importing,
-          })}
-      </Section>
-    </div>
+          {/* Custom content render */}
+          {renderCustomContent &&
+            renderCustomContent({
+              file,
+              validationResult,
+              importResult,
+              error,
+              validating,
+              importing,
+            })}
+        </Section>
+      </div>
+    </>
   );
 }
