@@ -11,11 +11,13 @@
 ## Prerequisites
 
 1. Start development environment:
+
    ```bash
    docker compose -f dev.docker-compose.yml up -d
    ```
 
-2. Ensure database contains 100,000+ sample storage assignments for performance testing
+2. Ensure database contains 100,000+ sample storage assignments for performance
+   testing
 
 3. Access application at: `https://localhost/`
 
@@ -30,6 +32,7 @@
 **Objective**: Verify page loads in <2 seconds with large dataset
 
 **Steps**:
+
 1. Navigate to `/Storage/samples` tab
 2. Open Chrome DevTools → Network tab
 3. Reload page
@@ -50,12 +53,14 @@
 **Objective**: Verify pagination component renders correctly
 
 **Steps**:
+
 1. Navigate to `/Storage/samples` tab
 2. Verify pagination component visible below samples table
 
-**Expected Result**: 
+**Expected Result**:
+
 - Pagination component visible
-- Shows "Page 1 of X" 
+- Shows "Page 1 of X"
 - Total items count displayed
 - Page size selector shows "25 items per page" with options 25, 50, 100
 
@@ -72,12 +77,17 @@
 **Objective**: Verify Next/Previous/Page number navigation works
 
 **Steps**:
-1. Navigate to `/Storage/samples` tab
-2. Click "Next" button → Verify items 26-50 displayed, page number updates to "Page 2"
-3. Click "Previous" button → Verify items 1-25 displayed, page number updates to "Page 1"
-4. Click page number "5" → Verify items 101-125 displayed, page number updates to "Page 5"
 
-**Expected Result**: 
+1. Navigate to `/Storage/samples` tab
+2. Click "Next" button → Verify items 26-50 displayed, page number updates to
+   "Page 2"
+3. Click "Previous" button → Verify items 1-25 displayed, page number updates to
+   "Page 1"
+4. Click page number "5" → Verify items 101-125 displayed, page number updates
+   to "Page 5"
+
+**Expected Result**:
+
 - Each navigation completes in <1 second (SC-003)
 - Correct items displayed for each page
 - Page number indicator updates correctly
@@ -95,13 +105,15 @@
 **Objective**: Verify page size selector works correctly
 
 **Steps**:
+
 1. Navigate to `/Storage/samples` tab
 2. Select "50 items" from page size dropdown
 3. Verify 50 items displayed
 4. Verify page resets to "Page 1"
 5. Verify total pages recalculated (e.g., 4000 → 2000)
 
-**Expected Result**: 
+**Expected Result**:
+
 - 50 items displayed
 - Page reset to 1
 - Total pages recalculated correctly
@@ -119,6 +131,7 @@
 **Objective**: Verify pagination state preserved when switching tabs
 
 **Steps**:
+
 1. Navigate to `/Storage/samples` tab
 2. Navigate to page 2
 3. Switch to "Rooms" tab
@@ -140,6 +153,7 @@
 **Objective**: Verify memory usage remains stable during pagination
 
 **Steps**:
+
 1. Open Chrome DevTools → Memory tab
 2. Navigate to `/Storage/samples` tab
 3. Record heap snapshot at page load
@@ -161,6 +175,7 @@
 **Objective**: Verify pagination UX matches NoteBook module
 
 **Steps**:
+
 1. Navigate to NoteBook module (reference implementation)
 2. Observe pagination controls (layout, buttons, labels)
 3. Navigate to `/Storage/samples` tab
@@ -178,15 +193,15 @@
 
 ## Summary
 
-| Test Case | Status | Pass/Fail | Notes |
-|-----------|--------|-----------|-------|
-| TC1: Page Load Performance | ⏳ PENDING | - | - |
-| TC2: Pagination Controls Visible | ⏳ PENDING | - | - |
-| TC3: Page Navigation | ⏳ PENDING | - | - |
-| TC4: Page Size Selection | ⏳ PENDING | - | - |
-| TC5: State Preservation | ⏳ PENDING | - | - |
-| TC6: Browser Memory Stability | ⏳ PENDING | - | - |
-| TC7: UX Consistency | ⏳ PENDING | - | - |
+| Test Case                        | Status     | Pass/Fail | Notes |
+| -------------------------------- | ---------- | --------- | ----- |
+| TC1: Page Load Performance       | ⏳ PENDING | -         | -     |
+| TC2: Pagination Controls Visible | ⏳ PENDING | -         | -     |
+| TC3: Page Navigation             | ⏳ PENDING | -         | -     |
+| TC4: Page Size Selection         | ⏳ PENDING | -         | -     |
+| TC5: State Preservation          | ⏳ PENDING | -         | -     |
+| TC6: Browser Memory Stability    | ⏳ PENDING | -         | -     |
+| TC7: UX Consistency              | ⏳ PENDING | -         | -     |
 
 **Overall Status**: ⏳ PENDING - All test cases require manual execution
 
@@ -194,11 +209,14 @@
 
 ## Known Issues
 
-1. **Frontend Unit Tests**: 4 pagination tests timing out in Jest (test setup issue, not functionality issue)
+1. **Frontend Unit Tests**: 4 pagination tests timing out in Jest (test setup
+   issue, not functionality issue)
+
    - Tests need proper tab state handling
    - Functionality validated via backend integration tests
 
-2. **Manual Testing Required**: Cannot be automated, requires running development environment
+2. **Manual Testing Required**: Cannot be automated, requires running
+   development environment
 
 ---
 
@@ -209,5 +227,3 @@
 3. Attach screenshots to this document
 4. Update status to ✅ PASS or ❌ FAIL for each test case
 5. Include this document in PR description
-
-

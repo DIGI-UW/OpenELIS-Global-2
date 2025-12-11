@@ -80,7 +80,8 @@ public class SampleStorageRestControllerTest extends BaseStorageTest {
 
     @Test
     public void testGetSampleItems_AssignedSamplesHaveLocation() throws Exception {
-        // CRITICAL: Verify that sample items with storage assignments have location populated
+        // CRITICAL: Verify that sample items with storage assignments have location
+        // populated
         // This prevents the "location not showing" bug discovered during manual testing
         String response = mockMvc
                 .perform(get("/rest/storage/sample-items").param("page", "0").param("size", "25")
@@ -96,7 +97,8 @@ public class SampleStorageRestControllerTest extends BaseStorageTest {
         boolean foundAssignedWithLocation = false;
         for (com.fasterxml.jackson.databind.JsonNode item : items) {
             String location = item.has("location") ? item.get("location").asText() : "";
-            // If location is not empty, it means sample is assigned and location path was built
+            // If location is not empty, it means sample is assigned and location path was
+            // built
             if (location != null && !location.isEmpty() && !location.equals("Unassigned")) {
                 foundAssignedWithLocation = true;
                 break;

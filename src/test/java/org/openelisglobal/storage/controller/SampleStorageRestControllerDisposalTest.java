@@ -418,11 +418,11 @@ public class SampleStorageRestControllerDisposalTest extends BaseStorageTest {
                 .andReturn();
 
         // Assert: Disposed sample appears in results
-        // OGC-150: Response is now paginated with { items: [...], totalItems, ... } structure
-        com.fasterxml.jackson.databind.JsonNode root = objectMapper
-                .readTree(result.getResponse().getContentAsString());
+        // OGC-150: Response is now paginated with { items: [...], totalItems, ... }
+        // structure
+        com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
         com.fasterxml.jackson.databind.JsonNode samplesNode = root.has("items") ? root.get("items") : root;
-        
+
         boolean found = false;
         for (com.fasterxml.jackson.databind.JsonNode sample : samplesNode) {
             // sampleItemId is external ID, compare with sampleItemExternalId field
@@ -432,7 +432,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseStorageTest {
             if (sampleItemId.equals(sampleItemExternalId)) {
                 found = true;
                 String status = sample.get("status").asText();
-                // Status is now returned as actual status ID (e.g., "24" for disposed), not "disposed" string
+                // Status is now returned as actual status ID (e.g., "24" for disposed), not
+                // "disposed" string
                 assertEquals("Status should be disposed status ID (24)", "24", status);
                 break;
             }

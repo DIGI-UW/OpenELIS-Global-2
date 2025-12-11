@@ -70,7 +70,8 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
                     }
                 } else if ("disposed".equalsIgnoreCase(statusFilter)) {
                     // Disposed: status should BE disposed
-                    matchesStatus = sampleStatusId != null && statusService.matches(sampleStatusId, SampleStatus.Disposed);
+                    matchesStatus = sampleStatusId != null
+                            && statusService.matches(sampleStatusId, SampleStatus.Disposed);
                 } else {
                     // Direct status ID comparison for any other status from dropdown
                     matchesStatus = statusFilter.equals(sampleStatusId);
