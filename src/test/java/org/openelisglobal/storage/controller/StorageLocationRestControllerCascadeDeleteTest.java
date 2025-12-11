@@ -70,35 +70,30 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
 
     @Test
     public void deleteLocationWithCascade_UnassignsAllSamples_WhenShelfHasAssignedSamples() throws Exception {
-        Integer assignmentCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM sample_storage_assignment WHERE location_id = ? AND location_type = 'rack'",
-                Integer.class, 10004);
-        assertEquals("Sample should be assigned", Integer.valueOf(1), assignmentCount);
+        int initialAssignmentCount = countRowsInTableWhere("sample_storage_assignment",
+                "location_id = 10004 AND location_type = 'rack'");
+        assertEquals("Sample should be assigned", 1, initialAssignmentCount);
 
         storageLocationService.deleteLocationWithCascade(10001,
                 org.openelisglobal.storage.valueholder.StorageShelf.class);
 
-        Integer remainingAssignments = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM sample_storage_assignment WHERE location_id = ? AND location_type = 'rack'",
-                Integer.class, 10004);
-        assertEquals("Sample assignment should be unassigned", Integer.valueOf(0), remainingAssignments);
+        int finalAssignmentCount = countRowsInTableWhere("sample_storage_assignment",
+                "location_id = 10004 AND location_type = 'rack'");
+        assertEquals("Sample assignment should be unassigned", 0, finalAssignmentCount);
     }
 
     @Test
     public void deleteLocationWithCascade_DeletesAllChildRacks_WhenShelfHasChildRacks() throws Exception {
-        Integer rackCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage_rack WHERE id = ?", Integer.class,
-                10004);
-        assertEquals("Rack should exist", Integer.valueOf(1), rackCount);
+        int initialRackCount = countRowsInTableWhere("storage_rack", "id = 10004");
+        assertEquals("Rack should exist", 1, initialRackCount);
 
         storageLocationService.deleteLocationWithCascade(10001,
                 org.openelisglobal.storage.valueholder.StorageShelf.class);
 
-        Integer remainingRacks = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage_rack WHERE id = ?",
-                Integer.class, 10004);
-        assertEquals("Rack should be deleted", Integer.valueOf(0), remainingRacks);
+        int finalRackCount = countRowsInTableWhere("storage_rack", "id = 10004");
+        assertEquals("Rack should be deleted", 0, finalRackCount);
 
-        Integer remainingShelves = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM storage_shelf WHERE id = ?",
-                Integer.class, 10001);
-        assertEquals("Shelf should be deleted", Integer.valueOf(0), remainingShelves);
+        int finalShelfCount = countRowsInTableWhere("storage_shelf", "id = 10001");
+        assertEquals("Shelf should be deleted", 0, finalShelfCount);
     }
 }
