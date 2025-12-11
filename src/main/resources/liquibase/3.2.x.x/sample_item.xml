@@ -49,4 +49,24 @@
             <column name="void_reason" type="varchar(200)" />
         </addColumn>
     </changeSet>
+
+    <changeSet author="reagan-meant" id="25-10-2025">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_aliquot'
+            </sqlCheck>
+        </preConditions>
+        <comment>create sample aliquot tab menu option</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="121" />
+            <column name="element_id" value="menu_aliquot" />
+            <column name="action_url" value="/Aliquot" />
+            <column name="display_key" value="banner.menu.aliquot"  />
+            <column name="tool_tip_key" value="banner.menu.aliquot.tooltip" />
+            <column name="new_window" valueBoolean="true" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
 </databaseChangeLog>

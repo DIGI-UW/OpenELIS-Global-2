@@ -160,14 +160,14 @@ function ManageMethod() {
             invalidText="This field is required"
           />
           {confirmationStep && (
-            <p style={{ color: "/3366B3", marginTop: "1rem" }}>
+            <p style={{ color: "#3366B3", marginTop: "1rem" }}>
               <FormattedMessage id="message.method.activation" />
             </p>
           )}
         </Modal>
 
         <div className="orderLegendBody">
-          <h4 style={{ color: "/3366B3" }}>
+          <h4 style={{ color: "#3366B3" }}>
             <FormattedMessage id="label.existing.methods" />
           </h4>
           <Grid fullWidth={true}>
@@ -178,7 +178,7 @@ function ManageMethod() {
             ))}
           </Grid>
           <hr />
-          <h4 style={{ color: "/3366B3" }}>
+          <h4 style={{ color: "#3366B3" }}>
             <FormattedMessage id="label.inactive.methods" />
           </h4>
           <div style={{ display: "flex", flexWrap: "wrap", marginTop: "1rem" }}>

@@ -133,7 +133,6 @@
             <column name="tool_tip_key" value="banner.menu.sampleManagement.tooltip"/>
             <column name="new_window" valueBoolean="false"/>
             <column name="is_active" valueBoolean="true"/>
-            <column name="hide_in_old_ui" valueBoolean="false"/>
         </insert>
     </changeSet>
 
@@ -156,7 +155,6 @@
             <column name="tool_tip_key" value="result.entry.label"/>
             <column name="new_window" valueBoolean="false"/>
             <column name="is_active" valueBoolean="true"/>
-            <column name="hide_in_old_ui" valueBoolean="false"/>
         </insert>
     </changeSet>
 

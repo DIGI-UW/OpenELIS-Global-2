@@ -21,6 +21,7 @@
             <column name="tool_tip_key" value="tooltip.banner.menu.generic.sample"/>
             <column name="new_window" value="false"/>
             <column name="is_active" value="true"/>
+            <column name="hide_in_old_ui" valueBoolean="true" />
         </insert>
     </changeSet>
 

@@ -2,17 +2,32 @@ package org.openelisglobal.ocl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import org.hibernate.HibernateException;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testconfiguration.action.TestAddControllerUtills;
+import org.openelisglobal.testconfiguration.controller.TestAddController;
+import org.openelisglobal.testconfiguration.form.TestAddForm;
 import org.openelisglobal.testconfiguration.service.TestAddService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.slf4j.Logger;
@@ -91,7 +106,7 @@ public class OclConfigurationHandler implements DomainConfigurationHandler {
             tempFile.deleteOnExit();
 
             // Copy InputStream to temp file
-            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile)) {
+            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 while ((bytesRead = inputStream.read(buffer)) != -1) {
@@ -128,10 +143,9 @@ public class OclConfigurationHandler implements DomainConfigurationHandler {
                 log.info("OCL Import: Node has a concepts array of size {}.", node.get("concepts").size());
 
                 // Map all concepts in this node to TestAddForms
-                List<org.openelisglobal.testconfiguration.form.TestAddForm> testForms = mapper
-                        .mapConceptsToTestAddForms(node);
+                List<TestAddForm> testForms = mapper.mapConceptsToTestAddForms(node);
 
-                for (org.openelisglobal.testconfiguration.form.TestAddForm form : testForms) {
+                for (TestAddForm form : testForms) {
                     conceptCount++;
 
                     try {
@@ -172,22 +186,20 @@ public class OclConfigurationHandler implements DomainConfigurationHandler {
 
     private void mapLabsetPannels(OclToOpenElisMapper mapper) {
         for (JsonNode panel : mapper.getLabSetPanelNodes()) {
-            java.util.Map<String, String> names = mapper.extractNames(panel);
+            Map<String, String> names = mapper.extractNames(panel);
             String englishName = names.get("englishName");
-            org.openelisglobal.panel.valueholder.Panel dbPanel = panelService.getPanelByName(englishName);
+            Panel dbPanel = panelService.getPanelByName(englishName);
             log.info("Mapping tests for Panel " + englishName);
 
             if (dbPanel != null) {
-                List<org.openelisglobal.panelitem.valueholder.PanelItem> panelItems = panelItemService
-                        .getPanelItemsForPanel(dbPanel.getId());
+                List<PanelItem> panelItems = panelItemService.getPanelItemsForPanel(dbPanel.getId());
 
-                List<org.openelisglobal.test.valueholder.Test> newTests = new ArrayList<>();
-                java.util.Set<String> memebers = mapper.getLabSetMemebrs(panel);
+                List<Test> newTests = new ArrayList<>();
+                Set<String> memebers = mapper.getLabSetMemebrs(panel);
                 log.info("Mapped Lab Set Memebrs: " + memebers);
                 for (String testName : mapper.getLabSetMemebrs(panel)) {
                     log.info("Adding Test " + testName + " to Pannel " + englishName);
-                    org.openelisglobal.test.valueholder.Test test = testService.getTestByLocalizedName(testName,
-                            java.util.Locale.ENGLISH);
+                    Test test = testService.getTestByLocalizedName(testName, Locale.ENGLISH);
                     if (test != null) {
                         log.info("Test " + testName + "Added to Pannel " + englishName);
                         newTests.add(test);
@@ -195,7 +207,7 @@ public class OclConfigurationHandler implements DomainConfigurationHandler {
                 }
                 try {
                     panelItemService.updatePanelItems(panelItems, dbPanel, false, "1", newTests);
-                } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+                } catch (LIMSRuntimeException e) {
                     LogEvent.logDebug(e);
                 }
             }
@@ -203,27 +215,23 @@ public class OclConfigurationHandler implements DomainConfigurationHandler {
         }
     }
 
-    public org.openelisglobal.testconfiguration.form.TestAddForm handlenNewTests(
-            org.openelisglobal.testconfiguration.form.TestAddForm form) {
+    public TestAddForm handlenNewTests(TestAddForm form) {
 
         String jsonString = (form.getJsonWad());
-        org.json.simple.parser.JSONParser parser = new org.json.simple.parser.JSONParser();
-        org.json.simple.JSONObject obj = null;
+        JSONParser parser = new JSONParser();
+        JSONObject obj = null;
         try {
-            obj = (org.json.simple.JSONObject) parser.parse(jsonString);
-        } catch (org.json.simple.parser.ParseException e) {
+            obj = (JSONObject) parser.parse(jsonString);
+        } catch (ParseException e) {
             LogEvent.logError(e.getMessage(), e);
         }
         TestAddControllerUtills.TestAddParams testAddParams = testAddControllerUtills.extractTestAddParms(obj, parser);
-        List<org.openelisglobal.testconfiguration.controller.TestAddController.TestSet> testSets = testAddControllerUtills
-                .createTestSets(testAddParams);
-        org.openelisglobal.localization.valueholder.Localization nameLocalization = testAddControllerUtills
-                .createNameLocalization(testAddParams);
-        org.openelisglobal.localization.valueholder.Localization reportingNameLocalization = testAddControllerUtills
-                .createReportingNameLocalization(testAddParams);
+        List<TestAddController.TestSet> testSets = testAddControllerUtills.createTestSets(testAddParams);
+        Localization nameLocalization = testAddControllerUtills.createNameLocalization(testAddParams);
+        Localization reportingNameLocalization = testAddControllerUtills.createReportingNameLocalization(testAddParams);
         try {
             testAddService.addTests(testSets, nameLocalization, reportingNameLocalization, "1");
-        } catch (org.hibernate.HibernateException e) {
+        } catch (HibernateException e) {
             LogEvent.logDebug(e);
         }
         return form;

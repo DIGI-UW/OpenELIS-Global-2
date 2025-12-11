@@ -5,14 +5,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import javax.sql.DataSource;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.openelisglobal.storage.BaseStorageTest;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
@@ -20,22 +16,15 @@ import org.springframework.test.web.servlet.MvcResult;
  * Tests that disposal REST API correctly sets numeric status ID and returns
  * proper responses
  */
-public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensitiveTest {
-
-    @Autowired
-    private DataSource dataSource;
+public class SampleStorageRestControllerDisposalTest extends BaseStorageTest {
 
     private ObjectMapper objectMapper;
-    private JdbcTemplate jdbcTemplate;
 
     @Before
     public void setUp() throws Exception {
-        super.setUp();
-        // Reference data (status_of_sample) is managed by Liquibase and preserved
-        // by cleanRowsInCurrentConnection (reference tables are not truncated)
+        super.setUp(); // BaseStorageTest handles jdbcTemplate initialization and
+                       // cleanStorageTestData()
         objectMapper = new ObjectMapper();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-        cleanStorageTestData();
         // Ensure SampleDisposed status exists (insert if missing, e.g., if
         // status_of_sample was truncated)
         Integer disposedCount = jdbcTemplate.queryForObject(
@@ -46,26 +35,6 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                     "INSERT INTO status_of_sample (id, description, code, status_type, lastupdated, name, display_key, is_active) "
                             + "VALUES (24, 'Sample has been physically disposed', 1, 'SAMPLE', CURRENT_TIMESTAMP, 'SampleDisposed', 'status.sample.disposed', 'Y') "
                             + "ON CONFLICT (id) DO UPDATE SET name = 'SampleDisposed'");
-        }
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        cleanStorageTestData();
-    }
-
-    /**
-     * Clean up storage-related test data to ensure tests don't pollute the
-     * database.
-     */
-    private void cleanStorageTestData() {
-        try {
-            jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE id >= 10000");
-            jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id >= 10000");
-            jdbcTemplate.execute("DELETE FROM sample_item WHERE id >= 10000");
-            jdbcTemplate.execute("DELETE FROM sample WHERE id >= 10000");
-        } catch (Exception e) {
-            // Ignore cleanup errors - data may not exist
         }
     }
 
@@ -91,15 +60,6 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
 
         // Return external_id for use with resolveSampleItem
         return externalId;
-    }
-
-    /**
-     * Helper to get the numeric sample_item.id from the external_id. Used for
-     * database verification queries.
-     */
-    private int getSampleItemNumericId(String externalId) {
-        return jdbcTemplate.queryForObject("SELECT id FROM sample_item WHERE external_id = ?", Integer.class,
-                externalId);
     }
 
     @Test
@@ -205,10 +165,20 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                 post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isOk());
 
-        // Assert - assignment should be deleted
+        // Assert - assignment exists with NULL location
+        // (specs/001-sample-storage/spec.md FR-056)
         Integer assignmentCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class, numericId);
-        assertEquals("Assignment should be deleted after disposal", Integer.valueOf(0), assignmentCount);
+        assertEquals("Assignment record should still exist after disposal", Integer.valueOf(1), assignmentCount);
+
+        Integer locationId = jdbcTemplate.queryForObject(
+                "SELECT location_id FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class, numericId);
+        assertNull("Location ID should be cleared after disposal", locationId);
+
+        String locationType = jdbcTemplate.queryForObject(
+                "SELECT location_type FROM sample_storage_assignment WHERE sample_item_id = ?", String.class,
+                numericId);
+        assertNull("Location type should be cleared after disposal", locationType);
     }
 
     /**
@@ -352,5 +322,117 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         // When notes is null, format should be: "Disposal: {reason} | Method: {method}"
         String expectedReasonFormat = "Disposal: " + disposalReason + " | Method: " + disposalMethod;
         assertEquals("Reason should match expected format (without notes)", expectedReasonFormat, actualReason);
+    }
+
+    /**
+     * Helper method to create a storage device for assignment tests
+     */
+    private Integer createStorageDevice() throws Exception {
+        Integer deviceId = 10000;
+        // Create a storage room first
+        jdbcTemplate.update(
+                "INSERT INTO storage_room (id, fhir_uuid, name, code, active, sys_user_id, last_updated) VALUES (?, gen_random_uuid(), ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                10000, "Test Room", "TST", true, "1");
+
+        // Create a storage device
+        jdbcTemplate.update(
+                "INSERT INTO storage_device (id, fhir_uuid, name, code, type, parent_room_id, active, sys_user_id, last_updated) VALUES (?, gen_random_uuid(), ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                deviceId, "Test Device", "TST-DEV", "freezer", 10000, true, "1");
+
+        return deviceId;
+    }
+
+    /**
+     * Helper method to assign a sample to a storage device
+     */
+    private void assignSampleToDevice(String sampleItemExternalId, Integer deviceId) throws Exception {
+        int numericId = getSampleItemNumericId(sampleItemExternalId);
+        jdbcTemplate.update(
+                "INSERT INTO sample_storage_assignment (id, sample_item_id, location_id, location_type, assigned_by_user_id, assigned_date, last_updated) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                10001, numericId, deviceId, "device", 1);
+    }
+
+    /**
+     * Verify disposal increments disposed metric count
+     * (specs/001-sample-storage/spec.md FR-057b)
+     */
+    @Test
+    public void testDisposal_IncrementsDisposedMetricCount() throws Exception {
+        // Arrange: Get initial metrics
+        MvcResult initialMetrics = mockMvc.perform(get("/rest/storage/sample-items?countOnly=true"))
+                .andExpect(status().isOk()).andReturn();
+        com.fasterxml.jackson.databind.JsonNode initialJson = objectMapper
+                .readTree(initialMetrics.getResponse().getContentAsString());
+        int initialDisposed = initialJson.get(0).get("disposed").asInt();
+
+        // Create sample, assign to storage, then dispose
+        String sampleItemId = createTestSampleItem();
+        Integer deviceId = createStorageDevice();
+        assignSampleToDevice(sampleItemId, deviceId);
+
+        String disposalRequest = String
+                .format("{\"sampleItemId\":\"%s\",\"reason\":\"expired\",\"method\":\"autoclave\"}", sampleItemId);
+
+        // Act: Dispose the sample
+        mockMvc.perform(post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON)
+                .content(disposalRequest)).andExpect(status().isOk());
+
+        // Assert: Disposed count incremented by 1
+        MvcResult finalMetrics = mockMvc.perform(get("/rest/storage/sample-items?countOnly=true"))
+                .andExpect(status().isOk()).andReturn();
+        com.fasterxml.jackson.databind.JsonNode finalJson = objectMapper
+                .readTree(finalMetrics.getResponse().getContentAsString());
+        int finalDisposed = finalJson.get(0).get("disposed").asInt();
+
+        assertEquals("Disposed count should increment by exactly 1", initialDisposed + 1, finalDisposed);
+
+        // Verify assignment still exists but location is NULL
+        int numericId = getSampleItemNumericId(sampleItemId);
+        Integer assignmentCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class, numericId);
+        assertEquals("Assignment record should still exist", Integer.valueOf(1), assignmentCount);
+
+        Integer locationId = jdbcTemplate.queryForObject(
+                "SELECT location_id FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.class, numericId);
+        assertNull("Location should be cleared after disposal", locationId);
+    }
+
+    /**
+     * Verify disposed samples remain searchable for audit
+     * (specs/001-sample-storage/spec.md FR-056)
+     */
+    @Test
+    public void testDisposal_DisposedSampleRemainSearchable() throws Exception {
+        // Arrange: Create, assign, and dispose sample
+        String sampleItemId = createTestSampleItem();
+        Integer deviceId = createStorageDevice();
+        assignSampleToDevice(sampleItemId, deviceId);
+
+        String disposalRequest = String
+                .format("{\"sampleItemId\":\"%s\",\"reason\":\"expired\",\"method\":\"autoclave\"}", sampleItemId);
+        mockMvc.perform(post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON)
+                .content(disposalRequest)).andExpect(status().isOk());
+
+        // Act: Search for disposed samples via filter
+        MvcResult result = mockMvc.perform(get("/rest/storage/sample-items?status=disposed")).andExpect(status().isOk())
+                .andReturn();
+
+        // Assert: Disposed sample appears in results
+        com.fasterxml.jackson.databind.JsonNode samples = objectMapper
+                .readTree(result.getResponse().getContentAsString());
+        boolean found = false;
+        for (com.fasterxml.jackson.databind.JsonNode sample : samples) {
+            // sampleItemId is external ID, compare with sampleItemExternalId field
+            String sampleItemExternalId = sample.has("sampleItemExternalId")
+                    ? sample.get("sampleItemExternalId").asText()
+                    : "";
+            if (sampleItemId.equals(sampleItemExternalId)) {
+                found = true;
+                String status = sample.get("status").asText();
+                assertTrue("Status should be 'disposed' or 'Disposed'", "disposed".equalsIgnoreCase(status));
+                break;
+            }
+        }
+        assertTrue("Disposed sample should be searchable per FR-056", found);
     }
 }

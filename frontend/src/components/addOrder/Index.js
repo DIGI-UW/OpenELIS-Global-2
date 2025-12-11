@@ -190,14 +190,14 @@ const Index = () => {
 
       const urlParams = new URLSearchParams(window.location.search);
       const externalId = urlParams.get("ID");
+      const labNumber = urlParams.get("labNumber");
 
       newOrderFormValues = {
         ...newOrderFormValues,
         sampleOrderItems: {
           ...newOrderFormValues.sampleOrderItems,
           externalOrderNumber: externalId,
-          // Note: labNo is set by the mount useEffect (line ~631), not here
-          // This avoids redundant state updates and ensures consistent initialization
+          labNo: labNumber,
         },
       };
       setOrderFormValues(newOrderFormValues);

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <storage_room id="1000" name="Test Room" code="TESTROOM01"
+        active="true" sys_user_id="1" last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440000" />
+    <storage_room id="1001" name="Test Room No SC"
+        code="TESTROOM02" active="true" sys_user_id="1"
+        last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" />
+    <storage_room id="1002" name="Test Room Short"
+        code="TESTROOM03" active="true" sys_user_id="1"
+        last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440002" />
+    <storage_device id="1000" name="Test Device"
+        code="FRZ0101" type="freezer" parent_room_id="1000" active="true"
+        sys_user_id="1" last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
+    <storage_device id="1001" name="Test Device No SC"
+        code="" type="freezer" parent_room_id="1001" active="true"
+        sys_user_id="1" last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
+    <storage_device id="1002" name="Test Device Short"
+        code="TEST-DEV01" type="freezer" parent_room_id="1002" active="true"
+        sys_user_id="1" last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440005" />
+</dataset>

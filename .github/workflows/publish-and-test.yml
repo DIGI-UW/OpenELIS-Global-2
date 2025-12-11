@@ -443,8 +443,8 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-database:buildcache
           cache-to: type=registry,ref=${{ env.DOCKER_TEST_NAME }}-database:buildcache,mode=max        
 
-  build-installer-and-upload-installer:
-    if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' && github.event_name == 'release' && github.event.action == 'published' }}
-    needs: [frontend-qa]
-    uses : DIGI-UW/OpenELIS-Global-2/.github/workflows/build-installer.yml@develop
+  # build-installer-and-upload-installer:
+  #   if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' && github.event_name == 'release' && github.event.action == 'published' }}
+  #   needs: [frontend-qa]
+  #   uses : DIGI-UW/OpenELIS-Global-2/.github/workflows/build-installer.yml@develop
            
