@@ -1328,22 +1328,13 @@ const StorageDashboard = () => {
             }
 
             // Apply status filter for Samples tab
+            // filterStatus contains the status ID from the dropdown (e.g., "active", "disposed", or actual status ID)
             if (filterStatus && visibleFilters.status) {
-              const statusFilter =
-                filterStatus === "active"
-                  ? "active"
-                  : filterStatus === "disposed"
-                    ? "disposed"
-                    : null;
-              if (statusFilter) {
-                filtered = filtered.filter((sampleItem) => {
-                  const sampleItemStatus = sampleItem.status || "active";
-                  return (
-                    sampleItemStatus.toLowerCase() ===
-                    statusFilter.toLowerCase()
-                  );
-                });
-              }
+              filtered = filtered.filter((sampleItem) => {
+                const sampleItemStatus = sampleItem.status || "";
+                // Direct ID comparison - works for both legacy ("active"/"disposed") and actual status IDs
+                return sampleItemStatus === filterStatus;
+              });
             }
 
             setSamples(filtered);
@@ -1370,14 +1361,10 @@ const StorageDashboard = () => {
         }
       }
 
-      // Convert status filter for Samples tab: "active" or "disposed"
+      // Pass status filter to backend - can be any status ID from the dropdown
+      // Backend handles "active", "disposed", or actual status IDs
       if (filterStatus && visibleFilters.status) {
-        if (filterStatus === "active") {
-          params.append("status", "active");
-        } else if (filterStatus === "disposed") {
-          params.append("status", "disposed");
-        }
-        // If filterStatus is empty string, don't add status param (show all)
+        params.append("status", filterStatus);
       }
 
       // OGC-150: Add pagination parameters

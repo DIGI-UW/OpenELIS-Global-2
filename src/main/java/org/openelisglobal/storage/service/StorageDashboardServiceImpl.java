@@ -53,24 +53,27 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
                 }
             }
 
-            // Status filtering: Use statusService to check if sample is disposed
-            // Frontend sends "active" or "disposed", backend stores status ID
+            // Status filtering: Support filtering by any status ID from dropdown
+            // Frontend can send "active", "disposed", or any actual status ID
             boolean matchesStatus = true;
             if (status != null && !status.isEmpty()) {
-                String statusLower = status.trim().toLowerCase();
+                String statusFilter = status.trim();
                 String sampleStatusId = (String) sample.get("status");
 
-                if (sampleStatusId == null || "active".equals(sampleStatusId)) {
-                    // No status ID or explicitly "active" = active by default
-                    matchesStatus = statusLower.equals("active");
-                } else if ("active".equals(statusLower)) {
-                    // Active: status should NOT be disposed
-                    matchesStatus = !statusService.matches(sampleStatusId, SampleStatus.Disposed);
-                } else if ("disposed".equals(statusLower)) {
+                // Handle legacy "active" and "disposed" labels
+                if ("active".equalsIgnoreCase(statusFilter)) {
+                    // Active: status should be null/empty OR NOT be disposed
+                    if (sampleStatusId == null || sampleStatusId.isEmpty()) {
+                        matchesStatus = true; // No status = active by default
+                    } else {
+                        matchesStatus = !statusService.matches(sampleStatusId, SampleStatus.Disposed);
+                    }
+                } else if ("disposed".equalsIgnoreCase(statusFilter)) {
                     // Disposed: status should BE disposed
-                    matchesStatus = statusService.matches(sampleStatusId, SampleStatus.Disposed);
+                    matchesStatus = sampleStatusId != null && statusService.matches(sampleStatusId, SampleStatus.Disposed);
                 } else {
-                    matchesStatus = false; // Unknown status filter value
+                    // Direct status ID comparison for any other status from dropdown
+                    matchesStatus = statusFilter.equals(sampleStatusId);
                 }
             }
 
