@@ -14,14 +14,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
-/**
- * Integration tests for Storage Dashboard filtering endpoints. Tests
- * tab-specific filter requirements per FR-065: - Samples tab: Filter by
- * location and status - Rooms tab: Filter by status - Devices tab: Filter by
- * type, room, and status - Shelves tab: Filter by device, room, and status -
- * Racks tab: Filter by room, shelf, device, and status - Racks tab: Display
- * room column (FR-065a)
- */
+/** Integration tests for Storage Dashboard filtering endpoints. */
 public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveTest {
 
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -39,21 +32,12 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
     public void setUp() throws Exception {
         super.setUp();
 
-        // Load user data (required for assigned_by_user_id foreign key)
         executeDataSetWithStateManagement("testdata/user-role.xml");
-
-        // Load test data via DBUnit XML (replaces JDBC data creation)
         executeDataSetWithStateManagement("testdata/storage-dashboard-test-data.xml");
     }
 
-    /**
-     * Test: GET /rest/storage/samples?location={locationId}&status={status} Should
-     * return only samples matching both location and status filters (AND logic)
-     */
     @Test
     public void testGetSamples_FilterByLocation_ReturnsFiltered() throws Exception {
-        // Filter by location string (e.g., "Test Integration Room" or "Test Freezer")
-        // Not by position ID - location is a hierarchical path string
         MvcResult result = mockMvc
                 .perform(get("/rest/storage/sample-items").param("location", "Test Integration Room").param("status",
                         "active"))
@@ -66,15 +50,10 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
                 objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
 
         assertNotNull("Response should not be null", samples);
-        // Note: Test may not have sample assignments, so we just verify the filter
-        // works if samples exist
-        // If samples are returned, verify they match the location filter
         if (samples.size() > 0) {
             for (Map<String, Object> sample : samples) {
                 String location = (String) sample.get("location");
                 assertNotNull("Location should not be null", location);
-                // Location format: "Room > Device > Shelf > Rack > Position"
-                // Filter by "Test Integration" should match "Test Integration Room"
                 assertTrue("Location should contain test room name",
                         location.contains("Test Integration Room") || location.contains("Test Integration"));
             }
@@ -94,20 +73,13 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
 
         assertNotNull("Response should not be null", samples);
 
-        // Verify all returned samples have active status (non-disposed)
-        // Status is now returned as actual status ID, not "active"/"disposed" string
         for (Map<String, Object> sample : samples) {
             String status = (String) sample.get("status");
             assertNotNull("Status should not be null", status);
-            // Status ID should not be "24" (disposed) - accept any other status as active
             assertNotEquals("Status should not be disposed (ID 24)", "24", status);
         }
     }
 
-    /**
-     * Test: GET /rest/storage/rooms?status={status} Should return only rooms
-     * matching the status filter
-     */
     @Test
     public void testGetRooms_FilterByStatus_ReturnsFiltered() throws Exception {
         MvcResult result = mockMvc.perform(get("/rest/storage/rooms").param("status", "active"))
@@ -127,11 +99,6 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
         }
     }
 
-    /**
-     * Test: GET
-     * /rest/storage/devices?type={deviceType}&roomId={roomId}&status={status}
-     * Should return only devices matching all three filters (AND logic)
-     */
     @Test
     public void testGetDevices_FilterByTypeRoomStatus_ReturnsFiltered() throws Exception {
         MvcResult result = mockMvc
@@ -151,17 +118,12 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
             Integer roomId = (Integer) device.get("roomId");
             Boolean active = (Boolean) device.get("active");
 
-            assertEquals("Device type should match", "freezer", type); // getTypeAsString() returns lowercase
+            assertEquals("Device type should match", "freezer", type);
             assertEquals("Device roomId should match", TEST_ROOM_ID, roomId);
             assertTrue("Device should be active", active);
         }
     }
 
-    /**
-     * Test: GET
-     * /rest/storage/shelves?deviceId={deviceId}&roomId={roomId}&status={status}
-     * Should return only shelves matching all three filters (AND logic)
-     */
     @Test
     public void testGetShelves_FilterByDeviceRoomStatus_ReturnsFiltered() throws Exception {
         MvcResult result = mockMvc
@@ -175,8 +137,6 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
 
         assertNotNull("Response should not be null", shelves);
 
-        // Verify all returned shelves match all three filters (implementation uses
-        // parentDeviceId and parentRoomId)
         for (Map<String, Object> shelf : shelves) {
             Integer deviceId = (Integer) shelf.get("parentDeviceId");
             Integer roomId = (Integer) shelf.get("parentRoomId");
@@ -188,11 +148,6 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
         }
     }
 
-    /**
-     * Test: GET
-     * /rest/storage/racks?roomId={roomId}&shelfId={shelfId}&deviceId={deviceId}&status={status}
-     * Should return only racks matching all four filters (AND logic)
-     */
     @Test
     public void testGetRacks_FilterByRoomShelfDeviceStatus_ReturnsFiltered() throws Exception {
         MvcResult result = mockMvc
@@ -222,9 +177,6 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
         }
     }
 
-    /**
-     * Test: GET /rest/storage/racks should return racks with room column (FR-065a)
-     */
     @Test
     public void testGetRacks_ReturnsRoomColumn() throws Exception {
         MvcResult result = mockMvc.perform(get("/rest/storage/racks")).andExpect(status().isOk())
@@ -244,10 +196,6 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
         }
     }
 
-    /**
-     * Test: GET /rest/storage/dashboard/location-counts Should return counts by
-     * type for active locations only (FR-057, FR-057a)
-     */
     @Test
     public void testGetLocationCounts_ReturnsActiveCountsByType() throws Exception {
         MvcResult result = mockMvc.perform(get("/rest/storage/dashboard/location-counts")).andExpect(status().isOk())
@@ -281,33 +229,17 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
         assertTrue("Shelves count should be non-negative", shelvesCount >= 0);
         assertTrue("Racks count should be non-negative", racksCount >= 0);
 
-        // BUG CATCH: Verify that not all counts are 0 (this should catch the bug where
-        // all counts show 0)
         int totalCount = roomsCount + devicesCount + shelvesCount + racksCount;
-        assertTrue("BUG: All counts are 0! This indicates a problem with active location filtering. "
-                + "Actual counts - rooms: " + roomsCount + ", devices: " + devicesCount + ", shelves: " + shelvesCount
-                + ", racks: " + racksCount + ". Check if active field is null or not set to true in test data.",
-                totalCount > 0);
+        assertTrue("Total count should be greater than zero", totalCount > 0);
 
-        // Verify at least one location exists (from test data)
         assertTrue("Should have at least one active room from test data", roomsCount >= 1);
         assertTrue("Should have at least one active device from test data", devicesCount >= 1);
         assertTrue("Should have at least one active shelf from test data", shelvesCount >= 1);
         assertTrue("Should have at least one active rack from test data", racksCount >= 1);
     }
 
-    /**
-     * Test: GET /rest/storage/dashboard/location-counts Should exclude inactive
-     * locations from counts (FR-057 - active locations only)
-     * 
-     * Note: This test verifies that inactive locations (from foundation data) are
-     * excluded. The DBUnit XML file only contains active locations, so we verify
-     * that the counts match active-only data.
-     */
     @Test
     public void testGetLocationCounts_ExcludesInactiveLocations() throws Exception {
-        // Verify that inactive locations from foundation data (e.g., room ID 3 with
-        // code "INACTIVE") are excluded
         MvcResult result = mockMvc.perform(get("/rest/storage/dashboard/location-counts")).andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
 
