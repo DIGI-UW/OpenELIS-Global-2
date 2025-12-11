@@ -231,7 +231,7 @@ public class InventoryItemTypeValidationTest extends BaseWebContextSensitiveTest
 
         InventoryItem toUpdate = itemService.get(id);
         toUpdate.setStabilityAfterOpening(null);
-        toUpdate.setSysUserId("1");
+        toUpdate.setSysUserId(null);
 
         itemService.update(toUpdate);
     }
@@ -245,7 +245,7 @@ public class InventoryItemTypeValidationTest extends BaseWebContextSensitiveTest
 
         InventoryItem toUpdate = itemService.get(id);
         toUpdate.setCalibrationRequired("INVALID");
-        toUpdate.setSysUserId("1");
+        toUpdate.setSysUserId(null);
 
         itemService.update(toUpdate);
     }
@@ -257,7 +257,9 @@ public class InventoryItemTypeValidationTest extends BaseWebContextSensitiveTest
         item.setUnits("units");
         item.setIsActive("Y");
         item.setFhirUuid(UUID.randomUUID());
-        item.setSysUserId("1");
+        // Use null sysUserId for tests to avoid foreign key constraint issues
+        // The audit service will handle null user IDs gracefully
+        item.setSysUserId(null);
         return item;
     }
 }

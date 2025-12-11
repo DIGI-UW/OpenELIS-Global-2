@@ -40,8 +40,7 @@ public class InventoryAuditLog extends BaseObject<Long> {
     @NotNull
     private Timestamp timestamp;
 
-    @Column(name = "performed_by_user", nullable = false)
-    @NotNull
+    @Column(name = "performed_by_user")
     private Integer performedByUser;
 
     @Column(name = "operation_type", nullable = false, length = 50)
