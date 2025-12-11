@@ -36,6 +36,7 @@
   <include relativeToChangelogFile="true" file="../storage/storage-device-connectivity.xml"/>
   <include relativeToChangelogFile="true" file="018-inventory-audit-log.xml"/>
   <include relativeToChangelogFile="true" file="019-fix-inventory-menu-order.xml"/>
+  <include relativeToChangelogFile="true" file="019-make-audit-user-nullable.xml"/>
 
   <!-- Patient Merge (008-patient-merge) -->
   <include relativeToChangelogFile="true" file="019-patient-merge-create-audit-table.xml"/>
