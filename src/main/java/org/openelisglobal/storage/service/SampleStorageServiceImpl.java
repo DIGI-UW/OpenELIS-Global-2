@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
@@ -46,6 +48,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Autowired
     private StorageLocationService storageLocationService;
+
+    @Autowired
+    private IStatusService statusService;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
@@ -103,8 +108,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             Map<String, Object> map = new java.util.HashMap<>();
+            // Numeric ID (String representation) - primary identifier
             map.put("id", sampleItem.getId());
+            // @deprecated Use 'id' field instead. Kept for backward compatibility only.
+            // This field is identical to 'id' and will be removed in a future release.
             map.put("sampleItemId", sampleItem.getId());
+            // External ID - user-friendly identifier (e.g., "EXT-1765401458866")
             map.put("sampleItemExternalId", sampleItem.getExternalId() != null ? sampleItem.getExternalId() : "");
 
             // Get parent Sample accession number for context
@@ -120,7 +129,15 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
-            map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
+            // Map status ID to user-friendly name for filtering
+            // (specs/001-sample-storage/spec.md FR-056)
+            String statusName = "active"; // Default
+            if (sampleItem.getStatusId() != null) {
+                if (statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {
+                    statusName = "disposed";
+                }
+            }
+            map.put("status", statusName);
 
             // Check if this sample item has an assignment
             SampleStorageAssignment assignment = assignmentsBySampleItemId.get(sampleItem.getId());
@@ -308,8 +325,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     }
                 }
 
-                // Clear the location (remove assignment)
-                sampleStorageAssignmentDAO.delete(existingAssignment);
+                // Clear the location fields (preserve assignment for audit trail)
+                existingAssignment.setLocationId(null);
+                existingAssignment.setLocationType(null);
+                existingAssignment.setPositionCoordinate(null);
+                sampleStorageAssignmentDAO.update(existingAssignment);
             }
 
             // Update SampleItem status to "disposed" (status_id = 24)

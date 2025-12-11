@@ -1,6 +1,6 @@
 import config from "../../config.json";
 
-export const getFromOpenElisServer = (endPoint, callback) => {
+export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
   fetch(
     config.serverBaseUrl + endPoint,
 
@@ -8,6 +8,7 @@ export const getFromOpenElisServer = (endPoint, callback) => {
       //includes the browser sessionId in the Header for Authentication on the backend server
       credentials: "include",
       method: "GET",
+      signal: signal,
     },
   )
     .then((response) => {
@@ -25,7 +26,10 @@ export const getFromOpenElisServer = (endPoint, callback) => {
       }
     })
     .catch((error) => {
-      console.error(error);
+      // Don't log AbortError - it's expected when component unmounts
+      if (error.name !== "AbortError") {
+        console.error(error);
+      }
     });
 };
 
