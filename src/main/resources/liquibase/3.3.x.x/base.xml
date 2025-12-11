@@ -25,4 +25,7 @@
   <include relativeToChangelogFile="true" file="016-inventory-management-system.xml"/>
   <include relativeToChangelogFile="true" file="017-inventory-add-last-updated.xml"/>
   <include relativeToChangelogFile="true" file="018-allow-null-location-for-disposed.xml"/>
+
+  <!-- OGC-68: Storage Location CRUD - Add device connectivity fields -->
+  <include file="liquibase/storage/storage-device-connectivity.xml"/>
 </databaseChangeLog>

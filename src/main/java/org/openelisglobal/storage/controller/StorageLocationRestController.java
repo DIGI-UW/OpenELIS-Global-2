@@ -14,6 +14,7 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
+import org.openelisglobal.storage.service.DeletionValidationResult;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.service.StorageSearchService;
@@ -311,6 +312,10 @@ public class StorageLocationRestController extends BaseRestController {
                             : null);
             device.setCapacityLimit(form.getCapacityLimit());
             device.setActive(form.getActive() != null ? form.getActive() : true);
+            // OGC-68: Set connectivity fields
+            device.setIpAddress(form.getIpAddress());
+            device.setPort(form.getPort());
+            device.setCommunicationProtocol(form.getCommunicationProtocol());
             device.setFhirUuid(UUID.randomUUID());
             device.setSysUserId("1"); // Default system user for REST API
             device.setParentRoom(parentRoom);
@@ -1477,6 +1482,96 @@ public class StorageLocationRestController extends BaseRestController {
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             logger.error("Error searching locations", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // OGC-68: DELETE endpoints for storage locations
+
+    /**
+     * OGC-68: Delete a Room
+     * 
+     * @param id Room ID
+     * @return 204 No Content if deleted, 409 Conflict if referential integrity
+     *         violation
+     */
+    @DeleteMapping("/rooms/{id}")
+    public ResponseEntity<?> deleteRoom(@PathVariable Integer id) {
+        try {
+            DeletionValidationResult validation = storageLocationService.canDeleteRoom(id);
+            if (!validation.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
+            }
+            storageLocationService.deleteRoom(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            logger.error("Error deleting room {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * OGC-68: Delete a Device
+     * 
+     * @param id Device ID
+     * @return 204 No Content if deleted, 409 Conflict if referential integrity
+     *         violation
+     */
+    @DeleteMapping("/devices/{id}")
+    public ResponseEntity<?> deleteDevice(@PathVariable Integer id) {
+        try {
+            DeletionValidationResult validation = storageLocationService.canDeleteDevice(id);
+            if (!validation.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
+            }
+            storageLocationService.delete(storageLocationService.get(id, StorageDevice.class));
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            logger.error("Error deleting device {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * OGC-68: Delete a Shelf
+     * 
+     * @param id Shelf ID
+     * @return 204 No Content if deleted, 409 Conflict if referential integrity
+     *         violation
+     */
+    @DeleteMapping("/shelves/{id}")
+    public ResponseEntity<?> deleteShelf(@PathVariable Integer id) {
+        try {
+            DeletionValidationResult validation = storageLocationService.canDeleteShelf(id);
+            if (!validation.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
+            }
+            storageLocationService.delete(storageLocationService.get(id, StorageShelf.class));
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            logger.error("Error deleting shelf {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * OGC-68: Delete a Rack
+     * 
+     * @param id Rack ID
+     * @return 204 No Content if deleted, 409 Conflict if referential integrity
+     *         violation
+     */
+    @DeleteMapping("/racks/{id}")
+    public ResponseEntity<?> deleteRack(@PathVariable Integer id) {
+        try {
+            DeletionValidationResult validation = storageLocationService.canDeleteRack(id);
+            if (!validation.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
+            }
+            storageLocationService.delete(storageLocationService.get(id, StorageRack.class));
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            logger.error("Error deleting rack {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

@@ -1787,4 +1787,70 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         // Step 4: Delete the location itself
         delete(locationEntity);
     }
+
+    // OGC-68: Deletion Validation Methods
+
+    @Override
+    public DeletionValidationResult canDeleteRoom(Integer roomId) {
+        StorageRoom room = storageRoomDAO.get(roomId).orElse(null);
+        if (room == null) {
+            return DeletionValidationResult.success(); // Room doesn't exist, deletion allowed
+        }
+
+        List<StorageDevice> childDevices = getDevicesByRoom(roomId);
+        if (!childDevices.isEmpty()) {
+            return DeletionValidationResult.referentialIntegrityViolation("Room", room.getName(), "devices",
+                    childDevices.size());
+        }
+
+        return DeletionValidationResult.success();
+    }
+
+    @Override
+    public DeletionValidationResult canDeleteDevice(Integer deviceId) {
+        StorageDevice device = storageDeviceDAO.get(deviceId).orElse(null);
+        if (device == null) {
+            return DeletionValidationResult.success(); // Device doesn't exist, deletion allowed
+        }
+
+        List<StorageShelf> childShelves = getShelvesByDevice(deviceId);
+        if (!childShelves.isEmpty()) {
+            return DeletionValidationResult.referentialIntegrityViolation("Device", device.getName(), "shelves",
+                    childShelves.size());
+        }
+
+        return DeletionValidationResult.success();
+    }
+
+    @Override
+    public DeletionValidationResult canDeleteShelf(Integer shelfId) {
+        StorageShelf shelf = storageShelfDAO.get(shelfId).orElse(null);
+        if (shelf == null) {
+            return DeletionValidationResult.success(); // Shelf doesn't exist, deletion allowed
+        }
+
+        List<StorageRack> childRacks = getRacksByShelf(shelfId);
+        if (!childRacks.isEmpty()) {
+            return DeletionValidationResult.referentialIntegrityViolation("Shelf", shelf.getLabel(), "racks",
+                    childRacks.size());
+        }
+
+        return DeletionValidationResult.success();
+    }
+
+    @Override
+    public DeletionValidationResult canDeleteRack(Integer rackId) {
+        StorageRack rack = storageRackDAO.get(rackId).orElse(null);
+        if (rack == null) {
+            return DeletionValidationResult.success(); // Rack doesn't exist, deletion allowed
+        }
+
+        // Check for assigned samples
+        int assignedSampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rackId);
+        if (assignedSampleCount > 0) {
+            return DeletionValidationResult.activeAssignments("Rack", rack.getLabel(), assignedSampleCount);
+        }
+
+        return DeletionValidationResult.success();
+    }
 }
