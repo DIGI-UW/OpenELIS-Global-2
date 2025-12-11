@@ -983,7 +983,7 @@ sequential, enabling flexible team coordination.
 | Branch Type         | Pattern                                  | Example                                    |
 | ------------------- | ---------------------------------------- | ------------------------------------------ |
 | Spec Branch         | `spec/{issue-id}-{name}`                 | `spec/OGC-009-sidenav`, `spec/009-sidenav` |
-| Spec Clarification  | `spec/{issue-id}-{name}/clarify-{topic}` | `spec/OGC-009-sidenav/clarify-responsive`  |
+| Spec Clarification  | `spec/clarify/{issue-id}-{name}-{topic}` | `spec/clarify/OGC-009-sidenav-responsive`  |
 | Feature Integration | `feat/{issue-id}-{name}`                 | `feat/OGC-009-sidenav`                     |
 | Milestone Branch    | `feat/{issue-id}-{name}/m{N}-{desc}`     | `feat/OGC-009-sidenav/m1-backend`          |
 | Hotfix              | `hotfix/{issue-id}-{desc}`               | `hotfix/OGC-123-fix-login`                 |
@@ -1014,8 +1014,10 @@ sequential, enabling flexible team coordination.
    - Complete `spec.md` (user stories, requirements)
    - Complete `plan.md` (architecture, milestone plan)
    - Complete `tasks.md` (task breakdown by milestone)
-   - Use `spec/{issue-id}-{name}/clarify-{topic}` branches for spec iterations
-   - Create Spec PR targeting `develop` for review
+
+- Use `spec/clarify/{issue-id}-{name}-{topic}` branches for spec iterations
+  (avoids Git parent-ref collisions)
+  - Create Spec PR targeting `develop` for review
 
 2. **Implementation Phase** (after spec PR approved or ready):
    - Create feature branch `feat/{issue-id}-{name}` from `develop`

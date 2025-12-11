@@ -1,7 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <!-- Required for BarcodeLabelMaker static initializer: SampleStatus.Entered -->
-    <!-- Using high ID (100) to avoid interfering with test ordering expectations -->
+    <!-- Status data -->
     <status_of_sample id="100"
         description="The sample has been entered into the system" code="1"
         status_type="SAMPLE" lastupdated="2012-05-14 11:24:08.768263"
@@ -22,4 +21,24 @@
         description="Sample Description 4" code="1" status_type="SampleType4"
         lastupdated="2025-03-18" name="Status 4"
         display_key="sample_display_key_4" is_active="Y" />
+
+    <!-- Storage Room -->
+    <storage_room id="1000" name="Test Room" code="TESTROOM01"
+        active="true" fhir_uuid="550e8400-e29b-41d4-a716-446655440000"
+        sys_user_id="1" />
+
+    <!-- Storage Device with proper code -->
+    <storage_device id="1001" name="Freezer 01"
+        code="FRZ01-001" type="freezer" parent_room_id="1000" active="true"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" sys_user_id="1" />
+
+    <!-- Storage Device with empty code for negative test -->
+    <storage_device id="1002" name="Device Empty Code"
+        code="" type="cabinet" parent_room_id="1000" active="true"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440002" sys_user_id="1" />
+
+    <!-- Storage Device with short code (≤ 10 chars) -->
+    <storage_device id="1003" name="Short Code Dev"
+        code="SHORT01" type="refrigerator" parent_room_id="1000" active="true"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440003" sys_user_id="1" />
 </dataset>
