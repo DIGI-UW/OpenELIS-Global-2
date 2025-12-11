@@ -918,6 +918,10 @@ reassigned. Export disposal records to verify compliance documentation.
 5. **Given** sample S-2025-001 was at position A5 before disposal, **When**
    disposal completes, **Then** position A5 becomes available for new sample
    assignment
+6. **Given** the dashboard shows Disposed counter at 0 before disposal, **When**
+   Sarah completes disposal of sample S-2025-001, **Then** the Disposed counter
+   increments to 1 immediately without requiring page refresh (per FR-057b,
+   FR-057c)
 
 ---
 
@@ -1044,8 +1048,8 @@ samples are assigned/moved/disposed.
    completes, **Then** CSV file contains only filtered data with all table
    columns plus metadata (within 10 seconds for 10,000 records)
 6. **Given** Maria assigns a new sample to Freezer Unit 1, **When** Dr. Johnson
-   refreshes the dashboard, **Then** Freezer Unit 1 occupancy increments
-   immediately (288/500, 58%)
+   views the dashboard, **Then** Freezer Unit 1 occupancy increments immediately
+   (288/500, 58%) without requiring page refresh (per FR-057b, FR-057c)
 
 ---
 
@@ -1770,6 +1774,11 @@ operations.
   matching subtle accent colors applied to corresponding tab labels/backgrounds
   (Rooms tab has blue accent, Devices tab has teal accent, Shelves tab has
   purple accent, Racks tab has orange accent) - tab coloring must be very subtle
+- **FR-057b**: Metric cards MUST update automatically when affected operations
+  complete (disposal updates Disposed counter, assignment updates Active
+  counter, etc.) without requiring page refresh
+- **FR-057c**: Metric card updates MUST be optimistic (update immediately after
+  successful API response) to provide instant user feedback
 - **FR-058**: Dashboard MUST provide 5 tabs: SampleItems | Rooms | Devices |
   Shelves | Racks. SampleItems tab displays SampleItem-level data (physical
   specimens), with parent Sample information displayed as secondary context and
