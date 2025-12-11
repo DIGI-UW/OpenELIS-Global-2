@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.storage.BaseStorageTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
 
@@ -14,13 +14,16 @@ import org.springframework.test.annotation.Rollback;
  * Integration tests for pagination functionality in
  * SampleStorageRestController. Tests verify that pagination parameters are
  * correctly handled and responses include pagination metadata.
+ * 
+ * Extends BaseStorageTest to load storage hierarchy and E2E test fixtures.
  */
 @Rollback
-public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest {
+public class SampleStorageRestControllerTest extends BaseStorageTest {
 
     @Before
+    @Override
     public void setUp() throws Exception {
-        super.setUp();
+        super.setUp(); // BaseStorageTest loads storage-e2e.xml with test data
     }
 
     @Test
