@@ -10,7 +10,10 @@ import {
   Button,
   Stack,
   FormGroup,
+  Section,
+  Heading,
 } from "@carbon/react";
+import { FormattedMessage } from "react-intl";
 
 const initialFormValues = {
   receivedDate: "",
@@ -80,14 +83,22 @@ function Indeterminate() {
 
   return (
     <div>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Section>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="project.IndeterminateStudy.name" />
+                </Heading>
+              </Section>
+            </Section>
+          </Section>
+        </Column>
+      </Grid>
       <Form onSubmit={handleSubmit}>
-        <Grid>
-          <Column lg={16}>
-            <h1>Indeterminate</h1>
-          </Column>
-
-          {/* First Column */}
-          <Column lg={8} md={4} sm={4}>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
             <Stack gap={5}>
               <TextInput
                 id="received-date"
@@ -171,12 +182,6 @@ function Indeterminate() {
                 value={formValues.email}
                 onChange={handleInputChange}
               />
-            </Stack>
-          </Column>
-
-          {/* Second Column */}
-          <Column lg={8} md={4} sm={4}>
-            <Stack gap={5}>
               <TextInput
                 id="unique-health-id"
                 labelText="* Unique Health ID number"
@@ -341,16 +346,15 @@ function Indeterminate() {
                 value={formValues.note}
                 onChange={handleInputChange}
               />
+              <div>
+                <Button kind="primary" type="submit">
+                  <FormattedMessage id="button.save" />
+                </Button>
+                <Button kind="secondary">
+                  <FormattedMessage id="button.cancel" />
+                </Button>
+              </div>
             </Stack>
-          </Column>
-
-          <Column lg={16}>
-            <div>
-              <Button kind="primary" type="submit">
-                Save
-              </Button>
-              <Button kind="secondary">Cancel</Button>
-            </div>
           </Column>
         </Grid>
       </Form>
