@@ -94,16 +94,13 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     @Override
     @Transactional
     public Long insert(InventoryItem item) {
-        // Validate type-specific required fields
         validateItemTypeSpecificFields(item);
 
-        // Ensure UUID is set before insert
         if (item.getFhirUuid() == null) {
             item.setFhirUuid(UUID.randomUUID());
         }
 
         Long result = super.insert(item);
-        // Log item creation
         auditService.logItemCreate(item, item.getSysUserId());
         return result;
     }

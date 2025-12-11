@@ -27,4 +27,5 @@
   <include relativeToChangelogFile="true" file="018-allow-null-location-for-disposed.xml"/>
   <include relativeToChangelogFile="true" file="018-inventory-audit-log.xml"/>
   <include relativeToChangelogFile="true" file="019-fix-inventory-menu-order.xml"/>
+  <include relativeToChangelogFile="true" file="019-make-audit-user-nullable.xml"/>
 </databaseChangeLog>
