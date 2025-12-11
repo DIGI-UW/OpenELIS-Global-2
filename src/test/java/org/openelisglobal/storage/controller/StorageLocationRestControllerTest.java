@@ -24,8 +24,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * Controller integration tests for Storage Location CRUD endpoints Tests for
- * OGC-68: Storage Location CRUD
+ * Controller integration tests for Storage Location CRUD endpoints.
  */
 @RunWith(SpringRunner.class)
 public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
@@ -71,7 +70,6 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
         }
     }
 
-    // T007: Test DELETE /rest/storage/rooms/{id} endpoint
     @Test
     public void testDeleteRoom_WithValidId_Returns204() throws Exception {
         // Arrange - Create room with no children
@@ -155,7 +153,6 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                 .andExpect(status().isNoContent());
     }
 
-    // T008: Test POST /rest/storage/devices with connectivity fields
     @Test
     public void testCreateDevice_WithConnectivityFields_Returns201() throws Exception {
         // Arrange - Create parent room first
@@ -174,7 +171,6 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                 .andExpect(jsonPath("$.communicationProtocol").value("BACnet"));
     }
 
-    // T008a: RBAC validation for delete operations
     @Test
     public void testDeleteRoom_AsNonAdminUser_Returns403() throws Exception {
         jdbcTemplate.update(

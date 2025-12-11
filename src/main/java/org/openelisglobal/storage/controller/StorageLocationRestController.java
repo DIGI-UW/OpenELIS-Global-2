@@ -322,7 +322,7 @@ public class StorageLocationRestController extends BaseRestController {
                             : null);
             device.setCapacityLimit(form.getCapacityLimit());
             device.setActive(form.getActive() != null ? form.getActive() : true);
-            // OGC-68: Set connectivity fields
+            // Set connectivity fields for network-connected equipment
             device.setIpAddress(form.getIpAddress());
             device.setPort(form.getPort());
             device.setCommunicationProtocol(form.getCommunicationProtocol());

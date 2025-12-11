@@ -1788,7 +1788,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         delete(locationEntity);
     }
 
-    // OGC-68: Deletion Validation Methods
+    // Deletion Validation Methods
 
     @Override
     public DeletionValidationResult canDeleteRoom(Integer roomId) {
