@@ -107,11 +107,13 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
 
         assertNotNull("Response should not be null", samples);
 
-        // Verify all returned samples have active status
+        // Verify all returned samples have active status (non-disposed)
+        // Status is now returned as actual status ID, not "active"/"disposed" string
         for (Map<String, Object> sample : samples) {
             String status = (String) sample.get("status");
             assertNotNull("Status should not be null", status);
-            assertEquals("Status should be active", "active", status.toLowerCase());
+            // Status ID should not be "24" (disposed) - accept any other status as active
+            assertNotEquals("Status should not be disposed (ID 24)", "24", status);
         }
     }
 

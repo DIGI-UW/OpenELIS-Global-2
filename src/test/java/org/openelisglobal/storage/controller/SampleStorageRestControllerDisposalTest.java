@@ -429,7 +429,8 @@ public class SampleStorageRestControllerDisposalTest extends BaseStorageTest {
             if (sampleItemId.equals(sampleItemExternalId)) {
                 found = true;
                 String status = sample.get("status").asText();
-                assertTrue("Status should be 'disposed' or 'Disposed'", "disposed".equalsIgnoreCase(status));
+                // Status is now returned as actual status ID (e.g., "24" for disposed), not "disposed" string
+                assertEquals("Status should be disposed status ID (24)", "24", status);
                 break;
             }
         }
