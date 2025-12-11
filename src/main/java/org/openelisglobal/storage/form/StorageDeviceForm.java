@@ -34,7 +34,7 @@ public class StorageDeviceForm {
     // (parent cannot be changed after creation, backend ignores this field on PUT)
     private String parentRoomId;
 
-    // OGC-68: Device connectivity configuration fields
+    // Device connectivity configuration fields for network-connected equipment
     @Size(max = 45, message = "IP address must not exceed 45 characters")
     @Pattern(regexp = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^$", message = "IP address must be valid IPv4 or IPv6 format")
     private String ipAddress;

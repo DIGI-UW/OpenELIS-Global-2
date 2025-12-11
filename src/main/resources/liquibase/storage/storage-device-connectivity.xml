@@ -6,7 +6,7 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
 
     <changeSet id="storage-ogc68-001-add-device-connectivity-columns" author="dev-team">
-        <comment>OGC-68: Add connectivity configuration fields to storage_device table</comment>
+        <comment>Add connectivity configuration fields (IP, port, protocol) to storage_device table for network-connected equipment</comment>
         <addColumn tableName="storage_device">
             <column name="ip_address" type="VARCHAR(45)">
                 <constraints nullable="true"/>
@@ -26,7 +26,7 @@
     </changeSet>
 
     <changeSet id="storage-ogc68-002-add-port-check-constraint" author="dev-team">
-        <comment>OGC-68: Add check constraint for valid port range (1-65535)</comment>
+        <comment>Add check constraint for valid port range (1-65535)</comment>
         <sql>
             ALTER TABLE storage_device
             ADD CONSTRAINT chk_storage_device_port_range

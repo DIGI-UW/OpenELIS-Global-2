@@ -1,8 +1,8 @@
 package org.openelisglobal.storage.service;
 
 /**
- * Result object for location deletion validation OGC-68: Storage Location CRUD
- * 
+ * Result object for location deletion validation.
+ *
  * Represents the outcome of validating whether a storage location can be
  * deleted. Includes error information if deletion is blocked by referential
  * integrity constraints.

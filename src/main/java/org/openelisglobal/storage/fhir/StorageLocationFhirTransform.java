@@ -43,7 +43,7 @@ public class StorageLocationFhirTransform {
     private static final String EXT_POSITION_OCCUPANCY = "http://openelis.org/fhir/extension/position-occupancy";
     private static final String EXT_POSITION_GRID_ROW = "http://openelis.org/fhir/extension/position-grid-row";
     private static final String EXT_POSITION_GRID_COLUMN = "http://openelis.org/fhir/extension/position-grid-column";
-    // OGC-68: Device connectivity extensions
+    // Device connectivity extensions for network-connected equipment
     private static final String EXT_DEVICE_IP_ADDRESS = "http://openelis.org/fhir/extension/device-ip-address";
     private static final String EXT_DEVICE_PORT = "http://openelis.org/fhir/extension/device-port";
     private static final String EXT_DEVICE_COMMUNICATION_PROTOCOL = "http://openelis.org/fhir/extension/device-communication-protocol";
@@ -132,7 +132,7 @@ public class StorageLocationFhirTransform {
             capExt.setValue(new IntegerType(device.getCapacityLimit()));
             location.addExtension(capExt);
         }
-        // OGC-68: Add connectivity extensions
+        // Add connectivity extensions for network-connected equipment
         if (device.getIpAddress() != null && !device.getIpAddress().trim().isEmpty()) {
             Extension ipExt = new Extension(EXT_DEVICE_IP_ADDRESS);
             ipExt.setValue(new StringType(device.getIpAddress()));

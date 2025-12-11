@@ -24,8 +24,7 @@ import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
 
 /**
- * Unit tests for StorageLocationService deletion validation Tests for OGC-68:
- * Storage Location CRUD
+ * Unit tests for StorageLocationService deletion validation.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class StorageLocationServiceTest {
@@ -48,7 +47,6 @@ public class StorageLocationServiceTest {
     @InjectMocks
     private StorageLocationServiceImpl storageLocationService;
 
-    // T002: Test canDeleteRoom() validation
     @Test
     public void testCanDeleteRoom_WithNoChildDevices_ReturnsSuccess() {
         // Arrange
@@ -93,7 +91,6 @@ public class StorageLocationServiceTest {
         assertTrue("Message should mention devices", result.getMessage().toLowerCase().contains("device"));
     }
 
-    // T003: Test canDeleteDevice() validation
     @Test
     public void testCanDeleteDevice_WithNoChildShelves_ReturnsSuccess() {
         // Arrange
@@ -140,7 +137,6 @@ public class StorageLocationServiceTest {
         assertTrue("Message should mention shelves", result.getMessage().toLowerCase().contains("shel"));
     }
 
-    // T004: Test canDeleteShelf() validation
     @Test
     public void testCanDeleteShelf_WithNoChildRacks_ReturnsSuccess() {
         // Arrange
@@ -183,7 +179,6 @@ public class StorageLocationServiceTest {
         assertTrue("Message should mention racks", result.getMessage().toLowerCase().contains("rack"));
     }
 
-    // T005: Test canDeleteRack() validation
     @Test
     public void testCanDeleteRack_WithNoAssignedSamples_ReturnsSuccess() {
         // Arrange
@@ -223,7 +218,6 @@ public class StorageLocationServiceTest {
         assertTrue("Message should mention samples", result.getMessage().toLowerCase().contains("sample"));
     }
 
-    // T006: Test StorageDevice connectivity field persistence
     @Test
     public void testStorageDevice_ConnectivityFields_PersistCorrectly() {
         // Arrange
