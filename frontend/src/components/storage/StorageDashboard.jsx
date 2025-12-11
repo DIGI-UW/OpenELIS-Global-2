@@ -1338,6 +1338,8 @@ const StorageDashboard = () => {
             }
 
             setSamples(filtered);
+            // OGC-150: Update pagination totalItems for search results
+            setTotalItems(filtered.length);
           } else {
             console.error(
               "Sample Items search API returned non-array response:",
