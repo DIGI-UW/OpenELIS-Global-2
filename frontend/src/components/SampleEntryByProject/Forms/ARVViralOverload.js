@@ -10,7 +10,10 @@ import {
   Button,
   Stack,
   FormGroup,
+  Section,
+  Heading,
 } from "@carbon/react";
+import { FormattedMessage } from "react-intl";
 
 const initialFormValues = {
   centerName: "",
@@ -87,13 +90,22 @@ function ARVViralOverload() {
 
   return (
     <div>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Section>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="sample.entry.project.VL.title" />
+                </Heading>
+              </Section>
+            </Section>
+          </Section>
+        </Column>
+      </Grid>
       <Form onSubmit={handleSubmit}>
-        <Grid>
-          <Column lg={16}>
-            <h1>ARV - Viral Load</h1>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
             <Stack gap={5}>
               <Select
                 id="center-name"
@@ -262,11 +274,6 @@ function ARVViralOverload() {
                 <SelectItem value="1" text="HIV-1" />
                 <SelectItem value="2" text="HIV-2" />
               </Select>
-            </Stack>
-          </Column>
-
-          <Column lg={16}>
-            <Stack gap={5}>
               <Select
                 id="is-receiving-arv"
                 labelText="Is the patient currently receiving ARV treatment?"
@@ -412,16 +419,15 @@ function ARVViralOverload() {
                   disabled
                 />
               </FormGroup>
+              <div>
+                <Button kind="primary" type="submit">
+                  <FormattedMessage id="button.save" />
+                </Button>
+                <Button kind="secondary">
+                  <FormattedMessage id="button.cancel" />
+                </Button>
+              </div>
             </Stack>
-          </Column>
-
-          <Column lg={16}>
-            <div>
-              <Button kind="primary" type="submit">
-                Save
-              </Button>
-              <Button kind="secondary">Cancel</Button>
-            </div>
           </Column>
         </Grid>
       </Form>

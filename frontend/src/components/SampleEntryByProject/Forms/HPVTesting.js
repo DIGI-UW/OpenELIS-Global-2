@@ -14,7 +14,7 @@ import {
   ButtonSet,
   Link,
 } from "@carbon/react";
-import { useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 
 const initialFormValues = {
   facility: {
@@ -89,8 +89,8 @@ function HPVTesting() {
   return (
     <div>
       <Form onSubmit={handleSubmit}>
-        <Grid>
-          <Column lg={16}>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
             <Stack gap={7}>
               <Section>
                 <FormGroup legendText="Facility">
@@ -123,14 +123,28 @@ function HPVTesting() {
                       <div>
                         <Button
                           kind="ghost"
-                          hasIconOnly
+                          // hasIconOnly
                           iconDescription="Scan"
                           onClick={handleLabNoScan}
-                        />
+                        >
+                          Scan
+                        </Button>
                         <span>OR</span>
-                        <Link onClick={() => {}}>Enter Manually</Link>
+                        <Button
+                          kind="ghost"
+                          iconDescription="Enter Manually"
+                          onClick={() => {}}
+                        >
+                          Enter Manually
+                        </Button>
                         <span>OR</span>
-                        <Link onClick={generateLabNo}>Generate</Link>
+                        <Button
+                          kind="ghost"
+                          iconDescription="Generate"
+                          onClick={generateLabNo}
+                        >
+                          Generate
+                        </Button>
                       </div>
                     </div>
 
@@ -269,12 +283,14 @@ function HPVTesting() {
               </Section>
 
               <Section>
-                <ButtonSet>
+                <div>
                   <Button kind="primary" type="submit">
-                    Save
+                    <FormattedMessage id="button.save" />
                   </Button>
-                  <Button kind="secondary">Cancel</Button>
-                </ButtonSet>
+                  <Button kind="secondary">
+                    <FormattedMessage id="button.cancel" />
+                  </Button>
+                </div>
               </Section>
             </Stack>
           </Column>

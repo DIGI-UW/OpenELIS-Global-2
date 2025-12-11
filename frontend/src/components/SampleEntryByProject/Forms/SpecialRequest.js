@@ -10,7 +10,10 @@ import {
   Button,
   Stack,
   FormGroup,
+  Section,
+  Heading,
 } from "@carbon/react";
+import { FormattedMessage } from "react-intl";
 
 const initialFormValues = {
   receivedDate: "",
@@ -98,13 +101,22 @@ function SpecialRequest() {
 
   return (
     <div>
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Section> 
+              <Section>
+                <Heading>
+                  <FormattedMessage id="project.SpecialRequestStudy.name" />
+                </Heading>
+              </Section>
+            </Section>
+          </Section>
+        </Column>
+      </Grid>
       <Form onSubmit={handleSubmit}>
-        <Grid>
-          <Column lg={16}>
-            <h1>Special Request</h1>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
             <Stack gap={5}>
               <TextInput
                 id="received-date"
@@ -214,11 +226,6 @@ function SpecialRequest() {
                 <SelectItem value="" text="Choose an option" />
                 {/* Add reason options here */}
               </Select>
-            </Stack>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <Stack gap={5}>
               <FormGroup legendText="Specimens Collected">
                 <Stack gap={3}>
                   <Checkbox
@@ -319,16 +326,15 @@ function SpecialRequest() {
                 value={formValues.note}
                 onChange={handleInputChange}
               />
+              <div>
+                <Button kind="primary" type="submit">
+                  <FormattedMessage id="button.save" />
+                </Button>
+                <Button kind="secondary">
+                  <FormattedMessage id="button.cancel" />
+                </Button>
+              </div>
             </Stack>
-          </Column>
-
-          <Column lg={16}>
-            <div>
-              <Button kind="primary" type="submit">
-                Save
-              </Button>
-              <Button kind="secondary">Cancel</Button>
-            </div>
           </Column>
         </Grid>
       </Form>

@@ -13,7 +13,7 @@ import {
   FormLabel,
   Section,
 } from "@carbon/react";
-import { useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 
 const initialFormValues = {
   formType: "Recency Testing",
@@ -79,10 +79,10 @@ function RecencyTesting() {
   return (
     <div>
       <Form onSubmit={handleSubmit}>
-        <Grid>
-          <Column lg={16}>
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
             <Stack gap={7}>
-              <Section>
+              {/* <Section>
                 <FormGroup legendText="Form">
                   <Select
                     id="form-type"
@@ -97,7 +97,7 @@ function RecencyTesting() {
                     />
                   </Select>
                 </FormGroup>
-              </Section>
+              </Section> */}
 
               <Section>
                 <FormGroup legendText="Facility">
@@ -259,9 +259,11 @@ function RecencyTesting() {
               <Section>
                 <div>
                   <Button kind="primary" type="submit">
-                    Save
+                    <FormattedMessage id="button.save" />
                   </Button>
-                  <Button kind="secondary">Cancel</Button>
+                  <Button kind="secondary">
+                    <FormattedMessage id="button.cancel" />
+                  </Button>
                 </div>
               </Section>
             </Stack>
