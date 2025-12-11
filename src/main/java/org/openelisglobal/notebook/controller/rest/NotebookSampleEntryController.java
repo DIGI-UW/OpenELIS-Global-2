@@ -946,24 +946,24 @@ public class NotebookSampleEntryController extends BaseRestController {
                             "Creating SampleStorageAssignment for sample " + sampleId + " at " + locationTypeForAssign
                                     + " " + locationIdForAssign + " (well: " + wellCoord + ")");
 
-                    if (request.isReassign()) {
-                        // Use move for reassignment
+                    // Check if sample already has a storage assignment BEFORE trying to assign
+                    // This avoids the transaction rollback issue that occurs when
+                    // assignSampleItemWithLocation throws an exception
+                    Map<String, Object> existingLocation = sampleStorageService
+                            .getSampleItemLocation(sampleId.toString());
+                    boolean hasExistingAssignment = existingLocation != null && !existingLocation.isEmpty()
+                            && existingLocation.get("location") != null
+                            && !existingLocation.get("location").toString().isEmpty();
+
+                    if (request.isReassign() || hasExistingAssignment) {
+                        // Use move for reassignment or if sample already has an assignment
                         sampleStorageService.moveSampleItemWithLocation(sampleId.toString(), locationIdForAssign,
-                                locationTypeForAssign, wellCoord, "Notebook reassignment", notes);
+                                locationTypeForAssign, wellCoord,
+                                hasExistingAssignment ? "Notebook assignment update" : "Notebook reassignment", notes);
                     } else {
-                        try {
-                            sampleStorageService.assignSampleItemWithLocation(sampleId.toString(), locationIdForAssign,
-                                    locationTypeForAssign, wellCoord, notes);
-                        } catch (Exception assignEx) {
-                            if (assignEx.getMessage() != null && assignEx.getMessage().contains("already assigned")) {
-                                // Sample already has an assignment, try to move instead
-                                sampleStorageService.moveSampleItemWithLocation(sampleId.toString(),
-                                        locationIdForAssign, locationTypeForAssign, wellCoord,
-                                        "Notebook assignment update", notes);
-                            } else {
-                                throw assignEx;
-                            }
-                        }
+                        // Create new assignment
+                        sampleStorageService.assignSampleItemWithLocation(sampleId.toString(), locationIdForAssign,
+                                locationTypeForAssign, wellCoord, notes);
                     }
                     storageAssignmentCount++;
                 } catch (Exception e) {

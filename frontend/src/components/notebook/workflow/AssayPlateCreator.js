@@ -81,17 +81,14 @@ function AssayPlateCreator({
     setNewPlateName("");
     setShowCreateForm(false);
 
-    // Auto-select the new plate if none selected
-    if (!selectedPlateId) {
-      onPlateSelect(newPlate.id);
-    }
+    // Always auto-select the newly created plate for better UX
+    onPlateSelect(newPlate.id);
   }, [
     newPlateName,
     newPlateRows,
     newPlateColumns,
     plates,
     onPlatesChange,
-    selectedPlateId,
     onPlateSelect,
   ]);
 
@@ -149,11 +146,10 @@ function AssayPlateCreator({
       const updatedPlates = [...plates, newPlate];
       onPlatesChange(updatedPlates);
 
-      if (!selectedPlateId) {
-        onPlateSelect(newPlate.id);
-      }
+      // Always auto-select the newly created plate for better UX
+      onPlateSelect(newPlate.id);
     },
-    [plates, onPlatesChange, selectedPlateId, onPlateSelect],
+    [plates, onPlatesChange, onPlateSelect],
   );
 
   // Generate well coordinate from index
