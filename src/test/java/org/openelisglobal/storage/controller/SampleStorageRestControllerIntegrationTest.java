@@ -6,9 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
 import javax.sql.DataSource;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -48,127 +46,25 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
 
         // Load user data (required for assigned_by_user_id foreign key)
         executeDataSetWithStateManagement("testdata/user-role.xml");
-    }
 
-    @After
-    public void tearDown() throws Exception {
-        // Clean up any test data created during this test
-        cleanStorageTestData();
-    }
-
-    /**
-     * Clean up storage-related test data to ensure tests don't pollute the
-     * database. Preserves fixture data (IDs 1-999) but deletes test-created data.
-     */
-    private void cleanStorageTestData() {
-        try {
-            // Delete in correct order to respect foreign key constraints
-            jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id >= 1000");
-            jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE id >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_box WHERE id >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_rack WHERE id >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE id >= 1000");
-            jdbcTemplate.execute("DELETE FROM sample WHERE id >= 10000");
-        } catch (Exception e) {
-            // Ignore cleanup errors - data may not exist
-        }
+        // Load test data via DBUnit XML (replaces JDBC data creation)
+        // Note: Some tests create additional data via API, which is fine
+        executeDataSetWithStateManagement("testdata/sample-storage-integration-test-data.xml");
     }
 
     /**
-     * Create a complete storage hierarchy with sample assignments for testing. This
-     * creates: Room -> Device -> Shelf -> Rack -> Position -> Sample Assignment
-     * Uses JDBC directly to avoid REST API validation issues in tests.
+     * Create a sample assignment using the REST API. This uses the DBUnit-loaded
+     * storage hierarchy (room 1001, device 1001, shelf 1001, rack 1001) and sample
+     * item (20000) from the XML file.
      */
     private void createTestStorageHierarchyWithSamples() throws Exception {
-        // Use unique IDs based on timestamp to avoid conflicts
-        long timestamp = System.currentTimeMillis() % 9000; // Last 4 digits
-        int baseId = 1000 + (int) timestamp;
-
-        // Create room directly via JDBC to avoid validation issues
-        // Note: Using actual column names from schema (last_updated not lastupdated)
-        // Room code must be ≤10 chars: "TESTINT" + 3 digits = 10 chars max
-        String roomCode = "TESTINT" + (timestamp % 1000);
-        jdbcTemplate.update(
-                "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Test Integration Room", roomCode, true, 1);
-        Integer roomId = baseId;
-
-        // Create device directly via JDBC
-        // Device code must be ≤10 chars: "TESTFRZ" + 3 digits = 9 chars max
-        String deviceCode = "TESTFRZ" + (timestamp % 1000);
-        jdbcTemplate.update(
-                "INSERT INTO storage_device (id, name, code, type, parent_room_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Test Freezer", deviceCode, "freezer", roomId, true, 1);
-        Integer deviceId = baseId;
-
-        // Create shelf directly via JDBC (code must be ≤10 chars and NOT NULL)
-        String shelfCode = "SHELF" + (timestamp % 1000);
-        jdbcTemplate.update(
-                "INSERT INTO storage_shelf (id, label, code, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Test Shelf", shelfCode, deviceId, true, 1);
-        Integer shelfId = baseId;
-
-        // Create rack directly via JDBC (code must be ≤10 chars and NOT NULL)
-        String rackCode = "RACK" + (timestamp % 1000);
-        jdbcTemplate.update(
-                "INSERT INTO storage_rack (id, label, code, parent_shelf_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Test Rack", rackCode, shelfId, true, 1);
-        Integer rackId = baseId;
-
-        // Create box to hold positions (rows/columns define capacity)
-        jdbcTemplate.update(
-                "INSERT INTO storage_box (id, label, short_code, type, rows, columns, parent_rack_id, active, sys_user_id, last_updated, fhir_uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                baseId, "Box A", "BOXA", "plate", 8, 12, rackId, true, 1);
-
-        // Create sample with unique ID
-        int sampleId = 10000 + (int) timestamp;
-        jdbcTemplate.update(
-                "INSERT INTO sample (id, accession_number, entered_date, received_date, lastupdated) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-                sampleId, "TEST-SAMPLE-" + timestamp);
-
-        // Create SampleItem for the sample
-        // Use numeric ID (sample_item.id is numeric in DB, but Hibernate treats it as
-        // String)
-        int sampleItemId = 20000 + (int) timestamp;
-        // Get default status_id and typeosamp_id from database (create if needed)
-        Integer statusId;
-        List<Integer> statusIds = jdbcTemplate.queryForList("SELECT id FROM status_of_sample ORDER BY id LIMIT 1",
-                Integer.class);
-        if (statusIds == null || statusIds.isEmpty()) {
-            jdbcTemplate.update(
-                    "INSERT INTO status_of_sample (id, description, code, status_type, lastupdated) VALUES (1, 'Test Status', 1, 'S', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING");
-            statusId = 1;
-        } else {
-            statusId = statusIds.get(0);
-        }
-
-        Integer typeOfSampleId;
-        List<Integer> typeOfSampleIds = jdbcTemplate.queryForList("SELECT id FROM type_of_sample ORDER BY id LIMIT 1",
-                Integer.class);
-        if (typeOfSampleIds == null || typeOfSampleIds.isEmpty()) {
-            jdbcTemplate.update(
-                    "INSERT INTO localization (id, english, french, lastupdated) VALUES (1, 'Test Sample Type', 'Type d''échantillon de test', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING");
-            jdbcTemplate.update(
-                    "INSERT INTO type_of_sample (id, description, domain, name_localization_id, lastupdated) VALUES (1, 'Test Sample Type', 'H', 1, CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING");
-            typeOfSampleId = 1;
-        } else {
-            typeOfSampleId = typeOfSampleIds.get(0);
-        }
-        // Create external_id for the sample item (used by resolveSampleItem to look up
-        // the sample)
-        String externalId = "TEST-SAMPLE-" + timestamp + "-TUBE-1";
-        jdbcTemplate.update(
-                "INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, status_id, lastupdated) VALUES (?, ?, 1, NULL, ?, ?, ?, CURRENT_TIMESTAMP)",
-                sampleItemId, sampleId, externalId, typeOfSampleId, statusId);
+        // Use fixed IDs from DBUnit XML file
+        Integer rackId = 1001;
+        String externalId = "TEST-SAMPLE-2-TUBE-1"; // From DBUnit XML
 
         // Assign SampleItem to position using flexible assignment API
         // API expects locationId (rack ID) and locationType="rack", with
         // positionCoordinate
-        // Positions are coordinates within a rack, not separate entities
-        // Use external_id instead of numeric sampleItemId (resolveSampleItem only
-        // accepts accession numbers or external IDs)
         MvcResult assignmentResult = mockMvc.perform(post("/rest/storage/sample-items/assign")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(String.format(
@@ -193,8 +89,8 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
      */
     @Test
     public void testGetSamples_ReturnsCompleteData_NoLazyInitializationException() throws Exception {
-        // Setup: Create test data with full hierarchy
-        cleanStorageTestData();
+        // Setup: Create test data with full hierarchy (storage hierarchy and sample
+        // loaded via DBUnit, assignment created via API)
         createTestStorageHierarchyWithSamples();
         // When: Call GET /rest/storage/sample-items
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items")).andExpect(status().isOk())
@@ -230,6 +126,8 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         // Verify location contains all hierarchy levels (Room > Device > Shelf > Rack >
         // Position)
         // This ensures the full hierarchy was loaded and path was built correctly
+        // Note: Using names from DBUnit XML file (Test Integration Room, Test Freezer,
+        // etc.)
         assertTrue("Location should contain room name",
                 location.contains("Test Integration Room") || location.contains("Room"));
         assertTrue("Location should contain device name",
@@ -249,8 +147,8 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
      */
     @Test
     public void testGetSamples_ReturnsCorrectDataStructure() throws Exception {
-        // Setup: Create test data with full hierarchy
-        cleanStorageTestData();
+        // Setup: Create test data with full hierarchy (storage hierarchy and sample
+        // loaded via DBUnit, assignment created via API)
         createTestStorageHierarchyWithSamples();
         // When: Call GET /rest/storage/sample-items
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items")).andExpect(status().isOk()).andReturn();
@@ -292,8 +190,8 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
      */
     @Test
     public void testGetSamples_CountOnly_ReturnsMetrics() throws Exception {
-        // Setup: Create test data with full hierarchy
-        cleanStorageTestData();
+        // Setup: Create test data with full hierarchy (storage hierarchy and sample
+        // loaded via DBUnit, assignment created via API)
         createTestStorageHierarchyWithSamples();
         // When: Call GET /rest/storage/sample-items?countOnly=true
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items?countOnly=true")).andExpect(status().isOk())
@@ -321,29 +219,12 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
      */
     @Test
     public void testGetSampleItemLocation_WithValidId_ReturnsLocation() throws Exception {
-        // Setup: Create test data with assignment
-        cleanStorageTestData();
+        // Setup: Create test data with assignment (storage hierarchy and sample loaded
+        // via DBUnit, assignment created via API)
         createTestStorageHierarchyWithSamples();
 
-        // Get the SampleItem ID from the created test data
-        // The createTestStorageHierarchyWithSamples method creates a SampleItem with ID
-        // 20000 + timestamp and creates an assignment
-        List<Integer> sampleItemIds = jdbcTemplate.queryForList(
-                "SELECT sample_item_id FROM sample_storage_assignment WHERE id >= 1000 ORDER BY id DESC LIMIT 1",
-                Integer.class);
-
-        String sampleItemId;
-        if (sampleItemIds.isEmpty()) {
-            // Fallback: query sample_item table directly for recently created items
-            List<Integer> recentSampleItemIds = jdbcTemplate.queryForList(
-                    "SELECT id FROM sample_item WHERE id >= 20000 ORDER BY id DESC LIMIT 1", Integer.class);
-            if (recentSampleItemIds.isEmpty()) {
-                fail("No SampleItem found - createTestStorageHierarchyWithSamples may have failed");
-            }
-            sampleItemId = String.valueOf(recentSampleItemIds.get(0));
-        } else {
-            sampleItemId = String.valueOf(sampleItemIds.get(0));
-        }
+        // Use fixed SampleItem ID from DBUnit XML file
+        String sampleItemId = "20000";
 
         // When: Call GET /rest/storage/sample-items/{sampleItemId}
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items/" + sampleItemId)).andExpect(status().isOk())
@@ -368,43 +249,9 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
      */
     @Test
     public void testGetSampleItemLocation_WithUnassignedId_ReturnsEmptyLocation() throws Exception {
-        // Setup: Create SampleItem without assignment
-        cleanStorageTestData();
-        long timestamp = System.currentTimeMillis() % 9000;
-        int sampleId = 10000 + (int) timestamp;
-        int sampleItemId = 20000 + (int) timestamp;
-
-        // Get default status_id and typeosamp_id
-        Integer statusId;
-        List<Integer> statusIds = jdbcTemplate.queryForList("SELECT id FROM status_of_sample ORDER BY id LIMIT 1",
-                Integer.class);
-        if (statusIds == null || statusIds.isEmpty()) {
-            jdbcTemplate.update(
-                    "INSERT INTO status_of_sample (id, description, code, status_type, lastupdated) VALUES (1, 'Test Status', 1, 'S', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING");
-            statusId = 1;
-        } else {
-            statusId = statusIds.get(0);
-        }
-
-        Integer typeOfSampleId;
-        List<Integer> typeOfSampleIds = jdbcTemplate.queryForList("SELECT id FROM type_of_sample ORDER BY id LIMIT 1",
-                Integer.class);
-        if (typeOfSampleIds == null || typeOfSampleIds.isEmpty()) {
-            jdbcTemplate.update(
-                    "INSERT INTO localization (id, english, french, lastupdated) VALUES (1, 'Test Sample Type', 'Type d''échantillon de test', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING");
-            jdbcTemplate.update(
-                    "INSERT INTO type_of_sample (id, description, domain, name_localization_id, lastupdated) VALUES (1, 'Test Sample Type', 'H', 1, CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING");
-            typeOfSampleId = 1;
-        } else {
-            typeOfSampleId = typeOfSampleIds.get(0);
-        }
-
-        jdbcTemplate.update(
-                "INSERT INTO sample (id, accession_number, entered_date, received_date, lastupdated) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-                sampleId, "TEST-UNASSIGNED-" + timestamp);
-        jdbcTemplate.update(
-                "INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, status_id, lastupdated) VALUES (?, ?, 1, NULL, ?, ?, ?, CURRENT_TIMESTAMP)",
-                sampleItemId, sampleId, "TEST-UNASSIGNED-" + timestamp + "-TUBE-1", typeOfSampleId, statusId);
+        // Setup: Use unassigned sample item from DBUnit XML file (ID 20001)
+        // This sample item exists but has no storage assignment
+        String sampleItemId = "20001";
 
         // When: Call GET /rest/storage/sample-items/{sampleItemId}
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items/" + sampleItemId)).andExpect(status().isOk())
