@@ -7,24 +7,29 @@
 ## 1. Existing CRUD Patterns in OpenELIS
 
 ### Decision
+
 Follow the existing Sample Storage dashboard patterns from Feature 001.
 
 ### Findings
 
 **Backend Pattern** (from `StorageLocationRestController.java`):
+
 - Controllers extend `BaseRestController`
 - Use `@RestController` + `@RequestMapping("/rest/storage")`
 - Return `ResponseEntity<?>` with JSON body
 - Service layer handles business logic and transactions
 
 **Frontend Pattern** (from `StorageRoomsTab.jsx`, `StorageDevicesTab.jsx`):
+
 - Carbon `DataTable` with `OverflowMenu` for row actions
 - Modals for Add/Edit operations
 - `getFromOpenElisServer`/`postToOpenElisServer` for API calls
 - React Intl for all strings
 
 ### Alternatives Considered
-- Using a generic CRUD controller: Rejected - OpenELIS pattern is entity-specific controllers
+
+- Using a generic CRUD controller: Rejected - OpenELIS pattern is
+  entity-specific controllers
 - GraphQL mutations: Rejected - OpenELIS uses REST
 
 ---
@@ -32,12 +37,16 @@ Follow the existing Sample Storage dashboard patterns from Feature 001.
 ## 2. Deletion Validation Strategy
 
 ### Decision
+
 Manual validation in service layer before delete (NOT Hibernate cascade).
 
 ### Rationale
-1. **Better User Feedback**: Can provide specific error messages ("Cannot delete: 3 devices exist")
+
+1. **Better User Feedback**: Can provide specific error messages ("Cannot
+   delete: 3 devices exist")
 2. **Audit Trail**: Log attempted deletions with reason
-3. **Referential Integrity**: Database constraints as backup, but UI prevents invalid attempts
+3. **Referential Integrity**: Database constraints as backup, but UI prevents
+   invalid attempts
 
 ### Implementation Pattern
 
@@ -45,33 +54,34 @@ Manual validation in service layer before delete (NOT Hibernate cascade).
 // StorageLocationServiceImpl.java
 public DeletionValidationResult canDeleteRoom(String roomId) {
     StorageRoom room = storageRoomDAO.get(roomId);
-    
+
     // Check for child devices
     List<StorageDevice> devices = storageDeviceDAO.findByParentRoomId(roomId);
     if (!devices.isEmpty()) {
         return DeletionValidationResult.blocked(
             "REFERENTIAL_INTEGRITY_VIOLATION",
-            String.format("Cannot delete Room '%s': contains %d device(s)", 
+            String.format("Cannot delete Room '%s': contains %d device(s)",
                 room.getName(), devices.size())
         );
     }
-    
+
     // Check for direct sample assignments (edge case)
-    List<SampleStorageAssignment> assignments = 
+    List<SampleStorageAssignment> assignments =
         sampleStorageAssignmentDAO.findByLocationType("room", roomId);
     if (!assignments.isEmpty()) {
         return DeletionValidationResult.blocked(
             "ACTIVE_ASSIGNMENTS",
-            String.format("Cannot delete Room '%s': %d sample(s) assigned", 
+            String.format("Cannot delete Room '%s': %d sample(s) assigned",
                 room.getName(), assignments.size())
         );
     }
-    
+
     return DeletionValidationResult.allowed();
 }
 ```
 
 ### Alternatives Considered
+
 - Hibernate `CascadeType.REMOVE`: Rejected - too dangerous, could delete samples
 - Database `ON DELETE RESTRICT`: Used as backup, but UI validation preferred
 
@@ -80,6 +90,7 @@ public DeletionValidationResult canDeleteRoom(String roomId) {
 ## 3. IP Address Validation
 
 ### Decision
+
 Use standard IPv4/IPv6 regex pattern with optional field.
 
 ### IPv4/IPv6 Regex Pattern
@@ -94,7 +105,9 @@ private String ipAddress;
 ```
 
 ### Field Constraints
-- **ip_address**: VARCHAR(45) - Accommodates IPv6 max length (e.g., `2001:0db8:85a3:0000:0000:8a2e:0370:7334`)
+
+- **ip_address**: VARCHAR(45) - Accommodates IPv6 max length (e.g.,
+  `2001:0db8:85a3:0000:0000:8a2e:0370:7334`)
 - **port**: INTEGER (1-65535) - Standard port range
 - **communication_protocol**: VARCHAR(20) - Default 'BACnet'
 
@@ -103,17 +116,20 @@ private String ipAddress;
 ## 4. Communication Protocols
 
 ### Decision
+
 Start with BACnet only, design for extensibility.
 
 ### Protocol Options
-| Protocol | Use Case | Status |
-|----------|----------|--------|
-| BACnet | Building automation, HVAC, freezer monitoring | **Default** |
-| SNMP | Network device monitoring | Future |
-| Modbus | Industrial equipment | Future |
-| HTTP/REST | Modern IoT devices | Future |
+
+| Protocol  | Use Case                                      | Status      |
+| --------- | --------------------------------------------- | ----------- |
+| BACnet    | Building automation, HVAC, freezer monitoring | **Default** |
+| SNMP      | Network device monitoring                     | Future      |
+| Modbus    | Industrial equipment                          | Future      |
+| HTTP/REST | Modern IoT devices                            | Future      |
 
 ### Implementation
+
 - Store as String (not enum) to allow future additions without schema changes
 - UI shows dropdown with "BACnet" as default
 - Validate against allowed list in service layer
@@ -139,6 +155,7 @@ Start with BACnet only, design for extensibility.
 ```
 
 ### New Fields to Add
+
 ```java
 // Connectivity configuration (OGC-68)
 - ipAddress: String (45, nullable)
@@ -151,6 +168,7 @@ Start with BACnet only, design for extensibility.
 ## 6. FHIR Extension Design
 
 ### Decision
+
 Add connectivity extensions to FHIR Location resource for StorageDevice.
 
 ### Extension URLs (consistent with existing pattern)
@@ -204,6 +222,7 @@ private static final String EXT_DEVICE_PROTOCOL = "http://openelis.org/fhir/exte
 ## 7. UI Component Design
 
 ### Decision
+
 Single shared modal with dynamic fields per entity type.
 
 ### Modal Architecture
@@ -221,19 +240,20 @@ Single shared modal with dynamic fields per entity type.
 ```
 
 ### Fields by Entity Type
-| Field | Room | Device | Shelf | Rack |
-|-------|------|--------|-------|------|
-| Name | ✓ | ✓ | ✓ | ✓ |
-| Code | ✓ | ✓ | ✓ | ✓ |
-| Description | ✓ | - | - | - |
-| Type | - | ✓ | - | - |
-| Temperature | - | ✓ | - | - |
-| Capacity | - | ✓ | ✓ | ✓ |
-| IP Address | - | ✓ | - | - |
-| Port | - | ✓ | - | - |
-| Protocol | - | ✓ | - | - |
-| Parent (dropdown) | - | ✓ (Room) | ✓ (Device) | ✓ (Shelf) |
-| Status | ✓ | ✓ | ✓ | ✓ |
+
+| Field             | Room | Device   | Shelf      | Rack      |
+| ----------------- | ---- | -------- | ---------- | --------- |
+| Name              | ✓    | ✓        | ✓          | ✓         |
+| Code              | ✓    | ✓        | ✓          | ✓         |
+| Description       | ✓    | -        | -          | -         |
+| Type              | -    | ✓        | -          | -         |
+| Temperature       | -    | ✓        | -          | -         |
+| Capacity          | -    | ✓        | ✓          | ✓         |
+| IP Address        | -    | ✓        | -          | -         |
+| Port              | -    | ✓        | -          | -         |
+| Protocol          | -    | ✓        | -          | -         |
+| Parent (dropdown) | -    | ✓ (Room) | ✓ (Device) | ✓ (Shelf) |
+| Status            | ✓    | ✓        | ✓          | ✓         |
 
 ---
 

@@ -1,6 +1,7 @@
 # Specification Quality Checklist: Storage Location Management & Configuration
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
+**Purpose**: Validate specification completeness and quality before proceeding
+to planning  
 **Created**: December 11, 2025  
 **Feature**: [spec.md](../spec.md)
 

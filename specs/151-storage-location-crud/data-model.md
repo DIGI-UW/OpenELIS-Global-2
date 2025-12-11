@@ -10,21 +10,21 @@
 
 **Table**: `storage_device`
 
-| Column | Type | Constraints | Notes |
-|--------|------|-------------|-------|
-| id | INTEGER | PK, SEQUENCE | Existing |
-| fhir_uuid | UUID | NOT NULL, UNIQUE | Existing |
-| name | VARCHAR(255) | NOT NULL | Existing |
-| code | VARCHAR(10) | NOT NULL | Existing |
-| type | VARCHAR(20) | NOT NULL | Existing (freezer/refrigerator/cabinet/other) |
-| temperature_setting | DECIMAL(5,2) | | Existing |
-| capacity_limit | INTEGER | | Existing |
-| active | BOOLEAN | NOT NULL | Existing |
-| parent_room_id | INTEGER | FK → storage_room.id, NOT NULL | Existing |
-| sys_user_id | INTEGER | NOT NULL | Existing |
-| **ip_address** | **VARCHAR(45)** | | **NEW** - IPv4/IPv6 address |
-| **port** | **INTEGER** | | **NEW** - 1-65535 |
-| **communication_protocol** | **VARCHAR(20)** | DEFAULT 'BACnet' | **NEW** |
+| Column                     | Type            | Constraints                    | Notes                                         |
+| -------------------------- | --------------- | ------------------------------ | --------------------------------------------- |
+| id                         | INTEGER         | PK, SEQUENCE                   | Existing                                      |
+| fhir_uuid                  | UUID            | NOT NULL, UNIQUE               | Existing                                      |
+| name                       | VARCHAR(255)    | NOT NULL                       | Existing                                      |
+| code                       | VARCHAR(10)     | NOT NULL                       | Existing                                      |
+| type                       | VARCHAR(20)     | NOT NULL                       | Existing (freezer/refrigerator/cabinet/other) |
+| temperature_setting        | DECIMAL(5,2)    |                                | Existing                                      |
+| capacity_limit             | INTEGER         |                                | Existing                                      |
+| active                     | BOOLEAN         | NOT NULL                       | Existing                                      |
+| parent_room_id             | INTEGER         | FK → storage_room.id, NOT NULL | Existing                                      |
+| sys_user_id                | INTEGER         | NOT NULL                       | Existing                                      |
+| **ip_address**             | **VARCHAR(45)** |                                | **NEW** - IPv4/IPv6 address                   |
+| **port**                   | **INTEGER**     |                                | **NEW** - 1-65535                             |
+| **communication_protocol** | **VARCHAR(20)** | DEFAULT 'BACnet'               | **NEW**                                       |
 
 ### Liquibase Changeset
 
@@ -61,8 +61,8 @@
     <changeSet id="storage-151-002-add-port-check-constraint" author="dev-team">
         <comment>OGC-68: Add check constraint for valid port range</comment>
         <sql>
-            ALTER TABLE storage_device 
-            ADD CONSTRAINT chk_storage_device_port_range 
+            ALTER TABLE storage_device
+            ADD CONSTRAINT chk_storage_device_port_range
             CHECK (port IS NULL OR (port >= 1 AND port &lt;= 65535));
         </sql>
         <rollback>
@@ -123,12 +123,12 @@
 
 ### Referential Integrity Matrix
 
-| Entity | Can Delete If... | Blocked By |
-|--------|------------------|------------|
-| Room | No child Devices AND No direct assignments | Devices, SampleStorageAssignment |
+| Entity | Can Delete If...                           | Blocked By                       |
+| ------ | ------------------------------------------ | -------------------------------- |
+| Room   | No child Devices AND No direct assignments | Devices, SampleStorageAssignment |
 | Device | No child Shelves AND No direct assignments | Shelves, SampleStorageAssignment |
-| Shelf | No child Racks AND No direct assignments | Racks, SampleStorageAssignment |
-| Rack | No child Boxes AND No direct assignments | Boxes, SampleStorageAssignment |
+| Shelf  | No child Racks AND No direct assignments   | Racks, SampleStorageAssignment   |
+| Rack   | No child Boxes AND No direct assignments   | Boxes, SampleStorageAssignment   |
 
 ### Validation Flow
 
@@ -139,7 +139,7 @@ public class DeletionValidationResult {
     private String errorCode;      // REFERENTIAL_INTEGRITY_VIOLATION, ACTIVE_ASSIGNMENTS
     private String errorMessage;
     private int dependentCount;
-    
+
     public static DeletionValidationResult allowed() { ... }
     public static DeletionValidationResult blocked(String code, String message, int count) { ... }
 }
@@ -149,19 +149,19 @@ public class DeletionValidationResult {
 
 ### StorageDevice → FHIR Location (Updated)
 
-| OpenELIS Field | FHIR Field | Type |
-|----------------|------------|------|
-| ipAddress | extension[device-ip-address].valueString | String |
-| port | extension[device-port].valueInteger | Integer |
-| communicationProtocol | extension[device-communication-protocol].valueString | String |
+| OpenELIS Field        | FHIR Field                                           | Type    |
+| --------------------- | ---------------------------------------------------- | ------- |
+| ipAddress             | extension[device-ip-address].valueString             | String  |
+| port                  | extension[device-port].valueInteger                  | Integer |
+| communicationProtocol | extension[device-communication-protocol].valueString | String  |
 
 ### Extension URLs
 
 ```java
-private static final String EXT_DEVICE_IP_ADDRESS = 
+private static final String EXT_DEVICE_IP_ADDRESS =
     "http://openelis.org/fhir/extension/device-ip-address";
-private static final String EXT_DEVICE_PORT = 
+private static final String EXT_DEVICE_PORT =
     "http://openelis.org/fhir/extension/device-port";
-private static final String EXT_DEVICE_PROTOCOL = 
+private static final String EXT_DEVICE_PROTOCOL =
     "http://openelis.org/fhir/extension/device-communication-protocol";
 ```

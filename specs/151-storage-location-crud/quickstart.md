@@ -15,42 +15,42 @@
 
 ### Key Files
 
-| Component | Location |
-|-----------|----------|
-| Spec | `specs/151-storage-location-crud/spec.md` |
-| Plan | `specs/151-storage-location-crud/plan.md` |
-| Entity | `src/main/java/org/openelisglobal/storage/valueholder/StorageDevice.java` |
-| Service | `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java` |
-| Controller | `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` |
-| FHIR Transform | `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java` |
-| Liquibase | `src/main/resources/liquibase/storage/storage-device-connectivity.xml` |
-| Frontend Modal | `frontend/src/components/storage/StorageLocationModal.jsx` |
-| E2E Tests | `frontend/cypress/e2e/storageLocationCrud.cy.js` |
+| Component      | Location                                                                                 |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| Spec           | `specs/151-storage-location-crud/spec.md`                                                |
+| Plan           | `specs/151-storage-location-crud/plan.md`                                                |
+| Entity         | `src/main/java/org/openelisglobal/storage/valueholder/StorageDevice.java`                |
+| Service        | `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`       |
+| Controller     | `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` |
+| FHIR Transform | `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java`        |
+| Liquibase      | `src/main/resources/liquibase/storage/storage-device-connectivity.xml`                   |
+| Frontend Modal | `frontend/src/components/storage/StorageLocationModal.jsx`                               |
+| E2E Tests      | `frontend/cypress/e2e/storageLocationCrud.cy.js`                                         |
 
 ### API Endpoints (New)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/rest/storage/rooms` | Create Room |
-| PUT | `/rest/storage/rooms/{id}` | Update Room |
-| DELETE | `/rest/storage/rooms/{id}` | Delete Room |
-| POST | `/rest/storage/devices` | Create Device |
-| PUT | `/rest/storage/devices/{id}` | Update Device |
+| Method | Endpoint                     | Description   |
+| ------ | ---------------------------- | ------------- |
+| POST   | `/rest/storage/rooms`        | Create Room   |
+| PUT    | `/rest/storage/rooms/{id}`   | Update Room   |
+| DELETE | `/rest/storage/rooms/{id}`   | Delete Room   |
+| POST   | `/rest/storage/devices`      | Create Device |
+| PUT    | `/rest/storage/devices/{id}` | Update Device |
 | DELETE | `/rest/storage/devices/{id}` | Delete Device |
-| POST | `/rest/storage/shelves` | Create Shelf |
-| PUT | `/rest/storage/shelves/{id}` | Update Shelf |
-| DELETE | `/rest/storage/shelves/{id}` | Delete Shelf |
-| POST | `/rest/storage/racks` | Create Rack |
-| PUT | `/rest/storage/racks/{id}` | Update Rack |
-| DELETE | `/rest/storage/racks/{id}` | Delete Rack |
+| POST   | `/rest/storage/shelves`      | Create Shelf  |
+| PUT    | `/rest/storage/shelves/{id}` | Update Shelf  |
+| DELETE | `/rest/storage/shelves/{id}` | Delete Shelf  |
+| POST   | `/rest/storage/racks`        | Create Rack   |
+| PUT    | `/rest/storage/racks/{id}`   | Update Rack   |
+| DELETE | `/rest/storage/racks/{id}`   | Delete Rack   |
 
 ### New StorageDevice Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `ipAddress` | String (45) | IPv4/IPv6 address for device monitoring |
-| `port` | Integer (1-65535) | Network port |
-| `communicationProtocol` | String (20) | Protocol (default: 'BACnet') |
+| Field                   | Type              | Description                             |
+| ----------------------- | ----------------- | --------------------------------------- |
+| `ipAddress`             | String (45)       | IPv4/IPv6 address for device monitoring |
+| `port`                  | Integer (1-65535) | Network port                            |
+| `communicationProtocol` | String (20)       | Protocol (default: 'BACnet')            |
 
 ## Development Workflow
 
@@ -157,14 +157,14 @@ public void testCanDeleteRoom_WithChildren_ReturnsBlocked() {
         .withId(1)
         .withName("Main Lab")
         .build();
-    
+
     when(storageRoomDAO.get(1)).thenReturn(room);
     when(storageDeviceDAO.findByParentRoomId(1))
         .thenReturn(Arrays.asList(new StorageDevice()));
-    
+
     // Act
     DeletionValidationResult result = storageLocationService.canDeleteRoom(1);
-    
+
     // Assert
     assertFalse("Should be blocked", result.isAllowed());
     assertEquals("REFERENTIAL_INTEGRITY_VIOLATION", result.getErrorCode());
@@ -174,33 +174,35 @@ public void testCanDeleteRoom_WithChildren_ReturnsBlocked() {
 ### E2E Test Example (Cypress)
 
 ```javascript
-describe('Storage Location CRUD', () => {
+describe("Storage Location CRUD", () => {
   beforeEach(() => {
-    cy.login('admin', 'adminADMIN!');
-    cy.visit('/storage');
+    cy.login("admin", "adminADMIN!");
+    cy.visit("/storage");
   });
 
-  it('should create a new Room via modal', () => {
+  it("should create a new Room via modal", () => {
     cy.get('[data-testid="rooms-tab"]').click();
     cy.get('[data-testid="add-room-button"]').click();
-    
-    cy.get('[data-testid="room-name-input"]').type('Test Room');
-    cy.get('[data-testid="room-code-input"]').type('TEST01');
+
+    cy.get('[data-testid="room-name-input"]').type("Test Room");
+    cy.get('[data-testid="room-code-input"]').type("TEST01");
     cy.get('[data-testid="save-button"]').click();
-    
-    cy.get('[data-testid="success-notification"]').should('be.visible');
-    cy.contains('Test Room').should('be.visible');
+
+    cy.get('[data-testid="success-notification"]').should("be.visible");
+    cy.contains("Test Room").should("be.visible");
   });
 
-  it('should block deletion of Room with children', () => {
+  it("should block deletion of Room with children", () => {
     // Arrange: Room with Device exists
     cy.get('[data-testid="rooms-tab"]').click();
     cy.get('[data-testid="row-overflow-menu"]').first().click();
     cy.get('[data-testid="delete-action"]').click();
-    
+
     // Assert: Error shown
-    cy.get('[data-testid="error-notification"]')
-      .should('contain', 'Cannot delete');
+    cy.get('[data-testid="error-notification"]').should(
+      "contain",
+      "Cannot delete"
+    );
   });
 });
 ```
@@ -222,6 +224,7 @@ docker compose -f dev.docker-compose.yml up -d --force-recreate oe.openelis.org
 ### Issue: FHIR sync failing
 
 Check `StorageLocationFhirTransform.java` for null handling on new fields:
+
 ```java
 if (device.getIpAddress() != null) {
     location.addExtension(new Extension(EXT_DEVICE_IP_ADDRESS)
