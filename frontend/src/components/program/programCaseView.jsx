@@ -9,7 +9,7 @@ import "./programCaseView.css";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
-  { label: "banner.menu.results.questionnaires", link: "/genericProgram" },
+  { label: "banner.menu.results.order.programmes", link: "/genericProgram" },
 ];
 
 const ProgramCaseView = () => {
@@ -30,18 +30,17 @@ const ProgramCaseView = () => {
 
     const url = `/rest/programSample/${programSampleId}`;
 
-    getFromOpenElisServer(
-      url,
-      (response) => {
-        setProgramSampleData(response);
-        setQuestionnaireResponse(response.programQuestionnaireResponse);
+    getFromOpenElisServer(url, (response) => {
+      if (!response) {
+        setError("No data returned from server");
         setLoading(false);
-      },
-      (err) => {
-        setError(`Error fetching data: ${err.message || err}`);
-        setLoading(false);
-      },
-    );
+        return;
+      }
+
+      setProgramSampleData(response);
+      setQuestionnaireResponse(response.programQuestionnaireResponse);
+      setLoading(false);
+    });
   }, [programSampleId]);
 
   const formatDate = (timestamp) => {
@@ -56,7 +55,7 @@ const ProgramCaseView = () => {
 
   if (loading) return null;
   if (error) return <p>{error}</p>;
-  if (!programSampleData) return;
+  if (!programSampleData) return null;
 
   const patientHeaderProps = {
     id:
@@ -83,6 +82,7 @@ const ProgramCaseView = () => {
             {programSampleData.programName}
           </h2>
         </Column>
+
         <Column lg={16} md={8} sm={4}>
           <Row>
             <Column lg={16} md={8} sm={4}>

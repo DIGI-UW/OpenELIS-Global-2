@@ -14,11 +14,11 @@
 
         <insert tableName="menu" schemaName="clinlims">
             <column name="id" valueSequenceNext="menu_seq"/>
-            <column name="parent_id" value="11"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_results')"/>
             <column name="presentation_order" value="7"/>
-            <column name="element_id" value="questionnaires"/>
-            <column name="display_key" value="banner.menu.results.questionnaires"/>
-            <column name="tool_tip_key" value="banner.menu.results.questionnaires.tooltip"/>
+            <column name="element_id" value="order_programmes"/>
+            <column name="display_key" value="banner.menu.results.order.programmes"/>
+            <column name="tool_tip_key" value="banner.menu.results.order.programmes.tooltip"/>
             <column name="new_window" valueBoolean="false"/>
             <column name="is_active" valueBoolean="true"/>
             <column name="action_url" value="/genericProgram"/>

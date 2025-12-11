@@ -19,31 +19,31 @@
   padding: 2%;
   margin-top: 20px;
 }
-.dashboard-tile {
+.dashboard-tile1 {
   box-shadow: 0.1rem 0.1rem 0.1rem 0.1rem #e2dddd;
   text-align: right;
 }
-.dashboard-container {
+.dashboard-container1 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 50px;
   padding: 50px;
 }
 @media screen and (max-width: 1150px) and (min-width: 700px) {
-  .dashboard-container {
+  .dashboard-container1 {
     gap: 40px;
     padding: 30px;
   }
-  .dashboard-tile {
+  .dashboard-tile1 {
     min-width: 175px;
   }
-  .tile-title-Program {
+  .tile-title-Program1 {
     font-size: 0.9rem;
   }
 }
 
 @media (max-width: 925px) {
-  .dashboard-container {
+  .dashboard-container1 {
     grid-template-columns: repeat(3, 1fr);
     gap: 22px;
     padding: 22px;
@@ -51,18 +51,18 @@
 }
 
 @media (max-width: 500px) {
-  .dashboard-container {
+  .dashboard-container1 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media screen and (max-width: 700px) and (min-width: 450px) {
-  .dashboard-container {
+  .dashboard-container1 {
     grid-template-columns: repeat(2, 1fr);
     gap: 40px;
     padding: 30px;
   }
-  .tile-title-Program {
+  .tile-title-Program1 {
     font-size: 0.9rem;
   }
 }

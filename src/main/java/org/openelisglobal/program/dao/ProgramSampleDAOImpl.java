@@ -1,6 +1,5 @@
 package org.openelisglobal.program.dao;
 
-import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -43,26 +42,13 @@ public class ProgramSampleDAOImpl extends BaseDAOImpl<ProgramSample, Integer> im
     }
 
     @Override
-    public List<ProgramSample> getPaginatedProgramSamples(Integer startIndex, Integer pageSize) {
-        String sql = "select ps from ProgramSample ps " + "join ps.program p " + "join ps.sample s " + "order by ps.id";
-
-        Query<ProgramSample> query = entityManager.unwrap(Session.class).createQuery(sql, ProgramSample.class);
-        query.setFirstResult(startIndex);
-        query.setMaxResults(pageSize);
-        return query.list();
-    }
-
-    @Override
-    public List<ProgramSample> searchProgramSamples(String filter, Integer startIndex, Integer pageSize) {
+    public java.util.List<ProgramSample> getProgramSamplesByAccessionNumberOrProgramName(String filter) {
         String sql = "select ps from ProgramSample ps " + "join ps.program p " + "join ps.sample s "
                 + "where lower(p.programName) like :filter " + "or lower(s.accessionNumber) like :filter "
                 + "order by ps.id";
 
         Query<ProgramSample> query = entityManager.unwrap(Session.class).createQuery(sql, ProgramSample.class);
         query.setParameter("filter", "%" + filter.toLowerCase() + "%");
-        query.setFirstResult(startIndex);
-        query.setMaxResults(pageSize);
         return query.list();
     }
-
 }

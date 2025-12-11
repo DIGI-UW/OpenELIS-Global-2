@@ -1,7 +1,6 @@
 package org.openelisglobal.program.service;
 
 import jakarta.transaction.Transactional;
-import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
@@ -11,7 +10,6 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.program.bean.DashboardSummary;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.ProgramSampleDisplayItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
@@ -39,29 +37,6 @@ public class GenericProgramDisplayServiceImpl implements GenericProgramDisplaySe
     public ProgramSampleDisplayItem getProgramSampleById(Integer programSampleId) {
         ProgramSample ps = programSampleService.get(programSampleId);
         return convert(ps);
-    }
-
-    @Override
-    @Transactional
-    public DashboardSummary getAllProgramSamples(String filter, int size, int page) {
-        int startIndex = (page - 1) * size;
-        List<ProgramSample> samples;
-
-        if (filter != null && !filter.isEmpty()) {
-            samples = programSampleService.searchProgramSamples(filter, startIndex, size);
-        } else {
-            samples = programSampleService.getPaginatedProgramSamples(startIndex, size);
-        }
-
-        int totalEntries = programSampleService.getCount();
-
-        DashboardSummary summary = new DashboardSummary();
-        List<DashboardSummary.ViewItems> viewItems = samples.stream().map(this::convertToViewItem).toList();
-
-        summary.setProgramSample(viewItems);
-        summary.setTotalEntries(totalEntries);
-
-        return summary;
     }
 
     private ProgramSampleDisplayItem convert(ProgramSample ps) {
@@ -113,19 +88,5 @@ public class GenericProgramDisplayServiceImpl implements GenericProgramDisplaySe
         }
 
         return display;
-    }
-
-    private DashboardSummary.ViewItems convertToViewItem(ProgramSample ps) {
-
-        DashboardSummary.ViewItems item = new DashboardSummary.ViewItems();
-
-        item.setProgramSampleId(ps.getId());
-        item.setProgramName(ps.getProgram().getProgramName());
-        item.setProgramCode(ps.getProgram().getCode());
-        item.setReceivedDate(ps.getSample().getReceivedDate());
-        item.setAccessionNumber(ps.getSample().getAccessionNumber());
-        item.setQuestionnaireResponseUuid(ps.getQuestionnaireResponseUuid());
-
-        return item;
     }
 }

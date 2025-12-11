@@ -340,13 +340,13 @@ export default function App() {
                   path="/genericProgram"
                   exact
                   component={() => <ProgramDashboard />}
-                  role=""
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/programView/:programSampleId"
                   exact
                   component={() => <ProgramCaseView />}
-                  role=""
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/FreezerMonitoring"

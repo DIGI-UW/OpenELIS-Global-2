@@ -7,8 +7,5 @@ import org.openelisglobal.program.valueholder.ProgramSample;
 public interface ProgramSampleService extends BaseObjectService<ProgramSample, Integer> {
     ProgramSample getProgrammeSampleBySample(Integer sampleId, String programName);
 
-    List<ProgramSample> getPaginatedProgramSamples(Integer startIndex, Integer pageSize);
-
-    List<ProgramSample> searchProgramSamples(String filter, Integer startIndex, Integer pageSize);
-
+    List<ProgramSample> getProgramSamplesByAccessionNumberOrProgramName(String filter);
 }

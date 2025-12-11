@@ -268,4 +268,7 @@ public interface IActionConstants {
     String MODULE_ACCESS_SAMPLE_ACCESSIONNO_EDIT = "Access.sample.accessionNo.edit";
 
     String DISPLAY_PREV_NEXT = "DisplayPrevNext";
+
+    String GENERIC_PROGRAM_DASHBOARD_CACHE = "GenericProgramDashboardCache";
+    String GENERIC_PROGRAM_DASHBOARD_MAPPING = "GenericProgramDashboardMapping";
 }
