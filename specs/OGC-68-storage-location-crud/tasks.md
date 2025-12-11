@@ -1,6 +1,6 @@
 # Tasks: Storage Location Management & Configuration
 
-**Feature**: 151-storage-location-crud  
+**Feature**: OGC-68-storage-location-crud  
 **Jira**: [OGC-68](https://uwdigi.atlassian.net/browse/OGC-68)  
 **Spec**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md)  
 **Date Generated**: 2025-12-11
@@ -31,7 +31,7 @@ dependencies between them).
 
 ## Milestone 1: Backend (Sequential)
 
-**Branch**: `feat/151-storage-location-crud/m1-backend`  
+**Branch**: `feat/OGC-68-storage-location-crud/m1-backend`  
 **Target**: `develop`  
 **User Stories**: US1 (backend), US2 (backend)  
 **Verification**: Unit tests + Integration tests MUST pass  
@@ -40,7 +40,7 @@ dependencies between them).
 ### M1.1 - Branch Setup
 
 - [ ] T001 Create milestone branch:
-      `git checkout -b feat/151-storage-location-crud/m1-backend` from `develop`
+      `git checkout -b feat/OGC-68-storage-location-crud/m1-backend` from `develop`
 
 ### M1.2 - Tests First (TDD) [US1, US2]
 
@@ -120,7 +120,7 @@ dependencies between them).
 ### M1.8 - Verification & PR
 
 - [ ] T024 Run `mvn spotless:apply` and verify all tests pass with `mvn test`
-- [ ] T025 Create PR: `feat/151-storage-location-crud/m1-backend` → `develop`
+- [ ] T025 Create PR: `feat/OGC-68-storage-location-crud/m1-backend` → `develop`
       with title "feat(OGC-68): Add storage location CRUD backend and device
       connectivity"
 
@@ -131,7 +131,7 @@ work, connectivity fields persist
 
 ## Milestone 2: Frontend [P] (Parallel)
 
-**Branch**: `feat/151-storage-location-crud/m2-frontend`  
+**Branch**: `feat/OGC-68-storage-location-crud/m2-frontend`  
 **Target**: `develop`  
 **User Stories**: US1 (frontend), US2 (frontend)  
 **Verification**: Jest tests + Cypress E2E tests MUST pass  
@@ -140,7 +140,7 @@ work, connectivity fields persist
 ### M2.1 - Branch Setup
 
 - [ ] T026 Create milestone branch:
-      `git checkout -b feat/151-storage-location-crud/m2-frontend` from
+      `git checkout -b feat/OGC-68-storage-location-crud/m2-frontend` from
       `develop`
 
 ### M2.2 - Internationalization [US1, US2]
@@ -222,7 +222,7 @@ work, connectivity fields persist
 - [ ] T054 Run `npm run format` and verify all Jest tests pass with `npm test`
 - [ ] T055 Run individual Cypress test:
       `npm run cy:run -- --spec "cypress/e2e/storageLocationCrud.cy.js"`
-- [ ] T056 Create PR: `feat/151-storage-location-crud/m2-frontend` → `develop`
+- [ ] T056 Create PR: `feat/OGC-68-storage-location-crud/m2-frontend` → `develop`
       with title "feat(OGC-68): Add storage location CRUD frontend modals"
 
 **Milestone 2 Checkpoint**: All Jest + Cypress tests pass, CRUD modals work for
@@ -332,7 +332,7 @@ Both can work simultaneously and merge independently.
 - **TDD**: Tests MUST fail before implementation (Red-Green-Refactor)
 - **[P]** tasks can run in parallel (different files, no dependencies)
 - **[US1]** / **[US2]** labels map tasks to user stories for traceability
-- **Spec Reference**: `specs/151-storage-location-crud/spec.md FR-XXX` for
+- **Spec Reference**: `specs/OGC-68-storage-location-crud/spec.md FR-XXX` for
   requirement tracing
 - **Pre-commit**: Always run `mvn spotless:apply` (backend) and `npm run format`
   (frontend)

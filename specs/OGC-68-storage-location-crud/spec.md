@@ -1,6 +1,6 @@
 # Feature Specification: Storage Location Management & Configuration
 
-**Feature Branch**: `151-storage-location-crud`  
+**Feature Branch**: `OGC-68-storage-location-crud`  
 **Created**: December 11, 2025  
 **Status**: Draft  
 **Input**: User description: "Implement full CRUD capabilities for storage

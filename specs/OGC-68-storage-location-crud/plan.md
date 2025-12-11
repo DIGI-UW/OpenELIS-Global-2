@@ -1,9 +1,9 @@
 # Implementation Plan: Storage Location Management & Configuration
 
-**Branch**: `151-storage-location-crud` | **Date**: 2025-12-11 | **Spec**:
+**Branch**: `OGC-68-storage-location-crud` | **Date**: 2025-12-11 | **Spec**:
 [spec.md](./spec.md)  
 **Input**: Feature specification from
-`/specs/151-storage-location-crud/spec.md`  
+`/specs/OGC-68-storage-location-crud/spec.md`  
 **Jira**: [OGC-68](https://uwdigi.atlassian.net/browse/OGC-68)
 
 ## Summary
@@ -95,7 +95,7 @@ PR scope per PR #2421 guidance)
 **Legend**:
 
 - **[P]**: Parallel milestone - M2 can be developed alongside M1
-- **Branch**: Full path is `feat/151-storage-location-crud/{suffix}`
+- **Branch**: Full path is `feat/OGC-68-storage-location-crud/{suffix}`
 
 ### Milestone Dependency Graph
 
@@ -110,8 +110,8 @@ graph LR
 Per Constitution Principle IX and PR #2421 (Project Branch Deployment Strategy):
 
 - **Milestone PRs**:
-  - `feat/151-storage-location-crud/m1-backend` → `develop`
-  - `feat/151-storage-location-crud/m2-frontend` → `develop`
+  - `feat/OGC-68-storage-location-crud/m1-backend` → `develop`
+  - `feat/OGC-68-storage-location-crud/m2-frontend` → `develop`
 - **Small Feature Optimization**: Since M1 and M2 are independent, both can
   target `develop` directly (no feature integration branch needed)
 
@@ -119,14 +119,14 @@ Per Constitution Principle IX and PR #2421 (Project Branch Deployment Strategy):
 
 - Each milestone PR should be 15-25 tasks maximum
 - No process comments in code (e.g., "per review", "AI-generated")
-- Use spec path references: `specs/151-storage-location-crud/spec.md FR-XXX`
+- Use spec path references: `specs/OGC-68-storage-location-crud/spec.md FR-XXX`
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/151-storage-location-crud/
+specs/OGC-68-storage-location-crud/
 ├── spec.md              # Feature specification
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
