@@ -244,4 +244,48 @@ public class StorageLocationServiceTest {
         assertEquals("Port should be set correctly", Integer.valueOf(502), port);
         assertEquals("Communication protocol should be set correctly", "BACnet", protocol);
     }
+
+    @Test
+    public void testIsNameUniqueWithinParent_RoomDuplicate_ReturnsFalse() {
+        StorageRoom existing = new StorageRoom();
+        existing.setId(5);
+        when(storageRoomDAO.findByName("Main Lab")).thenReturn(existing);
+
+        boolean unique = storageLocationService.isNameUniqueWithinParent("Main Lab", null, "room", null);
+
+        assertFalse("Duplicate room names should not be allowed", unique);
+    }
+
+    @Test
+    public void testIsNameUniqueWithinParent_DeviceDuplicate_ReturnsFalse() {
+        StorageDevice existing = new StorageDevice();
+        existing.setId(10);
+        when(storageDeviceDAO.findByNameAndParentRoomId("Freezer-01", 1)).thenReturn(existing);
+
+        boolean unique = storageLocationService.isNameUniqueWithinParent("Freezer-01", 1, "device", null);
+
+        assertFalse("Duplicate device names within a room should not be allowed", unique);
+    }
+
+    @Test
+    public void testIsNameUniqueWithinParent_ShelfDuplicate_ReturnsFalse() {
+        StorageShelf existing = new StorageShelf();
+        existing.setId(20);
+        when(storageShelfDAO.findByLabelAndParentDeviceId("Shelf-A", 2)).thenReturn(existing);
+
+        boolean unique = storageLocationService.isNameUniqueWithinParent("Shelf-A", 2, "shelf", null);
+
+        assertFalse("Duplicate shelf labels within a device should not be allowed", unique);
+    }
+
+    @Test
+    public void testIsNameUniqueWithinParent_RackDuplicate_ReturnsFalse() {
+        StorageRack existing = new StorageRack();
+        existing.setId(30);
+        when(storageRackDAO.findByLabelAndParentShelfId("Rack-01", 3)).thenReturn(existing);
+
+        boolean unique = storageLocationService.isNameUniqueWithinParent("Rack-01", 3, "rack", null);
+
+        assertFalse("Duplicate rack labels within a shelf should not be allowed", unique);
+    }
 }

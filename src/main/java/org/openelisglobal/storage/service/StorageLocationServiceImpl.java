@@ -1853,4 +1853,42 @@ public class StorageLocationServiceImpl implements StorageLocationService {
 
         return DeletionValidationResult.success();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isNameUniqueWithinParent(String name, Integer parentId, String locationType, Integer excludeId) {
+        if (name == null || name.trim().isEmpty()) {
+            return true;
+        }
+        String trimmedName = name.trim();
+        switch (locationType) {
+        case "room": {
+            StorageRoom existingRoom = storageRoomDAO.findByName(trimmedName);
+            return existingRoom == null || existingRoom.getId().equals(excludeId);
+        }
+        case "device": {
+            if (parentId == null) {
+                return true;
+            }
+            StorageDevice existingDevice = storageDeviceDAO.findByNameAndParentRoomId(trimmedName, parentId);
+            return existingDevice == null || existingDevice.getId().equals(excludeId);
+        }
+        case "shelf": {
+            if (parentId == null) {
+                return true;
+            }
+            StorageShelf existingShelf = storageShelfDAO.findByLabelAndParentDeviceId(trimmedName, parentId);
+            return existingShelf == null || existingShelf.getId().equals(excludeId);
+        }
+        case "rack": {
+            if (parentId == null) {
+                return true;
+            }
+            StorageRack existingRack = storageRackDAO.findByLabelAndParentShelfId(trimmedName, parentId);
+            return existingRack == null || existingRack.getId().equals(excludeId);
+        }
+        default:
+            return true;
+        }
+    }
 }

@@ -164,4 +164,15 @@ public interface StorageLocationService {
      * @return DeletionValidationResult with success/error details
      */
     DeletionValidationResult canDeleteRack(Integer rackId);
+
+    /**
+     * Validate location name uniqueness within parent scope
+     *
+     * @param name         Location name to validate
+     * @param parentId     Parent ID (null for rooms)
+     * @param locationType One of: "room", "device", "shelf", "rack"
+     * @param excludeId    Existing ID to exclude (for updates)
+     * @return true if unique within scope, false otherwise
+     */
+    boolean isNameUniqueWithinParent(String name, Integer parentId, String locationType, Integer excludeId);
 }
