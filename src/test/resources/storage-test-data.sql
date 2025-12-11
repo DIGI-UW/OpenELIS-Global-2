@@ -91,19 +91,20 @@ INSERT INTO storage_shelf (id, fhir_uuid, label, code, capacity_limit, active, p
 
 -- Insert Test Racks
 -- Each shelf has uniquely named racks
--- Note: code column is VARCHAR(10) max
-INSERT INTO storage_rack (id, fhir_uuid, label, code, rows, columns, position_schema_hint, active, parent_shelf_id, sys_user_id, last_updated) VALUES
+-- Note: Storage racks in current schema don't have rows/columns/position_schema_hint columns
+-- (those were moved to storage_box in the box/plate hierarchy update)
+INSERT INTO storage_rack (id, fhir_uuid, label, code, active, parent_shelf_id, sys_user_id, last_updated) VALUES
 -- Main Freezer Shelf-A racks
-(30, gen_random_uuid(), 'Main Freezer Shelf-A Rack 1', 'RK-1', 8, 12, 'A1', true, 20, 1, CURRENT_TIMESTAMP),
-(31, gen_random_uuid(), 'Main Freezer Shelf-A Rack 2', 'RK-2', 10, 10, '1-1', true, 20, 1, CURRENT_TIMESTAMP),
+(30, gen_random_uuid(), 'Main Freezer Shelf-A Rack 1', 'RK-1', true, 20, 1, CURRENT_TIMESTAMP),
+(31, gen_random_uuid(), 'Main Freezer Shelf-A Rack 2', 'RK-2', true, 20, 1, CURRENT_TIMESTAMP),
 -- Main Freezer Shelf-B racks
-(32, gen_random_uuid(), 'Main Freezer Shelf-B Rack 1', 'RK-1', 0, 0, NULL, true, 21, 1, CURRENT_TIMESTAMP),
+(32, gen_random_uuid(), 'Main Freezer Shelf-B Rack 1', 'RK-1', true, 21, 1, CURRENT_TIMESTAMP),
 -- Main Refrigerator Shelf-1 racks
-(33, gen_random_uuid(), 'Main Refrigerator Shelf-1 Rack 1', 'RK-1', 8, 12, NULL, true, 22, 1, CURRENT_TIMESTAMP),
+(33, gen_random_uuid(), 'Main Refrigerator Shelf-1 Rack 1', 'RK-1', true, 22, 1, CURRENT_TIMESTAMP),
 -- Secondary Cabinet Shelf-1 racks
-(34, gen_random_uuid(), 'Secondary Cabinet Shelf-1 Rack 1', 'RK-1', 8, 12, 'A1', true, 23, 1, CURRENT_TIMESTAMP),
+(34, gen_random_uuid(), 'Secondary Cabinet Shelf-1 Rack 1', 'RK-1', true, 23, 1, CURRENT_TIMESTAMP),
 -- Secondary Freezer Shelf-A racks
-(35, gen_random_uuid(), 'Secondary Freezer Shelf-A Rack 1', 'RK-1', 6, 8, 'A1', true, 25, 1, CURRENT_TIMESTAMP);
+(35, gen_random_uuid(), 'Secondary Freezer Shelf-A Rack 1', 'RK-1', true, 25, 1, CURRENT_TIMESTAMP);
 
 -- Insert Test Positions
 -- Each rack has unique positions

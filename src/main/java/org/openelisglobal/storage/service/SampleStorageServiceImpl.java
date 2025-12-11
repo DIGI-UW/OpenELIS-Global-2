@@ -7,7 +7,6 @@ import java.util.Map;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
@@ -18,6 +17,8 @@ import org.openelisglobal.storage.valueholder.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -129,15 +130,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
-            // Map status ID to user-friendly name for filtering
-            // (specs/001-sample-storage/spec.md FR-056)
-            String statusName = "active"; // Default
-            if (sampleItem.getStatusId() != null) {
-                if (statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {
-                    statusName = "disposed";
-                }
-            }
-            map.put("status", statusName);
+            // Store actual status ID for filtering (OGC-150: supports all status types from
+            // dropdown)
+            // Frontend dropdown loads all status types and filters by ID
+            // Default to "active" if no status ID (backward compatibility)
+            map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
 
             // Check if this sample item has an assignment
             SampleStorageAssignment assignment = assignmentsBySampleItemId.get(sampleItem.getId());
@@ -1228,5 +1225,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         throw new LIMSRuntimeException(String.format(
                 "Sample not found with identifier '%s'. Please check the accession number or external reference number.",
                 trimmedId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SampleStorageAssignment> getSampleAssignments(Pageable pageable) {
+        return sampleStorageAssignmentDAO.findAll(pageable);
     }
 }

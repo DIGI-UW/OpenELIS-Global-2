@@ -983,7 +983,7 @@ sequential, enabling flexible team coordination.
 | Branch Type         | Pattern                                  | Example                                    |
 | ------------------- | ---------------------------------------- | ------------------------------------------ |
 | Spec Branch         | `spec/{issue-id}-{name}`                 | `spec/OGC-009-sidenav`, `spec/009-sidenav` |
-| Spec Clarification  | `spec/{issue-id}-{name}/clarify-{topic}` | `spec/OGC-009-sidenav/clarify-responsive`  |
+| Spec Clarification  | `spec/clarify/{issue-id}-{name}-{topic}` | `spec/clarify/OGC-009-sidenav-responsive`  |
 | Feature Integration | `feat/{issue-id}-{name}`                 | `feat/OGC-009-sidenav`                     |
 | Milestone Branch    | `feat/{issue-id}-{name}/m{N}-{desc}`     | `feat/OGC-009-sidenav/m1-backend`          |
 | Hotfix              | `hotfix/{issue-id}-{desc}`               | `hotfix/OGC-123-fix-login`                 |
@@ -1014,24 +1014,26 @@ sequential, enabling flexible team coordination.
    - Complete `spec.md` (user stories, requirements)
    - Complete `plan.md` (architecture, milestone plan)
    - Complete `tasks.md` (task breakdown by milestone)
-   - Use `spec/{issue-id}-{name}/clarify-{topic}` branches for spec iterations
-   - Create Spec PR targeting `develop` for review
 
-2. **Implementation Phase** (after spec PR approved or ready):
-   - Create feature branch `feat/{issue-id}-{name}` from `develop`
-   - For each milestone:
-     - Create milestone branch from **feature branch** (not develop)
-     - Implement tasks for that milestone
-     - Create PR targeting **feature branch**
-     - Merge after review and tests pass
-   - After all milestones merged to feature branch:
+- Use `spec/clarify/{issue-id}-{name}-{topic}` branches for spec iterations
+  (avoids Git parent-ref collisions)
+  - Create Spec PR targeting `develop` for review
+
+2. **Implementation Phase** (after spec PR approved OR in parallel):
+   - Spec PR does NOT need to be merged before implementation begins
+   - For simple features (1-2 milestones): milestone branches MAY target
+     `develop` directly
+   - For complex features (3+ milestones): use feature integration branch:
+     - Create feature branch `feat/{issue-id}-{name}` from `develop`
+     - Milestone branches target feature branch
      - Final PR merges `feat/{issue-id}-{name}` → `develop`
 
 **Key Rules**:
 
-- Milestone branches always target the feature branch until feature is complete
+- Spec PR and implementation can proceed in parallel
+- Milestone branches MAY target `develop` directly for simpler features
 - Spec clarification branches merge back to spec branch
-- Only the final feature branch PR targets `develop`
+- Feature integration branch is OPTIONAL (use for complex multi-milestone work)
 
 **Rationale**: Large features implemented as single PRs create review
 bottlenecks, increase merge conflict risk, and delay feedback. Milestone-based
