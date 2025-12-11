@@ -418,10 +418,13 @@ public class SampleStorageRestControllerDisposalTest extends BaseStorageTest {
                 .andReturn();
 
         // Assert: Disposed sample appears in results
-        com.fasterxml.jackson.databind.JsonNode samples = objectMapper
+        // OGC-150: Response is now paginated with { items: [...], totalItems, ... } structure
+        com.fasterxml.jackson.databind.JsonNode root = objectMapper
                 .readTree(result.getResponse().getContentAsString());
+        com.fasterxml.jackson.databind.JsonNode samplesNode = root.has("items") ? root.get("items") : root;
+        
         boolean found = false;
-        for (com.fasterxml.jackson.databind.JsonNode sample : samples) {
+        for (com.fasterxml.jackson.databind.JsonNode sample : samplesNode) {
             // sampleItemId is external ID, compare with sampleItemExternalId field
             String sampleItemExternalId = sample.has("sampleItemExternalId")
                     ? sample.get("sampleItemExternalId").asText()
