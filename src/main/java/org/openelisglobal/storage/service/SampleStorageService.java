@@ -78,7 +78,8 @@ public interface SampleStorageService {
      */
     org.springframework.data.domain.Page<org.openelisglobal.storage.valueholder.SampleStorageAssignment> getSampleAssignments(
             org.springframework.data.domain.Pageable pageable);
-     /**       
+
+    /**
      * Get a SampleStorageAssignment by ID.
      *
      * @param assignmentId the assignment ID

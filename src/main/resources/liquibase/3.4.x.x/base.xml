@@ -15,5 +15,6 @@
     <include file="liquibase/3.4.x.x/004-notebook-page-type.xml"/>
     <include file="liquibase/3.4.x.x/005-notebook-entry-refactor.xml"/>
     <include file="liquibase/3.4.x.x/006-workflow-page-templates.xml"/>
+    <include file="liquibase/3.4.x.x/007-fix-location-type-constraint.xml"/>
 
 </databaseChangeLog>

@@ -1245,9 +1245,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     @Transactional(readOnly = true)
     public Page<SampleStorageAssignment> getSampleAssignments(Pageable pageable) {
         return sampleStorageAssignmentDAO.findAll(pageable);
-    
+    }
+
     @Override
-    @Transactional(readOnly = true)    
+    @Transactional(readOnly = true)
     public SampleStorageAssignment getSampleStorageAssignment(Integer assignmentId) {
         if (assignmentId == null) {
             return null;

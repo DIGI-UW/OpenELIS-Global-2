@@ -255,7 +255,13 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
 
     /**
      * Helper method to assign or move a sample to storage. Checks if sample already
-     * has assignment and uses move if so, otherwise creates new assignment.
+     * has assignment RECORD (not just location) and uses move if so, otherwise
+     * creates new assignment.
+     *
+     * Note: SampleStorageAssignment has a UNIQUE constraint on sample_item_id, so
+     * we must check for assignment record existence, not just whether it has a
+     * location set. An assignment can exist but have null location (e.g., after
+     * disposal).
      */
     private void assignOrMoveToStorage(Integer sampleItemId, Integer boxId, String wellCoordinate, String notebookTitle,
             String routingType) {
@@ -263,21 +269,27 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
             String notes = String.format("Notebook: %s | %s | Box: %d | Well: %s", notebookTitle, routingType, boxId,
                     wellCoordinate);
 
-            // Check if sample already has a storage assignment
+            // Check if sample already has a storage assignment RECORD (not just location)
+            // getSampleItemLocation returns empty map if no assignment exists, but we need
+            // to check the actual assignment record because it could exist with null
+            // location
             Map<String, Object> existingLocation = sampleStorageService.getSampleItemLocation(sampleItemId.toString());
+
+            // Check if there's ANY data in the map (indicating an assignment record exists)
+            // The map will have sampleItemId key if an assignment was found, even if
+            // location is empty
             boolean hasExistingAssignment = existingLocation != null && !existingLocation.isEmpty()
-                    && existingLocation.get("location") != null
-                    && !existingLocation.get("location").toString().isEmpty();
+                    && existingLocation.containsKey("sampleItemId");
 
             if (hasExistingAssignment) {
-                // Use move instead of assign
+                // Use move instead of assign (move updates existing assignment)
                 sampleStorageService.moveSampleItemWithLocation(sampleItemId.toString(), boxId.toString(), "box",
                         wellCoordinate, notes, null);
                 LogEvent.logInfo(this.getClass().getName(), "assignOrMoveToStorage",
                         "Moved SampleStorageAssignment for sample " + sampleItemId + " to box " + boxId + " well "
                                 + wellCoordinate);
             } else {
-                // Create new assignment
+                // Create new assignment (no existing assignment record)
                 sampleStorageService.assignSampleItemWithLocation(sampleItemId.toString(), boxId.toString(), "box",
                         wellCoordinate, notes);
                 LogEvent.logInfo(this.getClass().getName(), "assignOrMoveToStorage",
