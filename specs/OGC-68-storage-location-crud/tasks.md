@@ -55,6 +55,9 @@ dependencies between them).
       `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceTest.java`
 - [ ] T005 [P] [US1] Write unit test for `canDeleteRack()` validation in
       `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceTest.java`
+- [ ] T005a [P] [US1] Write unit test for `canDeleteRack()` validation when rack
+      contains Boxes (deletion should be blocked) in
+      `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceTest.java`
 - [ ] T006 [P] [US2] Write unit test for StorageDevice connectivity field
       persistence in
       `src/test/java/org/openelisglobal/storage/service/StorageLocationServiceTest.java`

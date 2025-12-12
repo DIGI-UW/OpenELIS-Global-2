@@ -94,9 +94,9 @@ verifying the new configuration fields are persisted and validated.
 1. **Given** the "Add Device" or "Edit Device" modal, **When** the form is
    displayed, **Then** it includes fields for "IP Address", "Port", and
    "Communication Protocol".
-2. **Given** the "Communication Protocol" field, **When** viewed, **Then** it
-   defaults to "BACnet" but allows selection of other supported protocols (if
-   any).
+2. **Given** the "Communication Protocol" field, **When** viewed, **Then** the
+   UI may prefill "BACnet" as a suggested value but MUST persist the value only
+   if explicitly saved on create/update.
 3. **Given** invalid input (e.g., invalid IP format), **When** submitting the
    form, **Then** the system displays a validation error and prevents saving.
 4. **Given** a configured device, **When** viewed in the dashboard, **Then** the
@@ -123,8 +123,8 @@ verifying the new configuration fields are persisted and validated.
 
 - **FR-005**: `StorageDevice` entity MUST include fields: `ip_address` (String),
   `port` (Integer), `communication_protocol` (String).
-- **FR-006**: `communication_protocol` has no database default; UI/service may prefill
-  'BACnet' but value must be explicitly set on create/update.
+- **FR-006**: `communication_protocol` has no database default; UI/service may
+  prefill 'BACnet' but value must be explicitly set on create/update.
 - **FR-007**: System MUST validate `ip_address` format (IPv4/IPv6) if provided.
 - **FR-008**: System MUST validate `port` is a valid integer (1-65535) if
   provided.
