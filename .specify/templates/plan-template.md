@@ -95,8 +95,8 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 
 - **[P]**: Parallel milestone - can be developed alongside other milestones
 - **Sequential** (no prefix): Must complete before dependent milestones
-- **Branch**: Use constitution Principle IX naming (avoid Git ref prefix
-  collisions): `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
+- **Branch**: Use constitution Principle IX naming (avoid Git ref prefix collisions):
+  `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
 
 ### Milestone Dependency Graph
 
@@ -108,8 +108,7 @@ graph LR
 
 ### PR Strategy
 
-- **Spec PR**: `spec/{NNN}[-{jira}]-{name}` → `develop` (specification documents
-  only)
+- **Spec PR**: `spec/{NNN}[-{jira}]-{name}` → `develop` (specification documents only)
 - **Milestone PRs**: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` → `develop`
 
 **Small Features (<3 days)**: May use a single milestone-style branch
@@ -212,27 +211,23 @@ Document which test types will be used for this feature:
     [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
   - **Coverage Goal**: >80% (measured via JaCoCo)
   - **SDD Checkpoint**: After Phase 2 (Services), all unit tests MUST pass
-  - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit
-    tests (this repo is Traditional Spring MVC)
+  - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit tests
+    (this repo is Traditional Spring MVC)
   - **Mocking**: Use `@Mock` (NOT `@MockBean`) for isolated unit tests
 
 - [ ] **DAO Tests**: Persistence layer testing (Traditional Spring MVC)
 
   - Template: `.specify/templates/testing/DataJpaTestDao.java.template`
-  - **Reference**:
-    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
-  - **Project Note**: This repo uses traditional Spring MVC test patterns (no
-    Boot test slices).
+  - **Reference**: [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+  - **Project Note**: This repo uses traditional Spring MVC test patterns (no Boot test slices).
   - **Pattern**: Use `BaseWebContextSensitiveTest` and real DAO beans; rely on
     rollback/fixture reset patterns from the Testing Roadmap.
 
 - [ ] **Controller Tests**: REST API endpoints (Traditional Spring MVC)
 
   - Template: `.specify/templates/testing/WebMvcTestController.java.template`
-  - **Reference**:
-    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
-  - **Project Note**: `@WebMvcTest` is not used in this repository; use
-    `BaseWebContextSensitiveTest`.
+  - **Reference**: [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+  - **Project Note**: `@WebMvcTest` is not used in this repository; use `BaseWebContextSensitiveTest`.
   - **Pattern**: Use `BaseWebContextSensitiveTest` + `MockMvc`.
 
 - [ ] **ORM Validation Tests**: Entity mapping validation (Constitution V.4)
@@ -245,12 +240,9 @@ Document which test types will be used for this feature:
 
 - [ ] **Integration Tests**: Full workflow testing (Traditional Spring MVC)
 
-  - **Reference**:
-    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
-  - **Project Note**: `@SpringBootTest` is not used in this repository; use
-    `BaseWebContextSensitiveTest`.
-  - **Pattern**: Use `BaseWebContextSensitiveTest` for full-context integration
-    tests.
+  - **Reference**: [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+  - **Project Note**: `@SpringBootTest` is not used in this repository; use `BaseWebContextSensitiveTest`.
+  - **Pattern**: Use `BaseWebContextSensitiveTest` for full-context integration tests.
   - **SDD Checkpoint**: After Phase 3 (Controllers), integration tests MUST pass
 
 - [ ] **Frontend Unit Tests**: React component logic (Jest + React Testing
