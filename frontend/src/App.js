@@ -5,9 +5,15 @@ import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
-import InventoryManagement from "./components/inventory/InventoryManagement";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
+import AnalyzersPage from "./pages/AnalyzersPage";
+import FieldMapping from "./components/analyzers/FieldMapping/FieldMapping";
+import ErrorDashboardPage from "./pages/ErrorDashboardPage";
+import CustomFieldTypeManagementPage from "./pages/CustomFieldTypeManagementPage";
+import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
+import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
+import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
 import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
@@ -50,9 +56,6 @@ import ReferredOutTests from "./components/resultPage/resultsReferredOut/Referre
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
-import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
-import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
-import SampleManagement from "./components/sampleManagement/SampleManagement";
 
 export default function App() {
   let i18nConfig = {
@@ -254,36 +257,6 @@ export default function App() {
                   role=""
                 />
                 <SecureRoute
-                  path="/GenericSample/Order"
-                  exact
-                  component={() => {
-                    const GenericSampleOrder =
-                      require("./components/genericSample/GenericSampleOrder").default;
-                    return <GenericSampleOrder />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
-                  path="/GenericSample/Edit"
-                  exact
-                  component={() => {
-                    const GenericSampleOrderEdit =
-                      require("./components/genericSample/GenericSampleOrderEdit").default;
-                    return <GenericSampleOrderEdit />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
-                  path="/GenericSample/Import"
-                  exact
-                  component={() => {
-                    const GenericSampleOrderImport =
-                      require("./components/genericSample/GenericSampleOrderImport").default;
-                    return <GenericSampleOrderImport />;
-                  }}
-                  role=""
-                />
-                <SecureRoute
                   path="/Dashboard"
                   exact
                   component={() => <Home />}
@@ -297,6 +270,7 @@ export default function App() {
                 />
                 <SecureRoute
                   path="/MasterListsPage"
+                  exact
                   component={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
                 />
@@ -336,12 +310,6 @@ export default function App() {
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
                 />
                 <SecureRoute
-                  path="/FreezerMonitoring"
-                  exact
-                  component={() => <FreezerMonitoringDashboard />}
-                  role={Roles.RECEPTION}
-                />
-                <SecureRoute
                   path="/NoteBookDashboard"
                   exact
                   component={() => <NoteBookDashBoard />}
@@ -369,18 +337,6 @@ export default function App() {
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
-                  exact
-                  component={() => <NotebookSampleOrder />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/NotebookSampleOrder/:notebookId"
-                  exact
-                  component={() => <NotebookSampleOrder />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
@@ -471,26 +427,46 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
-                  path="/inventory"
+                  path="/analyzers"
                   exact
-                  component={() => <InventoryManagement />}
-                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  component={() => <AnalyzersPage />}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
-                  path="/SampleManagement"
+                  path="/analyzers/:id/mappings"
                   exact
-                  component={() => <SampleManagement />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  component={FieldMapping}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
-                  path="/GenericSample/Results"
+                  path="/analyzers/errors"
                   exact
-                  component={() => {
-                    const GenericSampleResults =
-                      require("./components/genericSample/GenericSampleResults").default;
-                    return <GenericSampleResults />;
-                  }}
-                  role={[Roles.RESULTS]}
+                  component={() => <ErrorDashboardPage />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/custom-field-types"
+                  exact
+                  component={() => <CustomFieldTypeManagementPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/qc"
+                  exact
+                  component={() => <QCDashboardPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/alerts"
+                  exact
+                  component={() => <QCAlertsPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/corrective-actions"
+                  exact
+                  component={() => <CorrectiveActionsPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
                   path="/PatientHistory"
