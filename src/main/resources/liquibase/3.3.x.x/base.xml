@@ -27,5 +27,5 @@
   <include relativeToChangelogFile="true" file="018-allow-null-location-for-disposed.xml"/>
 
   <!-- Add device connectivity fields for network-connected storage equipment -->
-  <include file="liquibase/storage/storage-device-connectivity.xml"/>
+  <include relativeToChangelogFile="true" file="../storage/storage-device-connectivity.xml"/>
 </databaseChangeLog>

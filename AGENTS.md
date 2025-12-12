@@ -877,6 +877,14 @@ for comprehensive guide.
 - **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
 - **Manual Testing**: Direct execution of `load-test-fixtures.sh`
 
+**DBUnit datasets (MANDATORY for DB-backed tests):**
+
+- **Where**: `src/test/resources/testdata/*.xml`
+- **How**: Load via
+  `BaseWebContextSensitiveTest.executeDataSetWithStateManagement("testdata/<file>.xml")`
+- **Rule**: Prefer DBUnit datasets over inline SQL setup/cleanup to prevent test
+  data pollution and keep tests maintainable.
+
 **For detailed information**, see:
 
 - [Test Data Strategy Guide](.specify/guides/test-data-strategy.md) -

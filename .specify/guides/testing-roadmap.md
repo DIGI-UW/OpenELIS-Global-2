@@ -167,7 +167,22 @@ public int calculateCapacity(String deviceId) {
 for official patterns.
 
 This section provides comprehensive technical guidance for implementing backend
-Java/Spring Boot tests. For quick reference, see
+Java tests in OpenELIS Global 2.
+
+**Repository reality (MANDATORY):** OpenELIS Global 2 uses **Traditional Spring
+MVC** (not Spring Boot). Do not introduce Spring Boot testing annotations/slices
+like `@WebMvcTest`, `@DataJpaTest`, or `@SpringBootTest` into new tests unless
+the repository is explicitly migrated to Spring Boot.
+
+**DBUnit rule for DB-backed tests (MANDATORY):**
+
+- DBUnit Flat XML datasets live in `src/test/resources/testdata/`
+- Load datasets via
+  `BaseWebContextSensitiveTest.executeDataSetWithStateManagement("testdata/<file>.xml")`
+- Prefer DBUnit datasets over inline SQL setup/cleanup to prevent test data
+  pollution and improve maintainability
+
+For quick reference, see
 [Backend Testing Best Practices Guide](.specify/guides/backend-testing-best-practices.md).
 
 ### TDD Workflow Integration
@@ -229,10 +244,9 @@ workflow for complex logic.
 
 ### Test Slicing Strategy Decision Tree (OpenELIS Global 2)
 
-**CRITICAL**: In this repository, use `BaseWebContextSensitiveTest` as the
-default Spring context test base. Avoid references to Spring Boot test slice
-annotations (`@WebMvcTest`, `@DataJpaTest`, `@SpringBootTest`) when adding or
-updating tests in this repo.
+**OpenELIS Global 2 note:** Use `BaseWebContextSensitiveTest` for Spring-context tests
+and use DBUnit Flat XML datasets for DB-backed tests via
+`executeDataSetWithStateManagement("testdata/<file>.xml")`.
 
 **Decision Tree**:
 
@@ -753,7 +767,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     public void setUp() throws Exception {
         super.setUp();
         // Load complex test data from XML dataset
-        executeDataSetWithStateManagement("test-data/storage-hierarchy.xml");
+        executeDataSetWithStateManagement("testdata/storage-hierarchy.xml");
     }
 }
 ```
@@ -763,7 +777,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 - Use for complex test data (multiple related entities)
 - XML datasets in `src/test/resources/`
 - Load via `executeDataSetWithStateManagement()`
-- Requires manual cleanup
+- No extra manual cleanup should be needed for tables included in the dataset
+  (the helper truncates/refreshes them)
 
 #### JdbcTemplate (Direct Database Operations)
 
