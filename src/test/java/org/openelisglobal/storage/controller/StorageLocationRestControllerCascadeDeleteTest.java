@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -24,6 +25,8 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
     private StorageLocationService storageLocationService;
 
     @Autowired
+    private DataSource dataSource;
+
     private JdbcTemplate jdbcTemplate;
 
     private ObjectMapper objectMapper;
@@ -36,6 +39,7 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
     public void setUp() throws Exception {
         super.setUp();
         objectMapper = new ObjectMapper();
+        jdbcTemplate = new JdbcTemplate(dataSource);
         executeDataSetWithStateManagement("testdata/storage-cascade-delete-test.xml");
     }
 
