@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- AnalyzerFieldMapping Table -->
+    <!-- Maps analyzer fields to OpenELIS fields (test-level, result-level, metadata) -->
+    <changeSet id="analyzer-003-create-analyzer-field-mapping-table" author="astm-analyzer-mapping-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_field_mapping"/>
+            </not>
+        </preConditions>
+        <comment>Creating analyzer_field_mapping table to store field mappings</comment>
+        <createTable tableName="analyzer_field_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_field_id" type="VARCHAR(36)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_field_mapping_analyzer_field"
+                    references="analyzer_field(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="openelis_field_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="openelis_field_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mapping_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_required" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="specimen_type_constraint" type="VARCHAR(50)"/>
+            <column name="panel_constraint" type="VARCHAR(50)"/>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE analyzer_field_mapping
+            ADD CONSTRAINT chk_openelis_field_type
+            CHECK (openelis_field_type IN ('TEST', 'PANEL', 'RESULT', 'ORDER', 'SAMPLE', 'QC', 'METADATA', 'UNIT'));
+        </sql>
+        <sql>
+            ALTER TABLE analyzer_field_mapping
+            ADD CONSTRAINT chk_mapping_type
+            CHECK (mapping_type IN ('TEST_LEVEL', 'RESULT_LEVEL', 'METADATA'));
+        </sql>
+        <rollback>
+            <dropTable tableName="analyzer_field_mapping"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

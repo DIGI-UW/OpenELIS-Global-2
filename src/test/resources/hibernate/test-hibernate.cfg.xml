@@ -98,6 +98,9 @@
         <mapping resource="hibernate/hbm/PatientPatientType.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSamplePanel.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSampleTest.hbm.xml" />
+        <mapping resource="hibernate/hbm/InventoryItem.hbm.xml" />
+        <mapping resource="hibernate/hbm/InventoryLocation.hbm.xml" />
+        <mapping resource="hibernate/hbm/InventoryReceipt.hbm.xml" />
         <mapping resource="hibernate/hbm/Role.hbm.xml" />
         <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
@@ -162,6 +165,16 @@
         <!-- Sample Storage Management mappings (001-sample-storage) -->
         <!-- Moved to annotation-based mappings (JPA) - entities registered in
             test-persistence.xml -->
+
+        <!-- ASTM Analyzer Mapping mappings (004-astm-analyzer-mapping) -->
+        <!-- All analyzer data model entities use XML-only mapping to match legacy
+            pattern -->
+        <mapping resource="hibernate/hbm/AnalyzerField.hbm.xml" />
+        <mapping resource="hibernate/hbm/AnalyzerFieldMapping.hbm.xml" />
+        <mapping
+            resource="hibernate/hbm/QualitativeResultMapping.hbm.xml" />
+        <mapping resource="hibernate/hbm/UnitMapping.hbm.xml" />
+
     </session-factory>
 
 </hibernate-configuration>

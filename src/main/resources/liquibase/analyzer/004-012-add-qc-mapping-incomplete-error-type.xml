@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add QC_MAPPING_INCOMPLETE error type support -->
+    <!-- Task Reference: T194 -->
+    <!-- Increases error_type column size to accommodate QC_MAPPING_INCOMPLETE (21 characters) -->
+    <!-- Updates check constraint to include QC_MAPPING_INCOMPLETE -->
+    <changeSet id="analyzer-012-add-qc-mapping-incomplete-error-type" author="astm-analyzer-mapping-feature">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_error"/>
+        </preConditions>
+        <comment>Add QC_MAPPING_INCOMPLETE error type support - increase column size and update constraint</comment>
+
+        <!-- Drop existing check constraint -->
+        <sql>
+            ALTER TABLE analyzer_error
+            DROP CONSTRAINT IF EXISTS chk_error_type;
+        </sql>
+
+        <!-- Increase error_type column size to VARCHAR(30) to accommodate QC_MAPPING_INCOMPLETE -->
+        <sql>
+            ALTER TABLE analyzer_error
+            ALTER COLUMN error_type TYPE VARCHAR(30);
+        </sql>
+
+        <!-- Recreate check constraint with QC_MAPPING_INCOMPLETE included -->
+        <sql>
+            ALTER TABLE analyzer_error
+            ADD CONSTRAINT chk_error_type
+            CHECK (error_type IN ('MAPPING', 'VALIDATION', 'TIMEOUT', 'PROTOCOL', 'CONNECTION', 'QC_MAPPING_INCOMPLETE'));
+        </sql>
+
+        <rollback>
+            <!-- Drop new constraint -->
+            ALTER TABLE analyzer_error
+            DROP CONSTRAINT IF EXISTS chk_error_type;
+
+            <!-- Revert column size to VARCHAR(20) -->
+            ALTER TABLE analyzer_error
+            ALTER COLUMN error_type TYPE VARCHAR(20);
+
+            <!-- Restore original constraint (without QC_MAPPING_INCOMPLETE) -->
+            ALTER TABLE analyzer_error
+            ADD CONSTRAINT chk_error_type
+            CHECK (error_type IN ('MAPPING', 'VALIDATION', 'TIMEOUT', 'PROTOCOL', 'CONNECTION'));
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
