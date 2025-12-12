@@ -1,6 +1,6 @@
 # Feature Specification: ASTM Analyzer Field Mapping
 
-**Feature Branch**: `004-astm-analyzer-mapping`  
+**Feature Branch**: `OGC-49-astm-analyzer-mapping`  
 **Created**: 2025-11-14  
 **Status**: Draft  
 **Input**: User description: "ASTM Analyzer Mapping Feature based on OGC-49
