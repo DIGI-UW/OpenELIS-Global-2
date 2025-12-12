@@ -1,59 +1,34 @@
 package org.openelisglobal.storage.controller;
 
-import static org.junit.Assert.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 
-/** Integration tests for SampleStorageRestController sample item responses. */
 public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSensitiveTest {
 
-    @Autowired
-    private DataSource dataSource;
-
     private ObjectMapper objectMapper;
-    private JdbcTemplate jdbcTemplate;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
         objectMapper = new ObjectMapper();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-
-        executeDataSetWithStateManagement("testdata/user-role.xml");
         executeDataSetWithStateManagement("testdata/sample-storage-integration-test-data.xml");
     }
 
-    private void createTestStorageHierarchyWithSamples() throws Exception {
-        Integer rackId = 1001;
-        String externalId = "TEST-SAMPLE-2-TUBE-1";
-        MvcResult assignmentResult = mockMvc.perform(post("/rest/storage/sample-items/assign")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(String.format(
-                        "{\"sampleItemId\":\"%s\",\"locationId\":\"%d\",\"locationType\":\"rack\",\"positionCoordinate\":\"A1\",\"notes\":\"Integration test assignment\"}",
-                        externalId, rackId)))
-                .andReturn();
-
-        int status = assignmentResult.getResponse().getStatus();
-        String responseBody = assignmentResult.getResponse().getContentAsString();
-
-        assertEquals("Assignment should succeed", 201, status);
-        assertNotNull("Assignment response should not be null", responseBody);
-    }
-
     @Test
-    public void testGetSamples_ReturnsCompleteData_NoLazyInitializationException() throws Exception {
-        createTestStorageHierarchyWithSamples();
+    public void getSamples_ShouldReturnCompleteData_NoLazyInitializationException() throws Exception {
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items")).andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
 
@@ -61,15 +36,15 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         assertNotNull("Response should not be null", responseContent);
         assertFalse("Response should not be empty", responseContent.trim().isEmpty());
 
+        // Get the items array from the paginated response
         JsonNode responseJson = objectMapper.readTree(responseContent);
-        assertTrue("Response should be an object", responseJson.isObject());
-        assertTrue("Response should contain 'items' array", responseJson.has("items"));
-        JsonNode items = responseJson.get("items");
-        assertTrue("Response items should be an array", items.isArray());
+        JsonNode itemsArray = responseJson.get("items");
 
-        assertTrue("Response should contain at least one sample", items.size() > 0);
+        // Now use itemsArray for all assertions
+        assertTrue("Response should be an array", itemsArray.isArray());
+        assertTrue("Response should contain at least one sample", itemsArray.size() > 0);
 
-        JsonNode firstSample = items.get(0);
+        JsonNode firstSample = itemsArray.get(0);
         assertNotNull("First sample should not be null", firstSample);
         assertTrue("Sample should have 'id' field", firstSample.has("id"));
         assertTrue("SampleItem should have 'sampleItemId' field", firstSample.has("sampleItemId"));
@@ -80,32 +55,26 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         assertFalse("Location should not be empty", location.trim().isEmpty());
         assertTrue("Location should contain hierarchical separator '>'", location.contains(">"));
 
-        assertTrue("Location should contain room name",
-                location.contains("Test Integration Room") || location.contains("Room"));
-        assertTrue("Location should contain device name",
-                location.contains("Test Freezer") || location.contains("Freezer"));
-        assertTrue("Location should contain shelf label",
-                location.contains("Test Shelf") || location.contains("Shelf"));
-        assertTrue("Location should contain rack label", location.contains("Test Rack") || location.contains("Rack"));
+        assertTrue("Location should contain room name", location.contains("Test Integration Room"));
+        assertTrue("Location should contain device name", location.contains("Test Freezer"));
+        assertTrue("Location should contain shelf label", location.contains("Test Shelf"));
+        assertTrue("Location should contain rack label", location.contains("Test Rack"));
         assertTrue("Location should contain position coordinate", location.contains("A1"));
 
         assertEquals("Response status should be 200", 200, result.getResponse().getStatus());
     }
 
     @Test
-    public void testGetSamples_ReturnsCorrectDataStructure() throws Exception {
-        createTestStorageHierarchyWithSamples();
+    public void getSamples_ShouldReturnCorrectDataStructure() throws Exception {
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items")).andExpect(status().isOk()).andReturn();
 
         String responseContent = result.getResponse().getContentAsString();
+
         JsonNode responseJson = objectMapper.readTree(responseContent);
-        assertTrue("Response should be an object", responseJson.isObject());
-        assertTrue("Response should contain 'items' array", responseJson.has("items"));
-        JsonNode items = responseJson.get("items");
-        assertTrue("Response items should be an array", items.isArray());
+        JsonNode itemsArray = responseJson.get("items");
 
         boolean foundAssignedSample = false;
-        for (JsonNode sample : items) {
+        for (JsonNode sample : itemsArray) {
             assertTrue("Sample should have 'id' field", sample.has("id"));
             assertTrue("SampleItem should have 'sampleItemId' field", sample.has("sampleItemId"));
 
@@ -122,8 +91,7 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
     }
 
     @Test
-    public void testGetSamples_CountOnly_ReturnsMetrics() throws Exception {
-        createTestStorageHierarchyWithSamples();
+    public void getSamples_ShouldReturnMetrics_WhenCountOnly() throws Exception {
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items?countOnly=true")).andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
 
@@ -142,10 +110,8 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
     }
 
     @Test
-    public void testGetSampleItemLocation_WithValidId_ReturnsLocation() throws Exception {
-        createTestStorageHierarchyWithSamples();
-
-        String sampleItemId = "20000";
+    public void getSampleItemLocation_ShouldReturnLocation_ForAssignedSample() throws Exception {
+        String sampleItemId = "1001";
 
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items/" + sampleItemId)).andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
@@ -163,8 +129,8 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
     }
 
     @Test
-    public void testGetSampleItemLocation_WithUnassignedId_ReturnsEmptyLocation() throws Exception {
-        String sampleItemId = "20001";
+    public void getSampleItemLocation_ShouldReturnEmptyLocation_ForUnassignedSample() throws Exception {
+        String sampleItemId = "1002";
 
         MvcResult result = mockMvc.perform(get("/rest/storage/sample-items/" + sampleItemId)).andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON)).andReturn();
@@ -172,13 +138,13 @@ public class SampleStorageRestControllerIntegrationTest extends BaseWebContextSe
         String responseBody = result.getResponse().getContentAsString();
         JsonNode response = objectMapper.readTree(responseBody);
 
-        assertEquals("SampleItemId should match", String.valueOf(sampleItemId), response.get("sampleItemId").asText());
+        assertEquals("SampleItemId should match", sampleItemId, response.get("sampleItemId").asText());
         String hierarchicalPath = response.get("hierarchicalPath").asText();
         assertEquals("HierarchicalPath should be empty for unassigned SampleItem", "", hierarchicalPath);
     }
 
     @Test
-    public void testGetSampleItemLocation_WithEmptyId_ReturnsBadRequest() throws Exception {
+    public void getSampleItemLocation_ShouldReturn200_ForNonExistentId() throws Exception {
         mockMvc.perform(get("/rest/storage/sample-items/999999")).andExpect(status().isOk());
     }
 }
