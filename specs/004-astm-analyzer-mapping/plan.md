@@ -53,27 +53,27 @@ QC messages are reprocessed automatically.
 
 ## Milestone Plan
 
-**Constitution Principle IX Compliance**: This feature exceeds 3 days effort
-and MUST be broken into Validation Milestones. Each milestone corresponds to a
-Pull Request targeting the specs branch (`spec/OGC-49-astm-analyzer-mapping`).
+**Constitution Principle IX Compliance**: This feature exceeds 3 days effort and
+MUST be broken into Validation Milestones. Each milestone corresponds to a Pull
+Request targeting the specs branch (`spec/OGC-49-astm-analyzer-mapping`).
 
-| Milestone | Description | User Stories | Task Ranges | Estimated Days | Dependencies | PR |
-|-----------|-------------|--------------|-------------|----------------|--------------|-----|
-| M1 | Backend core + database | US1, US2, US3 | T001-T011, T012-T047, T089-T103, T151a-T153c, T182-T196 | ~15 | None | #2429 |
-| M2 | Frontend analyzers | US1, US2, US3 | T010, T048-T088, T140, T174-T181 | ~12 | M1 | #2430 |
-| M3 | Query bridge work | FR-002 | T104-T105, T106-T107, T108-T109 | ~5 | M1 | #2431 |
+| Milestone | Description             | User Stories  | Task Ranges                                             | Estimated Days | Dependencies | PR    |
+| --------- | ----------------------- | ------------- | ------------------------------------------------------- | -------------- | ------------ | ----- |
+| M1        | Backend core + database | US1, US2, US3 | T001-T011, T012-T047, T089-T103, T151a-T153c, T182-T196 | ~15            | None         | #2429 |
+| M2        | Frontend analyzers      | US1, US2, US3 | T010, T048-T088, T140, T174-T181                        | ~12            | M1           | #2430 |
+| M3        | Query bridge work       | FR-002        | T104-T105, T106-T107, T108-T109                         | ~5             | M1           | #2431 |
 
 **Milestone Details**:
 
 - **M1 (Backend core + database)**: Database schema (Liquibase changesets), JPA
   entities, DAOs, services, REST controllers, QC result processing integration,
-  unified status field migration. Includes all backend infrastructure required for
-  analyzer field mapping, error handling, and message processing.
+  unified status field migration. Includes all backend infrastructure required
+  for analyzer field mapping, error handling, and message processing.
 
 - **M2 (Frontend analyzers)**: React components (AnalyzersList, AnalyzerForm,
   FieldMapping, ErrorDashboard), navigation integration, custom field type
-  management UI. Includes all user-facing interfaces for configuring and managing
-  analyzer mappings.
+  management UI. Includes all user-facing interfaces for configuring and
+  managing analyzer mappings.
 
 - **M3 (Query bridge work)**: AnalyzerQueryService implementation, HTTP
   communication with ASTM-HTTP Bridge, query job management, field parsing from
