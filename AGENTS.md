@@ -563,6 +563,12 @@ specs/{###-feature-name}/
 └── contracts/           # API contracts, FHIR mappings
 ```
 
+**Note**: Spec directories do **not** mirror git branch paths. On milestone branches
+like `feat/OGC-68-storage-location-crud/m2-frontend`, SpecKit tools resolve to
+`specs/OGC-68-storage-location-crud/` (not `specs/feat/.../m2-frontend`). The
+prerequisite script extracts the issue ID from the branch name to find the correct
+spec directory. Debug with: `./.specify/scripts/bash/check-prerequisites.sh --paths-only`.
+
 ### Common Development Commands
 
 **Backend:**

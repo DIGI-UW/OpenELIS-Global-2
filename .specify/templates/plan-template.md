@@ -96,6 +96,8 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 - **[P]**: Parallel milestone - can be developed alongside other milestones
 - **Sequential** (no prefix): Must complete before dependent milestones
 - **Branch**: Full path is `feat/{issue-id}-{name}/{suffix}`
+- **Spec Directory**: All milestones share the same spec directory: `specs/{issue-id}-{name}/`
+  (tools extract issue ID from branch name, regardless of milestone suffix)
 
 ### Milestone Dependency Graph
 
