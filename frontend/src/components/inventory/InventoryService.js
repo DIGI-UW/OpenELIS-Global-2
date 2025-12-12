@@ -193,8 +193,40 @@ export const InventoryAuditLogAPI = {
 
   getLotAuditTrail: (lotId) => get(`/audit-logs/lot/${lotId}`),
 
-  getEntityAuditTrail: (entityType, entityId) =>
-    get(`/audit-logs/entity/${entityType}/${entityId}`),
+  getLocationAuditTrail: (locationId) =>
+    get(`/audit-logs/location/${locationId}`),
+
+  /**
+   * Get unified audit logs across all inventory tables
+   * @param {Object} filters - Filter options
+   * @param {string} filters.startDate - Start date (yyyy-MM-dd)
+   * @param {string} filters.endDate - End date (yyyy-MM-dd)
+   * @param {string} filters.entityType - Entity type (ITEM, LOT, LOCATION, USAGE, TRANSACTION)
+   * @param {string} filters.userId - User ID filter
+   * @param {string} filters.activity - Activity type (I, U, D)
+   * @param {number} filters.limit - Max records (default: 100, max: 1000)
+   * @param {number} filters.offset - Pagination offset
+   * @returns {Promise} Response with logs, totalRecords, limit, offset, hasMore
+   */
+  getAllAuditLogs: (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append("startDate", filters.startDate);
+    if (filters.endDate) params.append("endDate", filters.endDate);
+    if (filters.entityType) params.append("entityType", filters.entityType);
+    if (filters.userId) params.append("userId", filters.userId);
+    if (filters.activity) params.append("activity", filters.activity);
+    if (filters.limit) params.append("limit", filters.limit);
+    if (filters.offset) params.append("offset", filters.offset);
+
+    const queryString = params.toString();
+    return get(`/audit-logs/all${queryString ? `?${queryString}` : ""}`);
+  },
+
+  /**
+   * Get audit log statistics
+   * @returns {Promise} Statistics object with totalLogs, countByTable, countByActivity
+   */
+  getStatistics: () => get(`/audit-logs/statistics`),
 };
 
 export const StorageLocationAPI = {

@@ -72,8 +72,6 @@ public class InventoryTransaction extends BaseObject<Long> {
     @NotNull
     private Integer performedByUser;
 
-    // Business logic helper methods
-
     /**
      * Check if this is a consumption transaction (negative quantity change)
      */
