@@ -27,6 +27,10 @@ This roadmap provides detailed guidance on testing practices for OpenELIS
 Global 2. All testing MUST follow the patterns and procedures documented here.
 The constitution (Principle V) mandates adherence to this roadmap.
 
+**Repository Note (OpenELIS Global 2)**: This codebase uses **traditional Spring
+Framework (Spring MVC)**. Use `BaseWebContextSensitiveTest` for Spring-context
+controller/DAO/integration tests.
+
 ### Key Principles
 
 - **TDD First**: Write tests before implementation for complex logic
@@ -223,50 +227,46 @@ workflow for complex logic.
 - Group by feature/user story within each layer
 - Use `@Category` annotations if needed for test suites
 
-### Test Slicing Strategy Decision Tree
+### Test Slicing Strategy Decision Tree (OpenELIS Global 2)
 
-**CRITICAL**: Use focused test slices instead of full `@SpringBootTest` when
-possible. This improves test execution speed and focuses tests on specific
-layers.
+**CRITICAL**: In this repository, use `BaseWebContextSensitiveTest`
+as the default Spring context test base. Avoid references to Spring Boot test
+slice annotations (`@WebMvcTest`, `@DataJpaTest`, `@SpringBootTest`) when adding
+or updating tests in this repo.
 
 **Decision Tree**:
 
-1. **Testing REST controller HTTP layer only?** → Use `@WebMvcTest` ✅
+1. **Testing REST controller HTTP layer only?** → Use `BaseWebContextSensitiveTest` ✅
 
    - Fast execution (no full application context)
    - Mock services with `@MockBean`
    - Focus on request/response mapping, status codes, JSON serialization
 
-2. **Testing DAO/repository persistence layer only?** → Use `@DataJpaTest` ✅
+2. **Testing DAO/repository persistence layer only?** → Use `BaseWebContextSensitiveTest` ✅
 
    - Fast execution (no full application context)
    - Use `TestEntityManager` for test data
    - Focus on HQL queries, CRUD operations, relationships
 
 3. **Testing complete workflow with full application context?** → Use
-   `@SpringBootTest` ✅
+   `BaseWebContextSensitiveTest` ✅
 
    - Full Spring context loaded
    - Use `@Transactional` for automatic rollback
    - Focus on end-to-end service workflows
 
 4. **Legacy integration tests with Testcontainers/DBUnit?** → Use
-   `BaseWebContextSensitiveTest` ⚠️
-   - Existing pattern in codebase
-   - Uses Testcontainers with PostgreSQL
-   - Uses DBUnit for complex test data
-   - Manual cleanup in `@After` methods
+   `BaseWebContextSensitiveTest` ✅
 
 **When to Use Each**:
 
-| Test Type          | Annotation                    | Use Case               | Speed  | Context        |
-| ------------------ | ----------------------------- | ---------------------- | ------ | -------------- |
-| Controller         | `@WebMvcTest`                 | HTTP layer only        | Fast   | Web layer only |
-| DAO                | `@DataJpaTest`                | Persistence layer only | Fast   | JPA layer only |
-| Integration        | `@SpringBootTest`             | Full workflow          | Medium | Full context   |
-| Legacy Integration | `BaseWebContextSensitiveTest` | Testcontainers/DBUnit  | Slow   | Full context   |
+| Test Type   | Pattern/Class                 | Use Case               | Speed  | Context      |
+| ---------- | ----------------------------- | ---------------------- | ------ | ------------ |
+| Controller | `BaseWebContextSensitiveTest` | HTTP layer only        | Medium | Full context |
+| DAO        | `BaseWebContextSensitiveTest` | Persistence layer only | Medium | Full context |
+| Integration| `BaseWebContextSensitiveTest` | Full workflow          | Medium | Full context |
 
-#### @WebMvcTest (Controller Layer)
+#### @WebMvcTest (Controller Layer) (not used in OpenELIS Global 2)
 
 **Use for**: Testing REST controllers in isolation with mocked services.
 
@@ -316,7 +316,7 @@ public class StorageLocationRestControllerTest {
 - Use JSONPath for response assertions
 - Mock service layer, test HTTP layer only
 
-#### @DataJpaTest (DAO/Repository Layer)
+#### @DataJpaTest (DAO/Repository Layer) (not used in OpenELIS Global 2)
 
 **Use for**: Testing persistence layer in isolation.
 
@@ -399,7 +399,7 @@ public void testInsert_WithValidData_PersistsToDatabase() {
 }
 ```
 
-#### @SpringBootTest (Full Integration)
+#### @SpringBootTest (Full Integration) (not used in OpenELIS Global 2)
 
 **Use for**: Testing complete workflows that require full application context.
 

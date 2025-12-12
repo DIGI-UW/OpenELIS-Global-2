@@ -101,7 +101,7 @@ _Example of marking unclear requirements:_
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention
   period not specified]
 
-### Constitution Compliance Requirements (OpenELIS Global 3.0)
+### Constitution Compliance Requirements (OpenELIS Global)
 
 _Derived from `.specify/memory/constitution.md` - include only relevant
 principles for this feature:_
