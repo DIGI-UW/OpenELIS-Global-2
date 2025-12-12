@@ -1,6 +1,7 @@
 # Feature Specification: ASTM Analyzer Field Mapping
 
-**Feature Branch**: `OGC-49-astm-analyzer-mapping`  
+**Feature Branch** (Constitution Principle IX):
+`spec/004-ogc-49-astm-analyzer-mapping`  
 **Created**: 2025-11-14  
 **Status**: Draft  
 **Input**: User description: "ASTM Analyzer Mapping Feature based on OGC-49
@@ -735,10 +736,10 @@ deployment/infrastructure setup):
     also supported. See `research.md` Section 12 and `quickstart.md` Step 0 for
     detailed setup instructions.
 
-### Constitution Compliance Requirements (OpenELIS Global 3.0)
+### Constitution Compliance Requirements (OpenELIS Global 2.0)
 
-_Derived from `.specify/memory/constitution.md` (v1.7.0); only items relevant to
-analyzer mapping are listed:_
+_Derived from `.specify/memory/constitution.md`; only items relevant to analyzer
+mapping are listed:_
 
 - **CR-001**: UI components for analyzer mapping MUST follow the Carbon Design
   System exclusively. Specific components MUST include: Header for page titles,

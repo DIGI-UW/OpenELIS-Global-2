@@ -1836,7 +1836,15 @@ navigation using unified tab-navigation pattern
 
 - [ ] T117 [P] Add comprehensive error handling and user feedback (success,
       warnings, errors) throughout analyzer mapping UI per FR-014 - Use Carbon
-      Notification components, follow OpenELIS internationalization practices
+      Notification components, follow OpenELIS internationalization practices -
+      **Verification (manual)**: - Exercise at least these flows and confirm a
+      user-visible notification: - Test Connection success/failure - Query
+      Analyzer success/failure - Save mapping success/validation failure -
+      Activate mappings success/conflict - Reprocess success/failure - Confirm
+      browser console has no React warnings/errors during these flows -
+      **Verification (tests)**: - Update at least one Jest test per major page
+      (AnalyzersList, FieldMapping, ErrorDashboard) to assert error/success UI
+      is rendered for a mocked failure/success path
 - [x] T141 [P] Integrate custom field types into AnalyzerField entity and
       FieldMappingPanel component - Extend AnalyzerField entity to support
       custom field types (reference CustomFieldType entity) - Update
@@ -1952,24 +1960,47 @@ configurable rules
       `testTestValidation_WithSampleValue_DisplaysResult`
 
 - [ ] T118 [P] Add loading states and skeleton screens for async operations
-      (query analyzer, test connection, reprocessing)
+      (query analyzer, test connection, reprocessing) - **Verification
+      (manual)**: - Throttle network (DevTools) and confirm loading UI appears
+      within 100ms for each async action - Confirm buttons are disabled while
+      in-flight and re-enabled after completion - **Verification (tests)**: -
+      Add/extend Jest tests to assert loading UI appears while promise is
+      pending
 - [ ] T119 [P] Optimize HQL queries in DAO implementations using JOIN FETCH for
-      eager loading (prevents LazyInitializationException per AGENTS.md)
+      eager loading (prevents LazyInitializationException per AGENTS.md) -
+      **Verification (tests)**: - Add/extend at least one integration test that
+      exercises the controller endpoint and asserts the response includes all
+      required nested data without LazyInitializationException
 - [ ] T120 [P] Add comprehensive logging for analyzer operations (connection
-      tests, query operations, mapping changes, error creation)
+      tests, query operations, mapping changes, error creation) - **Verification
+      (manual)**: - Trigger each operation and confirm logs include: analyzer
+      id, action, outcome, and correlation/job id when applicable
 - [ ] T121 [P] Add input validation and sanitization for all user inputs (IP
-      addresses, port numbers, field names, mapping values)
+      addresses, port numbers, field names, mapping values) - **Verification
+      (manual)**: - Attempt invalid values and confirm inline validation
+      prevents submission - Confirm server rejects invalid payloads with clear
+      error response and UI surfaces it
 - [ ] T122 [P] Add accessibility improvements (ARIA labels, keyboard navigation,
-      screen reader support) for Carbon components
+      screen reader support) for Carbon components - **Verification
+      (manual)**: - Keyboard-only navigation across: Analyzers list table
+      actions, Field Mapping panels, Error Dashboard actions - Confirm key
+      interactive elements have accessible names (no empty button labels)
 - [ ] T123 [P] Add responsive design improvements for mobile devices (<1024px) -
-      Stack panels vertically, optimize table layouts
+      Stack panels vertically, optimize table layouts - **Verification
+      (manual)**: - Test at 1024x900 and 375x812; ensure no horizontal scroll
+      for primary workflows
 - [ ] T124 [P] Add performance optimizations (debouncing search inputs,
-      pagination, lazy loading for large datasets)
+      pagination, lazy loading for large datasets) - **Verification
+      (manual)**: - Confirm search inputs debounce (~300ms) and do not fire
+      per-keystroke requests - **Verification (tests)**: - Add at least one Jest
+      test verifying debounce behavior with fake timers
 - [ ] T125 [P] Update documentation in
       `specs/004-astm-analyzer-mapping/quickstart.md` with step-by-step
       developer guide
 - [ ] T126 Run quickstart.md validation - Verify all scenarios from
-      quickstart.md work end-to-end
+      quickstart.md work end-to-end - **Verification output**: - Record the
+      exact commands run and any deviations in a short note under
+      `specs/004-astm-analyzer-mapping/`
 
 ---
 
@@ -2007,8 +2038,9 @@ configurable rules
       (JaCoCo), >70% frontend (Jest) - Verify ORM validation tests pass (<5
       seconds) - Verify E2E tests run individually during development -
       Verification complete: Test structure compliant, ORM validation test
-      exists and passes. Coverage reports need to be generated to verify
-      percentages. Documented in `checklists/constitution-compliance.md`
+      exists and passes. Coverage percentage reporting is deferred as a
+      cross-repo/global effort. Documented in
+      `checklists/constitution-compliance.md`
 - [x] T131a **Jest Test Anti-Pattern Fixes**: Address act() warnings in
       AnalyzersList.test.jsx - Issue found: State updates in loadAnalyzers
       callback not wrapped in act() - Fix: Wrap API mock callbacks in act() or

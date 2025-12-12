@@ -244,26 +244,21 @@ workflow for complex logic.
 
 ### Test Slicing Strategy Decision Tree (OpenELIS Global 2)
 
-<<<<<<< HEAD
 **OpenELIS Global 2 note:** Use `BaseWebContextSensitiveTest` for Spring-context
 tests and use DBUnit Flat XML datasets for DB-backed tests via
 `executeDataSetWithStateManagement("testdata/<file>.xml")`.
-=======
-**CRITICAL**: In this repository, use `BaseWebContextSensitiveTest`
-as the default Spring context test base. Avoid references to Spring Boot test
-slice annotations (`@WebMvcTest`, `@DataJpaTest`, `@SpringBootTest`) when adding
-or updating tests in this repo.
->>>>>>> 82afe7eee (docs: amend constitution v1.8.1 (branch naming + cohesion fixes))
 
 **Decision Tree**:
 
-1. **Testing REST controller HTTP layer only?** → Use `BaseWebContextSensitiveTest` ✅
+1. **Testing REST controller HTTP layer only?** → Use
+   `BaseWebContextSensitiveTest` ✅
 
    - Fast execution (no full application context)
    - Mock services with `@MockBean`
    - Focus on request/response mapping, status codes, JSON serialization
 
-2. **Testing DAO/repository persistence layer only?** → Use `BaseWebContextSensitiveTest` ✅
+2. **Testing DAO/repository persistence layer only?** → Use
+   `BaseWebContextSensitiveTest` ✅
 
    - Fast execution (no full application context)
    - Use `TestEntityManager` for test data
@@ -282,10 +277,10 @@ or updating tests in this repo.
 **When to Use Each**:
 
 | Test Type   | Pattern/Class                 | Use Case               | Speed  | Context      |
-| ---------- | ----------------------------- | ---------------------- | ------ | ------------ |
-| Controller | `BaseWebContextSensitiveTest` | HTTP layer only        | Medium | Full context |
-| DAO        | `BaseWebContextSensitiveTest` | Persistence layer only | Medium | Full context |
-| Integration| `BaseWebContextSensitiveTest` | Full workflow          | Medium | Full context |
+| ----------- | ----------------------------- | ---------------------- | ------ | ------------ |
+| Controller  | `BaseWebContextSensitiveTest` | HTTP layer only        | Medium | Full context |
+| DAO         | `BaseWebContextSensitiveTest` | Persistence layer only | Medium | Full context |
+| Integration | `BaseWebContextSensitiveTest` | Full workflow          | Medium | Full context |
 
 #### @WebMvcTest (Controller Layer) (not used in OpenELIS Global 2)
 

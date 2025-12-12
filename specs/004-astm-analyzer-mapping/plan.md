@@ -80,17 +80,19 @@ Request targeting the specs branch (`spec/OGC-49-astm-analyzer-mapping`).
   ASTM responses. Enables FR-002 (Query Analyzer functionality) to retrieve
   available fields from analyzers via bi-directional bridge communication.
 
-**Branch Naming**: `feat/OGC-49-astm-analyzer-mapping/m{N}-{desc}` per
-Constitution Principle IX.
+**Branch Naming** (Constitution Principle IX):
+
+- Spec PR branch: `spec/004-ogc-49-astm-analyzer-mapping`
+- Milestone PR branches: `feat/004-ogc-49-astm-analyzer-mapping-m{N}-{desc}`
 
 ## Technical Context
 
 **Language/Version**: Java 21 LTS (backend), React 17 (frontend)  
 **Primary Dependencies**:
 
-- Backend: Spring Boot 3.x, Hibernate 6.x, HAPI FHIR R4 (v6.6.2), JPA
-  (jakarta.persistence), Liquibase 4.8.0, RestTemplate/WebClient (HTTP client
-  for ASTM-HTTP Bridge communication)
+- Backend: Spring Framework 6.2.2 (Traditional Spring MVC), Hibernate 6.x, HAPI
+  FHIR R4 (v6.6.2), JPA (jakarta.persistence), Liquibase 4.8.0,
+  RestTemplate/WebClient (HTTP client for ASTM-HTTP Bridge communication)
 - Frontend: @carbon/react v1.15.0, React Intl 5.20.12, Formik 2.2.9, SWR 2.0.3,
   React Router DOM 5.2.0
 - ASTM Protocol: ASTM-HTTP Bridge (bi-directional protocol translator), Existing
@@ -106,7 +108,8 @@ Constitution Principle IX.
 - FHIR: Resource validation against R4 profiles (if analyzer entities exposed
   externally)
 
-**Target Platform**: Web application (React frontend, Spring Boot backend)  
+**Target Platform**: Web application (React frontend, Java 21 + Spring Framework
+backend)  
 **Project Type**: Web application (frontend + backend)  
 **Performance Goals**:
 
@@ -143,7 +146,7 @@ Constitution Principle IX.
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 Verify compliance with
-[OpenELIS Global 3.0 Constitution](../.specify/memory/constitution.md):
+[OpenELIS Global 2.0 Constitution](../.specify/memory/constitution.md):
 
 - [x] **Configuration-Driven**: No country-specific code branches planned
 
@@ -180,23 +183,15 @@ Verify compliance with
 - [x] **Layered Architecture**: Backend follows 5-layer pattern
       (Valueholder→DAO→Service→Controller→Form)
 
-  - **Valueholders use XML mappings for analyzer entities** (matching legacy
-    `Analyzer` entity pattern) - AnalyzerField, AnalyzerFieldMapping,
-    QualitativeResultMapping, UnitMapping use XML-only mappings (`*.hbm.xml`) to
-    avoid Hibernate relationship resolution issues when XML-mapped entities
-    reference annotation-based entities. This is an exception to the general
-    annotation-based approach, documented in `ANALYZER_XML_MAPPING_ANALYSIS.md`.
-    Legacy entities are exempt until refactored per Constitution IV.
-    - **NEW ENTITIES**: All new entities (AnalyzerField, AnalyzerFieldMapping,
-      etc.) MUST use annotation-based mappings exclusively
-    - **LEGACY EXCEPTION**: Legacy `Analyzer` entity uses XML mappings
-      (`src/main/resources/hibernate/hbm/Analyzer.hbm.xml`) and is exempt from
-      this rule until refactored per Constitution IV
-    - **IMPLICATIONS**: Queries that traverse relationships through XML-mapped
-      entities may require special patterns (see research.md "Querying Through
-      XML-Mapped Entities")
-    - **MIGRATION PATH**: Future refactoring of `Analyzer` entity to annotations
-      will eliminate this exception
+  - **Legacy model exception**: Some legacy entities remain XML-mapped (e.g. the
+    legacy `Analyzer` entity). This is allowed under the constitution’s legacy
+    model extension guidance.
+
+    - **Default**: New entities SHOULD be annotation-based.
+    - If compatibility requires XML mappings for new/extended models, the
+      exception MUST be documented and include an explicit migration path to
+      annotation-based mappings.
+
   - **Transaction management MUST be in service layer only** - NO
     `@Transactional` annotations on controller methods
   - **Data Compilation Rule**: Services MUST eagerly fetch ALL data needed for
@@ -272,7 +267,7 @@ specs/004-astm-analyzer-mapping/
 OpenELIS structure
 
 ```text
-# Backend (Java/Spring Boot)
+# Backend (Java/Spring Framework)
 src/main/java/org/openelisglobal/analyzer/
 ├── valueholder/          # JPA Entities (annotation-based)
 │   ├── AnalyzerField.java
