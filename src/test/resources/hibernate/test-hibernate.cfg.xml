@@ -98,9 +98,6 @@
         <mapping resource="hibernate/hbm/PatientPatientType.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSamplePanel.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSampleTest.hbm.xml" />
-        <mapping resource="hibernate/hbm/InventoryItem.hbm.xml" />
-        <mapping resource="hibernate/hbm/InventoryLocation.hbm.xml" />
-        <mapping resource="hibernate/hbm/InventoryReceipt.hbm.xml" />
         <mapping resource="hibernate/hbm/Role.hbm.xml" />
         <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
