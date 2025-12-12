@@ -38,7 +38,7 @@ CLARIFICATION]
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 Verify compliance with
-[OpenELIS Global 3.0 Constitution](../.specify/memory/constitution.md):
+[OpenELIS Global Constitution](../../.specify/memory/constitution.md):
 
 - [ ] **Configuration-Driven**: No country-specific code branches planned
 - [ ] **Carbon Design System**: UI uses @carbon/react exclusively (NO
@@ -63,7 +63,7 @@ Verify compliance with
     - Use cy.session() for login state (10-20x faster)
     - Use API-based test data setup (10x faster than UI)
     - See
-      [Testing Roadmap](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
+      [Testing Roadmap](../../.specify/guides/testing-roadmap.md#cypress-e2e-testing)
       for comprehensive Cypress guidance
 - [ ] **Schema Management**: Database changes via Liquibase changesets only
 - [ ] **Internationalization**: All UI strings use React Intl (no hardcoded
@@ -96,8 +96,9 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 - **[P]**: Parallel milestone - can be developed alongside other milestones
 - **Sequential** (no prefix): Must complete before dependent milestones
 - **Branch**: Full path is `feat/{issue-id}-{name}/{suffix}`
-- **Spec Directory**: All milestones share the same spec directory: `specs/{issue-id}-{name}/`
-  (tools extract issue ID from branch name, regardless of milestone suffix)
+- **Spec Directory**: All milestones share the same spec directory:
+  `specs/{issue-id}-{name}/` (tools extract issue ID from branch name,
+  regardless of milestone suffix)
 
 ### Milestone Dependency Graph
 
@@ -192,7 +193,8 @@ directories captured above]
 
 ## Testing Strategy
 
-**Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
+**Reference**:
+[OpenELIS Testing Roadmap](../../.specify/guides/testing-roadmap.md)
 
 **MANDATORY**: Every plan MUST include a complete testing strategy that
 references the Testing Roadmap and documents test coverage goals, test types,
@@ -213,7 +215,7 @@ Document which test types will be used for this feature:
 
   - Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`
   - **Reference**:
-    [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
+    [Testing Roadmap - Unit Tests (JUnit 4 + Mockito)](../../.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
   - **Coverage Goal**: >80% (measured via JaCoCo)
   - **SDD Checkpoint**: After Phase 2 (Services), all unit tests MUST pass
   - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit
@@ -224,7 +226,7 @@ Document which test types will be used for this feature:
 
   - Template: `.specify/templates/testing/DataJpaTestDao.java.template`
   - **Reference**:
-    [Testing Roadmap - @DataJpaTest (DAO/Repository Layer)](.specify/guides/testing-roadmap.md#datajpatest-daorepository-layer)
+    [Testing Roadmap - @DataJpaTest (DAO/Repository Layer)](../../.specify/guides/testing-roadmap.md#datajpatest-daorepository-layer)
   - **Test Slicing**: Use `@DataJpaTest` for DAO testing (NOT
     `@SpringBootTest` - faster execution)
   - **Test Data**: Use `TestEntityManager` (NOT JdbcTemplate) for test data
@@ -235,7 +237,7 @@ Document which test types will be used for this feature:
 
   - Template: `.specify/templates/testing/WebMvcTestController.java.template`
   - **Reference**:
-    [Testing Roadmap - @WebMvcTest (Controller Layer)](.specify/guides/testing-roadmap.md#webmvctest-controller-layer)
+    [Testing Roadmap - @WebMvcTest (Controller Layer)](../../.specify/guides/testing-roadmap.md#webmvctest-controller-layer)
   - **Test Slicing**: Use `@WebMvcTest` for controller testing (NOT
     `@SpringBootTest` - faster execution)
   - **Mocking**: Use `@MockBean` (NOT `@Mock`) for Spring context mocking
@@ -244,7 +246,7 @@ Document which test types will be used for this feature:
 - [ ] **ORM Validation Tests**: Entity mapping validation (Constitution V.4)
 
   - **Reference**:
-    [Testing Roadmap - ORM Validation Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
+    [Testing Roadmap - ORM Validation Tests](../../.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
   - **SDD Checkpoint**: After Phase 1 (Entities), ORM validation tests MUST pass
   - **Requirements**: MUST execute in <5 seconds, MUST NOT require database
     connection
@@ -252,7 +254,7 @@ Document which test types will be used for this feature:
 - [ ] **Integration Tests**: Full workflow testing (@SpringBootTest)
 
   - **Reference**:
-    [Testing Roadmap - @SpringBootTest (Full Integration)](.specify/guides/testing-roadmap.md#springboottest-full-integration)
+    [Testing Roadmap - @SpringBootTest (Full Integration)](../../.specify/guides/testing-roadmap.md#springboottest-full-integration)
   - **Test Slicing**: Use `@SpringBootTest` only when full application context
     is required
   - **Transaction Management**: Use `@Transactional` for automatic rollback
@@ -264,16 +266,16 @@ Document which test types will be used for this feature:
 
   - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
   - **Reference**:
-    [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
+    [Testing Roadmap - Jest + React Testing Library](../../.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
   - **Coverage Goal**: >70% (measured via Jest)
   - **SDD Checkpoint**: After Phase 4 (Frontend), all unit tests MUST pass
 
 - [ ] **E2E Tests**: Critical user workflows (Cypress)
   - Template: `.specify/templates/testing/CypressE2E.cy.js.template`
   - **Reference**:
-    [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
+    [Constitution Section V.5](../../.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
   - **Reference**:
-    [Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
+    [Testing Roadmap - Cypress E2E Testing](../../.specify/guides/testing-roadmap.md#cypress-e2e-testing)
 
 ### Test Data Management
 

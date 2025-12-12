@@ -989,11 +989,11 @@ sequential, enabling flexible team coordination.
 | Hotfix              | `hotfix/{issue-id}-{desc}`               | `hotfix/OGC-123-fix-login`                 |
 | Bugfix              | `fix/{issue-id}-{desc}`                  | `fix/OGC-456-null-check`                   |
 
-**Spec directory resolution (tooling rule)**:
-SpecKit commands do **not** mirror the git branch path under `specs/`.
-All feature artifacts live under a single directory: `specs/{issue-id}-{name}/`.
-On milestone branches like `feat/OGC-68-storage-location-crud/m2-frontend`, the
-tools resolve to `specs/OGC-68-storage-location-crud/` (not
+**Spec directory resolution (tooling rule)**: SpecKit commands do **not** mirror
+the git branch path under `specs/`. All feature artifacts live under a single
+directory: `specs/{issue-id}-{name}/`. On milestone branches like
+`feat/OGC-68-storage-location-crud/m2-frontend`, the tools resolve to
+`specs/OGC-68-storage-location-crud/` (not
 `specs/feat/OGC-68-storage-location-crud/m2-frontend`). If needed, debug with:
 `./.specify/scripts/bash/check-prerequisites.sh --paths-only`.
 
