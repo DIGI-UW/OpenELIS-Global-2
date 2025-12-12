@@ -1023,6 +1023,11 @@ additional slashes) for sub-scoping like milestones.
 - **GitHub Issues**: `{###}` (e.g., `009`, `123`) - for GitHub-only tracking
 - **Other Trackers**: `{PREFIX}-{###}` - flexible for external integrations
 
+**Note on Branch Naming**: Branch names use **lowercase** versions of Jira
+ticket IDs (e.g., `ogc-49` instead of `OGC-49`) for Git compatibility and
+readability. The Jira format itself remains uppercase (`OGC-{###}`), but branch
+names convert to lowercase.
+
 **SpecKit tooling note**:
 
 - SpecKit scripts locate the feature folder by finding a `NNN-` prefix in the

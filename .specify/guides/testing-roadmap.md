@@ -239,15 +239,15 @@ updating tests in this repo.
 1. **Testing REST controller HTTP layer only?** → Use
    `BaseWebContextSensitiveTest` ✅
 
-   - Fast execution (no full application context)
+   - Medium speed (full application context)
    - Mock services with `@MockBean`
    - Focus on request/response mapping, status codes, JSON serialization
 
 2. **Testing DAO/repository persistence layer only?** → Use
    `BaseWebContextSensitiveTest` ✅
 
-   - Fast execution (no full application context)
-   - Use `TestEntityManager` for test data
+   - Medium speed (full application context)
+   - Use `JdbcTemplate` or `EntityManager` for test data setup
    - Focus on HQL queries, CRUD operations, relationships
 
 3. **Testing complete workflow with full application context?** → Use
