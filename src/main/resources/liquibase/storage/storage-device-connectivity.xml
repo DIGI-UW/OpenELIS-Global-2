@@ -14,7 +14,7 @@
             <column name="port" type="INTEGER">
                 <constraints nullable="true"/>
             </column>
-            <column name="communication_protocol" type="VARCHAR(20)" defaultValue="BACnet">
+            <column name="communication_protocol" type="VARCHAR(20)">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
