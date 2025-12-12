@@ -25,10 +25,12 @@ import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.systemusermodule.service.PermissionModuleService;
 import org.openelisglobal.systemusermodule.service.SystemUserModuleService;
 import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 import org.openelisglobal.systemusermodule.valueholder.SystemUserModule;
+import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -54,6 +56,10 @@ public class UserModuleServiceImpl implements UserModuleService, IActionConstant
     SystemUserModuleService systemUserModuleService;
     @Autowired
     LoginUserService loginService;
+    @Autowired
+    RoleService roleService;
+    @Autowired
+    UserRoleService userRoleService;
 
     @Override
     public boolean isSessionExpired(HttpServletRequest request) throws LIMSRuntimeException {

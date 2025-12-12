@@ -282,4 +282,24 @@ public class StorageLocationServiceTest {
 
         assertFalse("Duplicate rack labels within a shelf should not be allowed", unique);
     }
+
+    @Test
+    public void testIsNameUniqueWithinParent_RoomUnique_WhenDaoReturnsNull() {
+        when(storageRoomDAO.findByName("New Lab")).thenReturn(null);
+
+        boolean unique = storageLocationService.isNameUniqueWithinParent("New Lab", null, "room", null);
+
+        assertTrue("Room names should be unique when DAO returns null", unique);
+    }
+
+    @Test
+    public void testIsNameUniqueWithinParent_DeviceUnique_WhenExcludeIdMatchesExisting() {
+        StorageDevice existing = new StorageDevice();
+        existing.setId(10);
+        when(storageDeviceDAO.findByNameAndParentRoomId("Freezer-02", 1)).thenReturn(existing);
+
+        boolean unique = storageLocationService.isNameUniqueWithinParent("Freezer-02", 1, "device", 10);
+
+        assertTrue("Device name should be allowed when excludeId matches existing entity", unique);
+    }
 }
