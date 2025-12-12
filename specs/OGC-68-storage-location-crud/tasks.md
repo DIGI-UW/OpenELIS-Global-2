@@ -75,7 +75,7 @@ dependencies between them).
 - [ ] T009 [US2] Create Liquibase changeset for device connectivity columns in
       `src/main/resources/liquibase/storage/storage-device-connectivity.xml`
 - [ ] T010 [US2] Add changeset include to main Liquibase changelog in
-      `src/main/resources/liquibase/liquibase-changelog.xml`
+      `src/main/resources/liquibase/3.3.x.x/base.xml`
 
 ### M1.4 - Entity Layer [US2]
 

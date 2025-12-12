@@ -123,7 +123,8 @@ verifying the new configuration fields are persisted and validated.
 
 - **FR-005**: `StorageDevice` entity MUST include fields: `ip_address` (String),
   `port` (Integer), `communication_protocol` (String).
-- **FR-006**: `communication_protocol` MUST default to 'BACnet'.
+- **FR-006**: `communication_protocol` has no database default; UI/service may prefill
+  'BACnet' but value must be explicitly set on create/update.
 - **FR-007**: System MUST validate `ip_address` format (IPv4/IPv6) if provided.
 - **FR-008**: System MUST validate `port` is a valid integer (1-65535) if
   provided.
@@ -139,7 +140,7 @@ verifying the new configuration fields are persisted and validated.
 - **FR-013**: System MUST prevent deletion of any location that has active
   `SampleStorageAssignment` records linked to it.
 
-### Constitution Compliance Requirements (OpenELIS Global 3.0)
+### Constitution Compliance Requirements (OpenELIS Global 2)
 
 - **CR-001**: UI components MUST use Carbon Design System (@carbon/react) -
   specific usage of `Modal`, `TextInput`, `Select`, `OverflowMenu`.
