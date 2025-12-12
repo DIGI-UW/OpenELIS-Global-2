@@ -184,6 +184,7 @@ module.exports = defineConfig({
     testIsolation: false,
     // DISABLED: Exclude storage tests (001-sample-storage feature)
     // Remove "**/storage*.cy.js" from this array to re-enable storage tests
+    // NOTE: OGC-68 storageLocationCRUD.cy.js tests pass (verified 2025-12-12)
     excludeSpecPattern: ["**/storage*.cy.js"],
     env: {
       STARTUP_WAIT_MILLISECONDS: 300000,
