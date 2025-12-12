@@ -15,6 +15,7 @@ env:
   REGISTRY: docker.io
   IMAGE_NAME: ${{ github.repository }}
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2
+  BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
 
 jobs:
   build-and-push-image-frontend-demo:
@@ -30,11 +31,6 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Extract branch name
-        shell: bash
-        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-        id: extract_branch
-
       - name: Prepare
         run: |
           platform=linux/${{ matrix.platform }}
@@ -62,7 +58,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env. }}-frontend-${{ steps.extract_branch.outputs.branch }}
+          images: ${{ env. }}-frontend-${{ env.BRANCH_NAME }}
 
       - name: Build and push Docker image
         id: build
@@ -73,9 +69,9 @@ jobs:
           platforms: linux/${{ matrix.platform }}
           # tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env. }}-frontend-${{ steps.extract_branch.outputs.branch }}:${{ matrix.platform }}-buildcache-${{ steps.extract_branch.outputs.branch }}
-          cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-${{ steps.extract_branch.outputs.branch }}:${{ matrix.platform }}-buildcache-${{ steps.extract_branch.outputs.branch }},mode=max
-          outputs: type=image,name=${{ env.DOCKER_NAME }}-frontend-${{ steps.extract_branch.outputs.branch }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=registry,ref=${{ env. }}-frontend-${{ env.BRANCH_NAME }}:${{ matrix.platform }}-buildcache-${{ env.BRANCH_NAME }}
+          cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}:${{ matrix.platform }}-buildcache-${{ env.BRANCH_NAME }},mode=max
+          outputs: type=image,name=${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }},push-by-digest=true,name-canonical=true,push=true
       - name: Export digest
         run: |
           mkdir -p /tmp/digests/frontend
@@ -121,8 +117,8 @@ jobs:
         working-directory: /tmp/digests/frontend
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.DOCKER_NAME }}-frontend-${{ steps.extract_branch.outputs.branch }}@sha256:%s ' *)
+            $(printf '${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_NAME }}-frontend-${{ steps.extract_branch.outputs.branch }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}:${{ steps.meta.outputs.version }}
