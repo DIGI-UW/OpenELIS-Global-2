@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- UnitMapping Table -->
+    <!-- Maps analyzer units to OpenELIS canonical units (with optional conversion factors) -->
+    <changeSet id="analyzer-005-create-unit-mapping-table" author="astm-analyzer-mapping-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="unit_mapping"/>
+            </not>
+        </preConditions>
+        <comment>Creating unit_mapping table for unit mappings with conversion factors</comment>
+        <createTable tableName="unit_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_field_id" type="VARCHAR(36)">
+                <constraints nullable="false"
+                    foreignKeyName="fk_unit_mapping_analyzer_field"
+                    references="analyzer_field(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="analyzer_unit" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="openelis_unit" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="conversion_factor" type="DECIMAL(10,6)"/>
+            <column name="reject_if_mismatch" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="unit_mapping"
+            columnNames="analyzer_field_id, analyzer_unit"
+            constraintName="uk_unit_mapping_field_unit"/>
+        <rollback>
+            <dropTable tableName="unit_mapping"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

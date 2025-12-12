@@ -5,7 +5,8 @@
     version="2.2">
 
     <persistence-unit
-        name="OpenELIS-Global-persistence-unit">
+        name="OpenELIS-Global-persistence-unit"
+        exclude-unlisted-classes="true">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
         <!-- converters -->
@@ -63,51 +64,29 @@
         <class>org.openelisglobal.storage.valueholder.StorageDevice</class>
         <class>org.openelisglobal.storage.valueholder.StorageShelf</class>
         <class>org.openelisglobal.storage.valueholder.StorageRack</class>
-        <class>org.openelisglobal.storage.valueholder.StorageBox</class>
+        <class>org.openelisglobal.storage.valueholder.StoragePosition</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
 
-        <!-- Cold Storage/Freezer Monitoring entities -->
-        <class>org.openelisglobal.coldstorage.valueholder.Freezer</class>
-        <class>org.openelisglobal.coldstorage.valueholder.FreezerReading</class>
-        <class>org.openelisglobal.coldstorage.valueholder.ThresholdProfile</class>
-        <class>org.openelisglobal.coldstorage.valueholder.FreezerThresholdProfile</class>
-
-        <!-- Alert entities -->
-        <class>org.openelisglobal.alert.valueholder.Alert</class>
-        <class>org.openelisglobal.coldstorage.valueholder.CorrectiveAction</class>
-
-        <!-- Notification entities -->
-        <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
-        <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
-
-        <!-- Notebook Management entities -->
-        <class>org.openelisglobal.notebook.valueholder.NoteBook</class>
-        <class>org.openelisglobal.notebook.valueholder.NoteBookPage</class>
-        <class>org.openelisglobal.notebook.valueholder.NoteBookFile</class>
-        <class>org.openelisglobal.notebook.valueholder.NoteBookComment</class>
-        <class>org.openelisglobal.notebook.valueholder.NoteBookSample</class>
-
-        <!-- Inventory Management entities (004-remove-old-inventory) -->
-        <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
-
+        <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
+        <!-- AnalyzerConfiguration, AnalyzerError, CustomFieldType: annotation-based
+            (no XML entity refs) -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
+        <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
+            <!-- Ensure XML mappings take precedence over annotations -->
+            <property name="hibernate.mapping.precedence"
+                value="hbm, class" />
+            <property name="hibernate.physical_naming_strategy"
+                value="org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy" />
             <property name="hibernate.search.backend.directory.type"
                 value="local-heap" />
             <property
                 name="hibernate.search.backend.analysis.configurer"
                 value="class:org.openelisglobal.hibernate.search.analysis.CustomLuceneAnalysisConfigurer" />
-            <property name="hibernate.hbm2ddl.auto" value="update" />
-            <property
-                name="jakarta.persistence.schema-generation.database.action"
-                value="update" />
-
         </properties>
 
     </persistence-unit>
