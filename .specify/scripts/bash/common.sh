@@ -125,6 +125,7 @@ find_feature_dir_by_prefix() {
     local branch_name="$2"
     local specs_dir="$repo_root/specs"
     local prefix=""
+    local prefix_raw=""
 
     # Extract numeric prefix from branch
     # Priority order for pattern matching:
@@ -132,9 +133,10 @@ find_feature_dir_by_prefix() {
     # 1. Principle IX Jira format: spec/OGC-009-sidenav, feat/OGC-009-sidenav/m1-core
     #    Extract "009" from "OGC-009"
     if [[ "$branch_name" =~ ^(spec|feat|fix|hotfix)/[A-Z]+-([0-9]+)- ]]; then
-        prefix="${BASH_REMATCH[2]}"
-        # Pad to 3 digits if needed (009, not 9)
-        prefix=$(printf "%03d" "$((10#$prefix))")
+        # Keep the raw Jira number for folders like "OGC-68-foo"
+        prefix_raw="${BASH_REMATCH[2]}"
+        # Also keep a zero-padded variant for legacy numeric folders like "068-foo"
+        prefix=$(printf "%03d" "$((10#$prefix_raw))")
     # 2. Principle IX GitHub format: spec/009-sidenav, feat/009-sidenav/m1-core
     elif [[ "$branch_name" =~ ^(spec|feat|fix|hotfix)/([0-9]{3})- ]]; then
         prefix="${BASH_REMATCH[2]}"
@@ -144,7 +146,7 @@ find_feature_dir_by_prefix() {
     fi
 
     # If no prefix found, fall back to exact match
-    if [[ -z "$prefix" ]]; then
+    if [[ -z "$prefix" && -z "$prefix_raw" ]]; then
         echo "$specs_dir/$branch_name"
         return
     fi
@@ -153,7 +155,10 @@ find_feature_dir_by_prefix() {
     local matches=()
     if [[ -d "$specs_dir" ]]; then
         # Support both numeric-prefixed folders (e.g., 150-foo) and Jira-style folders (e.g., OGC-150-foo)
-        for dir in "$specs_dir"/"$prefix"-* "$specs_dir"/OGC-"$prefix"-*; do
+        for dir in \
+            "$specs_dir"/"$prefix"-* \
+            "$specs_dir"/OGC-"$prefix"-* \
+            "$specs_dir"/OGC-"$prefix_raw"-*; do
             if [[ -d "$dir" ]]; then
                 matches+=("$(basename "$dir")")
             fi
