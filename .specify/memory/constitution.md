@@ -1000,21 +1000,21 @@ sequential, enabling flexible team coordination.
 
 **Branch Naming Convention (Git-safe + SpecKit-friendly)**:
 
-**IMPORTANT (Git restriction)**: Avoid branch names where one branch is a
-prefix of another (Git ref namespace collision). Example (INVALID pair):
-`feat/004-astm-analyzer-mapping` and `feat/004-astm-analyzer-mapping/m1-backend-db`.
-To prevent this, use a **single category prefix** (`spec/`, `feat/`, `fix/`,
-`hotfix/`) and use **hyphens** (not additional slashes) for sub-scoping like
-milestones.
+**IMPORTANT (Git restriction)**: Avoid branch names where one branch is a prefix
+of another (Git ref namespace collision). Example (INVALID pair):
+`feat/004-astm-analyzer-mapping` and
+`feat/004-astm-analyzer-mapping/m1-backend-db`. To prevent this, use a **single
+category prefix** (`spec/`, `feat/`, `fix/`, `hotfix/`) and use **hyphens** (not
+additional slashes) for sub-scoping like milestones.
 
-| Branch Type         | Pattern                                           | Example                                                 |
-| ------------------- | ------------------------------------------------- | ------------------------------------------------------- |
-| Spec Branch         | `spec/{NNN}[-{jira}]-{name}`                      | `spec/004-ogc-49-astm-analyzer-mapping`                  |
-| Spec Clarification  | `spec/clarify-{NNN}[-{jira}]-{name}-{topic}`      | `spec/clarify-004-ogc-49-astm-mapping-branch-naming`     |
-| Milestone Branch    | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`          | `feat/004-ogc-49-astm-analyzer-mapping-m1-backend-db`    |
-| Integration/Dev     | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`          | `feat/004-ogc-49-astm-analyzer-mapping-m4-integration`   |
-| Hotfix              | `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`) | `hotfix/004-ogc-49-fix-login`                    |
-| Bugfix              | `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)       | `fix/004-ogc-49-null-check`                     |
+| Branch Type        | Pattern                                                    | Example                                                |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------ |
+| Spec Branch        | `spec/{NNN}[-{jira}]-{name}`                               | `spec/004-ogc-49-astm-analyzer-mapping`                |
+| Spec Clarification | `spec/clarify-{NNN}[-{jira}]-{name}-{topic}`               | `spec/clarify-004-ogc-49-astm-mapping-branch-naming`   |
+| Milestone Branch   | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m1-backend-db`  |
+| Integration/Dev    | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m4-integration` |
+| Hotfix             | `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`) | `hotfix/004-ogc-49-fix-login`                          |
+| Bugfix             | `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)       | `fix/004-ogc-49-null-check`                            |
 
 **Issue ID Formats**:
 
@@ -1185,8 +1185,10 @@ naming conventions and milestone workflow.
 **Feature Development Branches** (per Principle IX):
 
 - **Spec branches**: `spec/{NNN}[-{jira}]-{name}` - Specification PRs
-- **Milestone branches**: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` - Milestone PRs
-- **Hotfix branches**: `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`)
+- **Milestone branches**: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` - Milestone
+  PRs
+- **Hotfix branches**: `hotfix/{NNN}[-{jira}]-{desc}` (or
+  `hotfix/{jira}-{desc}`)
 - **Bugfix branches**: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
 
 **Issue identifiers**:

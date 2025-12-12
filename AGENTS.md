@@ -42,7 +42,8 @@ reporting, serving 30+ countries worldwide.
 
 - GitHub: `DIGI-UW/OpenELIS-Global-2`
 - Branch strategy: `develop` (main development), `main` (production releases)
-- Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}` (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
+- Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}`
+  (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
 
 **Tech Stack:** Java 21 + Spring Framework 6.2.2 (Traditional Spring MVC)
 backend, React 17 + Carbon Design System frontend, PostgreSQL 14+ database, HAPI
@@ -453,12 +454,12 @@ delay feedback. Milestone-based delivery enables manageable code reviews.
 
 **Branch Naming Convention:**
 
-| Branch Type      | Pattern                                           | Example                                              |
-| ---------------- | ------------------------------------------------- | ---------------------------------------------------- |
-| Spec Branch      | `spec/{NNN}[-{jira}]-{name}`                      | `spec/004-ogc-49-astm-analyzer-mapping`              |
-| Milestone Branch | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`          | `feat/004-ogc-49-astm-analyzer-mapping-m1-backend-db`|
-| Hotfix           | `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`) | `hotfix/004-ogc-49-fix-login`              |
-| Bugfix           | `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)       | `fix/004-ogc-49-null-check`                 |
+| Branch Type      | Pattern                                                    | Example                                               |
+| ---------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| Spec Branch      | `spec/{NNN}[-{jira}]-{name}`                               | `spec/004-ogc-49-astm-analyzer-mapping`               |
+| Milestone Branch | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m1-backend-db` |
+| Hotfix           | `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`) | `hotfix/004-ogc-49-fix-login`                         |
+| Bugfix           | `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)       | `fix/004-ogc-49-null-check`                           |
 
 **Reference:**
 [GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
@@ -636,8 +637,10 @@ docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
 **Feature Development (Principle IX):**
 
 - **Spec branches:** `spec/{NNN}[-{jira}]-{name}` - Specification PRs
-- **Milestone branches:** `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` - Individual PRs
-- **Hotfix branches:** `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`)
+- **Milestone branches:** `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` - Individual
+  PRs
+- **Hotfix branches:** `hotfix/{NNN}[-{jira}]-{desc}` (or
+  `hotfix/{jira}-{desc}`)
 - **Bugfix branches:** `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
 
 **Issue ID Format:** Jira ticket (`OGC-{###}`) preferred, or GitHub issue number
