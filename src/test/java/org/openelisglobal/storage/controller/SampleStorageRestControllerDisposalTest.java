@@ -181,4 +181,38 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         assertEquals("Active count should decrement by exactly 1", initialActive - 1, finalActive);
     }
 
+    @Test
+    public void testDisposal_DisposedSampleRemainSearchable() throws Exception {
+        String disposedSampleId = "EXT-1001";
+
+        MvcResult result = mockMvc.perform(get("/rest/storage/sample-items?status=disposed")).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        String responseContent = result.getResponse().getContentAsString();
+        com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(responseContent);
+
+        com.fasterxml.jackson.databind.JsonNode samplesNode;
+        if (root.has("items")) {
+            samplesNode = root.get("items");
+        } else {
+            samplesNode = root;
+        }
+
+        boolean found = false;
+        for (com.fasterxml.jackson.databind.JsonNode sample : samplesNode) {
+            String sampleItemExternalId = sample.has("sampleItemExternalId")
+                    ? sample.get("sampleItemExternalId").asText()
+                    : "";
+            if (disposedSampleId.equals(sampleItemExternalId)) {
+                found = true;
+                String status = sample.get("status").asText();
+
+                assertEquals("Status should be disposed status ID (24)", "24", status);
+                break;
+            }
+        }
+        assertTrue("Disposed sample should be searchable per FR-056", found);
+    }
 }
