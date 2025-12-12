@@ -25,11 +25,9 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Autowired
     private InventoryTransactionService transactionService;
 
-    @Autowired
-    private InventoryAuditService auditService;
-
     public InventoryLotServiceImpl() {
         super(InventoryLot.class);
+        this.auditTrailLog = true; // Enable generic audit trail
     }
 
     @Override
@@ -45,24 +43,15 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             lot.setFhirUuid(UUID.randomUUID());
         }
 
-        Long result = super.insert(lot);
-        auditService.logLotReceive(lot, lot.getSysUserId());
-        return result;
+        // Audit logging is automatic via auditTrailLog = true in constructor
+        return super.insert(lot);
     }
 
     @Override
     @Transactional
     public InventoryLot update(InventoryLot lot) {
-        // Get the before state for audit logging
-        InventoryLot beforeState = get(lot.getId());
-        InventoryLot result = super.update(lot);
-
-        // Log the update to audit trail
-        if (lot.getSysUserId() != null) {
-            auditService.logLotUpdate(beforeState, result, lot.getSysUserId());
-        }
-
-        return result;
+        // Audit logging is automatic via auditTrailLog = true in constructor
+        return super.update(lot);
     }
 
     @Override
@@ -126,8 +115,6 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalStateException("Can only open lots with ACTIVE status");
         }
 
-        InventoryLot before = cloneLot(lot);
-
         lot.setStatus(LotStatus.IN_USE);
         lot.setDateOpened(openedDate);
 
@@ -141,12 +128,12 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
         lot.setSysUserId(sysUserId);
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        // Audit logging is automatic via update() -> auditTrailLog
         update(lot);
 
         transactionService.recordTransaction(lotId, TransactionType.OPENING, 0.0, // No quantity change
                 lot.getCurrentQuantity(), null, null, "Lot opened", sysUserId);
 
-        auditService.logLotOpen(before, lot, sysUserId);
         return lot;
     }
 
@@ -158,12 +145,11 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
-        InventoryLot before = cloneLot(lot);
-
         QCStatus oldStatus = lot.getQcStatus();
         lot.setQcStatus(qcStatus);
         lot.setSysUserId(sysUserId);
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        // Audit logging is automatic via update() -> auditTrailLog
         update(lot);
 
         String transactionNotes = buildQCStatusNotes(oldStatus, qcStatus, notes);
@@ -171,7 +157,6 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         transactionService.recordTransaction(lotId, TransactionType.QC_TEST, 0.0, // No quantity change
                 lot.getCurrentQuantity(), null, null, transactionNotes, sysUserId);
 
-        auditService.logLotQCUpdate(before, lot, notes, sysUserId);
         return lot;
     }
 
@@ -183,14 +168,12 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
-        InventoryLot before = cloneLot(lot);
-
         lot.setStatus(status);
         lot.setSysUserId(sysUserId);
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        // Audit logging is automatic via update() -> auditTrailLog
         update(lot);
 
-        auditService.logLotStatusUpdate(before, lot, sysUserId);
         return lot;
     }
 
@@ -206,8 +189,6 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Quantity cannot be negative");
         }
 
-        InventoryLot before = cloneLot(lot);
-
         Double oldQuantity = lot.getCurrentQuantity();
         Double quantityChange = newQuantity - oldQuantity;
 
@@ -219,12 +200,12 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             lot.setStatus(LotStatus.CONSUMED);
         }
 
+        // Audit logging is automatic via update() -> auditTrailLog
         update(lot);
 
         transactionService.recordTransaction(lotId, TransactionType.ADJUSTMENT, quantityChange, newQuantity, null, null,
                 reason != null ? reason : "Manual quantity adjustment", sysUserId);
 
-        auditService.logLotAdjust(before, lot, reason, sysUserId);
         return lot;
     }
 
@@ -236,20 +217,18 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
-        InventoryLot before = cloneLot(lot);
-
         Double quantityDisposed = lot.getCurrentQuantity();
         lot.setCurrentQuantity(0.0);
         lot.setStatus(LotStatus.DISPOSED);
         lot.setSysUserId(sysUserId);
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        // Audit logging is automatic via update() -> auditTrailLog
         update(lot);
 
         String transactionNotes = buildDisposalNotes(reason, notes);
         transactionService.recordTransaction(lotId, TransactionType.DISPOSAL, -quantityDisposed, 0.0, null, null,
                 transactionNotes, sysUserId);
 
-        auditService.logLotDispose(before, lot, reason, notes, sysUserId);
         return lot;
     }
 

@@ -22,11 +22,9 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     @Autowired
     private InventoryLotDAO inventoryLotDAO;
 
-    @Autowired
-    private InventoryAuditService auditService;
-
     public InventoryItemServiceImpl() {
         super(InventoryItem.class);
+        this.auditTrailLog = true; // Enable generic audit trail
     }
 
     @Override
@@ -100,9 +98,8 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
             item.setFhirUuid(UUID.randomUUID());
         }
 
-        Long result = super.insert(item);
-        auditService.logItemCreate(item, item.getSysUserId());
-        return result;
+        // Audit logging is automatic via auditTrailLog = true in constructor
+        return super.insert(item);
     }
 
     @Override
@@ -111,14 +108,8 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
         // Validate type-specific required fields
         validateItemTypeSpecificFields(item);
 
-        // Get the before state for audit logging
-        InventoryItem before = get(item.getId());
-        InventoryItem result = super.update(item);
-        // Log item update
-        if (before != null) {
-            auditService.logItemUpdate(before, result, item.getSysUserId());
-        }
-        return result;
+        // Audit logging is automatic via auditTrailLog = true in constructor
+        return super.update(item);
     }
 
     @Override
@@ -129,9 +120,8 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
             item.setIsActive("N");
             item.setSysUserId(sysUserId);
             item.setLastupdated(new Timestamp(System.currentTimeMillis()));
+            // Audit logging is automatic via update() -> auditTrailLog
             update(item);
-            // Log deactivation
-            auditService.logItemDeactivate(item, sysUserId);
         }
     }
 

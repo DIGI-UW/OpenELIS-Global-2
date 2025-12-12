@@ -26,11 +26,9 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
     @Autowired
     private InventoryItemDAO inventoryItemDAO;
 
-    @Autowired
-    private InventoryAuditService auditService;
-
     public InventoryUsageServiceImpl() {
         super(InventoryUsage.class);
+        this.auditTrailLog = true; // Enable generic audit trail
     }
 
     @Override
@@ -109,9 +107,7 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
             inventoryLotDAO.update(lot);
         }
 
-        // Log usage in audit trail
-        auditService.logLotUsage(lotId, quantityUsed, testResultId, analysisId, sysUserId);
-
+        // Audit logging is automatic via auditTrailLog = true in constructor
         return get(id);
     }
 }
