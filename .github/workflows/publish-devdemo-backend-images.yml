@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Publish demo Docker Images - Backend
+name: Publish devdemo Docker Images - Backend
 
 on:
   push:
@@ -17,7 +17,7 @@ env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2
 
 jobs:
-  build-and-push-image-backend-demo:
+  build-and-push-image-backend-devdemo:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
     runs-on: ubuntu-latest
     strategy:
@@ -54,7 +54,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_NAME }}-demo
+          images: ${{ env.DOCKER_NAME }}-devdemo
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@v5
@@ -65,10 +65,10 @@ jobs:
           platforms: linux/${{ matrix.platform }}
           # tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          #cache-from: type=registry,ref=${{ env.DOCKER_NAME }}-demo:${{ matrix.platform }}-buildcache-demo
-          cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-demo:${{ matrix.platform }}-buildcache-demo,mode=max
+          #cache-from: type=registry,ref=${{ env.DOCKER_NAME }}-devdemo:${{ matrix.platform }}-buildcache-devdemo
+          cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-devdemo:${{ matrix.platform }}-buildcache-devdemo,mode=max
           build-args: SKIP_SPOTLESS=true
-          outputs: type=image,name=${{ env.DOCKER_NAME }}-demo,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.DOCKER_NAME }}-devdemo,push-by-digest=true,name-canonical=true,push=true
       - name: Export digest
         run: |
           mkdir -p /tmp/digests/backend
@@ -82,11 +82,11 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  merge-backend-demo-platform-images:
+  merge-backend-devdemo-platform-images:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
     runs-on: ubuntu-latest
     needs:
-      - build-and-push-image-backend-demo
+      - build-and-push-image-backend-devdemo
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
@@ -102,7 +102,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_NAME }}-demo
+          images: ${{ env.DOCKER_NAME }}-devdemo
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -114,8 +114,8 @@ jobs:
         working-directory: /tmp/digests/backend
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.DOCKER_NAME }}-demo@sha256:%s ' *)
+            $(printf '${{ env.DOCKER_NAME }}-devdemo@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_NAME }}-demo:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.DOCKER_NAME }}-devdemo:${{ steps.meta.outputs.version }}
