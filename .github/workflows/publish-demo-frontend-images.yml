@@ -58,7 +58,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env. }}-frontend-${{ env.BRANCH_NAME }}
+          images: ${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}
 
       - name: Build and push Docker image
         id: build
@@ -69,7 +69,7 @@ jobs:
           platforms: linux/${{ matrix.platform }}
           # tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env. }}-frontend-${{ env.BRANCH_NAME }}:${{ matrix.platform }}-buildcache-${{ env.BRANCH_NAME }}
+          cache-from: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}:${{ matrix.platform }}-buildcache-${{ env.BRANCH_NAME }}
           cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}:${{ matrix.platform }}-buildcache-${{ env.BRANCH_NAME }},mode=max
           outputs: type=image,name=${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }},push-by-digest=true,name-canonical=true,push=true
       - name: Export digest
