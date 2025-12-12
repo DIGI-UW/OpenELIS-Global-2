@@ -35,8 +35,8 @@
             <column name="data_summary" type="JSONB">
                 <constraints nullable="true"/>
             </column>
-            <!-- Standard audit fields -->
-            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+            <!-- Standard audit fields (must match BaseObject column naming) -->
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="true"/>
             </column>
             <column name="sys_user_id" type="BIGINT">

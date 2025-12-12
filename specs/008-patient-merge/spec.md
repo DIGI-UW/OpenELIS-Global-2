@@ -1,11 +1,13 @@
 # Feature Specification: Patient Merge (Full Stack)
 
-**Feature Branch**: `feat/008-m3-rest-controller` (backend complete), `feat/008-frontend` (pending)
-**Created**: 2025-12-05 **Updated**: 2025-12-11
-**Status**: Backend Complete ✅ (44/44 tests) | Frontend Pending
-**Scope**: Full-stack patient merge functionality including:
+**Feature Branch**: `feat/008-m3-rest-controller` (backend complete),
+`feat/008-frontend` (pending) **Created**: 2025-12-05 **Updated**: 2025-12-11
+**Status**: Backend Complete ✅ (44/44 tests) | Frontend Pending **Scope**:
+Full-stack patient merge functionality including:
+
 - Backend: Database schema, services, DAO, REST API endpoints, FHIR integration
-- Frontend: UI components, patient comparison, validation workflow, merge execution
+- Frontend: UI components, patient comparison, validation workflow, merge
+  execution
 
 ## Clarifications
 

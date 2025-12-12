@@ -1,19 +1,20 @@
 # Patient Merge Frontend - Quick Start Guide
 
-**Backend Status:** ✅ Complete (44/44 tests passing)
-**Branch:** `feat/008-m3-rest-controller`
-**API Base:** `/rest/patient/merge`
+**Backend Status:** ✅ Complete (44/44 tests passing) **Branch:**
+`feat/008-m3-rest-controller` **API Base:** `/rest/patient/merge`
 
 ---
 
 ## TL;DR - What You Need to Know
 
 ### The Flow
+
 ```
 Search Patients → Compare Side-by-Side → Select Primary → Validate → Confirm → Execute
 ```
 
 ### The API Calls
+
 ```typescript
 1. GET  /rest/patient/merge/details/{id}     // Get patient info
 2. POST /rest/patient/merge/validate         // Check if merge is safe
@@ -21,6 +22,7 @@ Search Patients → Compare Side-by-Side → Select Primary → Validate → Con
 ```
 
 ### The Security
+
 - All endpoints require **ROLE_GLOBAL_ADMIN**
 - Returns 403 if user lacks permission
 - Returns 401 if session invalid
@@ -30,6 +32,7 @@ Search Patients → Compare Side-by-Side → Select Primary → Validate → Con
 ## Quick API Reference
 
 ### 1. Get Patient Details
+
 ```typescript
 GET /rest/patient/merge/details/123
 
@@ -48,6 +51,7 @@ Response 200 OK:
 ```
 
 ### 2. Validate Merge
+
 ```typescript
 POST /rest/patient/merge/validate
 
@@ -70,6 +74,7 @@ Response 200 OK:
 ```
 
 ### 3. Execute Merge
+
 ```typescript
 POST /rest/patient/merge/execute
 
@@ -148,6 +153,7 @@ interface PatientMergeState {
 ## Carbon Design Components to Use
 
 ### Required Components
+
 - `DataTable` - Patient comparison grid
 - `Modal` - Confirmation dialog
 - `Button` - Actions (Primary/Ghost variants)
@@ -158,6 +164,7 @@ interface PatientMergeState {
 - `SkeletonText` - Loading states
 
 ### Layout Components
+
 - `Grid`, `Row`, `Column` - Layout structure
 - `Tile` - Patient cards
 - `Stack` - Vertical spacing
@@ -170,36 +177,36 @@ interface PatientMergeState {
 const handleMergeError = (response: Response) => {
   switch (response.status) {
     case 401:
-      router.push('/login');
+      router.push("/login");
       break;
 
     case 403:
       showNotification(
-        'Insufficient Permissions',
-        'Only Global Administrators can merge patients',
-        'error'
+        "Insufficient Permissions",
+        "Only Global Administrators can merge patients",
+        "error"
       );
       break;
 
     case 404:
       showNotification(
-        'Patient Not Found',
-        'One or both patients could not be found',
-        'error'
+        "Patient Not Found",
+        "One or both patients could not be found",
+        "error"
       );
       break;
 
     case 400:
-      response.json().then(data => {
-        showNotification('Validation Error', data.message, 'error');
+      response.json().then((data) => {
+        showNotification("Validation Error", data.message, "error");
       });
       break;
 
     default:
       showNotification(
-        'Unexpected Error',
-        'Please try again or contact support',
-        'error'
+        "Unexpected Error",
+        "Please try again or contact support",
+        "error"
       );
   }
 };
@@ -247,45 +254,51 @@ const handleMergeError = (response: Response) => {
 ## Validation Rules
 
 ### What the Backend Validates
-✅ Both patients exist
-✅ Neither patient is already merged
-✅ Primary patient ID matches patient1Id or patient2Id
-✅ No circular merge references
-✅ User has Global Admin role
+
+✅ Both patients exist ✅ Neither patient is already merged ✅ Primary patient
+ID matches patient1Id or patient2Id ✅ No circular merge references ✅ User has
+Global Admin role
 
 ### What Frontend Should Validate
-✅ Two different patients selected
-✅ One patient selected as primary
-✅ Merge reason is not empty
-✅ User confirms the destructive operation
+
+✅ Two different patients selected ✅ One patient selected as primary ✅ Merge
+reason is not empty ✅ User confirms the destructive operation
 
 ---
 
 ## Important Data Notes
 
 ### What Gets Merged
+
 ✅ **Clinical Data** (reassigned to primary):
+
 - Samples
 - Orders
 - Contacts
 - Relations
 
 ✅ **Demographics** (gap-filling only):
+
 - Address, city, state, zip
 - Phones (primary, work, cell, fax)
 - Email
 
 ### What Does NOT Get Merged
+
 ❌ **Names** (firstName, lastName, middleName)
+
 - Primary patient's name is kept
 - Names are core identifiers
 
 ❌ **Identifiers** (national ID, etc.)
+
 - Each patient keeps their own identifiers
 - System doesn't support multiple IDs of same type
 
 ### Data Summary Fields (Currently Return 0)
+
 ⚠️ These are placeholders for future enhancement:
+
 - `activeOrders` (needs status filtering)
 - `totalResults` (needs result table joins)
 - `totalDocuments` (needs document model)
@@ -295,6 +308,7 @@ const handleMergeError = (response: Response) => {
 ## Testing Your Frontend
 
 ### Mock API Server (for development)
+
 ```typescript
 // Create mock responses for testing
 const mockPatientDetails = {
@@ -307,30 +321,31 @@ const mockPatientDetails = {
 const mockValidationResult = {
   valid: true,
   errors: [],
-  warnings: ["Patient has 5 samples"]
+  warnings: ["Patient has 5 samples"],
 };
 
 const mockExecutionResult = {
   success: true,
   auditId: "789",
-  recordsReassigned: { total: 26 }
+  recordsReassigned: { total: 26 },
 };
 ```
 
 ### E2E Test Scenario (Cypress)
+
 ```typescript
-describe('Patient Merge', () => {
-  it('should merge two patients successfully', () => {
+describe("Patient Merge", () => {
+  it("should merge two patients successfully", () => {
     // 1. Login as admin
-    cy.login('admin', 'password');
+    cy.login("admin", "password");
 
     // 2. Navigate to patient merge
-    cy.visit('/patient/merge');
+    cy.visit("/patient/merge");
 
     // 3. Search and select patients
-    cy.get('[data-testid="patient-search"]').type('John');
+    cy.get('[data-testid="patient-search"]').type("John");
     cy.get('[data-testid="patient-123"]').click();
-    cy.get('[data-testid="patient-search"]').type('Jane');
+    cy.get('[data-testid="patient-search"]').type("Jane");
     cy.get('[data-testid="patient-456"]').click();
 
     // 4. Select primary patient
@@ -338,14 +353,14 @@ describe('Patient Merge', () => {
 
     // 5. Validate
     cy.get('[data-testid="validate-merge"]').click();
-    cy.contains('Patient has 5 samples');
+    cy.contains("Patient has 5 samples");
 
     // 6. Enter reason and confirm
-    cy.get('[data-testid="merge-reason"]').type('Duplicate record');
+    cy.get('[data-testid="merge-reason"]').type("Duplicate record");
     cy.get('[data-testid="confirm-merge"]').click();
 
     // 7. Verify success
-    cy.contains('Patients merged successfully');
+    cy.contains("Patients merged successfully");
   });
 });
 ```
@@ -355,15 +370,18 @@ describe('Patient Merge', () => {
 ## Performance Considerations
 
 ### What's Fast ⚡
+
 - GET /details/{id} - Simple query, very fast
 - POST /validate - No DB writes, fast
 
 ### What's Slower 🐢
+
 - POST /execute - Bulk updates, FHIR sync
   - Expected: 1-3 seconds for typical merge
   - Show loading indicator during execution
 
 ### Best Practices
+
 1. Debounce patient search (500ms)
 2. Cache patient details after fetching
 3. Show skeleton loaders during API calls
@@ -374,48 +392,57 @@ describe('Patient Merge', () => {
 
 ## Accessibility Checklist
 
-✅ Keyboard navigation (Tab, Enter, Escape)
-✅ ARIA labels on all interactive elements
-✅ Focus management (modal traps, return focus)
-✅ Screen reader announcements for state changes
-✅ Color contrast (WCAG 2.1 AA minimum)
-✅ Clear error messages
-✅ Confirmation dialogs for destructive actions
+✅ Keyboard navigation (Tab, Enter, Escape) ✅ ARIA labels on all interactive
+elements ✅ Focus management (modal traps, return focus) ✅ Screen reader
+announcements for state changes ✅ Color contrast (WCAG 2.1 AA minimum) ✅ Clear
+error messages ✅ Confirmation dialogs for destructive actions
 
 ---
 
 ## Common Gotchas & Solutions
 
 ### Gotcha 1: Why patient1Id, patient2Id, AND primaryPatientId?
-**Answer:** Frontend-friendly design. You display both, user picks primary. Backend validates primary matches one of the two.
+
+**Answer:** Frontend-friendly design. You display both, user picks primary.
+Backend validates primary matches one of the two.
 
 ### Gotcha 2: Why does confirmed field exist in the API?
-**Answer:** Defense-in-depth. Prevents accidental execution if frontend validation fails. Backend enforces it.
+
+**Answer:** Defense-in-depth. Prevents accidental execution if frontend
+validation fails. Backend enforces it.
 
 ### Gotcha 3: What happens if FHIR update fails?
-**Answer:** Merge still succeeds! FHIR is optional. Logged as warning, not error.
+
+**Answer:** Merge still succeeds! FHIR is optional. Logged as warning, not
+error.
 
 ### Gotcha 4: Can I merge a patient that's already been merged?
+
 **Answer:** No. Validation will fail with "Patient already merged" error.
 
 ### Gotcha 5: Why aren't names merged?
-**Answer:** Design decision. Names are core identifiers. User explicitly selected which patient to keep.
+
+**Answer:** Design decision. Names are core identifiers. User explicitly
+selected which patient to keep.
 
 ---
 
 ## Getting Help
 
 ### Backend API Issues
+
 - Check: `specs/008-patient-merge-backend/spec.md`
 - Check: `specs/008-patient-merge-backend/BACKEND_COMPLETE.md`
 - Run tests: `mvn test -Dtest="*PatientMerge*Test"`
 
 ### Frontend Questions
+
 - Refer to OpenELIS frontend patterns in `frontend/src/components/`
 - Check Carbon Design System docs: https://carbondesignsystem.com/
 - React Intl docs: https://formatjs.io/docs/react-intl/
 
 ### Example Code
+
 - Look at test files for API usage examples
 - Check existing OpenELIS forms for Carbon component patterns
 - Patient search: `frontend/src/components/patient/PatientSearch.js`
@@ -434,7 +461,5 @@ describe('Patient Merge', () => {
 
 ---
 
-*Backend: 44/44 tests ✅*
-*API: 3 endpoints ready ✅*
-*Documentation: Complete ✅*
-*Your turn! 🎨*
+_Backend: 44/44 tests ✅_ _API: 3 endpoints ready ✅_ _Documentation: Complete
+✅_ _Your turn! 🎨_

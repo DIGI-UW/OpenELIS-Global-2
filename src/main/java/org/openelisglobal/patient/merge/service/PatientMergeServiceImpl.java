@@ -14,6 +14,8 @@ import org.openelisglobal.patient.merge.dto.PatientMergeRequestDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeValidationResultDTO;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
+import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService;
+import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,9 @@ public class PatientMergeServiceImpl implements PatientMergeService {
     @Autowired
     private PatientMergeConsolidationService consolidationService;
 
+    @Autowired
+    private PatientIdentityTypeService patientIdentityTypeService;
+
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
 
@@ -48,6 +53,7 @@ public class PatientMergeServiceImpl implements PatientMergeService {
      * found, already merged, circular references.
      */
     @Override
+    @Transactional(readOnly = true)
     public PatientMergeValidationResultDTO validateMerge(PatientMergeRequestDTO request) {
         PatientMergeValidationResultDTO result = new PatientMergeValidationResultDTO();
 
@@ -209,6 +215,7 @@ public class PatientMergeServiceImpl implements PatientMergeService {
      * demographics, data summary, and identifiers.
      */
     @Override
+    @Transactional(readOnly = true)
     public PatientMergeDetailsDTO getMergeDetails(String patientId) {
         Patient patient = patientDAO.getData(patientId);
         if (patient == null) {
@@ -226,10 +233,23 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         details.setBirthDate(patient.getBirthDateForDisplay());
 
         // Populate actual identifiers from patient_identity table
+        // Filter out internal system identifiers that shouldn't be displayed to users
+        List<String> internalIdentityTypes = List.of("GUID", "AKA", "MOTHER", "MOTHERS_INITIAL");
         List<PatientIdentity> identities = getPatientIdentities(patient.getId());
         for (PatientIdentity identity : identities) {
+            // Lookup the identity type name from the ID
+            String identityTypeName = identity.getIdentityTypeId();
+            PatientIdentityType identityType = patientIdentityTypeService.get(identity.getIdentityTypeId());
+            if (identityType != null) {
+                identityTypeName = identityType.getIdentityType();
+            }
+            // Skip internal identity types
+            if (internalIdentityTypes.contains(identityTypeName)) {
+                continue;
+            }
             PatientMergeDetailsDTO.IdentifierDTO identifierDTO = new PatientMergeDetailsDTO.IdentifierDTO();
-            identifierDTO.setIdentityType(identity.getIdentityTypeId());
+            // Map short type names to user-friendly display names
+            identifierDTO.setIdentityType(getDisplayNameForIdentityType(identityTypeName));
             identifierDTO.setIdentityValue(identity.getIdentityData());
             details.getIdentifiers().add(identifierDTO);
         }
@@ -366,5 +386,46 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         summary.put("merge_duration_ms", durationMs);
 
         return summary;
+    }
+
+    /**
+     * Maps internal identity type codes to user-friendly display names.
+     */
+    private String getDisplayNameForIdentityType(String identityType) {
+        if (identityType == null) {
+            return "Unknown";
+        }
+        switch (identityType.toUpperCase()) {
+        case "SUBJECT":
+            return "Subject Number";
+        case "NATIONAL":
+            return "National ID";
+        case "ST":
+            return "ST Number";
+        case "INSURANCE":
+            return "Insurance ID";
+        case "OCCUPATION":
+            return "Occupation";
+        case "ORG_SITE":
+            return "Organization Site";
+        case "EDUCATION":
+            return "Education";
+        case "MARITIAL":
+            return "Marital Status";
+        case "NATIONALITY":
+            return "Nationality";
+        case "OTHER NATIONALITY":
+            return "Other Nationality";
+        case "HEALTH DISTRICT":
+            return "Health District";
+        case "HEALTH REGION":
+            return "Health Region";
+        case "OB_NUMBER":
+            return "OB Number";
+        case "PC_NUMBER":
+            return "PC Number";
+        default:
+            return identityType;
+        }
     }
 }

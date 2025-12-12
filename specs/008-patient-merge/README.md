@@ -7,16 +7,22 @@
 ## 📁 Documentation Structure
 
 ### Core Specification
-- **[spec.md](./spec.md)** - Complete feature specification with functional requirements
+
+- **[spec.md](./spec.md)** - Complete feature specification with functional
+  requirements
 
 ### Implementation Plans
+
 - **[plan.md](./plan.md)** - Backend implementation plan (M1-M3)
 - **[tasks.md](./tasks.md)** - Task breakdown and progress tracking
 
 ### Developer Guides
 
 #### Backend (✅ COMPLETE)
-- **[BACKEND_COMPLETE.md](./BACKEND_COMPLETE.md)** - Full backend implementation summary
+
+- **[BACKEND_COMPLETE.md](./BACKEND_COMPLETE.md)** - Full backend implementation
+  summary
+
   - REST API documentation
   - Architecture details
   - Test coverage (44/44 tests passing)
@@ -26,7 +32,9 @@
 - **[quickstart.md](./quickstart.md)** - Step-by-step backend development guide
 
 #### Frontend (🚧 PENDING)
-- **[FRONTEND_QUICKSTART.md](./FRONTEND_QUICKSTART.md)** - Quick start guide for frontend devs
+
+- **[FRONTEND_QUICKSTART.md](./FRONTEND_QUICKSTART.md)** - Quick start guide for
+  frontend devs
   - API integration examples
   - Component structure suggestions
   - Carbon Design System patterns
@@ -37,23 +45,27 @@
 ## 🎯 Current Status
 
 ### Backend: ✅ COMPLETE
+
 - **Branch:** `feat/008-m3-rest-controller`
 - **Tests:** 44/44 passing (100%)
 - **Commits:** 6 commits
 - **Status:** Production ready
 
 **Milestones Completed:**
+
 - ✅ M1: Database Layer (audit table, migrations, DAO)
 - ✅ M2: Service Layer (validation, consolidation, FHIR)
 - ✅ M3: REST API (3 endpoints with security)
 - ✅ Code Quality (all TODOs resolved, FIXME fixed)
 
 ### Frontend: 🚧 PENDING
+
 - **Branch:** To be created (`feat/008-frontend`)
 - **Components:** To be implemented
 - **Status:** Ready to start
 
 **Required Components:**
+
 - Patient search/selection
 - Side-by-side comparison view
 - Validation dialog
@@ -65,14 +77,17 @@
 ## 🚀 Quick Start
 
 ### For Backend Developers
+
 1. Read [BACKEND_COMPLETE.md](./BACKEND_COMPLETE.md) for full API documentation
 2. Review [spec.md](./spec.md) for functional requirements
 3. Check [quickstart.md](./quickstart.md) for implementation details
 4. Run tests: `mvn test -Dtest="*PatientMerge*Test"`
 
 ### For Frontend Developers
+
 1. **START HERE:** [FRONTEND_QUICKSTART.md](./FRONTEND_QUICKSTART.md)
-2. Read API endpoints in [BACKEND_COMPLETE.md](./BACKEND_COMPLETE.md#rest-api-endpoints)
+2. Read API endpoints in
+   [BACKEND_COMPLETE.md](./BACKEND_COMPLETE.md#rest-api-endpoints)
 3. Review UI flow in [spec.md](./spec.md#user-scenarios--testing-mandatory)
 4. Check Carbon Design System patterns
 
@@ -81,6 +96,7 @@
 ## 📊 Implementation Progress
 
 ### Backend Implementation
+
 ```
 Database Layer    ████████████████████ 100% ✅
 Service Layer     ████████████████████ 100% ✅
@@ -90,6 +106,7 @@ Documentation     ████████████████████ 1
 ```
 
 ### Frontend Implementation
+
 ```
 Component Design  ░░░░░░░░░░░░░░░░░░░░   0% 🚧
 API Integration   ░░░░░░░░░░░░░░░░░░░░   0% 🚧
@@ -103,6 +120,7 @@ Documentation     ░░░░░░░░░░░░░░░░░░░░  
 ## 🏗️ Architecture Overview
 
 ### Backend Stack
+
 - **Database:** PostgreSQL with Liquibase migrations
 - **ORM:** Hibernate/JPA with native SQL for performance
 - **Service Layer:** Spring @Transactional services
@@ -111,6 +129,7 @@ Documentation     ░░░░░░░░░░░░░░░░░░░░  
 - **FHIR:** R4 Patient.link compliance
 
 ### Frontend Stack (Planned)
+
 - **Framework:** React 18+
 - **UI Library:** Carbon Design System
 - **i18n:** React Intl
@@ -126,29 +145,34 @@ All endpoints require `ROLE_GLOBAL_ADMIN` authentication.
 **Base URL:** `/rest/patient/merge`
 
 ### 1. GET `/details/{patientId}`
+
 Get patient merge preview details
 
 **Response:** Patient demographics + data summary
 
 ### 2. POST `/validate`
+
 Validate merge request without executing
 
-**Request:** Patient IDs + primary selection + reason
-**Response:** Validation result with warnings/errors
+**Request:** Patient IDs + primary selection + reason **Response:** Validation
+result with warnings/errors
 
 ### 3. POST `/execute`
+
 Execute the patient merge
 
-**Request:** Same as validate with `confirmed: true`
-**Response:** Execution result with audit ID
+**Request:** Same as validate with `confirmed: true` **Response:** Execution
+result with audit ID
 
-📖 **Full API docs:** [BACKEND_COMPLETE.md](./BACKEND_COMPLETE.md#rest-api-endpoints)
+📖 **Full API docs:**
+[BACKEND_COMPLETE.md](./BACKEND_COMPLETE.md#rest-api-endpoints)
 
 ---
 
 ## 🧪 Testing
 
 ### Backend Tests (All Passing ✅)
+
 ```bash
 # Run all patient merge tests
 mvn test -Dtest="*PatientMerge*Test"
@@ -167,6 +191,7 @@ mvn test -Dtest="PatientMergeRestControllerTest"
 ```
 
 ### Frontend Tests (Pending)
+
 ```bash
 # E2E tests (to be implemented)
 npm run cy:run -- --spec "cypress/e2e/patient-merge.cy.js"
@@ -180,32 +205,41 @@ npm test -- PatientMerge
 ## 📝 Key Design Decisions
 
 ### 1. Patient ID Parameters
+
 **Why patient1Id + patient2Id + primaryPatientId?**
+
 - Frontend shows both patients side-by-side
 - User selects which should be primary
 - Backend validates primary matches one of the two
 - Better UX than requiring frontend to determine roles
 
 ### 2. Confirmation Flag
+
 **Why in API request?**
+
 - Defense-in-depth: prevents accidental execution
 - Provides audit trail of user confirmation
 - Backend enforces `confirmed: true`
 
 ### 3. Names Not Merged
+
 **Why keep primary patient's name?**
+
 - Names are core identifiers
 - User explicitly chose which patient to keep
 - Avoids confusion post-merge
 - Only non-identifying data merged (address, phone, email)
 
 ### 4. Native SQL for Bulk Updates
+
 **Why not JPQL?**
+
 - Hibernate issues with String ID → BIGINT conversion
 - Performance: single UPDATE vs entity loading
 - Still fully @Transactional (ACID maintained)
 
-📖 **Full design rationale:** [BACKEND_COMPLETE.md](./BACKEND_COMPLETE.md#key-design-decisions)
+📖 **Full design rationale:**
+[BACKEND_COMPLETE.md](./BACKEND_COMPLETE.md#key-design-decisions)
 
 ---
 
@@ -254,16 +288,19 @@ npm test -- PatientMerge
 ## 📚 Additional Resources
 
 ### OpenELIS Documentation
+
 - [AGENTS.md](../../AGENTS.md) - Comprehensive agent onboarding
 - [CLAUDE.md](../../CLAUDE.md) - Claude Code specific instructions
 - [Constitution](./../.specify/memory/constitution.md) - Project governance
 
 ### External Standards
+
 - [FHIR R4 Patient.link](https://www.hl7.org/fhir/patient-definitions.html#Patient.link)
 - [Carbon Design System](https://carbondesignsystem.com/)
 - [React Intl](https://formatjs.io/docs/react-intl/)
 
 ### Example Code
+
 - Patient Search: `frontend/src/components/patient/PatientSearch.js`
 - Patient Display: `frontend/src/components/patient/PatientInfo.js`
 - Base REST Controller: `src/main/java/.../common/rest/BaseRestController.java`
@@ -273,12 +310,14 @@ npm test -- PatientMerge
 ## 🤝 Contributing
 
 ### Backend Changes
+
 - Branch: `feat/008-m3-rest-controller`
 - Status: **Locked** (complete, do not modify without consultation)
 - Tests: All 44 tests must pass
 - Format: `mvn spotless:apply` before commit
 
 ### Frontend Changes
+
 - Branch: Create new `feat/008-frontend`
 - Base: Latest `develop`
 - Tests: Add E2E tests for all workflows
@@ -290,16 +329,19 @@ npm test -- PatientMerge
 ## 📞 Support
 
 ### Questions About Backend?
+
 - Read [BACKEND_COMPLETE.md](./BACKEND_COMPLETE.md)
 - Check test files for usage examples
 - Review git commits on `feat/008-m3-rest-controller`
 
 ### Questions About Frontend?
+
 - Start with [FRONTEND_QUICKSTART.md](./FRONTEND_QUICKSTART.md)
 - Review Carbon Design System docs
 - Check existing OpenELIS components for patterns
 
 ### Found a Bug?
+
 - Backend: Run tests, check logs, review audit trail
 - Frontend: Check browser console, network tab
 - Create issue with reproduction steps
@@ -325,6 +367,7 @@ npm test -- PatientMerge
 ---
 
 **Status Summary:**
+
 - ✅ Backend: Production ready (44/44 tests)
 - 🚧 Frontend: Ready to start
 - 📖 Documentation: Complete

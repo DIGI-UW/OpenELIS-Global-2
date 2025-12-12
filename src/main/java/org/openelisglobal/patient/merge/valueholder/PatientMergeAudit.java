@@ -39,9 +39,6 @@ public class PatientMergeAudit extends BaseObject<Long> {
     @Column(name = "data_summary", columnDefinition = "jsonb")
     private JsonNode dataSummary;
 
-    @Column(name = "lastupdated", insertable = false, updatable = false)
-    private Timestamp lastupdated;
-
     @Column(name = "sys_user_id")
     private Long sysUserId;
 
@@ -105,14 +102,6 @@ public class PatientMergeAudit extends BaseObject<Long> {
 
     public void setDataSummary(JsonNode dataSummary) {
         this.dataSummary = dataSummary;
-    }
-
-    public Timestamp getLastupdated() {
-        return lastupdated;
-    }
-
-    public void setLastupdated(Timestamp lastupdated) {
-        this.lastupdated = lastupdated;
     }
 
     @Override

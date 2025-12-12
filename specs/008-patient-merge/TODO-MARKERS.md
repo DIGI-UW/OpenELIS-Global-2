@@ -228,5 +228,95 @@ documented with TODOs **Coverage**: ~90% of functionality can be implemented now
 
 ---
 
-**Last Updated**: 2025-12-08 **Next Review**: When PM provides decision on
+**Last Updated**: 2025-12-11 **Next Review**: When PM provides decision on
 Blocker #1
+
+---
+
+## Technical Debt: Schema Validation Test (TODO-TECH-001)
+
+**Issue Discovered**: 2025-12-11 **Severity**: Medium (caused runtime error in
+Docker environment) **Root Cause**: Liquibase migration had column name
+`lastupdated` but `BaseObject` expects `last_updated`
+
+### Problem
+
+The current test setup uses `hibernate.hbm2ddl.auto=update` which silently fixes
+schema mismatches. This masked a column naming mismatch between:
+
+- **Liquibase migration**: Created column `lastupdated`
+- **BaseObject entity**: Expects column `last_updated` (with underscore)
+
+The integration tests passed because Hibernate auto-created the correct column,
+but the production Docker environment (which uses only Liquibase for schema)
+failed at runtime.
+
+### Proposed Solution
+
+Add a Testcontainers-based schema validation test that:
+
+1. Starts a PostgreSQL container
+2. Runs Liquibase migrations ONLY (no hbm2ddl)
+3. Uses `hibernate.hbm2ddl.auto=validate` to verify entity mappings match schema
+4. Fails if any column names, types, or constraints don't match
+
+### Implementation Location
+
+**File**:
+`src/test/java/org/openelisglobal/patient/merge/LiquibaseSchemaValidationTest.java`
+
+```java
+package org.openelisglobal.patient.merge;
+
+import static org.junit.Assert.*;
+
+import javax.sql.DataSource;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.openelisglobal.patient.merge.valueholder.PatientMergeAudit;
+import org.testcontainers.containers.PostgreSQLContainer;
+
+/**
+ * TODO(TECH-001): Validates that Liquibase-created schema matches Hibernate entity mappings.
+ *
+ * This test catches mismatches between Liquibase column names and JPA @Column annotations
+ * that would otherwise only fail at runtime in production/Docker environments.
+ *
+ * Uses hibernate.hbm2ddl.auto=validate (NOT update) to ensure strict validation.
+ */
+public class LiquibaseSchemaValidationTest {
+
+    @ClassRule
+    public static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:14.4");
+
+    @Test
+    public void patientMergeAuditEntityShouldMatchLiquibaseSchema() {
+        // TODO(TECH-001): Implement schema validation test
+        // 1. Run Liquibase migrations against test container
+        // 2. Build SessionFactory with hbm2ddl.auto=validate
+        // 3. Test should FAIL if entity doesn't match schema
+        fail("TODO(TECH-001): Implement Liquibase schema validation test");
+    }
+}
+```
+
+### Why This Wasn't Caught
+
+1. **Test config uses `hbm2ddl.auto=update`**: Silently creates/modifies columns
+   to match entities
+2. **ORM validation test doesn't use real database**: Only validates mapping
+   consistency, not schema match
+3. **No validation mode test exists**: Production uses Liquibase-only schema,
+   tests use Hibernate-managed schema
+
+### Broader Recommendation
+
+Consider adding a CI step that runs integration tests with
+`hibernate.hbm2ddl.auto=validate` against a Liquibase-initialized database to
+catch all such mismatches early.
+
+---
+
+**Status**: Technical debt logged for future implementation
