@@ -149,7 +149,12 @@ function ARVViralOverload() {
 
               <TextInput
                 id="received-date"
-                labelText="* Received Date (dd/mm/yyyy)"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.received.date" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="date"
                 name="receivedDate"
                 value={formValues.receivedDate}
@@ -159,7 +164,12 @@ function ARVViralOverload() {
 
               <TextInput
                 id="received-time"
-                labelText="Received Time (HH:mm)"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.received.time" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="time"
                 name="receivedTime"
                 value={formValues.receivedTime}
@@ -168,7 +178,12 @@ function ARVViralOverload() {
 
               <TextInput
                 id="date-taken"
-                labelText="* Date Taken (dd/mm/yyyy)"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.date.taken" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="date"
                 name="dateTaken"
                 value={formValues.dateTaken}
@@ -178,7 +193,12 @@ function ARVViralOverload() {
 
               <TextInput
                 id="time-taken"
-                labelText="Time Taken (HH:mm)"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.time.taken" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="time"
                 name="timeTaken"
                 value={formValues.timeTaken}
@@ -191,7 +211,12 @@ function ARVViralOverload() {
             <Stack gap={5}>
               <TextInput
                 id="unique-health-id"
-                labelText="* Unique Health ID number"
+                labelText={
+                  <>
+                    <FormattedMessage id="patient.subject.number" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 name="uniqueHealthId"
                 value={formValues.uniqueHealthId}
                 onChange={handleInputChange}
@@ -200,7 +225,12 @@ function ARVViralOverload() {
 
               <TextInput
                 id="site-unique-health-id"
-                labelText="* Site Unique Health ID number"
+                labelText={
+                  <>
+                    <FormattedMessage id="patient.site.subject.number" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 name="siteUniqueHealthId"
                 value={formValues.siteUniqueHealthId}
                 onChange={handleInputChange}
@@ -209,7 +239,12 @@ function ARVViralOverload() {
 
               <TextInput
                 id="lab-no"
-                labelText="* Lab No"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.lab.no" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 name="labNo"
                 value={formValues.labNo}
                 onChange={handleInputChange}
@@ -218,7 +253,12 @@ function ARVViralOverload() {
 
               <TextInput
                 id="date-of-birth"
-                labelText="* Date of Birth (dd/mm/yyyy)"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.date.of.birth" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="date"
                 name="dateOfBirth"
                 value={formValues.dateOfBirth}

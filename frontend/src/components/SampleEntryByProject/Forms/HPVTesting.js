@@ -203,7 +203,12 @@ function HPVTesting() {
 
                     <TextInput
                       id="received-date"
-                      labelText="* Received Date (dd/mm/yyyy)"
+                      labelText={
+                        <>
+                          <FormattedMessage id="RTN.label.received.date" />
+                          <span style={{ color: "red" }}>*</span>
+                        </>
+                      }
                       type="date"
                       name="sampleInfo.receivedDate"
                       value={formValues.sampleInfo.receivedDate}
@@ -213,7 +218,12 @@ function HPVTesting() {
 
                     <TextInput
                       id="received-time"
-                      labelText="Received Time (HH:mm)"
+                      labelText={
+                        <>
+                          <FormattedMessage id="RTN.label.received.time" />
+                          <span style={{ color: "red" }}>*</span>
+                        </>
+                      }
                       type="time"
                       name="sampleInfo.receivedTime"
                       value={formValues.sampleInfo.receivedTime}
@@ -222,7 +232,12 @@ function HPVTesting() {
 
                     <TextInput
                       id="date-taken"
-                      labelText="* Date Taken (dd/mm/yyyy)"
+                      labelText={
+                        <>
+                          <FormattedMessage id="RTN.label.date.taken" />
+                          <span style={{ color: "red" }}>*</span>
+                        </>
+                      }
                       type="date"
                       name="sampleInfo.dateTaken"
                       value={formValues.sampleInfo.dateTaken}
@@ -232,7 +247,12 @@ function HPVTesting() {
 
                     <TextInput
                       id="time-taken"
-                      labelText="Time Taken (HH:mm)"
+                      labelText={
+                        <>
+                          <FormattedMessage id="RTN.label.time.taken" />
+                          <span style={{ color: "red" }}>*</span>
+                        </>
+                      }
                       type="time"
                       name="sampleInfo.timeTaken"
                       value={formValues.sampleInfo.timeTaken}

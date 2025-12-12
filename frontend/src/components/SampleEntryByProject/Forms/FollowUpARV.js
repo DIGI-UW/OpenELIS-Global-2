@@ -158,7 +158,12 @@ function FollowUpARV() {
               />
               <TextInput
                 id="received-time"
-                labelText="Received Time (HH:mm)"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.received.time" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="time"
                 name="receivedTime"
                 value={formValues.receivedTime}
@@ -180,7 +185,12 @@ function FollowUpARV() {
               />
               <TextInput
                 id="time-taken"
-                labelText="Time Taken (HH:mm)"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.time.taken" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="time"
                 name="timeTaken"
                 value={formValues.timeTaken}

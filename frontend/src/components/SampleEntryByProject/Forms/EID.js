@@ -105,7 +105,12 @@ function EID() {
             <Stack gap={5}>
               <TextInput
                 id="received-date"
-                labelText="Received Date (dd/mm/yyyy) *"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.received.date" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="date"
                 name="receivedDate"
                 value={formValues.receivedDate}
@@ -115,7 +120,12 @@ function EID() {
 
               <TextInput
                 id="received-time"
-                labelText="Received Time (HH:mm)"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.received.time" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="time"
                 name="receivedTime"
                 value={formValues.receivedTime}
@@ -124,7 +134,12 @@ function EID() {
 
               <TextInput
                 id="date-taken"
-                labelText="Date Taken (dd/mm/yyyy) *"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.date.taken" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="date"
                 name="dateTaken"
                 value={formValues.dateTaken}
@@ -134,7 +149,12 @@ function EID() {
 
               <TextInput
                 id="time-taken"
-                labelText="Time Taken (HH:mm)"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.time.taken" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 type="time"
                 name="timeTaken"
                 value={formValues.timeTaken}
@@ -143,7 +163,12 @@ function EID() {
 
               <Select
                 id="site-name"
-                labelText="Site Name *"
+                labelText={
+                  <>
+                    <FormattedMessage id="label.audittrailreport.sitename" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 name="siteName"
                 value={formValues.siteName}
                 onChange={handleInputChange}
@@ -154,7 +179,12 @@ function EID() {
 
               <Select
                 id="site-code"
-                labelText="Site Code *"
+                labelText={
+                  <>
+                    <FormattedMessage id="siteCode" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 name="siteCode"
                 value={formValues.siteCode}
                 onChange={handleInputChange}
@@ -165,7 +195,7 @@ function EID() {
 
               <TextInput
                 id="dbs-id-number"
-                labelText="DBS ID Number *"
+                labelText="DBS ID Number +"
                 name="dbsIdNumber"
                 value={formValues.dbsIdNumber}
                 onChange={handleInputChange}
@@ -174,7 +204,7 @@ function EID() {
 
               <TextInput
                 id="dbs-site-id-number"
-                labelText="DBS Site ID Number *"
+                labelText="DBS Site ID Number +"
                 name="dbsSiteIdNumber"
                 value={formValues.dbsSiteIdNumber}
                 onChange={handleInputChange}
@@ -183,7 +213,12 @@ function EID() {
 
               <TextInput
                 id="lab-no"
-                labelText="Lab No *"
+                labelText={
+                  <>
+                    <FormattedMessage id="RTN.label.lab.no" />
+                    <span style={{ color: "red" }}>*</span>
+                  </>
+                }
                 name="labNo"
                 value={formValues.labNo}
                 onChange={handleInputChange}
