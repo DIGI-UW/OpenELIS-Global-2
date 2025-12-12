@@ -146,90 +146,90 @@ work, connectivity fields persist
 
 ### M2.1 - Branch Setup
 
-- [ ] T026 Create milestone branch:
+- [x] T026 Create milestone branch:
       `git checkout -b feat/OGC-68-storage-location-crud/m2-frontend` from
       `develop`
 
 ### M2.2 - Internationalization [US1, US2]
 
-- [ ] T027 [P] [US1] Add CRUD action strings to `frontend/src/languages/en.json`
+- [x] T027 [P] [US1] Add CRUD action strings to `frontend/src/languages/en.json`
       (add.room, edit.room, delete.room, etc.)
-- [ ] T028 [P] [US1] Add CRUD action strings to `frontend/src/languages/fr.json`
-- [ ] T029 [P] [US2] Add device connectivity field labels to
+- [x] T028 [P] [US1] Add CRUD action strings to `frontend/src/languages/fr.json`
+- [x] T029 [P] [US2] Add device connectivity field labels to
       `frontend/src/languages/en.json` (ipAddress, port, communicationProtocol)
-- [ ] T030 [P] [US2] Add device connectivity field labels to
+- [x] T030 [P] [US2] Add device connectivity field labels to
       `frontend/src/languages/fr.json`
-- [ ] T031 [P] [US1] Add deletion error messages to
+- [x] T031 [P] [US1] Add deletion error messages to
       `frontend/src/languages/en.json` (cannotDelete.hasChildren,
       cannotDelete.hasAssignments)
-- [ ] T032 [P] [US1] Add deletion error messages to
+- [x] T032 [P] [US1] Add deletion error messages to
       `frontend/src/languages/fr.json`
 
 ### M2.3 - Tests First (TDD) [US1, US2]
 
 > **TDD Rule**: Write failing tests BEFORE implementation
 
-- [ ] T033 [P] [US1] Write Jest test for StorageLocationModal component in
+- [x] T033 [P] [US1] Write Jest test for StorageLocationModal component in
       `frontend/src/components/storage/StorageLocationModal.test.jsx`
-- [ ] T034 [P] [US1] Write Jest test for DeleteLocationModal component in
+- [x] T034 [P] [US1] Write Jest test for DeleteLocationModal component in
       `frontend/src/components/storage/DeleteLocationModal.test.jsx`
-- [ ] T035 [P] [US2] Write Jest test for device connectivity form validation in
+- [x] T035 [P] [US2] Write Jest test for device connectivity form validation in
       `frontend/src/components/storage/StorageLocationModal.test.jsx`
 
 **Checkpoint**: All Jest tests should FAIL (Red phase)
 
 ### M2.4 - Modal Components [US1, US2]
 
-- [ ] T036 [US1] Create shared `StorageLocationModal.jsx` component with dynamic
+- [x] T036 [US1] Create shared `StorageLocationModal.jsx` component with dynamic
       fields by entity type in
       `frontend/src/components/storage/StorageLocationModal.jsx`
-- [ ] T037 [US2] Add IP Address, Port, Communication Protocol fields to device
+- [x] T037 [US2] Add IP Address, Port, Communication Protocol fields to device
       form in `frontend/src/components/storage/StorageLocationModal.jsx`
-- [ ] T038 [US2] Implement IP address validation (IPv4/IPv6 regex) in
+- [x] T038 [US2] Implement IP address validation (IPv4/IPv6 regex) in
       `frontend/src/components/storage/StorageLocationModal.jsx`
-- [ ] T039 [US2] Implement port validation (1-65535) in
+- [x] T039 [US2] Implement port validation (1-65535) in
       `frontend/src/components/storage/StorageLocationModal.jsx`
-- [ ] T039a [US1] Implement uniqueness validation for Location Names within
+- [x] T039a [US1] Implement uniqueness validation for Location Names within
       parent scope (display error from backend 409 response) in
       `frontend/src/components/storage/StorageLocationModal.jsx`
-- [ ] T040 [US1] Create `DeleteLocationModal.jsx` confirmation component in
+- [x] T040 [US1] Create `DeleteLocationModal.jsx` confirmation component in
       `frontend/src/components/storage/DeleteLocationModal.jsx`
 
 ### M2.5 - Tab Updates [US1]
 
-- [ ] T041 [US1] Add OverflowMenu with Edit/Delete actions to
+- [x] T041 [US1] Add OverflowMenu with Edit/Delete actions to
       `frontend/src/components/storage/StorageRoomsTab.jsx`
-- [ ] T042 [US1] Add "Add Room" button and modal integration to
+- [x] T042 [US1] Add "Add Room" button and modal integration to
       `frontend/src/components/storage/StorageRoomsTab.jsx`
-- [ ] T043 [US1] Add OverflowMenu with Edit/Delete actions to
+- [x] T043 [US1] Add OverflowMenu with Edit/Delete actions to
       `frontend/src/components/storage/StorageDevicesTab.jsx`
-- [ ] T044 [US1] Add "Add Device" button and modal integration to
+- [x] T044 [US1] Add "Add Device" button and modal integration to
       `frontend/src/components/storage/StorageDevicesTab.jsx`
-- [ ] T045 [US1] Add OverflowMenu with Edit/Delete actions to
+- [x] T045 [US1] Add OverflowMenu with Edit/Delete actions to
       `frontend/src/components/storage/StorageShelvesTab.jsx`
-- [ ] T046 [US1] Add "Add Shelf" button and modal integration to
+- [x] T046 [US1] Add "Add Shelf" button and modal integration to
       `frontend/src/components/storage/StorageShelvesTab.jsx`
-- [ ] T047 [US1] Add OverflowMenu with Edit/Delete actions to
+- [x] T047 [US1] Add OverflowMenu with Edit/Delete actions to
       `frontend/src/components/storage/StorageRacksTab.jsx`
-- [ ] T048 [US1] Add "Add Rack" button and modal integration to
+- [x] T048 [US1] Add "Add Rack" button and modal integration to
       `frontend/src/components/storage/StorageRacksTab.jsx`
 
 ### M2.6 - E2E Tests [US1, US2]
 
-- [ ] T049 [US1] Create Cypress E2E test file
+- [x] T049 [US1] Create Cypress E2E test file
       `frontend/cypress/e2e/storageLocationCrud.cy.js`
-- [ ] T050 [US1] Write E2E test: Create new Room via modal in
+- [x] T050 [US1] Write E2E test: Create new Room via modal in
       `frontend/cypress/e2e/storageLocationCrud.cy.js`
-- [ ] T051 [US1] Write E2E test: Edit existing Device in
+- [x] T051 [US1] Write E2E test: Edit existing Device in
       `frontend/cypress/e2e/storageLocationCrud.cy.js`
-- [ ] T052 [US1] Write E2E test: Delete location blocked when children exist in
+- [x] T052 [US1] Write E2E test: Delete location blocked when children exist in
       `frontend/cypress/e2e/storageLocationCrud.cy.js`
-- [ ] T053 [US2] Write E2E test: Create Device with IP/Port configuration in
+- [x] T053 [US2] Write E2E test: Create Device with IP/Port configuration in
       `frontend/cypress/e2e/storageLocationCrud.cy.js`
 
 ### M2.7 - Verification & PR
 
-- [ ] T054 Run `npm run format` and verify all Jest tests pass with `npm test`
+- [x] T054 Run `npm run format` and verify all Jest tests pass with `npm test`
 - [ ] T055 Run individual Cypress test:
       `npm run cy:run -- --spec "cypress/e2e/storageLocationCrud.cy.js"`
 - [ ] T056 Create PR: `feat/OGC-68-storage-location-crud/m2-frontend` →

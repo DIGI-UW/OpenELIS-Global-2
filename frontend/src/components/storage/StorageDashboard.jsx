@@ -51,6 +51,7 @@ import SampleActionsContainer from "./SampleStorage/SampleActionsContainer";
 import LocationActionsOverflowMenu from "./LocationManagement/LocationActionsOverflowMenu";
 import EditLocationModal from "./LocationManagement/EditLocationModal";
 import DeleteLocationModal from "./LocationManagement/DeleteLocationModal";
+import StorageLocationModal from "./StorageLocationModal";
 import PrintLabelButton from "./LocationManagement/PrintLabelButton";
 import PrintLabelConfirmationDialog from "./LocationManagement/PrintLabelConfirmationDialog";
 import LocationManagementModal from "./SampleStorage/LocationManagementModal";
@@ -181,9 +182,11 @@ const StorageDashboard = () => {
 
   // Location CRUD modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedLocationType, setSelectedLocationType] = useState(null);
+  const [selectedParentLocation, setSelectedParentLocation] = useState(null);
   const [printLabelLocation, setPrintLabelLocation] = useState(null);
 
   // Print label dialog state (single instance)
@@ -213,6 +216,78 @@ const StorageDashboard = () => {
   useEffect(() => {
     setExpandedRowIds({});
   }, [selectedTab]);
+
+  // Handle Create location
+  const handleCreateLocation = (parentLocation = null) => {
+    // Determine location type from current tab
+    const tabName = TAB_ROUTES[selectedTab] || "rooms";
+    const locationTypeMap = {
+      rooms: "room",
+      devices: "device",
+      shelves: "shelf",
+      racks: "rack",
+    };
+    const locationType = locationTypeMap[tabName] || tabName.slice(0, -1);
+    setSelectedLocationType(locationType);
+
+    // Store parent location with type information
+    if (parentLocation) {
+      // Ensure parent has type field for modal
+      const parentWithType = {
+        ...parentLocation,
+        type:
+          locationType === "device"
+            ? "room"
+            : locationType === "shelf"
+              ? "device"
+              : "shelf",
+      };
+      setSelectedParentLocation(parentWithType);
+    } else {
+      setSelectedParentLocation(null);
+    }
+    setCreateModalOpen(true);
+  };
+
+  // Handle Create modal close
+  const handleCreateModalClose = () => {
+    setCreateModalOpen(false);
+    setSelectedLocationType(null);
+    setSelectedParentLocation(null);
+  };
+
+  // Handle Create modal save
+  const handleCreateModalSave = (newLocation) => {
+    // Refresh the appropriate table based on location type
+    const tabName = TAB_ROUTES[selectedTab] || "rooms";
+    switch (tabName) {
+      case "rooms":
+        loadRooms();
+        break;
+      case "devices":
+        loadDevices();
+        break;
+      case "shelves":
+        loadShelves();
+        break;
+      case "racks":
+        loadRacks();
+        break;
+    }
+    // Refresh metrics
+    refreshMetrics();
+    // Show success notification
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "storage.add.location.success",
+        defaultMessage: "Location created successfully",
+      }),
+      kind: "success",
+    });
+    setNotificationVisible(true);
+    handleCreateModalClose();
+  };
 
   // Handle Edit location
   const handleEditLocation = (location) => {
@@ -314,7 +389,7 @@ const StorageDashboard = () => {
         break;
     }
     // Refresh metrics
-    loadMetrics();
+    refreshMetrics();
     // Show success notification
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),
@@ -3305,9 +3380,28 @@ const StorageDashboard = () => {
 
                   {/* Table with title */}
                   <Column lg={16} md={8} sm={4} className="table-section">
-                    <h3 className="table-title">
-                      <FormattedMessage id="storage.tab.rooms" />
-                    </h3>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <h3 className="table-title" style={{ margin: 0 }}>
+                        <FormattedMessage id="storage.tab.rooms" />
+                      </h3>
+                      <Button
+                        kind="primary"
+                        onClick={() => handleCreateLocation()}
+                        data-testid="add-room-button"
+                      >
+                        <FormattedMessage
+                          id="storage.add.room"
+                          defaultMessage="Add Room"
+                        />
+                      </Button>
+                    </div>
                     <DataTable
                       rows={formatRoomsData(filteredRooms)}
                       headers={roomsHeaders}
@@ -3539,9 +3633,37 @@ const StorageDashboard = () => {
 
                   {/* Table with title */}
                   <Column lg={16} md={8} sm={4} className="table-section">
-                    <h3 className="table-title">
-                      <FormattedMessage id="storage.tab.devices" />
-                    </h3>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <h3 className="table-title" style={{ margin: 0 }}>
+                        <FormattedMessage id="storage.tab.devices" />
+                      </h3>
+                      <Button
+                        kind="primary"
+                        onClick={() => {
+                          // For devices, parent room is required - use filterRoom if set, or first room
+                          const parentRoom = filterRoom
+                            ? rooms.find((r) => r.id === filterRoom)
+                            : rooms.length > 0
+                              ? rooms[0]
+                              : null;
+                          handleCreateLocation(parentRoom);
+                        }}
+                        disabled={rooms.length === 0}
+                        data-testid="add-device-button"
+                      >
+                        <FormattedMessage
+                          id="storage.add.device"
+                          defaultMessage="Add Device"
+                        />
+                      </Button>
+                    </div>
                     <DataTable
                       rows={formatDevicesData(filteredDevices)}
                       headers={devicesHeaders}
@@ -3836,9 +3958,37 @@ const StorageDashboard = () => {
 
                   {/* Table with title */}
                   <Column lg={16} md={8} sm={4} className="table-section">
-                    <h3 className="table-title">
-                      <FormattedMessage id="storage.tab.shelves" />
-                    </h3>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <h3 className="table-title" style={{ margin: 0 }}>
+                        <FormattedMessage id="storage.tab.shelves" />
+                      </h3>
+                      <Button
+                        kind="primary"
+                        onClick={() => {
+                          // For shelves, parent device is required - use filterDevice if set, or first device
+                          const parentDevice = filterDevice
+                            ? devices.find((d) => d.id === filterDevice)
+                            : devices.length > 0
+                              ? devices[0]
+                              : null;
+                          handleCreateLocation(parentDevice);
+                        }}
+                        disabled={devices.length === 0}
+                        data-testid="add-shelf-button"
+                      >
+                        <FormattedMessage
+                          id="storage.add.shelf"
+                          defaultMessage="Add Shelf"
+                        />
+                      </Button>
+                    </div>
                     <DataTable
                       rows={formatShelvesData(filteredShelves)}
                       headers={shelvesHeaders}
@@ -4133,9 +4283,38 @@ const StorageDashboard = () => {
 
                   {/* Table with title */}
                   <Column lg={16} md={8} sm={4} className="table-section">
-                    <h3 className="table-title">
-                      <FormattedMessage id="storage.tab.racks" />
-                    </h3>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <h3 className="table-title" style={{ margin: 0 }}>
+                        <FormattedMessage id="storage.tab.racks" />
+                      </h3>
+                      <Button
+                        kind="primary"
+                        onClick={() => {
+                          // For racks, parent shelf is required - use first shelf from filtered shelves
+                          const parentShelf =
+                            filteredShelves.length > 0
+                              ? filteredShelves[0]
+                              : shelves.length > 0
+                                ? shelves[0]
+                                : null;
+                          handleCreateLocation(parentShelf);
+                        }}
+                        disabled={shelves.length === 0}
+                        data-testid="add-rack-button"
+                      >
+                        <FormattedMessage
+                          id="storage.add.rack"
+                          defaultMessage="Add Rack"
+                        />
+                      </Button>
+                    </div>
                     <DataTable
                       rows={formatRacksData(filteredRacks)}
                       headers={racksHeaders}
@@ -4463,6 +4642,22 @@ const StorageDashboard = () => {
       </Grid>
 
       {/* Location CRUD Modals */}
+      <StorageLocationModal
+        open={createModalOpen}
+        locationType={selectedLocationType}
+        mode="create"
+        parentRoom={
+          selectedLocationType === "device" ? selectedParentLocation : null
+        }
+        parentDevice={
+          selectedLocationType === "shelf" ? selectedParentLocation : null
+        }
+        parentShelf={
+          selectedLocationType === "rack" ? selectedParentLocation : null
+        }
+        onClose={handleCreateModalClose}
+        onSave={handleCreateModalSave}
+      />
       <EditLocationModal
         open={editModalOpen}
         location={selectedLocation}

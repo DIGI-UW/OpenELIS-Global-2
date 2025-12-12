@@ -16,8 +16,7 @@
 // Import commands.js using ES2015 syntax:
 import "./commands";
 
-// DISABLED: Storage test support (001-sample-storage feature)
-// Storage tests are temporarily disabled - uncomment to re-enable
+// DISABLED by default: Storage test support (import per-spec when needed)
 // import "./load-storage-fixtures";
 // import "./storage-setup";
 
