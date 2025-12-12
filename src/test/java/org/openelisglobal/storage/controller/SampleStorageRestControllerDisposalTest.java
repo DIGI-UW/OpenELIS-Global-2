@@ -1,6 +1,8 @@
 package org.openelisglobal.storage.controller;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -143,4 +145,40 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                 post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isOk());
     }
-}
+
+    @Test
+    public void testDisposal_IncrementsDisposedMetricCount() throws Exception {
+
+        MvcResult initialMetrics = mockMvc.perform(get("/rest/storage/sample-items?countOnly=true"))
+                .andExpect(status().isOk()).andReturn();
+
+        String initialContent = initialMetrics.getResponse().getContentAsString();
+        com.fasterxml.jackson.databind.JsonNode initialJson = objectMapper.readTree(initialContent);
+        com.fasterxml.jackson.databind.JsonNode initialMetricsNode = initialJson.get(0);
+
+        int initialDisposed = initialMetricsNode.get("disposed").asInt();
+        int initialActive = initialMetricsNode.get("active").asInt();
+
+        String sampleItemId = "EXT-1002";
+
+        String disposalRequest = String
+                .format("{\"sampleItemId\":\"%s\",\"reason\":\"expired\",\"method\":\"autoclave\"}", sampleItemId);
+
+        mockMvc.perform(post("/rest/storage/sample-items/dispose").contentType(MediaType.APPLICATION_JSON)
+                .content(disposalRequest)).andExpect(status().isOk());
+
+        MvcResult finalMetrics = mockMvc.perform(get("/rest/storage/sample-items?countOnly=true"))
+                .andExpect(status().isOk()).andReturn();
+
+        String finalContent = finalMetrics.getResponse().getContentAsString();
+        com.fasterxml.jackson.databind.JsonNode finalJson = objectMapper.readTree(finalContent);
+        com.fasterxml.jackson.databind.JsonNode finalMetricsNode = finalJson.get(0);
+
+        int finalDisposed = finalMetricsNode.get("disposed").asInt();
+        int finalActive = finalMetricsNode.get("active").asInt();
+
+        assertEquals("Disposed count should increment by exactly 1", initialDisposed + 1, finalDisposed);
+        assertEquals("Active count should decrement by exactly 1", initialActive - 1, finalActive);
+    }
+
+}git add
