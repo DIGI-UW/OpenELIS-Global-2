@@ -95,11 +95,11 @@
 
         <insert tableName="workflow_page_template" schemaName="clinlims">
             <column name="id" value="3"/>
-            <column name="name" value="Aliquoting"/>
+            <column name="name" value="Additional Assays"/>
             <column name="display_key" value="workflow.page.aliquoting"/>
-            <column name="description" value="Create aliquots from primary samples"/>
-            <column name="default_instructions" value="Create aliquots from primary samples as needed for testing. Label each aliquot with unique identifier."/>
-            <column name="default_content" value="Aliquoting - Bulk data entry for aliquot creation"/>
+            <column name="description" value="Perform supplementary tests or assays prior to extraction"/>
+            <column name="default_instructions" value="Record test type, operator, reagents used, and results"/>
+            <column name="default_content" value="Record test type, operator, reagents used, and results"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
             <column name="display_order" value="3"/>
             <column name="is_active" valueBoolean="true"/>
