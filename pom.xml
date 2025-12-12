@@ -797,6 +797,9 @@
                 <version>2.43.0</version>
                 <configuration>
                     <pom>
+                        <includes>
+                            <include>pom.xml</include>
+                        </includes>
                         <sortPom>
                             <expandEmptyElements>false</expandEmptyElements>
                         </sortPom>
@@ -818,6 +821,7 @@
                             </includes>
                             <excludes>
                                 <exclude>.idea/**</exclude>
+                                <exclude>.cursor/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -850,12 +854,15 @@
                             <!-- ignore build files -->
                             <excludes>
                                 <exclude>.idea/**</exclude>
+                                <exclude>.cursor/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
                                 <exclude>bin/**</exclude>
                                 <exclude>tmp/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
+                                <exclude>tools/astm-http-bridge/**</exclude>
+                                <exclude>tools/astm-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                             </excludes>
@@ -871,7 +878,10 @@
                             </includes>
                             <excludes>
                                 <exclude>**/target/**</exclude>
+                                <exclude>.cursor/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
+                                <exclude>tools/astm-http-bridge/**</exclude>
+                                <exclude>tools/astm-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                                 <exclude>frontend/**</exclude>
