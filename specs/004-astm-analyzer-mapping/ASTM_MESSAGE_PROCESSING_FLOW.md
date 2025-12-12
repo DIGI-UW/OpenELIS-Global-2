@@ -466,3 +466,4 @@ analyzers:
   `src/main/java/org/openelisglobal/analyzerresults/service/AnalyzerResultsService.java`
 - **Feature Specification**: `specs/004-astm-analyzer-mapping/spec.md` (FR-001,
   FR-011, FR-021)
+
