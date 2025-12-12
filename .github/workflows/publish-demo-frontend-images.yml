@@ -58,7 +58,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}
+          images: ${{ env.DOCKER_NAME }}-frontend-demo
 
       - name: Build and push Docker image
         id: build
@@ -69,9 +69,9 @@ jobs:
           platforms: linux/${{ matrix.platform }}
           # tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}:${{ matrix.platform }}-buildcache-${{ env.BRANCH_NAME }}
-          cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}:${{ matrix.platform }}-buildcache-${{ env.BRANCH_NAME }},mode=max
-          outputs: type=image,name=${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-demo:${{ matrix.platform }}-buildcache-demo
+          cache-to: type=registry,ref=${{ env.DOCKER_NAME }}-frontend-demo:${{ matrix.platform }}-buildcache-demo,mode=max
+          outputs: type=image,name=${{ env.DOCKER_NAME }}-frontend-demo,push-by-digest=true,name-canonical=true,push=true
       - name: Export digest
         run: |
           mkdir -p /tmp/digests/frontend
@@ -117,8 +117,8 @@ jobs:
         working-directory: /tmp/digests/frontend
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}@sha256:%s ' *)
+            $(printf '${{ env.DOCKER_NAME }}-frontend-demo@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_NAME }}-frontend-${{ env.BRANCH_NAME }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.DOCKER_NAME }}-frontend-demo:${{ steps.meta.outputs.version }}
