@@ -269,7 +269,9 @@ const CopyMappingsModal = ({
           >
             <InlineNotification
               kind="warning"
-              title={intl.formatMessage({ id: "analyzer.copyMappings.warning" })}
+              title={intl.formatMessage({
+                id: "analyzer.copyMappings.warning",
+              })}
               lowContrast
               hideCloseButton
             />
