@@ -9,7 +9,10 @@
   <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml"/>
   <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml"/>
   <include relativeToChangelogFile="true" file="003-create-indexes.xml"/>
-  <include relativeToChangelogFile="true" file="004-insert-test-storage-data.xml" context="test"/>
+  <!-- NOTE: Storage test fixtures are loaded via DBUnit datasets in tests.
+       Keep Liquibase focused on schema migrations; do not seed storage hierarchy
+       test data here to avoid dual sources of truth. -->
+  <!-- <include relativeToChangelogFile="true" file="004-insert-test-storage-data.xml" context="test"/> -->
   <include relativeToChangelogFile="true" file="005-add-storage-menu-item.xml"/>
   <include relativeToChangelogFile="true" file="006-add-storage-menu-localization.xml"/>
   <include relativeToChangelogFile="true" file="008-add-short-code-columns.xml"/>
