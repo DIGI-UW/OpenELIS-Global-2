@@ -75,8 +75,10 @@ describe("Login Test Cases", function () {
 
   it("Validates user authentication", function () {
     usersData.forEach((user) => {
-      // Reloads the page
-      cy.reload();
+      // Ensure each iteration starts from the login screen.
+      // After a successful login, the session may persist; a reload would keep
+      // the user on the authenticated view and break subsequent login attempts.
+      cy.visit("/login");
 
       login.enterUsername(user.username);
       login.enterPassword(user.password);
@@ -85,6 +87,7 @@ describe("Login Test Cases", function () {
       if (user.correctPass === true) {
         cy.get("#mainHeader").should("exist");
         cy.get("[data-cy='menuButton']").should("exist");
+        login.signOut();
       }
     });
   });
