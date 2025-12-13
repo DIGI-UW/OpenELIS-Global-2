@@ -36,11 +36,11 @@ module.exports = defineConfig({
       // Storage tasks below remain registered but won't be called (harmless)
       // To re-enable: Uncomment imports in e2e.js and remove excludeSpecPattern
 
-      // Task to log messages to terminal (for console.log capture)
-      // This is used to forward browser console logs to terminal
+      // Register all Cypress tasks in ONE handler (Cypress does not merge task handlers).
+      // This keeps logging/diagnostics and fixture utilities available across specs.
       on("task", {
+        // Log messages to the Node process stdout (captured by CI/tee logs)
         log(message, options = {}) {
-          // Only log if not explicitly disabled
           if (options.log !== false) {
             console.log(message);
           }
@@ -50,18 +50,14 @@ module.exports = defineConfig({
           console.log(JSON.stringify(obj, null, 2));
           return null;
         },
-      });
 
-      // Task to load storage test fixtures
-      on("task", {
+        // Storage test fixture helpers
         loadStorageTestData() {
           const { execSync } = require("child_process");
-          // Use unified fixture loader script
           const loaderScript = path.join(
             PROJECT_ROOT,
             "src/test/resources/load-test-fixtures.sh",
           );
-          // Verify script exists
           if (!fs.existsSync(loaderScript)) {
             throw new Error(
               `Fixture loader script not found: ${loaderScript} (PROJECT_ROOT: ${PROJECT_ROOT})`,
@@ -83,7 +79,6 @@ module.exports = defineConfig({
         },
         checkStorageFixturesExist() {
           const { execSync } = require("child_process");
-          // Check if E2E test data exists (quick check for a known test room)
           const checkSql = `
             SELECT COUNT(*) as count FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');
           `;
@@ -97,7 +92,7 @@ module.exports = defineConfig({
               },
             );
             const count = parseInt(result.trim(), 10);
-            return count >= 2; // At least 2 test rooms exist
+            return count >= 2;
           } catch (error) {
             console.error("Error checking storage fixtures:", error);
             return false;
@@ -377,6 +372,7 @@ module.exports = defineConfig({
     testIsolation: false,
     // DISABLED: Exclude storage tests (001-sample-storage feature)
     // Remove "**/storage*.cy.js" from this array to re-enable storage tests
+    // NOTE: OGC-68 storageLocationCRUD.cy.js tests pass (verified 2025-12-12)
     excludeSpecPattern: ["**/storage*.cy.js"],
     env: {
       STARTUP_WAIT_MILLISECONDS: 300000,
