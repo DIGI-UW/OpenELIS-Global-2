@@ -345,4 +345,3 @@ production robustness.
 - [Feature Specification](./spec.md)
 - [CLSI LIS1-A Standard](../../.dev-docs/OGC-60/CLSI-LIS1-A.pdf)
 - [ASTM LIS2-A2 Standard](../../.dev-docs/OGC-60/LIS01A2E.pdf)
-

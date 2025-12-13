@@ -55,13 +55,15 @@ QC messages are reprocessed automatically.
 
 **Constitution Principle IX Compliance**: This feature exceeds 3 days effort and
 MUST be broken into Validation Milestones. Each milestone corresponds to a Pull
-Request targeting the specs branch (`spec/OGC-49-astm-analyzer-mapping`).
+Request. **Current state**: M1–M3 have been implemented; the remaining work is
+consolidated into M4 (integration/polish).
 
-| Milestone | Description             | User Stories  | Task Ranges                                             | Estimated Days | Dependencies | PR    |
-| --------- | ----------------------- | ------------- | ------------------------------------------------------- | -------------- | ------------ | ----- |
-| M1        | Backend core + database | US1, US2, US3 | T001-T011, T012-T047, T089-T103, T151a-T153c, T182-T196 | ~15            | None         | #2429 |
-| M2        | Frontend analyzers      | US1, US2, US3 | T010, T048-T088, T140, T174-T181                        | ~12            | M1           | #2430 |
-| M3        | Query bridge work       | FR-002        | T104-T105, T106-T107, T108-T109                         | ~5             | M1           | #2431 |
+| Milestone | Description             | User Stories/FRs | Status    | PR     |
+| --------- | ----------------------- | ---------------- | --------- | ------ |
+| M1        | Backend core + database | US1–US3          | Completed | #2429  |
+| M2        | Frontend analyzers      | US1–US3          | Completed | #2430  |
+| M3        | Query bridge work       | FR-002           | Completed | #2431  |
+| M4        | Integration + polish    | Cross-cutting    | Remaining | (this) |
 
 **Milestone Details**:
 
@@ -79,6 +81,10 @@ Request targeting the specs branch (`spec/OGC-49-astm-analyzer-mapping`).
   communication with ASTM-HTTP Bridge, query job management, field parsing from
   ASTM responses. Enables FR-002 (Query Analyzer functionality) to retrieve
   available fields from analyzers via bi-directional bridge communication.
+- **M4 (Integration + polish)**: Consolidate and validate cross-milestone
+  integration, CI stability, and documentation alignment. This includes:
+  persistence/config consistency, remaining polish tasks, and verification
+  checklists.
 
 **Branch Naming** (Constitution Principle IX):
 
@@ -120,8 +126,11 @@ backend)
 
 **Constraints**:
 
-- MUST use annotation-based JPA mappings (NO XML mapping files per Constitution
-  IV)
+- New entities SHOULD be annotation-based JPA mappings; however, this feature
+  MAY use legacy Hibernate XML mappings (`.hbm.xml`) where required for analyzer
+  backward compatibility. Any XML-mapping usage MUST be explicitly documented
+  (impacted entities + rationale) and include a migration path to annotations
+  per Constitution Principle IV legacy extension exception.
 - MUST follow 5-layer architecture (Valueholder→DAO→Service→Controller→Form)
 - MUST use Carbon Design System exclusively (NO Bootstrap/Tailwind)
 - MUST internationalize all UI strings via React Intl
