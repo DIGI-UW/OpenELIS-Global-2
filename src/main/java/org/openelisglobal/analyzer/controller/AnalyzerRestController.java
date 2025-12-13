@@ -626,6 +626,11 @@ public class AnalyzerRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> getQueryStatus(@PathVariable String id, @PathVariable String jobId) {
         try {
             Map<String, Object> status = analyzerQueryService.getStatus(id, jobId);
+            if (status == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Query job not found or expired: " + jobId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            }
             return ResponseEntity.ok(status);
         } catch (Exception e) {
             logger.error("Error getting query status for analyzer: " + id + ", job: " + jobId, e);
