@@ -101,12 +101,14 @@ docker exec -it database.openelis.org psql -U clinlims -d clinlims -f /tmp/stora
   coordinates
 - **Rack R1** (Shelf-1): 8x12 grid - Alternative location
 
-### Positions (100+)
+### Boxes & Coordinates
 
-- **8 positions** in Rack R1 (A1-A8)
-- **100 positions** in Rack R2 (1-1 through 10-10) - 80 occupied, 20 empty
-- **3 positions** in Rack R3 (RED-01, RED-02, RED-01 duplicate)
-- **1 position** in inactive location (X1)
+Storage capacity and position schemas are modeled via **boxes** (`storage_box`)
+and **assignment coordinates**
+(`sample_storage_assignment.position_coordinate`).
+
+- Boxes define grid shape (rows/columns) and schema hint (e.g. letter-number).
+- Assignments store coordinates like `A1`, `A5`, `X1` on the assignment record.
 
 ## Test Scenarios Enabled
 
@@ -136,47 +138,36 @@ docker exec -it database.openelis.org psql -U clinlims -d clinlims -f /tmp/stora
 ## Verification Queries
 
 ```sql
--- View all storage locations
+-- View storage hierarchy (foundation data from Liquibase)
 SELECT r.name AS room, d.name AS device, s.label AS shelf, k.label AS rack,
-       COUNT(p.id) AS total_positions,
-       SUM(CASE WHEN p.occupied THEN 1 ELSE 0 END) AS occupied
+       COUNT(b.id) AS box_count
 FROM storage_room r
 LEFT JOIN storage_device d ON d.parent_room_id = r.id
 LEFT JOIN storage_shelf s ON s.parent_device_id = d.id
 LEFT JOIN storage_rack k ON k.parent_shelf_id = s.id
-LEFT JOIN storage_position p ON p.parent_rack_id = k.id
+LEFT JOIN storage_box b ON b.parent_rack_id = k.id
 GROUP BY r.name, d.name, s.label, k.label
 ORDER BY r.name, d.name, s.label, k.label;
 
--- Check capacity for Rack R2 (should show 80%)
+-- Count occupied coordinates (from assignments)
 SELECT
-    k.label,
-    k.rows * k.columns AS total_capacity,
-    COUNT(p.id) AS position_count,
-    SUM(CASE WHEN p.occupied THEN 1 ELSE 0 END) AS occupied,
-    ROUND(100.0 * SUM(CASE WHEN p.occupied THEN 1 ELSE 0 END) / (k.rows * k.columns), 2) AS occupancy_percentage
-FROM storage_rack k
-LEFT JOIN storage_position p ON p.parent_rack_id = k.id
-WHERE k.id = '31'
-GROUP BY k.id, k.label, k.rows, k.columns;
-
--- List available (unoccupied) positions
-SELECT
-    r.code || ' > ' || d.code || ' > ' || s.label || ' > ' || k.label || ' > ' || p.coordinate AS hierarchical_path,
-    p.id AS position_id
-FROM storage_position p
-JOIN storage_rack k ON k.id = p.parent_rack_id
-JOIN storage_shelf s ON s.id = k.parent_shelf_id
-JOIN storage_device d ON d.id = s.parent_device_id
-JOIN storage_room r ON r.id = d.parent_room_id
-WHERE p.occupied = false AND r.active = true AND d.active = true
-ORDER BY hierarchical_path
-LIMIT 20;
+    k.label AS rack_label,
+    COUNT(*) AS assigned_count
+FROM sample_storage_assignment ssa
+JOIN storage_rack k ON k.id = ssa.location_id AND ssa.location_type = 'rack'
+GROUP BY k.label
+ORDER BY k.label;
 ```
 
 ## Clean Up
 
-To remove all test data:
+To remove E2E test data, use the reset script:
+
+```bash
+./src/test/resources/reset-test-database.sh --force
+```
+
+To remove E2E test data manually (rare), delete in FK-safe order:
 
 ```sql
 DELETE FROM result WHERE analysis_id IN (SELECT id FROM analysis WHERE sampitem_id IN (SELECT id FROM sample_item WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%')));
@@ -186,11 +177,6 @@ DELETE FROM sample_storage_assignment WHERE sample_item_id IN (SELECT id FROM sa
 DELETE FROM sample_item WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%');
 DELETE FROM sample_human WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%');
 DELETE FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%';
-DELETE FROM storage_position WHERE id BETWEEN 100 AND 10000;
-DELETE FROM storage_rack WHERE id BETWEEN 30 AND 100;
-DELETE FROM storage_shelf WHERE id BETWEEN 20 AND 100;
-DELETE FROM storage_device WHERE id BETWEEN 10 AND 100;
-DELETE FROM storage_room WHERE id BETWEEN 1 AND 100;
 ```
 
 ## Integration Test Usage
@@ -222,13 +208,14 @@ With these fixtures loaded:
 
 For Cypress tests (`storageAssignment.cy.js`, `storageDashboard.cy.js`, etc.),
 test fixtures are automatically loaded via the `before()` hook using
-`cy.loadStorageFixtures()`. This loads both storage hierarchy and E2E test data
-(patients, samples, assignments).
+`cy.loadStorageFixtures()`. Storage hierarchy is provided by Liquibase; the
+fixture loader inserts E2E test data (patients, samples, assignments).
 
 ### Manual Loading (if needed)
 
 ```bash
-# Load complete test fixtures (storage hierarchy + E2E test data)
+# Load E2E fixtures (patients/samples/assignments). Storage hierarchy must exist
+# (Liquibase context="test").
 psql -U clinlims -d clinlims -f src/test/resources/storage-test-data.sql
 
 # Or use the shell script
@@ -298,7 +285,7 @@ SELECT setval('storage_room_seq', 1000, false);
 SELECT setval('storage_device_seq', 1000, false);
 SELECT setval('storage_shelf_seq', 1000, false);
 SELECT setval('storage_rack_seq', 1000, false);
-SELECT setval('storage_position_seq', 10000, false);
+SELECT setval('storage_box_seq', 10000, false);
 EOF
 ```
 

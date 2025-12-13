@@ -7,7 +7,8 @@
 #
 # Files loaded (in order):
 #   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
-#   2. storage-test-data.sql - Storage hierarchy + sample data
+#   2. storage-test-data.sql - E2E test data (patients, samples, assignments)
+#      (storage hierarchy is loaded by Liquibase with context="test")
 
 set -e
 
@@ -172,7 +173,7 @@ verify_fixtures() {
             UNION ALL
             SELECT '', 'Racks', COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40
             UNION ALL
-            SELECT '', 'Positions', COUNT(*) FROM storage_position WHERE id BETWEEN 100 AND 10000;
+            SELECT '', 'Boxes', COUNT(*) FROM storage_box WHERE id BETWEEN 100 AND 10000;
         " | sed 's/^[[:space:]]*//' | grep -v '^$'
 
         echo ""
@@ -211,7 +212,7 @@ verify_fixtures() {
             UNION ALL
             SELECT '', 'Racks', COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40
             UNION ALL
-            SELECT '', 'Positions', COUNT(*) FROM storage_position WHERE id BETWEEN 100 AND 10000;
+            SELECT '', 'Boxes', COUNT(*) FROM storage_box WHERE id BETWEEN 100 AND 10000;
         " | sed 's/^[[:space:]]*//' | grep -v '^$'
 
         echo ""
