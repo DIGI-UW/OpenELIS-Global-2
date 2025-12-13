@@ -45,6 +45,9 @@ public class AnalyzerRestController extends BaseRestController {
     @Autowired
     private AnalyzerFieldService analyzerFieldService;
 
+    @Autowired
+    private org.openelisglobal.analyzer.service.AnalyzerQueryService analyzerQueryService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -593,5 +596,42 @@ public class AnalyzerRestController extends BaseRestController {
         }
 
         return response;
+    }
+
+    /**
+     * POST /rest/analyzer/analyzers/{id}/query Start an asynchronous query job for
+     * an analyzer
+     */
+    @PostMapping("/analyzers/{id}/query")
+    public ResponseEntity<Map<String, Object>> queryAnalyzer(@PathVariable String id) {
+        try {
+            String jobId = analyzerQueryService.startQuery(id);
+            Map<String, Object> response = new HashMap<>();
+            response.put("jobId", jobId);
+            response.put("analyzerId", id);
+            response.put("status", "started");
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        } catch (Exception e) {
+            logger.error("Error starting query job for analyzer: " + id, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * GET /rest/analyzer/analyzers/{id}/query/{jobId}/status Get query job status
+     */
+    @GetMapping("/analyzers/{id}/query/{jobId}/status")
+    public ResponseEntity<Map<String, Object>> getQueryStatus(@PathVariable String id, @PathVariable String jobId) {
+        try {
+            Map<String, Object> status = analyzerQueryService.getStatus(id, jobId);
+            return ResponseEntity.ok(status);
+        } catch (Exception e) {
+            logger.error("Error getting query status for analyzer: " + id + ", job: " + jobId, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
     }
 }

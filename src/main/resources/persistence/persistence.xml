@@ -54,6 +54,13 @@
         <class>org.openelisglobal.notebook.valueholder.NoteBookComment</class>
         <class>org.openelisglobal.notebook.valueholder.NoteBookSample</class>
 
+        <!-- Inventory Management entities -->
+        <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
+
         <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
         <!-- AnalyzerConfiguration, AnalyzerError, CustomFieldType: annotation-based (no XML entity refs) -->
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration</class>
@@ -65,10 +72,6 @@
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
-            <!-- Ensure XML mappings take precedence over annotations for entities registered in both -->
-            <property name="hibernate.mapping.precedence" value="hbm, class" />
-            <property name="hibernate.physical_naming_strategy"
-                value="org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy" />
             <property name="hibernate.search.backend.directory.type" value="local-filesystem" />
             <property name="hibernate.search.backend.directory.root" value="/var/lib/lucene_index" />
             <property name="hibernate.search.backend.analysis.configurer" value="class:org.openelisglobal.hibernate.search.analysis.CustomLuceneAnalysisConfigurer"/>

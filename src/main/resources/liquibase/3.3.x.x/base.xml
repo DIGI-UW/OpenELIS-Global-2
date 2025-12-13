@@ -31,4 +31,6 @@
 
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="../storage/storage-device-connectivity.xml"/>
+  <!-- ASTM Analyzer Field Mapping Feature (004-astm-analyzer-mapping) -->
+  <include relativeToChangelogFile="true" file="../analyzer/base.xml"/>
 </databaseChangeLog>
