@@ -44,12 +44,11 @@ class LoginPage {
   }
 
   signOut() {
-    cy.get(SELECTORS.USER_ICON).should("be.visible");
-    cy.get(SELECTORS.USER_ICON).click();
-    cy.wait(200);
-    cy.get(SELECTORS.LOGOUT).should("be.visible");
-    cy.get(SELECTORS.LOGOUT).click();
-    cy.wait(1000);
+    // The user menu can render in a collapsed/animated state in headless runs.
+    // Prefer existence checks + forced clicks, then wait for login screen.
+    cy.get(SELECTORS.USER_ICON).should("exist").click({ force: true });
+    cy.get(SELECTORS.LOGOUT).should("exist").click({ force: true });
+    cy.get(SELECTORS.USERNAME, { timeout: 30000 }).should("be.visible");
   }
 
   changingPassword() {

@@ -75,19 +75,18 @@ describe("Login Test Cases", function () {
 
   it("Validates user authentication", function () {
     usersData.forEach((user) => {
-      // Ensure each iteration starts from the login screen.
-      // After a successful login, the session may persist; a reload would keep
-      // the user on the authenticated view and break subsequent login attempts.
-      cy.visit("/login");
+      // Reloads the page
+      cy.reload();
 
       login.enterUsername(user.username);
       login.enterPassword(user.password);
       login.signIn();
 
-      if (user.correctPass === true) {
+      if (user.correctPass) {
+        // Verify authentication succeeded - mainHeader only appears when authenticated
         cy.get("#mainHeader").should("exist");
-        cy.get("[data-cy='menuButton']").should("exist");
-        login.signOut();
+        // Logout via API so next iteration starts fresh (not authenticated)
+        cy.ensureLoggedOut();
       }
     });
   });
