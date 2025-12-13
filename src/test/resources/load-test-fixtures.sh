@@ -13,7 +13,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
@@ -283,11 +283,10 @@ if [ "$USE_DOCKER" = true ]; then
 
     # Load storage hierarchy + E2E test data via DBUnit (same source as JUnit tests)
     echo "Loading storage fixtures via DBUnit loader..."
-    cd "$PROJECT_ROOT"
-    mvn -q exec:java \
+    (cd "$PROJECT_ROOT" && mvn -q exec:java \
         -Dexec.mainClass="org.openelisglobal.testutils.DbUnitFixtureLoader" \
         -Dexec.args="--docker testdata/user-role.xml testdata/storage-e2e.xml" \
-        -Dexec.classpathScope=test
+        -Dexec.classpathScope=test)
 
     if [ $? -eq 0 ]; then
         echo ""
@@ -355,11 +354,10 @@ else
 
     # Load storage hierarchy + E2E test data via DBUnit (same source as JUnit tests)
     echo "Loading storage fixtures via DBUnit loader..."
-    cd "$PROJECT_ROOT"
-    mvn -q exec:java \
+    (cd "$PROJECT_ROOT" && mvn -q exec:java \
         -Dexec.mainClass="org.openelisglobal.testutils.DbUnitFixtureLoader" \
         -Dexec.args="--jdbc-url jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME --user $DB_USER --password $DB_PASSWORD testdata/user-role.xml testdata/storage-e2e.xml" \
-        -Dexec.classpathScope=test
+        -Dexec.classpathScope=test)
 
     if [ $? -eq 0 ]; then
         echo ""

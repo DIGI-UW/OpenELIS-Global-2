@@ -49,9 +49,39 @@ public class DbUnitFixtureLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(DbUnitFixtureLoader.class);
 
-    private static final String DEFAULT_DOCKER_JDBC_URL = "jdbc:postgresql://localhost:5432/clinlims";
+    // Docker defaults - port can be overridden via DB_PORT environment variable
+    // All docker-compose files (dev/test/build/main) consistently use 15432:5432 mapping
+    // This matches the port mapping across all environments (develop, feature branches, etc.)
+    // For different environments, set DB_PORT or use --jdbc-url explicitly
+    private static final String DEFAULT_DOCKER_HOST = "localhost";
+    private static final String DEFAULT_DOCKER_DB = "clinlims";
     private static final String DEFAULT_DOCKER_USER = "clinlims";
     private static final String DEFAULT_DOCKER_PASSWORD = "clinlims";
+    // Default port matches docker-compose port mapping (15432:5432) used across all
+    // environments
+    private static final int DEFAULT_DOCKER_PORT = 15432;
+
+    private static int getDockerPort() {
+        // Check environment variable first (allows override for different environments)
+        String portEnv = System.getenv("DB_PORT");
+        if (portEnv != null && !portEnv.isEmpty()) {
+            try {
+                int port = Integer.parseInt(portEnv);
+                logger.info("Using DB_PORT from environment: {}", port);
+                return port;
+            } catch (NumberFormatException e) {
+                logger.warn("Invalid DB_PORT environment variable: {}, using default {}", portEnv, DEFAULT_DOCKER_PORT);
+            }
+        }
+        // Default matches docker-compose port mapping used in dev/test/build/main
+        // environments
+        return DEFAULT_DOCKER_PORT;
+    }
+
+    private static String getDefaultDockerJdbcUrl() {
+        int port = getDockerPort();
+        return String.format("jdbc:postgresql://%s:%d/%s", DEFAULT_DOCKER_HOST, port, DEFAULT_DOCKER_DB);
+    }
 
     public static void main(String[] args) {
         if (args.length == 0) {
@@ -117,7 +147,7 @@ public class DbUnitFixtureLoader {
         // Apply Docker defaults if requested
         if (useDocker) {
             if (jdbcUrl == null) {
-                jdbcUrl = DEFAULT_DOCKER_JDBC_URL;
+                jdbcUrl = getDefaultDockerJdbcUrl();
             }
             if (user == null) {
                 user = DEFAULT_DOCKER_USER;
@@ -162,7 +192,8 @@ public class DbUnitFixtureLoader {
                 "  java -cp ... org.openelisglobal.testutils.DbUnitFixtureLoader [OPTIONS] <dataset1.xml> [dataset2.xml ...]");
         System.out.println();
         System.out.println("Options:");
-        System.out.println("  --docker              Use Docker defaults (localhost:5432/clinlims, user=clinlims)");
+        System.out.println("  --docker              Use Docker defaults (localhost:15432/clinlims, user=clinlims)");
+        System.out.println("                        Port can be overridden via DB_PORT environment variable");
         System.out.println("  --jdbc-url URL        JDBC connection URL");
         System.out.println("  --user USER           Database user");
         System.out.println("  --password PASSWORD   Database password");
@@ -240,13 +271,17 @@ public class DbUnitFixtureLoader {
 
     private static void cleanRowsInConnection(IDatabaseConnection dbUnitConnection, String[] tableNames)
             throws SQLException {
-        try (Connection conn = dbUnitConnection.getConnection(); Statement stmt = conn.createStatement()) {
+        // Get connection from dbUnitConnection but don't close it (dbUnitConnection
+        // manages lifecycle)
+        Connection conn = dbUnitConnection.getConnection();
+        try (Statement stmt = conn.createStatement()) {
             for (String tableName : tableNames) {
                 String truncateQuery = "TRUNCATE TABLE " + tableName + " RESTART IDENTITY CASCADE";
                 logger.debug("Truncating table: {}", tableName);
                 stmt.execute(truncateQuery);
             }
         }
+        // Note: Don't close conn here - dbUnitConnection manages it
     }
 
     private static void bumpStorageSequences(Connection connection) throws SQLException {
