@@ -244,8 +244,8 @@ workflow for complex logic.
 
 ### Test Slicing Strategy Decision Tree (OpenELIS Global 2)
 
-**OpenELIS Global 2 note:** Use `BaseWebContextSensitiveTest` for Spring-context tests
-and use DBUnit Flat XML datasets for DB-backed tests via
+**OpenELIS Global 2 note:** Use `BaseWebContextSensitiveTest` for Spring-context
+tests and use DBUnit Flat XML datasets for DB-backed tests via
 `executeDataSetWithStateManagement("testdata/<file>.xml")`.
 
 **Decision Tree**:
