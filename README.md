@@ -22,6 +22,23 @@ Please vist our [website](http://www.openelis-global.org/) for more information.
 You can find more information on how to set up OpenELIS at our
 [docs page](http://docs.openelis-global.org/)
 
+## 📊 Dashboard Overview
+
+OpenELIS Global provides an operational dashboard designed to give laboratory
+staff and administrators a quick, high-level view of daily laboratory activity
+and system performance.
+
+The dashboard aggregates key indicators from across the system to help users:
+- Monitor the number of tests currently in progress
+- Identify orders awaiting validation or review
+- Track daily completed and rejected test orders
+- Observe turnaround time trends for laboratory workflows
+
+By presenting this information in a single view, the dashboard supports better
+decision-making, helps laboratories identify bottlenecks, and improves
+operational efficiency without requiring users to navigate through multiple
+screens.
+
 ### CI Status
 
 [![Maven Build Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/ci.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/ci.yml)
@@ -172,6 +189,11 @@ accessing any of these links, simply follow these steps:
 1.  To run Individual Integration Test
 
          mvn verify -Dit.test=<packageName>.<TestClassName>
+
+    **DBUnit test data note:** DB-backed integration tests typically load DBUnit
+    Flat XML datasets from `src/test/resources/testdata/` via
+    `executeDataSetWithStateManagement("testdata/<file>.xml")`. Prefer datasets
+    over inline SQL setup/cleanup to avoid test data pollution.
 
 1.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
 

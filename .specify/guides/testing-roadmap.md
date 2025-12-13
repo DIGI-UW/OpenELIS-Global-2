@@ -162,12 +162,27 @@ public int calculateCapacity(String deviceId) {
 
 ## Backend Testing
 
-**Reference**:
-[Spring Framework Official Documentation](https://docs.spring.io/spring-boot/reference/testing/spring-applications.html)
-for official patterns.
+**Reference**: Use the existing repository test bases and templates in
+`.specify/templates/testing/`. OpenELIS Global 2 is **traditional Spring MVC**
+and does not use Spring Boot test slices.
 
 This section provides comprehensive technical guidance for implementing backend
-Java/Spring Boot tests. For quick reference, see
+Java tests in OpenELIS Global 2.
+
+**Repository reality (MANDATORY):** OpenELIS Global 2 uses **Traditional Spring
+MVC** (not Spring Boot). Do not introduce Spring Boot testing annotations/slices
+like `@WebMvcTest`, `@DataJpaTest`, or `@SpringBootTest` into new tests unless
+the repository is explicitly migrated to Spring Boot.
+
+**DBUnit rule for DB-backed tests (MANDATORY):**
+
+- DBUnit Flat XML datasets live in `src/test/resources/testdata/`
+- Load datasets via
+  `BaseWebContextSensitiveTest.executeDataSetWithStateManagement("testdata/<file>.xml")`
+- Prefer DBUnit datasets over inline SQL setup/cleanup to prevent test data
+  pollution and improve maintainability
+
+For quick reference, see
 [Backend Testing Best Practices Guide](.specify/guides/backend-testing-best-practices.md).
 
 ### TDD Workflow Integration
@@ -229,10 +244,9 @@ workflow for complex logic.
 
 ### Test Slicing Strategy Decision Tree (OpenELIS Global 2)
 
-**CRITICAL**: In this repository, use `BaseWebContextSensitiveTest` as the
-default Spring context test base. Avoid references to Spring Boot test slice
-annotations (`@WebMvcTest`, `@DataJpaTest`, `@SpringBootTest`) when adding or
-updating tests in this repo.
+**OpenELIS Global 2 note:** Use `BaseWebContextSensitiveTest` for Spring-context
+tests and use DBUnit Flat XML datasets for DB-backed tests via
+`executeDataSetWithStateManagement("testdata/<file>.xml")`.
 
 **Decision Tree**:
 
@@ -270,113 +284,13 @@ updating tests in this repo.
 
 #### @WebMvcTest (Controller Layer) (not used in OpenELIS Global 2)
 
-**Use for**: Testing REST controllers in isolation with mocked services.
-
-**Benefits**:
-
-- Faster execution (no full application context)
-- Focused on HTTP layer (request/response mapping, status codes)
-- Services mocked with `@MockBean`
-
-**Pattern**:
-
-```java
-@RunWith(SpringRunner.class)
-@WebMvcTest(StorageLocationRestController.class)
-public class StorageLocationRestControllerTest {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockBean
-    private StorageLocationService storageLocationService;
-
-    @Test
-    public void testGetStorageLocation_WithValidId_ReturnsLocation() throws Exception {
-        // Arrange
-        StorageRoom room = StorageRoomBuilder.create()
-            .withId("ROOM-001")
-            .withName("Main Laboratory")
-            .build();
-        when(storageLocationService.getLocationById("ROOM-001"))
-            .thenReturn(room);
-
-        // Act & Assert
-        mockMvc.perform(get("/rest/storage/rooms/ROOM-001")
-                .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value("ROOM-001"))
-            .andExpect(jsonPath("$.name").value("Main Laboratory"));
-    }
-}
-```
-
-**Key Points**:
-
-- Use `@MockBean` (NOT `@Mock`) for Spring context mocking
-- Use `MockMvc` for HTTP request/response testing
-- Use JSONPath for response assertions
-- Mock service layer, test HTTP layer only
+OpenELIS Global 2 controller tests should extend `BaseWebContextSensitiveTest`
+and use `MockMvc` with `@MockBean` for service layer mocking.
 
 #### @DataJpaTest (DAO/Repository Layer) (not used in OpenELIS Global 2)
 
-**Use for**: Testing persistence layer in isolation.
-
-**Benefits**:
-
-- Faster execution (no full application context)
-- Focused on database interactions
-- Automatic transaction rollback
-- `TestEntityManager` for test data setup
-
-**Pattern**:
-
-```java
-@RunWith(SpringRunner.class)
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-public class StorageLocationDAOTest {
-
-    @Autowired
-    private TestEntityManager entityManager;
-
-    @Autowired
-    private StorageLocationDAO storageLocationDAO;
-
-    @Test
-    public void testFindByParentId_WithValidParent_ReturnsChildLocations() {
-        // Arrange
-        StorageRoom room = StorageRoomBuilder.create()
-            .withId("ROOM-001")
-            .withName("Main Lab")
-            .build();
-        entityManager.persist(room);
-
-        StorageDevice device = StorageDeviceBuilder.create()
-            .withId("DEV-001")
-            .withName("Freezer 1")
-            .withParentRoom(room)
-            .build();
-        entityManager.persist(device);
-        entityManager.flush();
-
-        // Act
-        List<StorageDevice> devices = storageLocationDAO.findByParentId("ROOM-001");
-
-        // Assert
-        assertEquals("Should return one device", 1, devices.size());
-        assertEquals("Device ID should match", "DEV-001", devices.get(0).getId());
-    }
-}
-```
-
-**Key Points**:
-
-- Use `TestEntityManager` for test data setup (NOT JdbcTemplate)
-- Use `@AutoConfigureTestDatabase(replace = Replace.NONE)` to use configured
-  database
-- Automatic transaction rollback (no manual cleanup needed)
-- Test HQL queries, CRUD operations, relationships
+OpenELIS Global 2 DAO tests should extend `BaseWebContextSensitiveTest` and use
+DBUnit datasets or direct `EntityManager`/`JdbcTemplate` setup when needed.
 
 **CRUD Testing Pattern**:
 
@@ -401,56 +315,18 @@ public void testInsert_WithValidData_PersistsToDatabase() {
 }
 ```
 
-#### @SpringBootTest (Full Integration) (not used in OpenELIS Global 2)
+#### Full Integration Tests (Repository Pattern)
 
-**Use for**: Testing complete workflows that require full application context.
+**Use for**: Testing complete workflows that require real database interaction
+(service → DAO → database).
 
-**Benefits**:
-
-- Full Spring context loaded
-- All beans available
-- Real database interactions
-- End-to-end testing
-
-**Pattern**:
-
-```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional
-public class StorageLocationServiceIntegrationTest {
-
-    @Autowired
-    private StorageLocationService storageLocationService;
-
-    @Test
-    public void testCreateLocation_WithValidData_PersistsToDatabase() {
-        // Arrange
-        StorageRoom room = StorageRoomBuilder.create()
-            .withName("Test Room")
-            .withCode("TEST-ROOM")
-            .build();
-
-        // Act
-        String id = storageLocationService.insert(room);
-
-        // Assert
-        assertNotNull("ID should be generated", id);
-        StorageRoom retrieved = storageLocationService.getLocationById(id);
-        assertEquals("Name should match", "Test Room", retrieved.getName());
-    }
-}
-```
-
-**Key Points**:
-
-- Use `@Transactional` for automatic rollback (preferred)
-- Use builders/factories for test data
-- Test complete workflows (service → DAO → database)
+**Pattern**: Extend `BaseWebContextSensitiveTest`, load DB-backed fixtures via
+DBUnit datasets, and keep controller/service logic under test minimal and
+focused.
 
 #### BaseWebContextSensitiveTest (Legacy Integration)
 
-**Use for**: Legacy integration tests that use Testcontainers and DBUnit.
+**Use for**: Spring-context integration tests in this repository.
 
 **When to Use**:
 
@@ -488,14 +364,11 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 
 **Key Points**:
 
-- Extends `BaseWebContextSensitiveTest` (provides MockMvc, Testcontainers)
-- Manual cleanup in `@After` methods
-- Uses `JdbcTemplate` for direct database operations
-- Uses DBUnit for complex test data (via `executeDataSetWithStateManagement()`)
-
-**Migration Note**: New tests should prefer `@SpringBootTest` with
-`@Transactional` for automatic rollback. Use `BaseWebContextSensitiveTest` only
-for legacy tests or when DBUnit is required.
+- Extends `BaseWebContextSensitiveTest` (provides MockMvc and Spring context)
+- Test database is provided by `BaseTestConfig` (Testcontainers + Liquibase)
+- Prefer DBUnit datasets for DB-backed setup
+  (`executeDataSetWithStateManagement`)
+- Use targeted cleanup only when you intentionally create data outside DBUnit
 
 ### ORM Validation Tests (Constitution V.4)
 
@@ -539,47 +412,18 @@ public class HibernateMappingValidationTest {
 **CRITICAL**: Proper transaction management ensures test isolation and prevents
 database pollution.
 
-#### @Transactional (Automatic Rollback)
+#### DBUnit-Backed Tests (Repository Default)
 
-**PREFERRED**: Use `@Transactional` for automatic rollback in `@SpringBootTest`
-and `@DataJpaTest`.
-
-**Benefits**:
-
-- Automatic rollback after each test
-- No manual cleanup needed
-- Faster test execution
-- Test isolation guaranteed
-
-**Pattern**:
-
-```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional
-public class StorageLocationServiceIntegrationTest {
-
-    @Autowired
-    private StorageLocationService storageLocationService;
-
-    @Test
-    public void testCreateLocation_PersistsToDatabase() {
-        // Test creates data - automatically rolled back
-        StorageRoom room = StorageRoomBuilder.create()
-            .withName("Test Room")
-            .build();
-        String id = storageLocationService.insert(room);
-        // No cleanup needed - @Transactional handles it
-    }
-}
-```
+**Repository default**: `BaseWebContextSensitiveTest` is configured with
+`Propagation.NOT_SUPPORTED` and DBUnit datasets are loaded with
+`executeDataSetWithStateManagement(...)`.
 
 **Key Points**:
 
-- Use `@Transactional` at class level for all tests
-- Each test runs in its own transaction
-- Transaction rolls back after test completes
-- Use for `@SpringBootTest` and `@DataJpaTest`
+- DBUnit helper truncates and refreshes only the tables included in the dataset
+- Prefer DBUnit datasets over ad-hoc inserts so setup and cleanup are explicit
+- If you need Liquibase-provided reference data for a table, do not include that
+  table in the dataset (so DBUnit does not truncate it)
 
 #### Manual Cleanup (When @Transactional Doesn't Work)
 
@@ -631,9 +475,6 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 **Pattern**:
 
 ```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional
 @Rollback(false) // Disable automatic rollback
 public class StorageLocationServiceIntegrationTest {
 
@@ -753,7 +594,7 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     public void setUp() throws Exception {
         super.setUp();
         // Load complex test data from XML dataset
-        executeDataSetWithStateManagement("test-data/storage-hierarchy.xml");
+        executeDataSetWithStateManagement("testdata/storage-location-controller.xml");
     }
 }
 ```
@@ -763,7 +604,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 - Use for complex test data (multiple related entities)
 - XML datasets in `src/test/resources/`
 - Load via `executeDataSetWithStateManagement()`
-- Requires manual cleanup
+- No extra manual cleanup should be needed for tables included in the dataset
+  (the helper truncates/refreshes them)
 
 #### JdbcTemplate (Direct Database Operations)
 
@@ -799,26 +641,17 @@ public void setUp() throws Exception {
 
 #### Testcontainers (Database Integration Tests)
 
-**Use when**: Integration tests requiring real database.
+**Use when**: You need a real database for integration tests.
 
-**Pattern**:
-
-```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional
-public class StorageLocationServiceIntegrationTest {
-    // Testcontainers configured in BaseTestConfig
-    // Uses PostgreSQL container for real database testing
-}
-```
+**Repository note**: Testcontainers is already configured in `BaseTestConfig`
+for the `test` Spring profile. Tests get a real PostgreSQL database by extending
+`BaseWebContextSensitiveTest`.
 
 **Key Points**:
 
-- Configured in `BaseTestConfig` (Testcontainers setup)
-- Uses PostgreSQL container
-- Real database for integration tests
-- Use `@Transactional` for automatic rollback
+- Configured in `BaseTestConfig`
+- Uses PostgreSQL container + Liquibase migrations
+- DBUnit datasets remain the default for DB-backed setup
 
 ### MockMvc Patterns
 
@@ -984,34 +817,16 @@ proper test isolation.
 
 **When to Use**:
 
-- `@WebMvcTest` - Mock services in controller tests
-- `@SpringBootTest` - Mock beans in integration tests
-- Any test that uses `@Autowired`
+- Any test that uses Spring application context (`BaseWebContextSensitiveTest`)
+- Mocking service/DAO collaborators that are normally injected with `@Autowired`
 
-**Pattern**:
-
-```java
-@RunWith(SpringRunner.class)
-@WebMvcTest(StorageLocationRestController.class)
-public class StorageLocationRestControllerTest {
-
-    @MockBean  // ✅ CORRECT: Spring context test
-    private StorageLocationService storageLocationService;
-
-    @Test
-    public void testGetLocation_ReturnsLocation() throws Exception {
-        when(storageLocationService.getLocationById("ROOM-001"))
-            .thenReturn(room);
-        // ...
-    }
-}
-```
+**Pattern**: Use `@MockBean` when the test starts a Spring context (for example
+when extending `BaseWebContextSensitiveTest`).
 
 **Key Points**:
 
-- Replaces bean in Spring context
+- Replaces a bean in the Spring context
 - Works with `@Autowired` injection
-- Use in `@WebMvcTest`, `@SpringBootTest`
 
 #### @Mock (Isolated Unit Tests)
 
@@ -1051,8 +866,7 @@ public class StorageLocationServiceTest {
 
 **Decision Tree**:
 
-1. **Spring context test** (`@WebMvcTest`, `@SpringBootTest`) → Use `@MockBean`
-   ✅
+1. **Spring context test** (`BaseWebContextSensitiveTest`) → Use `@MockBean` ✅
 2. **Isolated unit test** (`@RunWith(MockitoJUnitRunner.class)`) → Use `@Mock`
    ✅
 
@@ -2205,38 +2019,14 @@ export const createMockStorageLocation = (overrides = {}) => {
 
 #### Backend: @Transactional Rollback
 
-**Use for**: Integration tests with database.
-
-```java
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@Transactional // Automatic rollback after each test
-public class StorageLocationServiceIntegrationTest {
-
-    @Test
-    public void testCreateLocation_PersistsToDatabase() {
-        // Test data automatically rolled back after test
-        StorageRoom room = StorageRoomBuilder.create()
-            .withName("Test Room")
-            .build();
-        storageLocationService.insert(room);
-        // No cleanup needed - @Transactional handles it
-    }
-}
-```
+**Repository note**: Most DB-backed integration tests in this repo use DBUnit
+datasets via `executeDataSetWithStateManagement(...)`. Where tests intentionally
+create rows outside DBUnit, use targeted cleanup in `@After`.
 
 #### Backend: @Sql Scripts
 
-**Use for**: Complex data setup that requires multiple entities.
-
-```java
-@Test
-@Sql(scripts = "/test-data/storage-hierarchy.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-@Sql(scripts = "/test-data/cleanup-storage.sql", executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
-public void testComplexWorkflow() {
-    // Test with pre-loaded data
-}
-```
+OpenELIS Global 2 uses DBUnit datasets for reusable DB-backed setup instead of
+Spring `@Sql` scripts.
 
 #### Frontend: Custom Cypress Commands
 
@@ -2420,7 +2210,8 @@ npm test -- --coverage
 
 **Backend**:
 
-- ❌ Using `@SpringBootTest` for simple controller tests (use `@WebMvcTest`)
+- ❌ Introducing Spring Boot test slices (`@WebMvcTest`, `@SpringBootTest`) in
+  this repo
 - ❌ Hardcoded test data (use builders/factories)
 - ❌ Missing `@Transactional` in integration tests (causes data pollution)
 - ❌ Skipping ORM validation tests (catches mapping errors early)

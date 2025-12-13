@@ -91,4 +91,20 @@ public class StorageRackDAOImpl extends BaseDAOImpl<StorageRack, Integer> implem
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public StorageRack findByLabelAndParentShelfId(String label, Integer parentShelfId) {
+        try {
+            String hql = "FROM StorageRack r WHERE r.label = :label AND r.parentShelf.id = :shelfId";
+            Query<StorageRack> query = entityManager.unwrap(Session.class).createQuery(hql, StorageRack.class);
+            query.setParameter("label", label);
+            query.setParameter("shelfId", parentShelfId);
+            query.setMaxResults(1);
+            List<StorageRack> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error finding StorageRack by label and parent shelf ID", e);
+        }
+    }
+
 }
