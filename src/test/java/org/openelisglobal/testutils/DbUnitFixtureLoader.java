@@ -50,8 +50,10 @@ public class DbUnitFixtureLoader {
     private static final Logger logger = LoggerFactory.getLogger(DbUnitFixtureLoader.class);
 
     // Docker defaults - port can be overridden via DB_PORT environment variable
-    // All docker-compose files (dev/test/build/main) consistently use 15432:5432 mapping
-    // This matches the port mapping across all environments (develop, feature branches, etc.)
+    // All docker-compose files (dev/test/build/main) consistently use 15432:5432
+    // mapping
+    // This matches the port mapping across all environments (develop, feature
+    // branches, etc.)
     // For different environments, set DB_PORT or use --jdbc-url explicitly
     private static final String DEFAULT_DOCKER_HOST = "localhost";
     private static final String DEFAULT_DOCKER_DB = "clinlims";
