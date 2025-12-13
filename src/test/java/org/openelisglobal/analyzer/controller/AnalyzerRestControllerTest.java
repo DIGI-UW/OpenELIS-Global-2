@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
 import org.junit.Before;
@@ -15,7 +14,6 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.analyzer.controller.AnalyzerRestController;
 import org.openelisglobal.analyzer.service.AnalyzerQueryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -52,7 +50,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         // Clean up analyzer test data before each test
         cleanAnalyzerTestData();
     }
-
 
     /**
      * Clean up analyzer-related test data Note: Must delete in order due to foreign
@@ -256,7 +253,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
      * Task Reference: T106 - Query endpoint verification
      * 
      * Note: This test mocks AnalyzerQueryService to avoid real TCP connections.
-     * Real end-to-end testing with the mock server should be done in Cypress E2E tests.
+     * Real end-to-end testing with the mock server should be done in Cypress E2E
+     * tests.
      */
     @Test
     public void testQueryAnalyzer_StartsQueryJob() throws Exception {
@@ -279,16 +277,15 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         when(analyzerQueryService.startQuery(analyzerId)).thenReturn(mockJobId);
 
         // Act & Assert: POST query endpoint should return 202 Accepted with job ID
-        mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/query")
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.jobId").value(mockJobId))
-                .andExpect(jsonPath("$.analyzerId").value(analyzerId))
-                .andExpect(jsonPath("$.status").value("started"));
+        mockMvc.perform(
+                post("/rest/analyzer/analyzers/" + analyzerId + "/query").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isAccepted()).andExpect(jsonPath("$.jobId").value(mockJobId))
+                .andExpect(jsonPath("$.analyzerId").value(analyzerId)).andExpect(jsonPath("$.status").value("started"));
     }
 
     /**
-     * Test: GET /rest/analyzer/analyzers/{id}/query/{jobId}/status returns query status
+     * Test: GET /rest/analyzer/analyzers/{id}/query/{jobId}/status returns query
+     * status
      * 
      * This test verifies the controller endpoint correctly delegates to
      * AnalyzerQueryService and returns the expected HTTP response.
@@ -296,7 +293,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
      * Task Reference: T106 - Query status endpoint verification
      * 
      * Note: This test mocks AnalyzerQueryService to avoid real TCP connections.
-     * Real end-to-end testing with the mock server should be done in Cypress E2E tests.
+     * Real end-to-end testing with the mock server should be done in Cypress E2E
+     * tests.
      */
     @Test
     public void testGetQueryStatus_ReturnsStatus() throws Exception {
@@ -328,12 +326,9 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
         // Act & Assert: GET status endpoint should return 200 OK with status
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId + "/query/" + jobId + "/status")
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.analyzerId").value(analyzerId))
-                .andExpect(jsonPath("$.jobId").value(jobId))
-                .andExpect(jsonPath("$.state").value("completed"))
-                .andExpect(jsonPath("$.progress").value(100));
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.analyzerId").value(analyzerId)).andExpect(jsonPath("$.jobId").value(jobId))
+                .andExpect(jsonPath("$.state").value("completed")).andExpect(jsonPath("$.progress").value(100));
     }
 
     /**
@@ -365,8 +360,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
         // Act & Assert: GET status endpoint should return 404 Not Found
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId + "/query/" + invalidJobId + "/status")
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound())
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").exists());
     }
 }
