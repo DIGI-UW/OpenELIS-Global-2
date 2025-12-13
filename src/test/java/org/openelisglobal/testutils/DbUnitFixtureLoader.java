@@ -20,10 +20,13 @@ import org.slf4j.LoggerFactory;
 /**
  * Standalone DBUnit fixture loader for E2E/manual testing.
  *
- * <p>Loads DBUnit XML datasets into a running Postgres database (Docker or direct connection).
- * This enables Cypress/manual testing to use the same fixture source-of-truth as JUnit tests.
+ * <p>
+ * Loads DBUnit XML datasets into a running Postgres database (Docker or direct
+ * connection). This enables Cypress/manual testing to use the same fixture
+ * source-of-truth as JUnit tests.
  *
- * <p>Usage:
+ * <p>
+ * Usage:
  *
  * <pre>
  * java -cp ... org.openelisglobal.testutils.DbUnitFixtureLoader \
@@ -33,7 +36,8 @@ import org.slf4j.LoggerFactory;
  *   testdata/storage-e2e.xml testdata/user-role.xml
  * </pre>
  *
- * <p>Or with Docker defaults (assumes openelisglobal-database container):
+ * <p>
+ * Or with Docker defaults (assumes openelisglobal-database container):
  *
  * <pre>
  * java -cp ... org.openelisglobal.testutils.DbUnitFixtureLoader \
@@ -64,49 +68,49 @@ public class DbUnitFixtureLoader {
         // Parse arguments
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
-                case "--jdbc-url":
-                    if (i + 1 < args.length) {
-                        jdbcUrl = args[++i];
-                    } else {
-                        System.err.println("ERROR: --jdbc-url requires a value");
-                        System.exit(1);
-                    }
-                    break;
-                case "--user":
-                    if (i + 1 < args.length) {
-                        user = args[++i];
-                    } else {
-                        System.err.println("ERROR: --user requires a value");
-                        System.exit(1);
-                    }
-                    break;
-                case "--password":
-                    if (i + 1 < args.length) {
-                        password = args[++i];
-                    } else {
-                        System.err.println("ERROR: --password requires a value");
-                        System.exit(1);
-                    }
-                    break;
-                case "--docker":
-                    useDocker = true;
-                    datasetStartIdx = i + 1;
-                    break;
-                case "--help":
-                case "-h":
-                    printUsage();
-                    System.exit(0);
-                    break;
-                default:
-                    if (args[i].startsWith("--")) {
-                        System.err.println("ERROR: Unknown option: " + args[i]);
-                        System.exit(1);
-                    }
-                    // First non-option argument is start of dataset list
-                    if (datasetStartIdx == 0) {
-                        datasetStartIdx = i;
-                    }
-                    break;
+            case "--jdbc-url":
+                if (i + 1 < args.length) {
+                    jdbcUrl = args[++i];
+                } else {
+                    System.err.println("ERROR: --jdbc-url requires a value");
+                    System.exit(1);
+                }
+                break;
+            case "--user":
+                if (i + 1 < args.length) {
+                    user = args[++i];
+                } else {
+                    System.err.println("ERROR: --user requires a value");
+                    System.exit(1);
+                }
+                break;
+            case "--password":
+                if (i + 1 < args.length) {
+                    password = args[++i];
+                } else {
+                    System.err.println("ERROR: --password requires a value");
+                    System.exit(1);
+                }
+                break;
+            case "--docker":
+                useDocker = true;
+                datasetStartIdx = i + 1;
+                break;
+            case "--help":
+            case "-h":
+                printUsage();
+                System.exit(0);
+                break;
+            default:
+                if (args[i].startsWith("--")) {
+                    System.err.println("ERROR: Unknown option: " + args[i]);
+                    System.exit(1);
+                }
+                // First non-option argument is start of dataset list
+                if (datasetStartIdx == 0) {
+                    datasetStartIdx = i;
+                }
+                break;
             }
         }
 
@@ -154,7 +158,8 @@ public class DbUnitFixtureLoader {
 
     private static void printUsage() {
         System.out.println("Usage:");
-        System.out.println("  java -cp ... org.openelisglobal.testutils.DbUnitFixtureLoader [OPTIONS] <dataset1.xml> [dataset2.xml ...]");
+        System.out.println(
+                "  java -cp ... org.openelisglobal.testutils.DbUnitFixtureLoader [OPTIONS] <dataset1.xml> [dataset2.xml ...]");
         System.out.println();
         System.out.println("Options:");
         System.out.println("  --docker              Use Docker defaults (localhost:5432/clinlims, user=clinlims)");
@@ -246,9 +251,8 @@ public class DbUnitFixtureLoader {
 
     private static void bumpStorageSequences(Connection connection) throws SQLException {
         // Same sequence bumps as BaseStorageTest.setUp()
-        String[] sequences = {
-            "storage_room_seq", "storage_device_seq", "storage_shelf_seq", "storage_rack_seq", "storage_box_seq"
-        };
+        String[] sequences = { "storage_room_seq", "storage_device_seq", "storage_shelf_seq", "storage_rack_seq",
+                "storage_box_seq" };
         int[] values = { 1000, 1000, 1000, 1000, 10000 };
 
         try (Statement stmt = connection.createStatement()) {
