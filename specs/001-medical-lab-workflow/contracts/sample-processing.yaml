@@ -1,0 +1,343 @@
+# Sample Processing API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Sample Processing and Aliquoting
+
+openapi: 3.0.3
+info:
+  title: Sample Processing API
+  version: 1.0.0
+  description: API endpoints for sample processing, preparation, and aliquoting
+
+paths:
+  /rest/medlab/processing:
+    post:
+      summary: Record sample processing
+      operationId: createProcessingRecord
+      tags: [SampleProcessing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessingRecordForm"
+      responses:
+        "201":
+          description: Processing recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessingRecordResponse"
+        "400":
+          description: Invalid input
+        "404":
+          description: Sample not found
+
+    get:
+      summary: List processing records
+      operationId: listProcessingRecords
+      tags: [SampleProcessing]
+      parameters:
+        - name: sampleItemId
+          in: query
+          schema:
+            type: integer
+        - name: department
+          in: query
+          schema:
+            $ref: "#/components/schemas/Department"
+        - name: processingType
+          in: query
+          schema:
+            $ref: "#/components/schemas/ProcessingType"
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Processing records list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProcessingRecordResponse"
+
+  /rest/medlab/processing/{id}:
+    get:
+      summary: Get processing record details
+      operationId: getProcessingRecord
+      tags: [SampleProcessing]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Processing record details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessingRecordResponse"
+        "404":
+          description: Processing record not found
+
+    put:
+      summary: Update processing record
+      operationId: updateProcessingRecord
+      tags: [SampleProcessing]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessingRecordForm"
+      responses:
+        "200":
+          description: Processing record updated
+        "404":
+          description: Processing record not found
+
+  /rest/medlab/processing/aliquot:
+    post:
+      summary: Create aliquot from parent sample
+      operationId: createAliquot
+      tags: [SampleProcessing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AliquotForm"
+      responses:
+        "201":
+          description: Aliquot created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AliquotResponse"
+        "400":
+          description: Invalid input
+        "404":
+          description: Parent sample not found
+
+  /rest/medlab/processing/aliquots/{parentSampleId}:
+    get:
+      summary: Get aliquots for parent sample
+      operationId: getAliquots
+      tags: [SampleProcessing]
+      parameters:
+        - name: parentSampleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Aliquots list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AliquotResponse"
+        "404":
+          description: Parent sample not found
+
+  /rest/medlab/processing/methods/{department}:
+    get:
+      summary: Get processing methods by department
+      operationId: getProcessingMethods
+      tags: [SampleProcessing]
+      parameters:
+        - name: department
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Department"
+      responses:
+        "200":
+          description: Processing methods for department
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProcessingMethod"
+
+components:
+  schemas:
+    ProcessingRecordForm:
+      type: object
+      required: [sampleItemId, processingType, performedBy]
+      properties:
+        sampleItemId:
+          type: integer
+        processingType:
+          $ref: "#/components/schemas/ProcessingType"
+        processingMethod:
+          type: string
+          maxLength: 100
+        stainUsed:
+          type: string
+          enum: [wright, giemsa, gram, zn, india_ink, other, none]
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        performedBy:
+          type: integer
+        outputContainer:
+          type: string
+          enum: [tube, slide, plate, vial, other]
+        notes:
+          type: string
+          maxLength: 500
+
+    ProcessingRecordResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        processingType:
+          $ref: "#/components/schemas/ProcessingType"
+        processingMethod:
+          type: string
+        stainUsed:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          description: Duration in minutes
+        performedByName:
+          type: string
+        outputContainer:
+          type: string
+        notes:
+          type: string
+        fhirUuid:
+          type: string
+          format: uuid
+
+    AliquotForm:
+      type: object
+      required: [parentSampleId, derivedSampleType, performedBy]
+      properties:
+        parentSampleId:
+          type: integer
+        derivedSampleType:
+          type: string
+          enum: [serum, plasma, sediment, smear, culture, other]
+        volume:
+          type: number
+          format: float
+        volumeUnit:
+          type: string
+          enum: [mL, uL]
+        outputContainer:
+          type: string
+          enum: [tube, slide, plate, vial, cryovial, other]
+        performedBy:
+          type: integer
+        notes:
+          type: string
+          maxLength: 255
+
+    AliquotResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        aliquotSampleItemId:
+          type: integer
+        aliquotBarcode:
+          type: string
+        parentSampleId:
+          type: integer
+        parentBarcode:
+          type: string
+        aliquotSequence:
+          type: integer
+        derivedSampleType:
+          type: string
+        volume:
+          type: number
+        volumeUnit:
+          type: string
+        outputContainer:
+          type: string
+        createdDate:
+          type: string
+          format: date-time
+        createdByName:
+          type: string
+        storageLocation:
+          type: string
+
+    ProcessingMethod:
+      type: object
+      properties:
+        department:
+          $ref: "#/components/schemas/Department"
+        processingType:
+          $ref: "#/components/schemas/ProcessingType"
+        methodName:
+          type: string
+        description:
+          type: string
+        requiredEquipment:
+          type: array
+          items:
+            type: string
+        estimatedDuration:
+          type: integer
+          description: Estimated duration in minutes
+
+    ProcessingType:
+      type: string
+      enum:
+        - centrifugation
+        - smear_preparation
+        - staining
+        - culture_inoculation
+        - concentration
+        - dilution
+        - extraction
+        - other
+
+    Department:
+      type: string
+      enum:
+        - chemistry
+        - hematology
+        - parasitology
+        - urinalysis
+        - serology
+        - microbiology

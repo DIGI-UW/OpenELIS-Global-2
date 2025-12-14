@@ -1,0 +1,402 @@
+openapi: 3.0.3
+info:
+  title: Notebook Bulk Operations API
+  description: |
+    API for bulk operations on samples within notebook pages.
+    Supports batch status updates, applying common values, and progress tracking.
+  version: 1.0.0
+
+servers:
+  - url: /rest
+    description: OpenELIS REST API
+
+paths:
+  /notebook/bulk/page/{pageId}/samples/status:
+    post:
+      summary: Update status for multiple samples
+      description: Bulk update status for selected samples on a page
+      operationId: bulkUpdateSampleStatus
+      tags:
+        - Bulk Operations
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Notebook page ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkStatusUpdateRequest'
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '400':
+          description: Invalid request
+        '404':
+          description: Page not found
+
+  /notebook/bulk/page/{pageId}/samples/apply:
+    post:
+      summary: Apply common values to multiple samples
+      description: |
+        Apply the same values to all selected samples on a page.
+        Values are stored in the NotebookPageSample.data JSONB field.
+      operationId: bulkApplyValues
+      tags:
+        - Bulk Operations
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkApplyRequest'
+      responses:
+        '200':
+          description: Values applied successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '400':
+          description: Invalid request
+        '404':
+          description: Page not found
+
+  /notebook/bulk/page/{pageId}/progress:
+    get:
+      summary: Get page completion progress
+      description: Returns counts of samples by status for the page
+      operationId: getPageProgress
+      tags:
+        - Bulk Operations
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Progress information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageProgressResponse'
+        '404':
+          description: Page not found
+
+  /notebook/bulk/page/{pageId}/samples:
+    get:
+      summary: Get samples for a page
+      description: |
+        Returns paginated list of samples with their page-specific data.
+        Supports filtering by status and sorting.
+      operationId: getPageSamples
+      tags:
+        - Bulk Operations
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, IN_PROGRESS, COMPLETED, SKIPPED, ALL]
+          description: Filter by status
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Page number (0-indexed)
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+          description: Page size
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            default: sampleId
+          description: Sort field
+        - name: direction
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: ASC
+      responses:
+        '200':
+          description: Sample list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageSamplesResponse'
+        '404':
+          description: Page not found
+
+  /notebook/bulk/page/{pageId}/samples/{sampleId}:
+    put:
+      summary: Update single sample data
+      description: Update the page-specific data for a single sample (inline edit)
+      operationId: updateSampleData
+      tags:
+        - Bulk Operations
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: sampleId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: SampleItem ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SampleDataUpdateRequest'
+      responses:
+        '200':
+          description: Sample updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageSampleItem'
+        '404':
+          description: Page or sample not found
+
+  /notebook/bulk/{notebookId}/samples/import:
+    post:
+      summary: Import sample data updates from CSV
+      description: Update existing linked samples with data from CSV
+      operationId: importSampleDataUpdates
+      tags:
+        - Bulk Operations
+      parameters:
+        - name: notebookId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                columnMapping:
+                  type: string
+                  description: Optional JSON column mapping
+      responses:
+        '200':
+          description: Import complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+        '400':
+          description: Invalid file format
+        '404':
+          description: Notebook not found
+
+components:
+  schemas:
+    BulkStatusUpdateRequest:
+      type: object
+      required:
+        - sampleIds
+        - status
+      properties:
+        sampleIds:
+          type: array
+          items:
+            type: integer
+          description: List of SampleItem IDs to update
+          maxItems: 500
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETED, SKIPPED]
+          description: New status to set
+
+    BulkApplyRequest:
+      type: object
+      required:
+        - sampleIds
+        - data
+      properties:
+        sampleIds:
+          type: array
+          items:
+            type: integer
+          description: List of SampleItem IDs to update
+          maxItems: 500
+        data:
+          type: object
+          additionalProperties: true
+          description: |
+            Key-value pairs to apply to all samples.
+            Keys should match the page's expected fields.
+          example:
+            volume: "5.0"
+            method: "Ficoll"
+            operator: "Dr. Smith"
+
+    BulkOperationResponse:
+      type: object
+      properties:
+        updated:
+          type: integer
+          description: Number of samples successfully updated
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/SampleError'
+
+    SampleError:
+      type: object
+      properties:
+        sampleId:
+          type: integer
+        message:
+          type: string
+
+    PageProgressResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total samples linked to this page
+        pending:
+          type: integer
+        inProgress:
+          type: integer
+        completed:
+          type: integer
+        skipped:
+          type: integer
+        percentage:
+          type: number
+          format: float
+          description: Completion percentage (completed / total * 100)
+
+    PageSamplesResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PageSampleItem'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        number:
+          type: integer
+          description: Current page number (0-indexed)
+        size:
+          type: integer
+          description: Page size
+
+    PageSampleItem:
+      type: object
+      properties:
+        pageSampleId:
+          type: integer
+          description: NotebookPageSample ID
+        sampleItemId:
+          type: integer
+          description: SampleItem ID
+        externalId:
+          type: string
+          description: External sample ID
+        accessionNumber:
+          type: string
+        sampleType:
+          type: string
+        groupId:
+          type: string
+          description: Manifest group ID for grouping
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETED, SKIPPED]
+        data:
+          type: object
+          additionalProperties: true
+          description: Page-specific data values
+        completedBy:
+          type: string
+          description: Username who completed
+        completedAt:
+          type: string
+          format: date-time
+
+    SampleDataUpdateRequest:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          description: Updated field values
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETED, SKIPPED]
+          description: Optional status update
+
+    ImportResponse:
+      type: object
+      properties:
+        updated:
+          type: integer
+          description: Number of samples updated
+        notFound:
+          type: integer
+          description: Number of samples not found
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: integer
+              identifier:
+                type: string
+              message:
+                type: string

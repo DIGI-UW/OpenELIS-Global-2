@@ -1,0 +1,534 @@
+# Result Entry & Validation API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Result Entry, Validation Workflow, and Department Approval
+
+openapi: 3.0.3
+info:
+  title: Result Entry & Validation API
+  version: 1.0.0
+  description: API endpoints for test result entry, validation workflow, and department-specific approval queues
+
+paths:
+  /rest/medlab/results:
+    post:
+      summary: Enter test result
+      operationId: createResult
+      tags: [ResultEntry]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResultEntryForm"
+      responses:
+        "201":
+          description: Result recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultResponse"
+        "400":
+          description: Invalid input
+        "404":
+          description: Sample or test not found
+
+    get:
+      summary: List results pending entry
+      operationId: listPendingResults
+      tags: [ResultEntry]
+      parameters:
+        - name: department
+          in: query
+          schema:
+            $ref: "#/components/schemas/Department"
+        - name: analyzerId
+          in: query
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Pending results list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendingResult"
+
+  /rest/medlab/results/{id}:
+    get:
+      summary: Get result details
+      operationId: getResult
+      tags: [ResultEntry]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Result details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultResponse"
+        "404":
+          description: Result not found
+
+    put:
+      summary: Update result value
+      operationId: updateResult
+      tags: [ResultEntry]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResultUpdateForm"
+      responses:
+        "200":
+          description: Result updated
+        "400":
+          description: Result already validated, cannot modify
+        "404":
+          description: Result not found
+
+  /rest/medlab/validation:
+    get:
+      summary: Get validation queue
+      operationId: getValidationQueue
+      tags: [ResultValidation]
+      parameters:
+        - name: department
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/Department"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected, retest]
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Validation queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ValidationQueueItem"
+
+    post:
+      summary: Submit result for validation
+      operationId: submitForValidation
+      tags: [ResultValidation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidationSubmissionForm"
+      responses:
+        "201":
+          description: Result submitted for validation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationRecordResponse"
+        "400":
+          description: Invalid input
+        "404":
+          description: Result not found
+
+  /rest/medlab/validation/{id}:
+    get:
+      summary: Get validation record
+      operationId: getValidationRecord
+      tags: [ResultValidation]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Validation record details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationRecordResponse"
+        "404":
+          description: Validation record not found
+
+  /rest/medlab/validation/{id}/approve:
+    post:
+      summary: Approve result
+      operationId: approveResult
+      tags: [ResultValidation]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidationActionForm"
+      responses:
+        "200":
+          description: Result approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationRecordResponse"
+        "400":
+          description: Cannot approve (invalid state)
+        "403":
+          description: Not authorized to approve in this department
+        "404":
+          description: Validation record not found
+
+  /rest/medlab/validation/{id}/reject:
+    post:
+      summary: Reject result
+      operationId: rejectResult
+      tags: [ResultValidation]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidationActionForm"
+      responses:
+        "200":
+          description: Result rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationRecordResponse"
+        "400":
+          description: Cannot reject (invalid state)
+        "403":
+          description: Not authorized to reject in this department
+        "404":
+          description: Validation record not found
+
+  /rest/medlab/validation/{id}/retest:
+    post:
+      summary: Request retest
+      operationId: requestRetest
+      tags: [ResultValidation]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidationActionForm"
+      responses:
+        "200":
+          description: Retest requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationRecordResponse"
+        "400":
+          description: Cannot request retest (invalid state)
+        "403":
+          description: Not authorized in this department
+        "404":
+          description: Validation record not found
+
+  /rest/medlab/validation/batch:
+    post:
+      summary: Batch approve results
+      operationId: batchApprove
+      tags: [ResultValidation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [validationIds, actionedBy]
+              properties:
+                validationIds:
+                  type: array
+                  items:
+                    type: integer
+                actionedBy:
+                  type: integer
+                notes:
+                  type: string
+      responses:
+        "200":
+          description: Batch approval results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approved:
+                    type: integer
+                  failed:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        validationId:
+                          type: integer
+                        error:
+                          type: string
+
+components:
+  schemas:
+    ResultEntryForm:
+      type: object
+      required: [sampleItemId, testId, resultValue, enteredBy]
+      properties:
+        sampleItemId:
+          type: integer
+        testId:
+          type: integer
+        analyzerId:
+          type: integer
+        resultValue:
+          type: string
+          maxLength: 100
+        resultUnit:
+          type: string
+          maxLength: 20
+        enteredBy:
+          type: integer
+        notes:
+          type: string
+          maxLength: 500
+
+    ResultUpdateForm:
+      type: object
+      required: [resultValue, updatedBy]
+      properties:
+        resultValue:
+          type: string
+          maxLength: 100
+        updatedBy:
+          type: integer
+        reason:
+          type: string
+          maxLength: 255
+
+    ResultResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientId:
+          type: integer
+        patientName:
+          type: string
+        testId:
+          type: integer
+        testName:
+          type: string
+        department:
+          $ref: "#/components/schemas/Department"
+        analyzerId:
+          type: integer
+        analyzerName:
+          type: string
+        resultValue:
+          type: string
+        resultUnit:
+          type: string
+        referenceLow:
+          type: number
+        referenceHigh:
+          type: number
+        resultFlag:
+          type: string
+          enum: [H, L, C, N]
+          description: "High, Low, Critical, Normal"
+        enteredByName:
+          type: string
+        enteredDate:
+          type: string
+          format: date-time
+        validationStatus:
+          type: string
+          enum: [pending, approved, rejected, retest]
+        validatedByName:
+          type: string
+        validatedDate:
+          type: string
+          format: date-time
+        fhirUuid:
+          type: string
+          format: uuid
+
+    PendingResult:
+      type: object
+      properties:
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        testId:
+          type: integer
+        testName:
+          type: string
+        department:
+          $ref: "#/components/schemas/Department"
+        collectionTime:
+          type: string
+          format: date-time
+        priority:
+          type: string
+          enum: [STAT, ROUTINE]
+        tat:
+          type: integer
+          description: Current TAT in minutes
+
+    ValidationQueueItem:
+      type: object
+      properties:
+        validationId:
+          type: integer
+        resultId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        testName:
+          type: string
+        resultValue:
+          type: string
+        resultUnit:
+          type: string
+        resultFlag:
+          type: string
+        referenceLow:
+          type: number
+        referenceHigh:
+          type: number
+        enteredByName:
+          type: string
+        enteredDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [pending, approved, rejected, retest]
+        previousValue:
+          type: string
+        tat:
+          type: integer
+          description: Current TAT in minutes
+
+    ValidationSubmissionForm:
+      type: object
+      required: [resultId, department]
+      properties:
+        resultId:
+          type: integer
+        department:
+          $ref: "#/components/schemas/Department"
+
+    ValidationActionForm:
+      type: object
+      required: [actionedBy]
+      properties:
+        actionedBy:
+          type: integer
+        reason:
+          type: string
+          maxLength: 255
+        modifiedValue:
+          type: string
+          description: "For corrections during approval"
+          maxLength: 100
+
+    ValidationRecordResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        resultId:
+          type: integer
+        department:
+          $ref: "#/components/schemas/Department"
+        action:
+          type: string
+          enum: [APPROVED, REJECTED, RETEST]
+        actionReason:
+          type: string
+        actionedByName:
+          type: string
+        actionTime:
+          type: string
+          format: date-time
+        previousValue:
+          type: string
+        modifiedValue:
+          type: string
+        resultFlag:
+          type: string
+        fhirUuid:
+          type: string
+          format: uuid
+
+    Department:
+      type: string
+      enum:
+        - chemistry
+        - hematology
+        - parasitology
+        - urinalysis
+        - serology
+        - microbiology

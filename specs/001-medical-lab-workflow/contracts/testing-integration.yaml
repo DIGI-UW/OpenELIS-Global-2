@@ -1,0 +1,454 @@
+# Testing & Instrument Integration API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Testing Worklist and Analyzer Integration
+
+openapi: 3.0.3
+info:
+  title: Testing & Instrument Integration API
+  version: 1.0.0
+  description: API endpoints for testing worklists, analyzer integration, and equipment usage logging
+
+paths:
+  /rest/medlab/worklist:
+    get:
+      summary: Get testing worklist
+      operationId: getWorklist
+      tags: [TestingWorklist]
+      parameters:
+        - name: analyzerId
+          in: query
+          schema:
+            type: integer
+        - name: department
+          in: query
+          schema:
+            $ref: "#/components/schemas/Department"
+        - name: testId
+          in: query
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [STAT, ROUTINE]
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/WorklistStatus"
+      responses:
+        "200":
+          description: Worklist items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorklistItem"
+
+    post:
+      summary: Generate worklist for analyzer
+      operationId: generateWorklist
+      tags: [TestingWorklist]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorklistGenerationRequest"
+      responses:
+        "201":
+          description: Worklist generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorklistGenerationResponse"
+        "400":
+          description: Invalid input
+
+  /rest/medlab/worklist/{id}/status:
+    put:
+      summary: Update worklist item status
+      operationId: updateWorklistStatus
+      tags: [TestingWorklist]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: "#/components/schemas/WorklistStatus"
+                notes:
+                  type: string
+                  maxLength: 255
+      responses:
+        "200":
+          description: Status updated
+        "404":
+          description: Worklist item not found
+
+  /rest/medlab/worklist/export/{analyzerId}:
+    get:
+      summary: Export worklist for analyzer
+      operationId: exportWorklist
+      tags: [TestingWorklist]
+      parameters:
+        - name: analyzerId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv, astm, hl7]
+            default: csv
+      responses:
+        "200":
+          description: Worklist file
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/astm:
+              schema:
+                type: string
+
+  /rest/medlab/equipment/usage:
+    post:
+      summary: Record equipment usage
+      operationId: recordEquipmentUsage
+      tags: [EquipmentUsage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipmentUsageForm"
+      responses:
+        "201":
+          description: Usage recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EquipmentUsageResponse"
+        "400":
+          description: Invalid input
+
+    get:
+      summary: List equipment usage records
+      operationId: listEquipmentUsage
+      tags: [EquipmentUsage]
+      parameters:
+        - name: analyzerId
+          in: query
+          schema:
+            type: integer
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: purpose
+          in: query
+          schema:
+            type: string
+            enum: [testing, calibration, qc, maintenance]
+      responses:
+        "200":
+          description: Usage records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EquipmentUsageResponse"
+
+  /rest/medlab/equipment/usage/{id}:
+    get:
+      summary: Get equipment usage details
+      operationId: getEquipmentUsage
+      tags: [EquipmentUsage]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Usage details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EquipmentUsageResponse"
+        "404":
+          description: Usage record not found
+
+    put:
+      summary: Update equipment usage (end session)
+      operationId: updateEquipmentUsage
+      tags: [EquipmentUsage]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipmentUsageUpdateForm"
+      responses:
+        "200":
+          description: Usage updated
+        "404":
+          description: Usage record not found
+
+  /rest/medlab/analyzers:
+    get:
+      summary: List available analyzers
+      operationId: listAnalyzers
+      tags: [EquipmentUsage]
+      parameters:
+        - name: department
+          in: query
+          schema:
+            $ref: "#/components/schemas/Department"
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Analyzers list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnalyzerInfo"
+
+components:
+  schemas:
+    WorklistItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        testId:
+          type: integer
+        testName:
+          type: string
+        analyzerId:
+          type: integer
+        analyzerName:
+          type: string
+        priority:
+          type: string
+          enum: [STAT, ROUTINE]
+        status:
+          $ref: "#/components/schemas/WorklistStatus"
+        queuedTime:
+          type: string
+          format: date-time
+        startedTime:
+          type: string
+          format: date-time
+        completedTime:
+          type: string
+          format: date-time
+
+    WorklistGenerationRequest:
+      type: object
+      required: [analyzerId]
+      properties:
+        analyzerId:
+          type: integer
+        department:
+          $ref: "#/components/schemas/Department"
+        testIds:
+          type: array
+          items:
+            type: integer
+        sampleItemIds:
+          type: array
+          items:
+            type: integer
+        priority:
+          type: string
+          enum: [STAT, ROUTINE, ALL]
+          default: ALL
+        maxItems:
+          type: integer
+          default: 100
+          maximum: 500
+
+    WorklistGenerationResponse:
+      type: object
+      properties:
+        worklistId:
+          type: string
+        analyzerId:
+          type: integer
+        analyzerName:
+          type: string
+        generatedTime:
+          type: string
+          format: date-time
+        itemCount:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorklistItem"
+
+    WorklistStatus:
+      type: string
+      enum:
+        - pending
+        - queued
+        - in_progress
+        - completed
+        - failed
+        - cancelled
+
+    EquipmentUsageForm:
+      type: object
+      required: [analyzerId, operatorId, purpose]
+      properties:
+        analyzerId:
+          type: integer
+        operatorId:
+          type: integer
+        purpose:
+          type: string
+          enum: [testing, calibration, qc, maintenance]
+        startTime:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          maxLength: 500
+
+    EquipmentUsageUpdateForm:
+      type: object
+      properties:
+        endTime:
+          type: string
+          format: date-time
+        samplesProcessed:
+          type: integer
+        maintenanceDone:
+          type: boolean
+        maintenanceNotes:
+          type: string
+          maxLength: 500
+        errorOccurred:
+          type: boolean
+        errorDescription:
+          type: string
+          maxLength: 500
+
+    EquipmentUsageResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        analyzerId:
+          type: integer
+        analyzerName:
+          type: string
+        usageDate:
+          type: string
+          format: date
+        startTime:
+          type: string
+          format: time
+        endTime:
+          type: string
+          format: time
+        duration:
+          type: integer
+          description: Duration in minutes
+        operatorName:
+          type: string
+        purpose:
+          type: string
+        samplesProcessed:
+          type: integer
+        maintenanceDone:
+          type: boolean
+        maintenanceNotes:
+          type: string
+        errorOccurred:
+          type: boolean
+        errorDescription:
+          type: string
+        fhirUuid:
+          type: string
+          format: uuid
+
+    AnalyzerInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        model:
+          type: string
+        serialNumber:
+          type: string
+        department:
+          $ref: "#/components/schemas/Department"
+        supportedTests:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        lastCalibration:
+          type: string
+          format: date
+        lastMaintenance:
+          type: string
+          format: date
+
+    Department:
+      type: string
+      enum:
+        - chemistry
+        - hematology
+        - parasitology
+        - urinalysis
+        - serology
+        - microbiology
