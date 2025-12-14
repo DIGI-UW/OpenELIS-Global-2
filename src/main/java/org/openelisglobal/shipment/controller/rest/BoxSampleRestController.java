@@ -33,6 +33,18 @@ public class BoxSampleRestController extends BaseRestController {
     @Autowired
     private BoxSampleService boxSampleService;
 
+    @Autowired
+    private org.openelisglobal.referral.service.ReferralService referralService;
+
+    @Autowired
+    private org.openelisglobal.referral.service.ReferralTypeService referralTypeService;
+
+    @Autowired
+    private org.openelisglobal.analysis.service.AnalysisService analysisService;
+
+    @Autowired
+    private org.openelisglobal.shipment.dao.ShippingBoxDAO shippingBoxDAO;
+
     /**
      * Get box samples by shipping box ID
      */
@@ -120,14 +132,30 @@ public class BoxSampleRestController extends BaseRestController {
      * Add sample to box
      */
     @PostMapping
-    public ResponseEntity<?> addSampleToBox(@Valid @RequestBody BoxSampleForm form, BindingResult result) {
+    public ResponseEntity<?> addSampleToBox(@Valid @RequestBody BoxSampleForm form, BindingResult result,
+            jakarta.servlet.http.HttpServletRequest request) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(result.getAllErrors());
         }
 
         try {
-            BoxSample boxSample = boxSampleService.addSampleToBox(form.getShippingBoxId(), form.getSampleId());
+            // Get system user ID for audit trail
+            String userIdString = getSysUserId(request);
+            Integer systemUserId = userIdString != null ? Integer.parseInt(userIdString) : null;
+
+            BoxSample boxSample = boxSampleService.addSampleToBox(form.getShippingBoxId(), form.getSampleId(),
+                    systemUserId);
             BoxSampleForm responseForm = convertToForm(boxSample);
+
+            // Create or update Referral entries for ALL analysis IDs
+            if (form.getAnalysisIds() != null && !form.getAnalysisIds().isEmpty()) {
+                for (Integer analysisId : form.getAnalysisIds()) {
+                    createOrUpdateReferral(analysisId, form.getShippingBoxId(), request);
+                }
+            } else if (form.getAnalysisId() != null) {
+                // Fallback for backward compatibility
+                createOrUpdateReferral(form.getAnalysisId(), form.getShippingBoxId(), request);
+            }
 
             return ResponseEntity.status(HttpStatus.CREATED).body(responseForm);
         } catch (IllegalStateException e) {
@@ -136,6 +164,62 @@ public class BoxSampleRestController extends BaseRestController {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error adding sample to box: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Create or update referral entry for analysis and assign to box
+     */
+    private void createOrUpdateReferral(Integer analysisId, Integer shippingBoxId,
+            jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            // Get existing referral or create new one
+            org.openelisglobal.referral.valueholder.Referral referral =
+                referralService.getReferralByAnalysisId(String.valueOf(analysisId));
+
+            org.openelisglobal.shipment.valueholder.ShippingBox box =
+                shippingBoxDAO.get(shippingBoxId).orElse(null);
+
+            if (referral == null) {
+                // Create new referral
+                referral = new org.openelisglobal.referral.valueholder.Referral();
+
+                // Get analysis
+                org.openelisglobal.analysis.valueholder.Analysis analysis =
+                    analysisService.get(String.valueOf(analysisId));
+
+                // Get referral type "Sample Shipment"
+                org.openelisglobal.referral.valueholder.ReferralType referralType =
+                    referralTypeService.getReferralTypeByName("Sample Shipment");
+
+                if (analysis != null && referralType != null) {
+                    referral.setAnalysis(analysis);
+                    referral.setRequestDate(new java.sql.Timestamp(System.currentTimeMillis()));
+                    referral.setStatus(org.openelisglobal.referral.valueholder.ReferralStatus.CREATED);
+                    referral.setFhirUuid(java.util.UUID.randomUUID());
+                    referral.setAssignedBox(box);
+                    referral.setReferralTypeId(referralType.getId());
+                    referral.setSysUserId(getSysUserId(request));
+
+                    // Set destination organization from the box
+                    if (box != null && box.getDestinationFacility() != null) {
+                        referral.setOrganization(box.getDestinationFacility());
+                    }
+
+                    referralService.insert(referral);
+                } else {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createOrUpdateReferral",
+                            "Could not create referral - analysis or referralType is null. Analysis ID: " + analysisId);
+                }
+            } else {
+                // Update existing referral
+                referral.setAssignedBox(box);
+                referral.setSysUserId(getSysUserId(request));
+                referralService.update(referral);
+            }
+        } catch (Exception e) {
+            LogEvent.logError("Error creating/updating referral", e);
+            // Log but don't fail the box sample creation
         }
     }
 

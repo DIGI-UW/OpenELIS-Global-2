@@ -28,6 +28,8 @@ public class ShippingBoxForm extends BaseForm {
 
     private Integer capacity;
 
+    private Integer actualSampleCount;
+
     private String notes;
 
     private Timestamp createdDate;
@@ -164,6 +166,14 @@ public class ShippingBoxForm extends BaseForm {
 
     public void setCapacity(Integer capacity) {
         this.capacity = capacity;
+    }
+
+    public Integer getActualSampleCount() {
+        return actualSampleCount;
+    }
+
+    public void setActualSampleCount(Integer actualSampleCount) {
+        this.actualSampleCount = actualSampleCount;
     }
 
     public String getNotes() {

@@ -37,7 +37,10 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     @Transactional(readOnly = true)
     public List<ShippingBox> getAllActiveBoxes() {
         try {
-            return shippingBoxDAO.findAllActive();
+            List<ShippingBox> boxes = shippingBoxDAO.findAllActive();
+            // Initialize lazy-loaded associations
+            boxes.forEach(this::initializeLazyAssociations);
+            return boxes;
         } catch (Exception e) {
             logger.error("Error getting all active shipping boxes", e);
             throw new LIMSRuntimeException("Error getting all active shipping boxes", e);
@@ -48,10 +51,28 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     @Transactional(readOnly = true)
     public ShippingBox getBoxById(Integer id) {
         try {
-            return shippingBoxDAO.get(id).orElse(null);
+            ShippingBox box = shippingBoxDAO.get(id).orElse(null);
+            initializeLazyAssociations(box);
+            return box;
         } catch (Exception e) {
             logger.error("Error getting shipping box by ID", e);
             throw new LIMSRuntimeException("Error getting shipping box by ID", e);
+        }
+    }
+
+    /**
+     * Initialize lazy-loaded associations to prevent LazyInitializationException
+     */
+    private void initializeLazyAssociations(ShippingBox box) {
+        if (box != null) {
+            // Force initialization of destinationFacility
+            if (box.getDestinationFacility() != null) {
+                box.getDestinationFacility().getOrganizationName();
+            }
+            // Force initialization of createdBy
+            if (box.getCreatedBy() != null) {
+                box.getCreatedBy().getNameForDisplay();
+            }
         }
     }
 
@@ -59,7 +80,9 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     @Transactional(readOnly = true)
     public ShippingBox getBoxByBoxId(String boxId) {
         try {
-            return shippingBoxDAO.findByBoxId(boxId);
+            ShippingBox box = shippingBoxDAO.findByBoxId(boxId);
+            initializeLazyAssociations(box);
+            return box;
         } catch (Exception e) {
             logger.error("Error getting shipping box by boxId", e);
             throw new LIMSRuntimeException("Error getting shipping box by boxId", e);
@@ -70,7 +93,9 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     @Transactional(readOnly = true)
     public ShippingBox getBoxByFhirUuid(UUID fhirUuid) {
         try {
-            return shippingBoxDAO.findByFhirUuid(fhirUuid);
+            ShippingBox box = shippingBoxDAO.findByFhirUuid(fhirUuid);
+            initializeLazyAssociations(box);
+            return box;
         } catch (Exception e) {
             logger.error("Error getting shipping box by FHIR UUID", e);
             throw new LIMSRuntimeException("Error getting shipping box by FHIR UUID", e);
@@ -81,7 +106,9 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     @Transactional(readOnly = true)
     public List<ShippingBox> getBoxesByState(BoxState state) {
         try {
-            return shippingBoxDAO.findByState(state);
+            List<ShippingBox> boxes = shippingBoxDAO.findByState(state);
+            boxes.forEach(this::initializeLazyAssociations);
+            return boxes;
         } catch (Exception e) {
             logger.error("Error getting shipping boxes by state", e);
             throw new LIMSRuntimeException("Error getting shipping boxes by state", e);
@@ -92,7 +119,9 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     @Transactional(readOnly = true)
     public List<ShippingBox> getBoxesByDestinationFacility(Integer facilityId) {
         try {
-            return shippingBoxDAO.findByDestinationFacilityId(facilityId);
+            List<ShippingBox> boxes = shippingBoxDAO.findByDestinationFacilityId(facilityId);
+            boxes.forEach(this::initializeLazyAssociations);
+            return boxes;
         } catch (Exception e) {
             logger.error("Error getting shipping boxes by destination facility", e);
             throw new LIMSRuntimeException("Error getting shipping boxes by destination facility", e);
@@ -103,7 +132,9 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     @Transactional(readOnly = true)
     public List<ShippingBox> getBoxesByCreatedDateRange(Timestamp startDate, Timestamp endDate) {
         try {
-            return shippingBoxDAO.findByCreatedDateRange(startDate, endDate);
+            List<ShippingBox> boxes = shippingBoxDAO.findByCreatedDateRange(startDate, endDate);
+            boxes.forEach(this::initializeLazyAssociations);
+            return boxes;
         } catch (Exception e) {
             logger.error("Error getting shipping boxes by created date range", e);
             throw new LIMSRuntimeException("Error getting shipping boxes by created date range", e);

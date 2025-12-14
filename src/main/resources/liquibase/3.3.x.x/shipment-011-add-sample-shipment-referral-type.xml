@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="1-add-sample-shipment-referral-type" author="pkomena">
+    <comment>Add 'Sample Shipment' referral type for shipment module</comment>
+
+    <!-- Insert the new referral type -->
+    <insert tableName="referral_type">
+      <column name="id" valueSequenceNext="referral_type_seq"/>
+      <column name="name" value="Sample Shipment"/>
+      <column name="description" value="Sample sent for testing via shipment"/>
+      <column name="display_key" value="referral.type.sampleShipment"/>
+    </insert>
+
+    <!-- Add localization for English and French -->
+    <insert tableName="localization">
+      <column name="id" valueSequenceNext="localization_seq"/>
+      <column name="description" value="referral type - sample shipment"/>
+      <column name="english" value="Sample Shipment"/>
+      <column name="french" value="Envoi d'échantillon"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+
+  </changeSet>
+
+</databaseChangeLog>

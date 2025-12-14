@@ -26,10 +26,10 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
 import {
-  getFromOpenElisServer,
+  getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
-  config,
 } from "../utils/Utils";
+import config from "../../config.json";
 import { NotificationContext } from "../layout/Layout";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import ShipmentNavigation from "./ShipmentNavigation";
@@ -48,13 +48,17 @@ const BoxDetails = () => {
   const [showReadyModal, setShowReadyModal] = useState(false);
 
   useEffect(() => {
-    fetchBoxDetails();
-    fetchBoxSamples();
+    if (boxId) {
+      fetchBoxDetails();
+      fetchBoxSamples();
+    } else {
+      setLoading(false);
+    }
   }, [boxId]);
 
   const fetchBoxDetails = async () => {
     try {
-      const response = await getFromOpenElisServer(
+      const response = await getFromOpenElisServerV2(
         `/rest/shipping-box/${boxId}`,
       );
       if (response) {
@@ -74,7 +78,7 @@ const BoxDetails = () => {
 
   const fetchBoxSamples = async () => {
     try {
-      const response = await getFromOpenElisServer(
+      const response = await getFromOpenElisServerV2(
         `/rest/box-sample/by-box/${boxId}`,
       );
       if (response) {

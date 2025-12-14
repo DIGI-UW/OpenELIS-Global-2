@@ -163,6 +163,47 @@ public class ShippingBoxRestController extends BaseRestController {
     }
 
     /**
+     * Generate a unique box number
+     */
+    @GetMapping("/generate-box-number")
+    public ResponseEntity<String> generateBoxNumber() {
+        try {
+            String boxNumber = generateUniqueBoxNumber();
+            return ResponseEntity.ok(boxNumber);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Generate unique box number with format BOX-YYYY-NNNN
+     * Uses sequential numbering within the year to avoid collisions
+     */
+    private String generateUniqueBoxNumber() {
+        int year = java.time.Year.now().getValue();
+        String prefix = "BOX-" + year + "-";
+        int nextNumber = 1;
+
+        // Try up to 9999 sequential numbers
+        while (nextNumber < 10000) {
+            String candidateBoxId = String.format("%s%04d", prefix, nextNumber);
+
+            // Check if this box ID already exists
+            ShippingBox existingBox = shippingBoxService.getBoxByBoxId(candidateBoxId);
+            if (existingBox == null) {
+                return candidateBoxId;
+            }
+
+            nextNumber++;
+        }
+
+        // Fallback: use timestamp if all 9999 numbers are exhausted (very unlikely)
+        long timestamp = System.currentTimeMillis() % 100000;
+        return String.format("%s%05d", prefix, timestamp);
+    }
+
+    /**
      * Get shipping box by box ID (not database ID)
      */
     @GetMapping("/by-box-id/{boxId}")
@@ -199,6 +240,12 @@ public class ShippingBoxRestController extends BaseRestController {
             // Set state to DRAFT if not specified
             if (box.getState() == null) {
                 box.setState(BoxState.DRAFT);
+            }
+
+            // Set sys_user_id for audit trail
+            String userIdString = getSysUserId(request);
+            if (userIdString != null) {
+                box.setSystemUserId(Integer.parseInt(userIdString));
             }
 
             ShippingBox createdBox = shippingBoxService.createBox(box);
@@ -396,6 +443,7 @@ public class ShippingBoxRestController extends BaseRestController {
         form.setState(box.getState() != null ? box.getState().name() : null);
         form.setTemperatureRequirement(box.getTemperatureRequirement());
         form.setCapacity(box.getCapacity());
+        form.setActualSampleCount(box.getActualSampleCount());
         form.setNotes(box.getNotes());
         form.setCreatedDate(box.getCreatedDate());
         form.setSentDate(box.getSentDate());
@@ -436,6 +484,7 @@ public class ShippingBoxRestController extends BaseRestController {
 
         box.setTemperatureRequirement(form.getTemperatureRequirement());
         box.setCapacity(form.getCapacity());
+        box.setActualSampleCount(form.getActualSampleCount());
         box.setNotes(form.getNotes());
         box.setCreatedDate(form.getCreatedDate());
         box.setSentDate(form.getSentDate());

@@ -20,6 +20,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.shipment.valueholder.ShippingBox;
 
 public class Referral extends BaseObject<String> {
 
@@ -35,6 +36,15 @@ public class Referral extends BaseObject<String> {
     private String requesterName;
     private ReferralStatus status;
     private UUID fhirUuid;
+
+    // Shipment tracking fields
+    private ValueHolderInterface assignedBox = new ValueHolder();
+    private Boolean lostStatus = false;
+    private Timestamp lostDate;
+    private String lostReason;
+    private String priority;
+    private Timestamp cancelDate;
+    private String cancelReason;
 
     private ValueHolderInterface analysis = new ValueHolder();
     private ValueHolderInterface organization = new ValueHolder();
@@ -151,5 +161,88 @@ public class Referral extends BaseObject<String> {
 
     public void setFhirUuid(UUID fhirUuid) {
         this.fhirUuid = fhirUuid;
+    }
+
+    // Shipment tracking getters/setters
+
+    public ShippingBox getAssignedBox() {
+        return (ShippingBox) assignedBox.getValue();
+    }
+
+    public void setAssignedBox(ShippingBox assignedBox) {
+        this.assignedBox.setValue(assignedBox);
+    }
+
+    public String getAssignedToBoxId() {
+        ShippingBox box = getAssignedBox();
+        return box != null ? box.getId().toString() : null;
+    }
+
+    public void setAssignedToBoxId(String assignedToBoxId) {
+        // This method is kept for backward compatibility with service layer
+        // The actual relationship is managed through setAssignedBox()
+        if (assignedToBoxId != null) {
+            ShippingBox box = new ShippingBox();
+            box.setId(Integer.valueOf(assignedToBoxId));
+            setAssignedBox(box);
+        } else {
+            setAssignedBox(null);
+        }
+    }
+
+    public Boolean getLostStatus() {
+        return lostStatus;
+    }
+
+    public void setLostStatus(Boolean lostStatus) {
+        this.lostStatus = lostStatus;
+    }
+
+    public Timestamp getLostDate() {
+        return lostDate;
+    }
+
+    public void setLostDate(Timestamp lostDate) {
+        this.lostDate = lostDate;
+    }
+
+    public String getLostReason() {
+        return lostReason;
+    }
+
+    public void setLostReason(String lostReason) {
+        this.lostReason = lostReason;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public Timestamp getCancelDate() {
+        return cancelDate;
+    }
+
+    public void setCancelDate(Timestamp cancelDate) {
+        this.cancelDate = cancelDate;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
+    }
+
+    public boolean isAssignedToBox() {
+        return getAssignedBox() != null;
+    }
+
+    public boolean isLost() {
+        return Boolean.TRUE.equals(lostStatus);
     }
 }

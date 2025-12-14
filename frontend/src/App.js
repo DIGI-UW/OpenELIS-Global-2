@@ -441,7 +441,8 @@ export default function App() {
                 />
                 <SecureRoute
                   path="/SampleShipment/box/:boxId"
-                  component={() => <BoxDetails />}
+                  exact
+                  component={BoxDetails}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute

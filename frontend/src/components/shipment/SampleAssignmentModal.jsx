@@ -1,21 +1,21 @@
-import React, { useState, useEffect, useContext } from "react";
 import {
+  DataTable,
+  Loading,
   Modal,
   Search,
-  DataTable,
-  TableContainer,
   Table,
-  TableHead,
-  TableRow,
-  TableHeader,
   TableBody,
   TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
   TableSelectRow,
-  Loading,
 } from "@carbon/react";
+import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
+import { getFromOpenElisServer } from "../utils/Utils";
 import "./SampleAssignmentModal.css";
 
 const SampleAssignmentModal = ({
@@ -41,9 +41,9 @@ const SampleAssignmentModal = ({
   const fetchUnassignedSamples = async () => {
     setLoading(true);
     try {
-      let url = "/rest/unassigned-samples/dashboard";
+      let url = "/rest/unassigned-sample";
       if (destinationFacilityId) {
-        url = `/rest/unassigned-samples/by-facility/${destinationFacilityId}`;
+        url = `/rest/unassigned-sample/by-facility/${destinationFacilityId}`;
       }
 
       const response = await getFromOpenElisServer(url);
@@ -101,8 +101,8 @@ const SampleAssignmentModal = ({
       accessionNumber: sample.accessionNumber,
       referralTestName: sample.referralTestName || "-",
       priority: sample.priority || "NORMAL",
-      createdDate: sample.createdDate
-        ? new Date(sample.createdDate).toLocaleDateString()
+      createdDate: sample.referralDate
+        ? new Date(sample.referralDate).toLocaleDateString()
         : "-",
     }));
   };
@@ -187,11 +187,23 @@ const SampleAssignmentModal = ({
                   getTableProps,
                   selectedRows,
                 }) => {
-                  // Update selected samples when selection changes
-                  React.useEffect(() => {
-                    const selectedIds = selectedRows.map((row) => row.id);
-                    setSelectedSamples(selectedIds);
-                  }, [selectedRows]);
+                  // Update selected samples when selection changes (safe pattern for render function)
+                  if (selectedRows.length > 0) {
+                    const currentSelectedIds = selectedRows.map(
+                      (row) => row.id,
+                    );
+                    if (
+                      JSON.stringify(currentSelectedIds) !==
+                      JSON.stringify(selectedSamples)
+                    ) {
+                      setTimeout(
+                        () => setSelectedSamples(currentSelectedIds),
+                        0,
+                      );
+                    }
+                  } else if (selectedSamples.length > 0) {
+                    setTimeout(() => setSelectedSamples([]), 0);
+                  }
 
                   return (
                     <TableContainer>

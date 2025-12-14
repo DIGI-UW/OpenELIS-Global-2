@@ -58,6 +58,9 @@ public class ShippingBox extends BaseObject<Integer> {
     @Column(name = "capacity")
     private Integer capacity;
 
+    @Column(name = "actual_sample_count")
+    private Integer actualSampleCount;
+
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
@@ -82,6 +85,9 @@ public class ShippingBox extends BaseObject<Integer> {
 
     @Column(name = "archived_date")
     private Timestamp archivedDate;
+
+    @Column(name = "sys_user_id", nullable = false)
+    private Integer systemUserId;
 
     // Relationships
     @OneToMany(mappedBy = "shippingBox", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -154,6 +160,14 @@ public class ShippingBox extends BaseObject<Integer> {
         this.capacity = capacity;
     }
 
+    public Integer getActualSampleCount() {
+        return actualSampleCount;
+    }
+
+    public void setActualSampleCount(Integer actualSampleCount) {
+        this.actualSampleCount = actualSampleCount;
+    }
+
     public String getNotes() {
         return notes;
     }
@@ -216,6 +230,14 @@ public class ShippingBox extends BaseObject<Integer> {
 
     public void setArchivedDate(Timestamp archivedDate) {
         this.archivedDate = archivedDate;
+    }
+
+    public Integer getSystemUserId() {
+        return systemUserId;
+    }
+
+    public void setSystemUserId(Integer systemUserId) {
+        this.systemUserId = systemUserId;
     }
 
     public List<BoxSample> getBoxSamples() {

@@ -1,35 +1,35 @@
-import React, { useState, useEffect, useRef, useContext } from "react";
 import {
-  Tile,
-  Grid,
+  Button,
   Column,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
   DataTable,
-  TableContainer,
+  Dropdown,
+  Grid,
+  Loading,
+  Search,
+  Tab,
   Table,
-  TableHead,
-  TableRow,
-  TableHeader,
   TableBody,
   TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
   Tag,
-  Search,
-  Dropdown,
-  Button,
-  Loading,
+  Tile,
 } from "@carbon/react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
-import { getFromOpenElisServer } from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import ShipmentNavigation from "./ShipmentNavigation";
+import { NotificationContext } from "../layout/Layout";
+import { getFromOpenElisServer } from "../utils/Utils";
 import "./ShipmentDashboard.css";
+import ShipmentNavigation from "./ShipmentNavigation";
 
 const TAB_ROUTES = ["boxes", "unassigned"];
 
@@ -328,8 +328,8 @@ const ShipmentDashboard = () => {
       referralTestName: sample.referralTestName || "-",
       destinationFacilityName: sample.destinationFacilityName || "-",
       priority: sample.priority || "-",
-      createdDate: sample.createdDate
-        ? new Date(sample.createdDate).toLocaleDateString()
+      createdDate: sample.referralDate
+        ? new Date(sample.referralDate).toLocaleDateString()
         : "-",
       actions: (
         <Button

@@ -44,10 +44,11 @@ public interface BoxSampleService {
      *
      * @param shippingBoxId Shipping box ID
      * @param sampleId      Sample ID
+     * @param systemUserId  System user ID for audit trail
      * @return Created BoxSample
      * @throws IllegalStateException if sample already in a box
      */
-    BoxSample addSampleToBox(Integer shippingBoxId, Integer sampleId);
+    BoxSample addSampleToBox(Integer shippingBoxId, Integer sampleId, Integer systemUserId);
 
     /**
      * Remove sample from box

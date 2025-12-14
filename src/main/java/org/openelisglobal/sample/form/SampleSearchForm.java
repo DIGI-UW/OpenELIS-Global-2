@@ -13,6 +13,7 @@ public class SampleSearchForm implements Serializable {
     private String accessionNumber;
     private String sampleType;
     private String referralTest;
+    private Integer analysisId;
 
     public Integer getId() {
         return id;
@@ -44,5 +45,13 @@ public class SampleSearchForm implements Serializable {
 
     public void setReferralTest(String referralTest) {
         this.referralTest = referralTest;
+    }
+
+    public Integer getAnalysisId() {
+        return analysisId;
+    }
+
+    public void setAnalysisId(Integer analysisId) {
+        this.analysisId = analysisId;
     }
 }

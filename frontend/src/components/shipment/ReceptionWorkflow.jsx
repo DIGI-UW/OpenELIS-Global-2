@@ -42,7 +42,6 @@ const ReceptionWorkflow = () => {
   const [generalNotes, setGeneralNotes] = useState("");
 
   const handleScanBox = async () => {
-
     if (!boxId.trim()) {
       addNotification({
         kind: "warning",

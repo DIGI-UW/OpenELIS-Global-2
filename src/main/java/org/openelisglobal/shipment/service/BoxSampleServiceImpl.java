@@ -30,11 +30,18 @@ public class BoxSampleServiceImpl implements BoxSampleService {
     @Autowired
     private ShippingBoxDAO shippingBoxDAO;
 
+    @Autowired
+    private org.openelisglobal.sample.dao.SampleDAO sampleDAO;
+
     @Override
     @Transactional(readOnly = true)
     public BoxSample getBoxSampleById(Integer id) {
         try {
-            return boxSampleDAO.get(id).orElse(null);
+            BoxSample boxSample = boxSampleDAO.get(id).orElse(null);
+            if (boxSample != null) {
+                initializeAssociations(boxSample);
+            }
+            return boxSample;
         } catch (Exception e) {
             logger.error("Error getting box sample by ID", e);
             throw new LIMSRuntimeException("Error getting box sample by ID", e);
@@ -45,7 +52,11 @@ public class BoxSampleServiceImpl implements BoxSampleService {
     @Transactional(readOnly = true)
     public List<BoxSample> getBoxSamplesByShippingBoxId(Integer shippingBoxId) {
         try {
-            return boxSampleDAO.findByShippingBoxId(shippingBoxId);
+            List<BoxSample> boxSamples = boxSampleDAO.findByShippingBoxId(shippingBoxId);
+            for (BoxSample boxSample : boxSamples) {
+                initializeAssociations(boxSample);
+            }
+            return boxSamples;
         } catch (Exception e) {
             logger.error("Error getting box samples by shipping box ID", e);
             throw new LIMSRuntimeException("Error getting box samples by shipping box ID", e);
@@ -56,7 +67,11 @@ public class BoxSampleServiceImpl implements BoxSampleService {
     @Transactional(readOnly = true)
     public BoxSample getBoxSampleBySampleId(Integer sampleId) {
         try {
-            return boxSampleDAO.findBySampleId(sampleId);
+            BoxSample boxSample = boxSampleDAO.findBySampleId(sampleId);
+            if (boxSample != null) {
+                initializeAssociations(boxSample);
+            }
+            return boxSample;
         } catch (Exception e) {
             logger.error("Error getting box sample by sample ID", e);
             throw new LIMSRuntimeException("Error getting box sample by sample ID", e);
@@ -67,15 +82,32 @@ public class BoxSampleServiceImpl implements BoxSampleService {
     @Transactional(readOnly = true)
     public List<BoxSample> getBoxSamplesByReceptionStatus(Integer shippingBoxId, ReceptionStatus receptionStatus) {
         try {
-            return boxSampleDAO.findByShippingBoxIdAndReceptionStatus(shippingBoxId, receptionStatus);
+            List<BoxSample> boxSamples = boxSampleDAO.findByShippingBoxIdAndReceptionStatus(shippingBoxId,
+                    receptionStatus);
+            for (BoxSample boxSample : boxSamples) {
+                initializeAssociations(boxSample);
+            }
+            return boxSamples;
         } catch (Exception e) {
             logger.error("Error getting box samples by reception status", e);
             throw new LIMSRuntimeException("Error getting box samples by reception status", e);
         }
     }
 
+    /**
+     * Initialize lazy loaded associations to prevent LazyInitializationException
+     */
+    private void initializeAssociations(BoxSample boxSample) {
+        if (boxSample.getSample() != null) {
+            boxSample.getSample().getAccessionNumber(); // Force initialization
+        }
+        if (boxSample.getShippingBox() != null) {
+            boxSample.getShippingBox().getId(); // Force initialization
+        }
+    }
+
     @Override
-    public BoxSample addSampleToBox(Integer shippingBoxId, Integer sampleId) {
+    public BoxSample addSampleToBox(Integer shippingBoxId, Integer sampleId, Integer systemUserId) {
         try {
             // Check if sample already in a box
             if (boxSampleDAO.existsBySampleId(sampleId)) {
@@ -86,14 +118,15 @@ public class BoxSampleServiceImpl implements BoxSampleService {
             ShippingBox box = shippingBoxDAO.get(shippingBoxId).orElseThrow(
                     () -> new IllegalArgumentException("Shipping box not found with ID: " + shippingBoxId));
 
+            // Get existing sample from database
+            Sample sample = sampleDAO.get(sampleId.toString()).orElseThrow(
+                    () -> new IllegalArgumentException("Sample not found with ID: " + sampleId));
+
             // Create box sample association
             BoxSample boxSample = new BoxSample();
             boxSample.setShippingBox(box);
-
-            // Create sample reference (would normally fetch from SampleDAO)
-            Sample sample = new Sample();
-            sample.setId(sampleId.toString());
             boxSample.setSample(sample);
+            boxSample.setSystemUserId(systemUserId);
 
             boxSample.setAddedDate(new Timestamp(System.currentTimeMillis()));
             boxSample.setReceptionStatus(ReceptionStatus.PENDING);
@@ -102,7 +135,15 @@ public class BoxSampleServiceImpl implements BoxSampleService {
             Integer id = boxSampleDAO.insert(boxSample);
             logger.info("Added sample {} to box {}", sampleId, shippingBoxId);
 
-            return boxSampleDAO.get(id).orElse(null);
+            // Reload to get fully initialized entity with eager loaded associations
+            BoxSample savedBoxSample = boxSampleDAO.get(id).orElse(null);
+
+            // Initialize lazy loaded associations within transaction
+            if (savedBoxSample != null) {
+                initializeAssociations(savedBoxSample);
+            }
+
+            return savedBoxSample;
         } catch (Exception e) {
             logger.error("Error adding sample to box", e);
             throw new LIMSRuntimeException("Error adding sample to box", e);

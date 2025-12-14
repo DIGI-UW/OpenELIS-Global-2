@@ -49,7 +49,11 @@ const ShipmentNavigation = () => {
 
   return (
     <div className="shipment-navigation">
-      <Tabs selectedIndex={getActiveIndex()} onChange={handleTabChange} autoWidth>
+      <Tabs
+        selectedIndex={getActiveIndex()}
+        onChange={handleTabChange}
+        autoWidth
+      >
         <TabList aria-label="Shipment navigation tabs" contained>
           {navigationOptions.map((option) => {
             const IconComponent = option.icon;

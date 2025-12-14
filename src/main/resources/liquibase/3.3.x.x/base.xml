@@ -20,10 +20,13 @@
   <include relativeToChangelogFile="true" file="shipment-001-create-shipping-box-table.xml"/>
   <include relativeToChangelogFile="true" file="shipment-002-create-shipment-table.xml"/>
   <include relativeToChangelogFile="true" file="shipment-003-create-box-sample-table.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-004-create-unassigned-sample-table.xml"/>
+  <!-- shipment-004 removed: unassigned samples now use referral table directly -->
   <include relativeToChangelogFile="true" file="shipment-005-create-indexes.xml"/>
   <include relativeToChangelogFile="true" file="shipment-006-create-foreign-keys.xml"/>
   <include relativeToChangelogFile="true" file="shipment-007-add-menu-and-role.xml"/>
   <include relativeToChangelogFile="true" file="shipment-008-add-capacity-column.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-009-add-referral-shipment-columns.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-010-add-actual-sample-count.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-011-add-sample-shipment-referral-type.xml"/>
 
 </databaseChangeLog>
