@@ -59,7 +59,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1); // Required field
+        device.setSysUserId("1"); // Required field
 
         // When: Insert device through service layer
         Integer deviceId = storageLocationService.insert(device);
@@ -84,7 +84,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1); // Required field
+        device.setSysUserId("1"); // Required field
 
         // Note: We can't actually persist this, so we'll test the validation in the
         // generateLabel test
@@ -127,7 +127,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1); // Required field
+        device.setSysUserId("1"); // Required field
         // shortCode is null - should be allowed since code ≤10 chars
 
         // When: Insert device through service layer
@@ -182,7 +182,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         shelf.setParentDevice(parentDevice);
         shelf.setCode("TEST-SHA01");
         shelf.setActive(true);
-        shelf.setSysUserIdValue(1); // Required field
+        shelf.setSysUserId("1"); // Required field
 
         // When: Insert shelf through service layer
         Integer shelfId = storageLocationService.insert(shelf);
@@ -214,7 +214,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         rack.setParentShelf(parentShelf);
         rack.setCode("TEST-RKR01");
         rack.setActive(true);
-        rack.setSysUserIdValue(1); // Required field
+        rack.setSysUserId("1"); // Required field
 
         // When: Insert rack through service layer
         Integer rackId = storageLocationService.insert(rack);
@@ -266,7 +266,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1); // Required field
+        device.setSysUserId("1"); // Required field
         // shortCode is null - should be allowed since code ≤10 chars
 
         // When: Insert device through service layer

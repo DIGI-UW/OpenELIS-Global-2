@@ -1203,21 +1203,24 @@ public class StorageLocationRestController extends BaseRestController {
 
     @GetMapping("/boxes")
     public ResponseEntity<List<StorageBoxResponse>> getBoxes(@RequestParam(required = false) String rackId,
-            @RequestParam(required = false) Boolean occupied) {
+            @RequestParam(required = false) Boolean active, @RequestParam(required = false) Boolean occupied) {
         try {
             List<StorageBox> boxes;
             if (rackId != null) {
                 Integer rackIdInt = Integer.parseInt(rackId);
                 boxes = storageLocationService.getBoxesByRack(rackIdInt);
-                // Filter by occupied status if specified
-                if (occupied != null) {
-                    boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
-                }
             } else {
                 boxes = storageLocationService.getAllBoxes();
-                if (occupied != null) {
-                    boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
-                }
+            }
+
+            // Filter by active status if specified
+            if (active != null) {
+                boxes.removeIf(b -> !active.equals(b.getActive()));
+            }
+
+            // Filter by occupied status if specified
+            if (occupied != null) {
+                boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
             }
 
             List<StorageBoxResponse> response = new ArrayList<>();

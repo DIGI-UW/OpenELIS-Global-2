@@ -117,7 +117,8 @@ public class NoteBook extends BaseObject<Integer> {
     @OneToMany
     @JoinTable(name = "notebook_entries", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "entry_id"))
     private List<NoteBook> entries;
-    @Column(name = "questionnaire_fhir_uuid")
+
+    @Column(name = "questionnaire_fhir_uuid", columnDefinition = "uuid")
     private UUID questionnaireFhirUuid;
 
     @Override

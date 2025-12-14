@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- SAMPLE_ROUTING TABLE -->
+    <!-- Tracks sample destination routing for branching workflows -->
+    <!-- ======================================================== -->
+    <changeSet id="create-sample-routing-sequence" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="sample_routing_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for sample_routing table.</comment>
+        <createSequence sequenceName="sample_routing_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-sample-routing-table" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_routing" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating SAMPLE_ROUTING table for tracking sample destination routing in workflow.</comment>
+        <createTable tableName="sample_routing">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="sample_routing_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_sample_routing"/>
+            </column>
+            <column name="sample_item_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="destination_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="external_lab_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="shipment_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="storage_assignment_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="box_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="well_coordinate" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="routed_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="routed_at" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-sample-routing-foreign-keys" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_routing" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to sample_routing table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="sample_routing"
+            baseColumnNames="sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            constraintName="fk_sr_sample_item"/>
+        <addForeignKeyConstraint
+            baseTableName="sample_routing"
+            baseColumnNames="notebook_id"
+            referencedTableName="notebook"
+            referencedColumnNames="id"
+            constraintName="fk_sr_notebook"/>
+        <addForeignKeyConstraint
+            baseTableName="sample_routing"
+            baseColumnNames="routed_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_sr_routed_by"/>
+        <addForeignKeyConstraint
+            baseTableName="sample_routing"
+            baseColumnNames="box_id"
+            referencedTableName="storage_box"
+            referencedColumnNames="id"
+            constraintName="fk_sr_storage_box"/>
+        <addForeignKeyConstraint
+            baseTableName="sample_routing"
+            baseColumnNames="storage_assignment_id"
+            referencedTableName="sample_storage_assignment"
+            referencedColumnNames="id"
+            constraintName="fk_sr_storage_assignment"/>
+    </changeSet>
+
+    <changeSet id="add-sample-routing-destination-check" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_routing" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for destination_type values.</comment>
+        <sql>
+            ALTER TABLE clinlims.sample_routing
+            ADD CONSTRAINT chk_sr_destination_type
+            CHECK (destination_type IN ('INTERNAL_ANALYSIS', 'EXTERNAL_LAB', 'STORAGE'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.sample_routing DROP CONSTRAINT IF EXISTS chk_sr_destination_type;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-sample-routing-indexes" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_routing" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="sample_routing" indexName="idx_sr_notebook">
+            <column name="notebook_id"/>
+        </createIndex>
+        <createIndex tableName="sample_routing" indexName="idx_sr_sample">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <createIndex tableName="sample_routing" indexName="idx_sr_box_well">
+            <column name="box_id"/>
+            <column name="well_coordinate"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-sample-routing-reference-table" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'SAMPLE_ROUTING'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating SAMPLE_ROUTING reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="SAMPLE_ROUTING"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='SAMPLE_ROUTING'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="rename-sample-routing-lastupdated-column" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="sample_routing" columnName="lastupdated" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="sample_routing" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Rename lastupdated to last_updated to match BaseObject column annotation.</comment>
+        <renameColumn tableName="sample_routing"
+                      oldColumnName="lastupdated"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- ADD ASSAY PLATE NAME COLUMN -->
+    <!-- For temporary assay plates used in Internal Analysis -->
+    <!-- These are NOT connected to the storage hierarchy -->
+    <!-- ======================================================== -->
+    <changeSet id="add-assay-plate-name-column" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_routing" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="sample_routing" columnName="assay_plate_name" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding assay_plate_name column for temporary assay plates used in Internal Analysis routing.</comment>
+        <addColumn tableName="sample_routing">
+            <column name="assay_plate_name" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="sample_routing" columnName="assay_plate_name"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

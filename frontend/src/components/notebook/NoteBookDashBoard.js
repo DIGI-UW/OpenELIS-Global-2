@@ -622,7 +622,12 @@ function NoteBookDashBoard() {
                         <Grid>
                           <Column lg={16} md={8} sm={4}>
                             <h3 className="notebook-tile-title">
-                              {entry.title}
+                              {entry.notebookName && entry.entryNumber
+                                ? `${entry.notebookName} - ${intl.formatMessage(
+                                    { id: "notebook.entry.number" },
+                                    { number: entry.entryNumber },
+                                  )}`
+                                : entry.title}
                             </h3>
                             <hr></hr>
                           </Column>

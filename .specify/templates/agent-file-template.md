@@ -2,9 +2,6 @@
 
 Auto-generated from all feature plans. Last updated: [DATE]
 
-**Constitution**: See `.specify/memory/constitution.md` for non-negotiable
-development principles.
-
 ## Active Technologies
 
 [EXTRACTED FROM ALL PLAN.MD FILES]
@@ -25,11 +22,6 @@ development principles.
 [ACTUAL STRUCTURE FROM PLANS]
 ```
 
-**OpenELIS Backend Pattern**: `org.openelisglobal.{module}.{layer}`
-
-- Layers: valueholder (JPA entities) → dao (data access) → service (business
-  logic) → controller (REST) → form (DTOs)
-
 ## Commands
 
 [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES]
@@ -49,7 +41,6 @@ cd frontend && npm run cy:run
 # Hot reload backend (rebuild + restart container)
 mvn clean install -DskipTests -Dmaven.test.skip=true && docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 ```
-
 ## Code Style
 
 [LANGUAGE-SPECIFIC, ONLY FOR LANGUAGES IN USE]
@@ -65,7 +56,6 @@ mvn clean install -DskipTests -Dmaven.test.skip=true && docker compose -f dev.do
 - **Database**: Liquibase changesets ONLY (NO direct DDL/DML)
 - **Tests**: JUnit 4 for backend, Jest + Cypress for frontend, >80% backend
   coverage goal, >70% frontend coverage goal
-
 ## Recent Changes
 
 [LAST 3 FEATURES AND WHAT THEY ADDED]

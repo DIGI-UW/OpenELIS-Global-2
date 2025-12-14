@@ -117,6 +117,42 @@ export const postToOpenElisServerFormData = (
     });
 };
 
+export const postToOpenElisServerFormDataJson = (
+  endPoint,
+  formData,
+  callback,
+  extraParams,
+) => {
+  fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    method: "POST",
+    headers: {
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+    body: formData,
+  })
+    .then((response) => {
+      if (!response.ok) {
+        return response.json().then((errorJson) => {
+          return {
+            ...errorJson,
+            status: response.status,
+            statusCode: response.status,
+            statusText: response.statusText,
+          };
+        });
+      }
+      return response.json();
+    })
+    .then((json) => {
+      callback(json, extraParams);
+    })
+    .catch((error) => {
+      console.error(error);
+      callback({ error: error.message }, extraParams);
+    });
+};
+
 export const postToOpenElisServerJsonResponse = (
   endPoint,
   payLoad,

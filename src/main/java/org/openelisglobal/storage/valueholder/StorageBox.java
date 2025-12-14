@@ -37,7 +37,7 @@ public class StorageBox extends BaseObject<Integer> {
     @Column(name = "ID")
     private Integer id;
 
-    @Column(name = "FHIR_UUID", nullable = false, unique = true)
+    @Column(name = "FHIR_UUID", nullable = false, unique = true, columnDefinition = "uuid")
     private UUID fhirUuid;
 
     @Column(name = "LABEL", length = 100, nullable = false)
@@ -65,8 +65,8 @@ public class StorageBox extends BaseObject<Integer> {
     @JoinColumn(name = "PARENT_RACK_ID", nullable = false)
     private StorageRack parentRack;
 
-    @Column(name = "SYS_USER_ID", nullable = false)
-    private Integer sysUserId;
+    @Column(name = "SYS_USER_ID", nullable = false, length = 36)
+    private String sysUserIdValue;
 
     @Override
     public Integer getId() {
@@ -167,22 +167,14 @@ public class StorageBox extends BaseObject<Integer> {
         return parentRack != null;
     }
 
-    public Integer getSysUserIdValue() {
-        return sysUserId;
-    }
-
-    public void setSysUserIdValue(Integer sysUserId) {
-        this.sysUserId = sysUserId;
-    }
-
     @Override
     public String getSysUserId() {
-        return sysUserId != null ? sysUserId.toString() : null;
+        return sysUserIdValue;
     }
 
     @Override
     public void setSysUserId(String sysUserId) {
-        this.sysUserId = sysUserId != null ? Integer.parseInt(sysUserId) : null;
+        this.sysUserIdValue = sysUserId;
     }
 
     @PrePersist

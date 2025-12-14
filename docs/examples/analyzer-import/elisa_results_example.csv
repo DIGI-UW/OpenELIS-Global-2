@@ -1,0 +1,27 @@
+Well,Sample_ID,OD_450,Result,Interpretation,Run_Date,Dilution
+A1,CTRL-NEG,0.052,Negative,Control,2024-12-09,1:100
+A2,CTRL-POS,2.341,Positive,Control,2024-12-09,1:100
+A3,CAL-1,0.125,0.125,Calibrator,2024-12-09,1:100
+A4,CAL-2,0.512,0.512,Calibrator,2024-12-09,1:100
+A5,CAL-3,1.024,1.024,Calibrator,2024-12-09,1:100
+A6,CAL-4,2.048,2.048,Calibrator,2024-12-09,1:100
+B1,SAMP-001,0.089,Negative,Patient Sample,2024-12-09,1:100
+B2,SAMP-002,0.156,Equivocal,Patient Sample,2024-12-09,1:100
+B3,SAMP-003,1.892,Positive,Patient Sample,2024-12-09,1:100
+B4,SAMP-004,0.045,Negative,Patient Sample,2024-12-09,1:100
+B5,SAMP-005,2.105,Positive,Patient Sample,2024-12-09,1:100
+B6,SAMP-006,0.078,Negative,Patient Sample,2024-12-09,1:100
+C1,SAMP-007,0.234,Equivocal,Patient Sample,2024-12-09,1:100
+C2,SAMP-008,1.456,Positive,Patient Sample,2024-12-09,1:100
+C3,SAMP-009,0.067,Negative,Patient Sample,2024-12-09,1:100
+C4,SAMP-010,0.891,Positive,Patient Sample,2024-12-09,1:100
+C5,SAMP-011,0.052,Negative,Patient Sample,2024-12-09,1:100
+C6,SAMP-012,1.234,Positive,Patient Sample,2024-12-09,1:100
+D1,SAMP-013,0.098,Negative,Patient Sample,2024-12-09,1:100
+D2,SAMP-014,0.189,Equivocal,Patient Sample,2024-12-09,1:100
+D3,SAMP-015,2.567,Positive,Patient Sample,2024-12-09,1:100
+D4,SAMP-016,0.034,Negative,Patient Sample,2024-12-09,1:100
+D5,SAMP-017,1.789,Positive,Patient Sample,2024-12-09,1:100
+D6,SAMP-018,0.112,Negative,Patient Sample,2024-12-09,1:100
+E1,SAMP-019,0.267,Equivocal,Patient Sample,2024-12-09,1:100
+E2,SAMP-020,1.123,Positive,Patient Sample,2024-12-09,1:100

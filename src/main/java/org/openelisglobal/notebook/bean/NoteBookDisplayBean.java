@@ -16,6 +16,8 @@ public class NoteBookDisplayBean {
     private Integer entriesCount;
     private Integer technicianId;
     private UUID questionnaireFhirUuid;
+    private Integer entryNumber;
+    private String notebookName;
 
     public String getTitle() {
         return title;
@@ -103,6 +105,22 @@ public class NoteBookDisplayBean {
 
     public void setTechnicianId(Integer technicianId) {
         this.technicianId = technicianId;
+    }
+
+    public Integer getEntryNumber() {
+        return entryNumber;
+    }
+
+    public void setEntryNumber(Integer entryNumber) {
+        this.entryNumber = entryNumber;
+    }
+
+    public String getNotebookName() {
+        return notebookName;
+    }
+
+    public void setNotebookName(String notebookName) {
+        this.notebookName = notebookName;
     }
 
 }

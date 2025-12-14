@@ -159,7 +159,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setParentRoom(parentRoom);
         device.setCode("test-frz01");
         device.setActive(true);
-        device.setSysUserIdValue(1);
+        device.setSysUserId("1");
         Integer deviceId = storageLocationService.insert(device);
         assertNotNull(deviceId);
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
@@ -177,7 +177,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1);
+        device.setSysUserId("1");
         Integer deviceId = storageLocationService.insert(device);
         assertNotNull(deviceId);
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
@@ -195,7 +195,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1);
+        device.setSysUserId("1");
         try {
             storageLocationService.insert(device);
             fail("Should have thrown exception");
@@ -215,8 +215,9 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device1.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device1.setParentRoom(parentRoom);
         device1.setActive(true);
-        device1.setSysUserIdValue(1);
-        storageLocationService.insert(device1);
+        device1.setSysUserId("1");
+        Integer deviceId1 = storageLocationService.insert(device1);
+        assertNotNull("First device should be created", deviceId1);
 
         StorageDevice device2 = new StorageDevice();
         device2.setCode("TEST-DUP");
@@ -224,7 +225,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device2.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device2.setParentRoom(parentRoom);
         device2.setActive(true);
-        device2.setSysUserIdValue(1);
+        device2.setSysUserId("1");
 
         try {
             storageLocationService.insert(device2);
@@ -244,7 +245,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1);
+        device.setSysUserId("1");
         Integer deviceId = storageLocationService.insert(device);
 
         StorageDevice updatedDevice = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
@@ -264,7 +265,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         shelf.setParentDevice(parentDevice);
         shelf.setCode("test-sha01");
         shelf.setActive(true);
-        shelf.setSysUserIdValue(1);
+        shelf.setSysUserId("1");
         Integer shelfId = storageLocationService.insert(shelf);
         StorageShelf retrieved = (StorageShelf) storageLocationService.get(shelfId, StorageShelf.class);
         assertEquals("TEST-SHA01", retrieved.getCode());
@@ -279,7 +280,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         rack.setParentShelf(parentShelf);
         rack.setCode("test-rkr01");
         rack.setActive(true);
-        rack.setSysUserIdValue(1);
+        rack.setSysUserId("1");
         Integer rackId = storageLocationService.insert(rack);
         StorageRack retrieved = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
         assertEquals("TEST-RKR01", retrieved.getCode());
@@ -292,10 +293,56 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     @Test
+    public void testUpdateShelf_WithShortCode_UpdatesCorrectly() {
+        StorageDevice parentDevice = (StorageDevice) storageLocationService.get(5000, StorageDevice.class);
+        assertNotNull("Test device should exist in dataset", parentDevice);
+
+        StorageShelf shelf = new StorageShelf();
+        shelf.setLabel("TEST-SHELF02");
+        shelf.setParentDevice(parentDevice);
+        shelf.setCode("TEST-OLD2");
+        shelf.setActive(true);
+        shelf.setSysUserId("1");
+        Integer shelfId = storageLocationService.insert(shelf);
+        assertNotNull("Shelf should be created", shelfId);
+
+        StorageShelf updatedShelf = (StorageShelf) storageLocationService.get(shelfId, StorageShelf.class);
+        updatedShelf.setCode("TEST-NEW2");
+        storageLocationService.update(updatedShelf);
+
+        StorageShelf retrieved = (StorageShelf) storageLocationService.get(shelfId, StorageShelf.class);
+        assertNotNull("Retrieved shelf should not be null", retrieved);
+        assertEquals("Short code should be updated", "TEST-NEW2", retrieved.getCode());
+    }
+
+    @Test
     public void filterRooms_shouldReturnOnlyActiveRooms_whenFilteringByActiveStatus() {
         List<StorageRoom> allRooms = storageLocationService.getRooms();
         List<StorageRoom> activeRooms = allRooms.stream().filter(StorageRoom::getActive).toList();
         assertEquals(2, activeRooms.size());
+    }
+
+    @Test
+    public void testUpdateRack_WithShortCode_UpdatesCorrectly() {
+        StorageShelf parentShelf = (StorageShelf) storageLocationService.get(5000, StorageShelf.class);
+        assertNotNull("Test shelf should exist in dataset", parentShelf);
+
+        StorageRack rack = new StorageRack();
+        rack.setLabel("TEST-RACK02");
+        rack.setParentShelf(parentShelf);
+        rack.setCode("TEST-OLD3");
+        rack.setActive(true);
+        rack.setSysUserId("1");
+        Integer rackId = storageLocationService.insert(rack);
+        assertNotNull("Rack should be created", rackId);
+
+        StorageRack updatedRack = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
+        updatedRack.setCode("TEST-NEW3");
+        storageLocationService.update(updatedRack);
+
+        StorageRack retrieved = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
+        assertNotNull("Retrieved rack should not be null", retrieved);
+        assertEquals("Short code should be updated", "TEST-NEW3", retrieved.getCode());
     }
 
     @Test

@@ -22,6 +22,7 @@ import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.bean.SampleDisplayBean.ResultDisplayBean;
 import org.openelisglobal.notebook.dao.NoteBookDAO;
+import org.openelisglobal.notebook.dao.NoteBookPageDAO;
 import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
@@ -45,6 +46,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Autowired
     private NoteBookDAO baseObjectDAO;
+
+    @Autowired
+    private NoteBookPageDAO noteBookPageDAO;
 
     @Autowired
     private SampleService sampleService;
@@ -225,6 +229,38 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setIsTemplate(noteBook.getIsTemplate());
             displayBean.setEntriesCount(noteBook.getEntries().size());
             displayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
+
+            // For non-template entries, find and set entry number and parent notebook name
+            if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+                NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
+                if (parentTemplate != null) {
+                    displayBean.setNotebookName(parentTemplate.getTitle());
+                    // Calculate entry number (1-based index in parent's entries list)
+                    Hibernate.initialize(parentTemplate.getEntries());
+                    List<NoteBook> entries = parentTemplate.getEntries();
+                    if (entries != null) {
+                        // Sort entries by dateCreated to get consistent numbering
+                        List<NoteBook> sortedEntries = entries.stream().sorted((e1, e2) -> {
+                            if (e1.getDateCreated() == null && e2.getDateCreated() == null) {
+                                return 0;
+                            }
+                            if (e1.getDateCreated() == null) {
+                                return 1;
+                            }
+                            if (e2.getDateCreated() == null) {
+                                return -1;
+                            }
+                            return e1.getDateCreated().compareTo(e2.getDateCreated());
+                        }).collect(Collectors.toList());
+                        for (int i = 0; i < sortedEntries.size(); i++) {
+                            if (sortedEntries.get(i).getId().equals(noteBook.getId())) {
+                                displayBean.setEntryNumber(i + 1);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
         return displayBean;
     }
@@ -238,6 +274,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getAnalysers());
             Hibernate.initialize(noteBook.getSamples());
             Hibernate.initialize(noteBook.getPages());
+
             // Initialize panels and tests for each page (panels is LAZY to avoid
             // MultipleBagFetchException)
             if (noteBook.getPages() != null) {
@@ -307,7 +344,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         sampleDisplayBean.setSampleItemId(sampleItem.getId()); // Store SampleItem ID
         sampleDisplayBean
                 .setSampleType(typeOfSampleService.getNameForTypeOfSampleId(sampleItem.getTypeOfSample().getId()));
-        sampleDisplayBean.setCollectionDate(DateUtil.convertTimestampToStringDate(sampleItem.getLastupdated()));
+        sampleDisplayBean.setCollectionDate(DateUtil.convertTimestampToStringDate(sampleItem.getCollectionDate()));
         sampleDisplayBean.setVoided(sampleItem.isVoided());
         sampleDisplayBean.setVoidReason(sampleItem.getVoidReason());
         sampleDisplayBean.setExternalId(sampleItem.getExternalId());
@@ -495,6 +532,278 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         List<NoteBookStatus> activeStatuses = List.of(NoteBookStatus.DRAFT, NoteBookStatus.SUBMITTED,
                 NoteBookStatus.FINALIZED, NoteBookStatus.LOCKED);
         return filterNoteBooks(activeStatuses, null, null, null, null);
+    }
+
+    @Override
+    @Transactional
+    public NoteBook createInstanceFromTemplate(Integer templateId, String title, String sysUserId) {
+        NoteBook template = get(templateId);
+        if (template == null) {
+            throw new IllegalArgumentException("Template not found: " + templateId);
+        }
+        if (!template.getIsTemplate()) {
+            throw new IllegalArgumentException("Notebook " + templateId + " is not a template");
+        }
+
+        // Initialize lazy collections
+        Hibernate.initialize(template.getPages());
+        Hibernate.initialize(template.getTags());
+        Hibernate.initialize(template.getAnalysers());
+        if (template.getPages() != null) {
+            for (NoteBookPage page : template.getPages()) {
+                Hibernate.initialize(page.getPanels());
+                Hibernate.initialize(page.getTests());
+            }
+        }
+
+        // Create new instance
+        NoteBook instance = new NoteBook();
+        instance.setTitle(title);
+        instance.setIsTemplate(false);
+        instance.setStatus(NoteBookStatus.DRAFT);
+        instance.setDateCreated(new Date());
+        instance.setType(template.getType());
+        instance.setContent(template.getContent());
+        instance.setObjective(template.getObjective());
+        instance.setProtocol(template.getProtocol());
+        instance.setQuestionnaireFhirUuid(template.getQuestionnaireFhirUuid());
+
+        // Copy tags
+        if (template.getTags() != null) {
+            instance.setTags(new ArrayList<>(template.getTags()));
+        }
+
+        // Copy analyzers
+        if (template.getAnalysers() != null) {
+            instance.getAnalysers().addAll(template.getAnalysers());
+        }
+
+        // Set creator and technician
+        if (sysUserId != null) {
+            instance.setSysUserId(sysUserId);
+            instance.setCreator(systemUserService.get(sysUserId));
+            instance.setTechnician(systemUserService.get(sysUserId));
+        }
+
+        // Copy pages
+        if (template.getPages() != null) {
+            for (NoteBookPage templatePage : template.getPages()) {
+                NoteBookPage instancePage = new NoteBookPage();
+                instancePage.setTitle(templatePage.getTitle());
+                instancePage.setOrder(templatePage.getOrder());
+                instancePage.setContent(templatePage.getContent());
+                instancePage.setNotebook(instance);
+
+                // Copy panels and tests references
+                if (templatePage.getPanels() != null) {
+                    instancePage.getPanels().addAll(templatePage.getPanels());
+                }
+                if (templatePage.getTests() != null) {
+                    instancePage.getTests().addAll(templatePage.getTests());
+                }
+
+                instance.getPages().add(instancePage);
+            }
+        }
+
+        // Save the instance
+        instance = save(instance);
+
+        // Link to template's entries list
+        template.getEntries().add(instance);
+        template.setSysUserId(sysUserId);
+        update(template);
+
+        return instance;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NoteBookPage getPage(Integer pageId) {
+        if (pageId == null) {
+            return null;
+        }
+        return noteBookPageDAO.get(pageId).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NoteBookPage getNextPage(Integer pageId) {
+        if (pageId == null) {
+            return null;
+        }
+
+        NoteBookPage currentPage = noteBookPageDAO.get(pageId).orElse(null);
+        if (currentPage == null) {
+            return null;
+        }
+
+        // Get the notebook and its pages
+        NoteBook notebook = currentPage.getNotebook();
+        if (notebook == null) {
+            return null;
+        }
+
+        Hibernate.initialize(notebook.getPages());
+        List<NoteBookPage> pages = notebook.getPages();
+        if (pages == null || pages.isEmpty()) {
+            return null;
+        }
+
+        // Sort pages by order and find the next one
+        Integer currentOrder = currentPage.getOrder();
+        if (currentOrder == null) {
+            return null;
+        }
+
+        return pages.stream().filter(p -> p.getOrder() != null && p.getOrder() > currentOrder)
+                .min((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NoteBookPage getPreviousPage(Integer pageId) {
+        if (pageId == null) {
+            return null;
+        }
+
+        NoteBookPage currentPage = noteBookPageDAO.get(pageId).orElse(null);
+        if (currentPage == null) {
+            return null;
+        }
+
+        // Get the notebook and its pages
+        NoteBook notebook = currentPage.getNotebook();
+        if (notebook == null) {
+            return null;
+        }
+
+        Hibernate.initialize(notebook.getPages());
+        List<NoteBookPage> pages = notebook.getPages();
+        if (pages == null || pages.isEmpty()) {
+            return null;
+        }
+
+        // Sort pages by order and find the previous one
+        Integer currentOrder = currentPage.getOrder();
+        if (currentOrder == null) {
+            return null;
+        }
+
+        return pages.stream().filter(p -> p.getOrder() != null && p.getOrder() < currentOrder)
+                .max((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NoteBookPage getLastPage(Integer notebookId) {
+        if (notebookId == null) {
+            return null;
+        }
+
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            return null;
+        }
+
+        Hibernate.initialize(notebook.getPages());
+        List<NoteBookPage> pages = notebook.getPages();
+        if (pages == null || pages.isEmpty()) {
+            return null;
+        }
+
+        // Return the page with the highest order (last page / archiving page)
+        return pages.stream().filter(p -> p.getOrder() != null).max((p1, p2) -> p1.getOrder().compareTo(p2.getOrder()))
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isRoutingPage(Integer pageId) {
+        if (pageId == null) {
+            return false;
+        }
+
+        NoteBookPage page = noteBookPageDAO.get(pageId).orElse(null);
+        if (page == null) {
+            return false;
+        }
+
+        // Check if the page title indicates it's a routing page
+        // Note: Routing happens on the "Child Samples" page (order 4) which includes
+        // both child sample creation and destination routing per User Story 4
+        String title = page.getTitle() != null ? page.getTitle().toLowerCase() : "";
+        if (title.contains("routing") || title.contains("route")) {
+            return true;
+        }
+
+        // Also check by page order - order 4 is the Child Samples page where routing
+        // happens
+        if (page.getOrder() != null && page.getOrder() == 4) {
+            return true;
+        }
+
+        // Also check for "child sample" in title since routing is combined with child
+        // sample creation
+        return title.contains("child sample");
+    }
+
+    @Override
+    @Transactional
+    public Integer attachFile(Integer notebookId, byte[] fileData, String fileName, String fileType, String sysUserId) {
+        if (notebookId == null) {
+            throw new IllegalArgumentException("Notebook ID is required");
+        }
+        if (fileData == null || fileData.length == 0) {
+            throw new IllegalArgumentException("File data is required");
+        }
+        if (fileName == null || fileName.isBlank()) {
+            throw new IllegalArgumentException("File name is required");
+        }
+
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId);
+        }
+
+        // Create NoteBookFile record
+        NoteBookFile file = new NoteBookFile();
+        file.setNotebook(notebook);
+        file.setFileData(fileData);
+        file.setFileName(fileName);
+        file.setFileType(fileType != null ? fileType : "application/octet-stream");
+
+        // Initialize files list if needed
+        if (notebook.getFiles() == null) {
+            notebook.setFiles(new ArrayList<>());
+        }
+        notebook.getFiles().add(file);
+
+        // Set sysUserId for audit trail
+        if (sysUserId != null) {
+            notebook.setSysUserId(sysUserId);
+        }
+
+        // Update notebook which will cascade to NoteBookFile
+        update(notebook);
+
+        return file.getId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NoteBookFile> getFiles(Integer notebookId) {
+        if (notebookId == null) {
+            return new ArrayList<>();
+        }
+
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            return new ArrayList<>();
+        }
+
+        Hibernate.initialize(notebook.getFiles());
+        return notebook.getFiles() != null ? notebook.getFiles() : new ArrayList<>();
     }
 
 }
