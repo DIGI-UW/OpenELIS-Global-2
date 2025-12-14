@@ -282,7 +282,14 @@ Document how test data will be created and cleaned up:
   - **E2E Tests (Cypress)**:
     - [ ] Use API-based setup via `cy.request()` (NOT slow UI interactions) -
           10x faster
-    - [ ] Use fixtures with `cy.intercept()` for consistent test data
+    - [ ] Prefer the unified fixture loader for stable baseline data:
+          `./src/test/resources/load-test-fixtures.sh` (see
+          `src/test/resources/FIXTURE_LOADER_README.md`)
+    - [ ] Use `cy.intercept()` as **spy-first** (alias + assertions). Avoid
+          stubbing backend responses in real E2E tests.
+    - [ ] **DO NOT** stub the mutation endpoint under test
+          (`PUT|POST|PATCH|DELETE`) in `frontend/cypress/e2e/` (if backend is
+          stubbed, it is not E2E).
     - [ ] Use `cy.session()` for login state (10-20x faster than per-test login)
 
 ### Checkpoint Validations
