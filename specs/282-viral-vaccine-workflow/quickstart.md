@@ -9,6 +9,7 @@
 Before starting implementation, ensure you have:
 
 ✅ **Development Environment Setup**:
+
 - Java 21 LTS installed (`sdk use java 21.0.2-open`)
 - Maven 3.8+ (`mvn -version`)
 - Node.js 16+ (`node --version`)
@@ -16,6 +17,7 @@ Before starting implementation, ensure you have:
 - PostgreSQL 14+ (via Docker)
 
 ✅ **Repository Setup**:
+
 ```bash
 # Clone and setup
 git checkout -b 282-viral-vaccine-workflow
@@ -35,6 +37,7 @@ docker compose -f dev.docker-compose.yml up -d
 ```
 
 ✅ **Documentation Read**:
+
 - [x] `specs/282-viral-vaccine-workflow/spec.md` - Feature requirements
 - [x] `specs/282-viral-vaccine-workflow/plan.md` - Implementation plan
 - [x] `specs/282-viral-vaccine-workflow/research.md` - Technical decisions
@@ -46,10 +49,14 @@ docker compose -f dev.docker-compose.yml up -d
 
 This feature follows a **4-milestone** development approach:
 
-1. **M1: Backend Core** (4 days) - Entities, DAOs, Services, Cold Chain + Biosafety
-2. **M2: Frontend Core** (4 days, parallel with M1) - Sample reception, QC, Aliquoting UI
-3. **M3: Testing Workflows** (5 days) - PCR, ELISA, Viral Culture, Vaccine Testing
-4. **M4: Cryostorage & Review** (6 days) - Storage management, Temperature monitoring, Result review
+1. **M1: Backend Core** (4 days) - Entities, DAOs, Services, Cold Chain +
+   Biosafety
+2. **M2: Frontend Core** (4 days, parallel with M1) - Sample reception, QC,
+   Aliquoting UI
+3. **M3: Testing Workflows** (5 days) - PCR, ELISA, Viral Culture, Vaccine
+   Testing
+4. **M4: Cryostorage & Review** (6 days) - Storage management, Temperature
+   monitoring, Result review
 
 Total: ~15-20 days
 
@@ -74,7 +81,7 @@ mkdir -p viral
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-    
+
     <changeSet id="viral-001-create-viral-sample" author="openelis">
         <createTable tableName="viral_sample">
             <column name="id" type="VARCHAR(36)">
@@ -111,22 +118,22 @@ mkdir -p viral
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        
-        <addDefaultValue tableName="viral_sample" columnName="fhir_uuid" 
+
+        <addDefaultValue tableName="viral_sample" columnName="fhir_uuid"
                          defaultValueComputed="uuid_generate_v4()"/>
-        <addDefaultValue tableName="viral_sample" columnName="lastupdated" 
+        <addDefaultValue tableName="viral_sample" columnName="lastupdated"
                          defaultValueComputed="NOW()"/>
-        
+
         <createIndex tableName="viral_sample" indexName="idx_viral_sample_sample">
             <column name="sample_id"/>
         </createIndex>
-        
+
         <createIndex tableName="viral_sample" indexName="idx_viral_sample_biosafety">
             <column name="biosafety_level"/>
             <column name="cold_chain_status"/>
         </createIndex>
     </changeSet>
-    
+
     <changeSet id="viral-001-rollback" author="openelis">
         <rollback>
             <dropTable tableName="viral_sample" cascadeConstraints="true"/>
@@ -136,6 +143,7 @@ mkdir -p viral
 ```
 
 **Create all 17 changesets** following this pattern for:
+
 - `002-cold-chain-log.xml`
 - `003-biosafety-clearance.xml`
 - `004-sample-aliquot.xml`
@@ -184,76 +192,76 @@ import java.util.UUID;
 @Entity
 @Table(name = "viral_sample")
 public class ViralSample extends BaseObject<String> {
-    
+
     @Id
     @GenericGenerator(name = "viral_sample_generator", strategy = "org.openelisglobal.common.util.IdGenerator")
     @GeneratedValue(generator = "viral_sample_generator")
     @Column(name = "id", length = 36)
     private String id;
-    
+
     @ManyToOne
     @JoinColumn(name = "sample_id", referencedColumnName = "id")
     private Sample sample;
-    
+
     @Column(name = "specimen_type", length = 50, nullable = false)
     private String specimenType;
-    
+
     @Column(name = "biosafety_level", length = 10, nullable = false)
     private String biosafety Level;
-    
+
     @Column(name = "cold_chain_status", length = 20, nullable = false)
     private String coldChainStatus;
-    
+
     @Column(name = "collection_site", length = 100)
     private String collectionSite;
-    
+
     @ManyToOne
     @JoinColumn(name = "collector_id", referencedColumnName = "id")
     private SystemUser collector;
-    
+
     @Column(name = "study_protocol_number", length = 50)
     private String studyProtocolNumber;
-    
+
     @Column(name = "consent_status", length = 20)
     private String consentStatus;
-    
+
     @Column(name = "fhir_uuid")
     private UUID fhirUuid;
-    
+
     @ManyToOne
     @JoinColumn(name = "sys_user_id", referencedColumnName = "id")
     private SystemUser sysUser;
-    
+
     @Column(name = "lastupdated", nullable = false)
     private Timestamp lastupdated;
-    
+
     // Relationships
     @OneToMany(mappedBy = "viralSample", cascade = CascadeType.ALL)
     private List<ColdChainLog> coldChainLogs;
-    
+
     @OneToOne(mappedBy = "viralSample", cascade = CascadeType.ALL)
     private BiosafetyClearance biosafetyClearance;
-    
+
     @OneToMany(mappedBy = "parentSample", cascade = CascadeType.ALL)
     private List<SampleAliquot> aliquots;
-    
+
     // Getters and setters (MUST match property names exactly)
     @Override
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
-    
+
     public Sample getSample() { return sample; }
     public void setSample(Sample sample) { this.sample = sample; }
-    
+
     public String getSpecimenType() { return specimenType; }
     public void setSpecimenType(String specimenType) { this.specimenType = specimenType; }
-    
+
     public String getBiosafety Level() { return biosafety Level; }
     public void setBiosafety Level(String biosafety Level) { this.biosafety Level = biosafety Level; }
-    
+
     public String getColdChainStatus() { return coldChainStatus; }
     public void setColdChainStatus(String coldChainStatus) { this.coldChainStatus = coldChainStatus; }
-    
+
     // ... remaining getters/setters ...
 }
 ```
@@ -299,11 +307,11 @@ import java.util.List;
 @Component
 @Transactional
 public class ViralSampleDAOImpl extends BaseDAOImpl<ViralSample, String> implements ViralSampleDAO {
-    
+
     public ViralSampleDAOImpl() {
         super(ViralSample.class);
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public List<ViralSample> findByBiosafety Level(String level) {
@@ -316,7 +324,7 @@ public class ViralSampleDAOImpl extends BaseDAOImpl<ViralSample, String> impleme
             throw new LIMSRuntimeException("Error in ViralSampleDAO findByBiosafety Level", e);
         }
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public List<ViralSample> findByColdChainStatus(String status) {
@@ -329,7 +337,7 @@ public class ViralSampleDAOImpl extends BaseDAOImpl<ViralSample, String> impleme
             throw new LIMSRuntimeException("Error in ViralSampleDAO findByColdChainStatus", e);
         }
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public ViralSample findBySampleId(String sampleId) {
@@ -390,23 +398,23 @@ import java.util.Map;
 
 @Service
 public class ViralSampleServiceImpl extends BaseObjectServiceImpl<ViralSample, String> implements ViralSampleService {
-    
+
     @Autowired
     private ViralSampleDAO viralSampleDAO;
-    
+
     @Autowired
     private ColdChainLogDAO coldChainLogDAO;
-    
+
     public ViralSampleServiceImpl() {
         super(ViralSampleDAO.class);
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public List<ViralSample> getSamplesByBiosafety Level(String level) {
         return viralSampleDAO.findByBiosafety Level(level);
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getSampleWithColdChain(String id) {
@@ -416,9 +424,9 @@ public class ViralSampleServiceImpl extends BaseObjectServiceImpl<ViralSample, S
                      "LEFT JOIN FETCH vs.biosafetyClearance " +
                      "LEFT JOIN FETCH vs.sample " +
                      "WHERE vs.id = :id";
-        
+
         ViralSample sample = viralSampleDAO.get(id);
-        
+
         // Compile all data within transaction
         Map<String, Object> result = new HashMap<>();
         result.put("id", sample.getId());
@@ -427,17 +435,17 @@ public class ViralSampleServiceImpl extends BaseObjectServiceImpl<ViralSample, S
         result.put("coldChainStatus", sample.getColdChainStatus());
         result.put("coldChainLogs", sample.getColdChainLogs());
         result.put("biosafetyClearance", sample.getBiosafetyClearance());
-        
+
         return result;  // Return complete data structure
     }
-    
+
     @Override
     @Transactional
     public void registerSampleWithColdChain(ViralSample sample, Map<String, Object> coldChainData) {
         // Save sample
         sample.setLastupdated(new Timestamp(System.currentTimeMillis()));
         viralSampleDAO.save(sample);
-        
+
         // Save cold chain log
         ColdChainLog log = new ColdChainLog();
         log.setViralSample(sample);
@@ -478,35 +486,35 @@ import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ViralSampleServiceTest {
-    
+
     @Mock
     private ViralSampleDAO viralSampleDAO;
-    
+
     @InjectMocks
     private ViralSampleServiceImpl viralSampleService;
-    
+
     @Test
     public void testGetSamplesByBiosafety Level_ReturnsSamples() {
         // Arrange
         ViralSample sample1 = new ViralSample();
         sample1.setId("123");
         sample1.setBiosafety Level("BSL-3");
-        
+
         ViralSample sample2 = new ViralSample();
         sample2.setId("456");
         sample2.setBiosafety Level("BSL-3");
-        
+
         when(viralSampleDAO.findByBiosafety Level("BSL-3")).thenReturn(Arrays.asList(sample1, sample2));
-        
+
         // Act
         List<ViralSample> result = viralSampleService.getSamplesByBiosafety Level("BSL-3");
-        
+
         // Assert
         assertNotNull("Result should not be null", result);
         assertEquals("Should return 2 samples", 2, result.size());
         assertEquals("First sample ID should match", "123", result.get(0).getId());
         assertEquals("Second sample ID should match", "456", result.get(1).getId());
-        
+
         verify(viralSampleDAO, times(1)).findByBiosafety Level("BSL-3");
     }
 }
@@ -564,7 +572,7 @@ const ViralSampleReception = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const payload = {
       sampleId: formData.sampleId,
       specimenType: formData.specimenType,
@@ -576,7 +584,7 @@ const ViralSampleReception = () => {
         excursionFlag: Math.abs(parseFloat(formData.arrivalTemperature) - parseFloat(formData.dispatchTemperature)) > 2
       }
     };
-    
+
     try {
       const response = await postToOpenElisServer('/rest/viral/samples', payload);
       console.log('Sample registered:', response);
@@ -717,17 +725,17 @@ export default ViralSampleReception;
 **Example**: `ViralSampleReception.test.jsx`
 
 ```javascript
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
-import { IntlProvider } from 'react-intl';
-import { BrowserRouter } from 'react-router-dom';
-import ViralSampleReception from '../ViralSampleReception';
-import messages from '../../../languages/en.json';
-import * as Utils from '../../utils/Utils';
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import { BrowserRouter } from "react-router-dom";
+import ViralSampleReception from "../ViralSampleReception";
+import messages from "../../../languages/en.json";
+import * as Utils from "../../utils/Utils";
 
-jest.mock('../../utils/Utils', () => ({
+jest.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),
   postToOpenElisServer: jest.fn(),
 }));
@@ -742,39 +750,39 @@ const renderWithIntl = (component) => {
   );
 };
 
-describe('ViralSampleReception', () => {
-  test('testSubmitForm_CreatesViralSample', async () => {
+describe("ViralSampleReception", () => {
+  test("testSubmitForm_CreatesViralSample", async () => {
     // Arrange
-    Utils.postToOpenElisServer.mockResolvedValue({ id: 'uuid-123' });
+    Utils.postToOpenElisServer.mockResolvedValue({ id: "uuid-123" });
     renderWithIntl(<ViralSampleReception />);
 
     // Act
     const sampleIdInput = screen.getByLabelText(/sample id/i);
-    await userEvent.type(sampleIdInput, 'VS-2025-001', { delay: 0 });
+    await userEvent.type(sampleIdInput, "VS-2025-001", { delay: 0 });
 
     const specimenTypeSelect = screen.getByLabelText(/specimen type/i);
-    await userEvent.selectOptions(specimenTypeSelect, 'NP_SWAB');
+    await userEvent.selectOptions(specimenTypeSelect, "NP_SWAB");
 
     const dispatchTempInput = screen.getByLabelText(/dispatch temperature/i);
-    await userEvent.type(dispatchTempInput, '-80.0', { delay: 0 });
+    await userEvent.type(dispatchTempInput, "-80.0", { delay: 0 });
 
     const arrivalTempInput = screen.getByLabelText(/arrival temperature/i);
-    await userEvent.type(arrivalTempInput, '-78.5', { delay: 0 });
+    await userEvent.type(arrivalTempInput, "-78.5", { delay: 0 });
 
-    const submitButton = screen.getByRole('button', { name: /submit/i });
+    const submitButton = screen.getByRole("button", { name: /submit/i });
     await userEvent.click(submitButton);
 
     // Assert
     await waitFor(() => {
       expect(Utils.postToOpenElisServer).toHaveBeenCalledWith(
-        '/rest/viral/samples',
+        "/rest/viral/samples",
         expect.objectContaining({
-          sampleId: 'VS-2025-001',
-          specimenType: 'NP_SWAB',
+          sampleId: "VS-2025-001",
+          specimenType: "NP_SWAB",
           coldChain: expect.objectContaining({
             dispatchTemperature: -80.0,
-            arrivalTemperature: -78.5
-          })
+            arrivalTemperature: -78.5,
+          }),
         })
       );
     });
@@ -791,10 +799,12 @@ describe('ViralSampleReception', () => {
 ### ❌ DON'Ts
 
 1. **DON'T** put `@Transactional` on controllers (service layer only)
-2. **DON'T** traverse entity relationships in controllers (lazy loading will fail)
+2. **DON'T** traverse entity relationships in controllers (lazy loading will
+   fail)
 3. **DON'T** hardcode strings in JSX (use React Intl)
 4. **DON'T** use JUnit 5 annotations (use JUnit 4)
-5. **DON'T** skip running `mvn spotless:apply` and `npm run format` before commits
+5. **DON'T** skip running `mvn spotless:apply` and `npm run format` before
+   commits
 6. **DON'T** run full E2E suite during development (run individual files)
 
 ### ✅ DOs
@@ -814,7 +824,8 @@ After completing M1 and M2:
 
 1. **Review code**: Ensure all constitution principles are met
 2. **Run full test suite**: `mvn clean install` (with tests enabled)
-3. **Create milestone PR**: Branch `feat/282-viral-vaccine-workflow/m1-backend-core`
+3. **Create milestone PR**: Branch
+   `feat/282-viral-vaccine-workflow/m1-backend-core`
 4. **Request code review**: Minimum 1 approval from core team
 5. **Proceed to M3**: Testing workflows (PCR, ELISA, viral culture, vaccine)
 
@@ -824,7 +835,8 @@ After completing M1 and M2:
 
 - **Slack**: #openelis-dev channel
 - **Documentation**: `AGENTS.md`, `.specify/guides/testing-roadmap.md`
-- **Examples**: Check `specs/001-medical-lab-workflow/` for reference implementation
+- **Examples**: Check `specs/001-medical-lab-workflow/` for reference
+  implementation
 - **Issues**: File on GitHub with label `282-viral-vaccine-workflow`
 
 ---

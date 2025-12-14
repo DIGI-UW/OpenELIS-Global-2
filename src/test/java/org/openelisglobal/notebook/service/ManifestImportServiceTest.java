@@ -24,10 +24,9 @@ import org.openelisglobal.notebook.service.ManifestImportService.ManifestImportR
 import org.openelisglobal.notebook.service.ManifestImportService.ManifestRow;
 import org.openelisglobal.notebook.service.ManifestImportService.ParseError;
 import org.openelisglobal.notebook.service.ManifestImportService.ParsedManifest;
-import org.openelisglobal.notebook.service.NotebookEntryService;
-import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
+import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;

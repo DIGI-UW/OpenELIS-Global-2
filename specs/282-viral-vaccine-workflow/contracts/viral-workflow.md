@@ -12,12 +12,15 @@
 
 ## Authentication
 
-All endpoints require authentication via existing OpenELIS session management. Requests must include:
+All endpoints require authentication via existing OpenELIS session management.
+Requests must include:
+
 - `Cookie: JSESSIONID=<session-id>` (HTTP-only secure cookie)
 
 ## Common Headers
 
 **Request**:
+
 ```
 Content-Type: application/json
 Accept: application/json
@@ -25,6 +28,7 @@ Accept-Language: en-US, fr-FR
 ```
 
 **Response**:
+
 ```
 Content-Type: application/json
 X-Content-Type-Options: nosniff
@@ -34,17 +38,17 @@ X-XSS-Protection: 1; mode=block
 
 ## Common Response Codes
 
-| Code | Description                                       |
-| ---- | ------------------------------------------------- |
-| 200  | Success                                           |
-| 201  | Resource created                                  |
-| 400  | Bad request (validation error)                    |
-| 401  | Unauthorized (not authenticated)                  |
-| 403  | Forbidden (insufficient permissions)              |
-| 404  | Resource not found                                |
-| 409  | Conflict (e.g., duplicate biosafety clearance)    |
-| 422  | Unprocessable entity (business logic error)       |
-| 500  | Internal server error                             |
+| Code | Description                                    |
+| ---- | ---------------------------------------------- |
+| 200  | Success                                        |
+| 201  | Resource created                               |
+| 400  | Bad request (validation error)                 |
+| 401  | Unauthorized (not authenticated)               |
+| 403  | Forbidden (insufficient permissions)           |
+| 404  | Resource not found                             |
+| 409  | Conflict (e.g., duplicate biosafety clearance) |
+| 422  | Unprocessable entity (business logic error)    |
+| 500  | Internal server error                          |
 
 ## Endpoints
 
@@ -55,6 +59,7 @@ X-XSS-Protection: 1; mode=block
 Register a new viral sample with cold chain documentation.
 
 **Request Body**:
+
 ```json
 {
   "sampleId": "VS-2025-001",
@@ -75,6 +80,7 @@ Register a new viral sample with cold chain documentation.
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "id": "uuid-123",
@@ -92,6 +98,7 @@ Register a new viral sample with cold chain documentation.
 Retrieve viral sample details.
 
 **Response** (200 OK):
+
 ```json
 {
   "id": "uuid-123",
@@ -128,21 +135,23 @@ Retrieve viral sample details.
 Assign biosafety level and complete checklist.
 
 **Request Body**:
+
 ```json
 {
   "viralSampleId": "uuid-123",
   "biosafety Level": "BSL-3",
   "requiredPPE": ["N95 respirator", "Double gloves", "Gown", "Face shield"],
   "checklistItems": [
-    {"item": "Appropriate PPE worn", "checked": true},
-    {"item": "BSL-3 hood operational", "checked": true},
-    {"item": "Spill kit available", "checked": true},
-    {"item": "Trained personnel only", "checked": true}
+    { "item": "Appropriate PPE worn", "checked": true },
+    { "item": "BSL-3 hood operational", "checked": true },
+    { "item": "Spill kit available", "checked": true },
+    { "item": "Trained personnel only", "checked": true }
   ]
 }
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "id": "clearance-001",
@@ -162,6 +171,7 @@ Assign biosafety level and complete checklist.
 Create child aliquots from parent sample.
 
 **Request Body**:
+
 ```json
 {
   "numberOfAliquots": 4,
@@ -171,6 +181,7 @@ Create child aliquots from parent sample.
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "parentSampleId": "uuid-123",
@@ -212,6 +223,7 @@ Create child aliquots from parent sample.
 Create a new PCR run.
 
 **Request Body**:
+
 ```json
 {
   "runId": "PCR-2025-001",
@@ -220,17 +232,18 @@ Create a new PCR run.
   "assayType": "COVID19",
   "kitLotNumber": "KIT-2025-01",
   "samples": [
-    {"sampleId": "uuid-123", "wellPosition": "A1"},
-    {"sampleId": "uuid-456", "wellPosition": "A2"}
+    { "sampleId": "uuid-123", "wellPosition": "A1" },
+    { "sampleId": "uuid-456", "wellPosition": "A2" }
   ],
   "controls": [
-    {"controlType": "POSITIVE", "wellPosition": "H11"},
-    {"controlType": "NEGATIVE", "wellPosition": "H12"}
+    { "controlType": "POSITIVE", "wellPosition": "H11" },
+    { "controlType": "NEGATIVE", "wellPosition": "H12" }
   ]
 }
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "id": "run-uuid-001",
@@ -247,34 +260,36 @@ Create a new PCR run.
 Submit PCR results for a run.
 
 **Request Body**:
+
 ```json
 {
   "results": [
     {
       "sampleId": "uuid-123",
       "targets": [
-        {"gene": "N", "ctValue": 18.5, "interpretation": "DETECTED"},
-        {"gene": "ORF1AB", "ctValue": 19.2, "interpretation": "DETECTED"},
-        {"gene": "S", "ctValue": 20.1, "interpretation": "DETECTED"}
+        { "gene": "N", "ctValue": 18.5, "interpretation": "DETECTED" },
+        { "gene": "ORF1AB", "ctValue": 19.2, "interpretation": "DETECTED" },
+        { "gene": "S", "ctValue": 20.1, "interpretation": "DETECTED" }
       ]
     },
     {
       "sampleId": "uuid-456",
       "targets": [
-        {"gene": "N", "ctValue": null, "interpretation": "NOT_DETECTED"},
-        {"gene": "ORF1AB", "ctValue": null, "interpretation": "NOT_DETECTED"},
-        {"gene": "S", "ctValue": null, "interpretation": "NOT_DETECTED"}
+        { "gene": "N", "ctValue": null, "interpretation": "NOT_DETECTED" },
+        { "gene": "ORF1AB", "ctValue": null, "interpretation": "NOT_DETECTED" },
+        { "gene": "S", "ctValue": null, "interpretation": "NOT_DETECTED" }
       ]
     }
   ],
   "controlResults": [
-    {"controlType": "POSITIVE", "ctValue": 22.3, "valid": true},
-    {"controlType": "NEGATIVE", "ctValue": null, "valid": true}
+    { "controlType": "POSITIVE", "ctValue": 22.3, "valid": true },
+    { "controlType": "NEGATIVE", "ctValue": null, "valid": true }
   ]
 }
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "runId": "PCR-2025-001",
@@ -293,6 +308,7 @@ Submit PCR results for a run.
 Create a new ELISA run.
 
 **Request Body**:
+
 ```json
 {
   "runId": "ELISA-2025-001",
@@ -303,27 +319,28 @@ Create a new ELISA run.
   "kitLotNumber": "KIT-ELISA-01",
   "kitExpiryDate": "2026-12-31",
   "calibrators": [
-    {"concentration": 0, "od450": 0.05},
-    {"concentration": 10, "od450": 0.25},
-    {"concentration": 50, "od450": 0.85},
-    {"concentration": 100, "od450": 1.50},
-    {"concentration": 250, "od450": 2.80},
-    {"concentration": 500, "od450": 3.20}
+    { "concentration": 0, "od450": 0.05 },
+    { "concentration": 10, "od450": 0.25 },
+    { "concentration": 50, "od450": 0.85 },
+    { "concentration": 100, "od450": 1.5 },
+    { "concentration": 250, "od450": 2.8 },
+    { "concentration": 500, "od450": 3.2 }
   ],
   "samples": [
-    {"sampleId": "uuid-789", "wellPosition": "A1"},
-    {"sampleId": "uuid-101", "wellPosition": "A2"}
+    { "sampleId": "uuid-789", "wellPosition": "A1" },
+    { "sampleId": "uuid-101", "wellPosition": "A2" }
   ]
 }
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "id": "run-uuid-002",
   "runId": "ELISA-2025-001",
   "standardCurve": {
-    "parameters": {"a": 0.05, "b": 1.2, "c": 50.0, "d": 3.5},
+    "parameters": { "a": 0.05, "b": 1.2, "c": 50.0, "d": 3.5 },
     "rSquared": 0.998
   },
   "status": "PENDING_RESULTS",
@@ -340,10 +357,12 @@ Create a new ELISA run.
 List all storage units (dewars and freezers).
 
 **Query Parameters**:
+
 - `unitType` (optional): DEWAR or FREEZER
 - `location` (optional): Filter by location
 
 **Response** (200 OK):
+
 ```json
 {
   "units": [
@@ -380,6 +399,7 @@ List all storage units (dewars and freezers).
 Get storage hierarchy for a unit.
 
 **Response** (200 OK):
+
 ```json
 {
   "unitId": "LN2-01",
@@ -398,8 +418,8 @@ Get storage hierarchy for a unit.
               "capacity": 81,
               "occupied": 45,
               "positions": [
-                {"name": "A1", "status": "OCCUPIED", "sampleId": "uuid-123"},
-                {"name": "A2", "status": "EMPTY"},
+                { "name": "A1", "status": "OCCUPIED", "sampleId": "uuid-123" },
+                { "name": "A2", "status": "EMPTY" }
                 // ... 79 more positions
               ]
             }
@@ -418,6 +438,7 @@ Get storage hierarchy for a unit.
 Assign sample to storage position.
 
 **Request Body**:
+
 ```json
 {
   "sampleId": "uuid-123",
@@ -426,6 +447,7 @@ Assign sample to storage position.
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "sampleId": "uuid-123",
@@ -443,17 +465,27 @@ Assign sample to storage position.
 Get temperature logs for a storage unit.
 
 **Query Parameters**:
+
 - `unitId` (required): Storage unit ID
 - `startDate` (required): ISO 8601 datetime
 - `endDate` (required): ISO 8601 datetime
 
 **Response** (200 OK):
+
 ```json
 {
   "unitId": "LN2-01",
   "logs": [
-    {"timestamp": "2025-12-14T00:00:00Z", "temperature": -196.0, "withinRange": true},
-    {"timestamp": "2025-12-14T01:00:00Z", "temperature": -196.2, "withinRange": true},
+    {
+      "timestamp": "2025-12-14T00:00:00Z",
+      "temperature": -196.0,
+      "withinRange": true
+    },
+    {
+      "timestamp": "2025-12-14T01:00:00Z",
+      "temperature": -196.2,
+      "withinRange": true
+    }
     // ... hourly readings
   ],
   "statistics": {
@@ -474,12 +506,14 @@ Get temperature logs for a storage unit.
 Get temperature excursion events.
 
 **Query Parameters**:
+
 - `unitId` (optional): Filter by storage unit
 - `startDate` (optional): ISO 8601 datetime
 - `endDate` (optional): ISO 8601 datetime
 - `resolved` (optional): true/false/all (default: all)
 
 **Response** (200 OK):
+
 ```json
 {
   "excursions": [
@@ -509,9 +543,11 @@ Get temperature excursion events.
 Get results awaiting review.
 
 **Query Parameters**:
+
 - `resultType` (optional): PCR/ELISA/CULTURE/VACCINE_LOT
 
 **Response** (200 OK):
+
 ```json
 {
   "pendingResults": [
@@ -545,6 +581,7 @@ Get results awaiting review.
 Approve, reject, or request repeat of a result.
 
 **Request Body**:
+
 ```json
 {
   "action": "APPROVED",
@@ -554,6 +591,7 @@ Approve, reject, or request repeat of a result.
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "resultId": "result-uuid-001",
@@ -573,6 +611,7 @@ Approve, reject, or request repeat of a result.
 Generate cold chain compliance report.
 
 **Request Body**:
+
 ```json
 {
   "startDate": "2025-01-01T00:00:00Z",
@@ -584,6 +623,7 @@ Generate cold chain compliance report.
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "reportId": "report-uuid-001",
@@ -618,15 +658,15 @@ All error responses follow this structure:
 
 ### Error Codes
 
-| Code | Description |
-| ---- | ----------- |
-| VALIDATION_ERROR | Request validation failed |
-| BIOSAFETY_CLEARANCE_INCOMPLETE | Biosafety checklist not complete |
-| CONTROL_OUT_OF_RANGE | PCR/ELISA controls failed validation |
-| POSITION_OCCUPIED | Storage position already has a sample |
-| TEMPERATURE_EXCURSION_ONGOING | Cannot proceed while temperature out of range |
-| RESULT_ALREADY_APPROVED | Cannot modify locked result |
-| INSUFFICIENT_VOLUME | Not enough sample volume for aliquoting |
+| Code                           | Description                                   |
+| ------------------------------ | --------------------------------------------- |
+| VALIDATION_ERROR               | Request validation failed                     |
+| BIOSAFETY_CLEARANCE_INCOMPLETE | Biosafety checklist not complete              |
+| CONTROL_OUT_OF_RANGE           | PCR/ELISA controls failed validation          |
+| POSITION_OCCUPIED              | Storage position already has a sample         |
+| TEMPERATURE_EXCURSION_ONGOING  | Cannot proceed while temperature out of range |
+| RESULT_ALREADY_APPROVED        | Cannot modify locked result                   |
+| INSUFFICIENT_VOLUME            | Not enough sample volume for aliquoting       |
 
 ---
 
@@ -635,11 +675,13 @@ All error responses follow this structure:
 List endpoints support pagination:
 
 **Query Parameters**:
+
 - `page` (default: 0): Page number (0-indexed)
 - `size` (default: 20): Items per page
 - `sort` (optional): Sort field and direction (e.g., `createdAt,desc`)
 
 **Response** includes pagination metadata:
+
 ```json
 {
   "content": [...],
@@ -662,4 +704,5 @@ API version is included in all responses:
 X-API-Version: 1.0.0
 ```
 
-Breaking changes will increment the major version. Backward-compatible additions increment the minor version.
+Breaking changes will increment the major version. Backward-compatible additions
+increment the minor version.
