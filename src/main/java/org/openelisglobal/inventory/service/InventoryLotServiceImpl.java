@@ -115,6 +115,9 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalStateException("Can only open lots with ACTIVE status");
         }
 
+        // Detach from session so audit can compare properly
+        inventoryLotDAO.evict(lot);
+
         lot.setStatus(LotStatus.IN_USE);
         lot.setDateOpened(openedDate);
 
@@ -146,6 +149,10 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         }
 
         QCStatus oldStatus = lot.getQcStatus();
+
+        // Detach from session so audit can compare properly
+        inventoryLotDAO.evict(lot);
+
         lot.setQcStatus(qcStatus);
         lot.setSysUserId(sysUserId);
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
@@ -167,6 +174,9 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         if (lot == null) {
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
+
+        // Detach from session so audit can compare properly
+        inventoryLotDAO.evict(lot);
 
         lot.setStatus(status);
         lot.setSysUserId(sysUserId);
@@ -191,6 +201,9 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
         Double oldQuantity = lot.getCurrentQuantity();
         Double quantityChange = newQuantity - oldQuantity;
+
+        // Detach from session so audit can compare properly
+        inventoryLotDAO.evict(lot);
 
         lot.setCurrentQuantity(newQuantity);
         lot.setSysUserId(sysUserId);
@@ -218,6 +231,10 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         }
 
         Double quantityDisposed = lot.getCurrentQuantity();
+
+        // Detach from session so audit can compare properly
+        inventoryLotDAO.evict(lot);
+
         lot.setCurrentQuantity(0.0);
         lot.setStatus(LotStatus.DISPOSED);
         lot.setSysUserId(sysUserId);
@@ -276,6 +293,9 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         int count = 0;
 
         for (InventoryLot lot : expiredLots) {
+            // Detach from session so audit can compare properly
+            inventoryLotDAO.evict(lot);
+
             lot.setStatus(LotStatus.EXPIRED);
             lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
             update(lot);

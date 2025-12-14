@@ -143,11 +143,52 @@ const UnifiedAuditHistory = () => {
     }
   };
 
+  const formatFieldName = (fieldName) => {
+    const words = fieldName.replace(/([A-Z])/g, " $1").trim();
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  };
+
+  const formatValue = (value, fieldName) => {
+    if (!value || value === "") {
+      return <em className="empty-value">(empty)</em>;
+    }
+
+    if (
+      fieldName.toLowerCase().includes("date") ||
+      fieldName.toLowerCase().includes("timestamp")
+    ) {
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString();
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (value === "true" || value === "false") {
+      return value === "true" ? "Yes" : "No";
+    }
+
+    return value;
+  };
+
+  const getChangeClass = (oldVal, newVal) => {
+    if (!oldVal || oldVal === "") return "change-added";
+    if (!newVal || newVal === "") return "change-removed";
+    return "change-modified";
+  };
+
   const renderChanges = (log) => {
     const changes = log.changes || {};
 
     if (Object.keys(changes).length === 0) {
-      return <p>No field changes recorded</p>;
+      return (
+        <p className="no-changes-message">
+          <em>No field changes recorded</em>
+        </p>
+      );
     }
 
     return (
@@ -156,18 +197,21 @@ const UnifiedAuditHistory = () => {
           <thead>
             <tr>
               <th>Field</th>
-              <th>Old Value</th>
+              <th>Previous Value</th>
               <th>New Value</th>
             </tr>
           </thead>
           <tbody>
             {Object.entries(changes).map(([field, values]) => (
-              <tr key={field}>
+              <tr
+                key={field}
+                className={getChangeClass(values.old, values.new)}
+              >
                 <td>
-                  <strong>{field}</strong>
+                  <strong>{formatFieldName(field)}</strong>
                 </td>
-                <td>{values.old || <em>—</em>}</td>
-                <td>{values.new || <em>—</em>}</td>
+                <td className="old-value">{formatValue(values.old, field)}</td>
+                <td className="new-value">{formatValue(values.new, field)}</td>
               </tr>
             ))}
           </tbody>
@@ -214,14 +258,33 @@ const UnifiedAuditHistory = () => {
     },
   ];
 
+  const formatActivity = (activity) => {
+    const activityMap = {
+      I: { label: "Created", color: "green" },
+      U: { label: "Updated", color: "blue" },
+      D: { label: "Deleted", color: "red" },
+    };
+
+    const config = activityMap[activity] || {
+      label: activity,
+      color: "gray",
+    };
+
+    return (
+      <Tag type={config.color} size="sm">
+        {config.label}
+      </Tag>
+    );
+  };
+
   const rows = auditLogs.map((log, index) => ({
     id: `${log.id}-${index}`,
     timestamp: formatTimestamp(log.timestamp),
     entityType: log.entityType,
-    activity: log.activity,
+    activity: formatActivity(log.activity),
     performedByUser: log.performedByUser,
     summary: log.summary || "—",
-    _log: log, // Store full log for expanded row
+    _log: log,
   }));
 
   return (
@@ -293,44 +356,57 @@ const UnifiedAuditHistory = () => {
       {/* Filters */}
       <Grid className="audit-filters" style={{ marginBottom: "1rem" }}>
         <Column lg={6} md={4} sm={4}>
-          <DatePicker
-            datePickerType="range"
-            onChange={(dates) => {
-              if (dates && dates.length === 2) {
-                const [start, end] = dates;
-                handleFilterChange(
-                  "startDate",
-                  start ? start.toISOString().split("T")[0] : "",
-                );
-                handleFilterChange(
-                  "endDate",
-                  end ? end.toISOString().split("T")[0] : "",
-                );
-              }
-            }}
-          >
-            <DatePickerInput
-              id="date-picker-input-id-start"
-              placeholder="mm/dd/yyyy"
-              labelText={intl.formatMessage({
-                id: "audit.filter.startDate",
-                defaultMessage: "Start Date",
-              })}
-              size="md"
-            />
-            <DatePickerInput
-              id="date-picker-input-id-end"
-              placeholder="mm/dd/yyyy"
-              labelText={intl.formatMessage({
-                id: "audit.filter.endDate",
-                defaultMessage: "End Date",
-              })}
-              size="md"
-            />
-          </DatePicker>
+          <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end" }}>
+            <div style={{ flex: 1 }}>
+              <DatePicker
+                datePickerType="single"
+                value={filters.startDate}
+                onChange={(dates) => {
+                  const date = dates[0];
+                  handleFilterChange(
+                    "startDate",
+                    date ? date.toISOString().split("T")[0] : "",
+                  );
+                }}
+              >
+                <DatePickerInput
+                  id="date-picker-input-id-start"
+                  placeholder="mm/dd/yyyy"
+                  labelText={intl.formatMessage({
+                    id: "audit.filter.startDate",
+                    defaultMessage: "Start Date",
+                  })}
+                  size="md"
+                />
+              </DatePicker>
+            </div>
+            <div style={{ flex: 1 }}>
+              <DatePicker
+                datePickerType="single"
+                value={filters.endDate}
+                onChange={(dates) => {
+                  const date = dates[0];
+                  handleFilterChange(
+                    "endDate",
+                    date ? date.toISOString().split("T")[0] : "",
+                  );
+                }}
+              >
+                <DatePickerInput
+                  id="date-picker-input-id-end"
+                  placeholder="mm/dd/yyyy"
+                  labelText={intl.formatMessage({
+                    id: "audit.filter.endDate",
+                    defaultMessage: "End Date",
+                  })}
+                  size="md"
+                />
+              </DatePicker>
+            </div>
+          </div>
         </Column>
 
-        <Column lg={5} md={4} sm={4}>
+        <Column lg={3} md={4} sm={4}>
           <Select
             id="entity-type-filter"
             labelText={intl.formatMessage({
@@ -349,7 +425,7 @@ const UnifiedAuditHistory = () => {
           </Select>
         </Column>
 
-        <Column lg={5} md={4} sm={4}>
+        <Column lg={3} md={4} sm={4}>
           <Select
             id="activity-filter"
             labelText={intl.formatMessage({

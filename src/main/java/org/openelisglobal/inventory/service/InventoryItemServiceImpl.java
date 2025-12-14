@@ -117,6 +117,9 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     public void deactivateItem(Long itemId, String sysUserId) {
         InventoryItem item = get(itemId);
         if (item != null) {
+            // Detach from session so audit can compare properly
+            inventoryItemDAO.evict(item);
+
             item.setIsActive("N");
             item.setSysUserId(sysUserId);
             item.setLastupdated(new Timestamp(System.currentTimeMillis()));
@@ -130,6 +133,9 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
     public void activateItem(Long itemId, String sysUserId) {
         InventoryItem item = get(itemId);
         if (item != null) {
+            // Detach from session so audit can compare properly
+            inventoryItemDAO.evict(item);
+
             item.setIsActive("Y");
             item.setSysUserId(sysUserId);
             item.setLastupdated(new Timestamp(System.currentTimeMillis()));
