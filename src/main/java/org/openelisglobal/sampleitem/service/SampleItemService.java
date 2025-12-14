@@ -29,4 +29,12 @@ public interface SampleItemService extends BaseObjectService<SampleItem, String>
 
     boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
             List<List<String>> analysisGroups);
+
+    /**
+     * Get child samples for a parent sample.
+     *
+     * @param parent the parent SampleItem
+     * @return list of child SampleItem entities
+     */
+    List<SampleItem> getChildSamples(SampleItem parent);
 }

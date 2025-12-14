@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_PAGE_SAMPLE TABLE -->
+    <!-- Junction entity tracking per-sample status on each page -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-page-sample-sequence" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="notebook_page_sample_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for notebook_page_sample table.</comment>
+        <createSequence sequenceName="notebook_page_sample_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-notebook-page-sample-table" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_page_sample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_PAGE_SAMPLE table for per-sample-per-page tracking in immunology workflow.</comment>
+        <createTable tableName="notebook_page_sample">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="notebook_page_sample_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook_page_sample"/>
+            </column>
+            <column name="notebook_page_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_item_id" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="data" type="jsonb">
+                <constraints nullable="true"/>
+            </column>
+            <column name="questionnaire_response_uuid" type="UUID">
+                <constraints nullable="true"/>
+            </column>
+            <column name="completed_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="completed_at" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-notebook-page-sample-foreign-keys" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to notebook_page_sample table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="notebook_page_sample"
+            baseColumnNames="notebook_page_id"
+            referencedTableName="notebook_page"
+            referencedColumnNames="id"
+            constraintName="fk_nps_notebook_page"
+            onDelete="CASCADE"/>
+        <!-- Note: sample_item_id is VARCHAR to match SampleItem's String ID type.
+             No FK constraint since sample_item.id is NUMERIC but we store as VARCHAR -->
+        <!-- addForeignKeyConstraint removed for sample_item_id due to type mismatch -->
+        <addForeignKeyConstraint
+            baseTableName="notebook_page_sample"
+            baseColumnNames="completed_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_nps_completed_by"/>
+    </changeSet>
+
+    <changeSet id="add-notebook-page-sample-unique-constraint" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding unique constraint for notebook_page_id + sample_item_id.</comment>
+        <addUniqueConstraint
+            tableName="notebook_page_sample"
+            columnNames="notebook_page_id, sample_item_id"
+            constraintName="uq_nps_page_sample"/>
+    </changeSet>
+
+    <changeSet id="add-notebook-page-sample-status-check" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for status values.</comment>
+        <sql>
+            ALTER TABLE clinlims.notebook_page_sample
+            ADD CONSTRAINT chk_nps_status
+            CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.notebook_page_sample DROP CONSTRAINT IF EXISTS chk_nps_status;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-notebook-page-sample-indexes" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="notebook_page_sample" indexName="idx_nps_page_status">
+            <column name="notebook_page_id"/>
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="notebook_page_sample" indexName="idx_nps_sample">
+            <column name="sample_item_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-notebook-page-sample-reference-table" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'NOTEBOOK_PAGE_SAMPLE'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating NOTEBOOK_PAGE_SAMPLE reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="NOTEBOOK_PAGE_SAMPLE"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='NOTEBOOK_PAGE_SAMPLE'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

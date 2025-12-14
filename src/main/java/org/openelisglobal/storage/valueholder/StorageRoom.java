@@ -33,7 +33,7 @@ public class StorageRoom extends BaseObject<Integer> {
     @Column(name = "ID")
     private Integer id;
 
-    @Column(name = "FHIR_UUID", nullable = false, unique = true)
+    @Column(name = "FHIR_UUID", nullable = false, unique = true, columnDefinition = "uuid")
     private UUID fhirUuid;
 
     @Column(name = "NAME", length = 255, nullable = false)
@@ -48,8 +48,8 @@ public class StorageRoom extends BaseObject<Integer> {
     @Column(name = "ACTIVE", nullable = false)
     private Boolean active;
 
-    @Column(name = "SYS_USER_ID", nullable = false)
-    private Integer sysUserId;
+    @Column(name = "SYS_USER_ID", nullable = false, length = 36)
+    private String sysUserIdValue;
 
     @Override
     public Integer getId() {
@@ -101,22 +101,14 @@ public class StorageRoom extends BaseObject<Integer> {
         this.active = active;
     }
 
-    public Integer getSysUserIdValue() {
-        return sysUserId;
-    }
-
-    public void setSysUserIdValue(Integer sysUserId) {
-        this.sysUserId = sysUserId;
-    }
-
     @Override
     public String getSysUserId() {
-        return sysUserId != null ? sysUserId.toString() : null;
+        return sysUserIdValue;
     }
 
     @Override
     public void setSysUserId(String sysUserId) {
-        this.sysUserId = sysUserId != null ? Integer.parseInt(sysUserId) : null;
+        this.sysUserIdValue = sysUserId;
     }
 
     @PrePersist

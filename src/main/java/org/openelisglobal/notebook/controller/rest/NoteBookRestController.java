@@ -34,8 +34,10 @@ import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.service.NoteBookSampleService;
 import org.openelisglobal.notebook.service.NoteBookService;
+import org.openelisglobal.notebook.service.WorkflowPageTemplateService;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
+import org.openelisglobal.notebook.valueholder.WorkflowPageTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -57,6 +59,9 @@ public class NoteBookRestController extends BaseRestController {
 
     @Autowired
     private NoteBookSampleService noteBookSampleService;
+
+    @Autowired
+    private WorkflowPageTemplateService workflowPageTemplateService;
 
     @Autowired
     private FhirConfig fhirConfig;
@@ -144,6 +149,22 @@ public class NoteBookRestController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<NoteBookFullDisplayBean> getNoteBookEntry(@PathVariable("noteBookId") Integer noteBookId) {
         return ResponseEntity.ok(noteBookService.convertToFullDisplayBean(noteBookId));
+    }
+
+    /**
+     * Get all available workflow page templates for adding to notebook templates.
+     */
+    @GetMapping(value = "/workflow-page-templates", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<WorkflowPageTemplate>> getWorkflowPageTemplates(
+            @RequestParam(required = false) String category) {
+        List<WorkflowPageTemplate> templates;
+        if (category != null && !category.isEmpty()) {
+            templates = workflowPageTemplateService.getByCategory(category);
+        } else {
+            templates = workflowPageTemplateService.getAllActive();
+        }
+        return ResponseEntity.ok(templates);
     }
 
     @PostMapping(value = "/update/{noteBookId}", produces = MediaType.APPLICATION_JSON_VALUE)
