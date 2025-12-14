@@ -101,29 +101,6 @@ _Example of marking unclear requirements:_
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention
   period not specified]
 
-### Constitution Compliance Requirements (OpenELIS Global)
-
-_Derived from `.specify/memory/constitution.md` - include only relevant
-principles for this feature:_
-
-- **CR-001**: UI components MUST use Carbon Design System (@carbon/react) - NO
-  custom CSS frameworks
-- **CR-002**: All UI strings MUST be internationalized via React Intl (no
-  hardcoded text)
-- **CR-003**: Backend MUST follow 5-layer architecture
-  (Valueholder→DAO→Service→Controller→Form)
-  - **Valueholders MUST use JPA/Hibernate annotations** (NO XML mapping files -
-    legacy exempt until refactored)
-- **CR-004**: Database changes MUST use Liquibase changesets (NO direct DDL/DML)
-- **CR-005**: External data integration MUST use FHIR R4 + IHE profiles (if
-  applicable)
-- **CR-006**: Configuration-driven variation for country-specific requirements
-  (NO code branching)
-- **CR-007**: Security: RBAC, audit trail (sys_user_id + lastupdated), input
-  validation
-- **CR-008**: Tests MUST be included (unit + integration + E2E, >70% coverage
-  goal)
-
 ### Key Entities _(include if feature involves data)_
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]

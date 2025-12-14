@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add missing columns to pharma_excursion_event table for reporting -->
+    <changeSet id="pharma-018-add-excursion-reporting-columns" author="pharmaceutical-lab">
+        <addColumn tableName="pharma_excursion_event">
+            <column name="recorded_value" type="DOUBLE"/>
+            <column name="threshold_value" type="DOUBLE"/>
+            <column name="device_location" type="VARCHAR(500)"/>
+            <column name="acknowledged_at" type="TIMESTAMP"/>
+            <column name="acknowledged_by" type="VARCHAR(36)"/>
+            <column name="resolved_by" type="VARCHAR(36)"/>
+            <column name="escalation_reason" type="VARCHAR(2000)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="pharma_excursion_event" columnName="recorded_value"/>
+            <dropColumn tableName="pharma_excursion_event" columnName="threshold_value"/>
+            <dropColumn tableName="pharma_excursion_event" columnName="device_location"/>
+            <dropColumn tableName="pharma_excursion_event" columnName="acknowledged_at"/>
+            <dropColumn tableName="pharma_excursion_event" columnName="acknowledged_by"/>
+            <dropColumn tableName="pharma_excursion_event" columnName="resolved_by"/>
+            <dropColumn tableName="pharma_excursion_event" columnName="escalation_reason"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

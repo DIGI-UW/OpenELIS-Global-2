@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Indexes for pharmaceutical_sample -->
+    <changeSet id="pharma-010-create-sample-indexes" author="pharmaceutical-lab">
+        <createIndex tableName="pharmaceutical_sample" indexName="idx_pharma_sample_status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="pharmaceutical_sample" indexName="idx_pharma_sample_lab_type">
+            <column name="lab_type"/>
+        </createIndex>
+        <createIndex tableName="pharmaceutical_sample" indexName="idx_pharma_sample_barcode">
+            <column name="barcode"/>
+        </createIndex>
+        <createIndex tableName="pharmaceutical_sample" indexName="idx_pharma_sample_registered">
+            <column name="registered_at"/>
+        </createIndex>
+        <createIndex tableName="pharmaceutical_sample" indexName="idx_pharma_sample_expiry">
+            <column name="expiry_retest_date"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="pharmaceutical_sample" indexName="idx_pharma_sample_status"/>
+            <dropIndex tableName="pharmaceutical_sample" indexName="idx_pharma_sample_lab_type"/>
+            <dropIndex tableName="pharmaceutical_sample" indexName="idx_pharma_sample_barcode"/>
+            <dropIndex tableName="pharmaceutical_sample" indexName="idx_pharma_sample_registered"/>
+            <dropIndex tableName="pharmaceutical_sample" indexName="idx_pharma_sample_expiry"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Indexes for pharma_aliquot -->
+    <changeSet id="pharma-011-create-aliquot-indexes" author="pharmaceutical-lab">
+        <createIndex tableName="pharma_aliquot" indexName="idx_aliquot_parent_sample">
+            <column name="parent_sample_id"/>
+        </createIndex>
+        <createIndex tableName="pharma_aliquot" indexName="idx_aliquot_status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="pharma_aliquot" indexName="idx_aliquot_barcode">
+            <column name="barcode"/>
+        </createIndex>
+        <createIndex tableName="pharma_aliquot" indexName="idx_aliquot_storage">
+            <column name="storage_location_id"/>
+            <column name="storage_location_type"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="pharma_aliquot" indexName="idx_aliquot_parent_sample"/>
+            <dropIndex tableName="pharma_aliquot" indexName="idx_aliquot_status"/>
+            <dropIndex tableName="pharma_aliquot" indexName="idx_aliquot_barcode"/>
+            <dropIndex tableName="pharma_aliquot" indexName="idx_aliquot_storage"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Indexes for pharma_qc_check -->
+    <changeSet id="pharma-012-create-qc-indexes" author="pharmaceutical-lab">
+        <createIndex tableName="pharma_qc_check" indexName="idx_qc_check_sample">
+            <column name="sample_id"/>
+        </createIndex>
+        <createIndex tableName="pharma_qc_check" indexName="idx_qc_check_outcome">
+            <column name="outcome"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="pharma_qc_check" indexName="idx_qc_check_sample"/>
+            <dropIndex tableName="pharma_qc_check" indexName="idx_qc_check_outcome"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Indexes for pharma_assay_run -->
+    <changeSet id="pharma-013-create-assay-indexes" author="pharmaceutical-lab">
+        <createIndex tableName="pharma_assay_run" indexName="idx_assay_run_sample">
+            <column name="sample_id"/>
+        </createIndex>
+        <createIndex tableName="pharma_assay_run" indexName="idx_assay_run_aliquot">
+            <column name="aliquot_id"/>
+        </createIndex>
+        <createIndex tableName="pharma_assay_run" indexName="idx_assay_run_status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="pharma_assay_run" indexName="idx_assay_run_oos">
+            <column name="oos_flag"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="pharma_assay_run" indexName="idx_assay_run_sample"/>
+            <dropIndex tableName="pharma_assay_run" indexName="idx_assay_run_aliquot"/>
+            <dropIndex tableName="pharma_assay_run" indexName="idx_assay_run_status"/>
+            <dropIndex tableName="pharma_assay_run" indexName="idx_assay_run_oos"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Indexes for pharma_deviation_capa -->
+    <changeSet id="pharma-014-create-capa-indexes" author="pharmaceutical-lab">
+        <createIndex tableName="pharma_deviation_capa" indexName="idx_capa_assay_run">
+            <column name="assay_run_id"/>
+        </createIndex>
+        <createIndex tableName="pharma_deviation_capa" indexName="idx_capa_status">
+            <column name="status"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="pharma_deviation_capa" indexName="idx_capa_assay_run"/>
+            <dropIndex tableName="pharma_deviation_capa" indexName="idx_capa_status"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Indexes for pharma_chain_of_custody -->
+    <changeSet id="pharma-015-create-coc-indexes" author="pharmaceutical-lab">
+        <createIndex tableName="pharma_chain_of_custody" indexName="idx_coc_sample">
+            <column name="sample_id"/>
+        </createIndex>
+        <createIndex tableName="pharma_chain_of_custody" indexName="idx_coc_aliquot">
+            <column name="aliquot_id"/>
+        </createIndex>
+        <createIndex tableName="pharma_chain_of_custody" indexName="idx_coc_timestamp">
+            <column name="event_timestamp"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="pharma_chain_of_custody" indexName="idx_coc_sample"/>
+            <dropIndex tableName="pharma_chain_of_custody" indexName="idx_coc_aliquot"/>
+            <dropIndex tableName="pharma_chain_of_custody" indexName="idx_coc_timestamp"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Indexes for pharma_disposal_record -->
+    <changeSet id="pharma-016-create-disposal-indexes" author="pharmaceutical-lab">
+        <createIndex tableName="pharma_disposal_record" indexName="idx_disposal_sample">
+            <column name="sample_id"/>
+        </createIndex>
+        <createIndex tableName="pharma_disposal_record" indexName="idx_disposal_status">
+            <column name="status"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="pharma_disposal_record" indexName="idx_disposal_sample"/>
+            <dropIndex tableName="pharma_disposal_record" indexName="idx_disposal_status"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Indexes for pharma_excursion_event -->
+    <changeSet id="pharma-017-create-excursion-indexes" author="pharmaceutical-lab">
+        <createIndex tableName="pharma_excursion_event" indexName="idx_excursion_device">
+            <column name="device_id"/>
+        </createIndex>
+        <createIndex tableName="pharma_excursion_event" indexName="idx_excursion_status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="pharma_excursion_event" indexName="idx_excursion_detected">
+            <column name="detected_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="pharma_excursion_event" indexName="idx_excursion_device"/>
+            <dropIndex tableName="pharma_excursion_event" indexName="idx_excursion_status"/>
+            <dropIndex tableName="pharma_excursion_event" indexName="idx_excursion_detected"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -6,14 +6,6 @@ Auto-generated from all feature plans. Last updated: [DATE]
 
 [EXTRACTED FROM ALL PLAN.MD FILES]
 
-**OpenELIS Global Stack**:
-
-- Backend: Java 21 + Spring Boot 3.x + Hibernate 6.x + JPA + PostgreSQL 14+
-- Frontend: React 17 + **Carbon Design System v1.15** (OFFICIAL UI framework)
-- FHIR: HAPI FHIR R4 v6.6.2 + IHE mCSD profile
-- Testing: JUnit 5 + Mockito (backend), Jest + RTL + Cypress (frontend)
-- Build: Maven 3.8+ (backend), npm (frontend), Docker Compose (deployment)
-
 ## Project Structure
 
 ```text

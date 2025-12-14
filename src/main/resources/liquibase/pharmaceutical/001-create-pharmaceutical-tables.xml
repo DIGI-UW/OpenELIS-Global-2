@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Pharmaceutical Sample Table -->
+    <changeSet id="pharma-001-create-pharmaceutical-sample" author="pharmaceutical-lab">
+        <createSequence sequenceName="pharma_sample_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="pharmaceutical_sample">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID"/>
+            <column name="unique_sample_id" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="sample_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="iupac_name" type="VARCHAR(500)"/>
+            <column name="grade_spec" type="VARCHAR(100)"/>
+            <column name="lot_batch" type="VARCHAR(100)"/>
+            <column name="manufacture_date" type="TIMESTAMP"/>
+            <column name="expiry_retest_date" type="TIMESTAMP"/>
+            <column name="storage_condition" type="VARCHAR(100)"/>
+            <column name="owner_requester" type="VARCHAR(255)"/>
+            <column name="chain_of_custody_ref" type="VARCHAR(100)"/>
+            <column name="clinical_trial_id" type="VARCHAR(100)"/>
+            <column name="patient_id" type="VARCHAR(100)"/>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lab_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="barcode" type="VARCHAR(100)"/>
+            <column name="qr_code" type="VARCHAR(500)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="registered_at" type="TIMESTAMP"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="pharmaceutical_sample"/>
+            <dropSequence sequenceName="pharma_sample_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Aliquot Table -->
+    <changeSet id="pharma-002-create-aliquot" author="pharmaceutical-lab">
+        <createSequence sequenceName="pharma_aliquot_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="pharma_aliquot">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID"/>
+            <column name="parent_sample_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_aliquot_sample"
+                    references="pharmaceutical_sample(id)"/>
+            </column>
+            <column name="aliquot_code" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="volume_weight" type="NUMERIC(10,4)"/>
+            <column name="units" type="VARCHAR(20)"/>
+            <column name="freeze_thaw_count" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="freeze_thaw_limit" type="INTEGER"/>
+            <column name="label_data" type="VARCHAR(500)"/>
+            <column name="barcode" type="VARCHAR(100)"/>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="storage_location_id" type="INTEGER"/>
+            <column name="storage_location_type" type="VARCHAR(20)"/>
+            <column name="storage_position" type="VARCHAR(20)"/>
+            <column name="created_at" type="TIMESTAMP"/>
+            <column name="notes" type="VARCHAR(1000)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="pharma_aliquot"/>
+            <dropSequence sequenceName="pharma_aliquot_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- QC Check Table -->
+    <changeSet id="pharma-003-create-qc-check" author="pharmaceutical-lab">
+        <createSequence sequenceName="pharma_qc_check_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="pharma_qc_check">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_qc_check_sample"
+                    references="pharmaceutical_sample(id)"/>
+            </column>
+            <column name="lab_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="checklist_version" type="VARCHAR(20)"/>
+            <column name="outcome" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rejection_reasons" type="VARCHAR(2000)"/>
+            <column name="reviewer_id" type="VARCHAR(36)"/>
+            <column name="reviewer_name" type="VARCHAR(255)"/>
+            <column name="reviewed_at" type="TIMESTAMP"/>
+            <column name="checklist_data" type="VARCHAR(4000)"/>
+            <column name="created_at" type="TIMESTAMP"/>
+            <column name="notes" type="VARCHAR(1000)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="pharma_qc_check"/>
+            <dropSequence sequenceName="pharma_qc_check_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Processing Step Table -->
+    <changeSet id="pharma-004-create-processing-step" author="pharmaceutical-lab">
+        <createSequence sequenceName="pharma_proc_step_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="pharma_processing_step">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_proc_step_sample"
+                    references="pharmaceutical_sample(id)"/>
+            </column>
+            <column name="step_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="step_description" type="VARCHAR(500)"/>
+            <column name="operator_id" type="VARCHAR(36)"/>
+            <column name="operator_name" type="VARCHAR(255)"/>
+            <column name="started_at" type="TIMESTAMP"/>
+            <column name="completed_at" type="TIMESTAMP"/>
+            <column name="output_ref" type="VARCHAR(100)"/>
+            <column name="equipment_used" type="VARCHAR(255)"/>
+            <column name="parameters" type="VARCHAR(2000)"/>
+            <column name="notes" type="VARCHAR(1000)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="pharma_processing_step"/>
+            <dropSequence sequenceName="pharma_proc_step_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Assay Run Table -->
+    <changeSet id="pharma-005-create-assay-run" author="pharmaceutical-lab">
+        <createSequence sequenceName="pharma_assay_run_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="pharma_assay_run">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="INTEGER"/>
+            <column name="aliquot_id" type="INTEGER"/>
+            <column name="notebook_page_id" type="VARCHAR(36)"/>
+            <column name="template_id" type="VARCHAR(50)"/>
+            <column name="assay_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="controls_data" type="VARCHAR(4000)"/>
+            <column name="replicates_data" type="VARCHAR(4000)"/>
+            <column name="calculations_data" type="VARCHAR(4000)"/>
+            <column name="mean_value" type="NUMERIC(12,4)"/>
+            <column name="rsd_percent" type="NUMERIC(8,4)"/>
+            <column name="cv_percent" type="NUMERIC(8,4)"/>
+            <column name="recovery_percent" type="NUMERIC(8,4)"/>
+            <column name="acceptance_criteria" type="VARCHAR(1000)"/>
+            <column name="oos_flag" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="oos_reason" type="VARCHAR(1000)"/>
+            <column name="deviation_capa_id" type="INTEGER"/>
+            <column name="analyst_id" type="VARCHAR(36)"/>
+            <column name="analyst_name" type="VARCHAR(255)"/>
+            <column name="started_at" type="TIMESTAMP"/>
+            <column name="completed_at" type="TIMESTAMP"/>
+            <column name="primary_reviewer_id" type="VARCHAR(36)"/>
+            <column name="primary_reviewer_name" type="VARCHAR(255)"/>
+            <column name="primary_reviewed_at" type="TIMESTAMP"/>
+            <column name="primary_review_comments" type="VARCHAR(2000)"/>
+            <column name="secondary_reviewer_id" type="VARCHAR(36)"/>
+            <column name="secondary_reviewer_name" type="VARCHAR(255)"/>
+            <column name="secondary_reviewed_at" type="TIMESTAMP"/>
+            <column name="secondary_review_comments" type="VARCHAR(2000)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="pharma_assay_run"/>
+            <dropSequence sequenceName="pharma_assay_run_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Deviation CAPA Table -->
+    <changeSet id="pharma-006-create-deviation-capa" author="pharmaceutical-lab">
+        <createSequence sequenceName="pharma_dev_capa_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="pharma_deviation_capa">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="assay_run_id" type="INTEGER"/>
+            <column name="sample_id" type="INTEGER"/>
+            <column name="deviation_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deviation_number" type="VARCHAR(50)">
+                <constraints unique="true"/>
+            </column>
+            <column name="description" type="VARCHAR(2000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="root_cause" type="VARCHAR(2000)"/>
+            <column name="corrective_action" type="VARCHAR(2000)"/>
+            <column name="preventive_action" type="VARCHAR(2000)"/>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="owner_id" type="VARCHAR(36)"/>
+            <column name="owner_name" type="VARCHAR(255)"/>
+            <column name="created_at" type="TIMESTAMP"/>
+            <column name="investigation_start" type="TIMESTAMP"/>
+            <column name="closed_at" type="TIMESTAMP"/>
+            <column name="due_date" type="TIMESTAMP"/>
+            <column name="approved_by_id" type="VARCHAR(36)"/>
+            <column name="approved_by_name" type="VARCHAR(255)"/>
+            <column name="approved_at" type="TIMESTAMP"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="pharma_deviation_capa"/>
+            <dropSequence sequenceName="pharma_dev_capa_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Chain of Custody Table -->
+    <changeSet id="pharma-007-create-chain-of-custody" author="pharmaceutical-lab">
+        <createSequence sequenceName="pharma_coc_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="pharma_chain_of_custody">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="INTEGER"/>
+            <column name="aliquot_id" type="INTEGER"/>
+            <column name="action" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="handler_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="handler_name" type="VARCHAR(255)"/>
+            <column name="condition_description" type="VARCHAR(500)"/>
+            <column name="temperature" type="VARCHAR(50)"/>
+            <column name="event_timestamp" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_location" type="VARCHAR(255)"/>
+            <column name="to_location" type="VARCHAR(255)"/>
+            <column name="recipient_name" type="VARCHAR(255)"/>
+            <column name="recipient_org" type="VARCHAR(255)"/>
+            <column name="approval_status" type="VARCHAR(20)"/>
+            <column name="approved_by_id" type="VARCHAR(36)"/>
+            <column name="approved_by_name" type="VARCHAR(255)"/>
+            <column name="approved_at" type="TIMESTAMP"/>
+            <column name="mta_reference" type="VARCHAR(100)"/>
+            <column name="sds_attached" type="BOOLEAN"/>
+            <column name="shipping_checklist" type="VARCHAR(2000)"/>
+            <column name="notes" type="VARCHAR(1000)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="pharma_chain_of_custody"/>
+            <dropSequence sequenceName="pharma_coc_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Disposal Record Table -->
+    <changeSet id="pharma-008-create-disposal-record" author="pharmaceutical-lab">
+        <createSequence sequenceName="pharma_disposal_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="pharma_disposal_record">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="INTEGER"/>
+            <column name="aliquot_id" type="INTEGER"/>
+            <column name="disposal_reason" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason_details" type="VARCHAR(1000)"/>
+            <column name="disposal_method" type="VARCHAR(30)"/>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="requested_by_id" type="VARCHAR(36)"/>
+            <column name="requested_by_name" type="VARCHAR(255)"/>
+            <column name="requested_at" type="TIMESTAMP"/>
+            <column name="approved_by_id" type="VARCHAR(36)"/>
+            <column name="approved_by_name" type="VARCHAR(255)"/>
+            <column name="approved_at" type="TIMESTAMP"/>
+            <column name="disposed_by_id" type="VARCHAR(36)"/>
+            <column name="disposed_by_name" type="VARCHAR(255)"/>
+            <column name="disposed_at" type="TIMESTAMP"/>
+            <column name="retention_until" type="TIMESTAMP"/>
+            <column name="archive_location" type="VARCHAR(255)"/>
+            <column name="witness_id" type="VARCHAR(36)"/>
+            <column name="witness_name" type="VARCHAR(255)"/>
+            <column name="certificate_number" type="VARCHAR(100)"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="pharma_disposal_record"/>
+            <dropSequence sequenceName="pharma_disposal_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Environmental Excursion Event Table -->
+    <changeSet id="pharma-009-create-excursion-event" author="pharmaceutical-lab">
+        <createSequence sequenceName="pharma_excursion_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="pharma_excursion_event">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="device_id" type="INTEGER"/>
+            <column name="device_name" type="VARCHAR(255)"/>
+            <column name="location_path" type="VARCHAR(500)"/>
+            <column name="alert_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="temperature_reading" type="NUMERIC(6,2)"/>
+            <column name="threshold_min" type="NUMERIC(6,2)"/>
+            <column name="threshold_max" type="NUMERIC(6,2)"/>
+            <column name="threshold_violated" type="VARCHAR(100)"/>
+            <column name="duration_minutes" type="INTEGER"/>
+            <column name="status" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="contingency_action" type="VARCHAR(2000)"/>
+            <column name="backup_location_id" type="INTEGER"/>
+            <column name="backup_location_name" type="VARCHAR(255)"/>
+            <column name="affected_sample_count" type="INTEGER"/>
+            <column name="affected_sample_ids" type="VARCHAR(4000)"/>
+            <column name="detected_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resolved_at" type="TIMESTAMP"/>
+            <column name="resolved_by_id" type="VARCHAR(36)"/>
+            <column name="resolved_by_name" type="VARCHAR(255)"/>
+            <column name="resolution_notes" type="VARCHAR(2000)"/>
+            <column name="notification_sent" type="BOOLEAN"/>
+            <column name="notification_sent_at" type="TIMESTAMP"/>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="pharma_excursion_event"/>
+            <dropSequence sequenceName="pharma_excursion_seq"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

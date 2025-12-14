@@ -17,4 +17,7 @@
     <include file="liquibase/3.4.x.x/006-workflow-page-templates.xml"/>
     <include file="liquibase/3.4.x.x/007-fix-location-type-constraint.xml"/>
 
+    <!-- OGC-283: Pharmaceutical Laboratory Workflow Feature -->
+    <include file="liquibase/pharmaceutical/base.xml"/>
+
 </databaseChangeLog>

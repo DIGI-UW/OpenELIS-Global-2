@@ -1,0 +1,183 @@
+.pharmaceutical-container {
+  padding: 1rem;
+}
+
+.pharmaceutical-container h2 {
+  margin-bottom: 1.5rem;
+}
+
+.pharmaceutical-form {
+  margin-top: 1rem;
+}
+
+.pharmaceutical-form .cds--form-item {
+  margin-bottom: 1rem;
+}
+
+.pharmaceutical-table {
+  margin-top: 1rem;
+}
+
+.pharmaceutical-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.pharmaceutical-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.pharmaceutical-status-badge--registered {
+  background-color: #d0e2ff;
+  color: #0043ce;
+}
+
+.pharmaceutical-status-badge--in-testing {
+  background-color: #fff1c2;
+  color: #8e6a00;
+}
+
+.pharmaceutical-status-badge--completed {
+  background-color: #defbe6;
+  color: #0e6027;
+}
+
+.pharmaceutical-status-badge--disposed {
+  background-color: #f4f4f4;
+  color: #525252;
+}
+
+.pharmaceutical-status-badge--pending {
+  background-color: #fff1c2;
+  color: #8e6a00;
+}
+
+.pharmaceutical-status-badge--approved {
+  background-color: #defbe6;
+  color: #0e6027;
+}
+
+.pharmaceutical-status-badge--rejected {
+  background-color: #ffd7d9;
+  color: #a2191f;
+}
+
+.pharmaceutical-alert {
+  margin-bottom: 1rem;
+}
+
+.pharmaceutical-alert--critical {
+  border-left: 4px solid #da1e28;
+}
+
+.pharmaceutical-alert--warning {
+  border-left: 4px solid #f1c21b;
+}
+
+.pharmaceutical-alert--info {
+  border-left: 4px solid #0043ce;
+}
+
+.freeze-thaw-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.freeze-thaw-indicator--warning {
+  color: #f1c21b;
+}
+
+.freeze-thaw-indicator--exceeded {
+  color: #da1e28;
+}
+
+.excursion-card {
+  padding: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.excursion-card--active {
+  border-left: 4px solid #da1e28;
+  background-color: #fff1f1;
+}
+
+.excursion-card--acknowledged {
+  border-left: 4px solid #f1c21b;
+  background-color: #fcf4d6;
+}
+
+.excursion-card--resolved {
+  border-left: 4px solid #24a148;
+  background-color: #defbe6;
+}
+
+.disposal-timeline {
+  margin-top: 1rem;
+}
+
+.disposal-timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-left: 2px solid #e0e0e0;
+  padding-left: 1rem;
+  margin-left: 0.5rem;
+}
+
+.disposal-timeline-item--completed {
+  border-left-color: #24a148;
+}
+
+.disposal-timeline-item--current {
+  border-left-color: #0043ce;
+}
+
+.qc-checklist {
+  margin-top: 1rem;
+}
+
+.qc-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.qc-checklist-item:last-child {
+  border-bottom: none;
+}
+
+.assay-results-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+
+.oos-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: #ffd7d9;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+.sample-barcode {
+  font-family: monospace;
+  background-color: #f4f4f4;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
