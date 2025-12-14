@@ -3,9 +3,9 @@ package org.openelisglobal.inventory.valueholder.reports;
 import java.math.BigDecimal;
 
 /**
- * Report bean (DTO) for Usage Trend reports
- * Represents consumption patterns and trends for inventory items
- * Used with JRBeanCollectionDataSource for JasperReports integration
+ * Report bean (DTO) for Usage Trend reports Represents consumption patterns and
+ * trends for inventory items Used with JRBeanCollectionDataSource for
+ * JasperReports integration
  */
 public class UsageTrendReportData {
 

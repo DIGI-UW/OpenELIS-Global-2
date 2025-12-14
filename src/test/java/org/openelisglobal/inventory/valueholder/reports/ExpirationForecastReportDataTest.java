@@ -1,16 +1,14 @@
 package org.openelisglobal.inventory.valueholder.reports;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
 import org.junit.Test;
 
 /**
- * Unit tests for ExpirationForecastReportData bean
- * Tests all getter/setter methods for JasperReports compatibility
+ * Unit tests for ExpirationForecastReportData bean Tests all getter/setter
+ * methods for JasperReports compatibility
  */
 public class ExpirationForecastReportDataTest {
 

@@ -6,12 +6,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 import org.junit.Test;
 
 /**
- * Unit tests for StockLevelReportData bean
- * Tests all getter/setter methods for JasperReports compatibility
+ * Unit tests for StockLevelReportData bean Tests all getter/setter methods for
+ * JasperReports compatibility
  */
 public class StockLevelReportDataTest {
 

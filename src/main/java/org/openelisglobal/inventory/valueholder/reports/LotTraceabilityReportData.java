@@ -5,9 +5,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Report bean (DTO) for Lot Traceability reports
- * Represents usage tracking from lot to patient test results
- * Used with JRBeanCollectionDataSource for JasperReports integration
+ * Report bean (DTO) for Lot Traceability reports Represents usage tracking from
+ * lot to patient test results Used with JRBeanCollectionDataSource for
+ * JasperReports integration
  */
 public class LotTraceabilityReportData {
 

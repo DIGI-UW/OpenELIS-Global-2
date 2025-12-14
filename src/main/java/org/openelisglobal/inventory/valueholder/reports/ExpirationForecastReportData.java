@@ -4,9 +4,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Report bean (DTO) for Expiration Forecast reports
- * Represents inventory lots nearing expiration with status indicators
- * Used with JRBeanCollectionDataSource for JasperReports integration
+ * Report bean (DTO) for Expiration Forecast reports Represents inventory lots
+ * nearing expiration with status indicators Used with
+ * JRBeanCollectionDataSource for JasperReports integration
  */
 public class ExpirationForecastReportData {
 

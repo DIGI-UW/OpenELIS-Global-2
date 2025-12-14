@@ -4,9 +4,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Report bean (DTO) for Transaction History reports
- * Represents individual inventory transactions with quantity changes
- * Used with JRBeanCollectionDataSource for JasperReports integration
+ * Report bean (DTO) for Transaction History reports Represents individual
+ * inventory transactions with quantity changes Used with
+ * JRBeanCollectionDataSource for JasperReports integration
  */
 public class TransactionHistoryReportData {
 

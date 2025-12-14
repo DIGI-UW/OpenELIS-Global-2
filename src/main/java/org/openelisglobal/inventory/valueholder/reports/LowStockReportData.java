@@ -4,9 +4,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Report bean (DTO) for Low Stock reports
- * Represents items below reorder level with shortfall calculations
- * Used with JRBeanCollectionDataSource for JasperReports integration
+ * Report bean (DTO) for Low Stock reports Represents items below reorder level
+ * with shortfall calculations Used with JRBeanCollectionDataSource for
+ * JasperReports integration
  */
 public class LowStockReportData {
 

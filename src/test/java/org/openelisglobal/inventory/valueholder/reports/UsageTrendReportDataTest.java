@@ -3,12 +3,11 @@ package org.openelisglobal.inventory.valueholder.reports;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
-
 import org.junit.Test;
 
 /**
- * Unit tests for UsageTrendReportData bean
- * Tests all getter/setter methods for JasperReports compatibility
+ * Unit tests for UsageTrendReportData bean Tests all getter/setter methods for
+ * JasperReports compatibility
  */
 public class UsageTrendReportDataTest {
 
