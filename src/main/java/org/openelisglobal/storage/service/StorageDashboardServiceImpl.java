@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
@@ -25,6 +27,9 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
 
     @Autowired
     private StorageLocationService storageLocationService;
+
+    @Autowired
+    private IStatusService statusService;
 
     @Override
     @Transactional(readOnly = true)
@@ -48,14 +53,28 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
                 }
             }
 
-            // Status filtering: case-insensitive exact match
+            // Status filtering: Support filtering by any status ID from dropdown
+            // Frontend can send "active", "disposed", or any actual status ID
             boolean matchesStatus = true;
             if (status != null && !status.isEmpty()) {
-                String sampleStatus = (String) sample.get("status");
-                if (sampleStatus == null) {
-                    matchesStatus = false;
+                String statusFilter = status.trim();
+                String sampleStatusId = (String) sample.get("status");
+
+                // Handle legacy "active" and "disposed" labels
+                if ("active".equalsIgnoreCase(statusFilter)) {
+                    // Active: status should be null/empty OR NOT be disposed
+                    if (sampleStatusId == null || sampleStatusId.isEmpty()) {
+                        matchesStatus = true; // No status = active by default
+                    } else {
+                        matchesStatus = !statusService.matches(sampleStatusId, SampleStatus.Disposed);
+                    }
+                } else if ("disposed".equalsIgnoreCase(statusFilter)) {
+                    // Disposed: status should BE disposed
+                    matchesStatus = sampleStatusId != null
+                            && statusService.matches(sampleStatusId, SampleStatus.Disposed);
                 } else {
-                    matchesStatus = status.trim().equalsIgnoreCase(sampleStatus);
+                    // Direct status ID comparison for any other status from dropdown
+                    matchesStatus = statusFilter.equals(sampleStatusId);
                 }
             }
 

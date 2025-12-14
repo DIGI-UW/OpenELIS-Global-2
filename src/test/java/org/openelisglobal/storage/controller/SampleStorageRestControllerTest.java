@@ -1,162 +1,111 @@
 package org.openelisglobal.storage.controller;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import javax.sql.DataSource;
-import org.junit.After;
 import org.junit.Before;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.storage.service.SampleStorageService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.Test;
+import org.openelisglobal.storage.BaseStorageTest;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.Rollback;
 
 /**
- * Integration tests for SampleStorageRestController - Sample Assignment
- * Following TDD: Write tests BEFORE implementation Tests based on
- * contracts/storage-api.json
+ * Integration tests for pagination functionality in
+ * SampleStorageRestController. Tests verify that pagination parameters are
+ * correctly handled and responses include pagination metadata.
+ * 
+ * Extends BaseStorageTest to load storage hierarchy and E2E test fixtures.
  */
-public class SampleStorageRestControllerTest extends BaseWebContextSensitiveTest {
-
-    private static final Logger logger = LoggerFactory.getLogger(SampleStorageRestControllerTest.class);
-
-    @Autowired
-    private SampleStorageService sampleStorageService;
-
-    @Autowired
-    private DataSource dataSource;
-
-    private ObjectMapper objectMapper;
-    private JdbcTemplate jdbcTemplate;
+@Rollback
+public class SampleStorageRestControllerTest extends BaseStorageTest {
 
     @Before
+    @Override
     public void setUp() throws Exception {
-        super.setUp();
-        objectMapper = new ObjectMapper();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-        // Clean up test-created data before each test
-        cleanStorageTestData();
+        super.setUp(); // BaseStorageTest loads storage-e2e.xml with test data
     }
 
-    @After
-    public void tearDown() throws Exception {
-        // Clean up any test data created during this test
-        cleanStorageTestData();
+    @Test
+    public void testGetSampleItems_WithPaginationParams_ReturnsPagedResults() throws Exception {
+        mockMvc.perform(get("/rest/storage/sample-items").param("page", "0").param("size", "25")
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray()).andExpect(jsonPath("$.currentPage").value(0))
+                .andExpect(jsonPath("$.pageSize").value(25)).andExpect(jsonPath("$.totalPages").exists())
+                .andExpect(jsonPath("$.totalItems").exists());
     }
 
-    /**
-     * Clean up storage-related test data to ensure tests don't pollute the
-     * database. Preserves fixture data (IDs 1-999) but deletes test-created data.
-     */
-    private void cleanStorageTestData() {
-        try {
-            // Delete test-created data (IDs >= 1000 or codes/names starting with TEST-)
-            // Preserves fixture data (IDs 1-999)
-            jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE id::integer >= 1000 OR id LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id::integer >= 1000 OR id LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_box WHERE id::integer >= 1000 OR label LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%'");
-        } catch (Exception e) {
-            logger.warn("Failed to clean storage test data: " + e.getMessage());
+    @Test
+    public void testGetSampleItems_DefaultParams_Returns25Items() throws Exception {
+        mockMvc.perform(get("/rest/storage/sample-items").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.pageSize").value(25));
+    }
+
+    @Test
+    public void testGetSampleItems_CustomPageSize_ReturnsSpecifiedSize() throws Exception {
+        // Test page size 50
+        mockMvc.perform(get("/rest/storage/sample-items").param("page", "0").param("size", "50")
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.pageSize").value(50));
+
+        // Test page size 100
+        mockMvc.perform(get("/rest/storage/sample-items").param("page", "0").param("size", "100")
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.pageSize").value(100));
+    }
+
+    @Test
+    public void testGetSampleItems_InvalidPageSize_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/rest/storage/sample-items").param("page", "0").param("size", "75") // Invalid - not 25,
+                                                                                                 // 50, or 100
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    public void testGetSampleItems_WithStatusFilterActive_ReturnsFilteredResults() throws Exception {
+        // Test active filter
+        mockMvc.perform(get("/rest/storage/sample-items").param("status", "active").param("page", "0")
+                .param("size", "25").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray()).andExpect(jsonPath("$.totalItems").exists());
+    }
+
+    @Test
+    public void testGetSampleItems_WithStatusFilterDisposed_ReturnsFilteredResults() throws Exception {
+        // Test disposed filter
+        mockMvc.perform(get("/rest/storage/sample-items").param("status", "disposed").param("page", "0")
+                .param("size", "25").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray()).andExpect(jsonPath("$.totalItems").exists());
+    }
+
+    @Test
+    public void testGetSampleItems_AssignedSamplesHaveLocation() throws Exception {
+        // CRITICAL: Verify that sample items with storage assignments have location
+        // populated
+        // This prevents the "location not showing" bug discovered during manual testing
+        String response = mockMvc
+                .perform(get("/rest/storage/sample-items").param("page", "0").param("size", "25")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items").isArray()).andReturn().getResponse()
+                .getContentAsString();
+
+        // Parse response and verify at least one assigned sample has non-empty location
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(response);
+        com.fasterxml.jackson.databind.JsonNode items = root.get("items");
+
+        boolean foundAssignedWithLocation = false;
+        for (com.fasterxml.jackson.databind.JsonNode item : items) {
+            String location = item.has("location") ? item.get("location").asText() : "";
+            // If location is not empty, it means sample is assigned and location path was
+            // built
+            if (location != null && !location.isEmpty() && !location.equals("Unassigned")) {
+                foundAssignedWithLocation = true;
+                break;
+            }
         }
+
+        assertTrue("At least one assigned sample should have a non-empty location field (hierarchical path)",
+                foundAssignedWithLocation);
     }
-
-    // OLD TESTS REMOVED: These tested deprecated position-based assignment
-    // New flexible assignment tests are in
-    // SampleStorageRestControllerFlexibleAssignmentTest.java
-
-    // Helper method to create a sample and get its ID
-    private String createSampleAndGetId() {
-        // Insert a sample directly via JDBC to ensure it exists
-        // Use a numeric ID starting from 10000 to avoid conflicts with fixtures
-        Long timestamp = System.currentTimeMillis();
-        String sampleId = String.valueOf(10000 + (timestamp % 9000)); // Use last 4 digits of timestamp
-        String accessionNumber = "ACC-" + timestamp;
-        jdbcTemplate.update(
-                "INSERT INTO sample (id, accession_number, entered_date, received_date, lastupdated) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-                Integer.parseInt(sampleId), accessionNumber);
-        return sampleId;
-    }
-
-    // Helper methods to create entities and get their IDs
-    private String createRoomAndGetId(String name, String code) throws Exception {
-        org.openelisglobal.storage.form.StorageRoomForm form = new org.openelisglobal.storage.form.StorageRoomForm();
-        form.setName(name);
-        form.setCode(code);
-        form.setActive(true);
-
-        String response = mockMvc
-                .perform(post("/rest/storage/rooms").contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(form)))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-
-        return objectMapper.readTree(response).get("id").asInt() + "";
-    }
-
-    private String createDeviceAndGetId(String name, String code, String type, String roomId) throws Exception {
-        org.openelisglobal.storage.form.StorageDeviceForm form = new org.openelisglobal.storage.form.StorageDeviceForm();
-        form.setName(name);
-        form.setCode(code);
-        form.setType(type);
-        form.setParentRoomId(roomId);
-        form.setActive(true);
-
-        String response = mockMvc
-                .perform(post("/rest/storage/devices").contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(form)))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-
-        return objectMapper.readTree(response).get("id").asInt() + "";
-    }
-
-    private String createShelfAndGetId(String label, String deviceId) throws Exception {
-        org.openelisglobal.storage.form.StorageShelfForm form = new org.openelisglobal.storage.form.StorageShelfForm();
-        form.setLabel(label);
-        form.setParentDeviceId(deviceId);
-        form.setActive(true);
-
-        String response = mockMvc
-                .perform(post("/rest/storage/shelves").contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(form)))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-
-        return objectMapper.readTree(response).get("id").asInt() + "";
-    }
-
-    private String createRackAndGetId(String label, int rows, int columns, String shelfId) throws Exception {
-        // Note: Racks are now simple containers (no rows/columns)
-        // rows/columns parameters are ignored - kept for backward compatibility
-        org.openelisglobal.storage.form.StorageRackForm form = new org.openelisglobal.storage.form.StorageRackForm();
-        form.setLabel(label);
-        form.setShortCode(label.substring(0, Math.min(10, label.length())).toUpperCase());
-        form.setParentShelfId(shelfId);
-        form.setActive(true);
-
-        String response = mockMvc
-                .perform(post("/rest/storage/racks").contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(form)))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-
-        return objectMapper.readTree(response).get("id").asInt() + "";
-    }
-
-    /**
-     * Placeholder test to prevent initialization error. All actual tests are in
-     * SampleStorageRestControllerFlexibleAssignmentTest.java
-     */
-    @org.junit.Test
-    public void testPlaceholder() {
-        // This test file is kept for reference but all tests moved to
-        // SampleStorageRestControllerFlexibleAssignmentTest.java
-        assertTrue(true);
-    }
-
 }

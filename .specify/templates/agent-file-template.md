@@ -9,7 +9,7 @@ development principles.
 
 [EXTRACTED FROM ALL PLAN.MD FILES]
 
-**OpenELIS Global 3.0 Stack**:
+**OpenELIS Global Stack**:
 
 - Backend: Java 21 + Spring Boot 3.x + Hibernate 6.x + JPA + PostgreSQL 14+
 - Frontend: React 17 + **Carbon Design System v1.15** (OFFICIAL UI framework)

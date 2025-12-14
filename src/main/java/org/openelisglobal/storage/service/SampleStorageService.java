@@ -69,4 +69,13 @@ public interface SampleStorageService {
      *         not assigned
      */
     java.util.Map<String, Object> getSampleItemLocation(String sampleItemId);
+
+    /**
+     * Get paginated sample storage assignments for dashboard display (OGC-150).
+     * 
+     * @param pageable Pagination parameters (page number, page size, sorting)
+     * @return Page of SampleStorageAssignment entities
+     */
+    org.springframework.data.domain.Page<org.openelisglobal.storage.valueholder.SampleStorageAssignment> getSampleAssignments(
+            org.springframework.data.domain.Pageable pageable);
 }

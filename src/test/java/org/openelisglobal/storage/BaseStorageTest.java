@@ -35,13 +35,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * </pre>
  * 
  * Fixture Data Ranges (preserved during cleanup): - Storage: IDs 1-999 (from
- * Liquibase foundation data) - Samples: E2E-* accession numbers (DBUnit
- * fixtures) - Patients: E2E-PAT-* external IDs (DBUnit fixtures) - Sample
- * items: IDs 10000-20000 (DBUnit fixtures) - Analyses: IDs 20000-30000 (DBUnit
- * fixtures) - Results: IDs 30000-40000 (DBUnit fixtures)
- * 
- * Foundation data (storage hierarchy) is automatically loaded by Liquibase with
- * context="test". E2E test data is loaded via DBUnit XML in setUp().
+ * DBUnit fixtures) - Samples: E2E-* accession numbers (DBUnit fixtures) -
+ * Patients: E2E-PAT-* external IDs (DBUnit fixtures) - Sample items: IDs
+ * 10000-20000 (DBUnit fixtures) - Analyses: IDs 20000-30000 (DBUnit fixtures) -
+ * Results: IDs 30000-40000 (DBUnit fixtures)
+ *
+ * Storage hierarchy and E2E test data are loaded via DBUnit XML in setUp().
  */
 public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
 
@@ -60,10 +59,17 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
         // Load user data first (required for assigned_by_user_id foreign key)
         executeDataSetWithStateManagement("testdata/user-role.xml");
 
-        // Load E2E test data via DBUnit (foundation data loaded by Liquibase)
-        // Foundation data (storage hierarchy) is automatically loaded by Liquibase with
-        // context="test"
+        // Load storage hierarchy + E2E test data via DBUnit
         executeDataSetWithStateManagement("testdata/storage-e2e.xml");
+
+        // IMPORTANT: DBUnit inserts explicit IDs but does not advance PostgreSQL
+        // sequences. If we don't bump these sequences above fixture ranges,
+        // controller-created entities can collide on PKs and return 400s.
+        jdbcTemplate.execute("SELECT setval('storage_room_seq', 1000, false)");
+        jdbcTemplate.execute("SELECT setval('storage_device_seq', 1000, false)");
+        jdbcTemplate.execute("SELECT setval('storage_shelf_seq', 1000, false)");
+        jdbcTemplate.execute("SELECT setval('storage_rack_seq', 1000, false)");
+        jdbcTemplate.execute("SELECT setval('storage_box_seq', 10000, false)");
 
         // Note: Validation is commented out temporarily due to transaction isolation
         // issues
@@ -88,13 +94,12 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
      * @throws IllegalStateException if required test data is missing
      */
     protected void validateTestData() {
-        // Verify foundation data exists (from Liquibase)
+        // Verify storage hierarchy fixtures exist
         Integer roomCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')", Integer.class);
         if (roomCount == null || roomCount < 3) {
             throw new IllegalStateException(
-                    "Foundation data missing: Expected 3 test rooms (MAIN, SEC, INACTIVE) from Liquibase, found "
-                            + roomCount);
+                    "Fixture data missing: Expected 3 test rooms (MAIN, SEC, INACTIVE), found " + roomCount);
         }
 
         // Verify E2E fixture data exists (from DBUnit XML)
@@ -170,6 +175,29 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
             // Log but don't fail - cleanup is best effort
             logger.warn("Failed to clean storage test data: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Helper to get the numeric sample_item.id from the external_id. Used for
+     * database verification queries and SQL inserts that require numeric IDs.
+     * 
+     * This method converts external IDs (user-friendly identifiers like "EXT-123")
+     * to numeric IDs (database primary keys) for direct SQL operations.
+     * 
+     * @param externalId The external ID (e.g., "EXT-1765401458866")
+     * @return The numeric ID (integer) for the sample item
+     * @throws IllegalStateException if the external ID is not found in the database
+     * 
+     * @see .specify/guides/sampleitem-id-patterns.md for detailed ID pattern
+     *      documentation
+     */
+    protected int getSampleItemNumericId(String externalId) {
+        Integer numericId = jdbcTemplate.queryForObject("SELECT id FROM sample_item WHERE external_id = ?",
+                Integer.class, externalId);
+        if (numericId == null) {
+            throw new IllegalStateException("SampleItem not found with external ID: " + externalId);
+        }
+        return numericId;
     }
 
 }

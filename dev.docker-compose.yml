@@ -62,6 +62,7 @@ services:
             - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
+            -  lucene_index-vol:/var/lib/lucene_index
             - ./volume/plugins/:/var/lib/openelis-global/plugins
             - ./volume/programs/:/var/lib/openelis-global/programs
             - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
@@ -70,9 +71,7 @@ services:
             - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war  # Mount locally built WAR for development
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
-            -  lucene_index-vol:/var/lib/lucene_index
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
-            - ./volume/ocl:/var/lib/openelis-global/ocl
             - ./volume/configuration:/var/lib/openelis-global/configuration
             - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
         secrets:

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Rooms -->
+    <storage_room id="20000" name="Empty Room"
+        code="EMPTY-ROOM" active="true"
+        fhir_uuid="00000000-0000-0000-0000-000000000000" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_room id="20001" name="Main Lab" code="MAIN-LAB"
+        active="true" fhir_uuid="00000000-0000-0000-0000-000000000001"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <storage_room id="20002" name="Test Room" code="TEST-ROOM"
+        active="true" fhir_uuid="00000000-0000-0000-0000-000000000002"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <storage_room id="20003" name="Test Room 2"
+        code="TESTROOM2" active="true"
+        fhir_uuid="00000000-0000-0000-0000-000000000003" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_room id="20004" name="Test Room 3"
+        code="TESTROOM3" active="true"
+        fhir_uuid="00000000-0000-0000-0000-000000000004" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_room id="20005" name="IoT Room" code="IOT-ROOM"
+        active="true" fhir_uuid="00000000-0000-0000-0000-000000000005"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <storage_room id="20006" name="RBAC Room" code="RBACROOM1"
+        active="true" fhir_uuid="00000000-0000-0000-0000-000000000006"
+        sys_user_id="1" last_updated="2025-01-01 00:00:00" />
+    <storage_room id="20007" name="RBAC Admin Room"
+        code="RBACADM1" active="true"
+        fhir_uuid="00000000-0000-0000-0000-000000000007" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_room id="20008" name="RBAC Device Room"
+        code="RBACDEV01" active="true"
+        fhir_uuid="00000000-0000-0000-0000-000000000008" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_room id="20010" name="RBAC Shelf Room"
+        code="RBACSROOM" active="true"
+        fhir_uuid="00000000-0000-0000-0000-000000000010" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_room id="20013" name="RBAC Rack Room"
+        code="RBACRROOM" active="true"
+        fhir_uuid="00000000-0000-0000-0000-000000000013" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- Devices -->
+    <storage_device id="20000" name="Test Device"
+        code="TEST-DEV" type="freezer" parent_room_id="20001" active="true"
+        fhir_uuid="10000000-0000-0000-0000-000000000000" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_device id="20001" name="Empty Device"
+        code="EMPTY-DEV" type="freezer" parent_room_id="20002" active="true"
+        fhir_uuid="10000000-0000-0000-0000-000000000001" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_device id="20002" name="Test Device 2"
+        code="TEST-DEV-2" type="freezer" parent_room_id="20003" active="true"
+        fhir_uuid="10000000-0000-0000-0000-000000000002" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_device id="20003" name="Test Device 3"
+        code="TEST-DEV-3" type="freezer" parent_room_id="20004" active="true"
+        fhir_uuid="10000000-0000-0000-0000-000000000003" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_device id="20009" name="RBAC Device"
+        code="RBAC-DEV" type="freezer" parent_room_id="20008" active="true"
+        fhir_uuid="10000000-0000-0000-0000-000000000009" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_device id="20011" name="RBAC Shelf Device"
+        code="RBAC-SDEV" type="freezer" parent_room_id="20010" active="true"
+        fhir_uuid="10000000-0000-0000-0000-000000000011" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_device id="20014" name="RBAC Rack Device"
+        code="RBAC-RDEV" type="freezer" parent_room_id="20013" active="true"
+        fhir_uuid="10000000-0000-0000-0000-000000000014" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- Shelves -->
+    <storage_shelf id="20000" label="Shelf-A" code="SHELF-A"
+        parent_device_id="20002" active="true"
+        fhir_uuid="20000000-0000-0000-0000-000000000000" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_shelf id="20001" label="Shelf-B" code="SHELF-B"
+        parent_device_id="20003" active="true"
+        fhir_uuid="20000000-0000-0000-0000-000000000001" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_shelf id="20012" label="RBAC Shelf"
+        code="RBAC-SHELF" parent_device_id="20011" active="true"
+        fhir_uuid="20000000-0000-0000-0000-000000000012" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_shelf id="20015" label="RBAC Rack Shelf"
+        code="RBACRS01" parent_device_id="20014" active="true"
+        fhir_uuid="20000000-0000-0000-0000-000000000015" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- Racks -->
+    <storage_rack id="20000" label="Rack-01" code="RACK-01"
+        parent_shelf_id="20001" active="true"
+        fhir_uuid="30000000-0000-0000-0000-000000000000" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_rack id="20016" label="RBAC Rack"
+        code="RBAC-RACK" parent_shelf_id="20015" active="true"
+        fhir_uuid="30000000-0000-0000-0000-000000000016" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+</dataset>

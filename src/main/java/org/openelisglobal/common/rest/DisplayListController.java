@@ -542,6 +542,21 @@ public class DisplayListController extends BaseRestController {
         return list;
     }
 
+    /**
+     * Get sample item status types for filtering (specs/001-sample-storage/spec.md
+     * FR-056) Returns user-friendly status names (active, disposed) for sample item
+     * filtering
+     */
+    @GetMapping(value = "sample-item-status-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getSampleItemStatusTypes() {
+        List<IdValuePair> list = new ArrayList<>();
+        list.add(new IdValuePair("", "All"));
+        list.add(new IdValuePair("active", "Active"));
+        list.add(new IdValuePair("disposed", "Disposed"));
+        return list;
+    }
+
     class ValueComparator implements Comparator<IdValuePair> {
 
         @Override

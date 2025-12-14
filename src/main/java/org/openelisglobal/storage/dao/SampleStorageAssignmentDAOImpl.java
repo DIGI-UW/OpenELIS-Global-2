@@ -9,6 +9,9 @@ import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 import org.openelisglobal.storage.valueholder.StorageBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -197,6 +200,34 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
         } catch (Exception e) {
             logger.error("Error counting sample storage assignments by location: " + e.getMessage(), e);
             return 0;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SampleStorageAssignment> findAll(Pageable pageable) {
+        try {
+            Session session = entityManager.unwrap(Session.class);
+
+            // Count query for total elements
+            String countHql = "SELECT COUNT(ssa) FROM SampleStorageAssignment ssa";
+            Long total = session.createQuery(countHql, Long.class).uniqueResult();
+            if (total == null) {
+                total = 0L;
+            }
+
+            // Data query with pagination and sorting
+            String dataHql = "SELECT ssa FROM SampleStorageAssignment ssa ORDER BY ssa.assignedDate DESC";
+            Query<SampleStorageAssignment> query = session.createQuery(dataHql, SampleStorageAssignment.class);
+            query.setFirstResult((int) pageable.getOffset());
+            query.setMaxResults(pageable.getPageSize());
+
+            List<SampleStorageAssignment> content = query.list();
+
+            return new PageImpl<>(content, pageable, total);
+        } catch (Exception e) {
+            logger.error("Error finding paginated sample storage assignments: " + e.getMessage(), e);
+            throw new LIMSRuntimeException("Error finding paginated sample storage assignments", e);
         }
     }
 }

@@ -1,104 +1,81 @@
-# Data Model: Box/Plate Hierarchy Enhancement
+# Data Model: Box Storage Hierarchy Enhancement
 
 **Feature**: 149-box-plate-hierarchy  
 **Parent Feature**: 001-sample-storage  
-**Date**: December 5, 2025  
+**Date**: December 9, 2025  
 **Status**: Draft
 
 ## Executive Summary
 
-This document details the database schema changes required to implement the
-Box/Plate hierarchy enhancement (OGC-149). The enhancement adds a sixth storage
-hierarchy level (Box/Plate) between Rack and Position, enabling more accurate
-representation of laboratory storage organization.
+This document details the database schema changes required to implement the Box
+Storage Hierarchy Enhancement (OGC-149). The enhancement adds a fifth persistent
+hierarchy level (Box) between Rack and the virtual Position coordinate, enabling
+accurate representation of laboratory storage without persisting empty position
+rows.
 
 **Key Changes**:
 
 - **StorageRack**: Remove grid fields (`rows`, `columns`,
-  `position_schema_hint`), rename `label` → `name`
-- **StorageBoxPlate**: New entity with grid dimensions and barcode support
-- **StoragePosition**: Add `parent_box_plate_id` (optional), maintain flexible
-  2-6 level hierarchy
-- **SampleStorageAssignment**: Extend `location_type` enum to include
-  `'box_plate'`
+  `position_schema_hint`), retain `label` field
+- **StorageBox**: New entity with grid dimensions and barcode support
+- **StoragePosition**: **Removed** (positions are virtual text coordinates
+  stored on assignments)
+- **SampleStorageAssignment**: Extend `location_type` enum to include `'box'`;
+  add text position coordinate
 
 ---
 
 ## Entity Relationship Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Existing Feature 001 Entities                 │
-│                   (unchanged in this feature)                    │
-└─────────────────────────────────────────────────────────────────┘
-                             │
-              ┌──────────────┴──────────────┐
-              ▼                             ▼
-         StorageRoom                  StorageDevice
-              │                             │
-              └──────────┬──────────────────┘
-                         ▼
-                   StorageShelf
-                         │
-                         ▼
-                   StorageRack (MODIFIED)
-                   - Remove: rows, columns, position_schema_hint
-                   - Rename: label → name
-                         │
-                         │ One-to-Many (NEW)
-                         ▼
-                   StorageBoxPlate (NEW)
-                   - id, fhir_uuid, name, code
-                   - rows, columns, position_schema_hint
-                   - active, parent_rack_id
-                         │
-                         │ One-to-Many
-                         ▼
-                   StoragePosition (MODIFIED)
-                   - Add: parent_box_plate_id (nullable)
-                   - Maintains flexible hierarchy:
-                     * 2 levels: device
-                     * 3 levels: device + shelf
-                     * 4 levels: device + shelf + rack
-                     * 5 levels: device + shelf + rack + box_plate
-                     * 6 levels: device + shelf + rack + box_plate + position
-                         │
-                         │ Referenced by
-                         ▼
-                   SampleStorageAssignment (MODIFIED)
-                   - location_type: 'device', 'shelf', 'rack', 'box_plate' (NEW)
+StorageRoom
+   │
+   └─▶ StorageDevice
+           │
+           └─▶ StorageShelf
+                   │
+                   └─▶ StorageRack (simplified: no grid)
+                           │
+                           └─▶ StorageBox (grid container)
+                                   │
+                                   └─▶ (Virtual Position as coordinate on SampleStorageAssignment)
+
+SampleStorageAssignment
+   - location_type ∈ {device, shelf, rack, box}
+   - location_id → respective entity ID
+   - position_coordinate (text) stores the slot within the Box (or optional note at other levels)
 ```
 
 ---
 
 ## 1. StorageRack (Modified)
 
-**Purpose**: Simplified grouping container for Box/Plates. No longer contains
-grid structure.
+**Purpose**: Simplified grouping container for Boxes. No longer contains grid
+structure.
 
 **Table**: `STORAGE_RACK`
 
 ### Schema Changes
 
-| Change Type | Field                  | Action        | Description                           |
-| ----------- | ---------------------- | ------------- | ------------------------------------- |
-| **DROP**    | `rows`                 | Remove column | Grid dimensions moved to Box/Plate    |
-| **DROP**    | `columns`              | Remove column | Grid dimensions moved to Box/Plate    |
-| **DROP**    | `position_schema_hint` | Remove column | Position schema moved to Box/Plate    |
-| **RENAME**  | `LABEL` → `NAME`       | Rename column | Align with Room, Device, Shelf naming |
+| Change Type | Field                  | Action        | Description                  |
+| ----------- | ---------------------- | ------------- | ---------------------------- |
+| **DROP**    | `rows`                 | Remove column | Grid dimensions moved to Box |
+| **DROP**    | `columns`              | Remove column | Grid dimensions moved to Box |
+| **DROP**    | `position_schema_hint` | Remove column | Position schema moved to Box |
+| **RETAIN**  | `LABEL`                | No change     | Field retained (not renamed) |
 
 ### Updated Schema
 
-| Field             | Type         | Constraints             | Description                                 |
-| ----------------- | ------------ | ----------------------- | ------------------------------------------- |
-| `id`              | INTEGER      | PK, AUTO                | Primary key (sequence generator)            |
-| `fhir_uuid`       | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier           |
-| `name`            | VARCHAR(100) | NOT NULL                | Human-readable rack name (formerly `label`) |
-| `code`            | VARCHAR(10)  | NOT NULL                | Unique rack code within parent shelf        |
-| `active`          | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                      |
-| `parent_shelf_id` | INTEGER      | NOT NULL, FK            | Parent shelf reference                      |
-| `sys_user_id`     | INTEGER      | NOT NULL                | User who created/modified                   |
-| `lastupdated`     | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                 |
+| Field             | Type         | Constraints             | Description                          |
+| ----------------- | ------------ | ----------------------- | ------------------------------------ |
+| `id`              | INTEGER      | PK, AUTO                | Primary key (sequence generator)     |
+| `fhir_uuid`       | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier    |
+| `label`           | VARCHAR(100) | NOT NULL                | Human-readable rack name             |
+| `code`            | VARCHAR(10)  | NOT NULL                | Unique rack code within parent shelf |
+| `active`          | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status               |
+| `parent_shelf_id` | INTEGER      | NOT NULL, FK            | Parent shelf reference               |
+| `sys_user_id`     | INTEGER      | NOT NULL                | User who created/modified            |
+| `lastupdated`     | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp          |
 
 ### Constraints
 
@@ -112,7 +89,7 @@ grid structure.
 ### Relationships
 
 - **Many-to-One** with `StorageShelf` (parent)
-- **One-to-Many** with `StorageBoxPlate` (children) - NEW
+- **One-to-Many** with `StorageBox` (children) - NEW
 
 ### FHIR Mapping Changes
 
@@ -131,12 +108,12 @@ Location.physicalType.code = "co" (container)
 
 ---
 
-## 2. StorageBoxPlate (New Entity)
+## 2. StorageBox (New Entity)
 
 **Purpose**: Physical container (box, plate, tray) with grid-based position
 structure. Holds the grid dimensions previously on Rack.
 
-**Table**: `STORAGE_BOX_PLATE`
+**Table**: `STORAGE_BOX`
 
 ### Schema
 
@@ -144,7 +121,7 @@ structure. Holds the grid dimensions previously on Rack.
 | ---------------------- | ------------ | ----------------------- | ----------------------------------------------------- |
 | `id`                   | INTEGER      | PK, AUTO                | Primary key (sequence generator)                      |
 | `fhir_uuid`            | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                     |
-| `name`                 | VARCHAR(100) | NOT NULL                | Human-readable box/plate name                         |
+| `label`                | VARCHAR(100) | NOT NULL                | Human-readable box name                               |
 | `code`                 | VARCHAR(10)  | NOT NULL                | Unique code within parent rack                        |
 | `rows`                 | INTEGER      | NOT NULL                | Grid rows (minimum 1)                                 |
 | `columns`              | INTEGER      | NOT NULL                | Grid columns (minimum 1)                              |
@@ -167,7 +144,8 @@ structure. Holds the grid dimensions previously on Rack.
 ### Relationships
 
 - **Many-to-One** with `StorageRack` (parent)
-- **One-to-Many** with `StoragePosition` (children)
+- **One-to-Many** with `SampleStorageAssignment` (via
+  location_id/location_type="box" and position_coordinate for occupancy)
 
 ### Calculated Fields
 
@@ -176,19 +154,19 @@ structure. Holds the grid dimensions previously on Rack.
 ### Indexes
 
 ```sql
-CREATE INDEX idx_box_plate_parent ON storage_box_plate(parent_rack_id);
-CREATE INDEX idx_box_plate_fhir_uuid ON storage_box_plate(fhir_uuid);
-CREATE INDEX idx_box_plate_active ON storage_box_plate(active);
-CREATE INDEX idx_box_plate_code ON storage_box_plate(parent_rack_id, code);
+CREATE INDEX idx_box_parent ON storage_box(parent_rack_id);
+CREATE INDEX idx_box_fhir_uuid ON storage_box(fhir_uuid);
+CREATE INDEX idx_box_active ON storage_box(active);
+CREATE INDEX idx_box_code ON storage_box(parent_rack_id, code);
 ```
 
 ### FHIR Mapping
 
 ```
 Location.id = fhir_uuid
-Location.identifier[0].system = "http://openelis-global.org/storage/box-plate"
-Location.identifier[0].value = "{room_code}-{device_code}-{shelf_code}-{rack_code}-{box_plate_code}"
-Location.name = name
+Location.identifier[0].system = "http://openelis-global.org/storage/box"
+Location.identifier[0].value = "{room_code}-{device_code}-{shelf_code}-{rack_code}-{box_code}"
+Location.name = label
 Location.status = active ? "active" : "inactive"
 Location.type[0].coding[0].system = "http://terminology.hl7.org/CodeSystem/location-physical-type"
 Location.type[0].coding[0].code = "co" (container)
@@ -206,105 +184,31 @@ Location.extension[2].valueString = position_schema_hint (optional)
 
 ---
 
-## 3. StoragePosition (Modified)
-
-**Purpose**: Flexible storage location at any hierarchy level (2-6 levels). Can
-now optionally reference a Box/Plate parent.
-
-**Table**: `STORAGE_POSITION`
-
-### Schema Changes
-
-| Change Type | Field                 | Action          | Description                         |
-| ----------- | --------------------- | --------------- | ----------------------------------- |
-| **ADD**     | `parent_box_plate_id` | Add nullable FK | Optional Box/Plate parent reference |
-
-### Updated Schema
-
-| Field                     | Type        | Constraints             | Description                                       |
-| ------------------------- | ----------- | ----------------------- | ------------------------------------------------- |
-| `id`                      | INTEGER     | PK, AUTO                | Primary key                                       |
-| `coordinate`              | VARCHAR(50) | NULL                    | Free-text position coordinate                     |
-| `row_index`               | INTEGER     | NULL                    | Optional row number for grid visualization        |
-| `column_index`            | INTEGER     | NULL                    | Optional column number for grid visualization     |
-| `occupied`                | BOOLEAN     | NOT NULL, DEFAULT false | Occupancy status                                  |
-| `parent_device_id`        | INTEGER     | NOT NULL, FK            | Parent device (required - minimum 2 levels)       |
-| `parent_shelf_id`         | INTEGER     | NULL, FK                | Parent shelf (optional - 3+ levels)               |
-| `parent_rack_id`          | INTEGER     | NULL, FK                | Parent rack (optional - 4+ levels)                |
-| **`parent_box_plate_id`** | **INTEGER** | **NULL, FK**            | **Parent box/plate (optional - 5+ levels) - NEW** |
-| `fhir_uuid`               | UUID        | NOT NULL, UNIQUE        | FHIR Location resource identifier                 |
-| `sys_user_id`             | INTEGER     | NOT NULL                | User who created/modified                         |
-| `lastupdated`             | TIMESTAMP   | NOT NULL, DEFAULT NOW() | Last modification timestamp                       |
-
-### Constraints
-
-- PRIMARY KEY (`id`)
-- UNIQUE (`fhir_uuid`)
-- FOREIGN KEY (`parent_device_id`) REFERENCES `storage_device(id)` ON DELETE
-  CASCADE
-- FOREIGN KEY (`parent_shelf_id`) REFERENCES `storage_shelf(id)` ON DELETE
-  CASCADE (if not NULL)
-- FOREIGN KEY (`parent_rack_id`) REFERENCES `storage_rack(id)` ON DELETE CASCADE
-  (if not NULL)
-- **FOREIGN KEY (`parent_box_plate_id`) REFERENCES `storage_box_plate(id)` ON
-  DELETE CASCADE (if not NULL)** - NEW
-- FOREIGN KEY (`sys_user_id`) REFERENCES `system_user(id)`
-- **CHECK**: If `parent_box_plate_id` is NOT NULL, then `parent_rack_id` must
-  also be NOT NULL (FR-022b)
-- **CHECK**: If `parent_rack_id` is NOT NULL, then `parent_shelf_id` must also
-  be NOT NULL
-- **CHECK**: If `parent_shelf_id` is NOT NULL, then `parent_device_id` must be
-  NOT NULL (always true since device is required)
-
-### Hierarchy Flexibility
-
-StoragePosition supports 2-6 level hierarchy:
-
-| Level Count | Hierarchy                                           | parent_device_id | parent_shelf_id | parent_rack_id | parent_box_plate_id |
-| ----------- | --------------------------------------------------- | ---------------- | --------------- | -------------- | ------------------- |
-| 2           | Room → Device                                       | SET              | NULL            | NULL           | NULL                |
-| 3           | Room → Device → Shelf                               | SET              | SET             | NULL           | NULL                |
-| 4           | Room → Device → Shelf → Rack                        | SET              | SET             | SET            | NULL                |
-| 5           | Room → Device → Shelf → Rack → Box/Plate            | SET              | SET             | SET            | SET                 |
-| 6           | Room → Device → Shelf → Rack → Box/Plate → Position | SET              | SET             | SET            | SET                 |
-
-### Indexes
-
-```sql
-CREATE INDEX idx_position_parent_device ON storage_position(parent_device_id);
-CREATE INDEX idx_position_parent_shelf ON storage_position(parent_shelf_id);
-CREATE INDEX idx_position_parent_rack ON storage_position(parent_rack_id);
-CREATE INDEX idx_position_parent_box_plate ON storage_position(parent_box_plate_id); -- NEW
-CREATE INDEX idx_position_occupied ON storage_position(parent_box_plate_id, occupied); -- Updated for Box/Plate queries
-```
-
----
-
-## 4. SampleStorageAssignment (Modified)
+## 3. SampleStorageAssignment (Modified)
 
 **Purpose**: Current storage location assignment for a SampleItem. Supports
-flexible assignment to any hierarchy level.
+flexible assignment to any hierarchy level with virtual coordinates.
 
 **Table**: `SAMPLE_STORAGE_ASSIGNMENT`
 
 ### Schema Changes
 
-| Change Type | Field           | Action      | Description                     |
-| ----------- | --------------- | ----------- | ------------------------------- |
-| **UPDATE**  | `location_type` | Extend enum | Add 'box_plate' to valid values |
+| Change Type | Field           | Action      | Description               |
+| ----------- | --------------- | ----------- | ------------------------- |
+| **UPDATE**  | `location_type` | Extend enum | Add 'box' to valid values |
 
 ### Updated Schema
 
-| Field                 | Type            | Constraints             | Description                                                 |
-| --------------------- | --------------- | ----------------------- | ----------------------------------------------------------- |
-| `id`                  | INTEGER         | PK, AUTO                | Primary key                                                 |
-| `sample_item_id`      | INTEGER         | NOT NULL, UNIQUE        | SampleItem reference                                        |
-| `location_id`         | INTEGER         | NOT NULL                | Polymorphic location ID                                     |
-| **`location_type`**   | **VARCHAR(20)** | **NOT NULL**            | **Type: 'device', 'shelf', 'rack', 'box_plate' - EXTENDED** |
-| `position_coordinate` | VARCHAR(50)     | NULL                    | Optional text-based position coordinate                     |
-| `assigned_by_user_id` | INTEGER         | NOT NULL, FK            | User who assigned                                           |
-| `assigned_date`       | TIMESTAMP       | NOT NULL, DEFAULT NOW() | Assignment timestamp                                        |
-| `notes`               | TEXT            | NULL                    | Optional assignment notes                                   |
+| Field                 | Type            | Constraints             | Description                                |
+| --------------------- | --------------- | ----------------------- | ------------------------------------------ |
+| `id`                  | INTEGER         | PK, AUTO                | Primary key                                |
+| `sample_item_id`      | INTEGER         | NOT NULL, UNIQUE        | SampleItem reference                       |
+| `location_id`         | INTEGER         | NOT NULL                | Polymorphic location ID                    |
+| **`location_type`**   | **VARCHAR(20)** | **NOT NULL**            | **Type: 'device', 'shelf', 'rack', 'box'** |
+| `position_coordinate` | VARCHAR(50)     | NULL                    | Optional text-based position coordinate    |
+| `assigned_by_user_id` | INTEGER         | NOT NULL, FK            | User who assigned                          |
+| `assigned_date`       | TIMESTAMP       | NOT NULL, DEFAULT NOW() | Assignment timestamp                       |
+| `notes`               | TEXT            | NULL                    | Optional assignment notes                  |
 
 ### Constraints
 
@@ -312,17 +216,16 @@ flexible assignment to any hierarchy level.
 - UNIQUE (`sample_item_id`)
 - FOREIGN KEY (`sample_item_id`) REFERENCES `sample_item(id)` ON DELETE CASCADE
 - FOREIGN KEY (`assigned_by_user_id`) REFERENCES `system_user(id)`
-- **CHECK (`location_type IN ('device', 'shelf', 'rack', 'box_plate')`)** -
-  Updated enum
+- **CHECK (`location_type IN ('device', 'shelf', 'rack', 'box')`)**
 
 ### Location Type Mapping
 
-| location_type   | location_id references   | Hierarchy Levels                                       |
-| --------------- | ------------------------ | ------------------------------------------------------ |
-| 'device'        | storage_device.id        | 2 (Room → Device)                                      |
-| 'shelf'         | storage_shelf.id         | 3 (Room → Device → Shelf)                              |
-| 'rack'          | storage_rack.id          | 4 (Room → Device → Shelf → Rack)                       |
-| **'box_plate'** | **storage_box_plate.id** | **5 (Room → Device → Shelf → Rack → Box/Plate)** - NEW |
+| location_type | location_id references | Hierarchy Levels                           |
+| ------------- | ---------------------- | ------------------------------------------ |
+| 'device'      | storage_device.id      | 2 (Room → Device)                          |
+| 'shelf'       | storage_shelf.id       | 3 (Room → Device → Shelf)                  |
+| 'rack'        | storage_rack.id        | 4 (Room → Device → Shelf → Rack)           |
+| **'box'**     | **storage_box.id**     | **5 (Room → Device → Shelf → Rack → Box)** |
 
 ---
 
@@ -353,21 +256,20 @@ ALTER TABLE storage_rack DROP COLUMN IF EXISTS columns;
 ALTER TABLE storage_rack DROP COLUMN IF EXISTS position_schema_hint;
 ```
 
-#### Step 3: Rename Rack Label Field
+#### Step 3: Retain Rack Label Field
 
 ```sql
--- Rename LABEL to NAME for consistency
-ALTER TABLE storage_rack RENAME COLUMN label TO name;
+-- No change needed - LABEL field is retained (not renamed)
 ```
 
-#### Step 4: Create StorageBoxPlate Table
+#### Step 4: Create StorageBox Table
 
 ```sql
--- Create new STORAGE_BOX_PLATE table
-CREATE TABLE storage_box_plate (
+-- Create new STORAGE_BOX table
+CREATE TABLE storage_box (
     id INTEGER NOT NULL,
     fhir_uuid UUID NOT NULL UNIQUE,
-    name VARCHAR(100) NOT NULL,
+    label VARCHAR(100) NOT NULL,
     code VARCHAR(10) NOT NULL,
     rows INTEGER NOT NULL CHECK (rows >= 1),
     columns INTEGER NOT NULL CHECK (columns >= 1),
@@ -383,51 +285,51 @@ CREATE TABLE storage_box_plate (
 );
 
 -- Create sequence for ID generation
-CREATE SEQUENCE storage_box_plate_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE storage_box_seq START WITH 1 INCREMENT BY 1;
 
 -- Create indexes
-CREATE INDEX idx_box_plate_parent ON storage_box_plate(parent_rack_id);
-CREATE INDEX idx_box_plate_fhir_uuid ON storage_box_plate(fhir_uuid);
-CREATE INDEX idx_box_plate_active ON storage_box_plate(active);
-CREATE INDEX idx_box_plate_code ON storage_box_plate(parent_rack_id, code);
+CREATE INDEX idx_box_parent ON storage_box(parent_rack_id);
+CREATE INDEX idx_box_fhir_uuid ON storage_box(fhir_uuid);
+CREATE INDEX idx_box_active ON storage_box(active);
+CREATE INDEX idx_box_code ON storage_box(parent_rack_id, code);
 ```
 
-#### Step 5: Add Parent Box/Plate to StoragePosition
+#### Step 5: Update location_type enums
 
 ```sql
--- Add new parent_box_plate_id column to STORAGE_POSITION
-ALTER TABLE storage_position
-ADD COLUMN parent_box_plate_id INTEGER;
-
--- Add foreign key constraint
-ALTER TABLE storage_position
-ADD CONSTRAINT fk_position_box_plate
-FOREIGN KEY (parent_box_plate_id)
-REFERENCES storage_box_plate(id)
-ON DELETE CASCADE;
-
--- Add hierarchy constraint (FR-022b)
-ALTER TABLE storage_position
-ADD CONSTRAINT chk_box_plate_requires_rack
-CHECK (
-    (parent_box_plate_id IS NULL) OR
-    (parent_box_plate_id IS NOT NULL AND parent_rack_id IS NOT NULL)
-);
-
--- Create index
-CREATE INDEX idx_position_parent_box_plate ON storage_position(parent_box_plate_id);
-```
-
-#### Step 6: Update SampleStorageAssignment Enum
-
-```sql
--- Update CHECK constraint to include 'box_plate'
+-- Update CHECK constraint to include 'box'
 ALTER TABLE sample_storage_assignment
 DROP CONSTRAINT IF EXISTS chk_location_type;
 
 ALTER TABLE sample_storage_assignment
 ADD CONSTRAINT chk_location_type
-CHECK (location_type IN ('device', 'shelf', 'rack', 'box_plate'));
+CHECK (location_type IN ('device', 'shelf', 'rack', 'box'));
+
+ALTER TABLE sample_storage_movement
+DROP CONSTRAINT IF EXISTS chk_previous_location_type;
+
+ALTER TABLE sample_storage_movement
+ADD CONSTRAINT chk_previous_location_type
+CHECK (previous_location_type IS NULL OR previous_location_type IN ('device', 'shelf', 'rack', 'box'));
+
+ALTER TABLE sample_storage_movement
+DROP CONSTRAINT IF EXISTS chk_new_location_type;
+
+ALTER TABLE sample_storage_movement
+ADD CONSTRAINT chk_new_location_type
+CHECK (new_location_type IS NULL OR new_location_type IN ('device', 'shelf', 'rack', 'box'));
+```
+
+#### Step 6: Update SampleStorageAssignment Enum
+
+```sql
+-- Update CHECK constraint to include 'box'
+ALTER TABLE sample_storage_assignment
+DROP CONSTRAINT IF EXISTS chk_location_type;
+
+ALTER TABLE sample_storage_assignment
+ADD CONSTRAINT chk_location_type
+CHECK (location_type IN ('device', 'shelf', 'rack', 'box'));
 ```
 
 #### Step 7: Update SampleStorageMovement Enum
@@ -439,14 +341,14 @@ DROP CONSTRAINT IF EXISTS chk_previous_location_type;
 
 ALTER TABLE sample_storage_movement
 ADD CONSTRAINT chk_previous_location_type
-CHECK (previous_location_type IS NULL OR previous_location_type IN ('device', 'shelf', 'rack', 'box_plate'));
+CHECK (previous_location_type IS NULL OR previous_location_type IN ('device', 'shelf', 'rack', 'box'));
 
 ALTER TABLE sample_storage_movement
 DROP CONSTRAINT IF EXISTS chk_new_location_type;
 
 ALTER TABLE sample_storage_movement
 ADD CONSTRAINT chk_new_location_type
-CHECK (new_location_type IS NULL OR new_location_type IN ('device', 'shelf', 'rack', 'box_plate'));
+CHECK (new_location_type IS NULL OR new_location_type IN ('device', 'shelf', 'rack', 'box'));
 ```
 
 ### Liquibase Changesets
@@ -471,24 +373,19 @@ All migration steps will be implemented as Liquibase changesets:
         <dropColumn tableName="storage_rack" columnName="position_schema_hint"/>
     </changeSet>
 
-    <!-- Changeset 010-2: Rename LABEL to NAME -->
-    <changeSet id="ogc-149-rename-rack-label-to-name" author="openelis">
-        <renameColumn tableName="storage_rack"
-                      oldColumnName="label"
-                      newColumnName="name"
-                      columnDataType="VARCHAR(100)"/>
-    </changeSet>
+    <!-- Changeset 010-2: No rename needed - LABEL field is retained -->
+    <!-- Note: StorageRack.label field is retained (no rename to name) -->
 
-    <!-- Changeset 010-3: Create STORAGE_BOX_PLATE table -->
-    <changeSet id="ogc-149-create-storage-box-plate" author="openelis">
-        <createTable tableName="storage_box_plate">
+    <!-- Changeset 010-3: Create STORAGE_BOX table -->
+    <changeSet id="ogc-149-create-storage-box" author="openelis">
+        <createTable tableName="storage_box">
             <column name="id" type="INTEGER">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="fhir_uuid" type="UUID">
                 <constraints nullable="false" unique="true"/>
             </column>
-            <column name="name" type="VARCHAR(100)">
+            <column name="label" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
             <column name="code" type="VARCHAR(10)">
@@ -515,66 +412,39 @@ All migration steps will be implemented as Liquibase changesets:
             </column>
         </createTable>
 
-        <addForeignKeyConstraint baseTableName="storage_box_plate"
+        <addForeignKeyConstraint baseTableName="storage_box"
                                  baseColumnNames="parent_rack_id"
-                                 constraintName="fk_box_plate_rack"
+                                 constraintName="fk_box_rack"
                                  referencedTableName="storage_rack"
                                  referencedColumnNames="id"
                                  onDelete="RESTRICT"/>
 
-        <addForeignKeyConstraint baseTableName="storage_box_plate"
+        <addForeignKeyConstraint baseTableName="storage_box"
                                  baseColumnNames="sys_user_id"
-                                 constraintName="fk_box_plate_user"
+                                 constraintName="fk_box_user"
                                  referencedTableName="system_user"
                                  referencedColumnNames="id"/>
 
-        <addUniqueConstraint tableName="storage_box_plate"
+        <addUniqueConstraint tableName="storage_box"
                              columnNames="parent_rack_id, code"
-                             constraintName="uq_box_plate_code_per_rack"/>
+                             constraintName="uq_box_code_per_rack"/>
 
-        <createSequence sequenceName="storage_box_plate_seq" startValue="1" incrementBy="1"/>
+        <createSequence sequenceName="storage_box_seq" startValue="1" incrementBy="1"/>
 
-        <createIndex tableName="storage_box_plate" indexName="idx_box_plate_parent">
+        <createIndex tableName="storage_box" indexName="idx_box_parent">
             <column name="parent_rack_id"/>
         </createIndex>
 
-        <createIndex tableName="storage_box_plate" indexName="idx_box_plate_fhir_uuid">
+        <createIndex tableName="storage_box" indexName="idx_box_fhir_uuid">
             <column name="fhir_uuid"/>
         </createIndex>
 
-        <createIndex tableName="storage_box_plate" indexName="idx_box_plate_active">
+        <createIndex tableName="storage_box" indexName="idx_box_active">
             <column name="active"/>
         </createIndex>
     </changeSet>
 
-    <!-- Changeset 010-4: Add parent_box_plate_id to STORAGE_POSITION -->
-    <changeSet id="ogc-149-add-box-plate-parent-to-position" author="openelis">
-        <addColumn tableName="storage_position">
-            <column name="parent_box_plate_id" type="INTEGER"/>
-        </addColumn>
-
-        <addForeignKeyConstraint baseTableName="storage_position"
-                                 baseColumnNames="parent_box_plate_id"
-                                 constraintName="fk_position_box_plate"
-                                 referencedTableName="storage_box_plate"
-                                 referencedColumnNames="id"
-                                 onDelete="CASCADE"/>
-
-        <createIndex tableName="storage_position" indexName="idx_position_parent_box_plate">
-            <column name="parent_box_plate_id"/>
-        </createIndex>
-
-        <sql>
-            ALTER TABLE storage_position
-            ADD CONSTRAINT chk_box_plate_requires_rack
-            CHECK (
-                (parent_box_plate_id IS NULL) OR
-                (parent_box_plate_id IS NOT NULL AND parent_rack_id IS NOT NULL)
-            );
-        </sql>
-    </changeSet>
-
-    <!-- Changeset 010-5: Update location_type enums -->
+    <!-- Changeset 010-4: Update location_type enums to add 'box' -->
     <changeSet id="ogc-149-update-location-type-enums" author="openelis">
         <sql>
             ALTER TABLE sample_storage_assignment
@@ -582,21 +452,21 @@ All migration steps will be implemented as Liquibase changesets:
 
             ALTER TABLE sample_storage_assignment
             ADD CONSTRAINT chk_location_type
-            CHECK (location_type IN ('device', 'shelf', 'rack', 'box_plate'));
+            CHECK (location_type IN ('device', 'shelf', 'rack', 'box'));
 
             ALTER TABLE sample_storage_movement
             DROP CONSTRAINT IF EXISTS chk_previous_location_type;
 
             ALTER TABLE sample_storage_movement
             ADD CONSTRAINT chk_previous_location_type
-            CHECK (previous_location_type IS NULL OR previous_location_type IN ('device', 'shelf', 'rack', 'box_plate'));
+            CHECK (previous_location_type IS NULL OR previous_location_type IN ('device', 'shelf', 'rack', 'box'));
 
             ALTER TABLE sample_storage_movement
             DROP CONSTRAINT IF EXISTS chk_new_location_type;
 
             ALTER TABLE sample_storage_movement
             ADD CONSTRAINT chk_new_location_type
-            CHECK (new_location_type IS NULL OR new_location_type IN ('device', 'shelf', 'rack', 'box_plate'));
+            CHECK (new_location_type IS NULL OR new_location_type IN ('device', 'shelf', 'rack', 'box'));
         </sql>
     </changeSet>
 
@@ -610,14 +480,14 @@ All migration steps will be implemented as Liquibase changesets:
 **Assumptions** (POC scope):
 
 - Existing: 200 racks from Feature 001
-- New: Average 5 boxes/plates per rack = 1,000 box/plates
-- Positions: Remain same count (10,000), but some now reference box/plates
+- New: Average 5 boxes per rack = 1,000 boxes
+- Positions: Virtual (no persistent rows for empty slots)
 
 | Entity                  | Before (Feature 001) | After (OGC-149) | Delta                 |
 | ----------------------- | -------------------- | --------------- | --------------------- |
 | StorageRack             | 200 rows             | 200 rows        | 0 (simplified schema) |
-| **StorageBoxPlate**     | 0 rows               | **1,000 rows**  | **+1,000** (new)      |
-| StoragePosition         | 10,000 rows          | 10,000 rows     | 0 (added 1 column)    |
+| **StorageBox**          | 0 rows               | **1,000 rows**  | **+1,000** (new)      |
+| StoragePosition         | 10,000 rows          | 0 rows          | **-10,000** (removed) |
 | SampleStorageAssignment | 12,000 rows          | 12,000 rows     | 0 (enum extended)     |
 | **Total New Data**      | -                    | **~1,000 rows** | **~50 KB**            |
 
@@ -634,22 +504,18 @@ reconstruction:
 
 ```sql
 -- 1. Drop new structures
-DROP TABLE IF EXISTS storage_box_plate CASCADE;
-DROP SEQUENCE IF EXISTS storage_box_plate_seq;
+DROP TABLE IF EXISTS storage_box CASCADE;
+DROP SEQUENCE IF EXISTS storage_box_seq;
 
--- 2. Remove parent_box_plate_id from positions
-ALTER TABLE storage_position DROP COLUMN IF EXISTS parent_box_plate_id;
-
--- 3. Restore rack grid columns
+-- 2. Restore rack grid columns
 ALTER TABLE storage_rack
 ADD COLUMN rows INTEGER NOT NULL DEFAULT 0,
 ADD COLUMN columns INTEGER NOT NULL DEFAULT 0,
 ADD COLUMN position_schema_hint VARCHAR(50);
 
--- 4. Rename NAME back to LABEL
-ALTER TABLE storage_rack RENAME COLUMN name TO label;
+-- 3. No label field rename needed (label field was retained, not renamed)
 
--- 5. Revert location_type enums
+-- 4. Revert location_type enums
 -- (Revert to 'device', 'shelf', 'rack' only)
 ```
 
@@ -659,13 +525,14 @@ ALTER TABLE storage_rack RENAME COLUMN name TO label;
 
 ## Summary
 
-This data model enhancement adds the Box/Plate hierarchy level while maintaining
+This data model enhancement adds the Box hierarchy level while maintaining
 backward compatibility and flexibility. Key highlights:
 
 - **StorageRack simplified**: Removes grid complexity, now a pure container
-- **StorageBoxPlate introduced**: Captures grid dimensions, supports 6 standard
+- **StorageBox introduced**: Captures grid dimensions, supports 6 standard
   presets + custom
-- **StoragePosition extended**: Flexible 2-6 level hierarchy maintained
+- **Positions virtualized**: Coordinates stored on assignments (no position
+  table)
 - **Migration**: Destructive (safe since Feature 001 not in production)
-- **Storage impact**: Minimal (~50 KB for 1,000 box/plates)
-- **FHIR compliance**: Full Location resource mapping with extensions
+- **Storage impact**: Minimal (~50 KB for 1,000 boxes)
+- **FHIR compliance**: Location resource for Box with grid extensions

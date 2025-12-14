@@ -33,4 +33,6 @@ public interface StorageShelfDAO extends BaseDAO<StorageShelf, Integer> {
      */
     int countByDeviceId(Integer deviceId);
 
+    StorageShelf findByLabelAndParentDeviceId(String label, Integer parentDeviceId);
+
 }
