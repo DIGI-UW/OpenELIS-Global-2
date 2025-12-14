@@ -1,0 +1,323 @@
+openapi: 3.0.3
+info:
+  title: Notebook Sample Entry API
+  description: |
+    API for sample entry operations in immunology workflow notebooks.
+    Supports linking existing samples and creating new samples from manifest CSV.
+  version: 1.0.0
+  contact:
+    name: OpenELIS Global Development Team
+
+servers:
+  - url: /rest
+    description: OpenELIS REST API
+
+paths:
+  /notebook/{notebookId}/samples/search:
+    get:
+      summary: Search samples to link
+      description: Search for existing samples by accession number or external ID prefix
+      operationId: searchSamplesToLink
+      tags:
+        - Sample Entry
+      parameters:
+        - name: notebookId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Notebook ID
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 3
+          description: Search query (accession number or external ID prefix)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+          description: Maximum results to return
+      responses:
+        '200':
+          description: Matching samples
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SampleSearchResult'
+        '404':
+          description: Notebook not found
+
+  /notebook/{notebookId}/samples/link:
+    post:
+      summary: Link existing samples to notebook
+      description: Link one or more existing samples to the notebook
+      operationId: linkSamplesToNotebook
+      tags:
+        - Sample Entry
+      parameters:
+        - name: notebookId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkSamplesRequest'
+      responses:
+        '200':
+          description: Samples linked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkSamplesResponse'
+        '400':
+          description: Invalid request (e.g., sample not found)
+        '404':
+          description: Notebook not found
+
+  /notebook/{notebookId}/samples/create-from-manifest:
+    post:
+      summary: Create samples from manifest CSV
+      description: |
+        Upload a manifest CSV to create new SampleItem records.
+        Each row can create multiple samples based on num_of_samples column.
+      operationId: createSamplesFromManifest
+      tags:
+        - Sample Entry
+      parameters:
+        - name: notebookId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - columnMapping
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file
+                columnMapping:
+                  type: string
+                  description: JSON string of column mappings
+            encoding:
+              columnMapping:
+                contentType: application/json
+      responses:
+        '200':
+          description: Samples created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestImportResponse'
+        '400':
+          description: Invalid file or mapping
+        '404':
+          description: Notebook not found
+
+  /notebook/{notebookId}/samples/create-children:
+    post:
+      summary: Create child samples from parents
+      description: Generate child sample IDs from parent samples with configurable prefix
+      operationId: createChildSamples
+      tags:
+        - Sample Entry
+      parameters:
+        - name: notebookId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChildrenRequest'
+      responses:
+        '200':
+          description: Child samples created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateChildrenResponse'
+        '400':
+          description: Invalid request
+        '404':
+          description: Notebook or parent sample not found
+
+components:
+  schemas:
+    SampleSearchResult:
+      type: object
+      properties:
+        sampleItemId:
+          type: integer
+          description: SampleItem ID
+        accessionNumber:
+          type: string
+          description: Sample accession number
+        externalId:
+          type: string
+          description: External ID (manifest ID)
+        sampleType:
+          type: string
+          description: Type of sample
+        collectionDate:
+          type: string
+          format: date
+        status:
+          type: string
+          description: Current sample status
+
+    LinkSamplesRequest:
+      type: object
+      properties:
+        sampleItemIds:
+          type: array
+          items:
+            type: integer
+          description: List of SampleItem IDs to link
+        accessionNumbers:
+          type: array
+          items:
+            type: string
+          description: Alternative - list of accession numbers to link
+      description: Provide either sampleItemIds or accessionNumbers
+
+    LinkSamplesResponse:
+      type: object
+      properties:
+        linked:
+          type: integer
+          description: Number of samples successfully linked
+        alreadyLinked:
+          type: integer
+          description: Number of samples already linked to notebook
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinkError'
+
+    LinkError:
+      type: object
+      properties:
+        identifier:
+          type: string
+          description: Sample ID or accession number
+        message:
+          type: string
+          description: Error message
+
+    ManifestColumnMapping:
+      type: object
+      required:
+        - groupId
+        - sampleType
+        - numOfSamples
+      properties:
+        groupId:
+          type: string
+          description: Column name for group ID (becomes external_id prefix)
+        sampleType:
+          type: string
+          description: Column name for sample type
+        collectionDate:
+          type: string
+          description: Column name for collection date
+        volume:
+          type: string
+          description: Column name for volume
+        numOfSamples:
+          type: string
+          description: Column name for number of samples to create per row
+        notes:
+          type: string
+          description: Column name for notes
+
+    ManifestImportResponse:
+      type: object
+      properties:
+        rowsProcessed:
+          type: integer
+          description: Number of CSV rows processed
+        samplesCreated:
+          type: integer
+          description: Total SampleItem records created
+        samplesLinked:
+          type: integer
+          description: Samples linked to notebook
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManifestRowError'
+
+    ManifestRowError:
+      type: object
+      properties:
+        row:
+          type: integer
+          description: Row number (1-indexed)
+        message:
+          type: string
+          description: Error message (e.g., "Unknown sample type: XYZ")
+
+    CreateChildrenRequest:
+      type: object
+      required:
+        - parentSampleIds
+        - idPrefix
+      properties:
+        parentSampleIds:
+          type: array
+          items:
+            type: integer
+          description: List of parent SampleItem IDs
+        idPrefix:
+          type: string
+          description: Prefix for child sample IDs (e.g., "IMM-C-2024-")
+          pattern: '^[A-Za-z0-9-]+$'
+        extractionVolume:
+          type: number
+          description: Volume extracted from parent (microliters)
+
+    CreateChildrenResponse:
+      type: object
+      properties:
+        created:
+          type: integer
+          description: Number of child samples created
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChildSampleInfo'
+
+    ChildSampleInfo:
+      type: object
+      properties:
+        parentId:
+          type: integer
+          description: Parent SampleItem ID
+        childId:
+          type: integer
+          description: New child SampleItem ID
+        childExternalId:
+          type: string
+          description: External ID assigned to child

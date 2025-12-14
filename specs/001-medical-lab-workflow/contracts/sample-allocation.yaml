@@ -1,0 +1,229 @@
+# Sample Allocation API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Sample Routing to Departments
+
+openapi: 3.0.3
+info:
+  title: Sample Allocation API
+  version: 1.0.0
+  description: API endpoints for allocating samples to laboratory departments
+
+paths:
+  /rest/medlab/allocation:
+    post:
+      summary: Allocate sample to department
+      operationId: allocateSample
+      tags: [SampleAllocation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllocationForm"
+      responses:
+        "201":
+          description: Sample allocated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllocationResponse"
+        "400":
+          description: Invalid input
+        "404":
+          description: Sample not found
+        "409":
+          description: Sample already allocated
+
+    get:
+      summary: List allocations
+      operationId: listAllocations
+      tags: [SampleAllocation]
+      parameters:
+        - name: department
+          in: query
+          schema:
+            $ref: "#/components/schemas/Department"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/AllocationStatus"
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [STAT, ROUTINE]
+      responses:
+        "200":
+          description: Allocation list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AllocationResponse"
+
+  /rest/medlab/allocation/{id}:
+    get:
+      summary: Get allocation details
+      operationId: getAllocation
+      tags: [SampleAllocation]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Allocation details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllocationResponse"
+        "404":
+          description: Allocation not found
+
+    put:
+      summary: Update allocation status
+      operationId: updateAllocation
+      tags: [SampleAllocation]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllocationUpdateForm"
+      responses:
+        "200":
+          description: Allocation updated
+        "404":
+          description: Allocation not found
+
+  /rest/medlab/allocation/batch:
+    post:
+      summary: Batch allocate multiple samples
+      operationId: batchAllocate
+      tags: [SampleAllocation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [allocations]
+              properties:
+                allocations:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AllocationForm"
+      responses:
+        "201":
+          description: Samples allocated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  successful:
+                    type: integer
+                  failed:
+                    type: integer
+                  allocations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AllocationResponse"
+
+components:
+  schemas:
+    AllocationForm:
+      type: object
+      required: [sampleItemId, department, allocatedBy]
+      properties:
+        sampleItemId:
+          type: integer
+        department:
+          $ref: "#/components/schemas/Department"
+        allocatedBy:
+          type: integer
+        priority:
+          type: string
+          enum: [STAT, ROUTINE]
+          default: ROUTINE
+        notes:
+          type: string
+          maxLength: 500
+
+    AllocationUpdateForm:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/AllocationStatus"
+        priority:
+          type: string
+          enum: [STAT, ROUTINE]
+        notes:
+          type: string
+          maxLength: 500
+
+    AllocationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        sampleType:
+          type: string
+        department:
+          $ref: "#/components/schemas/Department"
+        allocatedDate:
+          type: string
+          format: date-time
+        allocatedByName:
+          type: string
+        status:
+          $ref: "#/components/schemas/AllocationStatus"
+        priority:
+          type: string
+          enum: [STAT, ROUTINE]
+        requestedTests:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+        fhirUuid:
+          type: string
+          format: uuid
+
+    Department:
+      type: string
+      enum:
+        - chemistry
+        - hematology
+        - parasitology
+        - urinalysis
+        - serology
+        - microbiology
+
+    AllocationStatus:
+      type: string
+      enum:
+        - pending
+        - in_progress
+        - complete
