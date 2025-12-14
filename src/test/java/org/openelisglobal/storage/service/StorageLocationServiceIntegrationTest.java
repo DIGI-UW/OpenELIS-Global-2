@@ -278,7 +278,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setParentRoom(parentRoom);
         device.setCode("test-frz01"); // Lowercase, should be converted to uppercase
         device.setActive(true);
-        device.setSysUserIdValue(1); // Required field
+        device.setSysUserId("1"); // Required field
 
         // When: Insert device through service layer
         Integer deviceId = storageLocationService.insert(device);
@@ -310,7 +310,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1); // Required field
+        device.setSysUserId("1"); // Required field
         // shortCode is null - should be allowed since code ≤10 chars
 
         // When: Insert device through service layer
@@ -344,7 +344,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1); // Required field
+        device.setSysUserId("1"); // Required field
         // shortCode is null - should throw exception since code > 10 chars
 
         // When: Insert device through service layer
@@ -379,7 +379,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device1.setParentRoom(parentRoom);
         device1.setCode("TEST-DUP");
         device1.setActive(true);
-        device1.setSysUserIdValue(1); // Required field
+        device1.setSysUserId("1"); // Required field
         Integer deviceId1 = storageLocationService.insert(device1);
         assertNotNull("First device should be created", deviceId1);
 
@@ -391,7 +391,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device2.setParentRoom(parentRoom);
         device2.setCode("TEST-DUP"); // Duplicate
         device2.setActive(true);
-        device2.setSysUserIdValue(1); // Required field
+        device2.setSysUserId("1"); // Required field
 
         // When: Insert second device with duplicate shortCode
         // Then: Should throw exception (either LIMSRuntimeException from service
@@ -428,7 +428,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setParentRoom(parentRoom);
         device.setCode("TEST-OLD");
         device.setActive(true);
-        device.setSysUserIdValue(1); // Required field
+        device.setSysUserId("1"); // Required field
         Integer deviceId = storageLocationService.insert(device);
         assertNotNull("Device should be created", deviceId);
 
@@ -461,7 +461,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         shelf.setParentDevice(parentDevice);
         shelf.setCode("test-sha01"); // Lowercase, should be converted
         shelf.setActive(true);
-        shelf.setSysUserIdValue(1); // Required field
+        shelf.setSysUserId("1"); // Required field
 
         // When: Insert shelf through service layer
         Integer shelfId = storageLocationService.insert(shelf);
@@ -491,7 +491,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         rack.setParentShelf(parentShelf);
         rack.setShortCode("test-rkr01"); // Lowercase, should be converted
         rack.setActive(true);
-        rack.setSysUserIdValue(1); // Required field
+        rack.setSysUserId("1"); // Required field
 
         // When: Insert rack through service layer
         Integer rackId = storageLocationService.insert(rack);
@@ -521,7 +521,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         shelf.setParentDevice(parentDevice);
         shelf.setCode("TEST-OLD2");
         shelf.setActive(true);
-        shelf.setSysUserIdValue(1); // Required field
+        shelf.setSysUserId("1"); // Required field
         Integer shelfId = storageLocationService.insert(shelf);
         assertNotNull("Shelf should be created", shelfId);
 
@@ -554,7 +554,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         rack.setParentShelf(parentShelf);
         rack.setShortCode("TEST-OLD3");
         rack.setActive(true);
-        rack.setSysUserIdValue(1); // Required field
+        rack.setSysUserId("1"); // Required field
         Integer rackId = storageLocationService.insert(rack);
         assertNotNull("Rack should be created", rackId);
 

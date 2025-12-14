@@ -151,4 +151,15 @@ public interface ResultCompilationService {
      * @return list of sample data with validation status
      */
     List<Map<String, Object>> getSamplesWithValidation(Integer pageId);
+
+    /**
+     * Attach a compiled report to a notebook for audit trail. Creates an Excel
+     * report, attaches it to the NoteBookFile list, and returns the file ID.
+     *
+     * @param notebookId the notebook ID
+     * @param options    export options for report generation
+     * @param userId     user generating and attaching the report
+     * @return the ID of the created NoteBookFile record
+     */
+    Integer attachReportToNotebook(Integer notebookId, ExportOptions options, String userId);
 }

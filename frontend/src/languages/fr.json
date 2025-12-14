@@ -983,6 +983,7 @@
   "notebook.heading.notebooks": "Les Projets",
   "notebook.heading.allEntries": "All Entries",
   "notebook.table.header.entries": "Entries",
+  "notebook.entry.number": "Entrée #{number}",
   "notebook.button.view": "Afficher",
   "notebook.button.edit": "Modifier",
   "notebook.icon.edit": "Modifier",

@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.form.ManifestImportForm;
@@ -41,6 +42,9 @@ public class ManifestImportServiceImpl implements ManifestImportService {
 
     @Autowired
     private NotebookEntryService notebookEntryService;
+
+    @Autowired
+    private NotebookSampleEntryService notebookSampleEntryService;
 
     @Autowired
     private IStatusService statusService;
@@ -200,6 +204,14 @@ public class ManifestImportServiceImpl implements ManifestImportService {
                 item.setStatusId(sampleEnteredStatusId);
                 item.setSysUserId(sysUserId);
 
+                // Set collection date from manifest row
+                if (row.collectionDate() != null && !row.collectionDate().isBlank()) {
+                    java.sql.Timestamp collectionTimestamp = parseCollectionDate(row.collectionDate());
+                    if (collectionTimestamp != null) {
+                        item.setCollectionDate(collectionTimestamp);
+                    }
+                }
+
                 String itemId = sampleItemService.insert(item);
                 item.setId(itemId);
                 createdSamples.add(item);
@@ -207,6 +219,12 @@ public class ManifestImportServiceImpl implements ManifestImportService {
                 // Add sample to entry
                 notebookEntryService.addSample(entryId, item, sysUserId);
             }
+        }
+
+        if (!createdSamples.isEmpty()) {
+            List<Integer> createdIds = createdSamples.stream().map(s -> Integer.parseInt(s.getId()))
+                    .collect(Collectors.toList());
+            notebookSampleEntryService.linkSamplesToNotebook(entryId, createdIds);
         }
 
         return new ManifestImportResult(totalRequested, createdSamples.size(), createdSamples, errors);
@@ -261,5 +279,37 @@ public class ManifestImportServiceImpl implements ManifestImportService {
         }
         String value = values[index];
         return value != null && !value.isBlank() ? value.trim() : null;
+    }
+
+    /**
+     * Parse collection date from various formats. Supports: yyyy-MM-dd, dd/MM/yyyy,
+     * MM/dd/yyyy, dd-MM-yyyy
+     */
+    private java.sql.Timestamp parseCollectionDate(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) {
+            return null;
+        }
+
+        String trimmed = dateStr.trim();
+        java.time.LocalDate date = null;
+
+        // Try different date formats
+        String[] formats = { "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "dd-MM-yyyy", "yyyy/MM/dd" };
+
+        for (String format : formats) {
+            try {
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern(format);
+                date = java.time.LocalDate.parse(trimmed, formatter);
+                break;
+            } catch (java.time.format.DateTimeParseException e) {
+                // Try next format
+            }
+        }
+
+        if (date != null) {
+            return java.sql.Timestamp.valueOf(date.atStartOfDay());
+        }
+
+        return null;
     }
 }

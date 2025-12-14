@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.hibernate.Session;
+import org.hibernate.query.NativeQuery;
 import org.hibernate.query.Query;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,6 +37,9 @@ public class NotebookPageSampleDAOTest {
 
     @Mock
     private Query<NotebookPageSample> query;
+
+    @Mock
+    private NativeQuery<NotebookPageSample> nativeQuery;
 
     @Mock
     private Query<Object[]> countQuery;
@@ -67,9 +71,10 @@ public class NotebookPageSampleDAOTest {
     }
 
     /**
-     * Test: getByPageId returns all samples for a page
+     * Test: getByPageId returns all samples for a page (uses native query)
      */
     @Test
+    @SuppressWarnings("unchecked")
     public void testGetByPageId_ReturnsAllSamples() {
         // Setup
         Integer pageId = 1;
@@ -77,9 +82,9 @@ public class NotebookPageSampleDAOTest {
         results.add(testPageSample);
 
         when(entityManager.unwrap(Session.class)).thenReturn(session);
-        when(session.createQuery(anyString(), eq(NotebookPageSample.class))).thenReturn(query);
-        when(query.setParameter(eq("pageId"), eq(pageId))).thenReturn(query);
-        when(query.getResultList()).thenReturn(results);
+        when(session.createNativeQuery(anyString(), eq(NotebookPageSample.class))).thenReturn(nativeQuery);
+        when(nativeQuery.setParameter(eq("pageId"), eq(pageId))).thenReturn(nativeQuery);
+        when(nativeQuery.getResultList()).thenReturn(results);
 
         // Execute
         List<NotebookPageSample> result = dao.getByPageId(pageId);
@@ -88,13 +93,14 @@ public class NotebookPageSampleDAOTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals(testPageSample.getId(), result.get(0).getId());
-        verify(query).setParameter("pageId", pageId);
+        verify(nativeQuery).setParameter("pageId", pageId);
     }
 
     /**
-     * Test: getByPageIdAndStatus filters by status
+     * Test: getByPageIdAndStatus filters by status (uses native query)
      */
     @Test
+    @SuppressWarnings("unchecked")
     public void testGetByPageIdAndStatus_FiltersCorrectly() {
         // Setup
         Integer pageId = 1;
@@ -103,10 +109,10 @@ public class NotebookPageSampleDAOTest {
         results.add(testPageSample);
 
         when(entityManager.unwrap(Session.class)).thenReturn(session);
-        when(session.createQuery(anyString(), eq(NotebookPageSample.class))).thenReturn(query);
-        when(query.setParameter(eq("pageId"), eq(pageId))).thenReturn(query);
-        when(query.setParameter(eq("status"), eq(status))).thenReturn(query);
-        when(query.getResultList()).thenReturn(results);
+        when(session.createNativeQuery(anyString(), eq(NotebookPageSample.class))).thenReturn(nativeQuery);
+        when(nativeQuery.setParameter(eq("pageId"), eq(pageId))).thenReturn(nativeQuery);
+        when(nativeQuery.setParameter(eq("status"), eq(status.name()))).thenReturn(nativeQuery);
+        when(nativeQuery.getResultList()).thenReturn(results);
 
         // Execute
         List<NotebookPageSample> result = dao.getByPageIdAndStatus(pageId, status);
@@ -115,8 +121,8 @@ public class NotebookPageSampleDAOTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals(Status.PENDING, result.get(0).getStatus());
-        verify(query).setParameter("pageId", pageId);
-        verify(query).setParameter("status", status);
+        verify(nativeQuery).setParameter("pageId", pageId);
+        verify(nativeQuery).setParameter("status", status.name());
     }
 
     /**

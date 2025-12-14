@@ -90,6 +90,12 @@ function SampleRoutingPage({
   });
   const [tabBoxLayout, setTabBoxLayout] = useState({});
 
+  // Storage modal box layout state (for previewing occupancy before routing)
+  const [storageModalBoxLayout, setStorageModalBoxLayout] = useState({});
+  const [loadingStorageLayout, setLoadingStorageLayout] = useState(false);
+  // Well assignments for storage preview (sampleId -> wellCoord)
+  const [storageWellAssignments, setStorageWellAssignments] = useState({});
+
   // Assay plate state (for Internal Analysis - NOT connected to storage hierarchy)
   const [assayPlates, setAssayPlates] = useState([]);
   const [selectedAssayPlateId, setSelectedAssayPlateId] = useState(null);
@@ -205,6 +211,8 @@ function SampleRoutingPage({
         return;
       }
       setRouteDestination(destination);
+      // Clear any previous storage well assignments when opening modal
+      setStorageWellAssignments({});
       setRouteModalOpen(true);
     },
     [selectedSampleIds],
@@ -255,10 +263,56 @@ function SampleRoutingPage({
         routeRequest.shipmentDate = shipmentDate;
       }
     } else if (routeDestination.id === "STORAGE") {
-      // Box is optional for storage - if selected, wells will be auto-assigned
-      if (selectedBox) {
-        routeRequest.boxId = selectedBox.id;
+      // Box is REQUIRED for storage to create proper storage assignment
+      if (!selectedBox) {
+        setError(
+          "Please select a storage box. Storage routing requires a box assignment.",
+        );
+        setRouting(false);
+        return;
       }
+
+      // Check if wells have been assigned (via Auto-Populate button)
+      if (Object.keys(storageWellAssignments).length === 0) {
+        setError(
+          "Please click Auto-Populate to assign samples to wells before routing.",
+        );
+        setRouting(false);
+        return;
+      }
+
+      const storagePayload = {
+        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+        boxId: selectedBox.id,
+        wellAssignments: storageWellAssignments,
+        condition: "REFRIGERATED", // Default condition for routing page
+        retentionYears: 5, // Default retention
+        pageId: pageData?.id,
+      };
+
+      postToOpenElisServerJsonResponse(
+        `/rest/notebook/${notebookId}/samples/assign-storage`,
+        JSON.stringify(storagePayload),
+        (response) => {
+          setRouting(false);
+          setRouteModalOpen(false);
+
+          if (response && response.success) {
+            setSuccess(
+              `Successfully assigned ${response.assignedCount || selectedSampleIds.length} samples to storage.`,
+            );
+            setSelectedSampleIds([]);
+            loadPageSamples();
+            loadRoutingSummary();
+            if (onProgressUpdate) {
+              onProgressUpdate();
+            }
+          } else {
+            setError(response?.error || "Failed to assign samples to storage.");
+          }
+        },
+      );
+      return; // Exit early - don't use the generic route endpoint
     }
 
     postToOpenElisServerJsonResponse(
@@ -290,11 +344,97 @@ function SampleRoutingPage({
     selectedBox,
     externalLabName,
     shipmentDate,
-    entryId,
+    notebookId,
+    pageData?.id,
+    assayPlates,
+    selectedAssayPlateId,
     loadPageSamples,
     loadRoutingSummary,
     onProgressUpdate,
+    storageWellAssignments,
   ]);
+
+  // Auto-populate wells for storage routing (preview before save)
+  const handleAutoPopulateStorage = useCallback(() => {
+    if (!selectedBox) {
+      setError("Please select a storage box first.");
+      return;
+    }
+    if (selectedSampleIds.length === 0) {
+      setError("No samples selected for storage assignment.");
+      return;
+    }
+
+    const rows = selectedBox.rows || 8;
+    const columns = selectedBox.columns || 12;
+    const rowLetters = Array.from({ length: rows }, (_, i) =>
+      String.fromCharCode("A".charCodeAt(0) + i),
+    );
+
+    const newAssignments = {};
+    let sampleIndex = 0;
+
+    // Iterate through wells row by row
+    for (let row of rowLetters) {
+      for (let col = 1; col <= columns; col++) {
+        if (sampleIndex >= selectedSampleIds.length) break;
+
+        const wellCoord = `${row}${col}`;
+        // Skip if well is already occupied
+        if (!storageModalBoxLayout[wellCoord]) {
+          newAssignments[parseInt(selectedSampleIds[sampleIndex], 10)] =
+            wellCoord;
+          sampleIndex++;
+        }
+      }
+      if (sampleIndex >= selectedSampleIds.length) break;
+    }
+
+    setStorageWellAssignments(newAssignments);
+
+    if (sampleIndex < selectedSampleIds.length) {
+      setError(
+        intl.formatMessage(
+          {
+            id: "notebook.routing.storage.notEnoughWells",
+            defaultMessage:
+              "Not enough empty wells. {assigned} of {total} samples assigned.",
+          },
+          { assigned: sampleIndex, total: selectedSampleIds.length },
+        ),
+      );
+    } else {
+      setError(null);
+      setSuccess(
+        intl.formatMessage(
+          {
+            id: "notebook.routing.storage.autoPopulateSuccess",
+            defaultMessage: "Auto-assigned {count} samples to wells.",
+          },
+          { count: sampleIndex },
+        ),
+      );
+    }
+  }, [selectedBox, selectedSampleIds, storageModalBoxLayout, intl]);
+
+  // Get combined layout showing existing wells + pending assignments
+  const getCombinedStorageLayout = useCallback(() => {
+    const combined = { ...storageModalBoxLayout };
+
+    // Add pending assignments
+    Object.entries(storageWellAssignments).forEach(([sampleId, wellCoord]) => {
+      if (!combined[wellCoord]) {
+        const sample = samples.find((s) => s.id === sampleId);
+        combined[wellCoord] = {
+          sampleItemId: sampleId,
+          externalId: sample?.externalId || sampleId,
+          pending: true,
+        };
+      }
+    });
+
+    return combined;
+  }, [storageModalBoxLayout, storageWellAssignments, samples]);
 
   // Handle status change
   const handleStatusChange = useCallback(
@@ -626,6 +766,7 @@ function SampleRoutingPage({
       {/* Route Modal */}
       <Modal
         open={routeModalOpen}
+        size={routeDestination?.id === "STORAGE" ? "lg" : "md"}
         modalHeading={
           routeDestination
             ? intl.formatMessage(
@@ -736,15 +877,110 @@ function SampleRoutingPage({
             <StorageHierarchySelector
               onSelectionChange={(selection) => {
                 setStorageSelection(selection);
+                // Clear pending well assignments when box changes
+                setStorageWellAssignments({});
                 if (selection.box) {
                   setSelectedBox(selection.box);
+                  // Load box layout to show current occupancy
+                  setLoadingStorageLayout(true);
+                  getFromOpenElisServer(
+                    `/rest/notebook/${notebookId}/box/${selection.box.id}/layout?includeGlobal=true`,
+                    (response) => {
+                      setLoadingStorageLayout(false);
+                      if (response && response.wells) {
+                        setStorageModalBoxLayout(response.wells);
+                      } else {
+                        setStorageModalBoxLayout({});
+                      }
+                    },
+                  );
                 } else {
                   setSelectedBox(null);
+                  setStorageModalBoxLayout({});
                 }
               }}
               entryId={entryId}
               showPath={true}
             />
+
+            {/* Box Layout Preview with Auto-Populate */}
+            {selectedBox && (
+              <div style={{ marginTop: "1rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  <h5>
+                    <FormattedMessage
+                      id="notebook.routing.modal.boxLayoutPreview"
+                      defaultMessage="Box Layout Preview"
+                    />
+                  </h5>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={Renew}
+                    onClick={handleAutoPopulateStorage}
+                    disabled={selectedSampleIds.length === 0}
+                  >
+                    <FormattedMessage
+                      id="notebook.routing.storage.autoPopulate"
+                      defaultMessage="Auto-Populate"
+                    />
+                  </Button>
+                </div>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#525252",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  <FormattedMessage
+                    id="notebook.routing.modal.boxLayoutPreviewDescription"
+                    defaultMessage="Click Auto-Populate to preview well assignments. Pending assignments shown in yellow."
+                  />
+                </p>
+                {loadingStorageLayout ? (
+                  <p style={{ fontStyle: "italic", color: "#8d8d8d" }}>
+                    <FormattedMessage
+                      id="notebook.routing.modal.loadingLayout"
+                      defaultMessage="Loading box layout..."
+                    />
+                  </p>
+                ) : (
+                  <BoxLayoutViewer
+                    boxId={selectedBox.id}
+                    layout={getCombinedStorageLayout()}
+                    rows={selectedBox.rows || 8}
+                    columns={selectedBox.columns || 12}
+                  />
+                )}
+
+                {/* Assignment Summary */}
+                <div
+                  style={{
+                    marginTop: "0.5rem",
+                    fontSize: "0.875rem",
+                    color: "#525252",
+                  }}
+                >
+                  <FormattedMessage
+                    id="notebook.routing.storage.assignmentSummary"
+                    defaultMessage="{assigned} of {total} samples assigned to wells"
+                    values={{
+                      assigned: Object.keys(storageWellAssignments).length,
+                      total: selectedSampleIds.length,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             <p
               style={{
                 marginTop: "0.5rem",
@@ -754,7 +990,7 @@ function SampleRoutingPage({
             >
               <FormattedMessage
                 id="notebook.routing.modal.storageBoxHelp"
-                defaultMessage="Wells will be auto-assigned in row-major order when a box is selected."
+                defaultMessage="Select a box and click Auto-Populate to preview assignments before routing."
               />
             </p>
           </div>

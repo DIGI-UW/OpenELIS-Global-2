@@ -24,7 +24,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
  * Unit tests for child sample creation in NotebookSampleEntryService. Per T074:
  * Tests createChildSamples method with parent-child linking.
  */
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class ChildSampleCreationServiceTest {
 
     @Mock

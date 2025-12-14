@@ -1,7 +1,11 @@
 package org.openelisglobal.notebook.service;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
@@ -176,6 +180,24 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }
 
+        // Initialize lazy-loaded pages and sort by order
+        org.hibernate.Hibernate.initialize(notebook.getPages());
+        List<NoteBookPage> sortedPages = new ArrayList<>(notebook.getPages());
+        sortedPages.sort((p1, p2) -> {
+            Integer o1 = p1.getOrder() != null ? p1.getOrder() : Integer.MAX_VALUE;
+            Integer o2 = p2.getOrder() != null ? p2.getOrder() : Integer.MAX_VALUE;
+            return o1.compareTo(o2);
+        });
+
+        // Find the current page's order to determine which pages are "previous"
+        Integer currentPageOrder = null;
+        if (pageId != null) {
+            NoteBookPage currentPage = noteBookService.getPage(pageId);
+            if (currentPage != null) {
+                currentPageOrder = currentPage.getOrder();
+            }
+        }
+
         List<SampleItem> createdChildren = new ArrayList<>();
         int childSequence = 1;
 
@@ -192,26 +214,121 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
             }
         }
 
-        // Link children to the notebook
+        // Link children to all pages in the notebook, inheriting status from parent
         if (!createdChildren.isEmpty()) {
-            if (pageId != null) {
-                // Link to specific page (for child samples created from
-                // ChildSampleCreationPage)
-                for (SampleItem child : createdChildren) {
-                    notebookPageSampleService.createPageSampleForPage(pageId, Integer.parseInt(child.getId()),
-                            Status.PENDING);
+            for (SampleItem child : createdChildren) {
+                Integer childId = Integer.parseInt(child.getId());
+                SampleItem parent = child.getParentSampleItem();
+                Integer parentId = parent != null ? Integer.parseInt(parent.getId()) : null;
+
+                // Determine completed order: If child is created on a specific page, all
+                // previous
+                // pages should be marked as COMPLETED. This is because the parent must have
+                // completed
+                // all previous pages to reach the current page (implicit workflow progress).
+                int completedUpToOrder;
+                if (currentPageOrder != null && currentPageOrder > 0) {
+                    // Child created on page X means pages 1 to X-1 are already completed
+                    completedUpToOrder = currentPageOrder - 1;
+                    LogEvent.logInfo(this.getClass().getName(), "createChildSamplesForPage",
+                            "Child " + childId + " created on page order " + currentPageOrder
+                                    + ", marking pages up to order " + completedUpToOrder + " as COMPLETED");
+                } else {
+                    // Fallback: check parent's actual COMPLETED status in this notebook
+                    List<NotebookPageSample> parentPageSamples = new ArrayList<>();
+                    if (parentId != null) {
+                        List<NotebookPageSample> allParentRecords = notebookPageSampleService
+                                .getBySampleItemId(parentId);
+                        for (NotebookPageSample pps : allParentRecords) {
+                            if (pps.getNotebookPage() != null && pps.getNotebookPage().getNotebook() != null
+                                    && notebookId.equals(pps.getNotebookPage().getNotebook().getId())) {
+                                parentPageSamples.add(pps);
+                            }
+                        }
+                    }
+
+                    completedUpToOrder = -1;
+                    for (NotebookPageSample pps : parentPageSamples) {
+                        if (pps.getStatus() == Status.COMPLETED && pps.getNotebookPage() != null
+                                && pps.getNotebookPage().getOrder() != null) {
+                            completedUpToOrder = Math.max(completedUpToOrder, pps.getNotebookPage().getOrder());
+                        }
+                    }
+                    LogEvent.logInfo(this.getClass().getName(), "createChildSamplesForPage", "Parent " + parentId
+                            + " completed up to page order: " + completedUpToOrder + " (fallback mode)");
                 }
-            } else {
-                // Legacy behavior: link to Page 1 via linkSamplesToNotebook
-                List<Integer> childIds = new ArrayList<>();
-                for (SampleItem child : createdChildren) {
-                    childIds.add(Integer.parseInt(child.getId()));
+
+                // Create NotebookPageSample records for ALL pages
+                for (NoteBookPage page : sortedPages) {
+                    createChildPageSampleInheritingFromParent(page, childId, parentId, completedUpToOrder,
+                            new ArrayList<>());
                 }
-                linkSamplesToNotebook(notebookId, childIds);
             }
         }
 
         return createdChildren;
+    }
+
+    /**
+     * Create a child NotebookPageSample record, inheriting COMPLETED status based
+     * on how far parent has progressed in the workflow.
+     */
+    private void createChildPageSampleInheritingFromParent(NoteBookPage page, Integer childSampleId, Integer parentId,
+            int parentCompletedUpToOrder, List<NotebookPageSample> parentPageSamples) {
+        // Check if record already exists
+        NotebookPageSample existing = notebookPageSampleDAO.getByPageIdAndSampleItemId(page.getId(), childSampleId);
+        if (existing != null) {
+            return; // Already exists
+        }
+
+        Integer pageOrder = page.getOrder() != null ? page.getOrder() : Integer.MAX_VALUE;
+
+        NotebookPageSample nps = new NotebookPageSample();
+        nps.setNotebookPage(page);
+        nps.setSampleItemId(childSampleId.toString());
+
+        // If the page order is <= the order where parent has completed,
+        // then child should also be COMPLETED on this page
+        if (pageOrder <= parentCompletedUpToOrder) {
+            // Find parent's page sample for this page to copy data from
+            NotebookPageSample parentPageSample = null;
+            for (NotebookPageSample pps : parentPageSamples) {
+                if (pps.getNotebookPage() != null && pps.getNotebookPage().getId().equals(page.getId())) {
+                    parentPageSample = pps;
+                    break;
+                }
+            }
+
+            nps.setStatus(Status.COMPLETED);
+            nps.setCompletedAt(new Timestamp(System.currentTimeMillis()));
+
+            // Copy parent's data if available
+            if (parentPageSample != null) {
+                nps.setCompletedBy(parentPageSample.getCompletedBy());
+                if (parentPageSample.getData() != null) {
+                    Map<String, Object> childData = new HashMap<>(parentPageSample.getData());
+                    childData.put("inheritedFromParent", parentId);
+                    childData.put("inheritedValidation", true);
+                    nps.setData(childData);
+                }
+            } else {
+                // Parent doesn't have a record on this page but we know parent completed
+                // past this point, so mark child as completed
+                Map<String, Object> childData = new HashMap<>();
+                childData.put("inheritedFromParent", parentId);
+                childData.put("inheritedValidation", true);
+                nps.setData(childData);
+            }
+
+            LogEvent.logInfo(this.getClass().getName(), "createChildPageSampleInheritingFromParent",
+                    "Child " + childSampleId + " set to COMPLETED on page " + page.getId() + " (order " + pageOrder
+                            + ") because parent completed up to order " + parentCompletedUpToOrder);
+        } else {
+            // Page is beyond where parent has completed - child starts as PENDING
+            nps.setStatus(Status.PENDING);
+        }
+
+        notebookPageSampleService.insert(nps);
     }
 
     /**

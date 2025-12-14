@@ -242,15 +242,38 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
                 // Skip samples without well assignments
                 continue;
             }
-            routeToStorageWithBox(notebookId, sampleItemId, boxId, well, userId);
+            SampleRouting routing = routeToStorageWithBox(notebookId, sampleItemId, boxId, well, userId);
 
             // Also create/update SampleStorageAssignment for global Storage Management
             // integration
             assignOrMoveToStorage(sampleItemId, boxId, well, notebookTitle, "Storage");
 
+            // Link SampleStorageAssignment to SampleRouting for traceability
+            linkStorageAssignmentToRouting(routing, sampleItemId);
+
             count++;
         }
         return count;
+    }
+
+    /**
+     * Link the SampleStorageAssignment to the SampleRouting record for traceability
+     * verification.
+     */
+    private void linkStorageAssignmentToRouting(SampleRouting routing, Integer sampleItemId) {
+        try {
+            SampleStorageAssignment assignment = storageAssignmentDAO.findBySampleItemId(sampleItemId.toString());
+            if (assignment != null) {
+                routing.setStorageAssignment(assignment);
+                update(routing);
+                LogEvent.logInfo(this.getClass().getName(), "linkStorageAssignmentToRouting",
+                        "Linked SampleStorageAssignment " + assignment.getId() + " to SampleRouting "
+                                + routing.getId());
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getName(), "linkStorageAssignmentToRouting",
+                    "Failed to link storage assignment to routing for sample " + sampleItemId + ": " + e.getMessage());
+        }
     }
 
     /**
@@ -385,12 +408,26 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
         int maxWells = columnsPerRow * 8; // 8 rows for standard 96-well plate
         int currentIndex = 0;
 
+        // Get all occupied coordinates from SampleStorageAssignment (global storage)
+        // This is critical to avoid "Position already occupied" errors when
+        // SampleStorageAssignment has assignments that SampleRouting doesn't know about
+        java.util.Set<String> globalOccupied = new java.util.HashSet<>(
+                storageAssignmentDAO.getOccupiedCoordinatesByBoxId(boxId));
+        LogEvent.logInfo(this.getClass().getName(), "autoAssignWells",
+                "Box " + boxId + " has " + globalOccupied.size() + " globally occupied coordinates: " + globalOccupied);
+
         for (Integer sampleItemId : sampleItemIds) {
             // Find the next available well
             while (currentIndex < maxWells) {
                 String wellCoordinate = generateWellCoordinate(currentIndex, columnsPerRow);
-                if (isWellAvailable(notebookId, boxId, wellCoordinate)) {
+                // Check BOTH notebook routing (isWellAvailable) AND global storage assignments
+                boolean routingAvailable = isWellAvailable(notebookId, boxId, wellCoordinate);
+                boolean globallyAvailable = !globalOccupied.contains(wellCoordinate);
+
+                if (routingAvailable && globallyAvailable) {
                     assignments.put(sampleItemId, wellCoordinate);
+                    // Mark as occupied so subsequent samples in this batch don't get same well
+                    globalOccupied.add(wellCoordinate);
                     currentIndex++;
                     break;
                 }

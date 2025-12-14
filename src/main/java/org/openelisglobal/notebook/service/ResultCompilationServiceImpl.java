@@ -16,11 +16,15 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.ValidationStatus;
+import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -51,6 +55,12 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
 
     @Autowired
     private SystemUserService systemUserService;
+
+    @Autowired
+    private AnalysisService analysisService;
+
+    @Autowired
+    private ResultService resultService;
 
     // In-memory delivery records (in production, use database table)
     private final List<DeliveryRecord> deliveryRecords = new ArrayList<>();
@@ -212,6 +222,22 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         LogEvent.logInfo(this.getClass().getName(), "compileToExcel",
                 "Found " + samples.size() + " samples for notebook " + notebookId);
 
+        // Collect all unique result column keys from all samples' data
+        java.util.Set<String> resultColumnKeys = new java.util.LinkedHashSet<>();
+        for (NotebookPageSample pageSample : samples) {
+            Map<String, Object> data = pageSample.getData();
+            if (data != null) {
+                for (String key : data.keySet()) {
+                    // Skip internal keys (validation fields)
+                    if (!key.equals(VALIDATION_STATUS_KEY) && !key.equals(VALIDATION_REASON_KEY)
+                            && !key.equals(VALIDATED_BY_KEY) && !key.equals(VALIDATED_AT_KEY)) {
+                        resultColumnKeys.add(key);
+                    }
+                }
+            }
+        }
+        List<String> dynamicColumns = new ArrayList<>(resultColumnKeys);
+
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet(options.title() != null ? options.title() : "Results");
 
@@ -236,14 +262,23 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
             inconclusiveStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
             inconclusiveStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-            // Header row
+            // Build header row with fixed columns + dynamic result columns
             Row headerRow = sheet.createRow(0);
-            String[] headers = { "Sample ID", "External ID", "Sample Type", "Status", "Validation Status", "Reason",
-                    "Completed At", "Completed By" };
+            List<String> allHeaders = new ArrayList<>();
+            allHeaders.add("Sample ID");
+            allHeaders.add("External ID");
+            allHeaders.add("Sample Type");
+            allHeaders.add("Status");
+            allHeaders.add("Validation Status");
+            allHeaders.add("Reason");
+            // Add dynamic result columns
+            allHeaders.addAll(dynamicColumns);
+            allHeaders.add("Completed At");
+            allHeaders.add("Completed By");
 
-            for (int i = 0; i < headers.length; i++) {
+            for (int i = 0; i < allHeaders.size(); i++) {
                 Cell cell = headerRow.createCell(i);
-                cell.setCellValue(headers[i]);
+                cell.setCellValue(allHeaders.get(i));
                 cell.setCellStyle(headerStyle);
             }
 
@@ -262,6 +297,7 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                     }
 
                     Row row = sheet.createRow(rowNum++);
+                    int colIdx = 0;
 
                     // Get sample details - handle potential null or missing samples
                     String externalId = "";
@@ -280,13 +316,14 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                                 "Sample not found: " + pageSample.getSampleItemId());
                     }
 
-                    row.createCell(0)
+                    row.createCell(colIdx++)
                             .setCellValue(pageSample.getSampleItemId() != null ? pageSample.getSampleItemId() : "");
-                    row.createCell(1).setCellValue(externalId);
-                    row.createCell(2).setCellValue(sampleTypeDesc);
-                    row.createCell(3).setCellValue(pageSample.getStatus() != null ? pageSample.getStatus().name() : "");
+                    row.createCell(colIdx++).setCellValue(externalId);
+                    row.createCell(colIdx++).setCellValue(sampleTypeDesc);
+                    row.createCell(colIdx++)
+                            .setCellValue(pageSample.getStatus() != null ? pageSample.getStatus().name() : "");
 
-                    Cell statusCell = row.createCell(4);
+                    Cell statusCell = row.createCell(colIdx++);
                     statusCell.setCellValue(validationStatus.getDisplayName());
 
                     // Apply color based on status
@@ -306,19 +343,33 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
 
                     // Reason - safely access nested map
                     String reason = "";
+                    Map<String, Object> data = pageSample.getData();
                     try {
-                        Map<String, Object> data = pageSample.getData();
                         if (data != null && data.get(VALIDATION_REASON_KEY) != null) {
                             reason = data.get(VALIDATION_REASON_KEY).toString();
                         }
                     } catch (Exception e) {
                         // Ignore JSONB access errors
                     }
-                    row.createCell(5).setCellValue(reason);
+                    row.createCell(colIdx++).setCellValue(reason);
+
+                    // Add dynamic result columns values
+                    for (String columnKey : dynamicColumns) {
+                        String value = "";
+                        try {
+                            if (data != null && data.get(columnKey) != null) {
+                                Object val = data.get(columnKey);
+                                value = val.toString();
+                            }
+                        } catch (Exception e) {
+                            // Ignore errors accessing data fields
+                        }
+                        row.createCell(colIdx++).setCellValue(value);
+                    }
 
                     // Completed info - avoid lazy loading issues
                     Timestamp completedAt = pageSample.getCompletedAt();
-                    row.createCell(6).setCellValue(completedAt != null ? completedAt.toString() : "");
+                    row.createCell(colIdx++).setCellValue(completedAt != null ? completedAt.toString() : "");
 
                     // For completedBy, we need to handle potential lazy loading exception
                     String completedByName = "";
@@ -334,7 +385,7 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                         LogEvent.logDebug(this.getClass().getName(), "compileToExcel",
                                 "Could not load completedBy for sample: " + pageSample.getSampleItemId());
                     }
-                    row.createCell(7).setCellValue(completedByName);
+                    row.createCell(colIdx++).setCellValue(completedByName);
                 } catch (Exception e) {
                     LogEvent.logError(this.getClass().getName(), "compileToExcel",
                             "Error processing sample " + pageSample.getSampleItemId() + ": " + e.getMessage());
@@ -343,7 +394,7 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
             }
 
             // Auto-size columns
-            for (int i = 0; i < headers.length; i++) {
+            for (int i = 0; i < allHeaders.size(); i++) {
                 sheet.autoSizeColumn(i);
             }
 
@@ -374,10 +425,37 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         LogEvent.logInfo(this.getClass().getName(), "compileToCsv",
                 "Found " + samples.size() + " samples for notebook " + notebookId);
 
+        // Collect all unique result column keys from all samples' data
+        java.util.Set<String> resultColumnKeys = new java.util.LinkedHashSet<>();
+        for (NotebookPageSample pageSample : samples) {
+            Map<String, Object> data = pageSample.getData();
+            if (data != null) {
+                for (String key : data.keySet()) {
+                    // Skip internal keys (validation fields)
+                    if (!key.equals(VALIDATION_STATUS_KEY) && !key.equals(VALIDATION_REASON_KEY)
+                            && !key.equals(VALIDATED_BY_KEY) && !key.equals(VALIDATED_AT_KEY)) {
+                        resultColumnKeys.add(key);
+                    }
+                }
+            }
+        }
+        List<String> dynamicColumns = new ArrayList<>(resultColumnKeys);
+
         StringBuilder csv = new StringBuilder();
 
-        // Header
-        csv.append("Sample ID,External ID,Sample Type,Status,Validation Status,Reason,Completed At,Completed By\n");
+        // Build header with fixed columns + dynamic result columns
+        List<String> allHeaders = new ArrayList<>();
+        allHeaders.add("Sample ID");
+        allHeaders.add("External ID");
+        allHeaders.add("Sample Type");
+        allHeaders.add("Status");
+        allHeaders.add("Validation Status");
+        allHeaders.add("Reason");
+        allHeaders.addAll(dynamicColumns);
+        allHeaders.add("Completed At");
+        allHeaders.add("Completed By");
+
+        csv.append(String.join(",", allHeaders)).append("\n");
 
         // Data rows
         for (NotebookPageSample pageSample : samples) {
@@ -416,8 +494,8 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
 
                 // Reason - safely access nested map
                 String reason = "";
+                Map<String, Object> data = pageSample.getData();
                 try {
-                    Map<String, Object> data = pageSample.getData();
                     if (data != null && data.get(VALIDATION_REASON_KEY) != null) {
                         reason = data.get(VALIDATION_REASON_KEY).toString();
                     }
@@ -425,6 +503,20 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                     // Ignore JSONB access errors
                 }
                 csv.append(escapeCsv(reason)).append(",");
+
+                // Add dynamic result columns values
+                for (String columnKey : dynamicColumns) {
+                    String value = "";
+                    try {
+                        if (data != null && data.get(columnKey) != null) {
+                            Object val = data.get(columnKey);
+                            value = val.toString();
+                        }
+                    } catch (Exception e) {
+                        // Ignore errors accessing data fields
+                    }
+                    csv.append(escapeCsv(value)).append(",");
+                }
 
                 csv.append(escapeCsv(pageSample.getCompletedAt() != null ? pageSample.getCompletedAt().toString() : ""))
                         .append(",");
@@ -510,31 +602,128 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
             sampleData.put("pageStatus", pageSample.getStatus().name());
 
             ValidationStatus validationStatus = getValidationStatus(pageSample);
-            sampleData.put("validationStatus", validationStatus.name());
-            sampleData.put("validationDisplayName", validationStatus.getDisplayName());
-            sampleData.put("validationColor", validationStatus.getTagColor());
+            String validationReason = null;
+            boolean inheritedFromParent = false;
 
+            // Build the combined data map (JSONB data + result info)
+            Map<String, Object> combinedData = new HashMap<>();
             if (pageSample.getData() != null) {
-                sampleData.put("validationReason", pageSample.getData().get(VALIDATION_REASON_KEY));
-                sampleData.put("data", pageSample.getData());
+                combinedData.putAll(pageSample.getData());
+                Object reasonObj = pageSample.getData().get(VALIDATION_REASON_KEY);
+                validationReason = reasonObj != null ? reasonObj.toString() : null;
             }
 
-            // Get sample details
+            // Get sample details and result data from Result/Analysis tables
+            SampleItem sampleItem = null;
             try {
-                SampleItem sampleItem = sampleItemService.get(pageSample.getSampleItemId());
+                String sampleItemId = pageSample.getSampleItemId();
+                sampleItem = sampleItemService.get(sampleItemId);
                 if (sampleItem != null) {
                     sampleData.put("externalId", sampleItem.getExternalId());
                     if (sampleItem.getTypeOfSample() != null) {
                         sampleData.put("sampleType", sampleItem.getTypeOfSample().getDescription());
                     }
+
+                    // Always get result data from Analysis/Result tables (analyzer results)
+                    List<Analysis> analyses = analysisService.getAnalysesBySampleItem(sampleItem);
+                    LogEvent.logDebug(this.getClass().getName(), "getSamplesWithValidation", "Sample " + sampleItemId
+                            + " has " + (analyses != null ? analyses.size() : 0) + " analyses");
+
+                    if (analyses != null && !analyses.isEmpty()) {
+                        StringBuilder resultSummary = new StringBuilder();
+                        for (Analysis analysis : analyses) {
+                            List<Result> results = resultService.getResultsByAnalysis(analysis);
+                            for (Result res : results) {
+                                String testName = analysis.getTest() != null ? analysis.getTest().getLocalizedName()
+                                        : "Unknown";
+                                String value = resultService.getResultValue(res, true);
+                                if (value != null && !value.isEmpty()) {
+                                    if (resultSummary.length() > 0) {
+                                        resultSummary.append("; ");
+                                    }
+                                    resultSummary.append(testName).append(": ").append(value);
+                                }
+                            }
+                        }
+                        if (resultSummary.length() > 0) {
+                            combinedData.put("result", resultSummary.toString());
+                        }
+                    }
+                } else {
+                    LogEvent.logDebug(this.getClass().getName(), "getSamplesWithValidation",
+                            "SampleItem not found for ID: " + sampleItemId);
                 }
             } catch (Exception e) {
-                // Sample not found
+                // Sample not found or error getting results
+                LogEvent.logWarn(this.getClass().getName(), "getSamplesWithValidation",
+                        "Error getting sample/result data for " + pageSample.getSampleItemId() + ": " + e.getMessage());
             }
 
+            // If this is a child sample with PENDING validation, check parent's validation
+            if (validationStatus == ValidationStatus.PENDING && sampleItem != null) {
+                SampleItem parentSampleItem = sampleItem.getParentSampleItem();
+                if (parentSampleItem != null) {
+                    // Find parent's NotebookPageSample record on this page
+                    NotebookPageSample parentPageSample = notebookPageSampleDAO.getByPageIdAndSampleItemId(pageId,
+                            Integer.parseInt(parentSampleItem.getId()));
+
+                    if (parentPageSample != null) {
+                        ValidationStatus parentValidation = getValidationStatus(parentPageSample);
+                        if (parentValidation != ValidationStatus.PENDING) {
+                            // Inherit parent's validation status
+                            validationStatus = parentValidation;
+                            inheritedFromParent = true;
+
+                            // Get parent's validation reason
+                            if (parentPageSample.getData() != null) {
+                                Object parentReasonObj = parentPageSample.getData().get(VALIDATION_REASON_KEY);
+                                if (parentReasonObj != null) {
+                                    validationReason = parentReasonObj.toString() + " (inherited from parent)";
+                                }
+                            }
+
+                            LogEvent.logDebug(this.getClass().getName(), "getSamplesWithValidation",
+                                    "Child sample " + pageSample.getSampleItemId()
+                                            + " inherited validation status from parent " + parentSampleItem.getId()
+                                            + ": " + parentValidation.name());
+                        }
+                    }
+                }
+            }
+
+            sampleData.put("validationStatus", validationStatus.name());
+            sampleData.put("validationDisplayName", validationStatus.getDisplayName());
+            sampleData.put("validationColor", validationStatus.getTagColor());
+            sampleData.put("validationReason", validationReason);
+            sampleData.put("inheritedFromParent", inheritedFromParent);
+            sampleData.put("data", combinedData);
             result.add(sampleData);
         }
 
         return result;
+    }
+
+    @Override
+    @Transactional
+    public Integer attachReportToNotebook(Integer notebookId, ExportOptions options, String userId) {
+        LogEvent.logInfo(this.getClass().getName(), "attachReportToNotebook",
+                "Generating and attaching report for notebook ID: " + notebookId);
+
+        // Generate the Excel report
+        byte[] excelData = compileToExcel(notebookId, options);
+
+        // Create filename with timestamp
+        String timestamp = LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss"));
+        String fileName = String.format("Results_%s_%s.xlsx", notebookId, timestamp);
+
+        // Attach to notebook using NoteBookService
+        Integer fileId = noteBookService.attachFile(notebookId, excelData, fileName,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", userId);
+
+        LogEvent.logInfo(this.getClass().getName(), "attachReportToNotebook",
+                "Attached report " + fileName + " to notebook " + notebookId + " with file ID: " + fileId);
+
+        return fileId;
     }
 }

@@ -1013,6 +1013,7 @@
   "notebook.heading.notebooks": "Projects",
   "notebook.heading.allEntries": "All Entries",
   "notebook.table.header.entries": "Entries",
+  "notebook.entry.number": "Entry #{number}",
   "notebook.button.view": "View",
   "notebook.button.edit": "Edit",
   "notebook.icon.edit": "Edit",

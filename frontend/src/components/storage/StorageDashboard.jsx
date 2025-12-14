@@ -314,7 +314,7 @@ const StorageDashboard = () => {
         break;
     }
     // Refresh metrics
-    loadMetrics();
+    refreshMetrics();
     // Show success notification
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),

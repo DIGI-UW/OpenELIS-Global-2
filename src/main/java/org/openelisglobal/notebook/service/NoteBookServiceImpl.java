@@ -229,6 +229,38 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setIsTemplate(noteBook.getIsTemplate());
             displayBean.setEntriesCount(noteBook.getEntries().size());
             displayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
+
+            // For non-template entries, find and set entry number and parent notebook name
+            if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+                NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
+                if (parentTemplate != null) {
+                    displayBean.setNotebookName(parentTemplate.getTitle());
+                    // Calculate entry number (1-based index in parent's entries list)
+                    Hibernate.initialize(parentTemplate.getEntries());
+                    List<NoteBook> entries = parentTemplate.getEntries();
+                    if (entries != null) {
+                        // Sort entries by dateCreated to get consistent numbering
+                        List<NoteBook> sortedEntries = entries.stream().sorted((e1, e2) -> {
+                            if (e1.getDateCreated() == null && e2.getDateCreated() == null) {
+                                return 0;
+                            }
+                            if (e1.getDateCreated() == null) {
+                                return 1;
+                            }
+                            if (e2.getDateCreated() == null) {
+                                return -1;
+                            }
+                            return e1.getDateCreated().compareTo(e2.getDateCreated());
+                        }).collect(Collectors.toList());
+                        for (int i = 0; i < sortedEntries.size(); i++) {
+                            if (sortedEntries.get(i).getId().equals(noteBook.getId())) {
+                                displayBean.setEntryNumber(i + 1);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
         return displayBean;
     }
@@ -312,7 +344,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         sampleDisplayBean.setSampleItemId(sampleItem.getId()); // Store SampleItem ID
         sampleDisplayBean
                 .setSampleType(typeOfSampleService.getNameForTypeOfSampleId(sampleItem.getTypeOfSample().getId()));
-        sampleDisplayBean.setCollectionDate(DateUtil.convertTimestampToStringDate(sampleItem.getLastupdated()));
+        sampleDisplayBean.setCollectionDate(DateUtil.convertTimestampToStringDate(sampleItem.getCollectionDate()));
         sampleDisplayBean.setVoided(sampleItem.isVoided());
         sampleDisplayBean.setVoidReason(sampleItem.getVoidReason());
         sampleDisplayBean.setExternalId(sampleItem.getExternalId());
@@ -714,6 +746,64 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         // Also check for "child sample" in title since routing is combined with child
         // sample creation
         return title.contains("child sample");
+    }
+
+    @Override
+    @Transactional
+    public Integer attachFile(Integer notebookId, byte[] fileData, String fileName, String fileType, String sysUserId) {
+        if (notebookId == null) {
+            throw new IllegalArgumentException("Notebook ID is required");
+        }
+        if (fileData == null || fileData.length == 0) {
+            throw new IllegalArgumentException("File data is required");
+        }
+        if (fileName == null || fileName.isBlank()) {
+            throw new IllegalArgumentException("File name is required");
+        }
+
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId);
+        }
+
+        // Create NoteBookFile record
+        NoteBookFile file = new NoteBookFile();
+        file.setNotebook(notebook);
+        file.setFileData(fileData);
+        file.setFileName(fileName);
+        file.setFileType(fileType != null ? fileType : "application/octet-stream");
+
+        // Initialize files list if needed
+        if (notebook.getFiles() == null) {
+            notebook.setFiles(new ArrayList<>());
+        }
+        notebook.getFiles().add(file);
+
+        // Set sysUserId for audit trail
+        if (sysUserId != null) {
+            notebook.setSysUserId(sysUserId);
+        }
+
+        // Update notebook which will cascade to NoteBookFile
+        update(notebook);
+
+        return file.getId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NoteBookFile> getFiles(Integer notebookId) {
+        if (notebookId == null) {
+            return new ArrayList<>();
+        }
+
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            return new ArrayList<>();
+        }
+
+        Hibernate.initialize(notebook.getFiles());
+        return notebook.getFiles() != null ? notebook.getFiles() : new ArrayList<>();
     }
 
 }

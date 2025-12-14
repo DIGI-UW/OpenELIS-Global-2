@@ -449,6 +449,33 @@ function ResultCompilationPage({
     );
   };
 
+  // Get result summary from sample data - prioritize actual test results
+  const getResultSummary = (sample) => {
+    if (!sample?.data) return "-";
+
+    const data = sample.data;
+
+    // Priority 1: Look for the "result" key (from Analysis/Result tables)
+    if (data.result) {
+      const result = String(data.result);
+      return result.length > 100 ? result.substring(0, 97) + "..." : result;
+    }
+
+    // Priority 2: Look for analyzerResult (from analyzer import)
+    if (data.analyzerResult) {
+      const result = String(data.analyzerResult);
+      return result.length > 100 ? result.substring(0, 97) + "..." : result;
+    }
+
+    // Priority 3: Look for resultValue (from analyzer import)
+    if (data.resultValue) {
+      const result = String(data.resultValue);
+      return result.length > 100 ? result.substring(0, 97) + "..." : result;
+    }
+
+    return "-";
+  };
+
   // Calculate progress percentage
   const progressPercentage =
     validationSummary.total > 0
@@ -653,9 +680,10 @@ function ResultCompilationPage({
         {filteredSamples.length > 0 ? (
           <DataTable
             rows={filteredSamples.map((sample) => ({
-              id: sample.id,
+              id: String(sample.id),
               externalId: sample.externalId || "-",
               sampleType: sample.sampleType || "-",
+              result: getResultSummary(sample),
               pageStatus: sample.pageStatus || "-",
               validationStatus: sample.validationStatus,
               validationDisplayName: sample.validationDisplayName,
@@ -682,6 +710,13 @@ function ResultCompilationPage({
                 header: intl.formatMessage({
                   id: "notebook.compilation.column.sampleType",
                   defaultMessage: "Sample Type",
+                }),
+              },
+              {
+                key: "result",
+                header: intl.formatMessage({
+                  id: "notebook.compilation.column.result",
+                  defaultMessage: "Result",
                 }),
               },
               {
@@ -714,55 +749,104 @@ function ResultCompilationPage({
               getTableProps,
               getHeaderProps,
               getRowProps,
-              getSelectionProps,
-            }) => (
-              <TableContainer>
-                <Table {...getTableProps()}>
-                  <TableHead>
-                    <TableRow>
-                      <TableSelectAll {...getSelectionProps()} />
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((row) => {
-                      const sample = filteredSamples.find(
-                        (s) => s.id === row.id,
-                      );
-                      return (
-                        <TableRow key={row.id} {...getRowProps({ row })}>
-                          <TableSelectRow
-                            {...getSelectionProps({ row })}
-                            checked={selectedSampleIds.includes(row.id)}
-                            onChange={() => {
-                              setSelectedSampleIds((prev) =>
-                                prev.includes(row.id)
-                                  ? prev.filter((id) => id !== row.id)
-                                  : [...prev, row.id],
-                              );
-                            }}
-                          />
-                          {row.cells.map((cell) => (
-                            <TableCell key={cell.id}>
-                              {cell.info.header === "validationStatus"
-                                ? getValidationTag(sample)
-                                : cell.value}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+            }) => {
+              // Calculate selection state for the current filtered rows
+              const allRowIds = rows.map((row) => row.id);
+              const allSelected =
+                allRowIds.length > 0 &&
+                allRowIds.every((id) => selectedSampleIds.includes(id));
+              const someSelected =
+                !allSelected &&
+                allRowIds.some((id) => selectedSampleIds.includes(id));
+
+              // Handle select all toggle
+              const handleSelectAll = () => {
+                if (allSelected) {
+                  // Deselect all visible rows
+                  setSelectedSampleIds((prev) =>
+                    prev.filter((id) => !allRowIds.includes(id)),
+                  );
+                } else {
+                  // Select all visible rows (merge with existing selections)
+                  setSelectedSampleIds((prev) => {
+                    const newSet = new Set(prev);
+                    allRowIds.forEach((id) => newSet.add(id));
+                    return Array.from(newSet);
+                  });
+                }
+              };
+
+              // Handle individual row selection toggle
+              const handleRowSelect = (rowId) => {
+                setSelectedSampleIds((prev) =>
+                  prev.includes(rowId)
+                    ? prev.filter((id) => id !== rowId)
+                    : [...prev, rowId],
+                );
+              };
+
+              return (
+                <TableContainer>
+                  <Table {...getTableProps()}>
+                    <TableHead>
+                      <TableRow>
+                        <TableSelectAll
+                          id="compilation-select-all"
+                          name="compilation-select-all"
+                          checked={allSelected}
+                          indeterminate={someSelected}
+                          onSelect={handleSelectAll}
+                          ariaLabel={intl.formatMessage({
+                            id: "notebook.compilation.selectAll",
+                            defaultMessage: "Select all samples",
+                          })}
+                        />
+                        {headers.map((header) => (
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rows.map((row) => {
+                        const sample = filteredSamples.find(
+                          (s) => String(s.id) === row.id,
+                        );
+                        const isSelected = selectedSampleIds.includes(row.id);
+                        return (
+                          <TableRow key={row.id} {...getRowProps({ row })}>
+                            <TableSelectRow
+                              id={`compilation-select-row-${row.id}`}
+                              name={`compilation-select-row-${row.id}`}
+                              checked={isSelected}
+                              onSelect={() => handleRowSelect(row.id)}
+                              ariaLabel={intl.formatMessage(
+                                {
+                                  id: "notebook.compilation.selectRow",
+                                  defaultMessage: "Select sample {id}",
+                                },
+                                { id: row.id },
+                              )}
+                            />
+                            {row.cells.map((cell) => (
+                              <TableCell key={cell.id}>
+                                {cell.info.header === "validationStatus"
+                                  ? getValidationTag(sample)
+                                  : cell.value}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              );
+            }}
           </DataTable>
         ) : (
           <div className="empty-state">

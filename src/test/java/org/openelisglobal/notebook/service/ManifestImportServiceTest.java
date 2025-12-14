@@ -10,17 +10,22 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.form.ManifestImportForm;
 import org.openelisglobal.notebook.service.ManifestImportService.ManifestImportResult;
 import org.openelisglobal.notebook.service.ManifestImportService.ManifestRow;
 import org.openelisglobal.notebook.service.ManifestImportService.ParseError;
 import org.openelisglobal.notebook.service.ManifestImportService.ParsedManifest;
+import org.openelisglobal.notebook.service.NotebookEntryService;
+import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.sample.service.SampleService;
@@ -33,7 +38,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
  * Unit tests for ManifestImportService (User Story 2). Tests CSV parsing,
  * sample type validation, and bulk sample creation.
  */
-@RunWith(MockitoJUnitRunner.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class ManifestImportServiceTest {
 
     @Mock
@@ -46,10 +51,16 @@ public class ManifestImportServiceTest {
     private SampleItemService sampleItemService;
 
     @Mock
+    private NotebookEntryService notebookEntryService;
+
+    @Mock
     private NoteBookService noteBookService;
 
     @Mock
     private NotebookSampleEntryService notebookSampleEntryService;
+
+    @Mock
+    private IStatusService statusService;
 
     @InjectMocks
     private ManifestImportServiceImpl manifestImportService;
@@ -81,6 +92,10 @@ public class ManifestImportServiceTest {
             pages.add(page);
         }
         testNotebook.setPages(pages);
+
+        NotebookEntry entry = new NotebookEntry();
+        when(notebookEntryService.getMatch(eq("id"), any())).thenReturn(Optional.of(entry));
+        when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("20");
     }
 
     // =====================================================================
@@ -409,6 +424,7 @@ public class ManifestImportServiceTest {
         ParsedManifest manifest = new ParsedManifest(rows, new ArrayList<>());
 
         when(noteBookService.get(999)).thenReturn(null);
+        when(notebookEntryService.getMatch("id", 999)).thenReturn(Optional.empty());
 
         ManifestImportResult result = manifestImportService.createSamplesForEntry(999, manifest, "testUser");
 

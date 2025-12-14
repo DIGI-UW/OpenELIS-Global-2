@@ -132,7 +132,9 @@ public class NotebookPageSampleServiceTest {
     }
 
     /**
-     * Test: bulkUpdateStatus processes samples in batches
+     * Test: bulkUpdateStatus processes samples in batches. When NotebookPageSample
+     * records don't exist, the service creates them dynamically. Total updated =
+     * DAO updates + newly inserted records.
      */
     @Test
     public void testBulkUpdateStatus_ProcessesInBatches() {
@@ -145,15 +147,25 @@ public class NotebookPageSampleServiceTest {
         String userId = "1";
 
         when(systemUserService.get(userId)).thenReturn(testUser);
+        // First batch updates 50 existing records, second batch updates 25 existing
+        // records
         when(baseObjectDAO.bulkUpdateStatus(eq(pageId), anyList(), eq(Status.IN_PROGRESS))).thenReturn(50) // First
                                                                                                            // batch
                 .thenReturn(25); // Second batch
+        // Mock getPage to handle cases where records need to be created
+        when(noteBookService.getPage(pageId)).thenReturn(testPage);
+        // Mock that no existing records are found, so new ones are created
+        // (returns null means record doesn't exist for that sample)
+        when(baseObjectDAO.getByPageIdAndSampleItemId(eq(pageId), anyInt())).thenReturn(null);
 
         // Execute
         int updated = service.bulkUpdateStatus(pageId, sampleIds, Status.IN_PROGRESS, userId);
 
-        // Verify
-        assertEquals(75, updated);
+        // Verify:
+        // - 75 from bulkUpdateStatus (50 + 25)
+        // - 75 from insert (new records created for each sample since they don't
+        // exist)
+        assertEquals(150, updated);
         verify(baseObjectDAO, times(2)).bulkUpdateStatus(eq(pageId), anyList(), eq(Status.IN_PROGRESS));
     }
 
@@ -240,10 +252,12 @@ public class NotebookPageSampleServiceTest {
     }
 
     /**
-     * Test: createPageSamplesForNotebook creates samples for all pages
+     * Test: createPageSamplesForNotebook creates sample ONLY on the first page
+     * (T150 implementation - lazy creation, samples auto-created on next page when
+     * completed)
      */
     @Test
-    public void testCreatePageSamplesForNotebook_CreatesForAllPages() {
+    public void testCreatePageSamplesForNotebook_CreatesOnlyForFirstPage() {
         // Setup
         Integer notebookId = 1;
         Integer sampleItemId = 1000;
@@ -251,6 +265,9 @@ public class NotebookPageSampleServiceTest {
         NoteBookPage page2 = new NoteBookPage();
         page2.setId(2);
         page2.setTitle("Initial Processing");
+        page2.setOrder(2);
+
+        testPage.setOrder(1); // First page
 
         testNotebook.setPages(Arrays.asList(testPage, page2));
 
@@ -261,8 +278,8 @@ public class NotebookPageSampleServiceTest {
         // Execute
         service.createPageSamplesForNotebook(notebookId, sampleItemId);
 
-        // Verify - insert called for each page
-        verify(baseObjectDAO, times(2)).insert(any(NotebookPageSample.class));
+        // Verify - T150: insert called ONLY for first page (lazy creation)
+        verify(baseObjectDAO, times(1)).insert(any(NotebookPageSample.class));
     }
 
     /**

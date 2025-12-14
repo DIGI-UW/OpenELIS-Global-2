@@ -257,7 +257,11 @@ public class NotebookSampleEntryController extends BaseRestController {
                         List<SampleItem> children = sampleEntryService.getChildSamples(Integer.parseInt(sampleId));
                         for (SampleItem child : children) {
                             if (!includedSampleIds.contains(child.getId())) {
-                                Map<String, Object> childMap = buildSampleMap(child, null);
+                                // Look up the child's actual NotebookPageSample record for this page
+                                // to get the correct status (may be COMPLETED if inherited from parent)
+                                org.openelisglobal.notebook.valueholder.NotebookPageSample childNps = notebookPageSampleService
+                                        .getByPageIdAndSampleItemId(pageId, Integer.parseInt(child.getId()));
+                                Map<String, Object> childMap = buildSampleMap(child, childNps);
                                 childMaps.add(childMap);
                                 includedSampleIds.add(child.getId());
                             }
@@ -369,6 +373,13 @@ public class NotebookSampleEntryController extends BaseRestController {
         }
         if (sampleItem.getSample() != null) {
             sampleMap.put("accessionNumber", sampleItem.getSample().getAccessionNumber());
+        }
+        // Add collection date
+        if (sampleItem.getCollectionDate() != null) {
+            sampleMap.put("collectionDate", org.openelisglobal.common.util.DateUtil
+                    .convertTimestampToStringDate(sampleItem.getCollectionDate()));
+        } else {
+            sampleMap.put("collectionDate", null);
         }
 
         // Hierarchy information
@@ -784,14 +795,20 @@ public class NotebookSampleEntryController extends BaseRestController {
      * Get box layout showing occupied wells. T086: GET
      * /notebook/{id}/box/{boxId}/layout
      *
-     * @param notebookId the notebook ID
-     * @param boxId      the box ID
+     * Returns both notebook-specific routing AND global SampleStorageAssignment
+     * records to show a complete picture of occupied wells.
+     *
+     * @param notebookId    the notebook ID
+     * @param boxId         the box ID
+     * @param includeGlobal if true, include global SampleStorageAssignment records
+     *                      (default: true)
      * @return map of well coordinates to routing info
      */
     @GetMapping(value = "/{notebookId}/box/{boxId}/layout", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getBoxLayout(@PathVariable("notebookId") Integer notebookId,
-            @PathVariable("boxId") Integer boxId) {
+            @PathVariable("boxId") Integer boxId,
+            @RequestParam(required = false, defaultValue = "true") Boolean includeGlobal) {
 
         NoteBook notebook = noteBookService.get(notebookId);
         if (notebook == null) {
@@ -807,10 +824,39 @@ public class NotebookSampleEntryController extends BaseRestController {
         // Convert routing records to displayable format
         Map<String, Map<String, Object>> wells = new HashMap<>();
         for (Map.Entry<String, SampleRouting> entry : layout.entrySet()) {
-            wells.put(entry.getKey(), convertRoutingToMap(entry.getValue()));
+            Map<String, Object> wellInfo = convertRoutingToMap(entry.getValue());
+            wellInfo.put("source", "notebook"); // Mark as notebook-specific
+            wells.put(entry.getKey(), wellInfo);
         }
+
+        // Also include global SampleStorageAssignment records if requested
+        // This ensures we show ALL occupied positions, not just those in SampleRouting
+        if (Boolean.TRUE.equals(includeGlobal)) {
+            try {
+                org.openelisglobal.storage.dao.SampleStorageAssignmentDAO assignmentDAO = org.openelisglobal.spring.util.SpringContext
+                        .getBean(org.openelisglobal.storage.dao.SampleStorageAssignmentDAO.class);
+                Map<String, Map<String, String>> globalOccupied = assignmentDAO
+                        .getOccupiedCoordinatesWithSampleInfo(boxId);
+
+                for (Map.Entry<String, Map<String, String>> entry : globalOccupied.entrySet()) {
+                    String coord = entry.getKey();
+                    if (!wells.containsKey(coord)) {
+                        // Add global assignment that's not in notebook routing
+                        Map<String, Object> wellInfo = new HashMap<>();
+                        wellInfo.put("sampleItemId", entry.getValue().get("sampleItemId"));
+                        wellInfo.put("externalId", entry.getValue().get("externalId"));
+                        wellInfo.put("source", "global"); // Mark as global storage
+                        wells.put(coord, wellInfo);
+                    }
+                }
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getName(), "getBoxLayout",
+                        "Could not load global storage assignments: " + e.getMessage());
+            }
+        }
+
         result.put("wells", wells);
-        result.put("occupiedCount", layout.size());
+        result.put("occupiedCount", wells.size());
 
         return ResponseEntity.ok(result);
     }
@@ -974,25 +1020,46 @@ public class NotebookSampleEntryController extends BaseRestController {
             LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage", "Created " + storageAssignmentCount
                     + " SampleStorageAssignment records for notebook " + notebookId);
 
-            // Find the Storage page (Page 7) to update NotebookPageSample records
-            NoteBookPage storagePage = findStoragePageForNotebook(notebook);
-            if (storagePage != null) {
+            // Determine which page to update based on request.pageId
+            // If pageId is provided (from Routing page), update that page's samples as
+            // COMPLETED
+            // Otherwise, find the Storage page and update those samples
+            Integer targetPageId = request.getPageId();
+            NoteBookPage targetPage = null;
+
+            if (targetPageId != null) {
+                // Request came from a specific page (e.g., Routing page)
+                targetPage = noteBookService.getPage(targetPageId);
+            }
+
+            if (targetPage == null) {
+                // Fallback to Storage page (Page 7)
+                targetPage = findStoragePageForNotebook(notebook);
+            }
+
+            if (targetPage != null) {
                 // Update NotebookPageSample records with storage info and status
                 for (Integer sampleId : request.getSampleIds()) {
                     try {
                         org.openelisglobal.notebook.valueholder.NotebookPageSample nps = notebookPageSampleService
-                                .getByPageIdAndSampleItemId(storagePage.getId(), sampleId);
+                                .getByPageIdAndSampleItemId(targetPage.getId(), sampleId);
 
-                        // Auto-create if doesn't exist
-                        if (nps == null) {
-                            notebookPageSampleService.createPageSampleForPage(storagePage.getId(), sampleId,
+                        // Auto-create if doesn't exist (only for Storage page, not Routing page)
+                        if (nps == null && request.getPageId() == null) {
+                            notebookPageSampleService.createPageSampleForPage(targetPage.getId(), sampleId,
                                     org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS);
-                            nps = notebookPageSampleService.getByPageIdAndSampleItemId(storagePage.getId(), sampleId);
+                            nps = notebookPageSampleService.getByPageIdAndSampleItemId(targetPage.getId(), sampleId);
                         }
 
                         if (nps != null) {
-                            // Update status to IN_PROGRESS
-                            if (nps.getStatus() == org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.PENDING) {
+                            // If request came from Routing page, mark as COMPLETED (storage assigned)
+                            // Otherwise mark as IN_PROGRESS (for Storage page workflow)
+                            if (request.getPageId() != null) {
+                                nps.setStatus(
+                                        org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.COMPLETED);
+                                nps.setCompletedAt(new java.sql.Timestamp(System.currentTimeMillis()));
+                            } else if (nps
+                                    .getStatus() == org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.PENDING) {
                                 nps.setStatus(
                                         org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS);
                             }
@@ -1236,6 +1303,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         private String condition;
         private int retentionYears;
         private boolean reassign; // Flag to allow reassignment of already-assigned samples
+        private Integer pageId; // Notebook page ID for routing context
 
         public List<Integer> getSampleIds() {
             return sampleIds;
@@ -1321,6 +1389,14 @@ public class NotebookSampleEntryController extends BaseRestController {
 
         public void setReassign(boolean reassign) {
             this.reassign = reassign;
+        }
+
+        public Integer getPageId() {
+            return pageId;
+        }
+
+        public void setPageId(Integer pageId) {
+            this.pageId = pageId;
         }
     }
 

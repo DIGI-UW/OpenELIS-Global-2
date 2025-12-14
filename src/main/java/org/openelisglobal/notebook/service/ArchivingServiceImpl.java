@@ -253,30 +253,34 @@ public class ArchivingServiceImpl implements ArchivingService {
     }
 
     private TraceabilityCheck verifyWorkflowCompletion(Integer notebookId) {
+        // This check provides informational status about workflow progress.
+        // It is non-critical and does not block archiving.
+        // Samples being PENDING on a page is expected workflow behavior - they progress
+        // through pages as work is completed on each page.
+        //
+        // We simply report overall progress statistics rather than flagging "stuck"
+        // samples, since samples naturally have PENDING status on pages they haven't
+        // reached yet in the workflow.
+
         List<String> issues = new ArrayList<>();
 
         // Get progress for all pages
         List<NotebookPageSample> allPageSamples = notebookPageSampleService.getByNotebookId(notebookId);
 
-        // Group by page
-        Map<Integer, List<NotebookPageSample>> byPage = allPageSamples.stream()
-                .filter(ps -> ps.getNotebookPage() != null)
-                .collect(Collectors.groupingBy(ps -> ps.getNotebookPage().getId()));
-
-        for (Map.Entry<Integer, List<NotebookPageSample>> entry : byPage.entrySet()) {
-            List<NotebookPageSample> pageSamples = entry.getValue();
-            long pending = pageSamples.stream().filter(ps -> ps.getStatus() == NotebookPageSample.Status.PENDING)
-                    .count();
-
-            if (pending > 0) {
-                issues.add("Page " + entry.getKey() + " has " + pending + " pending samples");
-            }
+        if (allPageSamples.isEmpty()) {
+            issues.add("No samples found in notebook");
+            return new TraceabilityCheck("Workflow Completion", "Verify workflow has samples", false, false, issues);
         }
 
-        // Non-critical - workflow can be finalized with some pending samples
-        boolean passed = issues.isEmpty();
-        return new TraceabilityCheck("Workflow Completion", "Verify all workflow pages are complete", passed, false,
-                issues);
+        // Count completed vs total across all pages
+        long totalRecords = allPageSamples.size();
+        long completedRecords = allPageSamples.stream()
+                .filter(ps -> ps.getStatus() == NotebookPageSample.Status.COMPLETED).count();
+
+        // This is informational - having pending samples is normal workflow behavior
+        // The check passes as long as there are samples in the notebook
+        return new TraceabilityCheck("Workflow Completion", "Verify workflow progress (" + completedRecords + "/"
+                + totalRecords + " page-sample records completed)", true, false, issues);
     }
 
     @Override
