@@ -694,19 +694,19 @@ SELECT setval('clinlims.inventory_usage_seq', (SELECT COALESCE(MAX(id), 0) FROM 
 -- Get reference table IDs dynamically
 DO $$
 DECLARE
-    v_item_ref_table_id VARCHAR;
-    v_lot_ref_table_id VARCHAR;
-    v_location_ref_table_id VARCHAR;
+    v_item_ref_table_id NUMERIC;
+    v_lot_ref_table_id NUMERIC;
+    v_location_ref_table_id NUMERIC;
 BEGIN
-    SELECT id::TEXT INTO v_item_ref_table_id
+    SELECT id INTO v_item_ref_table_id
     FROM clinlims.reference_tables
     WHERE name = 'inventory_item';
 
-    SELECT id::TEXT INTO v_lot_ref_table_id
+    SELECT id INTO v_lot_ref_table_id
     FROM clinlims.reference_tables
     WHERE name = 'inventory_lot';
 
-    SELECT id::TEXT INTO v_location_ref_table_id
+    SELECT id INTO v_location_ref_table_id
     FROM clinlims.reference_tables
     WHERE name = 'inventory_storage_location';
 
@@ -715,117 +715,117 @@ BEGIN
     VALUES
     -- Item 2000: COVID-19 PCR Master Mix created
     (nextval('clinlims.history_seq'), '2000', v_item_ref_table_id,
-     CURRENT_DATE - INTERVAL '6 months', 'INSERT',
+     CURRENT_DATE - INTERVAL '6 months', 'I',
      E'<field name="name"><new>COVID-19 PCR Master Mix</new></field><field name="itemType"><new>REAGENT</new></field><field name="manufacturer"><new>ThermoFisher Scientific</new></field><field name="catalogNumber"><new>TF-COV-MM-500</new></field><field name="isActive"><new>true</new></field>'::bytea,
      '1'),
 
     -- Item 2001: HIV RNA Extraction Kit created
     (nextval('clinlims.history_seq'), '2001', v_item_ref_table_id,
-     CURRENT_DATE - INTERVAL '6 months', 'INSERT',
+     CURRENT_DATE - INTERVAL '6 months', 'I',
      E'<field name="name"><new>HIV RNA Extraction Kit</new></field><field name="itemType"><new>REAGENT</new></field><field name="manufacturer"><new>Qiagen</new></field><field name="catalogNumber"><new>QIA-HIV-96</new></field><field name="isActive"><new>true</new></field>'::bytea,
      '1'),
 
     -- ===========LOT INSERT Audits (Lot Receipt) ==========
     -- Lot 3000: COVID PCR lot received
     (nextval('clinlims.history_seq'), '3000', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '2 months', 'INSERT',
-     E'<field name="lotNumber"><new>COV-PCR-2024-001</new></field><field name="initialQuantity"><new>50.0</new></field><field name="currentQuantity"><new>50.0</new></field><field name="expirationDate"><new>' || (CURRENT_DATE + INTERVAL '6 months')::TEXT || '</new></field><field name="qcStatus"><new>PASSED</new></field><field name="status"><new>ACTIVE</new></field>'::bytea,
+     CURRENT_DATE - INTERVAL '2 months', 'I',
+     (E'<field name="lotNumber"><new>COV-PCR-2024-001</new></field><field name="initialQuantity"><new>50.0</new></field><field name="currentQuantity"><new>50.0</new></field><field name="expirationDate"><new>' || (CURRENT_DATE + INTERVAL '6 months')::TEXT || '</new></field><field name="qcStatus"><new>PASSED</new></field><field name="status"><new>ACTIVE</new></field>')::bytea,
      '1'),
 
     -- Lot 3003: HIV extraction kit lot received
     (nextval('clinlims.history_seq'), '3003', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '3 months', 'INSERT',
-     E'<field name="lotNumber"><new>HIV-EXT-2024-078</new></field><field name="initialQuantity"><new>100.0</new></field><field name="currentQuantity"><new>100.0</new></field><field name="expirationDate"><new>' || (CURRENT_DATE + INTERVAL '1 year')::TEXT || '</new></field><field name="qcStatus"><new>PASSED</new></field><field name="status"><new>ACTIVE</new></field>'::bytea,
+     CURRENT_DATE - INTERVAL '3 months', 'I',
+     (E'<field name="lotNumber"><new>HIV-EXT-2024-078</new></field><field name="initialQuantity"><new>100.0</new></field><field name="currentQuantity"><new>100.0</new></field><field name="expirationDate"><new>' || (CURRENT_DATE + INTERVAL '1 year')::TEXT || '</new></field><field name="qcStatus"><new>PASSED</new></field><field name="status"><new>ACTIVE</new></field>')::bytea,
      '1'),
 
     -- ========== LOT UPDATE Audits (Lot Opening) ==========
     -- Lot 3000: Opened for use
     (nextval('clinlims.history_seq'), '3000', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '15 days', 'UPDATE',
-     E'<field name="status"><old>ACTIVE</old><new>IN_USE</new></field><field name="dateOpened"><old></old><new>' || (CURRENT_DATE - INTERVAL '15 days')::TEXT || '</new></field><field name="calculatedExpiryAfterOpening"><old></old><new>' || (CURRENT_DATE + INTERVAL '75 days')::TEXT || '</new></field>'::bytea,
+     CURRENT_DATE - INTERVAL '15 days', 'U',
+     (E'<field name="status"><old>ACTIVE</old><new>IN_USE</new></field><field name="dateOpened"><old></old><new>' || (CURRENT_DATE - INTERVAL '15 days')::TEXT || '</new></field><field name="calculatedExpiryAfterOpening"><old></old><new>' || (CURRENT_DATE + INTERVAL '75 days')::TEXT || '</new></field>')::bytea,
      '1'),
 
     -- Lot 3003: Opened for use
     (nextval('clinlims.history_seq'), '3003', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '1 month', 'UPDATE',
-     E'<field name="status"><old>ACTIVE</old><new>IN_USE</new></field><field name="dateOpened"><old></old><new>' || (CURRENT_DATE - INTERVAL '1 month')::TEXT || '</new></field><field name="calculatedExpiryAfterOpening"><old></old><new>' || (CURRENT_DATE + INTERVAL '5 months')::TEXT || '</new></field>'::bytea,
+     CURRENT_DATE - INTERVAL '1 month', 'U',
+     (E'<field name="status"><old>ACTIVE</old><new>IN_USE</new></field><field name="dateOpened"><old></old><new>' || (CURRENT_DATE - INTERVAL '1 month')::TEXT || '</new></field><field name="calculatedExpiryAfterOpening"><old></old><new>' || (CURRENT_DATE + INTERVAL '5 months')::TEXT || '</new></field>')::bytea,
      '1'),
 
     -- ========== LOT UPDATE Audits (QC Status Changes) ==========
     -- Lot 3003: QC approved
     (nextval('clinlims.history_seq'), '3003', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '11 weeks', 'UPDATE',
+     CURRENT_DATE - INTERVAL '11 weeks', 'U',
      E'<field name="qcStatus"><old>PENDING</old><new>PASSED</new></field>'::bytea,
      '1'),
 
     -- Lot 3005: QC failed
     (nextval('clinlims.history_seq'), '3005', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '7 weeks', 'UPDATE',
+     CURRENT_DATE - INTERVAL '7 weeks', 'U',
      E'<field name="qcStatus"><old>PENDING</old><new>FAILED</new></field><field name="status"><old>ACTIVE</old><new>QUARANTINED</new></field>'::bytea,
      '1'),
 
     -- ========== LOT UPDATE Audits (Status Changes) ==========
     -- Lot 3006: Quarantined
     (nextval('clinlims.history_seq'), '3006', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '2 weeks', 'UPDATE',
+     CURRENT_DATE - INTERVAL '2 weeks', 'U',
      E'<field name="status"><old>IN_USE</old><new>QUARANTINED</new></field><field name="qcStatus"><old>PASSED</old><new>QUARANTINED</new></field>'::bytea,
      '1'),
 
     -- Lot 3007: Fully consumed
     (nextval('clinlims.history_seq'), '3007', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '1 month', 'UPDATE',
+     CURRENT_DATE - INTERVAL '1 month', 'U',
      E'<field name="status"><old>IN_USE</old><new>CONSUMED</new></field><field name="currentQuantity"><old>80.0</old><new>0.0</new></field>'::bytea,
      '1'),
 
     -- Lot 3010: Expired
     (nextval('clinlims.history_seq'), '3010', v_lot_ref_table_id,
-     CURRENT_DATE, 'UPDATE',
+     CURRENT_DATE, 'U',
      E'<field name="status"><old>IN_USE</old><new>EXPIRED</new></field>'::bytea,
      '1'),
 
     -- ========== LOT UPDATE Audits (Quantity Adjustments) ==========
     -- Lot 3008: Inventory adjustment (spill)
     (nextval('clinlims.history_seq'), '3008', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '1 week', 'UPDATE',
+     CURRENT_DATE - INTERVAL '1 week', 'U',
      E'<field name="currentQuantity"><old>170.0</old><new>165.0</new></field>'::bytea,
      '1'),
 
     -- ========== LOT UPDATE Audits (Disposal) ==========
     -- Lot 3036: Disposed due to expiration
     (nextval('clinlims.history_seq'), '3036', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '2 months', 'UPDATE',
+     CURRENT_DATE - INTERVAL '2 months', 'U',
      E'<field name="status"><old>EXPIRED</old><new>DISPOSED</new></field><field name="currentQuantity"><old>23.0</old><new>0.0</new></field>'::bytea,
      '1'),
 
     -- Lot 3037: Disposed due to QC failure
     (nextval('clinlims.history_seq'), '3037', v_lot_ref_table_id,
-     CURRENT_DATE - INTERVAL '18 weeks', 'UPDATE',
+     CURRENT_DATE - INTERVAL '18 weeks', 'U',
      E'<field name="status"><old>ACTIVE</old><new>DISPOSED</new></field><field name="currentQuantity"><old>30.0</old><new>0.0</new></field>'::bytea,
      '1'),
 
     -- ========== ITEM UPDATE Audits ==========
     -- Item 2001: Low stock threshold increased
     (nextval('clinlims.history_seq'), '2001', v_item_ref_table_id,
-     CURRENT_DATE - INTERVAL '1 month', 'UPDATE',
+     CURRENT_DATE - INTERVAL '1 month', 'U',
      E'<field name="lowStockThreshold"><old>5</old><new>10</new></field>'::bytea,
      '1'),
 
     -- Item 2010: Alert threshold adjusted for malaria season
     (nextval('clinlims.history_seq'), '2010', v_item_ref_table_id,
-     CURRENT_DATE - INTERVAL '2 weeks', 'UPDATE',
+     CURRENT_DATE - INTERVAL '2 weeks', 'U',
      E'<field name="lowStockThreshold"><old>25</old><new>50</new></field>'::bytea,
      '1'),
 
     -- ========== LOCATION INSERT Audits ==========
     -- Location 1000: Main Laboratory created
     (nextval('clinlims.history_seq'), '1000', v_location_ref_table_id,
-     CURRENT_DATE - INTERVAL '1 year', 'INSERT',
+     CURRENT_DATE - INTERVAL '1 year', 'I',
      E'<field name="name"><new>Main Laboratory</new></field><field name="locationCode"><new>MAIN</new></field><field name="locationType"><new>ROOM</new></field><field name="isActive"><new>true</new></field>'::bytea,
      '1'),
 
     -- Location 1001: Ultra-Low Freezer created
     (nextval('clinlims.history_seq'), '1001', v_location_ref_table_id,
-     CURRENT_DATE - INTERVAL '1 year', 'INSERT',
+     CURRENT_DATE - INTERVAL '1 year', 'I',
      E'<field name="name"><new>Ultra-Low Freezer A1</new></field><field name="locationCode"><new>MAIN-FRZ01</new></field><field name="locationType"><new>FREEZER</new></field><field name="parentLocationId"><new>1000</new></field><field name="temperatureMin"><new>-85.0</new></field><field name="temperatureMax"><new>-75.0</new></field><field name="isActive"><new>true</new></field>'::bytea,
      '1');
 
@@ -859,7 +859,7 @@ BEGIN
 
     -- Count generic audit trail entries for inventory entities
     SELECT COUNT(*) INTO v_audit_count FROM clinlims.history h
-    JOIN clinlims.reference_tables rt ON h.reference_table = rt.id::TEXT
+    JOIN clinlims.reference_tables rt ON h.reference_table = rt.id
     WHERE rt.name IN ('inventory_item', 'inventory_lot', 'inventory_storage_location');
 
     -- Calculate dashboard metrics

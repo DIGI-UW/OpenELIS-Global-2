@@ -98,9 +98,6 @@ public class InventoryAuditLogRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Transform History entity to frontend-compatible audit log format
-     */
     private Map<String, Object> transformHistoryToAuditLog(History history, String entityType) {
         Map<String, Object> auditLog = new HashMap<>();
 
@@ -108,19 +105,16 @@ public class InventoryAuditLogRestController extends BaseRestController {
         auditLog.put("timestamp", history.getTimestamp());
         auditLog.put("activity", history.getActivity()); // INSERT, UPDATE, DELETE
 
-        // Get user information
         String userName = getUserName(history.getSysUserId());
         auditLog.put("performedByUser", userName);
         auditLog.put("sysUserId", history.getSysUserId());
 
-        // Parse XML changes
         String changesXml = history.getChanges() != null ? new String(history.getChanges()) : null;
         Map<String, Map<String, String>> parsedChanges = parseXmlChanges(changesXml);
 
         auditLog.put("changes", parsedChanges);
         auditLog.put("changesXml", changesXml);
 
-        // Generate human-readable summary
         String summary = generateChangeSummary(parsedChanges, history.getActivity(), entityType);
         auditLog.put("summary", summary);
 
@@ -128,8 +122,13 @@ public class InventoryAuditLogRestController extends BaseRestController {
     }
 
     /**
-     * Parse XML changes into structured format Returns Map of field -> {old, new}
-     * values
+     * Parses audit trail XML changes into a structured map format. Supports two XML
+     * formats: 1. Standard format: &lt;field
+     * name="fieldName"&gt;&lt;old&gt;...&lt;/old&gt;&lt;new&gt;...&lt;/new&gt;&lt;/field&gt;
+     * 2. Legacy format: &lt;fieldName&gt;value&lt;/fieldName&gt;
+     *
+     * @param xml the XML string containing change records
+     * @return Map of field names to their old/new values, empty map if no changes
      */
     private Map<String, Map<String, String>> parseXmlChanges(String xml) {
         Map<String, Map<String, String>> changes = new HashMap<>();
@@ -140,44 +139,80 @@ public class InventoryAuditLogRestController extends BaseRestController {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
-            Document doc = builder.parse(new InputSource(new StringReader("<changes>" + xml + "</changes>")));
+            Document doc = builder.parse(new InputSource(new StringReader("<root>" + xml + "</root>")));
 
-            NodeList fieldNodes = doc.getElementsByTagName("field");
-            for (int i = 0; i < fieldNodes.getLength(); i++) {
-                Element fieldElement = (Element) fieldNodes.item(i);
-                String fieldName = fieldElement.getAttribute("name");
+            Element root = doc.getDocumentElement();
+            NodeList childNodes = root.getChildNodes();
 
-                Map<String, String> fieldChange = new HashMap<>();
+            for (int i = 0; i < childNodes.getLength(); i++) {
+                if (childNodes.item(i).getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {
+                    Element fieldElement = (Element) childNodes.item(i);
+                    String fieldName = fieldElement.getTagName();
 
-                NodeList oldNodes = fieldElement.getElementsByTagName("old");
-                if (oldNodes.getLength() > 0) {
-                    fieldChange.put("old", oldNodes.item(0).getTextContent());
+                    Map<String, String> fieldChange = new HashMap<>();
+
+                    if (fieldName.equals("field") && fieldElement.hasAttribute("name")) {
+                        fieldName = fieldElement.getAttribute("name");
+
+                        NodeList oldNodes = fieldElement.getElementsByTagName("old");
+                        if (oldNodes.getLength() > 0) {
+                            fieldChange.put("old", oldNodes.item(0).getTextContent());
+                        } else {
+                            fieldChange.put("old", "");
+                        }
+
+                        NodeList newNodes = fieldElement.getElementsByTagName("new");
+                        if (newNodes.getLength() > 0) {
+                            fieldChange.put("new", newNodes.item(0).getTextContent());
+                        } else {
+                            fieldChange.put("new", "");
+                        }
+
+                        changes.put(fieldName, fieldChange);
+                    } else {
+                        String value = fieldElement.getTextContent();
+                        if (value != null && !value.trim().isEmpty()) {
+                            fieldChange.put("old", value);
+                            fieldChange.put("new", "");
+                            changes.put(fieldName, fieldChange);
+                        }
+                    }
                 }
-
-                NodeList newNodes = fieldElement.getElementsByTagName("new");
-                if (newNodes.getLength() > 0) {
-                    fieldChange.put("new", newNodes.item(0).getTextContent());
-                }
-
-                changes.put(fieldName, fieldChange);
             }
         } catch (Exception e) {
-            LogEvent.logError(e);
+            LogEvent.logError(this.getClass().getSimpleName(), "parseXmlChanges",
+                    "Error parsing XML changes: " + e.getMessage() + ", XML was: " + xml);
         }
 
         return changes;
     }
 
-    /**
-     * Generate human-readable summary of changes
-     */
     private String generateChangeSummary(Map<String, Map<String, String>> changes, String activity, String entityType) {
         if (changes.isEmpty()) {
-            return activity + " " + entityType.toLowerCase();
+            return switch (activity) {
+            case "I" -> "Created new " + entityType.toLowerCase();
+            case "U" -> "Updated " + entityType.toLowerCase() + " (no field details available)";
+            case "D" -> "Deleted " + entityType.toLowerCase();
+            default -> activity + " " + entityType.toLowerCase();
+            };
+        }
+
+        String primaryChange = getKeyChangeDescription(changes, entityType);
+        if (primaryChange != null) {
+            return primaryChange;
         }
 
         List<String> changeSummaries = new ArrayList<>();
+        int maxSummaries = 3;
+        int count = 0;
+
         for (Map.Entry<String, Map<String, String>> entry : changes.entrySet()) {
+            if (count >= maxSummaries) {
+                int remaining = changes.size() - maxSummaries;
+                changeSummaries.add("+" + remaining + " more");
+                break;
+            }
+
             String field = entry.getKey();
             Map<String, String> values = entry.getValue();
             String oldValue = values.get("old");
@@ -185,30 +220,91 @@ public class InventoryAuditLogRestController extends BaseRestController {
 
             String fieldLabel = formatFieldName(field);
             if (oldValue != null && newValue != null) {
-                changeSummaries.add(fieldLabel + ": " + oldValue + " → " + newValue);
+                changeSummaries.add(fieldLabel + ": " + truncate(oldValue, 20) + " → " + truncate(newValue, 20));
             } else if (newValue != null) {
-                changeSummaries.add(fieldLabel + " set to " + newValue);
+                changeSummaries.add(fieldLabel + " set to " + truncate(newValue, 20));
             } else if (oldValue != null) {
                 changeSummaries.add(fieldLabel + " cleared");
             }
+            count++;
         }
 
         return String.join(", ", changeSummaries);
     }
 
-    /**
-     * Format field name for display (camelCase -> Title Case)
-     */
+    private String getKeyChangeDescription(Map<String, Map<String, String>> changes, String entityType) {
+        if ("LOT".equals(entityType)) {
+            if (changes.containsKey("currentQuantity")) {
+                Map<String, String> qtyChange = changes.get("currentQuantity");
+                String oldQty = qtyChange.get("old");
+                String newQty = qtyChange.get("new");
+                return "Updated quantity: " + oldQty + " → " + newQty;
+            }
+            if (changes.containsKey("qcStatus")) {
+                Map<String, String> qcChange = changes.get("qcStatus");
+                String newStatus = qcChange.get("new");
+                return "QC status changed to " + newStatus;
+            }
+            if (changes.containsKey("status")) {
+                Map<String, String> statusChange = changes.get("status");
+                String newStatus = statusChange.get("new");
+                return "Lot status changed to " + newStatus;
+            }
+        }
+
+        if ("ITEM".equals(entityType)) {
+            if (changes.containsKey("isActive")) {
+                Map<String, String> activeChange = changes.get("isActive");
+                String newValue = activeChange.get("new");
+                return "Y".equals(newValue) ? "Activated item" : "Deactivated item";
+            }
+            if (changes.containsKey("itemName")) {
+                Map<String, String> nameChange = changes.get("itemName");
+                return "Renamed to " + nameChange.get("new");
+            }
+        }
+
+        if ("LOCATION".equals(entityType)) {
+            if (changes.containsKey("name")) {
+                Map<String, String> nameChange = changes.get("name");
+                return "Renamed to " + nameChange.get("new");
+            }
+        }
+
+        if ("USAGE".equals(entityType)) {
+            if (changes.containsKey("quantityUsed")) {
+                Map<String, String> qtyChange = changes.get("quantityUsed");
+                return "Recorded usage: " + qtyChange.get("new") + " units";
+            }
+        }
+
+        if ("TRANSACTION".equals(entityType)) {
+            if (changes.containsKey("transactionType")) {
+                Map<String, String> typeChange = changes.get("transactionType");
+                String txType = typeChange.get("new");
+                if (changes.containsKey("quantityChange")) {
+                    String qtyChange = changes.get("quantityChange").get("new");
+                    return txType + " transaction: " + qtyChange + " units";
+                }
+                return txType + " transaction recorded";
+            }
+        }
+
+        return null;
+    }
+
+    private String truncate(String str, int maxLength) {
+        if (str == null || str.length() <= maxLength) {
+            return str;
+        }
+        return str.substring(0, maxLength - 3) + "...";
+    }
+
     private String formatFieldName(String fieldName) {
-        // Convert camelCase to spaces
         String spaced = fieldName.replaceAll("([A-Z])", " $1").trim();
-        // Capitalize first letter
         return spaced.substring(0, 1).toUpperCase() + spaced.substring(1);
     }
 
-    /**
-     * Get user name from user ID
-     */
     private String getUserName(String userId) {
         if (userId == null || userId.trim().isEmpty()) {
             return "System";
@@ -257,13 +353,14 @@ public class InventoryAuditLogRestController extends BaseRestController {
 
             List<Map<String, Object>> allLogs = new ArrayList<>();
 
-            // Define all inventory tables to query
+            // Define all inventory tables to query (must match reference_tables.name
+            // exactly)
             Map<String, String> inventoryTables = new HashMap<>();
-            inventoryTables.put("INVENTORY_ITEM", "ITEM");
-            inventoryTables.put("INVENTORY_LOT", "LOT");
-            inventoryTables.put("INVENTORY_STORAGE_LOCATION", "LOCATION");
-            inventoryTables.put("INVENTORY_USAGE", "USAGE");
-            inventoryTables.put("INVENTORY_TRANSACTION", "TRANSACTION");
+            inventoryTables.put("inventory_item", "ITEM");
+            inventoryTables.put("inventory_lot", "LOT");
+            inventoryTables.put("inventory_storage_location", "LOCATION");
+            inventoryTables.put("inventory_usage", "USAGE");
+            inventoryTables.put("inventory_transaction", "TRANSACTION");
 
             // Parse date filters if provided
             Timestamp startTimestamp = null;
@@ -358,8 +455,9 @@ public class InventoryAuditLogRestController extends BaseRestController {
         try {
             Map<String, Object> stats = new HashMap<>();
 
-            String[] tables = { "INVENTORY_ITEM", "INVENTORY_LOT", "INVENTORY_STORAGE_LOCATION", "INVENTORY_USAGE",
-                    "INVENTORY_TRANSACTION" };
+            // Must match reference_tables.name exactly (lowercase)
+            String[] tables = { "inventory_item", "inventory_lot", "inventory_storage_location", "inventory_usage",
+                    "inventory_transaction" };
 
             int totalLogs = 0;
             Map<String, Integer> countByTable = new HashMap<>();
