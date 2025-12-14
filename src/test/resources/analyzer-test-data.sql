@@ -203,30 +203,25 @@ ON CONFLICT (id) DO NOTHING;
 -- Maps analyzer units to OpenELIS units with optional conversion factors.
 -- Reference: specs/004-astm-analyzer-mapping/spec.md FR-004
 
-INSERT INTO unit_mapping (id, analyzer_field_id, analyzer_unit, openelis_unit, conversion_factor, is_default, sys_user_id, last_updated)
+-- Note: unique constraint on (analyzer_field_id, analyzer_unit) - each source unit maps to ONE target
+INSERT INTO unit_mapping (id, analyzer_field_id, analyzer_unit, openelis_unit, conversion_factor, reject_if_mismatch, sys_user_id, last_updated)
 VALUES
-  -- Glucose unit mappings (FIELD-014) - common conversions
-  ('UNIT-001', 'FIELD-014', 'mg/dL', 'mg/dL', 1.0, true, '1', NOW()),           -- Identity (default)
-  ('UNIT-002', 'FIELD-014', 'mmol/L', 'mg/dL', 18.0182, false, '1', NOW()),     -- SI to conventional
-  ('UNIT-003', 'FIELD-014', 'mg/dL', 'mmol/L', 0.0555, false, '1', NOW()),      -- Conventional to SI
+  -- Glucose unit mappings (FIELD-014) - convert to mg/dL
+  ('UNIT-001', 'FIELD-014', 'mg/dL', 'mg/dL', 1.0, false, '1', NOW()),           -- Identity
+  ('UNIT-002', 'FIELD-014', 'mmol/L', 'mg/dL', 18.0182, false, '1', NOW()),      -- SI to conventional
   
-  -- Creatinine unit mappings (FIELD-015)
-  ('UNIT-004', 'FIELD-015', 'mg/dL', 'mg/dL', 1.0, true, '1', NOW()),           -- Identity (default)
-  ('UNIT-005', 'FIELD-015', 'μmol/L', 'mg/dL', 0.0113, false, '1', NOW()),      -- SI to conventional
-  ('UNIT-006', 'FIELD-015', 'mg/dL', 'μmol/L', 88.4, false, '1', NOW()),        -- Conventional to SI
+  -- Creatinine unit mappings (FIELD-015) - convert to mg/dL
+  ('UNIT-004', 'FIELD-015', 'mg/dL', 'mg/dL', 1.0, false, '1', NOW()),           -- Identity
+  ('UNIT-005', 'FIELD-015', 'μmol/L', 'mg/dL', 0.0113, false, '1', NOW()),       -- SI to conventional
   
-  -- Hemoglobin unit mappings (FIELD-006 - Hematology) - REMOVED: Analyzer 1000 has no fields
-  -- WBC unit mappings (FIELD-004 - Hematology) - REMOVED: Analyzer 1000 has no fields
+  -- Cholesterol unit mappings (FIELD-017) - convert to mg/dL
+  ('UNIT-015', 'FIELD-017', 'mg/dL', 'mg/dL', 1.0, false, '1', NOW()),           -- Identity
+  ('UNIT-016', 'FIELD-017', 'mmol/L', 'mg/dL', 38.67, false, '1', NOW()),        -- SI to conventional
   
-  -- Cholesterol unit mappings (FIELD-017)
-  ('UNIT-015', 'FIELD-017', 'mg/dL', 'mg/dL', 1.0, true, '1', NOW()),           -- Identity (default)
-  ('UNIT-016', 'FIELD-017', 'mmol/L', 'mg/dL', 38.67, false, '1', NOW()),       -- SI to conventional
-  ('UNIT-017', 'FIELD-017', 'mg/dL', 'mmol/L', 0.02586, false, '1', NOW()),     -- Conventional to SI
-  
-  -- CD4 Count unit mappings (FIELD-028 - Immunology)
-  ('UNIT-018', 'FIELD-028', 'cells/μL', 'cells/μL', 1.0, true, '1', NOW()),     -- Identity (default)
-  ('UNIT-019', 'FIELD-028', 'cells/mm3', 'cells/μL', 1.0, false, '1', NOW()),   -- Equivalent (1:1)
-  ('UNIT-020', 'FIELD-028', 'x10^6/L', 'cells/μL', 1.0, false, '1', NOW())      -- Equivalent (1:1)
+  -- CD4 Count unit mappings (FIELD-028) - convert to cells/μL
+  ('UNIT-018', 'FIELD-028', 'cells/μL', 'cells/μL', 1.0, false, '1', NOW()),     -- Identity
+  ('UNIT-019', 'FIELD-028', 'cells/mm3', 'cells/μL', 1.0, false, '1', NOW()),    -- Equivalent (1:1)
+  ('UNIT-020', 'FIELD-028', 'x10^6/L', 'cells/μL', 1.0, false, '1', NOW())       -- Equivalent (1:1)
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================================

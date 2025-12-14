@@ -4,26 +4,29 @@
 # Purpose: Load analyzer-related test data into OpenELIS database
 # Reference: specs/004-astm-analyzer-mapping/plan.md
 #
+# This script uses DBUnit XML as the SINGLE SOURCE OF TRUTH for test data.
+# The DBUnit dataset is: testdata/analyzer-mapping-test-data.xml
+#
 # Usage:
 #   ./load-analyzer-test-data.sh [options]
 #
 # Options:
-#   --reset       Clear existing test data before loading
+#   --reset       Use CLEAN_INSERT (delete existing, then insert)
+#   --refresh     Use REFRESH (update existing, insert new) - DEFAULT
 #   --no-verify   Skip post-load verification
 #   --help        Show this help message
 #
 # Prerequisites:
-#   - Docker container 'openelisglobal-database' running
-#   - PostgreSQL client available (via Docker exec)
+#   - Maven installed and on PATH
+#   - Test classes compiled (or script will compile them)
+#   - Database accessible at localhost:15432
 
 set -e
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SQL_FILE="${SCRIPT_DIR}/analyzer-test-data.sql"
-CONTAINER_NAME="openelisglobal-database"
-DB_NAME="clinlims"
-DB_USER="clinlims"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+DATASET="testdata/analyzer-mapping-test-data.xml"
 
 # Colors for output
 RED='\033[0;31m'
@@ -32,14 +35,18 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Options
-RESET=false
+OPERATION="REFRESH"
 VERIFY=true
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         --reset)
-            RESET=true
+            OPERATION="CLEAN_INSERT"
+            shift
+            ;;
+        --refresh)
+            OPERATION="REFRESH"
             shift
             ;;
         --no-verify)
@@ -47,12 +54,15 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --help)
-            echo "Usage: $0 [--reset] [--no-verify] [--help]"
+            echo "Usage: $0 [--reset] [--refresh] [--no-verify] [--help]"
             echo ""
             echo "Options:"
-            echo "  --reset       Clear existing test data before loading"
+            echo "  --reset       Use CLEAN_INSERT (delete existing, then insert)"
+            echo "  --refresh     Use REFRESH (update existing, insert new) - DEFAULT"
             echo "  --no-verify   Skip post-load verification"
             echo "  --help        Show this help message"
+            echo ""
+            echo "Data Source: ${DATASET} (DBUnit XML - single source of truth)"
             exit 0
             ;;
         *)
@@ -62,132 +72,53 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Functions
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-check_container() {
-    if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        log_error "Database container '${CONTAINER_NAME}' is not running"
-        log_info "Start with: docker compose -f dev.docker-compose.yml up -d"
-        exit 1
-    fi
-}
-
-check_sql_file() {
-    if [[ ! -f "$SQL_FILE" ]]; then
-        log_error "SQL file not found: $SQL_FILE"
-        exit 1
-    fi
-}
-
-reset_test_data() {
-    log_info "Resetting existing test data (IDs >= 1000)..."
-
-    docker exec -i ${CONTAINER_NAME} psql -U ${DB_USER} -d ${DB_NAME} << 'EOF'
--- Delete in reverse dependency order
-DELETE FROM analyzer_error WHERE analyzer_id >= 1000;
-DELETE FROM qualitative_result_mapping WHERE analyzer_field_id IN (
-    SELECT id FROM analyzer_field WHERE analyzer_id >= 1000
-);
-DELETE FROM unit_mapping WHERE analyzer_field_id IN (
-    SELECT id FROM analyzer_field WHERE analyzer_id >= 1000
-);
-DELETE FROM analyzer_field_mapping WHERE analyzer_id >= 1000;
-DELETE FROM analyzer_field WHERE analyzer_id >= 1000;
-DELETE FROM analyzer_configuration WHERE analyzer_id >= 1000;
-DELETE FROM analyzer WHERE id >= 1000;
-EOF
-
-    log_info "Test data reset complete"
-}
-
-load_sql() {
-    log_info "Loading analyzer test data from: $(basename $SQL_FILE)"
-
-    docker exec -i ${CONTAINER_NAME} psql -U ${DB_USER} -d ${DB_NAME} < "$SQL_FILE"
-
-    if [[ $? -eq 0 ]]; then
-        log_info "SQL file loaded successfully"
-    else
-        log_error "Failed to load SQL file"
-        exit 1
-    fi
-}
-
-verify_data() {
-    log_info "Verifying loaded data..."
-
-    docker exec -i ${CONTAINER_NAME} psql -U ${DB_USER} -d ${DB_NAME} << 'EOF'
-\echo '--- Analyzer Count ---'
-SELECT COUNT(*) as analyzer_count FROM analyzer WHERE id >= 1000;
-
-\echo '--- Analyzer Configuration Count ---'
-SELECT COUNT(*) as config_count FROM analyzer_configuration WHERE analyzer_id >= 1000;
-
-\echo '--- Analyzer Field Count ---'
-SELECT COUNT(*) as field_count FROM analyzer_field WHERE analyzer_id >= 1000;
-
-\echo '--- Analyzer Mapping Count ---'
-SELECT COUNT(*) as mapping_count FROM analyzer_field_mapping WHERE analyzer_id >= 1000;
-
-\echo '--- Qualitative Mapping Count ---'
-SELECT COUNT(*) as qual_mapping_count FROM qualitative_result_mapping
-WHERE analyzer_field_id IN (SELECT id FROM analyzer_field WHERE analyzer_id >= 1000);
-
-\echo '--- Unit Mapping Count ---'
-SELECT COUNT(*) as unit_mapping_count FROM unit_mapping
-WHERE analyzer_field_id IN (SELECT id FROM analyzer_field WHERE analyzer_id >= 1000);
-
-\echo '--- Analyzer Error Count ---'
-SELECT COUNT(*) as error_count FROM analyzer_error WHERE analyzer_id >= 1000;
-
-\echo '--- Errors by Status ---'
-SELECT status, COUNT(*) as count FROM analyzer_error
-WHERE analyzer_id >= 1000 GROUP BY status ORDER BY status;
-
-\echo '--- Errors by Type ---'
-SELECT error_type, COUNT(*) as count FROM analyzer_error
-WHERE analyzer_id >= 1000 GROUP BY error_type ORDER BY error_type;
-EOF
-}
-
-# Main execution
 echo ""
 echo "======================================"
 echo "  OpenELIS Analyzer Test Data Loader"
 echo "======================================"
 echo ""
+echo -e "${GREEN}[INFO]${NC} Dataset: ${DATASET}"
+echo -e "${GREEN}[INFO]${NC} Operation: ${OPERATION}"
+echo ""
 
-# Pre-flight checks
-check_container
-check_sql_file
-
-# Reset if requested
-if [[ "$RESET" == "true" ]]; then
-    reset_test_data
+# Check if test classes are compiled
+if [ ! -d "${PROJECT_ROOT}/target/test-classes" ]; then
+    echo -e "${YELLOW}[INFO]${NC} Test classes not compiled. Compiling..."
+    cd "$PROJECT_ROOT"
+    mvn test-compile -DskipTests -q
 fi
 
-# Load data
-load_sql
+# Run the DBUnit loader
+cd "$PROJECT_ROOT"
+mvn exec:java \
+    -Dexec.mainClass="org.openelisglobal.testutils.DbUnitDatasetLoader" \
+    -Dexec.classpathScope=test \
+    -Dexec.args="${DATASET} ${OPERATION}" \
+    -q
 
-# Verify if not skipped
-if [[ "$VERIFY" == "true" ]]; then
+# Verify if requested
+if [ "$VERIFY" = true ]; then
     echo ""
-    verify_data
+    echo -e "${GREEN}[INFO]${NC} Verifying loaded data..."
+    
+    # Check if we can connect to the database via Docker
+    if docker ps --format '{{.Names}}' | grep -q 'openelisglobal-database'; then
+        docker exec openelisglobal-database psql -U clinlims -d clinlims -c "
+SELECT 'analyzers' as entity, COUNT(*) as count FROM analyzer WHERE id >= 1000
+UNION ALL SELECT 'configurations', COUNT(*) FROM analyzer_configuration WHERE id LIKE 'CONFIG-%'
+UNION ALL SELECT 'fields', COUNT(*) FROM analyzer_field WHERE id LIKE 'FIELD-%'
+UNION ALL SELECT 'mappings', COUNT(*) FROM analyzer_field_mapping WHERE id LIKE 'MAPPING-%'
+UNION ALL SELECT 'qual_mappings', COUNT(*) FROM qualitative_result_mapping WHERE id LIKE 'QUAL-%'
+UNION ALL SELECT 'unit_mappings', COUNT(*) FROM unit_mapping WHERE id LIKE 'UNIT-%'
+UNION ALL SELECT 'errors', COUNT(*) FROM analyzer_error WHERE id LIKE 'ERR-%';
+" 2>/dev/null
+    else
+        echo -e "${YELLOW}[WARN]${NC} Cannot verify - database container not accessible"
+    fi
 fi
 
 echo ""
-log_info "Analyzer test data loading complete!"
+echo -e "${GREEN}[INFO]${NC} Analyzer test data loading complete!"
 echo ""
 echo "Next steps:"
 echo "  1. Start ASTM mock server: docker compose -f docker-compose.astm-test.yml up -d"
