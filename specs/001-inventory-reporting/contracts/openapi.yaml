@@ -1,0 +1,204 @@
+openapi: 3.0.3
+info:
+  title: Inventory Management Reporting API
+  description: REST API for generating inventory reports in PDF, Excel, and CSV formats
+  version: 1.0.0
+  contact:
+    name: OpenELIS Global Team
+
+servers:
+  - url: https://localhost/rest
+    description: Local development server
+
+paths:
+  /inventory/reports/generate:
+    post:
+      summary: Generate and download inventory report
+      description: |
+        Generates an inventory report based on the specified parameters and returns
+        the report as a downloadable file (PDF, Excel .xls, or CSV).
+        
+        Report generation is synchronous - the response contains the complete report file.
+      operationId: generateInventoryReport
+      tags:
+        - Inventory Reports
+      parameters:
+        - name: reportType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - STOCK_LEVELS
+              - LOW_STOCK
+              - EXPIRATION_FORECAST
+              - TRANSACTION_HISTORY
+              - USAGE_TRENDS
+              - LOT_TRACEABILITY
+          description: Type of report to generate
+        - name: exportFormat
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - PDF
+              - EXCEL
+              - CSV
+          description: Export format for the report
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2024-01-01"
+          description: |
+            Start date for date-range reports (REQUIRED for TRANSACTION_HISTORY and USAGE_TRENDS,
+            optional for others)
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2024-12-31"
+          description: |
+            End date for date-range reports (REQUIRED for TRANSACTION_HISTORY and USAGE_TRENDS,
+            optional for others). Must be >= startDate.
+        - name: includeInactive
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Include inactive inventory items in report
+        - name: includeExpired
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+          description: Include expired lots in report (default true for historical reports)
+        - name: groupByType
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Group report data by inventory item type
+        - name: groupByLocation
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Group report data by storage location hierarchy
+      responses:
+        '200':
+          description: Report generated successfully
+          headers:
+            Content-Type:
+              description: MIME type of the generated report
+              schema:
+                type: string
+                enum:
+                  - application/pdf
+                  - application/vnd.ms-excel
+                  - text/csv; charset=UTF-8
+            Content-Disposition:
+              description: Filename for download
+              schema:
+                type: string
+                example: 'attachment; filename="inventory-report-stock-levels-20241214-153045.pdf"'
+            Content-Length:
+              description: Size of the report file in bytes
+              schema:
+                type: integer
+                example: 45678
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                description: PDF report file
+            application/vnd.ms-excel:
+              schema:
+                type: string
+                format: binary
+                description: Excel (.xls) report file
+            text/csv:
+              schema:
+                type: string
+                format: binary
+                description: CSV report file
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Date range is required for USAGE_TRENDS report type"
+                  status:
+                    type: integer
+                    example: 400
+        '500':
+          description: Report generation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to generate report: Jasper compilation error"
+                  status:
+                    type: integer
+                    example: 500
+
+components:
+  schemas:
+    # No request/response bodies - all via query parameters and binary response
+    ValidationError:
+      type: object
+      properties:
+        field:
+          type: string
+          description: Field that failed validation
+        message:
+          type: string
+          description: Validation error message
+      example:
+        field: "startDate"
+        message: "Start date must be before end date"
+
+  examples:
+    StockLevelsRequest:
+      summary: Generate Stock Levels report (PDF)
+      value:
+        reportType: "STOCK_LEVELS"
+        exportFormat: "PDF"
+        groupByType: true
+        includeInactive: false
+    
+    TransactionHistoryRequest:
+      summary: Generate Transaction History report (Excel)
+      value:
+        reportType: "TRANSACTION_HISTORY"
+        exportFormat: "EXCEL"
+        startDate: "2024-01-01"
+        endDate: "2024-12-31"
+    
+    LowStockRequest:
+      summary: Generate Low Stock report (CSV)
+      value:
+        reportType: "LOW_STOCK"
+        exportFormat: "CSV"
+        groupByLocation: true
+
+tags:
+  - name: Inventory Reports
+    description: Operations for generating inventory management reports
