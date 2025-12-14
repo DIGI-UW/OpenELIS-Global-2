@@ -98,4 +98,37 @@ public class SampleItemAliquotRelationshipDAOImpl extends BaseDAOImpl<SampleItem
             throw new LIMSRuntimeException("Error in SampleItemAliquotRelationshipDAO getByParentAndChild()", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleItemAliquotRelationship> getByParentSampleItemId(String parentSampleItemId)
+            throws LIMSRuntimeException {
+        try {
+            String hql = "FROM SampleItemAliquotRelationship r" + " WHERE r.parentSampleItem.id = :parentId"
+                    + " ORDER BY r.sequenceNumber ASC";
+            Query<SampleItemAliquotRelationship> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleItemAliquotRelationship.class);
+            query.setParameter("parentId", parentSampleItemId);
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItemAliquotRelationshipDAO getByParentSampleItemId()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleItemAliquotRelationship> getByChildSampleItemId(String childSampleItemId)
+            throws LIMSRuntimeException {
+        try {
+            String hql = "FROM SampleItemAliquotRelationship r" + " WHERE r.childSampleItem.id = :childId";
+            Query<SampleItemAliquotRelationship> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleItemAliquotRelationship.class);
+            query.setParameter("childId", childSampleItemId);
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItemAliquotRelationshipDAO getByChildSampleItemId()", e);
+        }
+    }
 }

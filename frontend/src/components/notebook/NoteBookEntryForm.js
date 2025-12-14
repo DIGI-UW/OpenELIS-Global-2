@@ -125,6 +125,8 @@ const NoteBookEntryForm = () => {
   const [pagePanelSearchTerm, setPagePanelSearchTerm] = useState("");
   const [pageSearchBoxTests, setPageSearchBoxTests] = useState([]);
   const [pageSearchBoxPanels, setPageSearchBoxPanels] = useState([]);
+  const [workflowPageTemplates, setWorkflowPageTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
 
   const isFormValid = () => {
     return (
@@ -280,7 +282,28 @@ const NoteBookEntryForm = () => {
     setPagePanelSearchTerm("");
     setEditingPageIndex(null);
     setPageError("");
+    setSelectedTemplateId("");
     setShowPageModal(true);
+  };
+
+  // Handle template selection - populate page fields from template
+  const handleTemplateSelect = (event) => {
+    const templateId = event.target.value;
+    setSelectedTemplateId(templateId);
+
+    if (templateId) {
+      const template = workflowPageTemplates.find(
+        (t) => t.id === parseInt(templateId, 10),
+      );
+      if (template) {
+        setNewPage((prev) => ({
+          ...prev,
+          title: template.name || "",
+          content: template.defaultContent || "",
+          instructions: template.defaultInstructions || "",
+        }));
+      }
+    }
   };
 
   // Open modal for editing existing page
@@ -684,6 +707,16 @@ const NoteBookEntryForm = () => {
     getFromOpenElisServer("/rest/user-sample-types", setSampleTypes);
     getFromOpenElisServer("/rest/notebook/questionnaires", setQuestionnaires);
     getFromOpenElisServer("/rest/panels", setAllPanels);
+    getFromOpenElisServer(
+      "/rest/notebook/workflow-page-templates",
+      (response) => {
+        if (Array.isArray(response)) {
+          setWorkflowPageTemplates(response);
+        } else {
+          setWorkflowPageTemplates([]);
+        }
+      },
+    );
     return () => {
       componentMounted.current = false;
     };
@@ -1500,6 +1533,40 @@ const NoteBookEntryForm = () => {
             subtitle={pageError}
           />
         )}
+        {editingPageIndex === null &&
+          Array.isArray(workflowPageTemplates) &&
+          workflowPageTemplates.length > 0 && (
+            <Select
+              id="pageTemplate"
+              name="pageTemplate"
+              labelText={intl.formatMessage({
+                id: "notebook.page.modal.template.label",
+                defaultMessage: "Use Template (Optional)",
+              })}
+              value={selectedTemplateId}
+              onChange={handleTemplateSelect}
+              helperText={intl.formatMessage({
+                id: "notebook.page.modal.template.helper",
+                defaultMessage:
+                  "Select a predefined workflow page template to auto-fill fields",
+              })}
+            >
+              <SelectItem
+                text={intl.formatMessage({
+                  id: "notebook.page.modal.template.none",
+                  defaultMessage: "-- No template (custom page) --",
+                })}
+                value=""
+              />
+              {workflowPageTemplates.map((template) => (
+                <SelectItem
+                  key={template.id}
+                  text={`${template.displayOrder}. ${template.name} - ${template.description}`}
+                  value={template.id}
+                />
+              ))}
+            </Select>
+          )}
         <TextInput
           id="title"
           name="title"
