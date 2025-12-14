@@ -1,6 +1,26 @@
-# OpenELIS Global 3.0 Constitution
+# OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Cohesion & Branch Naming Clarifications
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.8.0 → 1.8.1
+Change Type: PATCH - Clarify branch naming, fix stack references, sync templates
+Date: 2025-12-12
+
+Modified Sections:
+  - Principle IX: Branch naming convention revised to avoid Git ref prefix collisions
+  - Technical Stack Constraints: Clarified Spring Framework usage (Traditional Spring MVC)
+  - Development Workflow > Branch Strategy: Updated to match Principle IX naming
+  - Development Workflow > Code Review Standards: Updated "8 principles" → "9 principles"
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/plan-template.md - Update branch naming + remove Spring Boot test annotations
+  ✅ .specify/templates/spec-template.md - Updated "OpenELIS Global" phrasing
+  ⚠️ AGENTS.md - Update branch strategy examples to avoid prefix-collision patterns
+
+Follow-up TODOs:
+  - Ensure any internal docs referencing nested milestone branch paths are updated to the new convention.
+
 SYNC IMPACT REPORT - Spec-Driven Iteration (Principle IX)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.7.0 → 1.8.0
@@ -978,16 +998,23 @@ sequential, enabling flexible team coordination.
 - **Verification Gate**: Each milestone PR must pass its verification criteria
   before merge
 
-**Branch Naming Convention**:
+**Branch Naming Convention (Git-safe + SpecKit-friendly)**:
 
-| Branch Type         | Pattern                                  | Example                                    |
-| ------------------- | ---------------------------------------- | ------------------------------------------ |
-| Spec Branch         | `spec/{issue-id}-{name}`                 | `spec/OGC-009-sidenav`, `spec/009-sidenav` |
-| Spec Clarification  | `spec/clarify/{issue-id}-{name}-{topic}` | `spec/clarify/OGC-009-sidenav-responsive`  |
-| Feature Integration | `feat/{issue-id}-{name}`                 | `feat/OGC-009-sidenav`                     |
-| Milestone Branch    | `feat/{issue-id}-{name}/m{N}-{desc}`     | `feat/OGC-009-sidenav/m1-backend`          |
-| Hotfix              | `hotfix/{issue-id}-{desc}`               | `hotfix/OGC-123-fix-login`                 |
-| Bugfix              | `fix/{issue-id}-{desc}`                  | `fix/OGC-456-null-check`                   |
+**IMPORTANT (Git restriction)**: Avoid branch names where one branch is a prefix
+of another (Git ref namespace collision). Example (INVALID pair):
+`feat/004-astm-analyzer-mapping` and
+`feat/004-astm-analyzer-mapping/m1-backend-db`. To prevent this, use a **single
+category prefix** (`spec/`, `feat/`, `fix/`, `hotfix/`) and use **hyphens** (not
+additional slashes) for sub-scoping like milestones.
+
+| Branch Type        | Pattern                                                    | Example                                                |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------ |
+| Spec Branch        | `spec/{NNN}[-{jira}]-{name}`                               | `spec/004-ogc-49-astm-analyzer-mapping`                |
+| Spec Clarification | `spec/clarify-{NNN}[-{jira}]-{name}-{topic}`               | `spec/clarify-004-ogc-49-astm-mapping-branch-naming`   |
+| Milestone Branch   | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m1-backend-db`  |
+| Integration/Dev    | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m4-integration` |
+| Hotfix             | `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`) | `hotfix/004-ogc-49-fix-login`                          |
+| Bugfix             | `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)       | `fix/004-ogc-49-null-check`                            |
 
 **Issue ID Formats**:
 
@@ -995,6 +1022,18 @@ sequential, enabling flexible team coordination.
   Confluence project
 - **GitHub Issues**: `{###}` (e.g., `009`, `123`) - for GitHub-only tracking
 - **Other Trackers**: `{PREFIX}-{###}` - flexible for external integrations
+
+**Note on Branch Naming**: Branch names use **lowercase** versions of Jira
+ticket IDs (e.g., `ogc-49` instead of `OGC-49`) for Git compatibility and
+readability. The Jira format itself remains uppercase (`OGC-{###}`), but branch
+names convert to lowercase.
+
+**SpecKit tooling note**:
+
+- SpecKit scripts locate the feature folder by finding a `NNN-` prefix in the
+  branch name and mapping to `specs/{NNN}-*`. If you are working on a Jira-only
+  branch name (no `NNN-`), set `SPECIFY_FEATURE={NNN}-{feature-name}` before
+  running `/speckit.*`.
 
 **Milestone Plan Structure** (in `plan.md`):
 
@@ -1068,7 +1107,7 @@ require architecture review + documented justification.
 
 **Frameworks & Dependencies**
 
-- **Spring Boot 3.x** (Spring Framework 6.2.2)
+- **Spring Framework 6.2.2** (Traditional Spring MVC)
 - **Hibernate 6.x** (Hibernate 5.6.15.Final ORM)
 - **Jakarta EE 9** persistence API (NOT javax.persistence - use
   jakarta.persistence)
@@ -1150,16 +1189,18 @@ naming conventions and milestone workflow.
 
 **Feature Development Branches** (per Principle IX):
 
-- **Spec branches**: `spec/{issue-id}-{name}` - Specification PRs
-- **Feature branches**: `feat/{issue-id}-{name}` - Integration target for
-  multi-milestone features
-- **Milestone branches**: `feat/{issue-id}-{name}/m{N}-{desc}` - Individual
-  milestone PRs
-- **Hotfix branches**: `hotfix/{issue-id}-{desc}` (merged to develop + main)
-- **Bugfix branches**: `fix/{issue-id}-{desc}` (merged to develop)
+- **Spec branches**: `spec/{NNN}[-{jira}]-{name}` - Specification PRs
+- **Milestone branches**: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` - Milestone
+  PRs
+- **Hotfix branches**: `hotfix/{NNN}[-{jira}]-{desc}` (or
+  `hotfix/{jira}-{desc}`)
+- **Bugfix branches**: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
 
-**Issue ID Format**: Jira ticket (`OGC-{###}`) preferred, or GitHub issue number
-(`{###}`)
+**Issue identifiers**:
+
+- `NNN` is the 3-digit feature number used by SpecKit and used to locate
+  `specs/{NNN}-*`
+- `{jira}` (e.g., `OGC-49`) is optional
 
 ### Pull Request Requirements
 
@@ -1168,9 +1209,9 @@ naming conventions and milestone workflow.
 1. **GitHub Issue**: PR MUST reference issue number in title (e.g., "OG-123: Add
    storage location widget" or "feat(009): Add sidenav")
 2. **Branch Naming**: Branch name follows Principle IX convention:
-   - Spec PRs: `spec/{issue-id}-{name}`
-   - Milestone PRs: `feat/{issue-id}-{name}/m{N}-{desc}`
-   - Bugfix PRs: `fix/{issue-id}-{desc}`
+   - Spec PRs: `spec/{NNN}[-{jira}]-{name}`
+   - Milestone PRs: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
+   - Bugfix PRs: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
 3. **Target Branch**: Always `develop` (unless hotfix)
 4. **Code Formatting** (MANDATORY - MUST run before each commit):
    - Backend: `mvn spotless:apply` - MUST run before committing
@@ -1184,7 +1225,7 @@ naming conventions and milestone workflow.
 7. **UI Screenshots**: Attach before/after images for UI changes
 8. **Single Concern**: PR addresses ONE issue only (NO mixed refactoring +
    features)
-9. **Constitution Compliance**: Verify adherence to all 8 core principles
+9. **Constitution Compliance**: Verify adherence to all 9 core principles
 10. **Review Assignment**: Request review from appropriate team members
 
 **CI/CD Pipeline** (GitHub Actions):
@@ -1200,7 +1241,7 @@ All checks MUST pass before merge.
 
 **Reviewers MUST verify**:
 
-- ✅ Constitution compliance (all 8 principles)
+- ✅ Constitution compliance (all 9 principles)
 - ✅ Layered architecture respected (no DAO calls from controllers)
 - ✅ FHIR resources validated if applicable
 - ✅ Internationalization complete (no hardcoded strings)
@@ -1338,10 +1379,11 @@ sync.
 
 ---
 
-**Version**: 1.8.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-12-04
+**Version**: 1.8.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-12-12
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.8.1: Cohesion & branch naming clarifications (2025-12-12)
   Amendment v1.8.0: Spec-Driven Iteration (Principle IX) - Milestone-based PR workflow (2025-12-04)
   Amendment v1.7.0: Enhanced Cypress E2E testing workflow and review requirements (2025-11-07)
   Amendment v1.6.0: Cypress E2E testing best practices (2025-11-05)

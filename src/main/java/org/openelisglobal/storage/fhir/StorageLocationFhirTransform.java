@@ -43,6 +43,10 @@ public class StorageLocationFhirTransform {
     private static final String EXT_POSITION_OCCUPANCY = "http://openelis.org/fhir/extension/position-occupancy";
     private static final String EXT_POSITION_GRID_ROW = "http://openelis.org/fhir/extension/position-grid-row";
     private static final String EXT_POSITION_GRID_COLUMN = "http://openelis.org/fhir/extension/position-grid-column";
+    // Device connectivity extensions for network-connected equipment
+    private static final String EXT_DEVICE_IP_ADDRESS = "http://openelis.org/fhir/extension/device-ip-address";
+    private static final String EXT_DEVICE_PORT = "http://openelis.org/fhir/extension/device-port";
+    private static final String EXT_DEVICE_COMMUNICATION_PROTOCOL = "http://openelis.org/fhir/extension/device-communication-protocol";
 
     public Location transformToFhirLocation(StorageRoom room) {
         Location location = new Location();
@@ -127,6 +131,22 @@ public class StorageLocationFhirTransform {
             Extension capExt = new Extension(EXT_STORAGE_CAPACITY);
             capExt.setValue(new IntegerType(device.getCapacityLimit()));
             location.addExtension(capExt);
+        }
+        // Add connectivity extensions for network-connected equipment
+        if (device.getIpAddress() != null && !device.getIpAddress().trim().isEmpty()) {
+            Extension ipExt = new Extension(EXT_DEVICE_IP_ADDRESS);
+            ipExt.setValue(new StringType(device.getIpAddress()));
+            location.addExtension(ipExt);
+        }
+        if (device.getPort() != null) {
+            Extension portExt = new Extension(EXT_DEVICE_PORT);
+            portExt.setValue(new IntegerType(device.getPort()));
+            location.addExtension(portExt);
+        }
+        if (device.getCommunicationProtocol() != null && !device.getCommunicationProtocol().trim().isEmpty()) {
+            Extension protocolExt = new Extension(EXT_DEVICE_COMMUNICATION_PROTOCOL);
+            protocolExt.setValue(new StringType(device.getCommunicationProtocol()));
+            location.addExtension(protocolExt);
         }
 
         location.getMeta().addProfile(MCSD_PROFILE);
