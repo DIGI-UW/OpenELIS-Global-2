@@ -1,4 +1,4 @@
-import { Document, Scan, TrashCan } from "@carbon/icons-react";
+import { Close, Document, Scan, TrashCan } from "@carbon/icons-react";
 import {
   Button,
   Column,
@@ -16,6 +16,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tag,
   TextArea,
   TextInput,
   Tile,
@@ -23,16 +24,16 @@ import {
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
-import { NotificationContext } from "../layout/Layout";
+import config from "../../config.json";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import ShipmentNavigation from "./ShipmentNavigation";
+import { NotificationContext } from "../layout/Layout";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
-import config from "../../config.json";
 import "./BoxCreation.css";
+import ShipmentNavigation from "./ShipmentNavigation";
 
 const BoxCreation = () => {
   const intl = useIntl();
@@ -88,34 +89,12 @@ const BoxCreation = () => {
     },
   ];
 
-  // Rejection reasons
-  const rejectionReasons = [
-    {
-      id: "DAMAGED",
-      label: intl.formatMessage({ id: "shipment.rejection.damaged" }),
-    },
-    {
-      id: "INSUFFICIENT_VOLUME",
-      label: intl.formatMessage({
-        id: "shipment.rejection.insufficientVolume",
-      }),
-    },
-    {
-      id: "WRONG_SAMPLE_TYPE",
-      label: intl.formatMessage({ id: "shipment.rejection.wrongType" }),
-    },
-    {
-      id: "EXPIRED",
-      label: intl.formatMessage({ id: "shipment.rejection.expired" }),
-    },
-    {
-      id: "OTHER",
-      label: intl.formatMessage({ id: "shipment.rejection.other" }),
-    },
-  ];
+  // Rejection reasons - loaded from backend
+  const [rejectionReasons, setRejectionReasons] = useState([]);
 
   useEffect(() => {
     fetchFacilities();
+    fetchRejectionReasons();
     generateBoxNumber();
   }, []);
 
@@ -123,12 +102,31 @@ const BoxCreation = () => {
     validateForm();
   }, [selectedFacility, addedSamples]);
 
+  // Handle capacity changes - remove excess samples
+  useEffect(() => {
+    if (addedSamples.length > capacity) {
+      const samplesToKeep = addedSamples.slice(0, capacity);
+      setAddedSamples(samplesToKeep);
+      addNotification({
+        kind: "warning",
+        title: intl.formatMessage({ id: "notification.warning" }),
+        message: intl.formatMessage(
+          { id: "shipment.notification.samplesRemovedDueToCapacity" },
+          { removed: addedSamples.length - capacity },
+        ),
+      });
+    }
+  }, [capacity]);
+
   const generateBoxNumber = () => {
-    const year = new Date().getFullYear();
-    const random = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, "0");
-    setBoxNumber(`BOX-${year}-${random}`);
+    getFromOpenElisServer(
+      "/rest/shipping-box/generate-box-number",
+      (response) => {
+        if (response) {
+          setBoxNumber(response);
+        }
+      },
+    );
   };
 
   const fetchFacilities = () => {
@@ -140,6 +138,14 @@ const BoxCreation = () => {
         }
       },
     );
+  };
+
+  const fetchRejectionReasons = () => {
+    getFromOpenElisServer("/rest/displayList/REFERRAL_REASONS", (response) => {
+      if (response) {
+        setRejectionReasons(response);
+      }
+    });
   };
 
   const validateForm = () => {
@@ -166,6 +172,16 @@ const BoxCreation = () => {
       return;
     }
 
+    // Check if box is full
+    if (addedSamples.length >= capacity) {
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "shipment.error.boxFull" }),
+      });
+      return;
+    }
+
     setSearching(true);
 
     try {
@@ -185,8 +201,9 @@ const BoxCreation = () => {
 
       // Handle 404 - Sample not found
       if (response.status === 404) {
-        const message = intl.formatMessage({ id: "shipment.error.sampleNotFound" });
-        console.log("404 detected - showing notification:", message);
+        const message = intl.formatMessage({
+          id: "shipment.error.sampleNotFound",
+        });
         addNotification({
           kind: "error",
           title: intl.formatMessage({ id: "notification.error" }),
@@ -202,7 +219,8 @@ const BoxCreation = () => {
 
       const data = await response.json();
 
-      if (!data) {
+      // Backend now returns an array of samples
+      if (!data || !Array.isArray(data) || data.length === 0) {
         addNotification({
           kind: "error",
           title: intl.formatMessage({ id: "notification.error" }),
@@ -211,10 +229,37 @@ const BoxCreation = () => {
         return;
       }
 
-      // Check if sample is already added
-      if (
-        addedSamples.find((s) => s.accessionNumber === data.accessionNumber)
-      ) {
+      // Group tests by accessionNumber - ONE sample per accession
+      const samplesByAccession = {};
+      data.forEach((item) => {
+        if (!samplesByAccession[item.accessionNumber]) {
+          samplesByAccession[item.accessionNumber] = {
+            id: item.id,
+            accessionNumber: item.accessionNumber,
+            sampleType: item.sampleType || "-",
+            tests: [],
+            analysisIds: [],
+          };
+        }
+        samplesByAccession[item.accessionNumber].tests.push(
+          item.referralTest || "-",
+        );
+        if (item.analysisId) {
+          samplesByAccession[item.accessionNumber].analysisIds.push(
+            item.analysisId,
+          );
+        }
+      });
+
+      // Get the first (and should be only) sample
+      const sampleToAdd = Object.values(samplesByAccession)[0];
+
+      // Check if sample already in box
+      const existingSample = addedSamples.find(
+        (s) => s.accessionNumber === sampleToAdd.accessionNumber,
+      );
+
+      if (existingSample) {
         addNotification({
           kind: "warning",
           title: intl.formatMessage({ id: "notification.warning" }),
@@ -225,25 +270,33 @@ const BoxCreation = () => {
         return;
       }
 
-      // Add sample to the box
-      setAddedSamples([
-        ...addedSamples,
-        {
-          id: data.id,
-          accessionNumber: data.accessionNumber,
-          sampleType: data.sampleType || "-",
-          referralTest: data.referralTest || "-",
-        },
-      ]);
+      // Check capacity - one sample per accession number
+      const remainingCapacity = capacity - addedSamples.length;
+      if (remainingCapacity <= 0) {
+        addNotification({
+          kind: "error",
+          title: intl.formatMessage({ id: "notification.error" }),
+          message: intl.formatMessage({ id: "shipment.error.boxFull" }),
+        });
+        return;
+      }
+
+      // Add the grouped sample
+      setAddedSamples([...addedSamples, sampleToAdd]);
 
       setSampleSearchTerm("");
 
+      // Show success notification
       addNotification({
         kind: "success",
         title: intl.formatMessage({ id: "notification.success" }),
-        message: intl.formatMessage({
-          id: "shipment.notification.sampleAdded",
-        }),
+        message: intl.formatMessage(
+          { id: "shipment.notification.sampleAdded" },
+          {
+            accessionNumber: sampleToAdd.accessionNumber,
+            testCount: sampleToAdd.tests.length,
+          },
+        ),
       });
     } catch (error) {
       console.error("Error searching sample:", error);
@@ -256,8 +309,27 @@ const BoxCreation = () => {
     }
   };
 
-  const handleRemoveSample = (sampleId) => {
-    setAddedSamples(addedSamples.filter((s) => s.id !== sampleId));
+  const handleRemoveSample = (sample) => {
+    setAddedSamples(
+      addedSamples.filter((s) => s.accessionNumber !== sample.accessionNumber),
+    );
+  };
+
+  const handleRemoveTest = (sample, testToRemove) => {
+    const updatedSamples = addedSamples.map((s) => {
+      if (s.accessionNumber === sample.accessionNumber) {
+        const updatedTests = s.tests.filter((test) => test !== testToRemove);
+        // If no tests left, remove the entire sample
+        if (updatedTests.length === 0) {
+          return null;
+        }
+        return { ...s, tests: updatedTests };
+      }
+      return s;
+    });
+
+    // Filter out null entries (samples with no tests)
+    setAddedSamples(updatedSamples.filter((s) => s !== null));
   };
 
   const handleRejectSample = (sample) => {
@@ -267,7 +339,7 @@ const BoxCreation = () => {
 
   const confirmRejectSample = () => {
     if (sampleToReject && rejectionReason) {
-      handleRemoveSample(sampleToReject.id);
+      handleRemoveSample(sampleToReject);
 
       addNotification({
         kind: "info",
@@ -276,7 +348,7 @@ const BoxCreation = () => {
           { id: "shipment.notification.sampleRejected" },
           {
             accession: sampleToReject.accessionNumber,
-            reason: rejectionReason.label,
+            reason: rejectionReason.value || rejectionReason.label,
           },
         ),
       });
@@ -287,61 +359,98 @@ const BoxCreation = () => {
     }
   };
 
-  const handleSaveBox = async () => {
+  const handleSaveBox = () => {
     if (!validateForm()) {
       return;
     }
 
     setLoading(true);
 
-    try {
-      const boxData = {
-        boxId: boxNumber,
-        destinationFacilityId: Number.parseInt(selectedFacility.id),
-        temperatureRequirement: selectedTemperature?.id || "AMBIENT",
-        capacity: capacity,
-        notes: notes,
-        state: "DRAFT",
-      };
+    const boxData = {
+      boxId: boxNumber,
+      destinationFacilityId: Number.parseInt(selectedFacility.id),
+      temperatureRequirement: selectedTemperature?.id || "AMBIENT",
+      capacity: capacity,
+      actualSampleCount: addedSamples.length,
+      notes: notes,
+      state: "DRAFT",
+    };
 
-      const response = await postToOpenElisServerJsonResponse(
-        "/rest/shipping-box",
-        JSON.stringify(boxData),
-      );
-
-      if (response && response.id) {
-        // Add samples to the box
-        for (const sample of addedSamples) {
-          await postToOpenElisServerJsonResponse(
-            "/rest/box-sample",
-            JSON.stringify({
-              shippingBoxId: response.id,
-              sampleId: sample.id,
-            }),
-          );
+    postToOpenElisServerJsonResponse(
+      "/rest/shipping-box",
+      JSON.stringify(boxData),
+      (response) => {
+        if (response.error || response.status >= 400) {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({ id: "shipment.error.createBox" }),
+          });
+          setLoading(false);
+          return;
         }
 
-        addNotification({
-          kind: "success",
-          title: intl.formatMessage({ id: "notification.success" }),
-          message: intl.formatMessage({
-            id: "shipment.notification.boxCreated",
-          }),
-        });
+        if (response && response.id) {
+          // Add samples to the box - one BoxSample per sample (not per test)
+          let samplesProcessed = 0;
+          const totalSamples = addedSamples.length;
 
-        // Navigate to box details
-        history.push(`/SampleShipment/box/${response.id}`);
-      }
-    } catch (error) {
-      console.error("Error creating box:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({ id: "shipment.error.createBox" }),
-      });
-    } finally {
-      setLoading(false);
-    }
+          if (totalSamples === 0) {
+            // No samples to add, just navigate
+            addNotification({
+              kind: "success",
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage({
+                id: "shipment.notification.boxCreated",
+              }),
+            });
+            setLoading(false);
+            history.push(`/SampleShipment/box/${response.id}`);
+            return;
+          }
+
+          addedSamples.forEach((sample) => {
+            const boxSampleData = {
+              shippingBoxId: response.id,
+              sampleId: sample.id,
+            };
+
+            // Include all analysisIds for referral tracking
+            if (sample.analysisIds && sample.analysisIds.length > 0) {
+              boxSampleData.analysisIds = sample.analysisIds;
+            }
+
+            postToOpenElisServerJsonResponse(
+              "/rest/box-sample",
+              JSON.stringify(boxSampleData),
+              (sampleResponse) => {
+                samplesProcessed++;
+
+                if (sampleResponse.error || sampleResponse.status >= 400) {
+                  console.error("Error adding sample to box:", sampleResponse);
+                }
+
+                // When all samples are processed
+                if (samplesProcessed === totalSamples) {
+                  addNotification({
+                    kind: "success",
+                    title: intl.formatMessage({ id: "notification.success" }),
+                    message: intl.formatMessage({
+                      id: "shipment.notification.boxCreated",
+                    }),
+                  });
+                  setLoading(false);
+                  // Redirect to box details page
+                  history.push(`/SampleShipment/box/${response.id}`);
+                }
+              },
+            );
+          });
+        } else {
+          setLoading(false);
+        }
+      },
+    );
   };
 
   const handleCancel = () => {
@@ -350,7 +459,7 @@ const BoxCreation = () => {
 
   const handlePrintManifest = () => {
     // Will be enabled only when box is saved
-    console.log("Print manifest");
+    // TODO: Implement manifest printing
   };
 
   // Calculate remaining capacity
@@ -375,11 +484,24 @@ const BoxCreation = () => {
   ];
 
   const renderSampleRows = () => {
-    return addedSamples.map((sample) => ({
-      id: sample.id.toString(),
+    return addedSamples.map((sample, index) => ({
+      id: `${sample.id}-${sample.accessionNumber}-${index}`,
       accessionNumber: sample.accessionNumber,
       sampleType: sample.sampleType,
-      referralTest: sample.referralTest,
+      referralTest: (
+        <div className="test-tags">
+          {sample.tests.map((test, testIndex) => (
+            <Tag
+              key={`${sample.accessionNumber}-test-${testIndex}`}
+              type="blue"
+              filter
+              onClose={() => handleRemoveTest(sample, test)}
+            >
+              {test}
+            </Tag>
+          ))}
+        </div>
+      ),
       actions: (
         <div className="sample-actions">
           <Button
@@ -389,7 +511,7 @@ const BoxCreation = () => {
             iconDescription={intl.formatMessage({
               id: "shipment.sample.remove",
             })}
-            onClick={() => handleRemoveSample(sample.id)}
+            onClick={() => handleRemoveSample(sample)}
             hasIconOnly
           />
           <Button
@@ -631,7 +753,7 @@ const BoxCreation = () => {
                   <FormattedMessage id="shipment.box.destination" />:
                 </span>
                 <span className="summary-value">
-                  {selectedFacility?.label || "-"}
+                  {selectedFacility?.value || selectedFacility?.label || "-"}
                 </span>
               </div>
 
@@ -674,6 +796,7 @@ const BoxCreation = () => {
       {/* Reject Sample Modal */}
       <Modal
         open={showRejectModal}
+        size="lg"
         modalHeading={intl.formatMessage({ id: "shipment.modal.rejectSample" })}
         primaryButtonText={intl.formatMessage({
           id: "shipment.action.confirmRejection",
@@ -699,7 +822,7 @@ const BoxCreation = () => {
           titleText={intl.formatMessage({ id: "shipment.rejection.reason" })}
           label={intl.formatMessage({ id: "label.select" })}
           items={rejectionReasons}
-          itemToString={(item) => (item ? item.label : "")}
+          itemToString={(item) => (item ? item.value || item.label : "")}
           selectedItem={rejectionReason}
           onChange={({ selectedItem }) => setRejectionReason(selectedItem)}
         />

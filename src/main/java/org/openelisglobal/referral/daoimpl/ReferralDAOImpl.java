@@ -206,4 +206,21 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
         }
         return null;
     }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Referral> getUnassignedReferrals() {
+        // Filter in SQL for performance: exclude lost, canceled, and already assigned referrals
+        String sql = "FROM Referral r WHERE r.assignedBox IS NULL " +
+                     "AND (r.lostStatus IS NULL OR r.lostStatus = false) " +
+                     "AND r.status != 'CANCELED'";
+
+        try {
+            Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getUnassignedReferrals");
+        }
+        return new ArrayList<>();
+    }
 }

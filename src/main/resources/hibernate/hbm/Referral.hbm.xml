@@ -51,5 +51,24 @@
         </many-to-one>
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
+
+        <!-- Shipment tracking fields -->
+        <many-to-one name="assignedBox"
+            class="org.openelisglobal.shipment.valueholder.ShippingBox"
+            fetch="select" lazy="false">
+            <column name="assigned_to_box_id" not-null="false" />
+        </many-to-one>
+        <property name="lostStatus" type="java.lang.Boolean"
+            column="lost_status" not-null="false" />
+        <property name="lostDate" type="java.sql.Timestamp"
+            column="lost_date" length="7" not-null="false" />
+        <property name="lostReason" column="lost_reason"
+            type="java.lang.String" not-null="false" />
+        <property name="priority" column="priority"
+            length="20" not-null="false" />
+        <property name="cancelDate" type="java.sql.Timestamp"
+            column="cancel_date" length="7" not-null="false" />
+        <property name="cancelReason" column="cancel_reason"
+            type="java.lang.String" not-null="false" />
     </class>
 </hibernate-mapping>

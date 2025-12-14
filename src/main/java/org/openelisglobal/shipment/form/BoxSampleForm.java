@@ -2,6 +2,7 @@ package org.openelisglobal.shipment.form;
 
 import jakarta.validation.constraints.NotNull;
 import java.sql.Timestamp;
+import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 
 /**
@@ -16,6 +17,10 @@ public class BoxSampleForm extends BaseForm {
 
     @NotNull(message = "Sample ID is required")
     private Integer sampleId;
+
+    private Integer analysisId;
+
+    private List<Integer> analysisIds;
 
     private String accessionNumber;
 
@@ -51,6 +56,22 @@ public class BoxSampleForm extends BaseForm {
 
     public void setSampleId(Integer sampleId) {
         this.sampleId = sampleId;
+    }
+
+    public Integer getAnalysisId() {
+        return analysisId;
+    }
+
+    public void setAnalysisId(Integer analysisId) {
+        this.analysisId = analysisId;
+    }
+
+    public List<Integer> getAnalysisIds() {
+        return analysisIds;
+    }
+
+    public void setAnalysisIds(List<Integer> analysisIds) {
+        this.analysisIds = analysisIds;
     }
 
     public String getAccessionNumber() {

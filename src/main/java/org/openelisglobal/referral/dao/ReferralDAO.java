@@ -48,4 +48,10 @@ public interface ReferralDAO extends BaseDAO<Referral, String> {
 
     public List<Referral> getReferralsByTestAndDate(ReferDateType dateType, Timestamp startTimestamp,
             Timestamp endTimestamp, List<String> testUnitIds, List<String> testIds);
+
+    /**
+     * Get all referrals that are not assigned to a shipping box
+     * @return list of unassigned referrals
+     */
+    public List<Referral> getUnassignedReferrals();
 }

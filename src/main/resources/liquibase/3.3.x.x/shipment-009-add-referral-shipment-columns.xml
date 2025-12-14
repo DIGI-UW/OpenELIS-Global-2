@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+	xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+	<changeSet id="1" author="pkomena">
+		<comment>Add shipment tracking columns to referral table for unassigned samples workflow</comment>
+
+		<!-- Box assignment for shipment -->
+		<addColumn tableName="referral">
+			<column name="assigned_to_box_id" type="BIGINT">
+				<constraints nullable="true"
+					foreignKeyName="fk_referral_assigned_box"
+					referencedTableName="shipping_box" referencedColumnNames="id" />
+			</column>
+		</addColumn>
+
+		<!-- Lost sample tracking -->
+		<addColumn tableName="referral">
+			<column name="lost_status" type="BOOLEAN"
+				defaultValueBoolean="false">
+				<constraints nullable="false" />
+			</column>
+		</addColumn>
+
+		<addColumn tableName="referral">
+			<column name="lost_date" type="TIMESTAMP">
+				<constraints nullable="true" />
+			</column>
+		</addColumn>
+
+		<addColumn tableName="referral">
+			<column name="lost_reason" type="TEXT">
+				<constraints nullable="true" />
+			</column>
+		</addColumn>
+
+		<!-- Priority cache (derived from test type, but useful for quick filtering) -->
+		<addColumn tableName="referral">
+			<column name="priority" type="VARCHAR(20)">
+				<constraints nullable="true" />
+			</column>
+		</addColumn>
+
+		<!-- Referral cancellation tracking (already has status=CANCELED, but add 
+			details) -->
+		<addColumn tableName="referral">
+			<column name="cancel_date" type="TIMESTAMP">
+				<constraints nullable="true" />
+			</column>
+		</addColumn>
+
+		<addColumn tableName="referral">
+			<column name="cancel_reason" type="TEXT">
+				<constraints nullable="true" />
+			</column>
+		</addColumn>
+	</changeSet>
+
+	<changeSet id="2" author="pkomena">
+		<comment>Add indexes for shipment tracking queries</comment>
+
+		<createIndex tableName="referral"
+			indexName="idx_referral_assigned_box">
+			<column name="assigned_to_box_id" />
+		</createIndex>
+
+		<createIndex tableName="referral"
+			indexName="idx_referral_lost_status">
+			<column name="lost_status" />
+		</createIndex>
+
+		<createIndex tableName="referral"
+			indexName="idx_referral_priority">
+			<column name="priority" />
+		</createIndex>
+
+		<!-- Composite index for unassigned samples query (referrals not yet in
+			a box) -->
+		<createIndex tableName="referral"
+			indexName="idx_referral_unassigned">
+			<column name="assigned_to_box_id" />
+			<column name="lost_status" />
+			<column name="status" />
+			<column name="referral_request_date" />
+		</createIndex>
+	</changeSet>
+
+</databaseChangeLog>

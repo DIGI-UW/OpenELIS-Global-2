@@ -52,6 +52,9 @@ public class BoxSample extends BaseObject<Integer> {
     @Column(name = "reception_notes", columnDefinition = "TEXT")
     private String receptionNotes;
 
+    @Column(name = "sys_user_id", nullable = false)
+    private Integer systemUserId;
+
     public BoxSample() {
         this.receptionStatus = ReceptionStatus.PENDING;
     }
@@ -112,5 +115,13 @@ public class BoxSample extends BaseObject<Integer> {
 
     public void setReceptionNotes(String receptionNotes) {
         this.receptionNotes = receptionNotes;
+    }
+
+    public Integer getSystemUserId() {
+        return systemUserId;
+    }
+
+    public void setSystemUserId(Integer systemUserId) {
+        this.systemUserId = systemUserId;
     }
 }

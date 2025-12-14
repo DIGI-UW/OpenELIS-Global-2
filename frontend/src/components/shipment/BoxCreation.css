@@ -150,6 +150,31 @@
   min-height: 400px;
 }
 
+/* Rejection Modal Styles */
+.box-creation .cds--modal-container {
+  min-height: 400px;
+}
+
+.box-creation .cds--modal-content {
+  margin-bottom: 3rem;
+}
+
+.box-creation #rejectionReason .cds--list-box__menu {
+  max-height: 250px;
+}
+
+/* Test Tags Styles */
+.test-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.test-tags .cds--tag {
+  margin: 0;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1056px) {
   .summary-panel {

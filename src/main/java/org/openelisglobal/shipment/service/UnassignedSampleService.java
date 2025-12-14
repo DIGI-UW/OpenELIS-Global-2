@@ -2,86 +2,55 @@ package org.openelisglobal.shipment.service;
 
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.shipment.valueholder.UnassignedSample;
 
+/**
+ * Service for managing unassigned referral samples
+ * Uses the existing referral table instead of a separate unassigned_sample table
+ */
 public interface UnassignedSampleService {
 
     /**
-     * Get unassigned sample by ID
+     * Get unassigned samples for dashboard with metadata
+     * Services MUST compile all DTOs within transaction to prevent LazyInitializationException
      *
-     * @param id Unassigned sample ID
-     * @return UnassignedSample or null if not found
+     * @return List of unassigned sample data as Maps
      */
-    UnassignedSample getUnassignedSampleById(Integer id);
-
-    /**
-     * Get unassigned sample by sample ID
-     *
-     * @param sampleId Sample ID
-     * @return UnassignedSample or null if not found
-     */
-    UnassignedSample getUnassignedSampleBySampleId(Integer sampleId);
-
-    /**
-     * Get all unassigned samples (not yet assigned to a box)
-     *
-     * @return List of unassigned samples
-     */
-    List<UnassignedSample> getAllUnassignedSamples();
+    List<Map<String, Object>> getUnassignedSamplesForDashboard();
 
     /**
      * Get unassigned samples by destination facility
      *
      * @param facilityId Destination facility ID
-     * @return List of unassigned samples
-     */
-    List<UnassignedSample> getUnassignedSamplesByDestinationFacility(Integer facilityId);
-
-    /**
-     * Get unassigned samples by priority
-     *
-     * @param priority Priority level
-     * @return List of unassigned samples
-     */
-    List<UnassignedSample> getUnassignedSamplesByPriority(String priority);
-
-    /**
-     * Get unassigned samples by referral test
-     *
-     * @param testId Referral test ID
-     * @return List of unassigned samples
-     */
-    List<UnassignedSample> getUnassignedSamplesByReferralTest(Integer testId);
-
-    /**
-     * Create a new unassigned sample entry
-     *
-     * @param unassignedSample UnassignedSample to create
-     * @return Created UnassignedSample with ID
-     */
-    UnassignedSample createUnassignedSample(UnassignedSample unassignedSample);
-
-    /**
-     * Mark sample as assigned to a box
-     *
-     * @param id Unassigned sample ID
-     */
-    void markSampleAsAssigned(Integer id);
-
-    /**
-     * Delete unassigned sample entry
-     *
-     * @param id Unassigned sample ID
-     */
-    void deleteUnassignedSample(Integer id);
-
-    /**
-     * Get unassigned samples for dashboard with metadata Services MUST compile all
-     * DTOs within transaction to prevent LazyInitializationException
-     *
      * @return List of unassigned sample data as Maps
      */
-    List<Map<String, Object>> getUnassignedSamplesForDashboard();
+    List<Map<String, Object>> getUnassignedSamplesByDestinationFacility(Integer facilityId);
+
+    /**
+     * Assign a referral sample to a shipment box
+     *
+     * @param referralId Referral ID
+     * @param boxId Box ID
+     * @param currentUserId Current user ID for audit trail
+     */
+    void assignSampleToBox(String referralId, String boxId, String currentUserId);
+
+    /**
+     * Mark a referral sample as lost
+     *
+     * @param referralId Referral ID
+     * @param reason Reason for marking as lost
+     * @param currentUserId Current user ID for audit trail
+     */
+    void markSampleAsLost(String referralId, String reason, String currentUserId);
+
+    /**
+     * Cancel a referral
+     *
+     * @param referralId Referral ID
+     * @param reason Reason for cancellation
+     * @param currentUserId Current user ID for audit trail
+     */
+    void cancelReferral(String referralId, String reason, String currentUserId);
 
     /**
      * Count unassigned samples by destination facility
