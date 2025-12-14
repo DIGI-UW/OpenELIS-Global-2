@@ -1,0 +1,254 @@
+# Patient Registration API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Patient/Participant Management
+
+openapi: 3.0.3
+info:
+  title: Patient Registration API
+  version: 1.0.0
+  description: API endpoints for patient and research participant registration
+
+paths:
+  /rest/patient:
+    post:
+      summary: Register new patient
+      operationId: createPatient
+      tags: [Patient]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientForm"
+      responses:
+        "201":
+          description: Patient created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientResponse"
+        "400":
+          description: Invalid input
+        "409":
+          description: Duplicate patient
+
+    get:
+      summary: Search patients
+      operationId: searchPatients
+      tags: [Patient]
+      parameters:
+        - name: lastName
+          in: query
+          schema:
+            type: string
+        - name: firstName
+          in: query
+          schema:
+            type: string
+        - name: nationalId
+          in: query
+          schema:
+            type: string
+        - name: dateOfBirth
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Patient list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PatientResponse"
+
+  /rest/patient/{id}:
+    get:
+      summary: Get patient by ID
+      operationId: getPatient
+      tags: [Patient]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Patient details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientResponse"
+        "404":
+          description: Patient not found
+
+    put:
+      summary: Update patient
+      operationId: updatePatient
+      tags: [Patient]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientForm"
+      responses:
+        "200":
+          description: Patient updated
+        "404":
+          description: Patient not found
+
+  /rest/participant:
+    post:
+      summary: Register research participant
+      operationId: createParticipant
+      tags: [Participant]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParticipantForm"
+      responses:
+        "201":
+          description: Participant enrolled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParticipantResponse"
+        "400":
+          description: Invalid input
+
+    get:
+      summary: Search participants
+      operationId: searchParticipants
+      tags: [Participant]
+      parameters:
+        - name: studyId
+          in: query
+          schema:
+            type: string
+        - name: enrollmentStatus
+          in: query
+          schema:
+            $ref: "#/components/schemas/EnrollmentStatus"
+      responses:
+        "200":
+          description: Participant list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParticipantResponse"
+
+components:
+  schemas:
+    PatientForm:
+      type: object
+      required: [lastName, firstName, dateOfBirth, gender]
+      properties:
+        lastName:
+          type: string
+          maxLength: 100
+        firstName:
+          type: string
+          maxLength: 100
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [M, F, O]
+        nationalId:
+          type: string
+          maxLength: 50
+        phone:
+          type: string
+          maxLength: 20
+        email:
+          type: string
+          format: email
+        address:
+          type: string
+          maxLength: 500
+
+    PatientResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        lastName:
+          type: string
+        firstName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+        nationalId:
+          type: string
+        fhirUuid:
+          type: string
+          format: uuid
+        isParticipant:
+          type: boolean
+
+    ParticipantForm:
+      allOf:
+        - $ref: "#/components/schemas/PatientForm"
+        - type: object
+          required: [studyId]
+          properties:
+            studyId:
+              type: string
+              maxLength: 50
+            enrollmentStatus:
+              $ref: "#/components/schemas/EnrollmentStatus"
+            enrollmentDate:
+              type: string
+              format: date
+            scheduledCollections:
+              type: array
+              items:
+                $ref: "#/components/schemas/ScheduledCollection"
+
+    ParticipantResponse:
+      allOf:
+        - $ref: "#/components/schemas/PatientResponse"
+        - type: object
+          properties:
+            studyId:
+              type: string
+            enrollmentStatus:
+              $ref: "#/components/schemas/EnrollmentStatus"
+            enrollmentDate:
+              type: string
+              format: date
+
+    EnrollmentStatus:
+      type: string
+      enum: [enrolled, withdrawn, completed]
+
+    ScheduledCollection:
+      type: object
+      properties:
+        visitNumber:
+          type: integer
+        scheduledDate:
+          type: string
+          format: date
+        sampleTypes:
+          type: array
+          items:
+            type: string
