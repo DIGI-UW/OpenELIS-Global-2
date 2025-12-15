@@ -400,68 +400,6 @@ public class NotebookSampleEntryController extends BaseRestController {
     }
 
     /**
-     * Bulk update sample status for a notebook page. POST
-     * /notebook/bulk/page/{pageId}/samples/status
-     *
-     * @param pageId      the notebook page ID
-     * @param request     contains sampleIds and status
-     * @param httpRequest for getting user session
-     * @return update result
-     */
-    @PostMapping(value = "/bulk/page/{pageId}/samples/status", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public ResponseEntity<Map<String, Object>> bulkUpdateSampleStatus(@PathVariable("pageId") Integer pageId,
-            @RequestBody BulkStatusUpdateRequest request, HttpServletRequest httpRequest) {
-
-        String sysUserId = getSysUserId(httpRequest);
-        if (sysUserId == null) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "User session not found");
-            return ResponseEntity.status(401).body(error);
-        }
-
-        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "No sample IDs provided");
-            return ResponseEntity.badRequest().body(error);
-        }
-
-        if (request.getStatus() == null || request.getStatus().isBlank()) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "Status is required");
-            return ResponseEntity.badRequest().body(error);
-        }
-
-        try {
-            String statusStr = request.getStatus().trim().toUpperCase();
-            org.openelisglobal.notebook.valueholder.NotebookPageSample.Status status = org.openelisglobal.notebook.valueholder.NotebookPageSample.Status
-                    .valueOf(statusStr);
-
-            int updatedCount = notebookPageSampleService.bulkUpdateStatus(pageId, request.getSampleIds(), status,
-                    sysUserId);
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("updatedCount", updatedCount);
-            result.put("pageId", pageId);
-            result.put("status", status.name());
-            result.put("success", true);
-
-            return ResponseEntity.ok(result);
-        } catch (IllegalArgumentException e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "Invalid status: " + request.getStatus());
-            error.put("validStatuses", java.util.Arrays
-                    .toString(org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.values()));
-            error.put("exceptionMessage", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
-        } catch (Exception e) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "Unexpected error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-            return ResponseEntity.status(500).body(error);
-        }
-    }
-
-    /**
      * Create a notebook instance from a template.
      *
      * @param templateId  the template ID
@@ -1221,30 +1159,6 @@ public class NotebookSampleEntryController extends BaseRestController {
 
         public void setTitle(String title) {
             this.title = title;
-        }
-    }
-
-    /**
-     * Request body for bulk status update.
-     */
-    public static class BulkStatusUpdateRequest {
-        private List<Integer> sampleIds;
-        private String status;
-
-        public List<Integer> getSampleIds() {
-            return sampleIds;
-        }
-
-        public void setSampleIds(List<Integer> sampleIds) {
-            this.sampleIds = sampleIds;
-        }
-
-        public String getStatus() {
-            return status;
-        }
-
-        public void setStatus(String status) {
-            this.status = status;
         }
     }
 

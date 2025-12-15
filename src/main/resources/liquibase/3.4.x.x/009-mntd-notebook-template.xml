@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- MALARIA AND NEGLECTED TROPICAL DISEASE (MNTD) LABORATORY -->
+    <!-- NOTEBOOK TEMPLATE -->
+    <!-- Creates a predefined notebook template with workflow pages -->
+    <!-- for the MNTD Laboratory workflow -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-mntd-notebook-template" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create MNTD Laboratory notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Malaria and Neglected Tropical Disease (MNTD) Laboratory"/>
+            <column name="objective" value="Complete MNTD workflow from sample intake to archiving"/>
+            <column name="protocol" value="Standard MNTD Laboratory Protocol"/>
+            <column name="content" value="Malaria and Neglected Tropical Disease Laboratory notebook template with workflow pages for sample intake, reception, verification, and processing."/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE INTAKE / SAMPLE CREATION -->
+    <!-- Purpose: Capture all incoming samples as they arrive at reception -->
+    <!-- Data Points (hardcoded in CSV import): -->
+    <!--   - Sample ID / Registration name (free text) -->
+    <!--   - Sample source (Field, External organization) -->
+    <!--   - Project Name -->
+    <!--   - Sample Type (from type_of_sample table) -->
+    <!--   - Collection site/location -->
+    <!--   - Collection date & time -->
+    <!--   - Collected by (person / organization) -->
+    <!--   - Number of samples -->
+    <!-- System Actions: Generate unique ID, barcode, set status -->
+    <!-- ======================================================== -->
+    <changeSet id="create-mntd-page-1-sample-intake" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Intake / Sample Creation page for MNTD Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Intake / Sample Creation"/>
+            <column name="instructions" value="Capture all incoming samples as they arrive at reception. Import samples via CSV manifest with the following data points: Sample ID/Registration name, Sample source (Field/External organization), Project name, Sample Type (from dropdown), Collection site/location, Collection date and time, Collected by (person/organization), Number of samples. System will generate unique ID, barcode, and set status to 'Registered - Awaiting Reception'."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Intake / Sample Creation&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;sampleIdentity&quot;: {
+      &quot;sampleId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Sample ID / Registration name&quot;, &quot;example&quot;: &quot;Ach-21-FY004&quot;, &quot;required&quot;: true},
+      &quot;sampleSource&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample Source&quot;, &quot;options&quot;: [&quot;Field&quot;, &quot;External organization (UOG, WHO, other country)&quot;], &quot;required&quot;: true},
+      &quot;projectName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Project Name&quot;, &quot;required&quot;: true}
+    },
+    &quot;sampleType&quot;: {
+      &quot;type&quot;: &quot;reference&quot;,
+      &quot;label&quot;: &quot;Sample Type&quot;,
+      &quot;source&quot;: &quot;type_of_sample&quot;,
+      &quot;options&quot;: [&quot;Whole blood&quot;, &quot;Serum&quot;, &quot;Plasma&quot;, &quot;DBS&quot;, &quot;Cell pellet&quot;, &quot;Biopsy / microbiopsy&quot;, &quot;Mosquito / sandfly / tsetsefly&quot;, &quot;Tissue&quot;, &quot;Culture&quot;, &quot;DNA/RNA preservative&quot;],
+      &quot;required&quot;: true
+    },
+    &quot;collectionMetadata&quot;: {
+      &quot;collectionSite&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Collection site/location&quot;, &quot;required&quot;: true},
+      &quot;collectionDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Collection date &amp; time&quot;, &quot;required&quot;: true},
+      &quot;collectedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Collected by (person / organization)&quot;, &quot;required&quot;: true},
+      &quot;numberOfSamples&quot;: {&quot;type&quot;: &quot;integer&quot;, &quot;label&quot;: &quot;Number of samples&quot;, &quot;example&quot;: &quot;10 tubes, 2 boxes&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Generate unique system ID&quot;, &quot;Generate label / barcode&quot;, &quot;Set status: Registered - Awaiting Reception&quot;],
+  &quot;csvColumnMapping&quot;: {
+    &quot;groupIdColumn&quot;: &quot;sample_id&quot;,
+    &quot;sampleTypeColumn&quot;: &quot;sample_type&quot;,
+    &quot;numOfSamplesColumn&quot;: &quot;num_of_samples&quot;,
+    &quot;additionalColumns&quot;: [&quot;sample_source&quot;, &quot;project_name&quot;, &quot;collection_site&quot;, &quot;collection_date_time&quot;, &quot;collected_by&quot;]
+  },
+  &quot;nextPage&quot;: &quot;Laboratory Reception &amp; Verification&quot;
+}"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: LABORATORY RECEPTION & VERIFICATION -->
+    <!-- Purpose: Confirm physical receipt and validate sample quality -->
+    <!-- Data Points: -->
+    <!--   - Receipt Information: Received date/time, Received by, Condition -->
+    <!--   - Verification: Sample matches registration, Label verified -->
+    <!--   - Quality Assessment: QC result (Pass/Fail/Pass with remarks) -->
+    <!--   - Decisions: If Fail - notify, discard/proceed; If Pass - proceed -->
+    <!-- System Actions: Update status (Received - QC Passed/Failed) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-mntd-page-2-reception-verification" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Laboratory Reception and Verification page for MNTD Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Laboratory Reception &amp; Verification"/>
+            <column name="instructions" value="Confirm physical receipt and validate sample quality. Use bulk value entry to verify samples. Record: Receipt Information (date/time, received by, condition on arrival), Verification (sample matches registration Yes/No, label verified Yes/No), Quality Assessment (QC result: Pass/Fail/Pass with remarks, QC remarks if applicable). If Fail: notify researcher and mark as Discarded or Proceed with remarks. If Pass: proceed to storage. System updates status to 'Received - QC Passed' or 'Received - QC Failed'."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Laboratory Reception &amp; Verification&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;receiptInformation&quot;: {
+      &quot;receivedDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Received date &amp; time&quot;, &quot;required&quot;: true},
+      &quot;receivedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Received by (staff name)&quot;, &quot;required&quot;: true},
+      &quot;conditionOnArrival&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Condition on arrival&quot;, &quot;required&quot;: false}
+    },
+    &quot;verification&quot;: {
+      &quot;sampleMatchesRegistration&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Sample matches registration&quot;, &quot;options&quot;: [&quot;Yes&quot;, &quot;No&quot;], &quot;required&quot;: true},
+      &quot;labelVerified&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Label verified&quot;, &quot;options&quot;: [&quot;Yes&quot;, &quot;No&quot;], &quot;required&quot;: true}
+    },
+    &quot;qualityAssessment&quot;: {
+      &quot;qcResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;QC Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;, &quot;Pass with remarks&quot;], &quot;required&quot;: true},
+      &quot;qcRemarks&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;QC Remarks&quot;, &quot;conditionalOn&quot;: &quot;qcResult != Pass&quot;, &quot;required&quot;: false}
+    },
+    &quot;decisions&quot;: {
+      &quot;failAction&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Action if Fail&quot;, &quot;options&quot;: [&quot;Notify researcher&quot;, &quot;Discarded&quot;, &quot;Proceed with remarks&quot;], &quot;conditionalOn&quot;: &quot;qcResult == Fail&quot;, &quot;required&quot;: false},
+      &quot;passAction&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Action if Pass&quot;, &quot;options&quot;: [&quot;Proceed to storage&quot;], &quot;conditionalOn&quot;: &quot;qcResult == Pass || qcResult == Pass with remarks&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Update sample status: Received - QC Passed&quot;, &quot;Update sample status: Received - QC Failed&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;receivedDateTime&quot;, &quot;receivedBy&quot;, &quot;qcResult&quot;]
+  },
+  &quot;nextPage&quot;: &quot;Temporary Storage&quot;
+}"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: TEMPORARY STORAGE ASSIGNMENT -->
+    <!-- Purpose: Track exact physical location and temperature monitoring -->
+    <!-- Data Points: -->
+    <!--   - Storage Hierarchy: Room, Freezer, Storage type, Rack, Box, Well/position -->
+    <!--   - Environmental Monitoring: Freezer ID, Temp check (AM/PM), Temp value, Checked by -->
+    <!-- System Actions: Update status (Stored - Temporary Storage) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-mntd-page-3-temporary-storage" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Temporary Storage Assignment page for MNTD Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Temporary Storage Assignment"/>
+            <column name="instructions" value="Track exact physical location using storage hierarchy. Select a storage location (Room, Freezer, Rack, Box), then click a well position to assign samples. Record: Storage Hierarchy (Room, Freezer/Device, Storage type - Raw/Processed, Rack, Box, Well/position), Environmental Monitoring (Freezer ID, Temperature check AM/PM, Temperature value, Checked by). Use temperature logging for compliance tracking. System updates status to 'Stored - Temporary Storage'."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Temporary Storage Assignment&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;storageHierarchy&quot;: {
+      &quot;room&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Room&quot;, &quot;source&quot;: &quot;storage_room&quot;, &quot;required&quot;: true},
+      &quot;freezer&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Freezer / Device&quot;, &quot;source&quot;: &quot;storage_device&quot;, &quot;required&quot;: true},
+      &quot;storageType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Storage Type&quot;, &quot;options&quot;: [&quot;Raw&quot;, &quot;Processed&quot;], &quot;required&quot;: false},
+      &quot;rack&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Rack&quot;, &quot;source&quot;: &quot;storage_rack&quot;, &quot;required&quot;: true},
+      &quot;box&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Box&quot;, &quot;source&quot;: &quot;storage_box&quot;, &quot;required&quot;: true},
+      &quot;wellPosition&quot;: {&quot;type&quot;: &quot;wellGrid&quot;, &quot;label&quot;: &quot;Well / Position&quot;, &quot;rows&quot;: 8, &quot;columns&quot;: 12, &quot;required&quot;: true}
+    },
+    &quot;assignmentMetadata&quot;: {
+      &quot;assignedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Assigned By&quot;, &quot;required&quot;: true},
+      &quot;assignedDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Assigned Date/Time&quot;, &quot;required&quot;: true}
+    },
+    &quot;environmentalMonitoring&quot;: {
+      &quot;freezerId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Freezer ID&quot;, &quot;required&quot;: true},
+      &quot;temperatureCheckTime&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Temperature Check&quot;, &quot;options&quot;: [&quot;AM&quot;, &quot;PM&quot;], &quot;required&quot;: true},
+      &quot;temperatureValue&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Temperature Value&quot;, &quot;unit&quot;: &quot;°C&quot;, &quot;required&quot;: true},
+      &quot;checkedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Checked By&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Update sample status: Stored - Temporary Storage&quot;, &quot;Log temperature monitoring data&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;room&quot;, &quot;freezer&quot;, &quot;storageType&quot;, &quot;rack&quot;, &quot;box&quot;]
+  },
+  &quot;nextPage&quot;: &quot;Sample Processing&quot;
+}"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: SAMPLE PROCESSING PREPARATION -->
+    <!-- Purpose: Prepare samples for laboratory processing -->
+    <!-- Data Points: -->
+    <!--   - Processing Details: Processing type, Technician name, Processing date -->
+    <!--   - Sample Review: Missed samples from field, Parent sample selection -->
+    <!--   - Reagent & Instrument Selection: Reagents, Instruments, Batch/lot numbers -->
+    <!-- System Actions: Lock parent sample, Link reagents & instruments -->
+    <!-- ======================================================== -->
+    <changeSet id="create-mntd-page-4-processing-preparation" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Processing Preparation page for MNTD Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Processing Preparation"/>
+            <column name="instructions" value="Prepare samples for laboratory processing. Select processing type (Aliquoting, DBS punching, Extraction, Culture), assign technician and processing date. Link reagents and instruments from inventory. Register any missed samples from field collection. Optionally record batch and lot numbers for traceability. System locks parent samples for processing and links reagents/instruments to the process."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Processing Preparation&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;processingDetails&quot;: {
+      &quot;processingType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Processing Type&quot;, &quot;options&quot;: [&quot;Aliquoting&quot;, &quot;DBS punching&quot;, &quot;Extraction&quot;, &quot;Culture&quot;], &quot;required&quot;: true},
+      &quot;technicianName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Technician Name&quot;, &quot;required&quot;: true},
+      &quot;processingDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Processing Date&quot;, &quot;required&quot;: true}
+    },
+    &quot;sampleReview&quot;: {
+      &quot;missedSamples&quot;: {&quot;type&quot;: &quot;action&quot;, &quot;label&quot;: &quot;Register Missed Samples&quot;, &quot;description&quot;: &quot;Register additional samples missed from field&quot;},
+      &quot;parentSampleSelection&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Parent Sample&quot;, &quot;source&quot;: &quot;sample_item&quot;, &quot;required&quot;: false}
+    },
+    &quot;reagentInstrumentSelection&quot;: {
+      &quot;reagents&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Reagents&quot;, &quot;source&quot;: &quot;reagent_inventory&quot;, &quot;required&quot;: false},
+      &quot;instruments&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Instruments&quot;, &quot;source&quot;: &quot;instrument_inventory&quot;, &quot;required&quot;: false},
+      &quot;batchNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Batch Number&quot;, &quot;required&quot;: false},
+      &quot;lotNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Lot Number&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Lock parent sample for processing&quot;, &quot;Link reagents to process&quot;, &quot;Link instruments to process&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;processingType&quot;, &quot;technicianName&quot;, &quot;processingDate&quot;, &quot;reagents&quot;, &quot;instruments&quot;]
+  },
+  &quot;nextPage&quot;: &quot;Aliquoting / Bulk Import&quot;
+}"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true) AND page_order = 4</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- MNTD WORKFLOW PAGE TEMPLATES (for reference/selection) -->
+    <!-- Similar to Immunology workflow_page_template entries -->
+    <!-- ======================================================== -->
+    <changeSet id="insert-mntd-workflow-page-templates" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'MNTD'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert predefined MNTD workflow page templates</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="101"/>
+            <column name="name" value="Sample Intake / Sample Creation"/>
+            <column name="display_key" value="workflow.page.mntd.sampleIntake"/>
+            <column name="description" value="Capture all incoming samples as they arrive at reception"/>
+            <column name="default_instructions" value="Import samples via CSV manifest. Capture: Sample ID, Sample source (Field/External), Project name, Sample Type (from dropdown), Collection site, Collection date/time, Collected by, Number of samples. System generates unique ID and barcode."/>
+            <column name="default_content" value="Sample Intake / Sample Creation - Bulk data entry for incoming MNTD samples"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MNTD"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="102"/>
+            <column name="name" value="Laboratory Reception &amp; Verification"/>
+            <column name="display_key" value="workflow.page.mntd.receptionVerification"/>
+            <column name="description" value="Confirm physical receipt and validate sample quality"/>
+            <column name="default_instructions" value="Use bulk value entry to verify samples. Record receipt info (date/time, received by, condition), verification (matches registration, label verified), QC assessment (Pass/Fail/Pass with remarks). Update status accordingly."/>
+            <column name="default_content" value="Laboratory Reception &amp; Verification - Batch verification of sample quality"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MNTD"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="103"/>
+            <column name="name" value="Temporary Storage Assignment"/>
+            <column name="display_key" value="workflow.page.mntd.temporaryStorage"/>
+            <column name="description" value="Track exact physical location and temperature monitoring"/>
+            <column name="default_instructions" value="Select storage location (Room, Freezer, Rack, Box) and click well position to assign samples. Record storage type (Raw/Processed), assigned by, and date/time. Log temperature checks (AM/PM) for environmental compliance."/>
+            <column name="default_content" value="Temporary Storage Assignment - Location tracking and environmental monitoring"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="display_order" value="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MNTD"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="104"/>
+            <column name="name" value="Sample Processing Preparation"/>
+            <column name="display_key" value="workflow.page.mntd.processingPreparation"/>
+            <column name="description" value="Prepare samples for laboratory processing with reagent and instrument selection"/>
+            <column name="default_instructions" value="Select processing type (Aliquoting, DBS punching, Extraction, Culture), assign technician and date. Link reagents and instruments from inventory. Register missed samples from field. Record batch/lot numbers for traceability."/>
+            <column name="default_content" value="Sample Processing Preparation - Processing type selection and inventory linking"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MNTD"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'MNTD'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

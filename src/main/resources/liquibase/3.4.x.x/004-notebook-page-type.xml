@@ -42,4 +42,31 @@
         </rollback>
     </changeSet>
 
+    <!-- ======================================================== -->
+    <!-- UPDATE PAGE_TYPE CONSTRAINT TO ADD STORAGE_ASSIGNMENT -->
+    <!-- Required for MNTD workflow storage assignment pages -->
+    <!-- ======================================================== -->
+    <changeSet id="update-page-type-check-constraint-add-storage-assignment" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_constraint WHERE conname = 'chk_page_type'
+            </sqlCheck>
+        </preConditions>
+        <comment>Update CHECK constraint to add STORAGE_ASSIGNMENT for MNTD workflow.</comment>
+        <sql>
+            ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+            ALTER TABLE clinlims.notebook_page
+            ADD CONSTRAINT chk_page_type
+            CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION', 'STORAGE_ASSIGNMENT'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+                ALTER TABLE clinlims.notebook_page
+                ADD CONSTRAINT chk_page_type
+                CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION'));
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
