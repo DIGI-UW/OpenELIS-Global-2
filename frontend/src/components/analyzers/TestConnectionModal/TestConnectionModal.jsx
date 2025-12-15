@@ -55,20 +55,28 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
       clearInterval(progressInterval);
       setProgress(100);
 
-      if (response.error || response.statusCode >= 400) {
+      // Check for errors: HTTP errors, network errors, OR success=false from backend
+      if (
+        response.error ||
+        response.statusCode >= 400 ||
+        response.success === false
+      ) {
         setStatus("error");
         setLogs((prev) => [
           ...prev,
           {
             level: "error",
-            message: response.error || response.message || "Connection failed",
+            message: response.message || response.error || "Connection failed",
           },
         ]);
       } else {
         setStatus("success");
         setLogs((prev) => [
           ...prev,
-          { level: "success", message: "Connection successful!" },
+          {
+            level: "success",
+            message: response.message || "Connection successful!",
+          },
         ]);
       }
     });

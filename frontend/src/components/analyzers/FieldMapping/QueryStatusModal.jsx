@@ -41,6 +41,7 @@ export default function QueryStatusModal({
         if (
           data &&
           (data.state === "completed" ||
+            data.state === "failed" ||
             data.state === "cancelled" ||
             data.state === "not_found")
         ) {
