@@ -2,9 +2,7 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import {
   Form,
   Heading,
-  Toggle,
   Button,
-  Loading,
   Grid,
   Column,
   Section,
