@@ -82,9 +82,11 @@ describe("Login Test Cases", function () {
       login.enterPassword(user.password);
       login.signIn();
 
-      if (user.correctPass === true) {
+      if (user.correctPass) {
+        // Verify authentication succeeded - mainHeader only appears when authenticated
         cy.get("#mainHeader").should("exist");
-        cy.get("[data-cy='menuButton']").should("exist");
+        // Logout via API so next iteration starts fresh (not authenticated)
+        cy.ensureLoggedOut();
       }
     });
   });

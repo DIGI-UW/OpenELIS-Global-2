@@ -7,18 +7,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
-import javax.sql.DataSource;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.storage.BaseStorageTest;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.form.SampleMovementForm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Integration tests for flexible assignment REST endpoints - Simplified
@@ -27,45 +23,18 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * backward compatibility with positionId Following TDD: Write tests BEFORE
  * implementation
  */
-public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebContextSensitiveTest {
+public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseStorageTest {
 
     private static final Logger logger = LoggerFactory
             .getLogger(SampleStorageRestControllerFlexibleAssignmentTest.class);
 
-    @Autowired
-    private DataSource dataSource;
-
     private ObjectMapper objectMapper;
-    private JdbcTemplate jdbcTemplate;
 
     @Before
     public void setUp() throws Exception {
-        super.setUp();
+        super.setUp(); // BaseStorageTest handles jdbcTemplate initialization and
+                       // cleanStorageTestData()
         objectMapper = new ObjectMapper();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-
-        // Load user data (required for assigned_by_user_id foreign key)
-        executeDataSetWithStateManagement("testdata/user-role.xml");
-
-        cleanStorageTestData();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        cleanStorageTestData();
-    }
-
-    private void cleanStorageTestData() {
-        try {
-            jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_rack WHERE id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000");
-        } catch (Exception e) {
-            logger.warn("Failed to clean storage test data: " + e.getMessage());
-        }
     }
 
     /**
@@ -124,15 +93,6 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         // Return external_id for use with resolveSampleItem (which only accepts
         // accession numbers or external IDs)
         return externalId;
-    }
-
-    /**
-     * Helper to get the numeric sample_item.id from the external_id. Used for
-     * database verification queries.
-     */
-    private int getSampleItemNumericId(String externalId) {
-        return jdbcTemplate.queryForObject("SELECT id FROM sample_item WHERE external_id = ?", Integer.class,
-                externalId);
     }
 
     private String createRoomAndGetId(String name, String code) throws Exception {

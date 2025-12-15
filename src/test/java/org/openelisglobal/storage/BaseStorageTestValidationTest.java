@@ -13,10 +13,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.Rollback;
 
 /**
- * Validation test to verify BaseStorageTest loads data correctly via DBUnit
- * XML. This test verifies that: 1. Foundation data (storage hierarchy) is
- * loaded by Liquibase 2. E2E test data is loaded via DBUnit XML 3. Data
- * validation works correctly
+ * Validation test to verify storage test fixtures load correctly via DBUnit
+ * XML.
+ *
+ * This test verifies that: 1. Storage hierarchy fixtures exist
+ * (rooms/devices/shelves/racks) 2. E2E test data is loaded via DBUnit XML 3.
+ * Data validation works correctly
  */
 @Rollback
 public class BaseStorageTestValidationTest extends BaseWebContextSensitiveTest {
@@ -41,15 +43,15 @@ public class BaseStorageTestValidationTest extends BaseWebContextSensitiveTest {
     @Test
     public void testFoundationDataLoaded() {
         StorageRoom mainRoom = storageRoomDAO.findByCode("MAIN");
-        assertNotNull("Main Laboratory room should exist (from Liquibase)", mainRoom);
+        assertNotNull("Main Laboratory room should exist (fixture)", mainRoom);
         assertEquals("Main Laboratory", mainRoom.getName());
 
         StorageRoom secRoom = storageRoomDAO.findByCode("SEC");
-        assertNotNull("Secondary Laboratory room should exist (from Liquibase)", secRoom);
+        assertNotNull("Secondary Laboratory room should exist (fixture)", secRoom);
         assertEquals("Secondary Laboratory", secRoom.getName());
 
         StorageRoom inactiveRoom = storageRoomDAO.findByCode("INACTIVE");
-        assertNotNull("Inactive Room should exist (from Liquibase)", inactiveRoom);
+        assertNotNull("Inactive Room should exist (fixture)", inactiveRoom);
         assertEquals("Inactive Room", inactiveRoom.getName());
     }
 

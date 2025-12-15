@@ -39,7 +39,7 @@ const breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "configuration.batch.test.reassignment",
-    link: "/MasterListsPage#batchTestReassignment",
+    link: "/MasterListsPage/batchTestReassignment",
   },
 ];
 
@@ -817,7 +817,7 @@ function BatchTestReassignmentAndCancelation() {
                 onClick={() => {
                   resetToDefault();
                   window.location.assign(
-                    "/MasterListsPage#batchTestReassignment",
+                    "/MasterListsPage/batchTestReassignment",
                   );
                 }}
                 kind="tertiary"
@@ -1026,7 +1026,7 @@ function BatchTestReassignmentAndCancelation() {
                   <Button
                     onClick={() =>
                       window.location.assign(
-                        "/MasterListsPage#batchTestReassignment",
+                        "/MasterListsPage/batchTestReassignment",
                       )
                     }
                     kind="tertiary"

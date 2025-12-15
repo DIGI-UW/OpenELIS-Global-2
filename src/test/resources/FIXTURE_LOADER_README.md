@@ -5,8 +5,11 @@
 This directory contains a **single unified script** for loading all test
 fixtures:
 
-- Storage hierarchy (rooms, devices, shelves, racks, positions)
 - E2E test data (patients, samples, sample items, storage assignments)
+
+**Note**: Storage hierarchy (rooms/devices/shelves/racks/boxes) is loaded by
+Liquibase with `context="test"`. The loader scripts verify that foundation data
+exists before inserting E2E fixtures.
 
 ## Usage
 
@@ -84,14 +87,6 @@ CYPRESS_SKIP_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
 
 ## What Gets Loaded
 
-### Storage Hierarchy
-
-- 3 Rooms (Main Laboratory, Secondary Laboratory, Inactive Room)
-- 5 Devices (Freezers, Refrigerators, Cabinets)
-- 6 Shelves
-- 6 Racks
-- 100+ Positions (mix of occupied/unoccupied)
-
 ### E2E Test Data
 
 - 3 Test Patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams)
@@ -110,7 +105,7 @@ Storage Hierarchy | Rooms     |     3
                   | Devices   |     5
                   | Shelves   |     6
                   | Racks     |     6
-                  | Positions |   106
+                  | Boxes     |   10+
 
 E2E Test Data     | Patients            |     3
                   | Samples             |    10

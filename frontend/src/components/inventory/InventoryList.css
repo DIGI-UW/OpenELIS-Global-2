@@ -1,0 +1,75 @@
+/* Order legend body styling - consistent with other pages */
+.orderLegendBody {
+  background-color: #ffffff;
+  border-radius: 5px;
+  margin: 2%;
+  padding: 2%;
+  padding-right: 2%;
+}
+
+.orderLegendBody h2 {
+  margin-bottom: 1.5rem;
+}
+
+/* Dashboard Metrics Cards */
+.inventory-metrics-grid {
+  margin-bottom: 2rem;
+  margin-top: 1.5rem;
+}
+
+.inventory-metric-column {
+  padding: 0 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.inventory-metric-tile {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s;
+}
+
+.inventory-metric-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.inventory-metric-tile .metric-value {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #161616;
+  line-height: 1.2;
+}
+
+.inventory-metric-tile .metric-label {
+  font-size: 0.875rem;
+  color: #525252;
+  margin-top: 0.5rem;
+  font-weight: 400;
+}
+
+.inventory-metric-tile.metric-warning .metric-value {
+  color: #f1c21b;
+}
+
+.inventory-metric-tile.metric-expiring .metric-value {
+  color: #ff832b;
+}
+
+.inventory-metric-tile.metric-expired .metric-value {
+  color: #da1e28;
+}
+
+/* Ensure proper spacing for toolbar items */
+.cds--toolbar-content {
+  gap: 1rem;
+}
+
+/* Fix dropdown alignment in toolbar */
+.cds--toolbar-content .cds--dropdown {
+  min-width: 150px;
+}

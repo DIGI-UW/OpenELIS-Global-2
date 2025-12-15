@@ -1817,6 +1817,11 @@ expect(screen.getByText("Loaded Data")).toBeInTheDocument(); // FAILS - element 
 **Purpose**: Document SampleItem entity structure and its relationship to Sample
 entity for storage management integration
 
+**⚠️ CRITICAL: ID Pattern Complexity**: This feature involves complex ID
+handling with both numeric IDs and external IDs. See
+[SampleItem ID Patterns Guide](.specify/guides/sampleitem-id-patterns.md) for
+detailed patterns, anti-patterns, and conversion requirements.
+
 ### Research Questions
 
 #### Q1: What is the SampleItem entity structure?

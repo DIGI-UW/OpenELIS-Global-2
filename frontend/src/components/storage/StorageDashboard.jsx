@@ -34,6 +34,7 @@ import {
   TextInput,
   TextArea,
   InlineNotification,
+  Pagination,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
@@ -81,6 +82,36 @@ const StorageDashboard = () => {
     storageLocations: 0,
   });
 
+  // Dynamic status filter options (loaded from backend for maintainability)
+  const [sampleStatusOptions, setSampleStatusOptions] = useState([
+    { id: "", label: "All" },
+    { id: "active", label: "Active" },
+    { id: "disposed", label: "Disposed" },
+  ]);
+
+  // Callback for child components to refresh metrics (specs/001-sample-storage/spec.md FR-057b, FR-057c)
+  const refreshMetrics = useCallback(() => {
+    const controller = new AbortController();
+
+    getFromOpenElisServer(
+      "/rest/storage/sample-items?countOnly=true",
+      (response) => {
+        if (response) {
+          const metricsData = Array.isArray(response) ? response[0] : response;
+          setMetrics({
+            totalSamples: metricsData?.totalSampleItems ?? 0,
+            active: metricsData?.active ?? 0,
+            disposed: metricsData?.disposed ?? 0,
+            storageLocations: metricsData?.storageLocations ?? 0,
+          });
+        }
+      },
+      controller.signal,
+    );
+
+    return () => controller.abort();
+  }, []);
+
   // Tab state - derive from URL
   const getTabFromUrl = () => {
     const pathParts = location.pathname.split("/");
@@ -109,9 +140,39 @@ const StorageDashboard = () => {
   const [assignNotes, setAssignNotes] = useState("");
   const [assignStatus, setAssignStatus] = useState(null);
 
+  // OGC-150: Pagination state
+  const [page, setPage] = useState(1); // Carbon Pagination uses 1-based indexing
+  const [pageSize, setPageSize] = useState(25); // Default page size per OGC-150
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Debug logging for pagination responses
+  const logPaginationResponse = (url, response, parsedPage, parsedSize) => {
+    // eslint-disable-next-line no-console
+    console.info("[OGC-150] pagination fetch", {
+      url,
+      page: parsedPage,
+      size: parsedSize,
+      type: Array.isArray(response) ? "array" : typeof response,
+      keys:
+        response && typeof response === "object" ? Object.keys(response) : null,
+      itemsLength:
+        response &&
+        typeof response === "object" &&
+        Array.isArray(response.items)
+          ? response.items.length
+          : Array.isArray(response)
+            ? response.length
+            : null,
+      totalItems: response?.totalItems ?? response?.totalElements ?? null,
+      totalPages: response?.totalPages ?? null,
+      pageSize: response?.pageSize ?? null,
+      currentPage: response?.currentPage ?? null,
+    });
+  };
+
   // Filter state
   const [searchTerm, setSearchTerm] = useState("");
-  const [locationFilter, setLocationFilter] = useState(null); // { id, type, name } for single location dropdown (Samples tab)
+  const [locationFilter, setLocationFilter] = useState(null); // { id, type, name} for single location dropdown (Samples tab)
   const [filterRoom, setFilterRoom] = useState(""); // For other tabs (devices, shelves, racks)
   const [filterDevice, setFilterDevice] = useState(""); // For other tabs
   const [filterStatus, setFilterStatus] = useState("");
@@ -453,7 +514,7 @@ const StorageDashboard = () => {
         );
 
         loadSamples();
-        loadMetrics();
+        refreshMetrics();
 
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
@@ -553,7 +614,7 @@ const StorageDashboard = () => {
         const response = await assignSampleItem(locationPayload);
 
         loadSamples();
-        loadMetrics();
+        refreshMetrics();
 
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
@@ -585,7 +646,7 @@ const StorageDashboard = () => {
         const response = await moveSampleItem(locationPayload);
 
         loadSamples();
-        loadMetrics();
+        refreshMetrics();
 
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
@@ -683,9 +744,9 @@ const StorageDashboard = () => {
       setNotificationVisible(true);
       handleDisposeModalClose();
 
-      // OGC-73: Refresh sample list and metrics to show updated status
+      // Refresh sample list and metrics to show updated status
       loadSamples();
-      loadMetrics();
+      refreshMetrics();
     } catch (error) {
       console.error("Error disposing sample:", error);
       addNotification({
@@ -758,6 +819,14 @@ const StorageDashboard = () => {
     setSearchTerm("");
   }, [selectedTab]);
 
+  // OGC-150: Reset pagination to page 1 when filters/search change (prevent empty results)
+  useEffect(() => {
+    if (selectedTab === 0) {
+      // Samples tab - reset pagination when any filter changes
+      setPage(1);
+    }
+  }, [searchTerm, locationFilter, filterStatus, selectedTab]);
+
   // Sync tab with URL changes and handle default route
   useEffect(() => {
     if (location.pathname === "/Storage") {
@@ -773,7 +842,7 @@ const StorageDashboard = () => {
 
   // Load metrics
   useEffect(() => {
-    loadMetrics();
+    const abortMetrics = refreshMetrics();
     loadRooms();
     loadDevices();
     loadShelves();
@@ -782,11 +851,30 @@ const StorageDashboard = () => {
 
     return () => {
       componentMounted.current = false;
+      if (abortMetrics) abortMetrics(); // Cancel metrics request on unmount
     };
+  }, [refreshMetrics]);
+
+  // Load sample item status options dynamically from backend
+  useEffect(() => {
+    getFromOpenElisServer(
+      "/rest/displayList/sample-item-status-types",
+      (response) => {
+        if (response && Array.isArray(response)) {
+          setSampleStatusOptions(
+            response.map((item) => ({
+              id: item.id,
+              label: item.value,
+            })),
+          );
+        }
+      },
+    );
   }, []);
 
   // Reload data when filters change (server-side filtering for all tabs)
   // Note: When searchTerm is present, filters are applied client-side on search results (AND logic)
+  // OGC-150: Also reload when page or pageSize changes for samples tab
   useEffect(() => {
     const tabName = TAB_ROUTES[selectedTab] || "samples";
 
@@ -814,7 +902,15 @@ const StorageDashboard = () => {
         loadRacks();
         break;
     }
-  }, [locationFilter, filterRoom, filterDevice, filterStatus, selectedTab]);
+  }, [
+    locationFilter,
+    filterRoom,
+    filterDevice,
+    filterStatus,
+    selectedTab,
+    page,
+    pageSize,
+  ]); // OGC-150: Added page, pageSize
 
   // Debounced search for samples tab (300-500ms delay after typing stops) - FR-064a
   // For other tabs, search triggers immediate reload
@@ -880,24 +976,6 @@ const StorageDashboard = () => {
     setSelectedTab(tabIndex);
     const tabName = TAB_ROUTES[tabIndex] || "samples";
     history.push(`/Storage/${tabName}`);
-  };
-
-  const loadMetrics = () => {
-    getFromOpenElisServer(
-      "/rest/storage/sample-items?countOnly=true",
-      (response) => {
-        if (componentMounted.current && response) {
-          // Response is an array with one metrics object
-          const metricsData = Array.isArray(response) ? response[0] : response;
-          setMetrics({
-            totalSamples: metricsData?.totalSampleItems || 0,
-            active: metricsData?.active || 0,
-            disposed: metricsData?.disposed || 0,
-            storageLocations: metricsData?.storageLocations || 0,
-          });
-        }
-      },
-    );
   };
 
   const loadRooms = () => {
@@ -1249,26 +1327,19 @@ const StorageDashboard = () => {
               });
             }
 
-            // Apply status filter
+            // Apply status filter for Samples tab
+            // filterStatus contains the status ID from the dropdown (e.g., "active", "disposed", or actual status ID)
             if (filterStatus && visibleFilters.status) {
-              const statusFilter =
-                filterStatus === "true"
-                  ? "active"
-                  : filterStatus === "false"
-                    ? "disposed"
-                    : null;
-              if (statusFilter) {
-                filtered = filtered.filter((sampleItem) => {
-                  const sampleItemStatus = sampleItem.status || "active";
-                  return (
-                    sampleItemStatus.toLowerCase() ===
-                    statusFilter.toLowerCase()
-                  );
-                });
-              }
+              filtered = filtered.filter((sampleItem) => {
+                const sampleItemStatus = sampleItem.status || "";
+                // Direct ID comparison - works for both legacy ("active"/"disposed") and actual status IDs
+                return sampleItemStatus === filterStatus;
+              });
             }
 
             setSamples(filtered);
+            // OGC-150: Update pagination totalItems for search results
+            setTotalItems(filtered.length);
           } else {
             console.error(
               "Sample Items search API returned non-array response:",
@@ -1292,36 +1363,61 @@ const StorageDashboard = () => {
         }
       }
 
-      // Convert status filter: "true" -> "active", "false" -> "disposed", "" -> no filter
+      // Pass status filter to backend - can be any status ID from the dropdown
+      // Backend handles "active", "disposed", or actual status IDs
       if (filterStatus && visibleFilters.status) {
-        if (filterStatus === "true") {
-          params.append("status", "active");
-        } else if (filterStatus === "false") {
-          params.append("status", "disposed");
-        }
-        // If filterStatus is empty string, don't add status param (show all)
+        params.append("status", filterStatus);
       }
+
+      // OGC-150: Add pagination parameters
+      params.append("page", String(page - 1)); // Convert 1-based to 0-based
+      params.append("size", String(pageSize));
 
       const queryString = params.toString();
       const url = `/rest/storage/sample-items${queryString ? "?" + queryString : ""}`;
 
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setSamples(response);
-            if (response.length === 0) {
-              console.warn(
-                "Sample Items API returned empty array - no sample item assignments found matching filters",
+          logPaginationResponse(url, response, page - 1, pageSize);
+          // OGC-150: Handle paginated response with metadata
+          if (response && typeof response === "object") {
+            if (Array.isArray(response)) {
+              // Backward compatibility: if response is array (old format without pagination)
+              setSamples(response);
+              setTotalItems(response.length);
+              if (response.length === 0) {
+                console.warn(
+                  "Sample Items API returned empty array - no sample item assignments found matching filters",
+                );
+              }
+            } else if (response.items && Array.isArray(response.items)) {
+              // New format with pagination metadata (OGC-150)
+              setSamples(response.items);
+              const total =
+                response.totalItems ??
+                response.totalElements ??
+                response.items.length;
+              setTotalItems(total);
+              if (response.items.length === 0) {
+                console.warn(
+                  "Sample Items API returned empty items array - no sample item assignments found matching filters",
+                );
+              }
+            } else {
+              console.error(
+                "Sample Items API returned unexpected response format:",
+                response,
               );
+              setSamples([]);
+              setTotalItems(0);
             }
           } else {
             console.error(
-              "Sample Items API returned non-array response:",
+              "Sample Items API returned non-object response:",
               response,
             );
-            console.error("Expected array but got:", typeof response, response);
-            console.error("Response is:", JSON.stringify(response));
             setSamples([]);
+            setTotalItems(0);
           }
         }
       });
@@ -2939,39 +3035,53 @@ const StorageDashboard = () => {
                               titleText={intl.formatMessage({
                                 id: "storage.filter.status",
                               })}
-                              items={[
-                                {
-                                  id: "",
-                                  label: intl.formatMessage({
-                                    id: "label.all",
-                                  }),
-                                },
-                                {
-                                  id: "true",
-                                  label: intl.formatMessage({
-                                    id: "label.active",
-                                  }),
-                                },
-                                {
-                                  id: "false",
-                                  label: intl.formatMessage({
-                                    id: "label.inactive",
-                                  }),
-                                },
-                              ]}
+                              items={
+                                selectedTab === 0
+                                  ? sampleStatusOptions
+                                  : [
+                                      // Other tabs: active/inactive (boolean field)
+                                      {
+                                        id: "",
+                                        label: intl.formatMessage({
+                                          id: "label.all",
+                                        }),
+                                      },
+                                      {
+                                        id: "true",
+                                        label: intl.formatMessage({
+                                          id: "label.active",
+                                        }),
+                                      },
+                                      {
+                                        id: "false",
+                                        label: intl.formatMessage({
+                                          id: "label.inactive",
+                                        }),
+                                      },
+                                    ]
+                              }
                               selectedItem={
                                 filterStatus
-                                  ? {
-                                      id: filterStatus,
-                                      label:
-                                        filterStatus === "true"
-                                          ? intl.formatMessage({
-                                              id: "label.active",
-                                            })
-                                          : intl.formatMessage({
-                                              id: "label.inactive",
-                                            }),
-                                    }
+                                  ? selectedTab === 0
+                                    ? sampleStatusOptions.find(
+                                        (opt) => opt.id === filterStatus,
+                                      ) || {
+                                        id: "",
+                                        label: intl.formatMessage({
+                                          id: "label.all",
+                                        }),
+                                      }
+                                    : {
+                                        id: filterStatus,
+                                        label:
+                                          filterStatus === "true"
+                                            ? intl.formatMessage({
+                                                id: "label.active",
+                                              })
+                                            : intl.formatMessage({
+                                                id: "label.inactive",
+                                              }),
+                                      }
                                   : {
                                       id: "",
                                       label: intl.formatMessage({
@@ -3079,6 +3189,26 @@ const StorageDashboard = () => {
                         )}
                       </DataTable>
                     </div>
+                  </Column>
+                  {/* OGC-150: Pagination for Samples tab */}
+                  <Column lg={16} md={8} sm={4}>
+                    <Pagination
+                      data-testid="sample-items-pagination"
+                      page={page}
+                      pageSize={pageSize}
+                      pageSizes={[5, 25, 50, 100]}
+                      totalItems={totalItems}
+                      onChange={({ page, pageSize }) => {
+                        // eslint-disable-next-line no-console
+                        console.info("[OGC-150] pagination change", {
+                          page,
+                          pageSize,
+                          totalItems,
+                        });
+                        setPage(page);
+                        setPageSize(pageSize);
+                      }}
+                    />
                   </Column>
                 </Grid>
               </TabPanel>
@@ -4392,6 +4522,7 @@ const StorageDashboard = () => {
         })()}
         onClose={handleLocationModalClose}
         onConfirm={handleLocationModalConfirm}
+        onAssignmentSuccess={refreshMetrics}
       />
       <DisposeSampleModal
         open={disposeModalOpen && !!selectedSampleForDispose}
@@ -4403,6 +4534,7 @@ const StorageDashboard = () => {
         }
         onClose={handleDisposeModalClose}
         onConfirm={handleDisposeModalConfirm}
+        onDisposalSuccess={refreshMetrics}
       />
     </div>
   );

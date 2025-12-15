@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
@@ -16,6 +17,8 @@ import org.openelisglobal.storage.valueholder.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +49,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Autowired
     private StorageLocationService storageLocationService;
+
+    @Autowired
+    private IStatusService statusService;
 
     @Override
     public CapacityWarning calculateCapacity(StorageRack rack) {
@@ -103,8 +109,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             Map<String, Object> map = new java.util.HashMap<>();
+            // Numeric ID (String representation) - primary identifier
             map.put("id", sampleItem.getId());
+            // @deprecated Use 'id' field instead. Kept for backward compatibility only.
+            // This field is identical to 'id' and will be removed in a future release.
             map.put("sampleItemId", sampleItem.getId());
+            // External ID - user-friendly identifier (e.g., "EXT-1765401458866")
             map.put("sampleItemExternalId", sampleItem.getExternalId() != null ? sampleItem.getExternalId() : "");
 
             // Get parent Sample accession number for context
@@ -120,6 +130,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
+            // Store actual status ID for filtering (OGC-150: supports all status types from
+            // dropdown)
+            // Frontend dropdown loads all status types and filters by ID
+            // Default to "active" if no status ID (backward compatibility)
             map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
 
             // Check if this sample item has an assignment
@@ -308,8 +322,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     }
                 }
 
-                // Clear the location (remove assignment)
-                sampleStorageAssignmentDAO.delete(existingAssignment);
+                // Clear the location fields (preserve assignment for audit trail)
+                existingAssignment.setLocationId(null);
+                existingAssignment.setLocationType(null);
+                existingAssignment.setPositionCoordinate(null);
+                sampleStorageAssignmentDAO.update(existingAssignment);
             }
 
             // Update SampleItem status to "disposed" (status_id = 24)
@@ -1208,5 +1225,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         throw new LIMSRuntimeException(String.format(
                 "Sample not found with identifier '%s'. Please check the accession number or external reference number.",
                 trimmedId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SampleStorageAssignment> getSampleAssignments(Pageable pageable) {
+        return sampleStorageAssignmentDAO.findAll(pageable);
     }
 }

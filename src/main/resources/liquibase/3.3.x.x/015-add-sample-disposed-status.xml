@@ -7,25 +7,18 @@
 
     <changeSet id="add-sample-disposed-status" author="ogc-73">
         <preConditions onFail="MARK_RAN">
-            <tableExists tableName="status_of_sample" schemaName="clinlims" />
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.status_of_sample WHERE name = 'SampleDisposed' AND status_type = 'SAMPLE'
-            </sqlCheck>
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.status_of_sample WHERE status_type = 'SAMPLE' AND name = 'SampleDisposed'</sqlCheck>
         </preConditions>
-        <comment>Add SampleDisposed status for sample item disposal tracking (OGC-73)</comment>
-        <!-- Use INSERT ... ON CONFLICT via raw SQL to handle case where ID 24 exists -->
-        <sql>
-            INSERT INTO clinlims.status_of_sample (id, description, code, status_type, name, display_key, is_active, lastupdated)
-            VALUES (24, 'Sample has been physically disposed', 1, 'SAMPLE', 'SampleDisposed', 'status.sample.disposed', 'Y', NOW())
-            ON CONFLICT (id) DO UPDATE SET
-                name = EXCLUDED.name,
-                description = EXCLUDED.description,
-                status_type = EXCLUDED.status_type,
-                display_key = EXCLUDED.display_key,
-                is_active = EXCLUDED.is_active,
-                lastupdated = NOW();
-        </sql>
-        <sql>SELECT setval('clinlims.status_of_sample_seq', GREATEST(24::bigint, COALESCE((SELECT MAX(id) FROM clinlims.status_of_sample), 0)::bigint), true);</sql>
+        <insert schemaName="clinlims" tableName="status_of_sample">
+            <column name="id" valueSequenceNext="status_of_sample_seq" />
+            <column name="description" value="Sample has been physically disposed" />
+            <column name="code" value="1" />
+            <column name="status_type" value="SAMPLE" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="name" value="SampleDisposed" />
+            <column name="display_key" value="status.sample.disposed" />
+            <column name="is_active" value="Y" />
+        </insert>
     </changeSet>
 
 </databaseChangeLog>

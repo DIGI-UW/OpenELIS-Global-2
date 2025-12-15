@@ -1787,4 +1787,108 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         // Step 4: Delete the location itself
         delete(locationEntity);
     }
+
+    // Deletion Validation Methods
+
+    @Override
+    public DeletionValidationResult canDeleteRoom(Integer roomId) {
+        StorageRoom room = storageRoomDAO.get(roomId).orElse(null);
+        if (room == null) {
+            return DeletionValidationResult.success(); // Room doesn't exist, deletion allowed
+        }
+
+        List<StorageDevice> childDevices = getDevicesByRoom(roomId);
+        if (!childDevices.isEmpty()) {
+            return DeletionValidationResult.referentialIntegrityViolation("Room", room.getName(), "devices",
+                    childDevices.size());
+        }
+
+        return DeletionValidationResult.success();
+    }
+
+    @Override
+    public DeletionValidationResult canDeleteDevice(Integer deviceId) {
+        StorageDevice device = storageDeviceDAO.get(deviceId).orElse(null);
+        if (device == null) {
+            return DeletionValidationResult.success(); // Device doesn't exist, deletion allowed
+        }
+
+        List<StorageShelf> childShelves = getShelvesByDevice(deviceId);
+        if (!childShelves.isEmpty()) {
+            return DeletionValidationResult.referentialIntegrityViolation("Device", device.getName(), "shelves",
+                    childShelves.size());
+        }
+
+        return DeletionValidationResult.success();
+    }
+
+    @Override
+    public DeletionValidationResult canDeleteShelf(Integer shelfId) {
+        StorageShelf shelf = storageShelfDAO.get(shelfId).orElse(null);
+        if (shelf == null) {
+            return DeletionValidationResult.success(); // Shelf doesn't exist, deletion allowed
+        }
+
+        List<StorageRack> childRacks = getRacksByShelf(shelfId);
+        if (!childRacks.isEmpty()) {
+            return DeletionValidationResult.referentialIntegrityViolation("Shelf", shelf.getLabel(), "racks",
+                    childRacks.size());
+        }
+
+        return DeletionValidationResult.success();
+    }
+
+    @Override
+    public DeletionValidationResult canDeleteRack(Integer rackId) {
+        StorageRack rack = storageRackDAO.get(rackId).orElse(null);
+        if (rack == null) {
+            return DeletionValidationResult.success(); // Rack doesn't exist, deletion allowed
+        }
+
+        // Check for assigned samples
+        int assignedSampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rackId);
+        if (assignedSampleCount > 0) {
+            return DeletionValidationResult.activeAssignments("Rack", rack.getLabel(), assignedSampleCount);
+        }
+
+        return DeletionValidationResult.success();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isNameUniqueWithinParent(String name, Integer parentId, String locationType, Integer excludeId) {
+        if (name == null || name.trim().isEmpty()) {
+            return true;
+        }
+        String trimmedName = name.trim();
+        switch (locationType) {
+        case "room": {
+            StorageRoom existingRoom = storageRoomDAO.findByName(trimmedName);
+            return existingRoom == null || existingRoom.getId().equals(excludeId);
+        }
+        case "device": {
+            if (parentId == null) {
+                return true;
+            }
+            StorageDevice existingDevice = storageDeviceDAO.findByNameAndParentRoomId(trimmedName, parentId);
+            return existingDevice == null || existingDevice.getId().equals(excludeId);
+        }
+        case "shelf": {
+            if (parentId == null) {
+                return true;
+            }
+            StorageShelf existingShelf = storageShelfDAO.findByLabelAndParentDeviceId(trimmedName, parentId);
+            return existingShelf == null || existingShelf.getId().equals(excludeId);
+        }
+        case "rack": {
+            if (parentId == null) {
+                return true;
+            }
+            StorageRack existingRack = storageRackDAO.findByLabelAndParentShelfId(trimmedName, parentId);
+            return existingRack == null || existingRack.getId().equals(excludeId);
+        }
+        default:
+            return true;
+        }
+    }
 }

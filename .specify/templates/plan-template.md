@@ -38,7 +38,7 @@ CLARIFICATION]
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 Verify compliance with
-[OpenELIS Global 3.0 Constitution](../.specify/memory/constitution.md):
+[OpenELIS Global Constitution](../.specify/memory/constitution.md):
 
 - [ ] **Configuration-Driven**: No country-specific code branches planned
 - [ ] **Carbon Design System**: UI uses @carbon/react exclusively (NO
@@ -95,7 +95,8 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 
 - **[P]**: Parallel milestone - can be developed alongside other milestones
 - **Sequential** (no prefix): Must complete before dependent milestones
-- **Branch**: Full path is `feat/{issue-id}-{name}/{suffix}`
+- **Branch**: Use constitution Principle IX naming (avoid Git ref prefix
+  collisions): `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
 
 ### Milestone Dependency Graph
 
@@ -107,15 +108,12 @@ graph LR
 
 ### PR Strategy
 
-- **Spec PR**: `spec/{issue-id}-{name}` → `develop` (specification documents
+- **Spec PR**: `spec/{NNN}[-{jira}]-{name}` → `develop` (specification documents
   only)
-- **Milestone PRs**: `feat/{issue-id}-{name}/m{N}-{desc}` →
-  `feat/{issue-id}-{name}` or `develop`
-- **Integration PR** (if using feature branch): `feat/{issue-id}-{name}` →
-  `develop`
+- **Milestone PRs**: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` → `develop`
 
-**Small Features (<3 days)**: May use single `feat/{issue-id}-{name}` branch
-without milestones.
+**Small Features (<3 days)**: May use a single milestone-style branch
+(`feat/{NNN}[-{jira}]-{name}-m1-{desc}`) without additional milestones.
 
 ## Project Structure
 
@@ -215,29 +213,27 @@ Document which test types will be used for this feature:
   - **Coverage Goal**: >80% (measured via JaCoCo)
   - **SDD Checkpoint**: After Phase 2 (Services), all unit tests MUST pass
   - **Test Slicing**: Use `@RunWith(MockitoJUnitRunner.class)` for isolated unit
-    tests (NOT `@SpringBootTest`)
+    tests (this repo is Traditional Spring MVC)
   - **Mocking**: Use `@Mock` (NOT `@MockBean`) for isolated unit tests
 
-- [ ] **DAO Tests**: Persistence layer testing (@DataJpaTest)
+- [ ] **DAO Tests**: Persistence layer testing (Traditional Spring MVC)
 
   - Template: `.specify/templates/testing/DataJpaTestDao.java.template`
   - **Reference**:
-    [Testing Roadmap - @DataJpaTest (DAO/Repository Layer)](.specify/guides/testing-roadmap.md#datajpatest-daorepository-layer)
-  - **Test Slicing**: Use `@DataJpaTest` for DAO testing (NOT
-    `@SpringBootTest` - faster execution)
-  - **Test Data**: Use `TestEntityManager` (NOT JdbcTemplate) for test data
-    setup
-  - **Transaction Management**: Automatic rollback (no manual cleanup needed)
+    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+  - **Project Note**: This repo uses traditional Spring MVC test patterns (no
+    Boot test slices).
+  - **Pattern**: Use `BaseWebContextSensitiveTest` and real DAO beans; rely on
+    rollback/fixture reset patterns from the Testing Roadmap.
 
-- [ ] **Controller Tests**: REST API endpoints (@WebMvcTest)
+- [ ] **Controller Tests**: REST API endpoints (Traditional Spring MVC)
 
   - Template: `.specify/templates/testing/WebMvcTestController.java.template`
   - **Reference**:
-    [Testing Roadmap - @WebMvcTest (Controller Layer)](.specify/guides/testing-roadmap.md#webmvctest-controller-layer)
-  - **Test Slicing**: Use `@WebMvcTest` for controller testing (NOT
-    `@SpringBootTest` - faster execution)
-  - **Mocking**: Use `@MockBean` (NOT `@Mock`) for Spring context mocking
-  - **HTTP Testing**: Use `MockMvc` for HTTP request/response testing
+    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+  - **Project Note**: `@WebMvcTest` is not used in this repository; use
+    `BaseWebContextSensitiveTest`.
+  - **Pattern**: Use `BaseWebContextSensitiveTest` + `MockMvc`.
 
 - [ ] **ORM Validation Tests**: Entity mapping validation (Constitution V.4)
 
@@ -247,14 +243,14 @@ Document which test types will be used for this feature:
   - **Requirements**: MUST execute in <5 seconds, MUST NOT require database
     connection
 
-- [ ] **Integration Tests**: Full workflow testing (@SpringBootTest)
+- [ ] **Integration Tests**: Full workflow testing (Traditional Spring MVC)
 
   - **Reference**:
-    [Testing Roadmap - @SpringBootTest (Full Integration)](.specify/guides/testing-roadmap.md#springboottest-full-integration)
-  - **Test Slicing**: Use `@SpringBootTest` only when full application context
-    is required
-  - **Transaction Management**: Use `@Transactional` for automatic rollback
-    (preferred)
+    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+  - **Project Note**: `@SpringBootTest` is not used in this repository; use
+    `BaseWebContextSensitiveTest`.
+  - **Pattern**: Use `BaseWebContextSensitiveTest` for full-context integration
+    tests.
   - **SDD Checkpoint**: After Phase 3 (Controllers), integration tests MUST pass
 
 - [ ] **Frontend Unit Tests**: React component logic (Jest + React Testing
