@@ -24,6 +24,7 @@ import { CustomTestDataDisplay } from "./customComponents/CustomTestDataDisplay.
 import { TestStepForm } from "./customComponents/TestStepForm.js";
 import { mapTestCatBeanToFormData } from "./customComponents/TestFormData.js";
 import SearchTestNames from "./SearchTestNames";
+import TestModifyFilters from "./TestModifyFilters";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -45,7 +46,8 @@ function TestModifyEntry() {
   const intl = useIntl();
   const [isLoading, setIsLoading] = useState(false);
   const [testMonifyList, setTestModifyList] = useState({});
-  const [filteredTests, setFilteredTests] = useState(testMonifyList?.testList);
+  const [filteredTests, setFilteredTests] = useState([]);
+  const [searchFilteredTests, setSearchFilteredTests] = useState([]);
   const [showGuide, setShowGuide] = useState(false);
   const [selectedTestIdToEdit, setSelectedTestIdToEdit] = useState(null);
 
@@ -55,8 +57,15 @@ function TestModifyEntry() {
     setShowGuide(!showGuide);
   };
 
-  const handleTestsFilter = useCallback((filtered) => {
+  // Handle filters from TestModifyFilters component
+  const handleFiltersChange = useCallback((filtered) => {
     setFilteredTests(filtered);
+    setSearchFilteredTests(filtered); // Initialize search with filtered results
+  }, []);
+
+  // Handle search within filtered tests
+  const handleTestsFilter = useCallback((searchFiltered) => {
+    setSearchFilteredTests(searchFiltered);
   }, []);
 
   const handleTestModifyEntryList = (res) => {
@@ -273,29 +282,45 @@ function TestModifyEntry() {
             />
           ) : (
             <>
-              <Grid fullWidth={true}>
-                <Column lg={8} md={4} sm={2}>
-                  <Section>
-                    <Section>
+              {/* Add the filters component */}
+              <TestModifyFilters
+                sampleTypeList={testMonifyList?.sampleTypeList}
+                labUnitList={testMonifyList?.labUnitList}
+                testCatBeanList={testMonifyList?.testCatBeanList}
+                onFilterChange={handleFiltersChange}
+              />
+              <br />
+              <hr />
+              <br />
+              {filteredTests.length > 0 && (
+                <>
+                  <Grid fullWidth={true}>
+                    <Column lg={8} md={4} sm={2}>
+                      <Section>
+                        <Section>
+                          <Section>
+                            <Heading>
+                              <FormattedMessage id="test.modify.header.modify" />
+                            </Heading>
+                          </Section>
+                        </Section>
+                      </Section>
+                    </Column>
+                    <Column lg={8} md={4} sm={2}>
                       <Section>
                         <Heading>
-                          <FormattedMessage id="test.modify.header.modify" />
+                          <SearchTestNames
+                            testNames={filteredTests}
+                            onFilter={handleTestsFilter}
+                          />
                         </Heading>
                       </Section>
-                    </Section>
-                  </Section>
-                </Column>
-                <Column lg={8} md={4} sm={2}>
-                  <Section>
-                    <Heading>
-                      <SearchTestNames
-                        testNames={testMonifyList?.testList}
-                        onFilter={handleTestsFilter}
-                      />
-                    </Heading>
-                  </Section>
-                </Column>
-              </Grid>
+                    </Column>
+                  </Grid>
+                  <br />
+                  <hr />
+                </>
+              )}
             </>
           )}
           <br />
@@ -314,10 +339,10 @@ function TestModifyEntry() {
             </>
           ) : (
             <>
-              {testMonifyList && testMonifyList?.testList?.length > 0 ? (
+              {searchFilteredTests && searchFilteredTests.length > 0 ? (
                 <>
                   <Grid fullWidth={true}>
-                    {filteredTests?.map((test) => (
+                    {searchFilteredTests.map((test) => (
                       <Column
                         style={{ margin: "2px" }}
                         lg={4}
@@ -337,15 +362,27 @@ function TestModifyEntry() {
                     ))}
                   </Grid>
                 </>
+              ) : filteredTests.length === 0 ? (
+                <>
+                  <Grid fullWidth={true}>
+                    <Column lg={16} md={8} sm={4}>
+                      <Section>
+                        <p>
+                          <FormattedMessage id="configuration.test.modify.filter.selectToBegin" />
+                        </p>
+                      </Section>
+                    </Column>
+                  </Grid>
+                </>
               ) : (
                 <>
                   <Grid fullWidth={true}>
                     <Column lg={16} md={8} sm={4}>
-                      <Loading
-                        description="loading"
-                        small={true}
-                        withOverlay={true}
-                      />
+                      <Section>
+                        <p>
+                          <FormattedMessage id="configuration.test.modify.filter.noTestsFound" />
+                        </p>
+                      </Section>
                     </Column>
                   </Grid>
                 </>
