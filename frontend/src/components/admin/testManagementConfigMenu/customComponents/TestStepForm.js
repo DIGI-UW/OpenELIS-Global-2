@@ -29,12 +29,7 @@ import { getFromOpenElisServer } from "../../../utils/Utils.js";
 import { NotificationContext } from "../../../layout/Layout.js";
 import { extractAgeRangeParts } from "./TestFormData.js";
 
-export const TestStepForm = ({
-  initialData,
-  mode = "add",
-  postCall,
-  cancelCall,
-}) => {
+export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -903,11 +898,7 @@ export const StepOneTestNameAndTestSection = ({
                   </Button>{" "}
                   <Button
                     onClick={() => {
-                      if (cancelCall) {
-                        cancelCall();
-                      } else {
-                        window.location.reload();
-                      }
+                      window.location.reload();
                     }}
                     kind="tertiary"
                     type="button"

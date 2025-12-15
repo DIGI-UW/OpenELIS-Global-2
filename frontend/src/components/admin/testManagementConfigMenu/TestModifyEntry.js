@@ -31,11 +31,11 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage/testManagementConfigMenu",
+    link: "/MasterListsPage#testManagementConfigMenu",
   },
   {
     label: "configuration.test.modify",
-    link: "/MasterListsPage/TestModifyEntry",
+    link: "/MasterListsPage#TestModifyEntry",
   },
 ];
 
@@ -47,7 +47,6 @@ function TestModifyEntry() {
   const [isLoading, setIsLoading] = useState(false);
   const [testMonifyList, setTestModifyList] = useState({});
   const [filteredTests, setFilteredTests] = useState([]);
-  const [searchFilteredTests, setSearchFilteredTests] = useState([]);
   const [showGuide, setShowGuide] = useState(false);
   const [selectedTestIdToEdit, setSelectedTestIdToEdit] = useState(null);
 
@@ -57,15 +56,12 @@ function TestModifyEntry() {
     setShowGuide(!showGuide);
   };
 
-  // Handle filters from TestModifyFilters component
   const handleFiltersChange = useCallback((filtered) => {
     setFilteredTests(filtered);
-    setSearchFilteredTests(filtered); // Initialize search with filtered results
   }, []);
 
-  // Handle search within filtered tests
-  const handleTestsFilter = useCallback((searchFiltered) => {
-    setSearchFilteredTests(searchFiltered);
+  const handleTestsFilter = useCallback((filtered) => {
+    setFilteredTests(filtered);
   }, []);
 
   const handleTestModifyEntryList = (res) => {
@@ -95,8 +91,7 @@ function TestModifyEntry() {
       });
       setNotificationVisible(true);
       setTimeout(() => {
-        setSelectedTestIdToEdit(null);
-        setIsLoading(false);
+        window.location.reload();
       }, 500);
     }
     setIsLoading(true);
@@ -123,12 +118,7 @@ function TestModifyEntry() {
       });
       setNotificationVisible(true);
       setTimeout(() => {
-        setSelectedTestIdToEdit(null);
-        // Refresh the test data
-        getFromOpenElisServer(
-          `/rest/TestModifyEntry`,
-          handleTestModifyEntryList,
-        );
+        window.location.reload();
       }, 200);
     } else {
       addNotification({
@@ -138,8 +128,7 @@ function TestModifyEntry() {
       });
       setNotificationVisible(true);
       setTimeout(() => {
-        setSelectedTestIdToEdit(null);
-        setIsLoading(false);
+        window.location.reload();
       }, 200);
     }
   };
@@ -289,7 +278,6 @@ function TestModifyEntry() {
             />
           ) : (
             <>
-              {/* Add the filters component */}
               <TestModifyFilters
                 sampleTypeList={testMonifyList?.sampleTypeList}
                 labUnitList={testMonifyList?.labUnitList}
@@ -341,16 +329,15 @@ function TestModifyEntry() {
                   ),
                 )}
                 postCall={handleTestModifyEntryPostCall}
-                cancelCall={() => setSelectedTestIdToEdit(null)}
                 mode="edit"
               />
             </>
           ) : (
             <>
-              {searchFilteredTests && searchFilteredTests.length > 0 ? (
+              {filteredTests && filteredTests.length > 0 ? (
                 <>
                   <Grid fullWidth={true}>
-                    {searchFilteredTests.map((test) => (
+                    {filteredTests.map((test) => (
                       <Column
                         style={{ margin: "2px" }}
                         lg={4}
