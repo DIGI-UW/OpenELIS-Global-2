@@ -95,7 +95,8 @@ function TestModifyEntry() {
       });
       setNotificationVisible(true);
       setTimeout(() => {
-        window.location.reload();
+        setSelectedTestIdToEdit(null);
+        setIsLoading(false);
       }, 500);
     }
     setIsLoading(true);
@@ -122,7 +123,12 @@ function TestModifyEntry() {
       });
       setNotificationVisible(true);
       setTimeout(() => {
-        window.location.reload();
+        setSelectedTestIdToEdit(null);
+        // Refresh the test data
+        getFromOpenElisServer(
+          `/rest/TestModifyEntry`,
+          handleTestModifyEntryList,
+        );
       }, 200);
     } else {
       addNotification({
@@ -132,7 +138,8 @@ function TestModifyEntry() {
       });
       setNotificationVisible(true);
       setTimeout(() => {
-        window.location.reload();
+        setSelectedTestIdToEdit(null);
+        setIsLoading(false);
       }, 200);
     }
   };
@@ -334,6 +341,7 @@ function TestModifyEntry() {
                   ),
                 )}
                 postCall={handleTestModifyEntryPostCall}
+                cancelCall={() => setSelectedTestIdToEdit(null)}
                 mode="edit"
               />
             </>
