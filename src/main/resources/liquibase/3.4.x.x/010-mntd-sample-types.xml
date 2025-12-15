@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- MNTD SAMPLE TYPES -->
+    <!-- Adds sample types required for MNTD Laboratory workflow -->
+    <!-- Each sample type requires a localization entry first -->
+    <!-- ======================================================== -->
+
+    <!-- Cell pellet -->
+    <changeSet id="add-mntd-localization-cell-pellet" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Cell pellet' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Cell pellet"/>
+            <column name="french" value="Culot cellulaire"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-mntd-sample-type-cell-pellet" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'cell pellet'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Cell pellet"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Cell pellet' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Culture -->
+    <changeSet id="add-mntd-localization-culture" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Culture' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Culture"/>
+            <column name="french" value="Culture"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-mntd-sample-type-culture" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'culture'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Culture"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Culture' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- DNA/RNA preservative -->
+    <changeSet id="add-mntd-localization-dna-rna-preservative" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'DNA/RNA preservative' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="DNA/RNA preservative"/>
+            <column name="french" value="Conservateur ADN/ARN"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-mntd-sample-type-dna-rna-preservative" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'dna/rna preservative'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="DNA/RNA preservative"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'DNA/RNA preservative' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Vector samples (Mosquito / sandfly / tsetsefly) -->
+    <changeSet id="add-mntd-localization-vector" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Mosquito / sandfly / tsetsefly' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Mosquito / sandfly / tsetsefly"/>
+            <column name="french" value="Moustique / phlébotome / mouche tsé-tsé"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-mntd-sample-type-vector" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'mosquito / sandfly / tsetsefly'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Mosquito / sandfly / tsetsefly"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Mosquito / sandfly / tsetsefly' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Biopsy / microbiopsy -->
+    <changeSet id="add-mntd-localization-biopsy" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Biopsy / microbiopsy' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Biopsy / microbiopsy"/>
+            <column name="french" value="Biopsie / microbiopsie"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-mntd-sample-type-biopsy" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'biopsy / microbiopsy'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Biopsy / microbiopsy"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Biopsy / microbiopsy' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -217,7 +217,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setId(noteBook.getId());
             displayBean.setTitle(noteBook.getTitle());
             displayBean.setTags(noteBook.getTags());
-            displayBean.setTechnicianId(Integer.valueOf(noteBook.getTechnician().getId()));
+            if (noteBook.getTechnician() != null) {
+                displayBean.setTechnicianId(Integer.valueOf(noteBook.getTechnician().getId()));
+            }
             // Handle type - it's now a Dictionary entity
             if (noteBook.getType() != null) {
                 displayBean.setType(Integer.valueOf(noteBook.getType().getId()));
@@ -309,9 +311,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 Hibernate.initialize(comment.getAuthor());
             }
             fullDisplayBean.setComments(noteBook.getComments());
-            fullDisplayBean.setTechnicianName(noteBook.getTechnician().getDisplayName());
-            fullDisplayBean.setCreatorName(noteBook.getCreator().getDisplayName());
-            fullDisplayBean.setTechnicianId(Integer.valueOf(noteBook.getTechnician().getId()));
+            if (noteBook.getTechnician() != null) {
+                fullDisplayBean.setTechnicianName(noteBook.getTechnician().getDisplayName());
+                fullDisplayBean.setTechnicianId(Integer.valueOf(noteBook.getTechnician().getId()));
+            }
+            if (noteBook.getCreator() != null) {
+                fullDisplayBean.setCreatorName(noteBook.getCreator().getDisplayName());
+            }
             fullDisplayBean.setIsTemplate(noteBook.getIsTemplate());
             fullDisplayBean.setEntriesCount(noteBook.getEntries().size());
             fullDisplayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
