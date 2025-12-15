@@ -61,6 +61,7 @@ import {
 } from "../utils/Utils";
 import NotebookWorkflowTab from "./workflow/NotebookWorkflowTab";
 import MNTDWorkflowTab from "./workflow/MNTDWorkflowTab";
+import TBWorkflowTab from "./workflow/TBWorkflowTab";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -1046,7 +1047,7 @@ const NoteBookInstanceEntryForm = () => {
         {selectedTab === TABS.WORKFLOW && (
           <Column lg={16} md={8} sm={4}>
             {/* Use enhanced workflow view for notebook instances (non-templates) */}
-            {/* Detect MNTD workflow based on notebook title */}
+            {/* Detect workflow type based on notebook title */}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
               noteBookData?.title
@@ -1056,6 +1057,19 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
+              noteBookData?.title
+                ?.toLowerCase()
+                .includes("tuberculosis") &&
+              !noteBookData?.title
+                ?.toLowerCase()
+                .includes("malaria and neglected tropical disease") && (
+                <TBWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              !noteBookData?.title
+                ?.toLowerCase()
+                .includes("tuberculosis") &&
               !noteBookData?.title
                 ?.toLowerCase()
                 .includes("malaria and neglected tropical disease") && (
