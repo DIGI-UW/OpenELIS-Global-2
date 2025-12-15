@@ -6,7 +6,7 @@ import {
   SelectItem,
   Section,
   Heading,
-  Button
+  Button,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -14,7 +14,7 @@ function TestModifyFilters({
   sampleTypeList,
   labUnitList,
   testCatBeanList,
-  onFilterChange
+  onFilterChange,
 }) {
   const intl = useIntl();
   const [selectedSampleType, setSelectedSampleType] = useState("");
@@ -40,24 +40,33 @@ function TestModifyFilters({
 
     // Filter by sample type if selected
     if (selectedSampleType) {
-      const sampleTypeName = sampleTypeList.find(st => st.id === selectedSampleType)?.value;
+      const sampleTypeName = sampleTypeList.find(
+        (st) => st.id === selectedSampleType,
+      )?.value;
       if (sampleTypeName) {
-        filtered = filtered.filter(test => test.sampleType === sampleTypeName);
+        filtered = filtered.filter(
+          (test) => test.sampleType === sampleTypeName,
+        );
       }
     }
 
     // Filter by test section if selected
     if (selectedTestSection) {
-      const testSectionName = labUnitList.find(ts => ts.id === selectedTestSection)?.value;
+      const testSectionName = labUnitList.find(
+        (ts) => ts.id === selectedTestSection,
+      )?.value;
       if (testSectionName) {
-        filtered = filtered.filter(test => test.testUnit === testSectionName);
+        filtered = filtered.filter((test) => test.testUnit === testSectionName);
       }
     }
 
     // Convert to the format expected by the UI (matching testList structure)
-    const testListFormat = filtered.map(test => ({
+    const testListFormat = filtered.map((test) => ({
       id: test.id,
-      value: test.localization?.english || test.localization?.french || 'Unknown Test'
+      value:
+        test.localization?.english ||
+        test.localization?.french ||
+        "Unknown Test",
     }));
 
     onFilterChange(testListFormat);
@@ -115,7 +124,9 @@ function TestModifyFilters({
             onChange={handleTestSectionChange}
           >
             <SelectItem
-              text={intl.formatMessage({ id: "input.placeholder.selectTestSection" })}
+              text={intl.formatMessage({
+                id: "input.placeholder.selectTestSection",
+              })}
               value=""
             />
             {labUnitList?.map((testSection) => (
@@ -131,13 +142,15 @@ function TestModifyFilters({
           <Button
             kind="secondary"
             onClick={clearFilters}
-            style={{ marginTop: '1rem' }}
+            style={{ marginTop: "1rem" }}
           >
             <FormattedMessage id="label.clear" />
           </Button>
         </Column>
         <Column lg={3} md={2} sm={1}>
-          <Section style={{ marginTop: '1rem', display: 'flex', alignItems: 'end' }}>
+          <Section
+            style={{ marginTop: "1rem", display: "flex", alignItems: "end" }}
+          >
             <small>
               <FormattedMessage id="configuration.test.modify.filter.instruction" />
             </small>

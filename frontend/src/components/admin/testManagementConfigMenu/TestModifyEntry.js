@@ -47,6 +47,7 @@ function TestModifyEntry() {
   const [isLoading, setIsLoading] = useState(false);
   const [testMonifyList, setTestModifyList] = useState({});
   const [filteredTests, setFilteredTests] = useState([]);
+  const [searchFilteredTests, setSearchFilteredTests] = useState([]);
   const [showGuide, setShowGuide] = useState(false);
   const [selectedTestIdToEdit, setSelectedTestIdToEdit] = useState(null);
 
@@ -56,12 +57,19 @@ function TestModifyEntry() {
     setShowGuide(!showGuide);
   };
 
+  // Handle filters from TestModifyFilters component
   const handleFiltersChange = useCallback((filtered) => {
     setFilteredTests(filtered);
+    setSearchFilteredTests(filtered); // Initialize search with filtered results
   }, []);
 
-  const handleTestsFilter = useCallback((filtered) => {
-    setFilteredTests(filtered);
+  // Handle search within filtered tests
+  const handleTestsFilter = useCallback((searchFiltered) => {
+    setSearchFilteredTests(searchFiltered);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setSelectedTestIdToEdit(null);
   }, []);
 
   const handleTestModifyEntryList = (res) => {
@@ -329,15 +337,16 @@ function TestModifyEntry() {
                   ),
                 )}
                 postCall={handleTestModifyEntryPostCall}
+                cancelCall={handleCancelEdit}
                 mode="edit"
               />
             </>
           ) : (
             <>
-              {filteredTests && filteredTests.length > 0 ? (
+              {searchFilteredTests && searchFilteredTests.length > 0 ? (
                 <>
                   <Grid fullWidth={true}>
-                    {filteredTests.map((test) => (
+                    {searchFilteredTests.map((test) => (
                       <Column
                         style={{ margin: "2px" }}
                         lg={4}
