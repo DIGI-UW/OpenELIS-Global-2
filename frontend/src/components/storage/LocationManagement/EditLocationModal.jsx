@@ -11,12 +11,12 @@ import {
   Toggle,
   InlineNotification,
   Checkbox,
+  SkeletonText,
+  SkeletonPlaceholder,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  putToOpenElisServer,
-  getFromOpenElisServerV2,
-} from "../../utils/Utils";
+import { getFromOpenElisServerV2 } from "../../utils/Utils";
+import config from "../../../config.json";
 import "./EditLocationModal.css";
 
 /**
@@ -89,11 +89,20 @@ const EditLocationModal = ({
   // Helper function to initialize form data from location prop
   const initializeFormDataFromLocation = (loc) => {
     if (!loc) return {};
+    const normalizedActive = normalizeActive(loc.active);
+    console.log(
+      "[EditLocationModal] Initializing active from:",
+      loc.active,
+      "→",
+      normalizedActive,
+      "for location:",
+      loc.id,
+    );
     return {
       name: loc.name || "",
       code: loc.code || "",
       description: loc.description || "",
-      active: normalizeActive(loc.active),
+      active: normalizedActive,
       type: loc.type || "",
       temperatureSetting: loc.temperatureSetting || "",
       capacityLimit: loc.capacityLimit || "",
@@ -101,6 +110,13 @@ const EditLocationModal = ({
       rows: loc.rows || "",
       columns: loc.columns || "",
       positionSchemaHint: loc.positionSchemaHint || "",
+      // Support multiple field names from API for parent data
+      parentRoomName:
+        loc.parentRoomName || loc.parentRoom?.name || loc.roomName || "",
+      parentDeviceName:
+        loc.parentDeviceName || loc.parentDevice?.name || loc.deviceName || "",
+      parentShelfLabel:
+        loc.parentShelfLabel || loc.parentShelf?.label || loc.shelfLabel || "",
     };
   };
 
@@ -124,12 +140,21 @@ const EditLocationModal = ({
           if (!isMounted) return;
 
           if (fullLocation) {
+            const normalizedActive = normalizeActive(fullLocation.active);
+            console.log(
+              "[EditLocationModal] API returned active:",
+              fullLocation.active,
+              "→ normalized:",
+              normalizedActive,
+              "for location:",
+              fullLocation.id,
+            );
             setFormData({
               name: fullLocation.name || "",
               code: fullLocation.code || "",
               description: fullLocation.description || "",
               // Ensure active is properly initialized as boolean
-              active: normalizeActive(fullLocation.active),
+              active: normalizedActive,
               type: fullLocation.type || "",
               temperatureSetting: fullLocation.temperatureSetting || "",
               capacityLimit: fullLocation.capacityLimit || "",
@@ -137,6 +162,22 @@ const EditLocationModal = ({
               rows: fullLocation.rows || "",
               columns: fullLocation.columns || "",
               positionSchemaHint: fullLocation.positionSchemaHint || "",
+              // Support multiple field names from API for parent data
+              parentRoomName:
+                fullLocation.parentRoomName ||
+                fullLocation.parentRoom?.name ||
+                fullLocation.roomName ||
+                "",
+              parentDeviceName:
+                fullLocation.parentDeviceName ||
+                fullLocation.parentDevice?.name ||
+                fullLocation.deviceName ||
+                "",
+              parentShelfLabel:
+                fullLocation.parentShelfLabel ||
+                fullLocation.parentShelf?.label ||
+                fullLocation.shelfLabel ||
+                "",
             });
             // Store original code from full data
             setOriginalCode(fullLocation.code || "");
@@ -269,37 +310,92 @@ const EditLocationModal = ({
         payload.active = formData.active;
       }
 
-      // Use putToOpenElisServer utility
-      await new Promise((resolve, reject) => {
-        putToOpenElisServer(endpoint, JSON.stringify(payload), (status) => {
-          setIsSubmitting(false);
-          if (status >= 200 && status < 300) {
-            // Success - fetch updated location
-            fetch(`${window.location.origin}${endpoint}`)
-              .then((res) => res.json())
-              .then((data) => {
-                if (onSave) {
-                  onSave(data);
-                }
-                handleClose();
-                resolve(data);
-              })
-              .catch((err) => {
-                // Even if fetch fails, consider update successful if status is OK
-                if (onSave) {
-                  onSave(payload);
-                }
-                handleClose();
-                resolve(payload);
-              });
-          } else {
-            // Error
-            const errorMessage = `Failed to update location (status: ${status})`;
-            setError(errorMessage);
-            reject(new Error(errorMessage));
-          }
+      // Use fetch directly to get response body for error details
+      console.log(
+        "[EditLocationModal] Saving with active:",
+        formData.active,
+        "payload active:",
+        payload.active,
+        "for location:",
+        location.id,
+      );
+      try {
+        const response = await fetch(config.serverBaseUrl + endpoint, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          credentials: "include",
+          body: JSON.stringify(payload),
         });
-      });
+
+        console.log(
+          "[EditLocationModal] PUT response status:",
+          response.status,
+          "for location:",
+          location.id,
+        );
+        setIsSubmitting(false);
+
+        if (response.status >= 200 && response.status < 300) {
+          // Success - fetch updated location using authenticated request
+          getFromOpenElisServerV2(endpoint)
+            .then((data) => {
+              if (onSave) {
+                onSave(data);
+              }
+              handleClose();
+            })
+            .catch((err) => {
+              // Even if fetch fails, consider update successful if status is OK
+              console.warn(
+                "Failed to fetch updated location, using payload:",
+                err,
+              );
+              if (onSave) {
+                onSave(payload);
+              }
+              handleClose();
+            });
+        } else {
+          // Error - extract error details from response body
+          let errorMessage = `Failed to update location (status: ${response.status})`;
+
+          // Try to extract error details from response body
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            try {
+              const errorData = await response.json();
+              if (errorData.error) {
+                errorMessage = errorData.error;
+              } else if (errorData.message) {
+                errorMessage = errorData.message;
+              } else if (errorData.fieldErrors) {
+                // Handle field-specific errors
+                const fieldErrors = Object.entries(errorData.fieldErrors)
+                  .map(([field, msg]) => `${field}: ${msg}`)
+                  .join(", ");
+                errorMessage = `Validation errors: ${fieldErrors}`;
+              }
+            } catch (parseError) {
+              console.warn("Failed to parse error response:", parseError);
+            }
+          }
+
+          setError(errorMessage);
+          throw new Error(errorMessage);
+        }
+      } catch (error) {
+        setIsSubmitting(false);
+        // If it's already our error message, use it; otherwise use generic
+        if (error.message && error.message.startsWith("Failed to update")) {
+          // Error already set above
+        } else {
+          setError(error.message || "Failed to update location");
+        }
+        throw error;
+      }
     } catch (error) {
       setIsSubmitting(false);
       setError(error.message || "Failed to update location");
@@ -326,6 +422,7 @@ const EditLocationModal = ({
       onClose={handleClose}
       size="md"
       data-testid="edit-location-modal"
+      className="edit-location-modal"
     >
       <ModalHeader
         title={intl.formatMessage(
@@ -350,397 +447,414 @@ const EditLocationModal = ({
           />
         )}
 
-        <div className="edit-location-form" onKeyDown={handleKeyDown}>
-          {/* Room fields */}
-          {locationType === "room" && (
-            <>
-              <TextInput
-                id="room-name"
-                data-testid="edit-location-room-name"
-                labelText={intl.formatMessage({
-                  id: "storage.location.name",
-                  defaultMessage: "Name",
-                })}
-                value={formData.name || ""}
-                onChange={(e) => handleFieldChange("name", e.target.value)}
-                required
-              />
-              <TextInput
-                id="room-code"
-                data-testid="edit-location-room-code"
-                labelText={intl.formatMessage({
-                  id: "storage.location.code",
-                  defaultMessage: "Code",
-                })}
-                value={formData.code || ""}
-                onChange={(e) => {
-                  // Auto-uppercase on input and limit to 10 chars
-                  const value = e.target.value.toUpperCase().slice(0, 10);
-                  handleFieldChange("code", value);
-                }}
-                maxLength={10}
-                helperText={intl.formatMessage({
-                  id: "storage.location.code.helper",
-                  defaultMessage:
-                    "Max 10 characters, alphanumeric with hyphens/underscores",
-                })}
-              />
-              <TextArea
-                id="room-description"
-                data-testid="edit-location-room-description"
-                labelText={intl.formatMessage({
-                  id: "storage.location.description",
-                  defaultMessage: "Description",
-                })}
-                value={formData.description || ""}
-                onChange={(e) =>
-                  handleFieldChange("description", e.target.value)
-                }
-                rows={3}
-              />
-              <Toggle
-                id="room-active"
-                data-testid="edit-location-room-active"
-                labelText={intl.formatMessage({
-                  id: "storage.location.active",
-                  defaultMessage: "Active",
-                })}
-                toggled={formData.active === true}
-                onToggle={(checked) => handleFieldChange("active", checked)}
-              />
-            </>
-          )}
+        {isLoading ? (
+          <div className="edit-location-form">
+            <SkeletonText heading width="40%" />
+            <SkeletonText width="100%" />
+            <SkeletonText width="100%" />
+            <SkeletonText width="100%" />
+            <SkeletonPlaceholder style={{ height: "48px" }} />
+            <SkeletonPlaceholder style={{ height: "48px" }} />
+          </div>
+        ) : (
+          <div className="edit-location-form" onKeyDown={handleKeyDown}>
+            {/* Room fields */}
+            {locationType === "room" && (
+              <>
+                <TextInput
+                  id="room-name"
+                  data-testid="edit-location-room-name"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.name",
+                    defaultMessage: "Name",
+                  })}
+                  value={formData.name || ""}
+                  onChange={(e) => handleFieldChange("name", e.target.value)}
+                  required
+                />
+                <TextInput
+                  id="room-code"
+                  data-testid="edit-location-room-code"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.code",
+                    defaultMessage: "Code",
+                  })}
+                  value={formData.code || ""}
+                  onChange={(e) => {
+                    // Auto-uppercase on input and limit to 10 chars
+                    const value = e.target.value.toUpperCase().slice(0, 10);
+                    handleFieldChange("code", value);
+                  }}
+                  maxLength={10}
+                  helperText={intl.formatMessage({
+                    id: "storage.location.code.helper",
+                    defaultMessage:
+                      "Max 10 characters, alphanumeric with hyphens/underscores",
+                  })}
+                />
+                <TextArea
+                  id="room-description"
+                  data-testid="edit-location-room-description"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.description",
+                    defaultMessage: "Description",
+                  })}
+                  value={formData.description || ""}
+                  onChange={(e) =>
+                    handleFieldChange("description", e.target.value)
+                  }
+                  rows={3}
+                />
+                <Toggle
+                  id="room-active"
+                  data-testid="edit-location-room-active"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.active",
+                    defaultMessage: "Active",
+                  })}
+                  toggled={formData.active === true}
+                  onToggle={(checked) => handleFieldChange("active", checked)}
+                />
+              </>
+            )}
 
-          {/* Device fields */}
-          {locationType === "device" && (
-            <>
-              <TextInput
-                id="device-name"
-                data-testid="edit-location-device-name"
-                labelText={intl.formatMessage({
-                  id: "storage.location.name",
-                  defaultMessage: "Name",
-                })}
-                value={formData.name || ""}
-                onChange={(e) => handleFieldChange("name", e.target.value)}
-                required
-              />
-              <TextInput
-                id="device-code"
-                data-testid="edit-location-device-code"
-                labelText={intl.formatMessage({
-                  id: "storage.location.code",
-                  defaultMessage: "Code",
-                })}
-                value={formData.code || ""}
-                onChange={(e) => {
-                  // Auto-uppercase on input and limit to 10 chars
-                  const value = e.target.value.toUpperCase().slice(0, 10);
-                  handleFieldChange("code", value);
-                }}
-                maxLength={10}
-                helperText={intl.formatMessage({
-                  id: "storage.location.code.helper",
-                  defaultMessage:
-                    "Max 10 characters, alphanumeric with hyphens/underscores",
-                })}
-              />
-              <TextInput
-                id="device-parent-room"
-                data-testid="edit-location-device-parent-room"
-                labelText={intl.formatMessage({
-                  id: "storage.location.parent.room",
-                  defaultMessage: "Parent Room",
-                })}
-                value={
-                  (location && location.parentRoom?.name) ||
-                  (location && location.roomName) ||
-                  (location && location.parentRoomName) ||
-                  ""
-                }
-                disabled
-                readOnly
-              />
-              <Dropdown
-                id="device-type"
-                data-testid="edit-location-device-type"
-                titleText={intl.formatMessage({
-                  id: "storage.device.type",
-                  defaultMessage: "Type",
-                })}
-                label={intl.formatMessage({
-                  id: "storage.device.type",
-                  defaultMessage: "Type",
-                })}
-                items={deviceTypes}
-                itemToString={(item) => (item ? item.label : "")}
-                onChange={({ selectedItem }) =>
-                  handleFieldChange("type", selectedItem ? selectedItem.id : "")
-                }
-                selectedItem={
-                  deviceTypes.find((t) => t.id === formData.type) || null
-                }
-              />
-              <TextInput
-                id="device-temperature"
-                data-testid="edit-location-device-temperature"
-                labelText={intl.formatMessage({
-                  id: "storage.device.temperature",
-                  defaultMessage: "Temperature Setting",
-                })}
-                value={formData.temperatureSetting || ""}
-                onChange={(e) =>
-                  handleFieldChange("temperatureSetting", e.target.value)
-                }
-                type="number"
-              />
-              <TextInput
-                id="device-capacity"
-                data-testid="edit-location-device-capacity"
-                labelText={intl.formatMessage({
-                  id: "storage.location.capacity",
-                  defaultMessage: "Capacity Limit",
-                })}
-                value={formData.capacityLimit || ""}
-                onChange={(e) =>
-                  handleFieldChange("capacityLimit", e.target.value)
-                }
-                type="number"
-              />
-              <Toggle
-                id="device-active"
-                data-testid="edit-location-device-active"
-                labelText={intl.formatMessage({
-                  id: "storage.location.active",
-                  defaultMessage: "Active",
-                })}
-                toggled={formData.active === true}
-                onToggle={(checked) => handleFieldChange("active", checked)}
-              />
-            </>
-          )}
+            {/* Device fields */}
+            {locationType === "device" && (
+              <>
+                <TextInput
+                  id="device-name"
+                  data-testid="edit-location-device-name"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.name",
+                    defaultMessage: "Name",
+                  })}
+                  value={formData.name || ""}
+                  onChange={(e) => handleFieldChange("name", e.target.value)}
+                  required
+                />
+                <TextInput
+                  id="device-code"
+                  data-testid="edit-location-device-code"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.code",
+                    defaultMessage: "Code",
+                  })}
+                  value={formData.code || ""}
+                  onChange={(e) => {
+                    // Auto-uppercase on input and limit to 10 chars
+                    const value = e.target.value.toUpperCase().slice(0, 10);
+                    handleFieldChange("code", value);
+                  }}
+                  maxLength={10}
+                  helperText={intl.formatMessage({
+                    id: "storage.location.code.helper",
+                    defaultMessage:
+                      "Max 10 characters, alphanumeric with hyphens/underscores",
+                  })}
+                />
+                <TextInput
+                  id="device-parent-room"
+                  data-testid="edit-location-device-parent-room"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.parent.room",
+                    defaultMessage: "Parent Room",
+                  })}
+                  value={
+                    formData.parentRoomName ||
+                    (location && location.parentRoomName) ||
+                    (location && location.parentRoom?.name) ||
+                    (location && location.roomName) ||
+                    ""
+                  }
+                  disabled
+                  readOnly
+                />
+                <Dropdown
+                  id="device-type"
+                  data-testid="edit-location-device-type"
+                  titleText={intl.formatMessage({
+                    id: "storage.device.type",
+                    defaultMessage: "Type",
+                  })}
+                  label={intl.formatMessage({
+                    id: "storage.device.type",
+                    defaultMessage: "Type",
+                  })}
+                  items={deviceTypes}
+                  itemToString={(item) => (item ? item.label : "")}
+                  onChange={({ selectedItem }) =>
+                    handleFieldChange(
+                      "type",
+                      selectedItem ? selectedItem.id : "",
+                    )
+                  }
+                  selectedItem={
+                    deviceTypes.find((t) => t.id === formData.type) || null
+                  }
+                />
+                <TextInput
+                  id="device-temperature"
+                  data-testid="edit-location-device-temperature"
+                  labelText={intl.formatMessage({
+                    id: "storage.device.temperature",
+                    defaultMessage: "Temperature Setting",
+                  })}
+                  value={formData.temperatureSetting || ""}
+                  onChange={(e) =>
+                    handleFieldChange("temperatureSetting", e.target.value)
+                  }
+                  type="number"
+                />
+                <TextInput
+                  id="device-capacity"
+                  data-testid="edit-location-device-capacity"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.capacity",
+                    defaultMessage: "Capacity Limit",
+                  })}
+                  value={formData.capacityLimit || ""}
+                  onChange={(e) =>
+                    handleFieldChange("capacityLimit", e.target.value)
+                  }
+                  type="number"
+                />
+                <Toggle
+                  id="device-active"
+                  data-testid="edit-location-device-active"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.active",
+                    defaultMessage: "Active",
+                  })}
+                  toggled={normalizeActive(formData.active)}
+                  onToggle={(checked) => handleFieldChange("active", checked)}
+                />
+              </>
+            )}
 
-          {/* Shelf fields */}
-          {locationType === "shelf" && (
-            <>
-              <TextInput
-                id="shelf-label"
-                data-testid="edit-location-shelf-label"
-                labelText={intl.formatMessage({
-                  id: "storage.shelf.label",
-                  defaultMessage: "Label",
-                })}
-                value={formData.label || ""}
-                onChange={(e) => handleFieldChange("label", e.target.value)}
-                required
-              />
-              <TextInput
-                id="shelf-parent-device"
-                data-testid="edit-location-shelf-parent-device"
-                labelText={intl.formatMessage({
-                  id: "storage.location.parent.device",
-                  defaultMessage: "Parent Device",
-                })}
-                value={
-                  (location && location.parentDevice?.name) ||
-                  (location && location.deviceName) ||
-                  (location && location.parentDeviceName) ||
-                  ""
-                }
-                disabled
-                readOnly
-              />
-              <TextInput
-                id="shelf-capacity"
-                data-testid="edit-location-shelf-capacity"
-                labelText={intl.formatMessage({
-                  id: "storage.location.capacity",
-                  defaultMessage: "Capacity Limit",
-                })}
-                value={formData.capacityLimit || ""}
-                onChange={(e) =>
-                  handleFieldChange("capacityLimit", e.target.value)
-                }
-                type="number"
-              />
-              <TextInput
-                id="shelf-code"
-                data-testid="edit-location-shelf-code"
-                labelText={intl.formatMessage({
-                  id: "storage.location.code",
-                  defaultMessage: "Code",
-                })}
-                value={formData.code || ""}
-                onChange={(e) => {
-                  // Auto-uppercase on input and limit to 10 chars
-                  const value = e.target.value.toUpperCase().slice(0, 10);
-                  handleFieldChange("code", value);
-                }}
-                maxLength={10}
-                helperText={intl.formatMessage({
-                  id: "storage.location.code.helper",
-                  defaultMessage:
-                    "Max 10 characters, alphanumeric with hyphens/underscores",
-                })}
-              />
-              <Toggle
-                id="shelf-active"
-                data-testid="edit-location-shelf-active"
-                labelText={intl.formatMessage({
-                  id: "storage.location.active",
-                  defaultMessage: "Active",
-                })}
-                toggled={formData.active === true}
-                onToggle={(checked) => handleFieldChange("active", checked)}
-              />
-            </>
-          )}
+            {/* Shelf fields */}
+            {locationType === "shelf" && (
+              <>
+                <TextInput
+                  id="shelf-label"
+                  data-testid="edit-location-shelf-label"
+                  labelText={intl.formatMessage({
+                    id: "storage.shelf.label",
+                    defaultMessage: "Label",
+                  })}
+                  value={formData.label || ""}
+                  onChange={(e) => handleFieldChange("label", e.target.value)}
+                  required
+                />
+                <TextInput
+                  id="shelf-parent-device"
+                  data-testid="edit-location-shelf-parent-device"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.parent.device",
+                    defaultMessage: "Parent Device",
+                  })}
+                  value={
+                    formData.parentDeviceName ||
+                    (location && location.parentDeviceName) ||
+                    (location && location.parentDevice?.name) ||
+                    (location && location.deviceName) ||
+                    ""
+                  }
+                  disabled
+                  readOnly
+                />
+                <TextInput
+                  id="shelf-capacity"
+                  data-testid="edit-location-shelf-capacity"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.capacity",
+                    defaultMessage: "Capacity Limit",
+                  })}
+                  value={formData.capacityLimit || ""}
+                  onChange={(e) =>
+                    handleFieldChange("capacityLimit", e.target.value)
+                  }
+                  type="number"
+                />
+                <TextInput
+                  id="shelf-code"
+                  data-testid="edit-location-shelf-code"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.code",
+                    defaultMessage: "Code",
+                  })}
+                  value={formData.code || ""}
+                  onChange={(e) => {
+                    // Auto-uppercase on input and limit to 10 chars
+                    const value = e.target.value.toUpperCase().slice(0, 10);
+                    handleFieldChange("code", value);
+                  }}
+                  maxLength={10}
+                  helperText={intl.formatMessage({
+                    id: "storage.location.code.helper",
+                    defaultMessage:
+                      "Max 10 characters, alphanumeric with hyphens/underscores",
+                  })}
+                />
+                <Toggle
+                  id="shelf-active"
+                  data-testid="edit-location-shelf-active"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.active",
+                    defaultMessage: "Active",
+                  })}
+                  toggled={formData.active === true}
+                  onToggle={(checked) => handleFieldChange("active", checked)}
+                />
+              </>
+            )}
 
-          {/* Rack fields */}
-          {locationType === "rack" && (
-            <>
-              <TextInput
-                id="rack-label"
-                data-testid="edit-location-rack-label"
-                labelText={intl.formatMessage({
-                  id: "storage.rack.label",
-                  defaultMessage: "Label",
-                })}
-                value={formData.label || ""}
-                onChange={(e) => handleFieldChange("label", e.target.value)}
-                required
-              />
-              <TextInput
-                id="rack-parent-shelf"
-                data-testid="edit-location-rack-parent-shelf"
-                labelText={intl.formatMessage({
-                  id: "storage.location.parent.shelf",
-                  defaultMessage: "Parent Shelf",
-                })}
-                value={
-                  (location && location.parentShelf?.label) ||
-                  (location && location.shelfLabel) ||
-                  (location && location.parentShelfLabel) ||
-                  ""
-                }
-                disabled
-                readOnly
-              />
-              <TextInput
-                id="rack-rows"
-                data-testid="edit-location-rack-rows"
-                labelText={intl.formatMessage({
-                  id: "storage.rack.rows",
-                  defaultMessage: "Rows",
-                })}
-                value={formData.rows || ""}
-                onChange={(e) =>
-                  handleFieldChange("rows", parseInt(e.target.value) || 0)
-                }
-                type="number"
-                min="0"
-                required
-              />
-              <TextInput
-                id="rack-columns"
-                data-testid="edit-location-rack-columns"
-                labelText={intl.formatMessage({
-                  id: "storage.rack.columns",
-                  defaultMessage: "Columns",
-                })}
-                value={formData.columns || ""}
-                onChange={(e) =>
-                  handleFieldChange("columns", parseInt(e.target.value) || 0)
-                }
-                type="number"
-                min="0"
-                required
-              />
-              <TextInput
-                id="rack-position-schema"
-                data-testid="edit-location-rack-position-schema"
-                labelText={intl.formatMessage({
-                  id: "storage.rack.position.schema",
-                  defaultMessage: "Position Schema Hint",
-                })}
-                value={formData.positionSchemaHint || ""}
-                onChange={(e) =>
-                  handleFieldChange("positionSchemaHint", e.target.value)
-                }
-              />
-              <TextInput
-                id="rack-code"
-                data-testid="edit-location-rack-code"
-                labelText={intl.formatMessage({
-                  id: "storage.location.code",
-                  defaultMessage: "Code",
-                })}
-                value={formData.code || ""}
-                onChange={(e) => {
-                  // Auto-uppercase on input and limit to 10 chars
-                  const value = e.target.value.toUpperCase().slice(0, 10);
-                  handleFieldChange("code", value);
-                }}
-                maxLength={10}
-                helperText={intl.formatMessage({
-                  id: "storage.location.code.helper",
-                  defaultMessage:
-                    "Max 10 characters, alphanumeric with hyphens/underscores",
-                })}
-              />
-              <Toggle
-                id="rack-active"
-                data-testid="edit-location-rack-active"
-                labelText={intl.formatMessage({
-                  id: "storage.location.active",
-                  defaultMessage: "Active",
-                })}
-                toggled={formData.active === true}
-                onToggle={(checked) => handleFieldChange("active", checked)}
-              />
-            </>
-          )}
+            {/* Rack fields */}
+            {locationType === "rack" && (
+              <>
+                <TextInput
+                  id="rack-label"
+                  data-testid="edit-location-rack-label"
+                  labelText={intl.formatMessage({
+                    id: "storage.rack.label",
+                    defaultMessage: "Label",
+                  })}
+                  value={formData.label || ""}
+                  onChange={(e) => handleFieldChange("label", e.target.value)}
+                  required
+                />
+                <TextInput
+                  id="rack-parent-shelf"
+                  data-testid="edit-location-rack-parent-shelf"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.parent.shelf",
+                    defaultMessage: "Parent Shelf",
+                  })}
+                  value={
+                    formData.parentShelfLabel ||
+                    (location && location.parentShelfLabel) ||
+                    (location && location.parentShelf?.label) ||
+                    (location && location.shelfLabel) ||
+                    ""
+                  }
+                  disabled
+                  readOnly
+                />
+                <TextInput
+                  id="rack-rows"
+                  data-testid="edit-location-rack-rows"
+                  labelText={intl.formatMessage({
+                    id: "storage.rack.rows",
+                    defaultMessage: "Rows",
+                  })}
+                  value={formData.rows || ""}
+                  onChange={(e) =>
+                    handleFieldChange("rows", parseInt(e.target.value) || 0)
+                  }
+                  type="number"
+                  min="0"
+                  required
+                />
+                <TextInput
+                  id="rack-columns"
+                  data-testid="edit-location-rack-columns"
+                  labelText={intl.formatMessage({
+                    id: "storage.rack.columns",
+                    defaultMessage: "Columns",
+                  })}
+                  value={formData.columns || ""}
+                  onChange={(e) =>
+                    handleFieldChange("columns", parseInt(e.target.value) || 0)
+                  }
+                  type="number"
+                  min="0"
+                  required
+                />
+                <TextInput
+                  id="rack-position-schema"
+                  data-testid="edit-location-rack-position-schema"
+                  labelText={intl.formatMessage({
+                    id: "storage.rack.position.schema",
+                    defaultMessage: "Position Schema Hint",
+                  })}
+                  value={formData.positionSchemaHint || ""}
+                  onChange={(e) =>
+                    handleFieldChange("positionSchemaHint", e.target.value)
+                  }
+                />
+                <TextInput
+                  id="rack-code"
+                  data-testid="edit-location-rack-code"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.code",
+                    defaultMessage: "Code",
+                  })}
+                  value={formData.code || ""}
+                  onChange={(e) => {
+                    // Auto-uppercase on input and limit to 10 chars
+                    const value = e.target.value.toUpperCase().slice(0, 10);
+                    handleFieldChange("code", value);
+                  }}
+                  maxLength={10}
+                  helperText={intl.formatMessage({
+                    id: "storage.location.code.helper",
+                    defaultMessage:
+                      "Max 10 characters, alphanumeric with hyphens/underscores",
+                  })}
+                />
+                <Toggle
+                  id="rack-active"
+                  data-testid="edit-location-rack-active"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.active",
+                    defaultMessage: "Active",
+                  })}
+                  toggled={formData.active === true}
+                  onToggle={(checked) => handleFieldChange("active", checked)}
+                />
+              </>
+            )}
 
-          {/* Inline warning when code has been changed */}
-          {hasCodeChanged() && (
-            <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
-              <InlineNotification
-                kind="error"
-                title={intl.formatMessage({
-                  id: "storage.code.change.warning",
-                  defaultMessage: "Warning",
-                })}
-                subtitle={intl.formatMessage({
-                  id: "storage.code.change.warning.message",
-                  defaultMessage:
-                    "Changing the code will invalidate any previously printed labels for this location.",
-                })}
-                lowContrast
-                hideCloseButton
-              />
-              <Checkbox
-                id="code-change-acknowledge"
-                data-testid="code-change-acknowledge-checkbox"
-                labelText={intl.formatMessage({
-                  id: "storage.code.change.acknowledge",
-                  defaultMessage:
-                    "I understand and want to proceed with the code change",
-                })}
-                checked={codeChangeAcknowledged}
-                onChange={(_, { checked }) =>
-                  setCodeChangeAcknowledged(checked)
-                }
-                style={{ marginTop: "0.5rem" }}
-              />
-            </div>
-          )}
-        </div>
+            {/* Inline warning when code has been changed */}
+            {hasCodeChanged() && (
+              <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+                <InlineNotification
+                  kind="error"
+                  title={intl.formatMessage({
+                    id: "storage.code.change.warning",
+                    defaultMessage: "Warning",
+                  })}
+                  subtitle={intl.formatMessage({
+                    id: "storage.code.change.warning.message",
+                    defaultMessage:
+                      "Changing the code will invalidate any previously printed labels for this location.",
+                  })}
+                  lowContrast
+                  hideCloseButton
+                />
+                <Checkbox
+                  id="code-change-acknowledge"
+                  data-testid="code-change-acknowledge-checkbox"
+                  labelText={intl.formatMessage({
+                    id: "storage.code.change.acknowledge",
+                    defaultMessage:
+                      "I understand and want to proceed with the code change",
+                  })}
+                  checked={codeChangeAcknowledged}
+                  onChange={(_, { checked }) =>
+                    setCodeChangeAcknowledged(checked)
+                  }
+                  style={{ marginTop: "0.5rem" }}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </ModalBody>
       <ModalFooter>
         <Button
           kind="secondary"
           onClick={handleClose}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isLoading}
           data-testid="edit-location-cancel-button"
         >
           <FormattedMessage id="label.button.cancel" defaultMessage="Cancel" />
@@ -750,6 +864,7 @@ const EditLocationModal = ({
           onClick={handleSave}
           disabled={
             isSubmitting ||
+            isLoading ||
             isSaveDisabledDueToCodeChange() ||
             (locationType === "room" && !formData.name) ||
             (locationType === "device" && !formData.name) ||

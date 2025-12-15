@@ -7,7 +7,7 @@
 #
 # Files loaded (in order):
 #   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
-#   2. DBUnit datasets (storage-e2e.xml, user-role.xml) - Storage hierarchy + E2E test data
+#   2. DBUnit datasets (storage-e2e.xml) - Storage hierarchy + E2E test data
 #      (same source-of-truth as JUnit tests, loaded via DbUnitFixtureLoader)
 
 set -e
@@ -44,7 +44,7 @@ echo "Loading Test Fixtures"
 echo "======================================"
 echo ""
 echo "Foundational SQL: $FOUNDATIONAL_SQL_FILE"
-echo "Storage fixtures: DBUnit datasets (storage-e2e.xml, user-role.xml)"
+echo "Storage fixtures: DBUnit datasets (storage-e2e.xml)"
 if [ "$RESET" = true ]; then
     echo "Reset: Enabled (will reset test data before loading)"
 fi
@@ -64,6 +64,12 @@ if ! command -v mvn &> /dev/null; then
     echo "ERROR: Maven (mvn) not found. Required for DBUnit fixture loader."
     exit 1
 fi
+
+# Ensure test classes are compiled (DbUnitFixtureLoader lives in src/test/java)
+echo "Compiling test utilities (mvn test-compile)..."
+(cd "$PROJECT_ROOT" && mvn -q test-compile)
+echo "✅ Test utilities compiled"
+echo ""
 
 # Reset database if requested
 if [ "$RESET" = true ]; then
@@ -93,21 +99,21 @@ check_dependencies() {
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         if [ "$USE_DOCKER" = true ]; then
             TYPE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
-            # Check for required statuses: Entered (any type), Not Tested (ANALYSIS), Finalized (ANALYSIS)
-            # Note: Entered may be EXTERNAL_ORDER or SAMPLE depending on database initialization
-            STATUS_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            # Minimum required status for fixtures is 'Entered' (used by samples/sample_items).
+            # Some environments may not seed analysis statuses ('Not Tested', 'Finalized') consistently.
+            STATUS_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             # Check storage hierarchy exists (from DBUnit fixtures)
             ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
         else
             TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
-            STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             # Check storage hierarchy exists (from DBUnit fixtures)
             ROOM_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
         fi
 
         # Check if all dependencies are met
         # Note: ROOM_COUNT check is optional (will be loaded by DBUnit loader if missing)
-        if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 3 ]; then
+        if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 1 ]; then
             if [ "$ROOM_COUNT" -ge 3 ]; then
                 echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, storage hierarchy: $ROOM_COUNT rooms)"
             else
@@ -123,7 +129,7 @@ check_dependencies() {
         if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
             echo "⚠️  Dependencies not ready (attempt $RETRY_COUNT/$MAX_RETRIES):"
             echo "   type_of_sample: $TYPE_COUNT rows (need 3+)"
-            echo "   status_of_sample: $STATUS_COUNT matching rows (need 3+)"
+            echo "   status_of_sample: $STATUS_COUNT 'Entered' rows (need 1+)"
             echo "   storage hierarchy: $ROOM_COUNT rooms (need 3+)"
             echo "   Waiting ${RETRY_DELAY}s for Liquibase to complete..."
             sleep $RETRY_DELAY
@@ -137,9 +143,8 @@ check_dependencies() {
         exit 1
     fi
 
-    if [ "$STATUS_COUNT" -lt 3 ]; then
-        echo "ERROR: status_of_sample table missing required statuses. Found $STATUS_COUNT matching rows, need at least 3."
-        echo "Required statuses: 'Entered' (any type), 'Not Tested' (ANALYSIS), 'Finalized' (ANALYSIS)"
+    if [ "$STATUS_COUNT" -lt 1 ]; then
+        echo "ERROR: status_of_sample table missing required status 'Entered'. Found $STATUS_COUNT rows."
         echo "Please ensure database is properly initialized with status values."
         exit 1
     fi
@@ -285,7 +290,7 @@ if [ "$USE_DOCKER" = true ]; then
     echo "Loading storage fixtures via DBUnit loader..."
     (cd "$PROJECT_ROOT" && mvn -q exec:java \
         -Dexec.mainClass="org.openelisglobal.testutils.DbUnitFixtureLoader" \
-        -Dexec.args="--docker testdata/user-role.xml testdata/storage-e2e.xml" \
+        -Dexec.args="--docker testdata/storage-e2e.xml" \
         -Dexec.classpathScope=test)
 
     if [ $? -eq 0 ]; then
@@ -356,7 +361,7 @@ else
     echo "Loading storage fixtures via DBUnit loader..."
     (cd "$PROJECT_ROOT" && mvn -q exec:java \
         -Dexec.mainClass="org.openelisglobal.testutils.DbUnitFixtureLoader" \
-        -Dexec.args="--jdbc-url jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME --user $DB_USER --password $DB_PASSWORD testdata/user-role.xml testdata/storage-e2e.xml" \
+        -Dexec.args="--jdbc-url jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME --user $DB_USER --password $DB_PASSWORD testdata/storage-e2e.xml" \
         -Dexec.classpathScope=test)
 
     if [ $? -eq 0 ]; then

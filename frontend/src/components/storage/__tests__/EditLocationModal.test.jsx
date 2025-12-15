@@ -324,12 +324,19 @@ describe("EditLocationModal", () => {
    * T106: Test displays validation errors for duplicate code
    */
   test("testEditModal_ValidationErrors", async () => {
-    Utils.putToOpenElisServer.mockImplementation(
-      (endpoint, payload, callback) => {
-        // Use process.nextTick to ensure callback runs in next event loop tick
-        process.nextTick(() => callback(400));
-      },
+    // Mock fetch to return error response
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        status: 400,
+        headers: {
+          get: () => "application/json",
+        },
+        json: () => Promise.resolve({ error: "Room name must be unique" }),
+      }),
     );
+
+    // Mock getFromOpenElisServerV2 for the error case (won't be called on error)
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(mockRoom);
 
     renderWithIntl(
       <EditLocationModal
@@ -349,7 +356,11 @@ describe("EditLocationModal", () => {
 
     // Wait for error to appear
     const errorElement = await screen
-      .findByText(/failed to update/i, {}, { timeout: 2000 })
+      .findByText(
+        /failed to update|room name must be unique/i,
+        {},
+        { timeout: 2000 },
+      )
       .catch(() => {
         return screen.queryByText(/error/i);
       });
@@ -360,18 +371,29 @@ describe("EditLocationModal", () => {
    * T106: Test save button calls PUT endpoint
    */
   test("testEditModal_SaveCallsAPI", async () => {
-    Utils.putToOpenElisServer.mockImplementation(
-      (endpoint, payload, callback) => {
-        process.nextTick(() => callback(200));
-      },
-    );
-
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
+    // Mock fetch for PUT request (success)
+    global.fetch = jest.fn((url, options) => {
+      if (options.method === "PUT") {
+        return Promise.resolve({
+          status: 200,
+          ok: true,
+          headers: {
+            get: () => "application/json",
+          },
+        });
+      }
+      // For getFromOpenElisServerV2 call after PUT
+      return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ ...mockRoom, name: "Updated Name" }),
-      }),
-    );
+      });
+    });
+
+    // Mock getFromOpenElisServerV2 for fetching updated data
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce({
+      ...mockRoom,
+      name: "Updated Name",
+    });
 
     renderWithIntl(
       <EditLocationModal
@@ -390,17 +412,20 @@ describe("EditLocationModal", () => {
     fireEvent.click(saveButton);
 
     // Wait for API call
-    await new Promise((resolve) => process.nextTick(resolve));
-
-    expect(Utils.putToOpenElisServer).toHaveBeenCalledWith(
-      expect.stringContaining("/rest/storage/rooms/1"),
-      expect.stringContaining("Updated Name"),
-      expect.any(Function),
-    );
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/rest/storage/rooms/1"),
+        expect.objectContaining({
+          method: "PUT",
+          body: expect.stringContaining("Updated Name"),
+        }),
+      );
+    });
 
     // Wait for onSave callback
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(mockOnSave).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalled();
+    });
   });
 
   /**
@@ -633,18 +658,28 @@ describe("EditLocationModal", () => {
     const deviceWithCode = { ...mockDevice, code: "FRZ01" };
     Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithCode);
 
-    Utils.putToOpenElisServer.mockImplementation(
-      (endpoint, payload, callback) => {
-        process.nextTick(() => callback(200));
-      },
-    );
-
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
+    // Mock fetch for PUT request
+    let capturedPayload = null;
+    global.fetch = jest.fn((url, options) => {
+      if (options.method === "PUT") {
+        capturedPayload = JSON.parse(options.body);
+        return Promise.resolve({
+          status: 200,
+          ok: true,
+          headers: {
+            get: () => "application/json",
+          },
+        });
+      }
+      // For getFromOpenElisServerV2 call after PUT
+      return Promise.resolve({
         ok: true,
         json: () => Promise.resolve(deviceWithCode),
-      }),
-    );
+      });
+    });
+
+    // Mock getFromOpenElisServerV2 for fetching updated data
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithCode);
 
     renderWithIntl(
       <EditLocationModal
@@ -681,12 +716,11 @@ describe("EditLocationModal", () => {
 
     // Wait for API call
     await waitFor(() => {
-      expect(Utils.putToOpenElisServer).toHaveBeenCalled();
+      expect(global.fetch).toHaveBeenCalled();
     });
 
     // Verify code is in payload
-    const putCall = Utils.putToOpenElisServer.mock.calls[0];
-    const payload = JSON.parse(putCall[1]);
-    expect(payload.code).toBe("FRZ02");
+    expect(capturedPayload).toBeTruthy();
+    expect(capturedPayload.code).toBe("FRZ02");
   });
 });

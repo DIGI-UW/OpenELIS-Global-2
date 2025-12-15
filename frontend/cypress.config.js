@@ -80,19 +80,41 @@ module.exports = defineConfig({
         checkStorageFixturesExist() {
           const { execSync } = require("child_process");
           const checkSql = `
-            SELECT COUNT(*) as count FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');
+            SELECT
+              (SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')) AS rooms,
+              (SELECT COUNT(*) FROM storage_device WHERE id BETWEEN 10 AND 20) AS devices,
+              (SELECT COUNT(*) FROM storage_shelf WHERE id BETWEEN 20 AND 30) AS shelves,
+              (SELECT COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40) AS racks,
+              (SELECT COUNT(*) FROM storage_box WHERE id BETWEEN 100 AND 10000) AS boxes;
           `;
           try {
             const result = execSync(
-              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -c "${checkSql}"`,
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A -F "," -c "${checkSql}"`,
               {
                 cwd: PROJECT_ROOT,
                 shell: "/bin/bash",
                 encoding: "utf8",
               },
             );
-            const count = parseInt(result.trim(), 10);
-            return count >= 2;
+            const raw = (result || "").trim();
+            const [rooms, devices, shelves, racks, boxes] = raw
+              .split(",")
+              .map((v) => parseInt((v || "").trim(), 10));
+
+            // Fixtures are only considered present if the FULL hierarchy exists.
+            // (Rooms alone are not sufficient; shelves/racks/boxes are critical for location CRUD + box grid tests.)
+            return (
+              Number.isFinite(rooms) &&
+              Number.isFinite(devices) &&
+              Number.isFinite(shelves) &&
+              Number.isFinite(racks) &&
+              Number.isFinite(boxes) &&
+              rooms >= 2 &&
+              devices >= 1 &&
+              shelves >= 1 &&
+              racks >= 1 &&
+              boxes >= 1
+            );
           } catch (error) {
             console.error("Error checking storage fixtures:", error);
             return false;
@@ -373,7 +395,11 @@ module.exports = defineConfig({
     // DISABLED: Exclude storage tests (001-sample-storage feature)
     // Remove "**/storage*.cy.js" from this array to re-enable storage tests
     // NOTE: OGC-68 storageLocationCRUD.cy.js tests pass (verified 2025-12-12)
-    excludeSpecPattern: ["**/storage*.cy.js"],
+    // TEMPORARILY: Allow integration test to run - exclude all storage except integration
+    excludeSpecPattern: [
+      "**/storage*.cy.js",
+      "!**/storageLocationCRUD-integration.cy.js",
+    ],
     env: {
       STARTUP_WAIT_MILLISECONDS: 300000,
     },

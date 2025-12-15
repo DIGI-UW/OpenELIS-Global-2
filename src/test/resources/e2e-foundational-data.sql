@@ -14,23 +14,13 @@
 -- =============================================================================
 
 -- =============================================================================
--- CLEANUP: Remove existing test data if present
+-- IDEMPOTENT: Do NOT delete existing foundational rows.
 -- =============================================================================
-
--- Clean up test provider (Optimus Prime)
-DELETE FROM provider WHERE person_id IN (
-  SELECT id FROM person WHERE first_name = 'Optimus' AND last_name = 'Prime'
-);
-DELETE FROM person WHERE first_name = 'Optimus' AND last_name = 'Prime';
-
--- Clean up test provider (Jim Jam - second provider from providerManagement.cy.js)
-DELETE FROM provider WHERE person_id IN (
-  SELECT id FROM person WHERE first_name = 'Jim' AND last_name = 'Jam'
-);
-DELETE FROM person WHERE first_name = 'Jim' AND last_name = 'Jam';
-
--- Clean up test organizations
-DELETE FROM organization WHERE name IN ('CAMES MAN', 'CEDRES');
+-- This script is executed repeatedly by Cypress and should be safe to rerun.
+-- In particular, deleting providers/persons by name is unsafe because some
+-- environments may already contain those names as real seeded data referenced
+-- by other tables (e.g., sample_human).
+-- =============================================================================
 
 -- =============================================================================
 -- PROVIDER: Optimus Prime
@@ -40,8 +30,7 @@ DELETE FROM organization WHERE name IN ('CAMES MAN', 'CEDRES');
 
 -- Create person record for Optimus Prime
 INSERT INTO person (id, first_name, last_name, lastupdated)
-SELECT COALESCE(MAX(id), 0) + 1, 'Optimus', 'Prime', CURRENT_TIMESTAMP
-FROM person
+SELECT 9000001, 'Optimus', 'Prime', CURRENT_TIMESTAMP
 WHERE NOT EXISTS (
   SELECT 1 FROM person WHERE first_name = 'Optimus' AND last_name = 'Prime'
 );
@@ -49,7 +38,7 @@ WHERE NOT EXISTS (
 -- Create provider record
 INSERT INTO provider (id, person_id, lastupdated, fhir_uuid, active)
 SELECT
-  COALESCE((SELECT MAX(id) FROM provider), 0) + 1,
+  9000001,
   p.id,
   CURRENT_TIMESTAMP,
   gen_random_uuid(),
@@ -57,9 +46,7 @@ SELECT
 FROM person p
 WHERE p.first_name = 'Optimus' AND p.last_name = 'Prime'
 AND NOT EXISTS (
-  SELECT 1 FROM provider pr
-  JOIN person pe ON pr.person_id = pe.id
-  WHERE pe.first_name = 'Optimus' AND pe.last_name = 'Prime'
+  SELECT 1 FROM provider pr WHERE pr.person_id = p.id
 );
 
 -- =============================================================================
@@ -67,15 +54,14 @@ AND NOT EXISTS (
 -- =============================================================================
 
 INSERT INTO person (id, first_name, last_name, lastupdated)
-SELECT COALESCE(MAX(id), 0) + 1, 'Jim', 'Jam', CURRENT_TIMESTAMP
-FROM person
+SELECT 9000002, 'Jim', 'Jam', CURRENT_TIMESTAMP
 WHERE NOT EXISTS (
   SELECT 1 FROM person WHERE first_name = 'Jim' AND last_name = 'Jam'
 );
 
 INSERT INTO provider (id, person_id, lastupdated, fhir_uuid, active)
 SELECT
-  COALESCE((SELECT MAX(id) FROM provider), 0) + 1,
+  9000002,
   p.id,
   CURRENT_TIMESTAMP,
   gen_random_uuid(),
@@ -83,9 +69,7 @@ SELECT
 FROM person p
 WHERE p.first_name = 'Jim' AND p.last_name = 'Jam'
 AND NOT EXISTS (
-  SELECT 1 FROM provider pr
-  JOIN person pe ON pr.person_id = pe.id
-  WHERE pe.first_name = 'Jim' AND pe.last_name = 'Jam'
+  SELECT 1 FROM provider pr WHERE pr.person_id = p.id
 );
 
 -- =============================================================================
@@ -105,7 +89,7 @@ INSERT INTO organization (
   fhir_uuid
 )
 SELECT
-  COALESCE(MAX(id), 0) + 1,
+  9000100,
   'CAMES MAN',
   '279',
   'Y',
@@ -145,7 +129,7 @@ INSERT INTO organization (
   fhir_uuid
 )
 SELECT
-  COALESCE(MAX(id), 0) + 1,
+  9000101,
   'CEDRES',
   'Y',
   NULL,
