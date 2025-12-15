@@ -19,5 +19,6 @@
     <include file="liquibase/3.4.x.x/008-immunology-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/009-mntd-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/010-mntd-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/011-tuberculosis-notebook-template.xml"/>
 
 </databaseChangeLog>
