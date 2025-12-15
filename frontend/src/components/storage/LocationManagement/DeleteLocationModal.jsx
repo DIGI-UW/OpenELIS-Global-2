@@ -40,7 +40,10 @@ const DeleteLocationModal = ({
 }) => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const isAdmin = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  // Check for both "Global Administrator" and "Admin" roles (database may use either name)
+  const isAdmin =
+    hasRole(userSessionDetails, Roles.GLOBAL_ADMIN) ||
+    hasRole(userSessionDetails, "Admin");
   const [constraints, setConstraints] = useState(null);
   const [isCheckingConstraints, setIsCheckingConstraints] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
