@@ -122,7 +122,7 @@ function NoteBookDashBoard() {
 
   const loadNoteBookEntries = (entries) => {
     if (componentMounted.current) {
-      if (entries && entries.length > 0) {
+      if (Array.isArray(entries) && entries.length > 0) {
         setNoteBookEntries(entries);
       } else {
         setNoteBookEntries([]);
@@ -133,7 +133,7 @@ function NoteBookDashBoard() {
 
   const loadNoteBooks = (entries) => {
     if (componentMounted.current) {
-      if (entries && entries.length > 0) {
+      if (Array.isArray(entries) && entries.length > 0) {
         setNoteBooks(entries);
       } else {
         setNoteBooks([]);
@@ -193,7 +193,7 @@ function NoteBookDashBoard() {
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_STATUS", setStatusList);
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
     getFromOpenElisServer("/rest/notebook/dashboard/metrics", loadCounts);
-    getFromOpenElisServer("/rest/notebook//dashboard/notebooks", loadNoteBooks);
+    getFromOpenElisServer("/rest/notebook/dashboard/notebooks", loadNoteBooks);
 
     return () => {
       componentMounted.current = false;
@@ -285,7 +285,9 @@ function NoteBookDashBoard() {
     }
   };
   const handleSelectNoteBook = (id) => {
-    const notebook = noteBooks.find((entry) => entry.id === id);
+    // Convert id to number for comparison since DataTable converts IDs to strings
+    const numericId = typeof id === "string" ? parseInt(id, 10) : id;
+    const notebook = noteBooks.find((entry) => entry.id === numericId);
     setSelectedNoteBook(notebook);
   };
 
@@ -388,7 +390,12 @@ function NoteBookDashBoard() {
             </Column>
             <Column lg={16} md={8} sm={4}>
               <DataTable
-                rows={noteBooks.slice((page - 1) * pageSize, page * pageSize)}
+                rows={noteBooks
+                  .slice((page - 1) * pageSize, page * pageSize)
+                  .map((notebook) => ({
+                    ...notebook,
+                    id: String(notebook.id),
+                  }))}
                 headers={[
                   {
                     key: "title",
@@ -502,8 +509,9 @@ function NoteBookDashBoard() {
                     <Button
                       size="sm"
                       disabled={
+                        selectedNoteBook.technicianId != null &&
                         userSessionDetails.userId !=
-                        selectedNoteBook.technicianId
+                          selectedNoteBook.technicianId
                       }
                       onClick={() => {
                         openNoteBookInstanceEntryForm();
@@ -685,6 +693,7 @@ function NoteBookDashBoard() {
                               kind="secondary"
                               size="sm"
                               disabled={
+                                entry.technicianId != null &&
                                 userSessionDetails.userId != entry.technicianId
                               }
                               onClick={() => openNoteBookInstanceView(entry.id)}
@@ -699,8 +708,9 @@ function NoteBookDashBoard() {
                                 kind="primary"
                                 size="sm"
                                 disabled={
+                                  entry.technicianId != null &&
                                   userSessionDetails.userId !=
-                                  entry.technicianId
+                                    entry.technicianId
                                 }
                                 onClick={() =>
                                   openNoteBookInstanceEdit(entry.id)

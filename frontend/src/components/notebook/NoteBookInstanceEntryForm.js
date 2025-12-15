@@ -60,6 +60,7 @@ import {
   toBase64,
 } from "../utils/Utils";
 import NotebookWorkflowTab from "./workflow/NotebookWorkflowTab";
+import MNTDWorkflowTab from "./workflow/MNTDWorkflowTab";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -1045,9 +1046,21 @@ const NoteBookInstanceEntryForm = () => {
         {selectedTab === TABS.WORKFLOW && (
           <Column lg={16} md={8} sm={4}>
             {/* Use enhanced workflow view for notebook instances (non-templates) */}
-            {noteBookData?.isTemplate !== true && noteBookData?.id && (
-              <NotebookWorkflowTab notebookId={noteBookData.id} />
-            )}
+            {/* Detect MNTD workflow based on notebook title */}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title
+                ?.toLowerCase()
+                .includes("malaria and neglected tropical disease") && (
+                <MNTDWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              !noteBookData?.title
+                ?.toLowerCase()
+                .includes("malaria and neglected tropical disease") && (
+                <NotebookWorkflowTab notebookId={noteBookData.id} />
+              )}
             {/* Use accordion view for templates or when no ID is available */}
             {(noteBookData?.isTemplate === true || !noteBookData?.id) && (
               <Grid fullWidth={true} className="gridBoundary">

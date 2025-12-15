@@ -477,6 +477,219 @@ public class NotebookBulkOperationController extends BaseRestController {
     // Request DTOs
 
     /**
+     * Bulk assign storage location to multiple samples on a page. POST
+     * /notebook/bulk/page/{pageId}/samples/storage
+     *
+     * Assigns samples to a specific storage location (box and well position).
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds, data, boxId, and wellCoordinate
+     * @param httpRequest for getting user session
+     * @return result with updated count
+     */
+    @PostMapping(value = "/page/{pageId}/samples/storage", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkAssignStorage(@PathVariable("pageId") Integer pageId,
+            @RequestBody StorageAssignmentRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        if (request.getData() == null || request.getData().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No storage data provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        // Apply storage data to samples
+        int updatedCount = bulkOperationService.bulkApplyValues(pageId, request.getSampleIds(), request.getData(),
+                sysUserId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("updatedCount", updatedCount);
+        result.put("pageId", pageId);
+        result.put("boxId", request.getBoxId());
+        result.put("wellCoordinate", request.getWellCoordinate());
+        result.put("success", true);
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Auto-assign storage locations to multiple samples on a page. POST
+     * /notebook/bulk/page/{pageId}/samples/storage/auto-assign
+     *
+     * Automatically assigns samples to the next available wells in the specified
+     * box, filling sequentially from the starting position (default A1).
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds, box info, and storage metadata
+     * @param httpRequest for getting user session
+     * @return result with assignments array showing each sample's assigned well
+     */
+    @PostMapping(value = "/page/{pageId}/samples/storage/auto-assign", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> autoAssignStorage(@PathVariable("pageId") Integer pageId,
+            @RequestBody AutoAssignStorageRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        if (request.getBoxId() == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Box ID is required for auto-assignment");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        // Get box dimensions (default to 8x12 for 96-well plate)
+        int rows = request.getRows() != null ? request.getRows() : 8;
+        int columns = request.getColumns() != null ? request.getColumns() : 12;
+
+        // Get occupied wells from request (provided by frontend from box layout)
+        java.util.Set<String> occupiedWells = new java.util.HashSet<>();
+        if (request.getOccupiedWells() != null) {
+            occupiedWells.addAll(request.getOccupiedWells());
+        }
+
+        // Generate list of all wells in order (A1, A2, ..., A12, B1, B2, ...)
+        java.util.List<String> allWells = new java.util.ArrayList<>();
+        for (int row = 0; row < rows; row++) {
+            char rowLetter = (char) ('A' + row);
+            for (int col = 1; col <= columns; col++) {
+                allWells.add("" + rowLetter + col);
+            }
+        }
+
+        // Find available wells (not occupied)
+        java.util.List<String> availableWells = allWells.stream()
+                .filter(well -> !occupiedWells.contains(well)).collect(java.util.stream.Collectors.toList());
+
+        // Check if we have enough available wells
+        if (availableWells.size() < request.getSampleIds().size()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Not enough available wells. Need " + request.getSampleIds().size()
+                    + " but only " + availableWells.size() + " available.");
+            error.put("availableCount", availableWells.size());
+            error.put("requestedCount", request.getSampleIds().size());
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        // Assign each sample to the next available well
+        java.util.List<Map<String, Object>> assignments = new java.util.ArrayList<>();
+        int updatedCount = 0;
+
+        for (int i = 0; i < request.getSampleIds().size(); i++) {
+            Integer sampleId = request.getSampleIds().get(i);
+            String wellCoordinate = availableWells.get(i);
+
+            // Prepare the data to apply for this sample
+            Map<String, Object> sampleData = new HashMap<>();
+            if (request.getData() != null) {
+                sampleData.putAll(request.getData());
+            }
+            sampleData.put("storageWell", wellCoordinate);
+
+            // Apply storage data to the single sample
+            int count = bulkOperationService.bulkApplyValues(pageId,
+                    java.util.Collections.singletonList(sampleId), sampleData, sysUserId);
+
+            if (count > 0) {
+                updatedCount++;
+                Map<String, Object> assignment = new HashMap<>();
+                assignment.put("sampleId", sampleId);
+                assignment.put("wellCoordinate", wellCoordinate);
+                assignments.add(assignment);
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("updatedCount", updatedCount);
+        result.put("pageId", pageId);
+        result.put("boxId", request.getBoxId());
+        result.put("assignments", assignments);
+        result.put("success", true);
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Update status for multiple samples on a page. POST
+     * /notebook/bulk/page/{pageId}/samples/status
+     *
+     * Updates the page status for selected samples (e.g., mark as COMPLETED).
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds and status
+     * @param httpRequest for getting user session
+     * @return result with updated count
+     */
+    @PostMapping(value = "/page/{pageId}/samples/status", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkUpdateStatus(@PathVariable("pageId") Integer pageId,
+            @RequestBody StatusUpdateRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        if (request.getStatus() == null || request.getStatus().isBlank()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Status is required");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        Status status;
+        try {
+            status = Status.valueOf(request.getStatus().trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Invalid status: " + request.getStatus());
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        int updatedCount = bulkOperationService.bulkUpdateStatus(pageId, request.getSampleIds(), status, sysUserId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("updatedCount", updatedCount);
+        result.put("pageId", pageId);
+        result.put("status", status.name());
+        result.put("success", true);
+
+        return ResponseEntity.ok(result);
+    }
+
+    // Request DTOs
+
+    /**
      * Request body for bulk apply operation.
      */
     public static class BulkApplyRequest {
@@ -611,6 +824,132 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setFileId(Integer fileId) {
             this.fileId = fileId;
+        }
+    }
+
+    /**
+     * Request body for storage assignment operation.
+     */
+    public static class StorageAssignmentRequest {
+        private List<Integer> sampleIds;
+        private Map<String, Object> data;
+        private Integer boxId;
+        private String wellCoordinate;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public Map<String, Object> getData() {
+            return data;
+        }
+
+        public void setData(Map<String, Object> data) {
+            this.data = data;
+        }
+
+        public Integer getBoxId() {
+            return boxId;
+        }
+
+        public void setBoxId(Integer boxId) {
+            this.boxId = boxId;
+        }
+
+        public String getWellCoordinate() {
+            return wellCoordinate;
+        }
+
+        public void setWellCoordinate(String wellCoordinate) {
+            this.wellCoordinate = wellCoordinate;
+        }
+    }
+
+    /**
+     * Request body for status update operation.
+     */
+    public static class StatusUpdateRequest {
+        private List<Integer> sampleIds;
+        private String status;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
+
+    /**
+     * Request body for auto-assign storage operation.
+     */
+    public static class AutoAssignStorageRequest {
+        private List<Integer> sampleIds;
+        private Map<String, Object> data;
+        private Integer boxId;
+        private Integer rows;
+        private Integer columns;
+        private List<String> occupiedWells;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public Map<String, Object> getData() {
+            return data;
+        }
+
+        public void setData(Map<String, Object> data) {
+            this.data = data;
+        }
+
+        public Integer getBoxId() {
+            return boxId;
+        }
+
+        public void setBoxId(Integer boxId) {
+            this.boxId = boxId;
+        }
+
+        public Integer getRows() {
+            return rows;
+        }
+
+        public void setRows(Integer rows) {
+            this.rows = rows;
+        }
+
+        public Integer getColumns() {
+            return columns;
+        }
+
+        public void setColumns(Integer columns) {
+            this.columns = columns;
+        }
+
+        public List<String> getOccupiedWells() {
+            return occupiedWells;
+        }
+
+        public void setOccupiedWells(List<String> occupiedWells) {
+            this.occupiedWells = occupiedWells;
         }
     }
 }

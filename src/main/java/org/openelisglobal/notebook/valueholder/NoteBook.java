@@ -36,7 +36,8 @@ public class NoteBook extends BaseObject<Integer> {
     private static final long serialVersionUID = -979624722823577192L;
 
     public enum NoteBookStatus {
-        DRAFT("Draft"), SUBMITTED("Submitted"), FINALIZED("Finalized"), LOCKED("Locked"), ARCHIVED("Archived");
+        DRAFT("Draft"), SUBMITTED("Submitted"), FINALIZED("Finalized"), LOCKED("Locked"), ARCHIVED("Archived"),
+        ACTIVE("Active");
 
         private String display;
 
