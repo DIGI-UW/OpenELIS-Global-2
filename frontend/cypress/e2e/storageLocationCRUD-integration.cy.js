@@ -105,7 +105,9 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
 
         // Verify: modal closes (Carbon has ~200-300ms close animation)
         // Use Cypress retry-ability - query for modal and assert it doesn't exist
-        cy.get('[data-testid="edit-location-modal"]', { timeout: 5000 }).should("not.exist");
+        cy.get('[data-testid="edit-location-modal"]', { timeout: 5000 }).should(
+          "not.exist",
+        );
 
         // Wait for table to refresh and verify new name appears in the same row
         cy.get(`[data-testid="room-row-${roomId}"]`, { timeout: 10000 })
@@ -183,7 +185,9 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
     // Close modal at end of test
     // Try clicking close button, fall back to ESC if button not found
     cy.get("body").then(($body) => {
-      const closeBtn = $body.find('[data-testid="edit-location-modal"] button[aria-label="Close"], [data-testid="edit-location-modal"] button.cds--modal-close');
+      const closeBtn = $body.find(
+        '[data-testid="edit-location-modal"] button[aria-label="Close"], [data-testid="edit-location-modal"] button.cds--modal-close',
+      );
       if (closeBtn.length > 0 && closeBtn.is(":visible")) {
         cy.wrap(closeBtn.first()).click({ force: true });
       } else {
@@ -239,19 +243,28 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
       // If validation error (400), modal should stay open with error message
       if (interception.response.statusCode >= 400) {
         // Modal should show error and stay open
-        cy.get('[data-testid="edit-location-modal"]', { timeout: 5000 }).should("be.visible");
+        cy.get('[data-testid="edit-location-modal"]', { timeout: 5000 }).should(
+          "be.visible",
+        );
         // Check for error notification - Carbon InlineNotification may not have role="alert"
         // Look for error notification by class (more reliable than contains which matches page title)
-        cy.get('[data-testid="edit-location-modal"]', { timeout: 5000 }).should("be.visible");
+        cy.get('[data-testid="edit-location-modal"]', { timeout: 5000 }).should(
+          "be.visible",
+        );
         // Wait for error to render, then check for notification
         cy.get('[data-testid="edit-location-modal"]')
-          .find('.cds--inline-notification--error, [class*="inline-notification"]', { timeout: 5000 })
+          .find(
+            '.cds--inline-notification--error, [class*="inline-notification"]',
+            { timeout: 5000 },
+          )
           .should("exist")
           .and("be.visible");
         // Manually close modal and end test (validation error is expected behavior)
         // Try clicking close button, fall back to ESC if button not found
         cy.get("body").then(($body) => {
-          const closeBtn = $body.find('[data-testid="edit-location-modal"] button[aria-label="Close"], [data-testid="edit-location-modal"] button.cds--modal-close');
+          const closeBtn = $body.find(
+            '[data-testid="edit-location-modal"] button[aria-label="Close"], [data-testid="edit-location-modal"] button.cds--modal-close',
+          );
           if (closeBtn.length > 0 && closeBtn.is(":visible")) {
             cy.wrap(closeBtn.first()).click({ force: true });
           } else {
@@ -356,8 +369,9 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
     // Verify error message is displayed (user-visible behavior)
     cy.get('[data-testid="edit-location-modal"]').within(() => {
       // Check for error text (more reliable than role="alert")
-      cy.contains(/temperature|invalid|range/i, { timeout: 5000 })
-        .should("be.visible");
+      cy.contains(/temperature|invalid|range/i, { timeout: 5000 }).should(
+        "be.visible",
+      );
     });
   });
 });

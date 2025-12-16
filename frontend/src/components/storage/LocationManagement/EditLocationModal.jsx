@@ -416,7 +416,8 @@ const EditLocationModal = ({
   ];
 
   // Use larger modal for device/rack (more fields)
-  const modalSize = locationType === "device" || locationType === "rack" ? "lg" : "md";
+  const modalSize =
+    locationType === "device" || locationType === "rack" ? "lg" : "md";
 
   // Prevent hidden-but-mounted modal DOM from causing duplicate IDs across modals
   if (!open) {

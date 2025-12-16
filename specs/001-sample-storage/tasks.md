@@ -1888,24 +1888,26 @@ assignment, frontend widgets, dashboard).
 
 ### Tests First - Frontend E2E Tests (Write BEFORE final verification)
 
-- [ ] T134 [P] Write Cypress E2E test
-      `frontend/cypress/e2e/storageLocationCRUD.cy.js` for Edit Location
-      operations: testEditRoom_UpdatesNameAndDescription (edit room name and
-      description), testEditDevice_UpdatesTypeAndCapacity (edit device type and
-      capacity), testEditLocation_CodeReadOnly (verify code field cannot be
-      edited), testEditLocation_ValidationErrors (verify duplicate code
-      validation)
+- [x] T134 [P] Write Cypress E2E test
+      `frontend/cypress/e2e/storageLocationCRUD-integration.cy.js` for Edit
+      Location operations: testEditRoom_UpdatesNameAndDescription (edit room
+      name and description), testEditDevice_UpdatesTypeAndCapacity (edit device
+      type and capacity), testEditLocation_CodeReadOnly (verify code field
+      cannot be edited), testEditLocation_ValidationErrors (verify duplicate
+      code validation)
 
-- [ ] T135 [P] Write Cypress E2E test
-      `frontend/cypress/e2e/storageLocationCRUD.cy.js` for Delete Location
-      operations: testDeleteRoom_WithDevices_ShowsError (attempt to delete room
-      with devices), testDeleteDevice_WithSamples_ShowsError (attempt to delete
-      device with samples), testDeleteLocation_NoConstraints_Deletes (delete
-      location with no constraints), testDeleteLocation_ConfirmationRequired
-      (verify confirmation dialog appears)
+- [x] T135 [P] Write Cypress E2E test
+      `frontend/cypress/e2e/storageLocationCRUD-integration.cy.js` for Delete
+      Location operations: testDeleteRoom_WithDevices_ShowsError (attempt to
+      delete room with devices), testDeleteDevice_WithSamples_ShowsError
+      (attempt to delete device with samples),
+      testDeleteLocation_NoConstraints_Deletes (delete location with no
+      constraints), testDeleteLocation_ConfirmationRequired (verify confirmation
+      dialog appears)
 
-- [ ] T136 Run Cypress E2E tests → Verify Location CRUD scenarios work:
-      `npm run cy:run -- --spec "cypress/e2e/storageLocationCRUD.cy.js"`
+- [x] T136 Run Cypress E2E tests → Verify Location CRUD scenarios work:
+      `npm run cy:run -- --spec "cypress/e2e/storageLocationCRUD-integration.cy.js"`
+      (5 tests passing)
 
 **Checkpoint**: Location CRUD Operations complete. Users can edit location
 fields (except Code and Parent which are read-only) via modal dialog, delete
