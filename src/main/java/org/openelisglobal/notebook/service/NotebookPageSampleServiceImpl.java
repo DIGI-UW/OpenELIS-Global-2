@@ -144,10 +144,18 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                 if (!nextPageLoaded) {
                     nextPage = noteBookService.getNextPage(pageId);
                     nextPageLoaded = true;
+                    LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                            "T150: Looking for next page from pageId=" + pageId + ", nextPage="
+                                    + (nextPage != null
+                                            ? "id=" + nextPage.getId() + " title='" + nextPage.getTitle() + "' order="
+                                                    + nextPage.getOrder()
+                                            : "null"));
                 }
 
                 // Check if this is a routing page
                 boolean isRoutingPage = noteBookService.isRoutingPage(pageId);
+                LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                        "T150: pageId=" + pageId + " isRoutingPage=" + isRoutingPage);
                 NoteBookPage archivingPage = null;
                 Integer notebookId = null;
 
@@ -205,7 +213,17 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                             targetPageNps.setSampleItemId(sampleId.toString());
                             targetPageNps.setStatus(Status.PENDING);
                             insert(targetPageNps);
+                            LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                    "T150: Created PENDING record for sample " + sampleId + " on targetPage id="
+                                            + targetPage.getId() + " title='" + targetPage.getTitle() + "'");
+                        } else {
+                            LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                    "T150: Sample " + sampleId + " already exists on targetPage id=" + targetPage.getId()
+                                            + " with status=" + existingOnTargetPage.getStatus());
                         }
+                    } else {
+                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                "T150: targetPage is null for sample " + sampleId + ", not creating record");
                     }
                 }
             }

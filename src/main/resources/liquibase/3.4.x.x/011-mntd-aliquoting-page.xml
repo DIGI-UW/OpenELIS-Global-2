@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- UPDATE PAGE_TYPE CONSTRAINT TO ADD CHILD_SAMPLE_CREATION -->
+    <!-- Required for aliquoting pages that create child samples -->
+    <!-- ======================================================== -->
+    <changeSet id="update-page-type-check-constraint-add-child-sample-creation" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <!-- Only run if CHILD_SAMPLE_CREATION is not already in the constraint -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_constraint c
+                WHERE c.conname = 'chk_page_type'
+                AND pg_get_constraintdef(c.oid) LIKE '%CHILD_SAMPLE_CREATION%'
+            </sqlCheck>
+        </preConditions>
+        <comment>Update CHECK constraint to add CHILD_SAMPLE_CREATION for aliquoting workflow pages.</comment>
+        <sql>
+            ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+            ALTER TABLE clinlims.notebook_page
+            ADD CONSTRAINT chk_page_type
+            CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION', 'STORAGE_ASSIGNMENT', 'CHILD_SAMPLE_CREATION'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+                ALTER TABLE clinlims.notebook_page
+                ADD CONSTRAINT chk_page_type
+                CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION', 'STORAGE_ASSIGNMENT'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: ALIQUOTING / BULK SAMPLE IMPORT -->
+    <!-- Purpose: Create child samples and maintain parent-child relationships -->
+    <!-- Who uses it: Lab technician -->
+    <!-- Data Entered: -->
+    <!--   - Aliquot Details: Aliquot type (Tube, Plate 96-well, Cryobox 9x9/10x10) -->
+    <!--   - Aliquot ID auto-generated (e.g., Ach-21-FY004-A1) -->
+    <!--   - Bulk Import: Upload plate map or box layout -->
+    <!--   - Volume/Quantity Tracking: Initial volume/DBS spots, Remaining volume -->
+    <!-- System Actions: -->
+    <!--   - Create child sample records -->
+    <!--   - Preserve lineage (Parent -> Aliquot) -->
+    <!--   - Update remaining volume on parent -->
+    <!--   - Route to Internal Analysis with analyzer plate assignment -->
+    <!-- ======================================================== -->
+    <changeSet id="create-mntd-page-5-aliquoting" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Aliquoting / Bulk Sample Import page for MNTD Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Aliquoting / Bulk Sample Import"/>
+            <column name="instructions" value="Create child samples (aliquots) from parent samples and route them to analyzer plates for internal analysis. Select parent samples, configure aliquot type (Tube, Plate 96-well, Cryobox 9×9 or 10×10), specify number of aliquots per parent, and set ID prefix. Aliquot IDs are auto-generated (e.g., MNTD-ALQ-2024-001). Upload plate maps or box layouts for bulk import. Track initial volume per aliquot and remaining volume on parent samples. Route completed aliquots to analyzer plates with automatic well assignment."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Aliquoting / Bulk Sample Import&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;aliquotDetails&quot;: {
+      &quot;aliquotType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Aliquot Type&quot;, &quot;options&quot;: [&quot;Tube&quot;, &quot;Plate (96-well)&quot;, &quot;Cryobox (9×9)&quot;, &quot;Cryobox (10×10)&quot;], &quot;required&quot;: true},
+      &quot;aliquotIdPrefix&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Aliquot ID Prefix&quot;, &quot;example&quot;: &quot;MNTD-ALQ&quot;, &quot;required&quot;: true},
+      &quot;aliquotsPerParent&quot;: {&quot;type&quot;: &quot;integer&quot;, &quot;label&quot;: &quot;Aliquots per Parent&quot;, &quot;min&quot;: 1, &quot;max&quot;: 20, &quot;default&quot;: 1, &quot;required&quot;: true}
+    },
+    &quot;bulkImport&quot;: {
+      &quot;plateMapUpload&quot;: {&quot;type&quot;: &quot;file&quot;, &quot;label&quot;: &quot;Upload Plate Map&quot;, &quot;accept&quot;: &quot;.csv&quot;, &quot;required&quot;: false},
+      &quot;boxLayoutUpload&quot;: {&quot;type&quot;: &quot;file&quot;, &quot;label&quot;: &quot;Upload Box Layout&quot;, &quot;accept&quot;: &quot;.csv&quot;, &quot;required&quot;: false},
+      &quot;wellPositions&quot;: {&quot;type&quot;: &quot;wellGrid&quot;, &quot;label&quot;: &quot;Well Positions&quot;, &quot;rows&quot;: 8, &quot;columns&quot;: 12, &quot;required&quot;: false},
+      &quot;controlSamples&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Control Samples&quot;, &quot;source&quot;: &quot;control_samples&quot;, &quot;required&quot;: false},
+      &quot;projectAssociation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Project Association&quot;, &quot;description&quot;: &quot;Can be mixed projects&quot;, &quot;required&quot;: false}
+    },
+    &quot;volumeQuantityTracking&quot;: {
+      &quot;initialVolume&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Initial Volume per Aliquot&quot;, &quot;unit&quot;: &quot;mL&quot;, &quot;required&quot;: false},
+      &quot;dbsSpots&quot;: {&quot;type&quot;: &quot;integer&quot;, &quot;label&quot;: &quot;DBS Spots&quot;, &quot;required&quot;: false},
+      &quot;remainingVolume&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Remaining Volume&quot;, &quot;unit&quot;: &quot;mL&quot;, &quot;computed&quot;: true, &quot;required&quot;: false},
+      &quot;remainingSpots&quot;: {&quot;type&quot;: &quot;integer&quot;, &quot;label&quot;: &quot;Remaining DBS Spots&quot;, &quot;computed&quot;: true, &quot;required&quot;: false}
+    },
+    &quot;routeToAnalyzer&quot;: {
+      &quot;analyzerPlate&quot;: {&quot;type&quot;: &quot;assayPlate&quot;, &quot;label&quot;: &quot;Analyzer Plate&quot;, &quot;plateTypes&quot;: [&quot;96-well&quot;, &quot;48-well&quot;, &quot;24-well&quot;, &quot;custom&quot;], &quot;required&quot;: false},
+      &quot;wellAssignment&quot;: {&quot;type&quot;: &quot;autoAssign&quot;, &quot;label&quot;: &quot;Well Assignment&quot;, &quot;order&quot;: &quot;row-major&quot;, &quot;example&quot;: &quot;A1, A2, ..., B1, B2, ...&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Create child sample records&quot;, &quot;Preserve lineage: Parent → Aliquot&quot;, &quot;Update remaining volume on parent&quot;, &quot;Auto-generate Aliquot ID&quot;, &quot;Route to Internal Analysis with plate assignment&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;aliquotType&quot;, &quot;aliquotsPerParent&quot;, &quot;initialVolume&quot;]
+  },
+  &quot;nextPage&quot;: &quot;Processing &amp; QC&quot;
+}"/>
+            <column name="page_order" value="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="CHILD_SAMPLE_CREATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true) AND page_order = 5</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template for MNTD Aliquoting -->
+    <changeSet id="insert-mntd-aliquoting-workflow-template" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'MNTD' AND display_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert MNTD Aliquoting workflow page template</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="105"/>
+            <column name="name" value="Aliquoting / Bulk Sample Import"/>
+            <column name="display_key" value="workflow.page.mntd.aliquoting"/>
+            <column name="description" value="Create child samples (aliquots) and route to analyzer plates for internal analysis"/>
+            <column name="default_instructions" value="Select parent samples and create aliquots. Configure aliquot type (Tube, Plate 96-well, Cryobox), number per parent, and ID prefix. Upload plate maps for bulk import. Track volume. Route aliquots to analyzer plates with automatic well assignment."/>
+            <column name="default_content" value="Aliquoting / Bulk Sample Import - Child sample creation and analyzer plate routing"/>
+            <column name="page_type" value="CHILD_SAMPLE_CREATION"/>
+            <column name="display_order" value="5"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MNTD"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'MNTD' AND display_order = 5</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

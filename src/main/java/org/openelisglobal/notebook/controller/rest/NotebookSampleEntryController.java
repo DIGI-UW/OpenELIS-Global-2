@@ -1133,6 +1133,23 @@ public class NotebookSampleEntryController extends BaseRestController {
     }
 
     /**
+     * Get report history for a specific notebook page.
+     * GET /notebook/page/{pageId}/reports
+     *
+     * Returns an empty list for now - report history storage not yet implemented.
+     *
+     * @param pageId the notebook page ID
+     * @return list of report history entries (currently empty)
+     */
+    @GetMapping(value = "/page/{pageId}/reports", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getPageReportHistory(@PathVariable("pageId") Integer pageId) {
+        // TODO: Implement report history storage
+        // For now, return empty list to prevent frontend errors
+        return ResponseEntity.ok(new java.util.ArrayList<>());
+    }
+
+    /**
      * Request body for linking samples.
      */
     public static class LinkSamplesRequest {
@@ -1170,6 +1187,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         private int childCountPerParent;
         private String externalIdPrefix;
         private Integer pageId; // Optional: page ID where child samples should appear
+        private AliquotData aliquotData; // Optional: aliquot-specific data
 
         public List<Integer> getParentSampleIds() {
             return parentSampleIds;
@@ -1201,6 +1219,74 @@ public class NotebookSampleEntryController extends BaseRestController {
 
         public void setPageId(Integer pageId) {
             this.pageId = pageId;
+        }
+
+        public AliquotData getAliquotData() {
+            return aliquotData;
+        }
+
+        public void setAliquotData(AliquotData aliquotData) {
+            this.aliquotData = aliquotData;
+        }
+    }
+
+    /**
+     * Aliquot-specific data for child sample creation.
+     */
+    public static class AliquotData {
+        private String aliquotType; // TUBE, PLATE_96, CRYOBOX_9x9, CRYOBOX_10x10
+        private Double volume;
+        private Double initialVolume; // Alias for volume from frontend
+        private String volumeUnit; // uL, mL
+        private Integer dbsSpots; // For DBS samples
+        private String notes;
+
+        public String getAliquotType() {
+            return aliquotType;
+        }
+
+        public void setAliquotType(String aliquotType) {
+            this.aliquotType = aliquotType;
+        }
+
+        public Double getVolume() {
+            return volume;
+        }
+
+        public void setVolume(Double volume) {
+            this.volume = volume;
+        }
+
+        public Double getInitialVolume() {
+            return initialVolume;
+        }
+
+        public void setInitialVolume(Double initialVolume) {
+            this.initialVolume = initialVolume;
+        }
+
+        public String getVolumeUnit() {
+            return volumeUnit;
+        }
+
+        public void setVolumeUnit(String volumeUnit) {
+            this.volumeUnit = volumeUnit;
+        }
+
+        public Integer getDbsSpots() {
+            return dbsSpots;
+        }
+
+        public void setDbsSpots(Integer dbsSpots) {
+            this.dbsSpots = dbsSpots;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
         }
     }
 

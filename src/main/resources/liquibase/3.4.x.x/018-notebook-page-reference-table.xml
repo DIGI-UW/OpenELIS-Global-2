@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_PAGE REFERENCE TABLE ENTRY -->
+    <!-- Required for audit trail tracking when updating notebook pages -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-page-reference-table-entry" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'NOTEBOOK_PAGE'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating NOTEBOOK_PAGE reference table entry to enable audit trail tracking for notebook page updates.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="NOTEBOOK_PAGE"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='NOTEBOOK_PAGE'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

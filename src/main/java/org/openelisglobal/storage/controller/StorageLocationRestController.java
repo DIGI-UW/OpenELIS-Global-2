@@ -1036,6 +1036,52 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Get occupancy/layout information for a specific box. GET
+     * /rest/storage/boxes/{id}/occupancy Returns map of occupied well coordinates
+     * with sample information.
+     *
+     * @param id Box ID
+     * @return Map with occupiedCoordinates, totalCapacity, occupiedCount,
+     *         availableCount
+     */
+    @GetMapping("/boxes/{id}/occupancy")
+    public ResponseEntity<Map<String, Object>> getBoxOccupancy(@PathVariable String id) {
+        try {
+            Integer boxId = Integer.parseInt(id);
+            StorageBox box = (StorageBox) storageLocationService.get(boxId, StorageBox.class);
+            if (box == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            Map<String, Map<String, String>> occupiedCoordinates = sampleStorageAssignmentDAO
+                    .getOccupiedCoordinatesWithSampleInfo(boxId);
+
+            int totalCapacity = box.getCapacity() != null ? box.getCapacity()
+                    : (box.getRows() != null ? box.getRows() : 8) * (box.getColumns() != null ? box.getColumns() : 12);
+            int occupiedCount = occupiedCoordinates.size();
+            int availableCount = totalCapacity - occupiedCount;
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("boxId", boxId);
+            response.put("boxLabel", box.getLabel());
+            response.put("rows", box.getRows() != null ? box.getRows() : 8);
+            response.put("columns", box.getColumns() != null ? box.getColumns() : 12);
+            response.put("totalCapacity", totalCapacity);
+            response.put("occupiedCount", occupiedCount);
+            response.put("availableCount", availableCount);
+            response.put("occupiedCoordinates", occupiedCoordinates);
+
+            // Also provide a simple list of occupied well coordinates for easy checking
+            response.put("occupiedWells", new ArrayList<>(occupiedCoordinates.keySet()));
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error getting box occupancy", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     // ========== Helper Methods ==========
 
     /**

@@ -161,7 +161,146 @@ public class NotebookEntryRestController extends BaseRestController {
     }
 
     /**
-     * Add a sample to an entry.
+     * Add a new missed sample to an entry.
+     * Creates a new sample item and adds it to the entry.
+     *
+     * @param entryId the entry ID
+     * @param body    request body with sample details
+     * @param request HTTP request for user session
+     * @return success response with new sample details
+     */
+    @PostMapping(value = "/{entryId}/samples/add", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> addMissedSample(@PathVariable("entryId") Integer entryId,
+            @RequestBody Map<String, Object> body, HttpServletRequest request) {
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        String externalId = (String) body.get("externalId");
+        String sampleType = (String) body.get("sampleType");
+        Integer pageId = body.get("pageId") != null ? Integer.parseInt(body.get("pageId").toString()) : null;
+        String parentSampleId = (String) body.get("parentSampleId");
+        String notes = (String) body.get("notes");
+        String source = (String) body.get("source");
+
+        if (externalId == null || externalId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Sample ID (externalId) is required"));
+        }
+
+        if (sampleType == null || sampleType.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Sample type is required"));
+        }
+
+        try {
+            // Get or create sample type
+            org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.typeofsample.service.TypeOfSampleService.class);
+            org.openelisglobal.typeofsample.valueholder.TypeOfSample typeObj = null;
+
+            // Try to get sample type by ID first, then by name if that fails
+            try {
+                // Check if sampleType is a numeric ID
+                Integer.parseInt(sampleType);
+                typeObj = typeOfSampleService.get(sampleType);
+            } catch (NumberFormatException e) {
+                // sampleType is a name/description, look it up by localized name
+                typeObj = typeOfSampleService.getTypeOfSampleByLocalizedName(sampleType, java.util.Locale.ENGLISH);
+            }
+
+            if (typeObj == null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Sample type not found: " + sampleType));
+            }
+
+            // Get the entry to access its samples
+            NotebookEntry entry = notebookEntryService.getWithRelationships(entryId);
+            if (entry == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Entry not found: " + entryId));
+            }
+
+            // Create a new SampleItem
+            org.openelisglobal.sampleitem.service.SampleItemService sampleItemService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.sampleitem.service.SampleItemService.class);
+            org.openelisglobal.sample.service.SampleService sampleService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.sample.service.SampleService.class);
+
+            // Find a sample from the entry to get the parent sample (for the accession
+            // number)
+            org.openelisglobal.sample.valueholder.Sample parentSample = null;
+            List<SampleItem> existingSamples = notebookEntryService.getSamples(entryId);
+            if (!existingSamples.isEmpty()) {
+                parentSample = existingSamples.get(0).getSample();
+            }
+
+            if (parentSample == null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Cannot add sample: No existing samples in entry to link to"));
+            }
+
+            // Create new sample item
+            SampleItem newSampleItem = new SampleItem();
+            newSampleItem.setSample(parentSample);
+            newSampleItem.setExternalId(externalId.trim());
+            newSampleItem.setTypeOfSample(typeObj);
+            newSampleItem.setSortOrder(String.valueOf(existingSamples.size() + 1));
+            newSampleItem.setSysUserId(sysUserId);
+
+            // Save the sample item
+            String newSampleItemId = sampleItemService.insert(newSampleItem);
+            newSampleItem = sampleItemService.get(newSampleItemId);
+
+            // Add sample to entry
+            notebookEntryService.addSample(entryId, newSampleItem, sysUserId);
+
+            // If pageId is provided, add sample to that specific page
+            if (pageId != null) {
+                org.openelisglobal.notebook.service.NotebookPageSampleService pageSampleService = org.openelisglobal.spring.util.SpringContext
+                        .getBean(org.openelisglobal.notebook.service.NotebookPageSampleService.class);
+                org.openelisglobal.notebook.service.NoteBookPageService pageService = org.openelisglobal.spring.util.SpringContext
+                        .getBean(org.openelisglobal.notebook.service.NoteBookPageService.class);
+
+                // Get the notebook page
+                org.openelisglobal.notebook.valueholder.NoteBookPage page = pageService.get(pageId);
+                if (page != null) {
+                    org.openelisglobal.notebook.valueholder.NotebookPageSample pageSample = new org.openelisglobal.notebook.valueholder.NotebookPageSample();
+                    pageSample.setNotebookPage(page);
+                    pageSample.setSampleItemId(newSampleItem.getId());
+                    pageSample.setStatus(org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.PENDING);
+                    pageSample.setSysUserId(sysUserId);
+
+                    // Store metadata in data JSON
+                    Map<String, Object> sampleData = new HashMap<>();
+                    sampleData.put("source", source != null ? source : "MISSED_FROM_FIELD");
+                    sampleData.put("notes", notes);
+                    if (parentSampleId != null && !parentSampleId.isEmpty()) {
+                        sampleData.put("parentSampleId", parentSampleId);
+                    }
+                    pageSample.setData(sampleData);
+
+                    pageSampleService.save(pageSample);
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("entryId", entryId);
+            response.put("sampleId", newSampleItem.getId());
+            response.put("externalId", externalId);
+            response.put("sampleType", sampleType);
+            response.put("success", true);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to add sample: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+
+    /**
+     * Add an existing sample to an entry.
      *
      * @param entryId  the entry ID
      * @param sampleId the sample item ID
@@ -319,6 +458,55 @@ public class NotebookEntryRestController extends BaseRestController {
         response.put("count", count);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Sync pages from template to an entry's notebook instance.
+     * Adds any pages that exist in the template but are missing from the instance.
+     * This is useful when new pages are added to a template after instances were created.
+     *
+     * @param entryId the entry ID
+     * @param request HTTP request for user session
+     * @return result with number of pages added
+     */
+    @PostMapping(value = "/{entryId}/sync-pages", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> syncPagesFromTemplate(@PathVariable("entryId") Integer entryId,
+            HttpServletRequest request) {
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        try {
+            // Get the entry to find the associated notebook instance
+            NotebookEntry entry = notebookEntryService.get(entryId);
+            if (entry == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Get the notebook instance ID from the entry
+            NoteBook instanceNotebook = entry.getNotebook();
+            if (instanceNotebook == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Entry has no associated notebook instance"));
+            }
+
+            // Sync pages from template
+            int addedCount = noteBookService.syncPagesFromTemplate(instanceNotebook.getId(), sysUserId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("entryId", entryId);
+            response.put("notebookInstanceId", instanceNotebook.getId());
+            response.put("pagesAdded", addedCount);
+            response.put("success", true);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to sync pages: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
     }
 
     private Map<String, Object> convertToMap(NotebookEntry entry) {
