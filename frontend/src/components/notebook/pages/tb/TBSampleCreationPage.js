@@ -182,9 +182,7 @@ function TBSampleCreationPage({
   };
 
   // Calculate stats
-  const completedCount = samples.filter(
-    (s) => s.status === "COMPLETED",
-  ).length;
+  const completedCount = samples.filter((s) => s.status === "COMPLETED").length;
   const pendingCount = samples.filter((s) => s.status === "PENDING").length;
 
   // Handle import success
@@ -335,4 +333,3 @@ function TBSampleCreationPage({
 }
 
 export default TBSampleCreationPage;
-

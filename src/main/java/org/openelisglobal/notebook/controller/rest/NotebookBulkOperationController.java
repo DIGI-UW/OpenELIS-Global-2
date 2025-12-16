@@ -581,6 +581,59 @@ public class NotebookBulkOperationController extends BaseRestController {
                 request.getData(),
                 sysUserId);
 
+        // Generate list of all wells in order (A1, A2, ..., A12, B1, B2, ...)
+        java.util.List<String> allWells = new java.util.ArrayList<>();
+        for (int row = 0; row < rows; row++) {
+            char rowLetter = (char) ('A' + row);
+            for (int col = 1; col <= columns; col++) {
+                allWells.add("" + rowLetter + col);
+            }
+        }
+
+        // Find available wells (not occupied)
+        java.util.List<String> availableWells = allWells.stream().filter(well -> !occupiedWells.contains(well))
+                .collect(java.util.stream.Collectors.toList());
+
+        // Check if we have enough available wells
+        if (availableWells.size() < request.getSampleIds().size()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Not enough available wells. Need " + request.getSampleIds().size() + " but only "
+                    + availableWells.size() + " available.");
+            error.put("availableCount", availableWells.size());
+            error.put("requestedCount", request.getSampleIds().size());
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        // Assign each sample to the next available well
+        java.util.List<Map<String, Object>> assignments = new java.util.ArrayList<>();
+        int updatedCount = 0;
+
+        for (int i = 0; i < request.getSampleIds().size(); i++) {
+            Integer sampleId = request.getSampleIds().get(i);
+            String wellCoordinate = availableWells.get(i);
+
+            // Prepare the data to apply for this sample
+            Map<String, Object> sampleData = new HashMap<>();
+            if (request.getData() != null) {
+                sampleData.putAll(request.getData());
+            }
+            sampleData.put("storageWell", wellCoordinate);
+
+            // Apply storage data to the single sample
+            int count = bulkOperationService.bulkApplyValues(pageId, java.util.Collections.singletonList(sampleId),
+                    sampleData, sysUserId);
+
+            if (count > 0) {
+                updatedCount++;
+                Map<String, Object> assignment = new HashMap<>();
+                assignment.put("sampleId", sampleId);
+                assignment.put("wellCoordinate", wellCoordinate);
+                assignments.add(assignment);
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("updatedCount", updatedCount);
         result.put("pageId", pageId);
         result.put("boxId", request.getBoxId());
 

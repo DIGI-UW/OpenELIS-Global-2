@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Grid,
-  Column,
-  Button,
-  Tile,
-  InlineNotification,
-} from "@carbon/react";
+import { Grid, Column, Button, Tile, InlineNotification } from "@carbon/react";
 import { Upload, Checkmark } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, postToOpenElisServer } from "../../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+} from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import PharmaManifestImportModal from "../../workflow/PharmaManifestImportModal";
 import "../../workflow/NotebookWorkflow.css";
@@ -327,4 +324,3 @@ function PharmaceuticalSampleCreationPage({
 }
 
 export default PharmaceuticalSampleCreationPage;
-

@@ -785,4 +785,3 @@ function TBManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
 }
 
 export default TBManifestImportModal;
-

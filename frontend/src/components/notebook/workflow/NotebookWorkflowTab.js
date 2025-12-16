@@ -344,6 +344,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
             <ChildSampleCreationPage
               key={`child-creation-${page.id}`}
               entryId={entryId}
+              notebookId={notebook?.id}
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}

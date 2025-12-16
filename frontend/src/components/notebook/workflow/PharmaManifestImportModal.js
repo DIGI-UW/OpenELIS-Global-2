@@ -19,7 +19,12 @@ import "./NotebookWorkflow.css";
  * PharmaManifestImportModal - CSV import modal for Pharmaceuticals workflow.
  * Supports mapping pharma-specific columns (group_id, sample_type, num_of_samples, chemistry metadata).
  */
-function PharmaManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
+function PharmaManifestImportModal({
+  open,
+  onClose,
+  entryId,
+  onImportSuccess,
+}) {
   const intl = useIntl();
 
   const [file, setFile] = useState(null);
@@ -148,12 +153,18 @@ function PharmaManifestImportModal({ open, onClose, entryId, onImportSuccess }) 
       } else {
         setPreviewErrors(
           data.errors || [
-            { rowNumber: 0, column: "file", message: data.error || "Preview failed" },
+            {
+              rowNumber: 0,
+              column: "file",
+              message: data.error || "Preview failed",
+            },
           ],
         );
       }
     } catch (error) {
-      setPreviewErrors([{ rowNumber: 0, column: "file", message: error.message }]);
+      setPreviewErrors([
+        { rowNumber: 0, column: "file", message: error.message },
+      ]);
     } finally {
       setIsPreviewLoading(false);
     }
@@ -184,12 +195,18 @@ function PharmaManifestImportModal({ open, onClose, entryId, onImportSuccess }) 
       } else {
         setPreviewErrors(
           data.errors || [
-            { rowNumber: 0, column: "import", message: data.error || "Import failed" },
+            {
+              rowNumber: 0,
+              column: "import",
+              message: data.error || "Import failed",
+            },
           ],
         );
       }
     } catch (error) {
-      setPreviewErrors([{ rowNumber: 0, column: "import", message: error.message }]);
+      setPreviewErrors([
+        { rowNumber: 0, column: "import", message: error.message },
+      ]);
     } finally {
       setIsImporting(false);
     }
@@ -232,7 +249,9 @@ function PharmaManifestImportModal({ open, onClose, entryId, onImportSuccess }) 
               : intl.formatMessage({ id: "label.button.close" })
       }
       secondaryButtonText={
-        step > 1 && step < 4 ? intl.formatMessage({ id: "label.button.back" }) : null
+        step > 1 && step < 4
+          ? intl.formatMessage({ id: "label.button.back" })
+          : null
       }
       onRequestSubmit={() => {
         if (step === 1 && file) setStep(2);
@@ -264,7 +283,8 @@ function PharmaManifestImportModal({ open, onClose, entryId, onImportSuccess }) 
                 accept={[".csv"]}
                 labelText={intl.formatMessage({
                   id: "notebook.pharma.manifest.dropzone",
-                  defaultMessage: "Drag and drop a CSV file here or click to upload",
+                  defaultMessage:
+                    "Drag and drop a CSV file here or click to upload",
                 })}
                 onAddFiles={handleFileAdded}
               />
@@ -296,28 +316,70 @@ function PharmaManifestImportModal({ open, onClose, entryId, onImportSuccess }) 
             </p>
             <div className="mapping-grid">
               <div className="mapping-field required">
-                {mappingField("groupIdColumn", "notebook.pharma.manifest.column.groupId")}
+                {mappingField(
+                  "groupIdColumn",
+                  "notebook.pharma.manifest.column.groupId",
+                )}
                 <span className="required-marker">*</span>
               </div>
               <div className="mapping-field required">
-                {mappingField("sampleTypeColumn", "notebook.pharma.manifest.column.sampleType")}
+                {mappingField(
+                  "sampleTypeColumn",
+                  "notebook.pharma.manifest.column.sampleType",
+                )}
                 <span className="required-marker">*</span>
               </div>
               <div className="mapping-field required">
-                {mappingField("numOfSamplesColumn", "notebook.pharma.manifest.column.numOfSamples")}
+                {mappingField(
+                  "numOfSamplesColumn",
+                  "notebook.pharma.manifest.column.numOfSamples",
+                )}
                 <span className="required-marker">*</span>
               </div>
-              {mappingField("chemicalNameColumn", "notebook.pharma.manifest.column.chemicalName")}
-              {mappingField("gradeColumn", "notebook.pharma.manifest.column.grade")}
-              {mappingField("lotNumberColumn", "notebook.pharma.manifest.column.lotNumber")}
-              {mappingField("dateOfManufactureColumn", "notebook.pharma.manifest.column.dateOfManufacture")}
-              {mappingField("expiryOrRetestDateColumn", "notebook.pharma.manifest.column.expiryOrRetestDate")}
-              {mappingField("storageConditionColumn", "notebook.pharma.manifest.column.storageCondition")}
-              {mappingField("ownerColumn", "notebook.pharma.manifest.column.owner")}
-              {mappingField("patientIdColumn", "notebook.pharma.manifest.column.patientId")}
-              {mappingField("clinicalTrialNumberColumn", "notebook.pharma.manifest.column.clinicalTrialNumber")}
-              {mappingField("consentStatusColumn", "notebook.pharma.manifest.column.consentStatus")}
-              {mappingField("notesColumn", "notebook.pharma.manifest.column.notes")}
+              {mappingField(
+                "chemicalNameColumn",
+                "notebook.pharma.manifest.column.chemicalName",
+              )}
+              {mappingField(
+                "gradeColumn",
+                "notebook.pharma.manifest.column.grade",
+              )}
+              {mappingField(
+                "lotNumberColumn",
+                "notebook.pharma.manifest.column.lotNumber",
+              )}
+              {mappingField(
+                "dateOfManufactureColumn",
+                "notebook.pharma.manifest.column.dateOfManufacture",
+              )}
+              {mappingField(
+                "expiryOrRetestDateColumn",
+                "notebook.pharma.manifest.column.expiryOrRetestDate",
+              )}
+              {mappingField(
+                "storageConditionColumn",
+                "notebook.pharma.manifest.column.storageCondition",
+              )}
+              {mappingField(
+                "ownerColumn",
+                "notebook.pharma.manifest.column.owner",
+              )}
+              {mappingField(
+                "patientIdColumn",
+                "notebook.pharma.manifest.column.patientId",
+              )}
+              {mappingField(
+                "clinicalTrialNumberColumn",
+                "notebook.pharma.manifest.column.clinicalTrialNumber",
+              )}
+              {mappingField(
+                "consentStatusColumn",
+                "notebook.pharma.manifest.column.consentStatus",
+              )}
+              {mappingField(
+                "notesColumn",
+                "notebook.pharma.manifest.column.notes",
+              )}
             </div>
             {previewErrors.length > 0 && (
               <InlineNotification
@@ -360,7 +422,9 @@ function PharmaManifestImportModal({ open, onClose, entryId, onImportSuccess }) 
                       <ul className="error-list">
                         {previewErrors.map((error, idx) => (
                           <li key={idx}>
-                            {error.rowNumber > 0 ? `Row ${error.rowNumber}: ` : ""}
+                            {error.rowNumber > 0
+                              ? `Row ${error.rowNumber}: `
+                              : ""}
                             {error.message}
                           </li>
                         ))}
@@ -417,4 +481,3 @@ function PharmaManifestImportModal({ open, onClose, entryId, onImportSuccess }) 
 }
 
 export default PharmaManifestImportModal;
-

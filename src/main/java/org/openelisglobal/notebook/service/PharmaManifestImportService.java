@@ -29,4 +29,3 @@ public interface PharmaManifestImportService {
 
     PharmaManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest, String sysUserId);
 }
-

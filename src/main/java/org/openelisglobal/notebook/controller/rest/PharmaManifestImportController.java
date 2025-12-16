@@ -45,8 +45,8 @@ public class PharmaManifestImportController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> previewManifestForEntry(@PathVariable("entryId") Integer entryId,
             @RequestPart("file") MultipartFile file, @RequestPart("mapping") PharmaManifestImportForm form) {
 
-        Optional<org.openelisglobal.notebook.valueholder.NotebookEntry> optEntry = notebookEntryService
-                .getMatch("id", entryId);
+        Optional<org.openelisglobal.notebook.valueholder.NotebookEntry> optEntry = notebookEntryService.getMatch("id",
+                entryId);
         if (optEntry.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -101,8 +101,8 @@ public class PharmaManifestImportController extends BaseRestController {
             @RequestPart("file") MultipartFile file, @RequestPart("mapping") PharmaManifestImportForm form,
             HttpServletRequest httpRequest) {
 
-        Optional<org.openelisglobal.notebook.valueholder.NotebookEntry> optEntry = notebookEntryService
-                .getMatch("id", entryId);
+        Optional<org.openelisglobal.notebook.valueholder.NotebookEntry> optEntry = notebookEntryService.getMatch("id",
+                entryId);
         if (optEntry.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -165,4 +165,3 @@ public class PharmaManifestImportController extends BaseRestController {
         return String.valueOf(usd.getSystemUserId());
     }
 }
-

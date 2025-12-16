@@ -62,7 +62,7 @@ function SampleGrid({
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
 
   // Search state
   const [searchTerm, setSearchTerm] = useState("");

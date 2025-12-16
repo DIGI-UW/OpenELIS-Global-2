@@ -52,7 +52,8 @@ Based on the requirements and TB laboratory domain knowledge:
    Quality Manager roles)
 4. **Data Retention**: TB sample and result data retained per national TB
    program guidelines (typically 5+ years)
-5. **Language**: UI supports existing OpenELIS internationalization (English primary)
+5. **Language**: UI supports existing OpenELIS internationalization (English
+   primary)
 6. **Existing Services**: Leverages existing Notebook, SampleStorage, and
    Patient services from OGC-51
 7. **Analyzer Integration**: GeneXpert results may be imported; other results

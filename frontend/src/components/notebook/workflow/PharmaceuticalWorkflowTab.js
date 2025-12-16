@@ -15,6 +15,11 @@ import PageNavigation from "./PageNavigation";
 import {
   PharmaceuticalSampleCreationPage,
   PharmaceuticalQualityCheckPage,
+  PharmaceuticalProcessingPage,
+  PharmaceuticalTestingPage,
+  PharmaceuticalStoragePage,
+  PharmaceuticalReportingPage,
+  PharmaceuticalDisposalPage,
 } from "../pages/pharma";
 import "./NotebookWorkflow.css";
 
@@ -22,10 +27,24 @@ import "./NotebookWorkflow.css";
  * Default workflow pages for Pharmaceuticals workflow.
  * Page 1: Sample Creation & Full Metadata Capture
  * Page 2: Raw Sample Quality Check (QC)
+ * Page 3: Sample Processing & Aliquoting
+ * Page 4: Assay & Test Execution
+ * Page 5: Storage & Inventory Management
+ * Page 6: Reporting & Performance Monitoring
+ * Page 7: Disposal & Archiving
  */
 const DEFAULT_PHARMA_WORKFLOW_PAGES = [
-  { id: "default-1", order: 1, title: "Sample Creation & Full Metadata Capture" },
+  {
+    id: "default-1",
+    order: 1,
+    title: "Sample Creation & Full Metadata Capture",
+  },
   { id: "default-2", order: 2, title: "Raw Sample Quality Check (QC)" },
+  { id: "default-3", order: 3, title: "Sample Processing & Aliquoting" },
+  { id: "default-4", order: 4, title: "Assay & Test Execution" },
+  { id: "default-5", order: 5, title: "Storage & Inventory Management" },
+  { id: "default-6", order: 6, title: "Reporting & Performance Monitoring" },
+  { id: "default-7", order: 7, title: "Disposal & Archiving" },
 ];
 
 /**
@@ -53,9 +72,14 @@ function PharmaceuticalWorkflowTab({ notebookId, entryId: propEntryId }) {
   const [errorMessage, setErrorMessage] = useState(null);
 
   // Use actual pages if available, otherwise use default pharma workflow pages
+  // Sort by page_order or order to ensure correct display sequence
   const effectivePages = useMemo(() => {
     if (pages && pages.length > 0) {
-      return pages;
+      return [...pages].sort((a, b) => {
+        const orderA = a.pageOrder ?? a.order ?? 0;
+        const orderB = b.pageOrder ?? b.order ?? 0;
+        return orderA - orderB;
+      });
     }
     return DEFAULT_PHARMA_WORKFLOW_PAGES;
   }, [pages]);
@@ -264,6 +288,61 @@ function PharmaceuticalWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
+      case 3:
+        return (
+          <PharmaceuticalProcessingPage
+            key={`pharma-processing-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 4:
+        return (
+          <PharmaceuticalTestingPage
+            key={`pharma-testing-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 5:
+        return (
+          <PharmaceuticalStoragePage
+            key={`pharma-storage-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 6:
+        return (
+          <PharmaceuticalReportingPage
+            key={`pharma-reporting-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 7:
+        return (
+          <PharmaceuticalDisposalPage
+            key={`pharma-disposal-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
       default:
         return (
           <div className="page-placeholder">
@@ -280,7 +359,10 @@ function PharmaceuticalWorkflowTab({ notebookId, entryId: propEntryId }) {
   if (loading) {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
-        <Loading withOverlay={false} description="Loading Pharmaceuticals workflow..." />
+        <Loading
+          withOverlay={false}
+          description="Loading Pharmaceuticals workflow..."
+        />
       </div>
     );
   }
@@ -399,4 +481,3 @@ function PharmaceuticalWorkflowTab({ notebookId, entryId: propEntryId }) {
 }
 
 export default PharmaceuticalWorkflowTab;
-

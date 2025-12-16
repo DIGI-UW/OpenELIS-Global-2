@@ -34,8 +34,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Pharmaceuticals manifest import: parses pharma-specific CSV, creates sample
- * + sample items, links to notebook entry, and stores metadata on page 1
+ * Pharmaceuticals manifest import: parses pharma-specific CSV, creates sample +
+ * sample items, links to notebook entry, and stores metadata on page 1
  * NotebookPageSample data.
  */
 @Service
@@ -135,7 +135,8 @@ public class PharmaManifestImportServiceImpl implements PharmaManifestImportServ
                             ? Integer.parseInt(numOfSamplesStr.trim())
                             : 1;
                 } catch (NumberFormatException e) {
-                    errors.add(new ParseError(rowNumber, "num_of_samples", "Invalid number format: " + numOfSamplesStr));
+                    errors.add(
+                            new ParseError(rowNumber, "num_of_samples", "Invalid number format: " + numOfSamplesStr));
                     continue;
                 }
 
@@ -310,4 +311,3 @@ public class PharmaManifestImportServiceImpl implements PharmaManifestImportServ
         return value != null && !value.isBlank() ? value.trim() : null;
     }
 }
-
