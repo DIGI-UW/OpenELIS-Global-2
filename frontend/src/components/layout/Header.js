@@ -289,7 +289,37 @@ function OEHeader({
     }
   };
 
-  const generateMenuItems = (menuItem, index, level, path) => {
+  /**
+   * Check if a menu item has siblings with paths that start with its own path.
+   * This helps avoid prefix matching conflicts (e.g., /analyzers matching /analyzers/errors).
+   */
+  const hasSiblingWithLongerPath = (menuItem, parentMenuItems) => {
+    if (!parentMenuItems || !menuItem.menu.actionURL) return false;
+    const normalizePath = (url) => {
+      if (!url) return "";
+      const pathOnly = url.split(/[?#]/)[0] || "";
+      if (pathOnly.length > 1 && pathOnly.endsWith("/")) {
+        return pathOnly.slice(0, -1);
+      }
+      return pathOnly;
+    };
+    const itemPath = normalizePath(menuItem.menu.actionURL);
+    if (!itemPath) return false;
+    return parentMenuItems.some(
+      (sibling) =>
+        sibling !== menuItem &&
+        sibling.menu.actionURL &&
+        normalizePath(sibling.menu.actionURL).startsWith(itemPath + "/"),
+    );
+  };
+
+  const generateMenuItems = (
+    menuItem,
+    index,
+    level,
+    path,
+    parentMenuItems = null,
+  ) => {
     // Skip inactive menu items
     if (!menuItem.menu.isActive) {
       return <React.Fragment key={path}></React.Fragment>;
@@ -315,12 +345,20 @@ function OEHeader({
       actionPath.length > 1 &&
       currentPath.startsWith(actionPath + "/");
     const hasChildren = menuItem.childMenus.length > 0;
+
+    // Check if this menu item has siblings with paths that start with its own path.
+    // If so, only use exact matching to avoid conflicts (e.g., /analyzers vs /analyzers/errors).
+    const hasSiblingConflict = hasChildren
+      ? false // Parent items don't need this check
+      : hasSiblingWithLongerPath(menuItem, parentMenuItems);
+
     // Active rule:
-    // - Leaf items: exact OR prefix (supports base routes like /Storage/:tab)
+    // - Leaf items: exact only if there are siblings with same prefix, otherwise exact OR prefix
+    //   (prefix matching supports routes like /Storage/:tab, but not /analyzers when /analyzers/errors exists)
     // - Parent items: exact only (avoid /analyzers being active for /analyzers/errors)
     const isLeafActive = hasChildren
       ? !!actionPath && exactMatch
-      : !!actionPath && (exactMatch || prefixMatch);
+      : !!actionPath && (exactMatch || (!hasSiblingConflict && prefixMatch));
 
     // Handler for label click - navigate (leaf items only)
     const handleLabelClick = (e) => {
@@ -372,6 +410,7 @@ function OEHeader({
               childIndex,
               level + 1,
               path + ".childMenus[" + childIndex + "]",
+              menuItem.childMenus, // Pass parent's children for sibling check
             ),
           )}
         </SideNavMenu>
@@ -686,6 +725,8 @@ function OEHeader({
                         childMenuItem,
                         index,
                         0,
+                        "$.menu[" + index + "]",
+                        null, // Top level items have no parent siblings
                         "$.menu[" + index + "]",
                       );
                     })}
