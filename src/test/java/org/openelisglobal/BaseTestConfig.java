@@ -36,6 +36,16 @@ public class BaseTestConfig {
     @SuppressWarnings("rawtypes")
     private static PostgreSQLContainer postgreSqlContainer = new PostgreSQLContainer("postgres:14.4");
 
+    static {
+        // Register shutdown hook to ensure container is stopped on JVM exit
+        // This prevents orphaned containers when tests are interrupted
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (postgreSqlContainer != null && postgreSqlContainer.isRunning()) {
+                postgreSqlContainer.stop();
+            }
+        }));
+    }
+
     @Bean("liquibase")
     @Profile("test")
     public SpringLiquibase testLiquibase() {
