@@ -473,7 +473,7 @@ public class TestModifyEntryRestController extends BaseController {
         try {
             obj = (JSONObject) parser.parse(changeList);
         } catch (ParseException e) {
-            LogEvent.logError(e.getMessage(), e);
+            LogEvent.logError(e);
         }
 
         TestAddParams testAddParams = extractTestAddParms(obj, parser);
@@ -487,16 +487,16 @@ public class TestModifyEntryRestController extends BaseController {
             testModifyService.updateTestSets(testSets, testAddParams, nameLocalization, reportingNameLocalization,
                     currentUserId);
         } catch (HibernateException e) {
-            LogEvent.logError(e.getMessage(), e);
+            LogEvent.logError(e);
             result.reject("error.hibernate.exception");
             setupDisplayItems(form);
-            // return findForward(FWD_SUCCESS_INSERT, form);
+            // return findForward(FWD_FAIL_INSERT, form);
             return form;
         } catch (Exception e) {
-            LogEvent.logError(e.getMessage(), e);
+            LogEvent.logError(e);
             result.reject("error.exception");
             setupDisplayItems(form);
-            // return findForward(FWD_SUCCESS_INSERT, form);
+            // return findForward(FWD_FAIL_INSERT, form);
             return form;
         }
 
@@ -725,7 +725,7 @@ public class TestModifyEntryRestController extends BaseController {
             }
 
         } catch (ParseException e) {
-            LogEvent.logError(e.getMessage(), e);
+            LogEvent.logError(e);
         }
 
         return testAddParams;
