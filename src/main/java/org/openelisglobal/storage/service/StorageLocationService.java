@@ -2,8 +2,8 @@ package org.openelisglobal.storage.service;
 
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StoragePosition;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -35,10 +35,10 @@ public interface StorageLocationService {
 
     List<StorageRack> getAllRacks();
 
-    // Box methods
-    List<StorageBox> getBoxesByRack(Integer rackId);
+    // Position methods
+    List<StoragePosition> getPositionsByRack(Integer rackId);
 
-    List<StorageBox> getAllBoxes();
+    List<StoragePosition> getAllPositions();
 
     // REST API methods - return fully prepared Maps with all relationship data
     List<Map<String, Object>> getRoomsForAPI();
@@ -48,8 +48,6 @@ public interface StorageLocationService {
     List<Map<String, Object>> getShelvesForAPI(Integer deviceId);
 
     List<Map<String, Object>> getRacksForAPI(Integer shelfId);
-
-    List<Map<String, Object>> getBoxesForAPI(Integer rackId);
 
     // Count methods
     int countOccupiedInDevice(Integer deviceId);
@@ -68,9 +66,9 @@ public interface StorageLocationService {
     Object get(Integer id, Class<?> entityClass);
 
     // Validation methods
-    boolean validateLocationActive(StorageBox box);
+    boolean validateLocationActive(StoragePosition position);
 
-    String buildHierarchicalPath(StorageBox box);
+    String buildHierarchicalPath(StoragePosition position);
 
     // Search methods
     /**
@@ -130,49 +128,4 @@ public interface StorageLocationService {
      *                      StorageShelf, or StorageRack)
      */
     void deleteLocationWithCascade(Integer id, Class<?> locationClass);
-
-    // Deletion Validation Methods
-
-    /**
-     * Check if a Room can be deleted (no child devices).
-     *
-     * @param roomId Room ID to check
-     * @return DeletionValidationResult with success/error details
-     */
-    DeletionValidationResult canDeleteRoom(Integer roomId);
-
-    /**
-     * Check if a Device can be deleted (no child shelves).
-     *
-     * @param deviceId Device ID to check
-     * @return DeletionValidationResult with success/error details
-     */
-    DeletionValidationResult canDeleteDevice(Integer deviceId);
-
-    /**
-     * Check if a Shelf can be deleted (no child racks).
-     *
-     * @param shelfId Shelf ID to check
-     * @return DeletionValidationResult with success/error details
-     */
-    DeletionValidationResult canDeleteShelf(Integer shelfId);
-
-    /**
-     * Check if a Rack can be deleted (no assigned samples).
-     *
-     * @param rackId Rack ID to check
-     * @return DeletionValidationResult with success/error details
-     */
-    DeletionValidationResult canDeleteRack(Integer rackId);
-
-    /**
-     * Validate location name uniqueness within parent scope
-     *
-     * @param name         Location name to validate
-     * @param parentId     Parent ID (null for rooms)
-     * @param locationType One of: "room", "device", "shelf", "rack"
-     * @param excludeId    Existing ID to exclude (for updates)
-     * @return true if unique within scope, false otherwise
-     */
-    boolean isNameUniqueWithinParent(String name, Integer parentId, String locationType, Integer excludeId);
 }

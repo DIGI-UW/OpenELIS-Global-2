@@ -33,7 +33,7 @@
         <class>org.openelisglobal.storage.valueholder.StorageDevice</class>
         <class>org.openelisglobal.storage.valueholder.StorageShelf</class>
         <class>org.openelisglobal.storage.valueholder.StorageRack</class>
-        <class>org.openelisglobal.storage.valueholder.StorageBox</class>
+        <class>org.openelisglobal.storage.valueholder.StoragePosition</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
 
@@ -47,19 +47,8 @@
         <class>org.openelisglobal.coldstorage.valueholder.ThresholdProfile</class>
         <class>org.openelisglobal.coldstorage.valueholder.FreezerThresholdProfile</class>
 
-        <!-- Notebook Management entities -->
-        <class>org.openelisglobal.notebook.valueholder.NoteBook</class>
-        <class>org.openelisglobal.notebook.valueholder.NoteBookPage</class>
-        <class>org.openelisglobal.notebook.valueholder.NoteBookFile</class>
-        <class>org.openelisglobal.notebook.valueholder.NoteBookComment</class>
-        <class>org.openelisglobal.notebook.valueholder.NoteBookSample</class>
-
-        <!-- Inventory Management entities (004-remove-old-inventory) -->
-        <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
+        <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
+        <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"

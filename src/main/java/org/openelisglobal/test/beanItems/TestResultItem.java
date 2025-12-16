@@ -156,8 +156,6 @@ public class TestResultItem implements ResultItem, Serializable {
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisId;
 
-    private String sampleItemExternalId;
-
     private String analysisStatusId;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
@@ -626,14 +624,6 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setAnalysisId(String analysisId) {
         this.analysisId = analysisId;
-    }
-
-    public String getSampleItemExternalId() {
-        return sampleItemExternalId;
-    }
-
-    public void setSampleItemExternalId(String sampleItemExternalId) {
-        this.sampleItemExternalId = sampleItemExternalId;
     }
 
     public void setAnalysisStatusId(String analysisStatusId) {

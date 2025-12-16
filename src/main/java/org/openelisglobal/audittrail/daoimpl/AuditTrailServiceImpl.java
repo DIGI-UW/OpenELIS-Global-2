@@ -321,14 +321,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     if (newObject != null) {
                         Object objPropNewState = fields[ii].get(newObject);
                         if (objPropNewState != null) {
-                            try {
-                                propertyNewState = objPropNewState.toString();
-                            } catch (org.hibernate.LazyInitializationException e) {
-                                // Skip lazy-loaded collections that cannot be accessed outside session
-                                LogEvent.logTrace(this.getClass().getName(), "getChanges", "Skipping field " + fieldName
-                                        + " due to LazyInitializationException on newObject");
-                                continue fieldIteration;
-                            }
+                            propertyNewState = objPropNewState.toString();
                         } else {
                             propertyNewState = "";
                         }
@@ -374,14 +367,8 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 try {
                     Object objPreUpdateState = fields[ii].get(existingObject);
                     if (objPreUpdateState != null) {
-                        try {
-                            propertyPreUpdateState = objPreUpdateState.toString();
-                        } catch (org.hibernate.LazyInitializationException e) {
-                            // Skip lazy-loaded collections that cannot be accessed outside session
-                            LogEvent.logTrace(this.getClass().getName(), "getChanges",
-                                    "Skipping field " + fieldName + " due to LazyInitializationException");
-                            continue fieldIteration;
-                        }
+                        propertyPreUpdateState = objPreUpdateState.toString();
+
                     } else {
                         propertyPreUpdateState = "";
                     }

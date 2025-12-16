@@ -4,6 +4,7 @@ import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.paging.PagingBean;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.result.controller.StatusResultsController.DropPair;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.validation.annotations.ValidDate;
@@ -42,8 +43,7 @@ public class StatusResultsForm extends BaseForm implements ResultsPagingForm {
 
     private List<TestResultItem> testResult;
 
-    // TODO: Re-enable after new inventory frontend integration
-    // private List<InventoryKitItem> inventoryItems;
+    private List<InventoryKitItem> inventoryItems;
 
     private List<String> hivKits;
 
@@ -186,14 +186,13 @@ public class StatusResultsForm extends BaseForm implements ResultsPagingForm {
         this.testResult = testResult;
     }
 
-    // TODO: Re-enable after new inventory frontend integration
-    // public List<InventoryKitItem> getInventoryItems() {
-    // return inventoryItems;
-    // }
+    public List<InventoryKitItem> getInventoryItems() {
+        return inventoryItems;
+    }
 
-    // public void setInventoryItems(List<InventoryKitItem> inventoryItems) {
-    // this.inventoryItems = inventoryItems;
-    // }
+    public void setInventoryItems(List<InventoryKitItem> inventoryItems) {
+        this.inventoryItems = inventoryItems;
+    }
 
     public List<String> getHivKits() {
         return hivKits;

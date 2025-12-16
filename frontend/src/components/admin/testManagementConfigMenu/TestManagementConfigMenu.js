@@ -48,7 +48,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage/testManagementConfigMenu",
+    link: "/MasterListsPage#testManagementConfigMenu",
   },
 ];
 
@@ -96,7 +96,7 @@ function TestManagementConfigMenu() {
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
                 <ClickableTile
-                  href="/MasterListsPage/TestRenameEntry"
+                  href="/admin#TestRenameEntry"
                   id="TestRenameEntry"
                 >
                   <FormattedMessage id="configuration.test.rename" />
@@ -108,7 +108,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/PanelRenameEntry"
+                  href="/admin#PanelRenameEntry"
                   id="PanelRenameEntry"
                 >
                   <FormattedMessage id="configuration.panel.rename" />
@@ -120,7 +120,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/SampleTypeRenameEntry"
+                  href="/admin#SampleTypeRenameEntry"
                   id="SampleTypeRenameEntry"
                 >
                   <FormattedMessage id="configuration.type.rename" />
@@ -132,7 +132,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/TestSectionRenameEntry"
+                  href="/admin#TestSectionRenameEntry"
                   id="TestSectionRenameEntry"
                 >
                   <FormattedMessage id="configuration.testSection.rename" />
@@ -143,10 +143,7 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
-                <ClickableTile
-                  href="/MasterListsPage/UomRenameEntry"
-                  id="UomRenameEntry"
-                >
+                <ClickableTile href="/admin#UomRenameEntry" id="UomRenameEntry">
                   <FormattedMessage id="configuration.uom.rename" />
                   <UnorderedList nested>
                     <ListItem>
@@ -156,7 +153,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/SelectListRenameEntry"
+                  href="/admin#SelectListRenameEntry"
                   id="SelectListRenameEntry"
                 >
                   <FormattedMessage id="configuration.selectList.rename" />
@@ -168,7 +165,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/MethodRenameEntry"
+                  href="/admin#MethodRenameEntry"
                   id="MethodRenameEntry"
                 >
                   <FormattedMessage id="configuration.method.rename" />
@@ -203,10 +200,7 @@ function TestManagementConfigMenu() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
-                <ClickableTile
-                  href="/MasterListsPage/TestCatalog"
-                  id="TestCatalog"
-                >
+                <ClickableTile href="/admin#TestCatalog" id="TestCatalog">
                   <FormattedMessage id="configuration.test.catalog" />
                   <UnorderedList nested>
                     <ListItem>
@@ -216,7 +210,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/MethodManagement"
+                  href="/admin#MethodManagement"
                   id="MethodManagement"
                 >
                   <FormattedMessage id="configuration.method" />
@@ -227,7 +221,7 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
-                <ClickableTile href="/MasterListsPage/TestAdd" id="TestAdd">
+                <ClickableTile href="/admin#TestAdd" id="TestAdd">
                   <FormattedMessage id="configuration.test.add" />
                   <UnorderedList nested>
                     <ListItem>
@@ -237,7 +231,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/TestModifyEntry"
+                  href="/admin#TestModifyEntry"
                   id="TestModifyEntry"
                 >
                   <FormattedMessage id="configuration.test.modify" />
@@ -248,10 +242,7 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
-                <ClickableTile
-                  href="/MasterListsPage/TestActivation"
-                  id="TestActivation"
-                >
+                <ClickableTile href="/admin#TestActivation" id="TestActivation">
                   <FormattedMessage id="configuration.test.activate" />
                   <UnorderedList nested>
                     <ListItem>
@@ -261,7 +252,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/TestOrderability"
+                  href="/admin#TestOrderability"
                   id="TestOrderability"
                 >
                   <FormattedMessage id="configuration.test.orderable" />
@@ -273,7 +264,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/TestSectionManagement"
+                  href="/admin#TestSectionManagement"
                   id="TestSectionManagement"
                 >
                   <FormattedMessage id="configuration.testUnit.manage" />
@@ -285,7 +276,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/SampleTypeManagement"
+                  href="/admin#SampleTypeManagement"
                   id="SampleTypeManagement"
                 >
                   <FormattedMessage id="configuration.sampleType.manage" />
@@ -296,10 +287,7 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
-                <ClickableTile
-                  href="/MasterListsPage/UomManagement"
-                  id="UomManagement"
-                >
+                <ClickableTile href="/admin#UomManagement" id="UomManagement">
                   <FormattedMessage id="configuration.uom.manage" />
                   <UnorderedList nested>
                     <ListItem>
@@ -309,7 +297,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/PanelManagement"
+                  href="/admin#PanelManagement"
                   id="PanelManagement"
                 >
                   <FormattedMessage id="configuration.panel.manage" />
@@ -321,7 +309,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/ResultSelectListAdd"
+                  href="/admin#ResultSelectListAdd"
                   id="ResultSelectListAdd"
                 >
                   <FormattedMessage id="configuration.selectList.add" />
@@ -335,14 +323,11 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
-                <ClickableTile href="/MasterListsPage/reflex" id="reflex">
+                <ClickableTile href="#reflex" id="reflex">
                   <FormattedMessage id="sidenav.label.admin.testmgt.reflex" />
                 </ClickableTile>
                 <br />
-                <ClickableTile
-                  href="/MasterListsPage/calculatedValue"
-                  id="calculatedValue"
-                >
+                <ClickableTile href="#calculatedValue" id="calculatedValue">
                   <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
                 </ClickableTile>
               </UnorderedList>

@@ -16,7 +16,7 @@
         <minor.version>2</minor.version>
         <state.version>1</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>1</fix.version>
+        <fix.version>0</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -28,7 +28,7 @@
         <log4j.version>2.17.1</log4j.version>
         <springframework.version>6.2.2</springframework.version>
         <springsecurity.version>6.0.4</springsecurity.version>
-        <testContainersVersion>1.15.3</testContainersVersion>
+        <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
     <dependencies>
         <dependency>
@@ -797,9 +797,6 @@
                 <version>2.43.0</version>
                 <configuration>
                     <pom>
-                        <includes>
-                            <include>pom.xml</include>
-                        </includes>
                         <sortPom>
                             <expandEmptyElements>false</expandEmptyElements>
                         </sortPom>
@@ -821,7 +818,6 @@
                             </includes>
                             <excludes>
                                 <exclude>.idea/**</exclude>
-                                <exclude>.cursor/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -854,15 +850,12 @@
                             <!-- ignore build files -->
                             <excludes>
                                 <exclude>.idea/**</exclude>
-                                <exclude>.cursor/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
                                 <exclude>bin/**</exclude>
                                 <exclude>tmp/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
-                                <exclude>tools/astm-http-bridge/**</exclude>
-                                <exclude>tools/astm-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                             </excludes>
@@ -878,10 +871,7 @@
                             </includes>
                             <excludes>
                                 <exclude>**/target/**</exclude>
-                                <exclude>.cursor/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
-                                <exclude>tools/astm-http-bridge/**</exclude>
-                                <exclude>tools/astm-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                                 <exclude>frontend/**</exclude>

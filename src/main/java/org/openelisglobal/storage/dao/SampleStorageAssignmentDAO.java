@@ -1,33 +1,38 @@
 package org.openelisglobal.storage.dao;
 
-import java.util.List;
-import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
-import org.openelisglobal.storage.valueholder.StorageBox;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.openelisglobal.storage.valueholder.StoragePosition;
 
 public interface SampleStorageAssignmentDAO extends BaseDAO<SampleStorageAssignment, Integer> {
     SampleStorageAssignment findBySampleItemId(String sampleItemId);
 
-    SampleStorageAssignment findByStorageBox(StorageBox box);
-
-    boolean isBoxOccupied(StorageBox box);
-
-    SampleStorageAssignment findByBoxAndCoordinate(Integer boxId, String coordinate);
-
-    List<String> getOccupiedCoordinatesByBoxId(Integer boxId);
-
-    Map<String, Map<String, String>> getOccupiedCoordinatesWithSampleInfo(Integer boxId);
-
-    int countByLocationTypeAndId(String locationType, Integer locationId);
+    /**
+     * Find assignment by storage position (for barcode validation)
+     *
+     * @param position Storage position entity
+     * @return SampleStorageAssignment or null if position is not occupied
+     */
+    SampleStorageAssignment findByStoragePosition(StoragePosition position);
 
     /**
-     * Find all sample storage assignments with pagination support (OGC-150).
+     * Check if a StoragePosition is occupied by checking for matching
+     * SampleStorageAssignment. This replaces the StoragePosition.occupied flag
+     * which is no longer maintained.
      *
-     * @param pageable Pagination parameters (page number, page size, sorting)
-     * @return Page of SampleStorageAssignment entities
+     * @param position StoragePosition to check
+     * @return true if there's a SampleStorageAssignment matching this position,
+     *         false otherwise
      */
-    Page<SampleStorageAssignment> findAll(Pageable pageable);
+    boolean isPositionOccupied(StoragePosition position);
+
+    /**
+     * Count sample storage assignments by location type and location ID. Used by
+     * OGC-75 to check if samples are assigned before allowing delete.
+     *
+     * @param locationType The location type (device, shelf, rack)
+     * @param locationId   The location ID
+     * @return Count of sample assignments at this location
+     */
+    int countByLocationTypeAndId(String locationType, Integer locationId);
 }

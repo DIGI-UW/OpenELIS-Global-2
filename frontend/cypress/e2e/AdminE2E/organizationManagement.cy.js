@@ -14,12 +14,10 @@ describe("Add Organization and Institute", function () {
   it("Navigate to Admin Page", function () {
     homePage = loginPage.goToHomePage();
     adminPage = homePage.goToAdminPageProgram();
-    cy.wait(500);
   });
 
   it("Navigate to organisation Management", function () {
     organizationManagement = adminPage.goToOrganizationManagement();
-    cy.wait(500);
   });
 
   it("Add organisation/site details", function () {

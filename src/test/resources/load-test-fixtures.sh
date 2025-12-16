@@ -7,14 +7,13 @@
 #
 # Files loaded (in order):
 #   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
-#   2. DBUnit datasets (storage-e2e.xml, user-role.xml) - Storage hierarchy + E2E test data
-#      (same source-of-truth as JUnit tests, loaded via DbUnitFixtureLoader)
+#   2. storage-test-data.sql - Storage hierarchy + sample data
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
+STORAGE_SQL_FILE="$SCRIPT_DIR/storage-test-data.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
@@ -44,7 +43,7 @@ echo "Loading Test Fixtures"
 echo "======================================"
 echo ""
 echo "Foundational SQL: $FOUNDATIONAL_SQL_FILE"
-echo "Storage fixtures: DBUnit datasets (storage-e2e.xml, user-role.xml)"
+echo "Storage SQL: $STORAGE_SQL_FILE"
 if [ "$RESET" = true ]; then
     echo "Reset: Enabled (will reset test data before loading)"
 fi
@@ -53,15 +52,13 @@ if [ "$VERIFY" = true ]; then
 fi
 echo ""
 
-# Check if foundational SQL file exists
+# Check if SQL files exist
 if [ ! -f "$FOUNDATIONAL_SQL_FILE" ]; then
     echo "ERROR: Foundational SQL file not found: $FOUNDATIONAL_SQL_FILE"
     exit 1
 fi
-
-# Check if Maven is available (needed for DBUnit loader)
-if ! command -v mvn &> /dev/null; then
-    echo "ERROR: Maven (mvn) not found. Required for DBUnit fixture loader."
+if [ ! -f "$STORAGE_SQL_FILE" ]; then
+    echo "ERROR: Storage SQL file not found: $STORAGE_SQL_FILE"
     exit 1
 fi
 
@@ -96,24 +93,18 @@ check_dependencies() {
             # Check for required statuses: Entered (any type), Not Tested (ANALYSIS), Finalized (ANALYSIS)
             # Note: Entered may be EXTERNAL_ORDER or SAMPLE depending on database initialization
             STATUS_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
-            # Check storage hierarchy exists (from DBUnit fixtures)
+            # Check storage hierarchy exists (from Liquibase)
             ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
         else
             TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
             STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
-            # Check storage hierarchy exists (from DBUnit fixtures)
+            # Check storage hierarchy exists (from Liquibase)
             ROOM_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
         fi
 
         # Check if all dependencies are met
-        # Note: ROOM_COUNT check is optional (will be loaded by DBUnit loader if missing)
-        if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 3 ]; then
-            if [ "$ROOM_COUNT" -ge 3 ]; then
-                echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, storage hierarchy: $ROOM_COUNT rooms)"
-            else
-                echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present)"
-                echo "   Note: Storage hierarchy will be loaded by DBUnit loader"
-            fi
+        if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 3 ] && [ "$ROOM_COUNT" -ge 3 ]; then
+            echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, storage hierarchy: $ROOM_COUNT rooms from Liquibase)"
             echo ""
             return 0
         fi
@@ -144,8 +135,17 @@ check_dependencies() {
         exit 1
     fi
 
-    # Note: Storage hierarchy check removed - it will be loaded by DBUnit loader
-    # (ROOM_COUNT check is informational only, not a hard requirement)
+    if [ "$ROOM_COUNT" -lt 3 ]; then
+        echo "ERROR: Storage hierarchy not found after $MAX_RETRIES attempts. Expected 3 test rooms (MAIN, SEC, INACTIVE) from Liquibase. Found: $ROOM_COUNT"
+        echo "Please ensure Liquibase has run with context=\"test\" to load foundation data."
+        echo "Storage hierarchy is loaded by: src/main/resources/liquibase/3.3.x.x/004-insert-test-storage-data.xml"
+        echo ""
+        echo "Troubleshooting:"
+        echo "1. Verify SPRING_LIQUIBASE_CONTEXTS=test is set in application environment"
+        echo "2. Check application logs for Liquibase execution"
+        echo "3. Verify database connection is working"
+        exit 1
+    fi
 }
 
 # Verification function
@@ -172,7 +172,7 @@ verify_fixtures() {
             UNION ALL
             SELECT '', 'Racks', COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40
             UNION ALL
-            SELECT '', 'Boxes', COUNT(*) FROM storage_box WHERE id BETWEEN 100 AND 10000;
+            SELECT '', 'Positions', COUNT(*) FROM storage_position WHERE id BETWEEN 100 AND 10000;
         " | sed 's/^[[:space:]]*//' | grep -v '^$'
 
         echo ""
@@ -211,7 +211,7 @@ verify_fixtures() {
             UNION ALL
             SELECT '', 'Racks', COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40
             UNION ALL
-            SELECT '', 'Boxes', COUNT(*) FROM storage_box WHERE id BETWEEN 100 AND 10000;
+            SELECT '', 'Positions', COUNT(*) FROM storage_position WHERE id BETWEEN 100 AND 10000;
         " | sed 's/^[[:space:]]*//' | grep -v '^$'
 
         echo ""
@@ -281,12 +281,9 @@ if [ "$USE_DOCKER" = true ]; then
     echo "✅ Foundational data loaded (providers, organizations)"
     echo ""
 
-    # Load storage hierarchy + E2E test data via DBUnit (same source as JUnit tests)
-    echo "Loading storage fixtures via DBUnit loader..."
-    (cd "$PROJECT_ROOT" && mvn -q exec:java \
-        -Dexec.mainClass="org.openelisglobal.testutils.DbUnitFixtureLoader" \
-        -Dexec.args="--docker testdata/user-role.xml testdata/storage-e2e.xml" \
-        -Dexec.classpathScope=test)
+    # Load storage and sample data
+    echo "Loading storage fixtures via Docker..."
+    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$STORAGE_SQL_FILE"
 
     if [ $? -eq 0 ]; then
         echo ""
@@ -326,7 +323,6 @@ else
     DB_NAME="${DB_NAME:-clinlims}"
     DB_HOST="${DB_HOST:-localhost}"
     DB_PORT="${DB_PORT:-5432}"
-    DB_PASSWORD="${DB_PASSWORD:-${PGPASSWORD:-clinlims}}"
 
     echo "Using direct psql connection"
     echo "Database: $DB_NAME@$DB_HOST:$DB_PORT"
@@ -352,12 +348,10 @@ else
     echo "✅ Foundational data loaded (providers, organizations)"
     echo ""
 
-    # Load storage hierarchy + E2E test data via DBUnit (same source as JUnit tests)
-    echo "Loading storage fixtures via DBUnit loader..."
-    (cd "$PROJECT_ROOT" && mvn -q exec:java \
-        -Dexec.mainClass="org.openelisglobal.testutils.DbUnitFixtureLoader" \
-        -Dexec.args="--jdbc-url jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME --user $DB_USER --password $DB_PASSWORD testdata/user-role.xml testdata/storage-e2e.xml" \
-        -Dexec.classpathScope=test)
+    # Load storage and sample data
+    echo "Loading storage test data..."
+    echo ""
+    psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$STORAGE_SQL_FILE"
 
     if [ $? -eq 0 ]; then
         echo ""
@@ -382,7 +376,6 @@ else
         echo "1. Verify PostgreSQL is running"
         echo "2. Check database credentials"
         echo "3. Ensure storage tables exist (run Liquibase migrations first)"
-        echo "4. Verify Maven can compile test classes"
         echo ""
         exit 1
     fi

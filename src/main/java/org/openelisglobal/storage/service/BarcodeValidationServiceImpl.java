@@ -3,11 +3,12 @@ package org.openelisglobal.storage.service;
 import java.util.HashMap;
 import java.util.Map;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
+import org.openelisglobal.storage.dao.StoragePositionDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
-import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StoragePosition;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -44,7 +45,7 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
     private StorageRackDAO storageRackDAO;
 
     @Autowired
-    private org.openelisglobal.storage.dao.StorageBoxDAO storageBoxDAO;
+    private StoragePositionDAO storagePositionDAO;
 
     @Override
     public BarcodeValidationResponse validateBarcode(String barcode) {
@@ -262,28 +263,30 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
             }
         }
 
-        // Step 2 & 3: Box validation (existence + hierarchy) - continue even if rack
-        // failed
-        StorageBox box = null;
+        // Step 2 & 3: Position validation (existence + hierarchy) - continue even if
+        // rack failed
+        StoragePosition position = null;
         if (parsed.getPositionCode() != null) {
-            StorageBox boxAny = storageBoxDAO.findByCoordinates(parsed.getPositionCode());
-            if (boxAny == null) {
-                if (isValid) {
+            // First check: Does position coordinate exist anywhere?
+            StoragePosition positionAny = storagePositionDAO.findByCoordinates(parsed.getPositionCode());
+            if (positionAny == null) {
+                if (isValid) { // Only record first failure
                     isValid = false;
                     firstFailedStep = "LOCATION_EXISTENCE";
-                    firstErrorMessage = "Box not found: " + parsed.getPositionCode();
+                    firstErrorMessage = "Position not found: " + parsed.getPositionCode();
                 }
                 // Track first missing level only if we have valid parent levels
                 if (firstMissingLevel == null && hasValidComponents && rack != null) {
                     firstMissingLevel = "position";
                 }
             } else if (rack != null) {
-                box = storageBoxDAO.findByCoordinatesAndParentRack(parsed.getPositionCode(), rack);
-                if (box == null) {
-                    if (isValid) {
+                // Second check: Does it exist with correct parent?
+                position = storagePositionDAO.findByCoordinatesAndParentRack(parsed.getPositionCode(), rack);
+                if (position == null) {
+                    if (isValid) { // Only record first failure
                         isValid = false;
                         firstFailedStep = "HIERARCHY_VALIDATION";
-                        firstErrorMessage = "Box '" + parsed.getPositionCode()
+                        firstErrorMessage = "Position '" + parsed.getPositionCode()
                                 + "' exists but parent hierarchy is incorrect (not in rack '" + rack.getLabel() + "')";
                     }
                     // Hierarchy mismatch - position exists but wrong parent, still track as missing
@@ -291,7 +294,11 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                         firstMissingLevel = "position";
                     }
                 } else {
-                    response.addValidComponent("box", createComponentMap(box.getId(), box.getLabel(), box.getLabel()));
+                    response.addValidComponent("position",
+                            createComponentMap(position.getId(), position.getCoordinate(), position.getCoordinate()));
+
+                    // Note: StoragePosition doesn't have an active field - it inherits activity
+                    // from its parent hierarchy
                 }
             } else {
                 // Rack is missing, so position can't be validated - already tracked rack as

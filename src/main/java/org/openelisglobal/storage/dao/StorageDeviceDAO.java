@@ -35,6 +35,4 @@ public interface StorageDeviceDAO extends BaseDAO<StorageDevice, Integer> {
      */
     int countByRoomId(Integer roomId);
 
-    StorageDevice findByNameAndParentRoomId(String name, Integer parentRoomId);
-
 }

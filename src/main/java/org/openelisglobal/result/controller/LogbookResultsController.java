@@ -46,6 +46,8 @@ import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.inventory.action.InventoryUtility;
+import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
@@ -247,8 +249,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         List<TestResultItem> filteredTests = new ArrayList<>();
 
         ResultsPaging paging = new ResultsPaging();
-        // TODO: Re-enable after new inventory frontend integration
-        // List<InventoryKitItem> inventoryList = new ArrayList<>();
+        List<InventoryKitItem> inventoryList = new ArrayList<>();
         ResultsLoadUtility resultsLoadUtility = SpringContext.getBean(ResultsLoadUtility.class);
         resultsLoadUtility.setSysUser(getSysUserId(request));
 
@@ -278,10 +279,8 @@ public class LogbookResultsController extends LogbookResultsBaseController {
                             .isPropertyValueEqual(Property.configurationName, "Haiti Clinical");
                     if (resultsLoadUtility.inventoryNeeded()
                             || (isHaitiClinical && ("VCT").equals(ts.getTestSectionName()))) {
-                        // TODO: Re-enable after new inventory frontend integration
-                        // InventoryUtility inventoryUtility =
-                        // SpringContext.getBean(InventoryUtility.class);
-                        // inventoryList = inventoryUtility.getExistingActiveInventory();
+                        InventoryUtility inventoryUtility = SpringContext.getBean(InventoryUtility.class);
+                        inventoryList = inventoryUtility.getExistingActiveInventory();
 
                         form.setDisplayTestKit(true);
                     }
@@ -313,24 +312,19 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             paging.page(request, form, requestedPageNumber);
         }
         form.setDisplayTestKit(false);
-        // TODO: Re-enable after new inventory frontend integration
-        // List<String> hivKits = new ArrayList<>();
-        // List<String> syphilisKits = new ArrayList<>();
-        // for (InventoryKitItem item : inventoryList) {
-        // if (item.getType().equals("HIV")) {
-        // hivKits.add(item.getInventoryLocationId());
-        // } else {
-        // syphilisKits.add(item.getInventoryLocationId());
-        // }
-        // }
-        // form.setHivKits(hivKits);
-        // form.setSyphilisKits(syphilisKits);
+        List<String> hivKits = new ArrayList<>();
+        List<String> syphilisKits = new ArrayList<>();
 
-        // Temporary fix: Set empty lists
-        form.setHivKits(new ArrayList<String>());
-        form.setSyphilisKits(new ArrayList<String>());
-        // TODO: Re-enable after new inventory frontend integration
-        // form.setInventoryItems(inventoryList);
+        for (InventoryKitItem item : inventoryList) {
+            if (item.getType().equals("HIV")) {
+                hivKits.add(item.getInventoryLocationId());
+            } else {
+                syphilisKits.add(item.getInventoryLocationId());
+            }
+        }
+        form.setHivKits(hivKits);
+        form.setSyphilisKits(syphilisKits);
+        form.setInventoryItems(inventoryList);
         form.setReferralOrganizations(DisplayListService.getInstance().getList(ListType.REFERRAL_ORGANIZATIONS));
 
         addFlashMsgsToRequest(request);

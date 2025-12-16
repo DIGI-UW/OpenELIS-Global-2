@@ -5,10 +5,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
 import java.sql.Timestamp;
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -29,24 +30,15 @@ public class SampleStorageAssignment extends BaseObject<Integer> {
     @Column(name = "ID")
     private Integer id;
 
-    // Store sampleItemId directly instead of @ManyToOne to avoid cross-mapping
-    // issues between JPA annotations and HBM XML mapping (SampleItem uses
-    // LIMSStringNumberUserType which maps String in Java to numeric in DB)
-    // Database column is numeric, so store as Integer here
-    @Column(name = "SAMPLE_ITEM_ID", nullable = false, unique = true)
-    private Integer sampleItemId;
-
-    // Transient field for convenience - must be populated manually after loading
-    @Transient
+    @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
+    @JoinColumn(name = "SAMPLE_ITEM_ID", nullable = false, unique = true)
     private SampleItem sampleItem;
 
     // Simplified polymorphic location relationship
-    // Nullable to support disposal (location cleared but assignment preserved for
-    // audit/metrics)
-    @Column(name = "LOCATION_ID", nullable = true)
+    @Column(name = "LOCATION_ID", nullable = false)
     private Integer locationId; // Can reference device, shelf, or rack ID
 
-    @Column(name = "LOCATION_TYPE", length = 20, nullable = true)
+    @Column(name = "LOCATION_TYPE", length = 20, nullable = false)
     private String locationType; // Enum: 'device', 'shelf', 'rack'
 
     @Column(name = "POSITION_COORDINATE", length = 50)
@@ -71,30 +63,12 @@ public class SampleStorageAssignment extends BaseObject<Integer> {
         this.id = id;
     }
 
-    public Integer getSampleItemId() {
-        return sampleItemId;
-    }
-
-    public void setSampleItemId(Integer sampleItemId) {
-        this.sampleItemId = sampleItemId;
-    }
-
-    // Convenience method to get sampleItemId as String (for compatibility with
-    // SampleItem.id)
-    public String getSampleItemIdAsString() {
-        return sampleItemId != null ? sampleItemId.toString() : null;
-    }
-
     public SampleItem getSampleItem() {
         return sampleItem;
     }
 
     public void setSampleItem(SampleItem sampleItem) {
         this.sampleItem = sampleItem;
-        // Also update sampleItemId when setting the transient sampleItem
-        if (sampleItem != null && sampleItem.getId() != null) {
-            this.sampleItemId = Integer.parseInt(sampleItem.getId());
-        }
     }
 
     public Integer getLocationId() {

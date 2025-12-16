@@ -33,6 +33,4 @@ public interface StorageRackDAO extends BaseDAO<StorageRack, Integer> {
      */
     int countByShelfId(Integer shelfId);
 
-    StorageRack findByLabelAndParentShelfId(String label, Integer parentShelfId);
-
 }

@@ -6,16 +6,13 @@ import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.storage.valueholder.SampleStorageMovement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@Transactional
 public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovement, Integer>
         implements SampleStorageMovementDAO {
-
-    private static final Logger logger = LoggerFactory.getLogger(SampleStorageMovementDAOImpl.class);
 
     public SampleStorageMovementDAOImpl() {
         super(SampleStorageMovement.class);
@@ -24,30 +21,19 @@ public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovem
     @Override
     @Transactional(readOnly = true)
     public List<SampleStorageMovement> findBySampleItemId(String sampleItemId) {
-        if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
-            return new java.util.ArrayList<>();
-        }
-
-        // Parse String to Integer since DB column is numeric
-        // Note: This method requires numeric ID (String that can be parsed to Integer).
-        // External IDs must be resolved via resolveSampleItem() first.
-        Integer sampleItemIdInt;
         try {
-            sampleItemIdInt = Integer.parseInt(sampleItemId.trim());
-        } catch (NumberFormatException e) {
-            // Return empty list (consistent with
-            // SampleStorageAssignmentDAO.findBySampleItemId behavior)
-            logger.warn("Invalid SampleItem ID format (must be numeric): {}", sampleItemId);
-            return new java.util.ArrayList<>();
-        }
-
-        try {
-            // Query directly using sampleItemId column (no join to HBM-mapped entity)
-            String hql = "FROM SampleStorageMovement ssm WHERE ssm.sampleItemId = :sampleItemId ORDER BY ssm.movementDate DESC";
+            // Note: SampleItem.id uses LIMSStringNumberUserType (String in Java, numeric in
+            // DB)
+            // When querying through relationships, we must parse String to Integer for the
+            // parameter
+            // This matches the pattern in SampleItemDAOImpl.getSampleItemsBySampleId()
+            String hql = "FROM SampleStorageMovement ssm WHERE ssm.sampleItem.id = :sampleItemId ORDER BY ssm.movementDate DESC";
             Query<SampleStorageMovement> query = entityManager.unwrap(Session.class).createQuery(hql,
                     SampleStorageMovement.class);
-            query.setParameter("sampleItemId", sampleItemIdInt);
+            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
             return query.list();
+        } catch (NumberFormatException e) {
+            throw new LIMSRuntimeException("Invalid SampleItem ID format (must be numeric): " + sampleItemId, e);
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error finding SampleStorageMovements by SampleItem ID: " + sampleItemId, e);
         }

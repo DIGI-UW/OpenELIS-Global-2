@@ -27,11 +27,11 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage/testManagementConfigMenu",
+    link: "/MasterListsPage#testManagementConfigMenu",
   },
   {
     label: "sidenav.label.admin.testmgt.ManageMethod",
-    link: "/MasterListsPage/MethodManagment",
+    link: "/MasterListsPage#MethodManagment",
   },
 ];
 

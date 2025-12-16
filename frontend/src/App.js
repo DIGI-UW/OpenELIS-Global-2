@@ -5,7 +5,6 @@ import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
-import InventoryManagement from "./components/inventory/InventoryManagement";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import { Admin } from "./components";
@@ -20,6 +19,7 @@ import "./index.scss";
 import RedirectOldUI from "./RedirectOldUI";
 import PatientManagement from "./components/patient/PatientManagement";
 import PatientHistory from "./components/patient/PatientHistory";
+import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
 import AddOrder from "./components/addOrder/Index";
@@ -50,9 +50,7 @@ import ReferredOutTests from "./components/resultPage/resultsReferredOut/Referre
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
-import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
-import SampleManagement from "./components/sampleManagement/SampleManagement";
 
 export default function App() {
   let i18nConfig = {
@@ -297,6 +295,7 @@ export default function App() {
                 />
                 <SecureRoute
                   path="/MasterListsPage"
+                  exact
                   component={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
                 />
@@ -369,18 +368,6 @@ export default function App() {
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
-                  exact
-                  component={() => <NotebookSampleOrder />}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/NotebookSampleOrder/:notebookId"
-                  exact
-                  component={() => <NotebookSampleOrder />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
@@ -471,32 +458,16 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
-                  path="/inventory"
-                  exact
-                  component={() => <InventoryManagement />}
-                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                />
-                <SecureRoute
-                  path="/SampleManagement"
-                  exact
-                  component={() => <SampleManagement />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
-                />
-                <SecureRoute
-                  path="/GenericSample/Results"
-                  exact
-                  component={() => {
-                    const GenericSampleResults =
-                      require("./components/genericSample/GenericSampleResults").default;
-                    return <GenericSampleResults />;
-                  }}
-                  role={[Roles.RESULTS]}
-                />
-                <SecureRoute
                   path="/PatientHistory"
                   exact
                   component={() => <PatientHistory />}
                   role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/PatientMerge"
+                  exact
+                  component={() => <PatientMerge />}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/Aliquot"

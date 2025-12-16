@@ -1,6 +1,5 @@
 package org.openelisglobal.testcalculated.service;
 
-import java.util.Collections;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -29,11 +28,6 @@ public class ResultCalculationServiceImpl extends AuditableBaseObjectServiceImpl
 
     @Override
     public List<ResultCalculation> getResultCalculationByPatientAndTest(Patient patient, Test test) {
-        // Return empty list if patient is null (e.g., generic samples without patient
-        // info)
-        if (patient == null) {
-            return Collections.emptyList();
-        }
         return resultCalculationDAO.getResultCalculationByPatientAndTest(patient, test);
     }
 
@@ -45,11 +39,6 @@ public class ResultCalculationServiceImpl extends AuditableBaseObjectServiceImpl
     @Override
     public List<ResultCalculation> getResultCalculationByPatientAndCalculation(Patient patient,
             Calculation calculation) {
-        // Return empty list if patient is null (e.g., generic samples without patient
-        // info)
-        if (patient == null) {
-            return Collections.emptyList();
-        }
         return resultCalculationDAO.getResultCalculationByPatientAndCalculation(patient, calculation);
     }
 }

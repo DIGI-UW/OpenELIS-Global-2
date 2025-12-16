@@ -11,6 +11,7 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.validator.GenericValidator;
+import org.openelisglobal.inventory.action.InventoryUtility;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationPaging;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
@@ -37,9 +38,7 @@ public class AccessionValidationController extends BaseController {
 
     private final String RESULT_EDIT_ROLE_ID;
 
-    // TODO: Re-enable after new inventory frontend integration
-    // private InventoryUtility inventoryUtility =
-    // SpringContext.getBean(InventoryUtility.class);
+    private InventoryUtility inventoryUtility = SpringContext.getBean(InventoryUtility.class);
     @Autowired
     private SampleService sampleService;
     @Autowired
@@ -159,9 +158,7 @@ public class AccessionValidationController extends BaseController {
     // throws IllegalAccessException, InvocationTargetException,
     // NoSuchMethodException {
     //
-    // TODO: Re-enable after new inventory frontend integration
-    // // List<InventoryKitItem> list =
-    // inventoryUtility.getExistingActiveInventory();
+    // List<InventoryKitItem> list = inventoryUtility.getExistingActiveInventory();
     // List<String> hivKits = new ArrayList<>();
     // List<String> syphilisKits = new ArrayList<>();
     // for (InventoryKitItem item : list) {
@@ -173,16 +170,14 @@ public class AccessionValidationController extends BaseController {
     // }
     // form.setHivKits(hivKits);
     // form.setSyphilisKits(syphilisKits);
-    // TODO: Re-enable after new inventory frontend integration
-    // // form.setInventoryItems(list);
+    // form.setInventoryItems(list);
     // }
 
     // private void addEmptyInventoryList(AccessionValidationForm form, String
     // accessionNumber)
     // throws IllegalAccessException, InvocationTargetException,
     // NoSuchMethodException {
-    // TODO: Re-enable after new inventory frontend integration
-    // // form.setInventoryItems(new ArrayList<InventoryKitItem>());
+    // form.setInventoryItems(new ArrayList<InventoryKitItem>());
     // form.setHivKits(new ArrayList<String>());
     // form.setSyphilisKits(new ArrayList<String>());
     // }
