@@ -27,5 +27,8 @@
     <include file="liquibase/3.4.x.x/015-mntd-reporting-redcap-page.xml"/>
     <include file="liquibase/3.4.x.x/017-fix-mntd-page-order.xml"/>
     <include file="liquibase/3.4.x.x/018-notebook-page-reference-table.xml"/>
+    <include file="liquibase/3.4.x.x/012-pharmaceuticals-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/013-pharma-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/014-pharmaceuticals-additional-pages.xml"/>
 
 </databaseChangeLog>

@@ -1,53 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Grid,
-  Column,
-  Button,
-  Tile,
-  InlineNotification,
-  Loading,
-  Modal,
-  FileUploaderDropContainer,
-  FileUploaderItem,
-  Select,
-  SelectItem,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
-  Tag,
-  TextInput,
-  DatePicker,
-  DatePickerInput,
-  TimePicker,
-  Checkbox,
-  TextArea,
-} from "@carbon/react";
-import { Upload, Checkmark, Warning, Add, Printer } from "@carbon/react/icons";
+import { Grid, Column, Button, Tile, InlineNotification } from "@carbon/react";
+import { Upload, Checkmark } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
-  postToOpenElisServerFormDataJson,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import TBManifestImportModal from "../../workflow/TBManifestImportModal";
-import config from "../../../../config.json";
+import PharmaManifestImportModal from "../../workflow/PharmaManifestImportModal";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
- * TBSampleCreationPage - Page 1 of the TB workflow.
- * Handles comprehensive sample creation with full metadata capture including:
- * A. Sample Identity (System Controlled)
- * B. Specimen Information
- * C. Request Paper Details
- * D. Patient / Participant Metadata
- * E. Clinical Context
- * F. Requested Tests
- * G. Receipt Details
+ * PharmaceuticalSampleCreationPage - Page 1 of the Pharmaceuticals workflow.
+ * Captures full metadata at sample creation and sets status to "Created - Pending QC".
  *
  * @param {Object} props
  * @param {number} props.entryId - The notebook entry ID
@@ -55,7 +20,7 @@ import "../../workflow/NotebookWorkflow.css";
  * @param {Object} props.progress - Page progress
  * @param {function} props.onProgressUpdate - Callback when progress changes
  */
-function TBSampleCreationPage({
+function PharmaceuticalSampleCreationPage({
   entryId,
   pageData,
   progress,
@@ -64,25 +29,14 @@ function TBSampleCreationPage({
   const intl = useIntl();
   const componentMounted = useRef(false);
 
-  // State for samples
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
-  // State for sample types from type_of_sample table
-  const [sampleTypes, setSampleTypes] = useState([]);
-
-  // Modal state for import
   const [importModalOpen, setImportModalOpen] = useState(false);
-
-  // Load sample types from type_of_sample table
-  useEffect(() => {
-    getFromOpenElisServer("/rest/user-sample-types", (res) => {
-      setSampleTypes(res || []);
-    });
-  }, []);
 
   // Load samples for this page
   useEffect(() => {
@@ -92,6 +46,7 @@ function TBSampleCreationPage({
     return () => {
       componentMounted.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryId, pageData?.id]);
 
   const loadPageSamples = useCallback(() => {
@@ -107,6 +62,7 @@ function TBSampleCreationPage({
 
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     getFromOpenElisServer(
       `/rest/notebook/page/${pageData.id}/samples`,
@@ -119,18 +75,16 @@ function TBSampleCreationPage({
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
-              status: sample.pageStatus || "PENDING",
-              patientName: sample.patientName,
-              volume: sample.volume,
-              // TB specific fields from questionnaire responses
-              specimenType: sample.data?.specimenType,
-              documentNumber: sample.data?.documentNumber,
-              referringFacility: sample.data?.referringFacility,
-              patientAge: sample.data?.patientAge,
-              patientSex: sample.data?.patientSex,
+              status: sample.pageStatus || sample.status || "PENDING",
+              sampleCategory: sample.data?.sampleCategory,
+              sampleMaterial: sample.data?.sampleMaterial,
+              chemicalName: sample.data?.chemicalName,
+              grade: sample.data?.grade,
+              lotNumber: sample.data?.lotNumber,
+              storageCondition: sample.data?.storageCondition,
+              owner: sample.data?.owner,
               patientId: sample.data?.patientId,
-              studyId: sample.data?.studyId,
-              requestedTests: sample.data?.requestedTests,
+              consentStatus: sample.data?.consentStatus,
             }));
             setSamples(transformedSamples);
           } else {
@@ -142,16 +96,41 @@ function TBSampleCreationPage({
     );
   }, [pageData?.id]);
 
-  // Handle bulk mark as completed
-  const handleBulkMarkCompleted = useCallback(() => {
-    if (selectedSampleIds.length === 0) return;
+  const handleImportSuccess = useCallback(() => {
+    setImportModalOpen(false);
+    loadPageSamples();
+    if (onProgressUpdate) {
+      onProgressUpdate();
+    }
+  }, [loadPageSamples, onProgressUpdate]);
 
-    const hasRealPageId =
-      pageData?.id && !String(pageData.id).startsWith("default-");
-    if (!hasRealPageId) {
-      setError("Cannot update samples: Page not properly initialized.");
+  const hasRealPageId =
+    pageData?.id && !String(pageData.id).startsWith("default-");
+
+  const markAsRegistered = useCallback(() => {
+    if (selectedSampleIds.length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.pharma.error.noSelection",
+          defaultMessage: "Please select at least one sample.",
+        }),
+      );
       return;
     }
+
+    if (!hasRealPageId) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.pharma.error.noPage",
+          defaultMessage:
+            "Cannot update samples: Page not properly initialized.",
+        }),
+      );
+      return;
+    }
+
+    setError(null);
+    setSuccessMessage(null);
 
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
@@ -161,52 +140,57 @@ function TBSampleCreationPage({
       }),
       (status) => {
         if (status === 200) {
-          loadPageSamples();
+          setSuccessMessage(
+            intl.formatMessage(
+              {
+                id: "notebook.page.pharma.success.registered",
+                defaultMessage:
+                  "Marked {count} sample(s) as Registered. They will appear on the QC page.",
+              },
+              { count: selectedSampleIds.length },
+            ),
+          );
           setSelectedSampleIds([]);
+          loadPageSamples();
           if (onProgressUpdate) {
             onProgressUpdate();
           }
         } else {
-          setError("Failed to update sample status.");
+          setError(
+            intl.formatMessage({
+              id: "notebook.page.pharma.error.status",
+              defaultMessage: "Failed to register samples. Please try again.",
+            }),
+          );
         }
       },
     );
-  }, [selectedSampleIds, pageData?.id, loadPageSamples, onProgressUpdate]);
+  }, [
+    selectedSampleIds,
+    hasRealPageId,
+    intl,
+    loadPageSamples,
+    onProgressUpdate,
+    pageData?.id,
+  ]);
 
-  // Print barcode
-  const handlePrintBarcode = (accessionNumber) => {
-    const barcodesPdf =
-      config.serverBaseUrl +
-      `/LabelMakerServlet?labNo=${encodeURIComponent(accessionNumber)}&type=order&quantity=1`;
-    window.open(barcodesPdf);
-  };
-
-  // Calculate stats
-  const completedCount = samples.filter((s) => s.status === "COMPLETED").length;
   const pendingCount = samples.filter((s) => s.status === "PENDING").length;
-
-  // Handle import success
-  const handleImportSuccess = useCallback(() => {
-    loadPageSamples();
-    if (onProgressUpdate) {
-      onProgressUpdate();
-    }
-  }, [loadPageSamples, onProgressUpdate]);
+  const completedCount = samples.filter((s) => s.status === "COMPLETED").length;
 
   return (
-    <div className="tb-sample-creation-page">
+    <div className="pharma-sample-creation-page">
       {/* Page Header */}
       <div className="page-section-header">
         <h4>
           <FormattedMessage
-            id="notebook.page.tb.sampleCreation.title"
-            defaultMessage="Sample Creation & Full Metadata Capture"
+            id="notebook.page.pharma.sampleCreation.title"
+            defaultMessage="Sample Creation &amp; Full Metadata Capture"
           />
         </h4>
         <p className="page-description">
           <FormattedMessage
-            id="notebook.page.tb.sampleCreation.description"
-            defaultMessage="Capture complete sample metadata including accession number, specimen information, patient details, clinical context, requested tests, and receipt details. Import samples via CSV manifest or create individually."
+            id="notebook.page.pharma.sampleCreation.description"
+            defaultMessage="Import pharmaceutical samples from manifest with full traceability metadata. Select samples and mark as Registered to proceed to QC."
           />
         </p>
       </div>
@@ -218,29 +202,29 @@ function TBSampleCreationPage({
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.tb.totalSamples"
+                  id="notebook.page.pharma.totalSamples"
                   defaultMessage="Total Samples"
                 />
               </span>
               <span className="progress-value">{samples.length}</span>
             </Tile>
-            <Tile className="progress-tile verified">
-              <span className="progress-label">
-                <FormattedMessage
-                  id="notebook.page.tb.completed"
-                  defaultMessage="Completed"
-                />
-              </span>
-              <span className="progress-value">{completedCount}</span>
-            </Tile>
             <Tile className="progress-tile pending">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.tb.pending"
-                  defaultMessage="Pending"
+                  id="notebook.page.pharma.pendingRegistration"
+                  defaultMessage="Pending Registration"
                 />
               </span>
               <span className="progress-value">{pendingCount}</span>
+            </Tile>
+            <Tile className="progress-tile verified">
+              <span className="progress-label">
+                <FormattedMessage
+                  id="notebook.page.pharma.registered"
+                  defaultMessage="Registered"
+                />
+              </span>
+              <span className="progress-value">{completedCount}</span>
             </Tile>
           </div>
         </Column>
@@ -255,7 +239,7 @@ function TBSampleCreationPage({
           onClick={() => setImportModalOpen(true)}
         >
           <FormattedMessage
-            id="notebook.page.tb.importManifest"
+            id="notebook.page.pharma.importManifest"
             defaultMessage="Import from Manifest"
           />
         </Button>
@@ -265,22 +249,30 @@ function TBSampleCreationPage({
             kind="secondary"
             size="sm"
             renderIcon={Checkmark}
-            onClick={handleBulkMarkCompleted}
+            onClick={markAsRegistered}
           >
             <FormattedMessage
-              id="notebook.page.tb.markCompleted"
-              defaultMessage="Mark as Completed ({count})"
+              id="notebook.page.pharma.markAsRegistered"
+              defaultMessage="Mark as Registered ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
         )}
       </div>
 
-      {/* Error Display */}
+      {/* Errors / Success */}
       {error && (
         <InlineNotification
           kind="error"
           title={error}
+          hideCloseButton
+          lowContrast
+        />
+      )}
+      {successMessage && (
+        <InlineNotification
+          kind="success"
+          title={successMessage}
           hideCloseButton
           lowContrast
         />
@@ -299,11 +291,10 @@ function TBSampleCreationPage({
           columns={[
             { key: "accessionNumber", header: "Accession Number" },
             { key: "externalId", header: "Sample ID" },
-            { key: "specimenType", header: "Specimen Type" },
-            { key: "patientName", header: "Patient Name" },
-            { key: "patientId", header: "Patient ID" },
-            { key: "referringFacility", header: "Referring Facility" },
-            { key: "requestedTests", header: "Requested Tests" },
+            { key: "sampleCategory", header: "Category" },
+            { key: "sampleMaterial", header: "Material" },
+            { key: "lotNumber", header: "Lot / Batch" },
+            { key: "storageCondition", header: "Storage" },
             { key: "status", header: "Status" },
           ]}
         />
@@ -314,15 +305,15 @@ function TBSampleCreationPage({
         <div className="empty-state">
           <p>
             <FormattedMessage
-              id="notebook.page.tb.sampleCreation.empty"
-              defaultMessage="No samples have been added yet. Use 'Import from Manifest' to create samples from a CSV file with complete TB metadata."
+              id="notebook.page.pharma.empty"
+              defaultMessage="No samples have been added yet. Import a manifest or link existing samples, then apply metadata."
             />
           </p>
         </div>
       )}
 
-      {/* Import Modal */}
-      <TBManifestImportModal
+      {/* Manifest Import Modal */}
+      <PharmaManifestImportModal
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}
         entryId={entryId}
@@ -332,4 +323,4 @@ function TBSampleCreationPage({
   );
 }
 
-export default TBSampleCreationPage;
+export default PharmaceuticalSampleCreationPage;

@@ -121,9 +121,9 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
     List<org.openelisglobal.notebook.valueholder.NoteBookFile> getFiles(Integer notebookId);
 
     /**
-     * Sync pages from template to an instance notebook.
-     * Adds any pages that exist in the template but are missing from the instance.
-     * This is useful when new pages are added to a template after instances were created.
+     * Sync pages from template to an instance notebook. Adds any pages that exist
+     * in the template but are missing from the instance. This is useful when new
+     * pages are added to a template after instances were created.
      *
      * @param instanceId the notebook instance ID
      * @param sysUserId  the user performing the sync
