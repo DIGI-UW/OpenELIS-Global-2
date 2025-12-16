@@ -774,16 +774,67 @@ nav.cds--side-nav .cds--side-nav__submenu:focus:not(:hover):not(.cds--side-nav__
 }
 
 /* Subnav items (level 1+) - extra indent for visual hierarchy */
+/* Base indentation for level 1 (2nd level) */
 .reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link {
   padding-left: 2.5rem !important; /* Extra indent for subnavs */
 }
 
-/* Active subnavs - compensate for border + keep extra indent */
+/* Subnav items that are parents (SideNavMenu renders a <button.cds--side-nav__submenu>) */
+/* Without this, nested parent menus (like "Study" under "Order") look top-level. */
+.reduced-padding-nav-menu-item .cds--side-nav__submenu {
+  padding-left: 2.5rem !important;
+}
+
+/* Progressive indentation for deeper levels using nested descendant selectors */
+/* Level 2 (3rd level in nav): items nested inside a reduced-padding item */
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .cds--side-nav__submenu,
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link {
+  padding-left: 4rem !important; /* 3rd level */
+}
+
+/* Level 3 (4th level in nav): items nested two levels deep */
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .cds--side-nav__submenu,
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link {
+  padding-left: 5.5rem !important; /* 4th level */
+}
+
+/* Level 4 (5th level in nav): items nested three levels deep */
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .cds--side-nav__submenu,
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item.cds--side-nav__menu-item .cds--side-nav__link {
+  padding-left: 7rem !important; /* 5th level */
+}
+
+/* Active subnavs - compensate for border + keep progressive indent */
+/* Base level (2nd level) */
 .reduced-padding-nav-menu-item.cds--side-nav__menu-item
   .cds--side-nav__link--current,
 .reduced-padding-nav-menu-item.cds--side-nav__menu-item
   .cds--side-nav__link[aria-current="page"] {
   padding-left: calc(
     2.5rem - 4px
-  ) !important; /* Extra indent minus 4px border */
+  ) !important; /* Base indent minus 4px border */
+}
+
+/* Level 2 (3rd level) active items */
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link--current,
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(4rem - 4px) !important;
+}
+
+/* Level 3 (4th level) active items */
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link--current,
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(5.5rem - 4px) !important;
+}
+
+/* Level 4 (5th level) active items */
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link--current,
+.reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item .reduced-padding-nav-menu-item.cds--side-nav__menu-item
+  .cds--side-nav__link[aria-current="page"] {
+  padding-left: calc(7rem - 4px) !important;
 }

@@ -124,9 +124,8 @@ function OEHeader({
 
       const initializedMenus = initializeExpanded(res);
 
-      let newMenus = { ...menus };
-      newMenus[tag] = initializedMenus;
-      setMenus(newMenus);
+      // IMPORTANT: use functional setState so we never drop other menu buckets due to stale closures
+      setMenus((prev) => ({ ...prev, [tag]: initializedMenus }));
     }
   };
 
@@ -323,7 +322,9 @@ function OEHeader({
   ) => {
     // Skip inactive menu items
     if (!menuItem.menu.isActive) {
-      return <React.Fragment key={path}></React.Fragment>;
+      return (
+        <React.Fragment key={menuItem.menu.elementId || path}></React.Fragment>
+      );
     }
 
     // URL matching helpers
@@ -339,6 +340,7 @@ function OEHeader({
 
     const currentPath = normalizePath(location.pathname);
     const actionPath = normalizePath(menuItem.menu.actionURL);
+    const itemId = menuItem.menu.elementId || "unknown";
 
     const exactMatch = actionPath && currentPath === actionPath;
     const prefixMatch =
@@ -353,13 +355,52 @@ function OEHeader({
       ? false // Parent items don't need this check
       : hasSiblingWithLongerPath(menuItem, parentMenuItems);
 
+    // Check if the current URL has query parameters and this menu item's normalized path matches.
+    // If so, we need to compare full URLs (including query params) to avoid conflicts where
+    // multiple menu items map to the same route with different query params
+    // (e.g., /SampleEdit?type=readonly vs /SampleEdit?type=readwrite).
+    // Note: We check this for ALL menu items with matching normalized paths, not just siblings,
+    // because items in different branches (like "View" under "Study" vs "Edit Order" under "Order")
+    // can still conflict.
+    const currentHasQueryParams = location.search && location.search.length > 0;
+    const needsFullUrlComparison =
+      !hasChildren &&
+      currentHasQueryParams &&
+      exactMatch &&
+      menuItem.menu.actionURL &&
+      menuItem.menu.actionURL.includes("?");
+
     // Active rule:
-    // - Leaf items: exact only if there are siblings with same prefix, otherwise exact OR prefix
-    //   (prefix matching supports routes like /Storage/:tab, but not /analyzers when /analyzers/errors exists)
-    // - Parent items: exact only (avoid /analyzers being active for /analyzers/errors)
-    const isLeafActive = hasChildren
-      ? !!actionPath && exactMatch
-      : !!actionPath && (exactMatch || (!hasSiblingConflict && prefixMatch));
+    // - Parent items: exact match only
+    // - Leaf items with query param conflicts: exact match AND full URL match (including query params)
+    // - Leaf items with prefix-conflict siblings: exact match only
+    // - Other leaf items: exact OR prefix match
+    let isLeafActive;
+    if (hasChildren) {
+      // Parent items: exact match only
+      isLeafActive = !!actionPath && exactMatch;
+    } else if (needsFullUrlComparison) {
+      // When the current URL has query params and this menu item's actionURL also has query params,
+      // compare full URLs to ensure only the exact match is active
+      // This handles cases like /SampleEdit?type=readonly vs /SampleEdit?type=readwrite
+      const currentFullUrl = location.pathname + location.search;
+      const actionFullUrl = menuItem.menu.actionURL || "";
+      // Normalize both by removing trailing slashes for comparison
+      const normalizeUrl = (url) => {
+        if (!url) return "";
+        const trimmed = url.trim();
+        return trimmed.endsWith("/") && trimmed.length > 1
+          ? trimmed.slice(0, -1)
+          : trimmed;
+      };
+      const currentNormalized = normalizeUrl(currentFullUrl);
+      const actionNormalized = normalizeUrl(actionFullUrl);
+      isLeafActive = currentNormalized === actionNormalized;
+    } else {
+      // Normal case: exact or prefix match (if no sibling conflicts)
+      isLeafActive =
+        !!actionPath && (exactMatch || (!hasSiblingConflict && prefixMatch));
+    }
 
     // Handler for label click - navigate (leaf items only)
     const handleLabelClick = (e) => {
@@ -386,16 +427,19 @@ function OEHeader({
       // CRITICAL FIX: Only mark parent menu items as active if they themselves match the path exactly.
       // Do NOT mark them as active just because they have active children - this causes Carbon to
       // apply active styles to ALL submenu buttons, not just the active one.
-      // Instead, use defaultExpanded to show which parent has active children.
+      // Instead, use expanded state to show which parent has active children.
       const carbonIsActive = isLeafActive; // Only true if this parent item's own path matches
-      const carbonDefaultExpanded = !!menuItem.expanded ||
+      // Use controlled expanded prop instead of defaultExpanded to ensure proper collapse behavior
+      const carbonExpanded = !!menuItem.expanded ||
         hasActiveChild ||
         (defaultMode === SIDENAV_MODES.LOCK && hasActiveChild);
       return (
         <SideNavMenu
-          key={path}
+          // IMPORTANT: use stable key (elementId) to prevent React from reusing the wrong subtree
+          // when the menu list shape changes (roles/plugins/async load).
+          key={itemId}
           title={intl.formatMessage({ id: menuItem.menu.displayKey })}
-          defaultExpanded={carbonDefaultExpanded}
+          defaultExpanded={carbonExpanded}
           isActive={carbonIsActive}
           onToggle={(expanded) => {
             setMenuItemExpanded(menuItem, path);
@@ -409,15 +453,15 @@ function OEHeader({
               : "reduced-padding-nav-menu-item"
           }
         >
-          {menuItem.childMenus.map((childMenuItem, childIndex) =>
-            generateMenuItems(
+          {menuItem.childMenus.map((childMenuItem, childIndex) => {
+            return generateMenuItems(
               childMenuItem,
               childIndex,
               level + 1,
               path + ".childMenus[" + childIndex + "]",
               menuItem.childMenus, // Pass parent's children for sibling check
-            ),
-          )}
+            );
+          })}
         </SideNavMenu>
       );
     }
@@ -425,7 +469,8 @@ function OEHeader({
     // Leaf item
     return (
       <SideNavMenuItem
-        key={path}
+        // IMPORTANT: use stable key (elementId) to prevent subtree reuse issues.
+        key={itemId}
         data-cy={`${menuItem.menu.elementId.replace(/[^\w\s]/gi, "_")}`}
         id={menuItem.menu.elementId}
         className={
@@ -445,50 +490,51 @@ function OEHeader({
   };
 
   const setMenuItemExpanded = (menuItem, path) => {
-    const newMenus = { ...menus };
+    // IMPORTANT: functional update avoids stale-state races that can scramble expansion state.
+    setMenus((prev) => {
+      const newMenus = { ...prev };
+      const targetId = menuItem?.menu?.elementId;
 
-    // REMOVED: Accordion auto-collapse behavior
-    // User feedback: "autocollapse causes consistency issues and changes user focus"
-    // New behavior: Allow multiple sections to be expanded simultaneously
-    if (path.startsWith("$.menu[")) {
-      // This is a top-level item (level 0)
-      newMenus.menu = newMenus.menu.map((item) => {
-        if (item.menu.elementId === menuItem.menu.elementId) {
-          // This is the item being toggled
-          return { ...item, expanded: !item.expanded };
-        } else {
-          // Keep siblings as-is (don't collapse)
-          return item;
-        }
-      });
-    } else {
-      // Nested item - just toggle it without affecting siblings
-      const newMenuItem = { ...menuItem };
-      newMenuItem.expanded = !newMenuItem.expanded;
-      var jp = require("jsonpath");
-      jp.value(newMenus, path, newMenuItem);
-    }
-
-    setMenus(newMenus);
-    // Persist expanded state map for this context
-    try {
-      const expandedMap = {};
-      const captureExpanded = (items) => {
-        items.forEach((it) => {
-          expandedMap[it.menu.elementId] = !!it.expanded;
-          if (it.childMenus) {
-            captureExpanded(it.childMenus);
+      // IMPORTANT: toggle expansion by stable elementId, NOT by index-based JSONPath.
+      // Index-based paths can point at the wrong node if the menu shape changes.
+      const toggleById = (items) => {
+        return (items || []).map((it) => {
+          const id = it?.menu?.elementId;
+          if (!id) return it;
+          if (id === targetId) {
+            return { ...it, expanded: !it.expanded };
           }
+          if (it.childMenus && it.childMenus.length > 0) {
+            return { ...it, childMenus: toggleById(it.childMenus) };
+          }
+          return it;
         });
       };
-      captureExpanded(newMenus.menu || []);
-      localStorage.setItem(
-        `${storageKeyPrefix}ExpandedMap`,
-        JSON.stringify(expandedMap),
-      );
-    } catch (e) {
-      // ignore
-    }
+
+      newMenus.menu = toggleById(newMenus.menu || []);
+
+      // Persist expanded state map for this context
+      try {
+        const expandedMap = {};
+        const captureExpanded = (items) => {
+          (items || []).forEach((it) => {
+            expandedMap[it.menu.elementId] = !!it.expanded;
+            if (it.childMenus) {
+              captureExpanded(it.childMenus);
+            }
+          });
+        };
+        captureExpanded(newMenus.menu || []);
+        localStorage.setItem(
+          `${storageKeyPrefix}ExpandedMap`,
+          JSON.stringify(expandedMap),
+        );
+      } catch (e) {
+        // ignore
+      }
+
+      return newMenus;
+    });
   };
 
   return (
@@ -732,7 +778,6 @@ function OEHeader({
                         0,
                         "$.menu[" + index + "]",
                         null, // Top level items have no parent siblings
-                        "$.menu[" + index + "]",
                       );
                     })}
                   </SideNavItems>
