@@ -391,6 +391,11 @@ const StorageLocationModal = ({
     );
   };
 
+  // Prevent hidden-but-mounted modal DOM from causing duplicate IDs
+  if (!open) {
+    return null;
+  }
+
   return (
     <ComposedModal
       open={open}

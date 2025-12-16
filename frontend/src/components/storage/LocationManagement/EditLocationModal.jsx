@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ComposedModal,
   ModalHeader,
@@ -58,8 +58,11 @@ const EditLocationModal = ({
   // Track original code to detect changes and show warning
   const [originalCode, setOriginalCode] = useState("");
   const [codeChangeAcknowledged, setCodeChangeAcknowledged] = useState(false);
+  // Synchronous ref to latest form data to prevent race conditions when user toggles
+  // and immediately clicks Save before React state updates
+  const formDataRef = useRef(null);
 
-  // Helper function to normalize active value to boolean
+  // Normalize active value to boolean for controlled Toggle component
   const normalizeActive = (value) => {
     return value === true || value === "true" || value === 1 || value === "1";
   };
@@ -90,19 +93,11 @@ const EditLocationModal = ({
   const initializeFormDataFromLocation = (loc) => {
     if (!loc) return {};
     const normalizedActive = normalizeActive(loc.active);
-    console.log(
-      "[EditLocationModal] Initializing active from:",
-      loc.active,
-      "→",
-      normalizedActive,
-      "for location:",
-      loc.id,
-    );
     return {
       name: loc.name || "",
       code: loc.code || "",
       description: loc.description || "",
-      active: normalizedActive,
+      active: Boolean(normalizedActive),
       type: loc.type || "",
       temperatureSetting: loc.temperatureSetting || "",
       capacityLimit: loc.capacityLimit || "",
@@ -121,13 +116,14 @@ const EditLocationModal = ({
   };
 
   // Initialize form data when modal opens or location changes
-  // First initialize from location prop (synchronous), then fetch full data from API
   useEffect(() => {
     let isMounted = true;
 
     if (open && location && location.id && locationType) {
       // Initialize immediately from location prop to avoid undefined values
-      setFormData(initializeFormDataFromLocation(location));
+      const initial = initializeFormDataFromLocation(location);
+      formDataRef.current = initial;
+      setFormData(initial);
       setOriginalCode(location.code || "");
       setIsLoading(true);
       setError(null);
@@ -141,20 +137,11 @@ const EditLocationModal = ({
 
           if (fullLocation) {
             const normalizedActive = normalizeActive(fullLocation.active);
-            console.log(
-              "[EditLocationModal] API returned active:",
-              fullLocation.active,
-              "→ normalized:",
-              normalizedActive,
-              "for location:",
-              fullLocation.id,
-            );
-            setFormData({
+            const next = {
               name: fullLocation.name || "",
               code: fullLocation.code || "",
               description: fullLocation.description || "",
-              // Ensure active is properly initialized as boolean
-              active: normalizedActive,
+              active: Boolean(normalizedActive),
               type: fullLocation.type || "",
               temperatureSetting: fullLocation.temperatureSetting || "",
               capacityLimit: fullLocation.capacityLimit || "",
@@ -178,7 +165,9 @@ const EditLocationModal = ({
                 fullLocation.parentShelf?.label ||
                 fullLocation.shelfLabel ||
                 "",
-            });
+            };
+            formDataRef.current = next;
+            setFormData(next);
             // Store original code from full data
             setOriginalCode(fullLocation.code || "");
             setError(null);
@@ -192,18 +181,17 @@ const EditLocationModal = ({
           if (!isMounted) return;
 
           console.warn("Failed to fetch location data, using prop data:", err);
-          // Keep the formData that was initialized from location prop
-          // (already set above, so no need to set again)
           setError("Failed to load location data");
           setIsLoading(false);
         });
     } else if (location && !open) {
       // Reset when modal closes
+      formDataRef.current = null;
       setFormData({});
       setIsLoading(false);
     } else if (!location) {
       // Initialize with empty values to avoid uncontrolled component warnings
-      setFormData({
+      const empty = {
         name: "",
         code: "",
         description: "",
@@ -215,7 +203,9 @@ const EditLocationModal = ({
         rows: "",
         columns: "",
         positionSchemaHint: "",
-      });
+      };
+      formDataRef.current = empty;
+      setFormData(empty);
       setIsLoading(false);
     }
 
@@ -242,7 +232,12 @@ const EditLocationModal = ({
   };
 
   const handleFieldChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    const normalizedValue = field === "active" ? Boolean(value) : value;
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: normalizedValue };
+      formDataRef.current = updated;
+      return updated;
+    });
     setError(null);
   };
 
@@ -275,50 +270,43 @@ const EditLocationModal = ({
     setError(null);
 
     try {
+      const latest = formDataRef.current || formData;
       // Build endpoint based on location type
       const endpoint = `/rest/storage/${getPluralType(locationType)}/${location.id}`;
 
       // Build payload with only editable fields
       const payload = {};
       if (locationType === "room") {
-        payload.name = formData.name;
-        payload.code = formData.code || null;
-        payload.description = formData.description || null;
-        payload.active = formData.active;
+        payload.name = latest.name;
+        payload.code = latest.code || null;
+        payload.description = latest.description || null;
+        payload.active = latest.active;
       } else if (locationType === "device") {
-        payload.name = formData.name;
-        payload.code = formData.code || null;
-        payload.type = formData.type;
-        payload.temperatureSetting = formData.temperatureSetting || null;
-        payload.capacityLimit = formData.capacityLimit
-          ? parseInt(formData.capacityLimit, 10)
+        payload.name = latest.name;
+        payload.code = latest.code || null;
+        payload.type = latest.type;
+        payload.temperatureSetting = latest.temperatureSetting || null;
+        payload.capacityLimit = latest.capacityLimit
+          ? parseInt(latest.capacityLimit, 10)
           : null;
-        payload.active = formData.active;
+        payload.active = latest.active;
       } else if (locationType === "shelf") {
-        payload.label = formData.label;
-        payload.code = formData.code || null;
-        payload.capacityLimit = formData.capacityLimit
-          ? parseInt(formData.capacityLimit, 10)
+        payload.label = latest.label;
+        payload.code = latest.code || null;
+        payload.capacityLimit = latest.capacityLimit
+          ? parseInt(latest.capacityLimit, 10)
           : null;
-        payload.active = formData.active;
+        payload.active = latest.active;
       } else if (locationType === "rack") {
-        payload.label = formData.label;
-        payload.code = formData.code || null;
-        payload.rows = formData.rows;
-        payload.columns = formData.columns;
-        payload.positionSchemaHint = formData.positionSchemaHint || null;
-        payload.active = formData.active;
+        payload.label = latest.label;
+        payload.code = latest.code || null;
+        payload.rows = latest.rows;
+        payload.columns = latest.columns;
+        payload.positionSchemaHint = latest.positionSchemaHint || null;
+        payload.active = latest.active;
       }
 
       // Use fetch directly to get response body for error details
-      console.log(
-        "[EditLocationModal] Saving with active:",
-        formData.active,
-        "payload active:",
-        payload.active,
-        "for location:",
-        location.id,
-      );
       try {
         const response = await fetch(config.serverBaseUrl + endpoint, {
           method: "PUT",
@@ -330,12 +318,6 @@ const EditLocationModal = ({
           body: JSON.stringify(payload),
         });
 
-        console.log(
-          "[EditLocationModal] PUT response status:",
-          response.status,
-          "for location:",
-          location.id,
-        );
         setIsSubmitting(false);
 
         if (response.status >= 200 && response.status < 300) {
@@ -409,6 +391,23 @@ const EditLocationModal = ({
     onClose();
   };
 
+  // Handle Escape key to close modal (Carbon ComposedModal doesn't handle ESC automatically)
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && open) {
+        handleClose();
+      }
+    };
+
+    if (open) {
+      document.addEventListener("keydown", handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open, handleClose]);
+
   const deviceTypes = [
     { id: "freezer", label: "Freezer" },
     { id: "refrigerator", label: "Refrigerator" },
@@ -416,11 +415,19 @@ const EditLocationModal = ({
     { id: "other", label: "Other" },
   ];
 
+  // Use larger modal for device/rack (more fields)
+  const modalSize = locationType === "device" || locationType === "rack" ? "lg" : "md";
+
+  // Prevent hidden-but-mounted modal DOM from causing duplicate IDs across modals
+  if (!open) {
+    return null;
+  }
+
   return (
     <ComposedModal
       open={open}
       onClose={handleClose}
-      size="md"
+      size={modalSize}
       data-testid="edit-location-modal"
       className="edit-location-modal"
     >
@@ -512,7 +519,7 @@ const EditLocationModal = ({
                     id: "storage.location.active",
                     defaultMessage: "Active",
                   })}
-                  toggled={normalizeActive(formData.active)}
+                  toggled={!!formData.active}
                   onToggle={(checked) => handleFieldChange("active", checked)}
                 />
               </>
@@ -633,7 +640,7 @@ const EditLocationModal = ({
                     id: "storage.location.active",
                     defaultMessage: "Active",
                   })}
-                  toggled={normalizeActive(formData.active)}
+                  toggled={!!formData.active}
                   onToggle={(checked) => handleFieldChange("active", checked)}
                 />
               </>
@@ -710,7 +717,7 @@ const EditLocationModal = ({
                     id: "storage.location.active",
                     defaultMessage: "Active",
                   })}
-                  toggled={normalizeActive(formData.active)}
+                  toggled={!!formData.active}
                   onToggle={(checked) => handleFieldChange("active", checked)}
                 />
               </>
@@ -816,7 +823,7 @@ const EditLocationModal = ({
                     id: "storage.location.active",
                     defaultMessage: "Active",
                   })}
-                  toggled={normalizeActive(formData.active)}
+                  toggled={!!formData.active}
                   onToggle={(checked) => handleFieldChange("active", checked)}
                 />
               </>

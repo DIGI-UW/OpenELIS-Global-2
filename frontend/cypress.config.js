@@ -204,14 +204,8 @@ module.exports = defineConfig({
     },
     baseUrl: "https://localhost",
     testIsolation: false,
-    // DISABLED: Exclude storage tests (001-sample-storage feature)
-    // Remove "**/storage*.cy.js" from this array to re-enable storage tests
-    // NOTE: OGC-68 storageLocationCRUD.cy.js tests pass (verified 2025-12-12)
-    // TEMPORARILY: Allow integration test to run - exclude all storage except integration
-    excludeSpecPattern: [
-      "**/storage*.cy.js",
-      "!**/storageLocationCRUD-integration.cy.js",
-    ],
+    // Storage tests are now enabled for M2 frontend verification
+    // No excludeSpecPattern - all storage tests should run
     env: {
       STARTUP_WAIT_MILLISECONDS: 300000,
     },
