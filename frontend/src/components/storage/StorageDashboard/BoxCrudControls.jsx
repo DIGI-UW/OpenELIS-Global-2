@@ -52,4 +52,3 @@ const BoxCrudControls = ({
 };
 
 export default BoxCrudControls;
-

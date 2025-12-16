@@ -44,20 +44,68 @@ const EditBoxModal = ({ open, mode, box, parentRack, onClose, onSave }) => {
 
   const typeItems = useMemo(
     () => [
-      { id: "", label: intl.formatMessage({ id: "label.select", defaultMessage: "Select" }) },
-      { id: "plate", label: intl.formatMessage({ id: "storage.box.type.plate", defaultMessage: "Plate" }) },
-      { id: "box", label: intl.formatMessage({ id: "storage.box.type.box", defaultMessage: "Box" }) },
-      { id: "96-well", label: intl.formatMessage({ id: "storage.box.type.96well", defaultMessage: "96-well" }) },
-      { id: "24-well", label: intl.formatMessage({ id: "storage.box.type.24well", defaultMessage: "24-well" }) },
-      { id: "other", label: intl.formatMessage({ id: "storage.box.type.other", defaultMessage: "Other" }) },
+      {
+        id: "",
+        label: intl.formatMessage({
+          id: "label.select",
+          defaultMessage: "Select",
+        }),
+      },
+      {
+        id: "plate",
+        label: intl.formatMessage({
+          id: "storage.box.type.plate",
+          defaultMessage: "Plate",
+        }),
+      },
+      {
+        id: "box",
+        label: intl.formatMessage({
+          id: "storage.box.type.box",
+          defaultMessage: "Box",
+        }),
+      },
+      {
+        id: "96-well",
+        label: intl.formatMessage({
+          id: "storage.box.type.96well",
+          defaultMessage: "96-well",
+        }),
+      },
+      {
+        id: "24-well",
+        label: intl.formatMessage({
+          id: "storage.box.type.24well",
+          defaultMessage: "24-well",
+        }),
+      },
+      {
+        id: "other",
+        label: intl.formatMessage({
+          id: "storage.box.type.other",
+          defaultMessage: "Other",
+        }),
+      },
     ],
     [intl],
   );
 
   const schemaItems = useMemo(
     () => [
-      { id: "letter-number", label: intl.formatMessage({ id: "storage.box.schema.letterNumber", defaultMessage: "Letter-Number (A1)" }) },
-      { id: "number-number", label: intl.formatMessage({ id: "storage.box.schema.numberNumber", defaultMessage: "Number-Number (1-1)" }) },
+      {
+        id: "letter-number",
+        label: intl.formatMessage({
+          id: "storage.box.schema.letterNumber",
+          defaultMessage: "Letter-Number (A1)",
+        }),
+      },
+      {
+        id: "number-number",
+        label: intl.formatMessage({
+          id: "storage.box.schema.numberNumber",
+          defaultMessage: "Number-Number (1-1)",
+        }),
+      },
     ],
     [intl],
   );
@@ -110,7 +158,9 @@ const EditBoxModal = ({ open, mode, box, parentRack, onClose, onSave }) => {
       return;
     }
 
-    const endpoint = isEdit ? `/rest/storage/boxes/${box.id}` : `/rest/storage/boxes`;
+    const endpoint = isEdit
+      ? `/rest/storage/boxes/${box.id}`
+      : `/rest/storage/boxes`;
     const method = isEdit ? "PUT" : "POST";
 
     const payload = {
@@ -121,7 +171,9 @@ const EditBoxModal = ({ open, mode, box, parentRack, onClose, onSave }) => {
       columns: parseInt(formData.columns, 10),
       positionSchemaHint: formData.positionSchemaHint || null,
       active: !!formData.active,
-      parentRackId: isEdit ? String(box.parentRackId ?? parentRack?.id ?? "") : String(parentRack.id),
+      parentRackId: isEdit
+        ? String(box.parentRackId ?? parentRack?.id ?? "")
+        : String(parentRack.id),
     };
 
     setIsSubmitting(true);
@@ -233,12 +285,22 @@ const EditBoxModal = ({ open, mode, box, parentRack, onClose, onSave }) => {
             defaultMessage: "Type",
           })}
           items={typeItems}
-          selectedItem={typeItems.find((t) => t.id === formData.type) || typeItems[0]}
+          selectedItem={
+            typeItems.find((t) => t.id === formData.type) || typeItems[0]
+          }
           itemToString={(item) => item?.label || ""}
-          onChange={({ selectedItem }) => handleFieldChange("type", selectedItem?.id || "")}
+          onChange={({ selectedItem }) =>
+            handleFieldChange("type", selectedItem?.id || "")
+          }
         />
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "1rem",
+          }}
+        >
           <TextInput
             id="box-rows"
             data-testid="box-rows"
@@ -272,11 +334,15 @@ const EditBoxModal = ({ open, mode, box, parentRack, onClose, onSave }) => {
           })}
           items={schemaItems}
           selectedItem={
-            schemaItems.find((s) => s.id === formData.positionSchemaHint) || schemaItems[0]
+            schemaItems.find((s) => s.id === formData.positionSchemaHint) ||
+            schemaItems[0]
           }
           itemToString={(item) => item?.label || ""}
           onChange={({ selectedItem }) =>
-            handleFieldChange("positionSchemaHint", selectedItem?.id || "letter-number")
+            handleFieldChange(
+              "positionSchemaHint",
+              selectedItem?.id || "letter-number",
+            )
           }
         />
 
@@ -293,7 +359,10 @@ const EditBoxModal = ({ open, mode, box, parentRack, onClose, onSave }) => {
       </ModalBody>
       <ModalFooter>
         <Button kind="secondary" onClick={onClose}>
-          {intl.formatMessage({ id: "button.cancel", defaultMessage: "Cancel" })}
+          {intl.formatMessage({
+            id: "button.cancel",
+            defaultMessage: "Cancel",
+          })}
         </Button>
         <Button kind="primary" disabled={isSubmitting} onClick={handleSubmit}>
           {intl.formatMessage({ id: "button.save", defaultMessage: "Save" })}
@@ -304,4 +373,3 @@ const EditBoxModal = ({ open, mode, box, parentRack, onClose, onSave }) => {
 };
 
 export default EditBoxModal;
-

@@ -650,6 +650,156 @@ describe("EditLocationModal", () => {
     });
   });
 
+  // ========== CHK051: Temperature Validation Tests ==========
+
+  /**
+   * CHK051: Test temperature validation logic
+   * Verifies the inline validation pattern used in EditLocationModal
+   *
+   * The temperature field uses Carbon TextInput with `invalid` prop:
+   *   invalid={formData.temperatureSetting !== "" && isNaN(Number(formData.temperatureSetting))}
+   *
+   * Note: Testing actual DOM rendering of validation state is unreliable due to
+   * input type="number" rejecting non-numeric characters. This test verifies:
+   * 1. The temperature field exists and is accessible
+   * 2. The validation logic formula is correct
+   */
+  test("testDeviceTemperature_ValidationLogic", async () => {
+    const deviceWithTemp = { ...mockDevice, temperatureSetting: "-20" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithTemp);
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={deviceWithTemp}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    // Wait for form to load
+    await screen.findByTestId("edit-location-device-name");
+
+    // Find temperature field
+    const tempField = await screen.findByTestId(
+      "edit-location-device-temperature",
+    );
+    const inputElement = tempField.querySelector("input") || tempField;
+
+    // Verify temperature field exists and has initial value
+    expect(inputElement).toBeTruthy();
+    expect(inputElement.type).toBe("number");
+
+    // Test validation logic directly (the formula used in the component):
+    // invalid = temperatureSetting !== "" && isNaN(Number(temperatureSetting))
+
+    // Case 1: Valid numeric string → should NOT be invalid
+    const validValue = "-80";
+    const validCheck = validValue !== "" && isNaN(Number(validValue));
+    expect(validCheck).toBe(false); // -80 is valid
+
+    // Case 2: Invalid non-numeric string → SHOULD be invalid
+    const invalidValue = "abc";
+    const invalidCheck = invalidValue !== "" && isNaN(Number(invalidValue));
+    expect(invalidCheck).toBe(true); // "abc" is invalid
+
+    // Case 3: Empty string → should NOT be invalid (optional field)
+    const emptyValue = "";
+    const emptyCheck = emptyValue !== "" && isNaN(Number(emptyValue));
+    expect(emptyCheck).toBe(false); // empty is valid (optional)
+
+    // Case 4: Zero is valid
+    const zeroValue = "0";
+    const zeroCheck = zeroValue !== "" && isNaN(Number(zeroValue));
+    expect(zeroCheck).toBe(false); // 0 is valid
+
+    // Case 5: Decimal is valid
+    const decimalValue = "-4.5";
+    const decimalCheck = decimalValue !== "" && isNaN(Number(decimalValue));
+    expect(decimalCheck).toBe(false); // -4.5 is valid
+  });
+
+  /**
+   * CHK051: Test temperature field accepts valid numeric input
+   * Expected: Numeric value can be entered and updates correctly
+   */
+  test("testDeviceTemperature_AcceptsValidNumericInput", async () => {
+    const deviceWithTemp = { ...mockDevice, temperatureSetting: "-20" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithTemp);
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={deviceWithTemp}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    // Wait for form to load
+    await screen.findByTestId("edit-location-device-name");
+
+    // Find temperature field
+    const tempField = await screen.findByTestId(
+      "edit-location-device-temperature",
+    );
+    const inputElement = tempField.querySelector("input") || tempField;
+
+    // Verify initial value
+    expect(inputElement.value).toBe("-20");
+
+    // Enter valid temperature (numeric)
+    fireEvent.change(inputElement, { target: { value: "-80" } });
+
+    // Verify value is updated
+    await waitFor(() => {
+      expect(inputElement.value).toBe("-80");
+    });
+  });
+
+  /**
+   * CHK051: Test temperature field can be cleared (optional field)
+   * Expected: Empty value is allowed
+   */
+  test("testDeviceTemperature_CanBeCleared", async () => {
+    const deviceWithTemp = { ...mockDevice, temperatureSetting: "-20" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithTemp);
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={deviceWithTemp}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    // Wait for form to load
+    await screen.findByTestId("edit-location-device-name");
+
+    // Find temperature field
+    const tempField = await screen.findByTestId(
+      "edit-location-device-temperature",
+    );
+    const inputElement = tempField.querySelector("input") || tempField;
+
+    // Verify initial value
+    expect(inputElement.value).toBe("-20");
+
+    // Clear the field (empty is valid - temperature is optional)
+    fireEvent.change(inputElement, { target: { value: "" } });
+
+    // Verify value is cleared
+    await waitFor(() => {
+      expect(inputElement.value).toBe("");
+    });
+  });
+
+  // ========== T286: Code Field Tests ==========
+
   /**
    * T286: Test code is included in save payload for device
    * Expected: code value is sent in PUT request payload

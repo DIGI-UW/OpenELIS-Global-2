@@ -2880,7 +2880,6 @@ const StorageDashboard = () => {
     ...box,
   }));
 
-
   const renderBoxGrid = () => {
     if (!selectedBox) {
       return (

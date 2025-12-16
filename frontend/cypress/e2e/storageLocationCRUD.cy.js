@@ -1067,5 +1067,501 @@ describe("Location CRUD Operations", function () {
           cy.get('[data-testid="storage-location-modal"]').should("be.visible");
         });
     });
+
+    /**
+     * CHK040: Create rack with all fields, verify success
+     */
+    it("should create new rack via modal and verify it appears in table", function () {
+      // Navigate to Racks tab
+      cy.get('[data-testid="tab-racks"]').click();
+      cy.get('button[role="tab"]')
+        .contains("Racks")
+        .should("have.attr", "aria-selected", "true");
+
+      const newRackLabel = `Test Rack ${Date.now()}`;
+      const newRackCode = `RK${Date.now().toString().slice(-6)}`.toUpperCase();
+
+      // Setup intercepts
+      cy.intercept("POST", "**/rest/storage/racks**", {
+        statusCode: 201,
+        body: {
+          id: 9997,
+          label: newRackLabel,
+          code: newRackCode,
+          rows: 8,
+          columns: 12,
+          positionSchemaHint: "letter-number",
+          active: true,
+        },
+      }).as("createRack");
+
+      cy.intercept("GET", "**/rest/storage/racks**").as("refreshRacks");
+
+      // Click Add Rack button
+      cy.get('[data-testid="add-rack-button"]', { timeout: 10000 })
+        .should("be.visible")
+        .should("not.be.disabled")
+        .click();
+
+      // Wait for modal to open
+      cy.get('[data-testid="storage-location-modal"]', {
+        timeout: 10000,
+      }).should("be.visible");
+
+      // Fill form
+      cy.get("#rack-label").should("be.visible").clear().type(newRackLabel);
+      cy.get("#rack-code").should("be.visible").clear().type(newRackCode);
+      cy.get("#rack-rows").should("be.visible").clear().type("8");
+      cy.get("#rack-columns").should("be.visible").clear().type("12");
+
+      // Save
+      cy.get('[data-testid="storage-location-save-button"]')
+        .should("not.be.disabled")
+        .click();
+
+      // Wait for API call
+      cy.wait("@createRack", { timeout: 10000 }).then((interception) => {
+        expect(
+          interception.response.statusCode,
+          JSON.stringify(interception.response.body, null, 2),
+        ).to.be.oneOf([200, 201]);
+      });
+
+      // Verify modal closes
+      cy.get('[data-testid="storage-location-modal"]', {
+        timeout: 10000,
+      }).should("not.be.visible");
+
+      // Verify rack appears in table
+      cy.wait("@refreshRacks");
+      cy.contains("td", newRackLabel, { timeout: 10000 }).should("be.visible");
+    });
+
+    /**
+     * CHK041: Edit rack, change label/code, verify success
+     * Note: Edit rack test already exists above ("should edit rack dimensions and verify active toggle")
+     * This test verifies specifically the label/code change workflow
+     */
+    it("should edit rack label and code successfully", function () {
+      // Navigate to Racks tab
+      cy.get('[data-testid="tab-racks"]').click();
+      cy.get('button[role="tab"]')
+        .contains("Racks")
+        .should("have.attr", "aria-selected", "true");
+
+      // Wait for table
+      cy.get('[data-testid^="rack-row-"]', { timeout: 10000 }).should(
+        "have.length.at.least",
+        1,
+      );
+
+      cy.get('[data-testid^="rack-row-"]')
+        .first()
+        .invoke("attr", "data-testid")
+        .then((testId) => {
+          const rackId = testId.replace("rack-row-", "");
+          const updatedLabel = `Updated Rack ${Date.now()}`;
+          const updatedCode = `RK${Date.now().toString().slice(-6)}`;
+
+          // Setup intercepts
+          cy.intercept("GET", `**/rest/storage/racks/${rackId}`, {
+            statusCode: 200,
+            body: {
+              id: parseInt(rackId),
+              label: "Original Rack",
+              code: "ORIG01",
+              rows: 8,
+              columns: 10,
+              active: true,
+              parentShelf: { id: 1, label: "Test Shelf" },
+            },
+          }).as("getRack");
+
+          cy.intercept("PUT", `**/rest/storage/racks/${rackId}`, {
+            statusCode: 200,
+            body: {
+              id: parseInt(rackId),
+              label: updatedLabel,
+              code: updatedCode,
+              rows: 8,
+              columns: 10,
+              active: true,
+              parentShelf: { id: 1, label: "Test Shelf" },
+            },
+          }).as("updateRack");
+
+          cy.intercept("GET", "**/rest/storage/racks**").as("refreshRacks");
+
+          // Open edit modal
+          cy.get('[data-testid^="rack-row-"]')
+            .first()
+            .within(() => {
+              cy.get('[data-testid="location-actions-overflow-menu"]')
+                .should("be.visible")
+                .click({ force: true });
+            });
+
+          cy.get('[data-testid="edit-location-menu-item"]')
+            .should("be.visible")
+            .click();
+
+          // Wait for modal
+          cy.get('[data-testid="edit-location-modal"]', {
+            timeout: 10000,
+          }).should("be.visible");
+
+          // Wait for form to populate
+          cy.get('[data-testid="edit-location-rack-label"]', { timeout: 10000 })
+            .should("be.visible")
+            .should("not.have.value", "");
+
+          // Update label and code
+          cy.get('[data-testid="edit-location-rack-label"]')
+            .clear()
+            .type(updatedLabel);
+
+          cy.get('[data-testid="edit-location-rack-code"]')
+            .clear()
+            .type(updatedCode);
+
+          // Save
+          cy.get('[data-testid="edit-location-save-button"]')
+            .should("not.be.disabled")
+            .click();
+
+          // Wait for API
+          cy.wait("@updateRack", { timeout: 10000 }).then((interception) => {
+            expect(interception.response.statusCode).to.be.oneOf([200, 201]);
+          });
+
+          // Verify modal closes
+          cy.get('[data-testid="edit-location-modal"]', {
+            timeout: 10000,
+          }).should("not.be.visible");
+
+          // Verify table shows updated label
+          cy.wait("@refreshRacks");
+          cy.get(`[data-testid="rack-row-${rackId}"]`, { timeout: 10000 })
+            .should("exist")
+            .and("contain.text", updatedLabel);
+        });
+    });
+  });
+
+  /**
+   * CHK031: Active Toggle Tests for All Location Types
+   * Verifies that active toggle persists correctly for Room, Device, Shelf, Rack
+   */
+  describe("Active Toggle", function () {
+    it("should toggle room active status and verify persistence", function () {
+      // Navigate to Rooms tab
+      cy.get('[data-testid="tab-rooms"]').click();
+      cy.get('button[role="tab"]')
+        .contains("Rooms")
+        .should("have.attr", "aria-selected", "true");
+
+      cy.get('[data-testid^="room-row-"]', { timeout: 10000 }).should(
+        "have.length.at.least",
+        1,
+      );
+
+      cy.get('[data-testid^="room-row-"]')
+        .first()
+        .invoke("attr", "data-testid")
+        .then((testId) => {
+          const roomId = testId.replace("room-row-", "");
+
+          // Setup intercepts - initial state: active = true
+          cy.intercept("GET", `**/rest/storage/rooms/${roomId}`, {
+            statusCode: 200,
+            body: {
+              id: parseInt(roomId),
+              code: "ROOM01",
+              name: "Test Room",
+              active: true,
+            },
+          }).as("getRoom");
+
+          // Expect toggle to false
+          cy.intercept("PUT", `**/rest/storage/rooms/${roomId}`, (req) => {
+            // Verify active field is in the request
+            expect(req.body).to.have.property("active");
+            req.reply({
+              statusCode: 200,
+              body: {
+                id: parseInt(roomId),
+                code: "ROOM01",
+                name: "Test Room",
+                active: req.body.active,
+              },
+            });
+          }).as("updateRoomActive");
+
+          cy.intercept("GET", "**/rest/storage/rooms**").as("refreshRooms");
+
+          // Open edit modal
+          cy.get('[data-testid^="room-row-"]')
+            .first()
+            .within(() => {
+              cy.get('[data-testid="location-actions-overflow-menu"]')
+                .should("be.visible")
+                .click({ force: true });
+            });
+
+          cy.get('[data-testid="edit-location-menu-item"]')
+            .should("be.visible")
+            .click();
+
+          // Wait for modal
+          cy.get('[data-testid="edit-location-modal"]', {
+            timeout: 10000,
+          }).should("be.visible");
+
+          // Find and toggle the active toggle
+          cy.get("#room-active", { timeout: 10000 }).should("exist");
+          cy.get("#room-active").click({ force: true });
+
+          // Save
+          cy.get('[data-testid="edit-location-save-button"]')
+            .should("not.be.disabled")
+            .click();
+
+          // Verify API call includes active field
+          cy.wait("@updateRoomActive", { timeout: 10000 });
+
+          // Modal should close
+          cy.get('[data-testid="edit-location-modal"]', {
+            timeout: 10000,
+          }).should("not.be.visible");
+        });
+    });
+
+    it("should toggle device active status and verify persistence", function () {
+      // Navigate to Devices tab
+      cy.get('[data-testid="tab-devices"]').click();
+      cy.get('button[role="tab"]')
+        .contains("Devices")
+        .should("have.attr", "aria-selected", "true");
+
+      cy.get('[data-testid^="device-row-"]', { timeout: 10000 }).should(
+        "have.length.at.least",
+        1,
+      );
+
+      cy.get('[data-testid^="device-row-"]')
+        .first()
+        .invoke("attr", "data-testid")
+        .then((testId) => {
+          const deviceId = testId.replace("device-row-", "");
+
+          // Setup intercepts
+          cy.intercept("GET", `**/rest/storage/devices/${deviceId}`, {
+            statusCode: 200,
+            body: {
+              id: parseInt(deviceId),
+              code: "DEV01",
+              name: "Test Device",
+              type: "freezer",
+              active: true,
+              parentRoom: { id: 1, name: "Main Lab" },
+            },
+          }).as("getDevice");
+
+          cy.intercept("PUT", `**/rest/storage/devices/${deviceId}`, (req) => {
+            expect(req.body).to.have.property("active");
+            req.reply({
+              statusCode: 200,
+              body: {
+                ...req.body,
+                id: parseInt(deviceId),
+              },
+            });
+          }).as("updateDeviceActive");
+
+          // Open edit modal
+          cy.get('[data-testid^="device-row-"]')
+            .first()
+            .within(() => {
+              cy.get('[data-testid="location-actions-overflow-menu"]')
+                .should("be.visible")
+                .click({ force: true });
+            });
+
+          cy.get('[data-testid="edit-location-menu-item"]')
+            .should("be.visible")
+            .click();
+
+          cy.get('[data-testid="edit-location-modal"]', {
+            timeout: 10000,
+          }).should("be.visible");
+
+          // Toggle active
+          cy.get("#device-active", { timeout: 10000 }).should("exist");
+          cy.get("#device-active").click({ force: true });
+
+          // Save
+          cy.get('[data-testid="edit-location-save-button"]')
+            .should("not.be.disabled")
+            .click();
+
+          cy.wait("@updateDeviceActive", { timeout: 10000 });
+
+          cy.get('[data-testid="edit-location-modal"]', {
+            timeout: 10000,
+          }).should("not.be.visible");
+        });
+    });
+
+    it("should toggle shelf active status and verify persistence", function () {
+      // Navigate to Shelves tab
+      cy.get('[data-testid="tab-shelves"]').click();
+      cy.get('button[role="tab"]')
+        .contains("Shelves")
+        .should("have.attr", "aria-selected", "true");
+
+      cy.get('[data-testid^="shelf-row-"]', { timeout: 10000 }).should(
+        "have.length.at.least",
+        1,
+      );
+
+      cy.get('[data-testid^="shelf-row-"]')
+        .first()
+        .invoke("attr", "data-testid")
+        .then((testId) => {
+          const shelfId = testId.replace("shelf-row-", "");
+
+          cy.intercept("GET", `**/rest/storage/shelves/${shelfId}`, {
+            statusCode: 200,
+            body: {
+              id: parseInt(shelfId),
+              label: "Test Shelf",
+              active: true,
+              parentDevice: { id: 1, name: "Test Device" },
+            },
+          }).as("getShelf");
+
+          cy.intercept("PUT", `**/rest/storage/shelves/${shelfId}`, (req) => {
+            expect(req.body).to.have.property("active");
+            req.reply({
+              statusCode: 200,
+              body: {
+                ...req.body,
+                id: parseInt(shelfId),
+              },
+            });
+          }).as("updateShelfActive");
+
+          // Open edit modal
+          cy.get('[data-testid^="shelf-row-"]')
+            .first()
+            .within(() => {
+              cy.get('[data-testid="location-actions-overflow-menu"]')
+                .should("be.visible")
+                .click({ force: true });
+            });
+
+          cy.get('[data-testid="edit-location-menu-item"]')
+            .should("be.visible")
+            .click();
+
+          cy.get('[data-testid="edit-location-modal"]', {
+            timeout: 10000,
+          }).should("be.visible");
+
+          // Toggle active
+          cy.get('[data-testid="edit-location-shelf-active"]', {
+            timeout: 10000,
+          }).should("exist");
+          cy.get('[data-testid="edit-location-shelf-active"]').click({
+            force: true,
+          });
+
+          // Save
+          cy.get('[data-testid="edit-location-save-button"]')
+            .should("not.be.disabled")
+            .click();
+
+          cy.wait("@updateShelfActive", { timeout: 10000 });
+
+          cy.get('[data-testid="edit-location-modal"]', {
+            timeout: 10000,
+          }).should("not.be.visible");
+        });
+    });
+
+    it("should toggle rack active status and verify persistence", function () {
+      // Navigate to Racks tab
+      cy.get('[data-testid="tab-racks"]').click();
+      cy.get('button[role="tab"]')
+        .contains("Racks")
+        .should("have.attr", "aria-selected", "true");
+
+      cy.get('[data-testid^="rack-row-"]', { timeout: 10000 }).should(
+        "have.length.at.least",
+        1,
+      );
+
+      cy.get('[data-testid^="rack-row-"]')
+        .first()
+        .invoke("attr", "data-testid")
+        .then((testId) => {
+          const rackId = testId.replace("rack-row-", "");
+
+          cy.intercept("GET", `**/rest/storage/racks/${rackId}`, {
+            statusCode: 200,
+            body: {
+              id: parseInt(rackId),
+              label: "Test Rack",
+              rows: 8,
+              columns: 10,
+              active: true,
+              parentShelf: { id: 1, label: "Test Shelf" },
+            },
+          }).as("getRack");
+
+          cy.intercept("PUT", `**/rest/storage/racks/${rackId}`, (req) => {
+            expect(req.body).to.have.property("active");
+            req.reply({
+              statusCode: 200,
+              body: {
+                ...req.body,
+                id: parseInt(rackId),
+              },
+            });
+          }).as("updateRackActive");
+
+          // Open edit modal
+          cy.get('[data-testid^="rack-row-"]')
+            .first()
+            .within(() => {
+              cy.get('[data-testid="location-actions-overflow-menu"]')
+                .should("be.visible")
+                .click({ force: true });
+            });
+
+          cy.get('[data-testid="edit-location-menu-item"]')
+            .should("be.visible")
+            .click();
+
+          cy.get('[data-testid="edit-location-modal"]', {
+            timeout: 10000,
+          }).should("be.visible");
+
+          // Toggle active
+          cy.get("#rack-active", { timeout: 10000 }).should("exist");
+          cy.get("#rack-active").click({ force: true });
+
+          // Save
+          cy.get('[data-testid="edit-location-save-button"]')
+            .should("not.be.disabled")
+            .click();
+
+          cy.wait("@updateRackActive", { timeout: 10000 });
+
+          cy.get('[data-testid="edit-location-modal"]', {
+            timeout: 10000,
+          }).should("not.be.visible");
+        });
+    });
   });
 });

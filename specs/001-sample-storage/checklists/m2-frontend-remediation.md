@@ -11,7 +11,7 @@
 |---|---|---|---|
 | C1 | CRITICAL | Code update blocked by backend | ✅ DONE |
 | C2 | CRITICAL | Active toggle non-functional (Room) | ✅ VERIFIED |
-| C3 | CRITICAL | Box/Plate CRUD missing in UI | 🔧 IN PROGRESS (E2E pending) |
+| C3 | CRITICAL | Box/Plate CRUD missing in UI | ✅ DONE |
 | H1 | HIGH | Active toggle frozen (Device/Shelf/Rack) | ✅ DONE |
 | H2 | HIGH | Rack create/edit failing | ✅ DONE |
 | H3 | HIGH | Form field order inconsistent | ✅ DONE |
@@ -126,7 +126,7 @@ But spec `FR-037l1` states: "Code field MUST be editable in Edit modal"
 - [x] CHK025 Wire onSave/onDeleted callbacks to refresh rack boxes list + show notification, without breaking grid assignment workflow
 - [x] CHK026 Render the Box modals from `StorageDashboard.jsx` (single instances, controlled by open props)
 - [x] CHK027 Add frontend unit test coverage for: add button disabled until rack selected; selected box shows overflow menu
-- [ ] CHK028 Write E2E tests for box CRUD workflow (**tasks.md: T143l**)
+- [x] CHK028 Write E2E tests for box CRUD workflow (**tasks.md: T143l**) ✅ (storageBoxCRUD.cy.js)
 
 **Files to Create/Modify**:
 - `frontend/src/components/storage/LocationManagement/EditBoxModal.jsx` (CREATE)
@@ -148,7 +148,7 @@ But spec `FR-037l1` states: "Code field MUST be editable in Edit modal"
 - [x] CHK028 Apply same fix pattern as C2 to Shelf section in EditLocationModal.jsx
 - [x] CHK029 Apply same fix pattern as C2 to Rack section in EditLocationModal.jsx
 - [x] CHK030 Verify all location types use consistent active toggle pattern
-- [ ] CHK031 Write E2E tests for each location type active toggle
+- [x] CHK031 Write E2E tests for each location type active toggle ✅ (storageLocationCRUD.cy.js - Active Toggle describe block)
 
 **Note**: Line 628 for Device already uses `normalizeActive(formData.active)` - check if this works differently
 
@@ -174,8 +174,8 @@ But spec `FR-037l1` states: "Code field MUST be editable in Edit modal"
 - [x] CHK037 Debug rack create API call - check request payload ✅ (Fixed via form reordering and C1 backend fixes)
 - [x] CHK038 Debug rack validation - check required field validation ✅ (Backend validation fixed in C1)
 - [x] CHK039 Fix any backend validation issues ✅ (Fixed via C1 code uniqueness and ShortCode refactor)
-- [ ] CHK040 Write E2E test: Create rack with all fields, verify success (Verification pending)
-- [ ] CHK041 Write E2E test: Edit rack, change label/code, verify success (Verification pending)
+- [x] CHK040 Write E2E test: Create rack with all fields, verify success ✅ (storageLocationCRUD.cy.js)
+- [x] CHK041 Write E2E test: Edit rack, change label/code, verify success ✅ (storageLocationCRUD.cy.js)
 
 ---
 
@@ -205,7 +205,7 @@ But spec `FR-037l1` states: "Code field MUST be editable in Edit modal"
 - [x] CHK048 Parse temperature as number and validate before submit
 - [x] CHK049 Show inline error message on temperature field if invalid
 - [x] CHK050 Use Carbon TextInput `invalid` and `invalidText` props
-- [ ] CHK051 Write unit test for temperature validation
+- [x] CHK051 Write unit test for temperature validation ✅ (EditLocationModal.test.jsx - 3 Temperature tests)
 
 ---
 

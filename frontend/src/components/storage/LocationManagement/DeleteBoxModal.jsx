@@ -96,14 +96,17 @@ const DeleteBoxModal = ({ open, box, onClose, onDeleted }) => {
     setError(null);
 
     try {
-      const res = await fetch(config.serverBaseUrl + `/rest/storage/boxes/${box.id}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": localStorage.getItem("CSRF"),
+      const res = await fetch(
+        config.serverBaseUrl + `/rest/storage/boxes/${box.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          credentials: "include",
         },
-        credentials: "include",
-      });
+      );
 
       if (res.status === 204) {
         if (onDeleted) {
@@ -155,7 +158,10 @@ const DeleteBoxModal = ({ open, box, onClose, onDeleted }) => {
           <InlineNotification
             kind="error"
             lowContrast
-            title={intl.formatMessage({ id: "notification.error", defaultMessage: "Error" })}
+            title={intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            })}
             subtitle={error}
           />
         )}
@@ -182,10 +188,20 @@ const DeleteBoxModal = ({ open, box, onClose, onDeleted }) => {
       </ModalBody>
       <ModalFooter>
         <Button kind="secondary" onClick={onClose}>
-          {intl.formatMessage({ id: "button.cancel", defaultMessage: "Cancel" })}
+          {intl.formatMessage({
+            id: "button.cancel",
+            defaultMessage: "Cancel",
+          })}
         </Button>
-        <Button kind="danger" disabled={!canDelete || isDeleting} onClick={handleDelete}>
-          {intl.formatMessage({ id: "button.delete", defaultMessage: "Delete" })}
+        <Button
+          kind="danger"
+          disabled={!canDelete || isDeleting}
+          onClick={handleDelete}
+        >
+          {intl.formatMessage({
+            id: "button.delete",
+            defaultMessage: "Delete",
+          })}
         </Button>
       </ModalFooter>
     </ComposedModal>
@@ -193,4 +209,3 @@ const DeleteBoxModal = ({ open, box, onClose, onDeleted }) => {
 };
 
 export default DeleteBoxModal;
-

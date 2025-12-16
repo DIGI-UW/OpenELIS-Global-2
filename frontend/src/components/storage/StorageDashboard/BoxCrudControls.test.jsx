@@ -57,4 +57,3 @@ describe("BoxCrudControls", () => {
     expect(menu).toBeTruthy();
   });
 });
-
