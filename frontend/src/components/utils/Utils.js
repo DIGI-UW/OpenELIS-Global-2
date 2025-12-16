@@ -30,7 +30,8 @@ export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
       if (error.name !== "AbortError") {
         console.error(error);
       }
-      // CRITICAL: Error is caught but callback is never called, so promise in getFromOpenElisServerV2 never resolves!
+      // Ensure callback is always called, even on error, to avoid hanging promises
+      callback(undefined);
     });
 };
 

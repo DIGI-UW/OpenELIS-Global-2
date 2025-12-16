@@ -5,7 +5,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!-- Align StorageBox with unified code field (<= 10 chars) -->
-    <changeSet id="storage-020-storage-box-use-code-not-short-code" author="sample-storage-feature">
+    <changeSet id="storage-020-storage-box-use-code-not-short-code" author="openelisglobal-ai-agent">
         <preConditions onFail="MARK_RAN">
             <columnExists tableName="storage_box" columnName="short_code" />
             <not>
