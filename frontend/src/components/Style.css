@@ -671,17 +671,28 @@ nav.cds--side-nav .cds--side-nav__link[aria-current="page"]::before {
   border-bottom: none !important;
 }
 
-/* Focus state for submenu toggle buttons (parents) - remove white ring */
+/* Focus state for submenu toggle buttons (parents) - remove white ring and prevent persistent focus */
 nav.cds--side-nav .cds--side-nav__submenu:focus,
 nav.cds--side-nav .cds--side-nav__submenu:active,
 nav.cds--side-nav .cds--side-nav__submenu:focus-visible {
-  background-color: var(
-    --cds-layer-selected-01,
-    rgba(255, 255, 255, 0.1)
-  ) !important;
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
+}
+
+/* Remove persistent focus background - only show background on hover or when actually active */
+nav.cds--side-nav .cds--side-nav__submenu:focus:not(:hover):not(.cds--side-nav__submenu--active) {
+  background-color: transparent !important;
+}
+
+/* Remove focus background from collapsed submenu buttons (when parent is active but submenu is not) */
+.cds--side-nav__menu-item--active .cds--side-nav__submenu[aria-expanded="false"]:focus {
+  background-color: transparent !important;
+}
+
+/* Ensure focus doesn't create persistent background on menu items */
+.cds--side-nav__menu-item .cds--side-nav__link:focus:not(:hover):not(.cds--side-nav__link--current) {
+  background-color: transparent !important;
 }
 
 /* HEADER ICONS (global) - remove white focus/outline ring */
@@ -741,6 +752,20 @@ nav.cds--side-nav .cds--side-nav__submenu:focus-visible {
   border-bottom: none !important;
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* Prevent submenu buttons from inheriting active styles from parent menu items */
+/* Carbon applies active styles to all submenu buttons when parent is active - we need to override this */
+.cds--side-nav__menu-item--active .cds--side-nav__submenu {
+  background-color: transparent !important;
+  border-left: none !important;
+  color: inherit !important;
+}
+
+/* Only allow active styles on submenu buttons that are explicitly marked as active by Carbon */
+/* This ensures only the actual active submenu button gets styled, not all siblings */
+.cds--side-nav__submenu.cds--side-nav__submenu--active {
+  /* Carbon will apply active styles here - we don't override if it's actually active */
 }
 
 .cds--side-nav__navigation {

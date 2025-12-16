@@ -253,6 +253,10 @@ function OEHeader({
    * /analyzers would be considered an "active child" for /analyzers/errors.
    */
   const hasActiveDescendant = (item, currentPath) => {
+    // #region agent log
+    const itemId = item.menu?.elementId || "unknown";
+    fetch('http://localhost:7242/ingest/2e2e884b-0892-4585-96d6-06a1c9fc22b3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Header.js:255',message:'hasActiveDescendant entry',data:{itemId,currentPath,actionURL:item.menu?.actionURL,childCount:item.childMenus?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     const normalizePath = (url) => {
       if (!url) return "";
       const pathOnly = url.split(/[?#]/)[0] || "";
@@ -268,14 +272,25 @@ function OEHeader({
       const exact = currentPath === normalized;
       const prefix =
         normalized.length > 1 && currentPath.startsWith(normalized + "/");
+      // #region agent log
+      if (exact || prefix) {
+        fetch('http://localhost:7242/ingest/2e2e884b-0892-4585-96d6-06a1c9fc22b3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Header.js:271',message:'isPathActive check MATCH',data:{itemId,childURL:url,normalized,currentPath,exact,prefix,result:exact||prefix},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      }
+      // #endregion
       return exact || prefix;
     };
 
-    return item.childMenus?.some(
+    const result = item.childMenus?.some(
       (child) =>
         isPathActive(child.menu.actionURL) ||
         hasActiveDescendant(child, currentPath),
     );
+    // #region agent log
+    if (result) {
+      fetch('http://localhost:7242/ingest/2e2e884b-0892-4585-96d6-06a1c9fc22b3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Header.js:278',message:'hasActiveDescendant result TRUE',data:{itemId,currentPath,result,childURLs:item.childMenus?.map(c=>c.menu?.actionURL)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    }
+    // #endregion
+    return result;
   };
 
   const navigateToFirstChild = (item) => {
@@ -338,6 +353,11 @@ function OEHeader({
 
     const currentPath = normalizePath(location.pathname);
     const actionPath = normalizePath(menuItem.menu.actionURL);
+    const itemId = menuItem.menu.elementId || "unknown";
+
+    // #region agent log
+    fetch('http://localhost:7242/ingest/2e2e884b-0892-4585-96d6-06a1c9fc22b3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Header.js:339',message:'generateMenuItems entry',data:{itemId,currentPath,actionPath,hasChildren:menuItem.childMenus.length,level},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
 
     const exactMatch = actionPath && currentPath === actionPath;
     const prefixMatch =
@@ -360,6 +380,10 @@ function OEHeader({
       ? !!actionPath && exactMatch
       : !!actionPath && (exactMatch || (!hasSiblingConflict && prefixMatch));
 
+    // #region agent log
+    fetch('http://localhost:7242/ingest/2e2e884b-0892-4585-96d6-06a1c9fc22b3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Header.js:361',message:'matching results',data:{itemId,currentPath,actionPath,exactMatch,prefixMatch,hasSiblingConflict,isLeafActive,hasChildren,level},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
     // Handler for label click - navigate (leaf items only)
     const handleLabelClick = (e) => {
       e.preventDefault();
@@ -380,18 +404,29 @@ function OEHeader({
 
     const hasActiveChild = hasActiveDescendant(menuItem, currentPath);
 
+    // #region agent log
+    fetch('http://localhost:7242/ingest/2e2e884b-0892-4585-96d6-06a1c9fc22b3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Header.js:381',message:'final active state',data:{itemId,currentPath,actionPath,hasChildren,isLeafActive,hasActiveChild,willBeActive:hasChildren?(isLeafActive||hasActiveChild):isLeafActive,level},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
     // Parent with children: use Carbon SideNavMenu; on expand, optionally navigate to first child
     if (hasChildren) {
+      // CRITICAL FIX: Only mark parent menu items as active if they themselves match the path exactly.
+      // Do NOT mark them as active just because they have active children - this causes Carbon to
+      // apply active styles to ALL submenu buttons, not just the active one.
+      // Instead, use defaultExpanded to show which parent has active children.
+      const carbonIsActive = isLeafActive; // Only true if this parent item's own path matches
+      const carbonDefaultExpanded = !!menuItem.expanded ||
+        hasActiveChild ||
+        (defaultMode === SIDENAV_MODES.LOCK && hasActiveChild);
+      // #region agent log
+      fetch('http://localhost:7242/ingest/2e2e884b-0892-4585-96d6-06a1c9fc22b3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Header.js:422',message:'SideNavMenu props',data:{itemId,displayKey:menuItem.menu.displayKey,level,carbonIsActive,carbonDefaultExpanded,isLeafActive,hasActiveChild,menuItemExpanded:!!menuItem.expanded},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       return (
         <SideNavMenu
           key={path}
           title={intl.formatMessage({ id: menuItem.menu.displayKey })}
-          defaultExpanded={
-            !!menuItem.expanded ||
-            hasActiveChild ||
-            (defaultMode === SIDENAV_MODES.LOCK && hasActiveChild)
-          }
-          isActive={isLeafActive || hasActiveChild}
+          defaultExpanded={carbonDefaultExpanded}
+          isActive={carbonIsActive}
           onToggle={(expanded) => {
             setMenuItemExpanded(menuItem, path);
             if (expanded) {
