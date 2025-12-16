@@ -56,3 +56,6 @@ volume/odoo/*
 .cursor/
 **/*checksum*.properties
 **/*checksums*.properties
+
+# Test run logs (dev artifacts, not source code)
+.logs/
