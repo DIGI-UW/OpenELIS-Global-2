@@ -7,8 +7,8 @@
 #
 # Files loaded (in order):
 #   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
-#   2. DBUnit datasets (storage-e2e.xml) - Storage hierarchy + E2E test data
-#      (same source-of-truth as JUnit tests, loaded via DbUnitFixtureLoader)
+#   2. storage-e2e.xml (DBUnit XML) - Storage hierarchy + E2E test data
+#      Converted to SQL on-demand (*.generated.sql files never committed)
 
 set -e
 
@@ -44,7 +44,7 @@ echo "Loading Test Fixtures"
 echo "======================================"
 echo ""
 echo "Foundational SQL: $FOUNDATIONAL_SQL_FILE"
-echo "Storage fixtures: DBUnit datasets (storage-e2e.xml)"
+echo "Storage fixtures: DBUnit XML → Generated SQL (on-demand)"
 if [ "$RESET" = true ]; then
     echo "Reset: Enabled (will reset test data before loading)"
 fi
@@ -59,16 +59,36 @@ if [ ! -f "$FOUNDATIONAL_SQL_FILE" ]; then
     exit 1
 fi
 
-# Check if Maven is available (needed for DBUnit loader)
-if ! command -v mvn &> /dev/null; then
-    echo "ERROR: Maven (mvn) not found. Required for DBUnit fixture loader."
+# Check if Python is available (needed for XML→SQL generation)
+if ! command -v python3 &> /dev/null; then
+    echo "ERROR: Python 3 not found. Required for XML→SQL conversion."
     exit 1
 fi
 
-# Ensure test classes are compiled (DbUnitFixtureLoader lives in src/test/java)
-echo "Compiling test utilities (mvn test-compile)..."
-(cd "$PROJECT_ROOT" && mvn -q test-compile)
-echo "✅ Test utilities compiled"
+# Storage fixture paths
+STORAGE_XML="$SCRIPT_DIR/testdata/storage-e2e.xml"
+STORAGE_SQL="$SCRIPT_DIR/testdata/storage-e2e.generated.sql"
+XML_TO_SQL_SCRIPT="$SCRIPT_DIR/testdata/xml-to-sql.py"
+
+# Check if XML source exists
+if [ ! -f "$STORAGE_XML" ]; then
+    echo "ERROR: Storage XML fixture not found: $STORAGE_XML"
+    exit 1
+fi
+
+# Check if converter script exists
+if [ ! -f "$XML_TO_SQL_SCRIPT" ]; then
+    echo "ERROR: XML→SQL converter not found: $XML_TO_SQL_SCRIPT"
+    exit 1
+fi
+
+# Generate SQL from DBUnit XML (on-demand, never committed)
+echo "Generating SQL from DBUnit XML..."
+python3 "$XML_TO_SQL_SCRIPT" "$STORAGE_XML" "$STORAGE_SQL"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to generate SQL from XML"
+    exit 1
+fi
 echo ""
 
 # Reset database if requested
@@ -286,12 +306,9 @@ if [ "$USE_DOCKER" = true ]; then
     echo "✅ Foundational data loaded (providers, organizations)"
     echo ""
 
-    # Load storage hierarchy + E2E test data via DBUnit (same source as JUnit tests)
-    echo "Loading storage fixtures via DBUnit loader..."
-    (cd "$PROJECT_ROOT" && mvn -q exec:java \
-        -Dexec.mainClass="org.openelisglobal.testutils.DbUnitFixtureLoader" \
-        -Dexec.args="--docker testdata/storage-e2e.xml" \
-        -Dexec.classpathScope=test)
+    # Load storage hierarchy + E2E test data via generated SQL
+    echo "Loading storage fixtures via generated SQL..."
+    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$STORAGE_SQL"
 
     if [ $? -eq 0 ]; then
         echo ""
@@ -357,12 +374,9 @@ else
     echo "✅ Foundational data loaded (providers, organizations)"
     echo ""
 
-    # Load storage hierarchy + E2E test data via DBUnit (same source as JUnit tests)
-    echo "Loading storage fixtures via DBUnit loader..."
-    (cd "$PROJECT_ROOT" && mvn -q exec:java \
-        -Dexec.mainClass="org.openelisglobal.testutils.DbUnitFixtureLoader" \
-        -Dexec.args="--jdbc-url jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME --user $DB_USER --password $DB_PASSWORD testdata/storage-e2e.xml" \
-        -Dexec.classpathScope=test)
+    # Load storage hierarchy + E2E test data via generated SQL
+    echo "Loading storage fixtures via generated SQL..."
+    psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$STORAGE_SQL"
 
     if [ $? -eq 0 ]; then
         echo ""
@@ -387,7 +401,7 @@ else
         echo "1. Verify PostgreSQL is running"
         echo "2. Check database credentials"
         echo "3. Ensure storage tables exist (run Liquibase migrations first)"
-        echo "4. Verify Maven can compile test classes"
+        echo "4. Verify Python 3 is installed for XML→SQL conversion"
         echo ""
         exit 1
     fi
