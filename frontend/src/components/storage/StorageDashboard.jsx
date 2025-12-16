@@ -4519,7 +4519,7 @@ const StorageDashboard = () => {
                         <p className="helper-text">
                           <FormattedMessage
                             id="storage.boxes.helper"
-                            defaultMessage="Manage boxes/plates or select a rack and box to assign samples to coordinates."
+                            defaultMessage="Manage boxes/plates, or select a rack and box to assign samples to coordinates."
                           />
                         </p>
                       </div>

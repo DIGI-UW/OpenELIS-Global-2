@@ -39,6 +39,8 @@ public class StorageSearchRestControllerTest extends BaseWebContextSensitiveTest
         executeDataSetWithStateManagement("testdata/user-role.xml");
         executeDataSetWithStateManagement("testdata/typeofsample.xml"); // Required for sample_item typeosamp_id foreign
                                                                         // key
+        executeDataSetWithStateManagement("testdata/status-of-sample.xml"); // Required for sample/sample_item status_id
+                                                                            // foreign key
         executeDataSetWithStateManagement("testdata/storage-e2e.xml");
     }
 
