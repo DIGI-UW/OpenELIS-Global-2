@@ -696,5 +696,4 @@ public class NoteBookRestController extends BaseRestController {
         }
         return null;
     }
-
 }

@@ -121,5 +121,4 @@ public class StorageEntityTest {
         assertTrue("SampleStorageMovement should be immutable",
                 SampleStorageMovement.class.isAnnotationPresent(org.hibernate.annotations.Immutable.class));
     }
-
 }

@@ -10,7 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for Storage Search operations. Implements tab-specific
  * search functionality per FR-064 and FR-064a (Phase 3.1 in plan.md).
- * 
+ *
+ * <p>
  * All searches use case-insensitive partial/substring matching with OR logic
  * (matches any of the specified fields).
  */

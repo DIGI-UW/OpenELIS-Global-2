@@ -22,7 +22,6 @@ public class TypeOfDataIndicatorServiceTest extends BaseWebContextSensitiveTest 
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/type-of-data-indicator.xml");
-
     }
 
     @Test
@@ -70,7 +69,6 @@ public class TypeOfDataIndicatorServiceTest extends BaseWebContextSensitiveTest 
         typeOfDataIndicatorService.getData(typeOfDataIndicator);
         assertEquals("Cases", typeOfDataIndicator.getName());
         assertEquals("Number of cases", typeOfDataIndicator.getDescription());
-
     }
 
     @Test
@@ -174,7 +172,6 @@ public class TypeOfDataIndicatorServiceTest extends BaseWebContextSensitiveTest 
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(typeOfDataIndicators);
         assertTrue(typeOfDataIndicators.size() <= expectedPages);
-
     }
 
     @Test
@@ -333,5 +330,4 @@ public class TypeOfDataIndicatorServiceTest extends BaseWebContextSensitiveTest 
         assertNotNull(updatedTypeOfDataIndicator);
         assertEquals(savedTypeOfDataIndicator.getName(), updatedTypeOfDataIndicator.getName());
     }
-
 }

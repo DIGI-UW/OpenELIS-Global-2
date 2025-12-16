@@ -36,7 +36,6 @@ public class ResultSignatureServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, resultSignatures.size());
         assertEquals("2", resultSignatures.get(0).getId());
         assertEquals("3", resultSignatures.get(1).getId());
-
     }
 
     @Test
@@ -67,7 +66,6 @@ public class ResultSignatureServiceTest extends BaseWebContextSensitiveTest {
         List<Result> results = resultService.getAll();
         List<ResultSignature> resultSignatures = resultSignatureService.getResultSignaturesByResults(results);
         assertEquals(2, resultSignatures.size());
-
     }
 
     @Test
@@ -84,7 +82,6 @@ public class ResultSignatureServiceTest extends BaseWebContextSensitiveTest {
         List<ResultSignature> resultSignatures = resultSignatureService.getAllMatching(map);
         assertEquals(1, resultSignatures.size());
         assertEquals("3", resultSignatures.get(0).getId());
-
     }
 
     @Test
@@ -266,7 +263,6 @@ public class ResultSignatureServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, resultSignaturesAfterSave.size());
         assertEquals("External Doctor", resultSignaturesAfterSave.get(0).getNonUserName());
         assertEquals(insertedId, resultSignaturesAfterSave.get(0).getId());
-
     }
 
     @Test
@@ -277,7 +273,6 @@ public class ResultSignatureServiceTest extends BaseWebContextSensitiveTest {
         ResultSignature updatedResultSignature = resultSignatureService.update(resultSignature);
         assertEquals("Updated Doctor", updatedResultSignature.getNonUserName());
         assertTrue(!updatedResultSignature.getNonUserName().equals(oldNonUserName));
-
     }
 
     @Test
@@ -296,7 +291,6 @@ public class ResultSignatureServiceTest extends BaseWebContextSensitiveTest {
         resultSignatureService.deleteAll(resultSignatures);
         List<ResultSignature> resultSignaturesAfterDelete = resultSignatureService.getAll();
         assertEquals(0, resultSignaturesAfterDelete.size());
-
     }
 
     @Test

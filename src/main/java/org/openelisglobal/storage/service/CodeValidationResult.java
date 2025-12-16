@@ -44,16 +44,12 @@ public class CodeValidationResult {
         this.errorMessage = errorMessage;
     }
 
-    /**
-     * Create a valid result
-     */
+    /** Create a valid result */
     public static CodeValidationResult valid(String normalizedCode) {
         return new CodeValidationResult(true, normalizedCode, null);
     }
 
-    /**
-     * Create an invalid result with error message
-     */
+    /** Create an invalid result with error message */
     public static CodeValidationResult invalid(String errorMessage) {
         return new CodeValidationResult(false, null, errorMessage);
     }

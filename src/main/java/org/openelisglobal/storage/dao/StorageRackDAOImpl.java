@@ -106,5 +106,4 @@ public class StorageRackDAOImpl extends BaseDAOImpl<StorageRack, Integer> implem
             throw new LIMSRuntimeException("Error finding StorageRack by label and parent shelf ID", e);
         }
     }
-
 }

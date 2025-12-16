@@ -17,7 +17,8 @@ import org.springframework.stereotype.Component;
 /**
  * Legacy class for manual OCL import. OCL import is now handled automatically
  * by OclConfigurationHandler via ConfigurationInitializationService.
- * 
+ *
+ * <p>
  * This class is kept for backward compatibility and manual import scenarios
  * (e.g., REST endpoints).
  */
@@ -34,11 +35,12 @@ public class OclImportInitializer {
     /**
      * Public method to trigger OCL import manually. This can be called from REST
      * endpoints or for manual imports.
-     * 
+     *
+     * <p>
      * Note: This method processes ZIP files directly. For automatic loading via
      * ConfigurationInitializationService, OCL ZIP files should be placed in
      * /var/lib/openelis-global/configuration/backend/ocl/
-     * 
+     *
      * @param fileDir Directory containing OCL ZIP files
      */
     public void performOclImport(String fileDir) {

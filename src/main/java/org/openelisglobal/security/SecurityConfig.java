@@ -171,7 +171,6 @@ public class SecurityConfig {
                 .httpBasic(Customizer.withDefaults())
                 // disable csrf as it is not needed for httpBasic
                 .csrf(csrf -> csrf.disable()) //
-
                 .addFilterAt(SpringContext.getBean(BasicAuthFilter.class), BasicAuthenticationFilter.class)
                 // add security headers
                 .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
@@ -278,7 +277,6 @@ public class SecurityConfig {
                 .createDefaultResponseAuthenticationConverter();
         authenticationProvider.setAssertionValidator(OpenSaml4AuthenticationProvider.createDefaultAssertionValidator());
         authenticationProvider.setResponseAuthenticationConverter(responseToken -> {
-
             Saml2Authentication authentication = delegate.convert(responseToken);
             Assertion assertion = responseToken.getResponse().getAssertions().get(0);
             AuthenticatedPrincipal principal = (AuthenticatedPrincipal) authentication.getPrincipal();
@@ -295,9 +293,8 @@ public class SecurityConfig {
                 .saml2Login(saml2 -> saml2.failureHandler(customSamlAuthenticationFailureHandler())
                         .successHandler(customSamlAuthenticationSuccessHandler())
                         .relyingPartyRegistrationRepository(relyingPartyRegistrationRepository()))
-                .authenticationManager(new ProviderManager(authenticationProvider))
+                .authenticationManager(new ProviderManager(authenticationProvider));
 
-        ;
         return http.build();
     }
 
@@ -305,7 +302,6 @@ public class SecurityConfig {
     private String config;
 
     @Value("${org.itech.login.oauth.clientID:OpenELIS-Global_oauth}")
-
     private String clientID;
 
     @Value("${org.itech.login.oauth.clientSecret:}")
@@ -406,9 +402,7 @@ public class SecurityConfig {
                 .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
                 .permitAll().requestMatchers(LOGIN_PAGES).permitAll().requestMatchers(RESOURCE_PAGES).permitAll()
                 // ensure all other requests are authenticated
-                .anyRequest().authenticated()
-
-        )
+                .anyRequest().authenticated())
                 // setup login redirection and logic
                 .formLogin(formLogin -> formLogin.loginPage("/LoginPage").loginProcessingUrl("/ValidateLogin")
                         .usernameParameter("loginName").passwordParameter("password")
@@ -540,7 +534,6 @@ public class SecurityConfig {
                             if (value != null && value.startsWith("oeg-")) {
                                 authorties.add(new SimpleGrantedAuthority(value));
                             }
-
                         }
                     }
                 }

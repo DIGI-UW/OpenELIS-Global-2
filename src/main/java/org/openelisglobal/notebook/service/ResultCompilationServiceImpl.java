@@ -33,9 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Service implementation for result compilation and dissemination per US7.
- */
+/** Service implementation for result compilation and dissemination per US7. */
 @Service
 public class ResultCompilationServiceImpl implements ResultCompilationService {
 

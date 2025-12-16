@@ -68,7 +68,6 @@ public class CalculatedValueRestController {
         } catch (Exception e) {
 
         }
-
     }
 
     @GetMapping(value = "test-calculations", produces = MediaType.APPLICATION_JSON_VALUE)

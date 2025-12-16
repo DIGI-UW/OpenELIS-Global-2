@@ -275,7 +275,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         if (ncEvent != null) {
             ncEvent.setDiscussionDate(form.getDiscussionDate());
             ncEvent.setDateCompleted(getDate(form.getDateCompleted(), "dd/MM/yyyy")); // Convert the string to a Date
-                                                                                      // object
+            // object
             setActionLogs(form, ncEvent);
             ncEvent.setSysUserId(form.getCurrentUserId());
             ncEventService.update(ncEvent);

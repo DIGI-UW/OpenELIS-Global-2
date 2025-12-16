@@ -7,6 +7,7 @@ import java.util.List;
  * Value object representing a parsed storage location barcode. Supports 2-5
  * level hierarchical barcodes per FR-023
  *
+ * <p>
  * Barcode format: ROOM-DEVICE[-SHELF[-RACK[-POSITION]]] Examples: - 2-level:
  * MAIN-FRZ01 - 3-level: MAIN-FRZ01-SHA - 4-level: MAIN-FRZ01-SHA-RKR1 -
  * 5-level: MAIN-FRZ01-SHA-RKR1-A5
@@ -27,9 +28,7 @@ public class ParsedBarcode {
         this.components = new ArrayList<>();
     }
 
-    /**
-     * Get the number of levels in the barcode (2-5)
-     */
+    /** Get the number of levels in the barcode (2-5) */
     public int getLevelCount() {
         int count = 0;
         if (roomCode != null)

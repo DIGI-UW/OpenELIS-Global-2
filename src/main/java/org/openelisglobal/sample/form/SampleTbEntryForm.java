@@ -75,11 +75,13 @@ public class SampleTbEntryForm extends BaseForm {
 
     @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX)
     private String guid;
+
     // private UUID fhirUuid;
 
     @NotBlank()
     @Pattern(regexp = ValidationHelper.GENDER_REGEX)
     private String patientGender;
+
     // ages are display only
     private String patientAge;
 

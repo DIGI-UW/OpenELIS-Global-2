@@ -38,7 +38,7 @@ services:
             retries: 10 
             
     oe.openelis.org:
-        container_name: openelisglobal-webapp 
+        container_name: openelisglobal-webapp
         # build:
         #     context: .
         #     dockerfile: Dockerfile.dev
@@ -68,7 +68,7 @@ services:
             - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
             - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
-            - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war  # Mount locally built WAR for development
+            - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
             - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv

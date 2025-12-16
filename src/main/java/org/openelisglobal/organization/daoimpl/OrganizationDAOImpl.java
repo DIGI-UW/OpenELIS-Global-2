@@ -144,6 +144,7 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
 
         return list;
     }
+
     // end bugzilla 2372
 
     public Organization readOrganization(String idString) {
@@ -430,6 +431,7 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
 
         return count;
     }
+
     // end bugzilla 2372
 
     /**

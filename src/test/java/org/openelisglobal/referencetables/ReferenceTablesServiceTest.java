@@ -29,7 +29,6 @@ public class ReferenceTablesServiceTest extends BaseWebContextSensitiveTest {
 
     @After
     public void tearDown() {
-
     }
 
     @Test
@@ -128,5 +127,4 @@ public class ReferenceTablesServiceTest extends BaseWebContextSensitiveTest {
         refTable.setId(null);
         referenceTablesService.update(refTable);
     }
-
 }

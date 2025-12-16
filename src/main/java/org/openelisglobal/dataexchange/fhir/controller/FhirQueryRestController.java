@@ -53,7 +53,7 @@ public class FhirQueryRestController extends BaseController {
     /**
      * Query FHIR resources by resource type with search parameters. Supports
      * standard FHIR search parameters passed as query parameters.
-     * 
+     *
      * @param resourceType The FHIR resource type (e.g., Patient, Questionnaire,
      *                     ServiceRequest)
      * @param count        Maximum number of results to return
@@ -134,7 +134,7 @@ public class FhirQueryRestController extends BaseController {
 
     /**
      * Get a specific FHIR resource by ID.
-     * 
+     *
      * @param resourceType The FHIR resource type
      * @param resourceId   The resource ID
      * @return The FHIR resource
@@ -168,7 +168,7 @@ public class FhirQueryRestController extends BaseController {
      * Execute a FHIR search using a POST request with a search parameter map.
      * Useful for complex queries or when search parameters exceed URL length
      * limits.
-     * 
+     *
      * @param resourceType The FHIR resource type
      * @param searchParams Map of search parameter names to values
      * @param count        Maximum number of results to return
@@ -268,7 +268,7 @@ public class FhirQueryRestController extends BaseController {
     /**
      * Execute a raw FHIR query using the FHIR search URL format. This allows more
      * flexibility for advanced queries.
-     * 
+     *
      * @param resourceType The FHIR resource type
      * @param queryString  The raw FHIR search query string (e.g.,
      *                     "name=John&birthdate=ge2020")
@@ -321,5 +321,4 @@ public class FhirQueryRestController extends BaseController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
-
 }

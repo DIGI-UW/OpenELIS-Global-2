@@ -72,5 +72,4 @@ public class TypeOfSamplePanelServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(1, panels.size());
         Assert.assertEquals("4", panels.get(0).getId());
     }
-
 }

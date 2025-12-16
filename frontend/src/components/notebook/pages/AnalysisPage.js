@@ -118,6 +118,9 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
               status: sample.pageStatus || "PENDING",
+              // Patient info from data field (linked patient)
+              patientName: sample.data?.patientName || sample.patientName || "",
+              patientId: sample.data?.patientId || "",
               // Preserve full data object for status checks
               data: sample.data,
               // Analysis data from sample's page data
@@ -189,6 +192,7 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
       `/rest/notebook/bulk/page/${pageData.id}/analyzer-import/parse`,
       formData,
       (response) => {
+        if (!componentMounted.current) return;
         console.log("Parse response:", response);
         if (response && response.success) {
           setParseResult(response);
@@ -233,6 +237,7 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
       `/rest/notebook/bulk/page/${pageData.id}/analyzer-import/preview`,
       formData,
       (response) => {
+        if (!componentMounted.current) return;
         console.log("Preview response:", response);
         if (response && response.success) {
           setPreviewData(response);
@@ -285,6 +290,7 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
       `/rest/notebook/bulk/page/${pageData.id}/analyzer-import`,
       formData,
       (response) => {
+        if (!componentMounted.current) return;
         console.log("Import response:", response);
         setImporting(false);
         if (response && response.success) {
@@ -362,6 +368,7 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
         status: "COMPLETED",
       }),
       (response) => {
+        if (!componentMounted.current) return;
         setCompleting(false);
         if (response && response.success) {
           setSuccess(
@@ -439,6 +446,7 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
       `/rest/notebook/bulk/page/${pageData.id}/manual-results`,
       JSON.stringify(request),
       (response) => {
+        if (!componentMounted.current) return;
         setSavingManualEntry(false);
         if (response && response.success) {
           setSuccess(
@@ -1078,6 +1086,7 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
             showSelection={true}
+            showPatient={true}
             loading={loading}
             additionalColumns={[
               {

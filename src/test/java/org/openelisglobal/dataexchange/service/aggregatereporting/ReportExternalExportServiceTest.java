@@ -95,14 +95,15 @@ public class ReportExternalExportServiceTest extends BaseWebContextSensitiveTest
 
     // TODO: the method being tested uses a field called recalculate, though it was
     // not found in the Entity thus making the test fail.
-//    @Test
-//    public void getRecalculateReportExports(){
-//        reportExternalExport.setTypeId("102");
-//        List<ReportExternalExport> reportExternalExports = reportExternalExportService.getRecalculateReportExports("102");
-//        assertNotNull(reportExternalExports);
-//        assertEquals(1, reportExternalExports.size());
-//        assertEquals("2", reportExternalExports.get(0).getId());
-//    }
+    // @Test
+    // public void getRecalculateReportExports(){
+    // reportExternalExport.setTypeId("102");
+    // List<ReportExternalExport> reportExternalExports =
+    // reportExternalExportService.getRecalculateReportExports("102");
+    // assertNotNull(reportExternalExports);
+    // assertEquals(1, reportExternalExports.size());
+    // assertEquals("2", reportExternalExports.get(0).getId());
+    // }
 
     @Test
     public void LoadReport_ShouldReturnAReportExternalExport() {

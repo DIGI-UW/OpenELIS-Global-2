@@ -115,7 +115,7 @@ public class StorageLocationRestController extends BaseRestController {
             room.setActive(form.getActive() != null ? form.getActive() : true);
             room.setFhirUuid(UUID.randomUUID());
             room.setSysUserId("1"); // Default system user for REST API (should come from security context in
-                                    // production)
+            // production)
 
             StorageRoom createdRoom = storageLocationService.createRoom(room);
 
@@ -212,9 +212,7 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    /**
-     * OGC-75: Check if a room can be deleted (pre-flight check for frontend)
-     */
+    /** OGC-75: Check if a room can be deleted (pre-flight check for frontend) */
     @GetMapping("/rooms/{id}/can-delete")
     public ResponseEntity<Map<String, Object>> canDeleteRoom(@PathVariable String id, HttpServletRequest request) {
         try {
@@ -247,9 +245,7 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    /**
-     * OGC-75: Get cascade delete summary for a room (admin only)
-     */
+    /** OGC-75: Get cascade delete summary for a room (admin only) */
     @GetMapping("/rooms/{id}/cascade-delete-summary")
     public ResponseEntity<Map<String, Object>> getRoomCascadeDeleteSummary(@PathVariable String id) {
         try {
@@ -471,9 +467,7 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    /**
-     * OGC-75: Check if a device can be deleted (pre-flight check for frontend)
-     */
+    /** OGC-75: Check if a device can be deleted (pre-flight check for frontend) */
     @GetMapping("/devices/{id}/can-delete")
     public ResponseEntity<Map<String, Object>> canDeleteDevice(@PathVariable String id, HttpServletRequest request) {
         try {
@@ -503,9 +497,7 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    /**
-     * OGC-75: Get cascade delete summary for a device (admin only)
-     */
+    /** OGC-75: Get cascade delete summary for a device (admin only) */
     @GetMapping("/devices/{id}/cascade-delete-summary")
     public ResponseEntity<Map<String, Object>> getDeviceCascadeDeleteSummary(@PathVariable String id) {
         try {
@@ -677,9 +669,7 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    /**
-     * OGC-75: Check if a shelf can be deleted (pre-flight check for frontend)
-     */
+    /** OGC-75: Check if a shelf can be deleted (pre-flight check for frontend) */
     @GetMapping("/shelves/{id}/can-delete")
     public ResponseEntity<Map<String, Object>> canDeleteShelf(@PathVariable String id, HttpServletRequest request) {
         try {
@@ -709,9 +699,7 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    /**
-     * OGC-75: Get cascade delete summary for a shelf (admin only)
-     */
+    /** OGC-75: Get cascade delete summary for a shelf (admin only) */
     @GetMapping("/shelves/{id}/cascade-delete-summary")
     public ResponseEntity<Map<String, Object>> getShelfCascadeDeleteSummary(@PathVariable String id) {
         try {
@@ -882,9 +870,7 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    /**
-     * OGC-75: Check if a rack can be deleted (pre-flight check for frontend)
-     */
+    /** OGC-75: Check if a rack can be deleted (pre-flight check for frontend) */
     @GetMapping("/racks/{id}/can-delete")
     public ResponseEntity<Map<String, Object>> canDeleteRack(@PathVariable String id, HttpServletRequest request) {
         try {
@@ -915,9 +901,7 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    /**
-     * OGC-75: Get cascade delete summary for a rack (admin only)
-     */
+    /** OGC-75: Get cascade delete summary for a rack (admin only) */
     @GetMapping("/racks/{id}/cascade-delete-summary")
     public ResponseEntity<Map<String, Object>> getRackCascadeDeleteSummary(@PathVariable String id) {
         try {
@@ -1087,7 +1071,7 @@ public class StorageLocationRestController extends BaseRestController {
     /**
      * Generate a unique room code from the room name. If the base code already
      * exists, appends a numeric suffix.
-     * 
+     *
      * @param name Room name
      * @return Unique code (max 50 characters)
      */
@@ -1127,7 +1111,7 @@ public class StorageLocationRestController extends BaseRestController {
     /**
      * Generate a unique device code from the device name within a room. If the base
      * code already exists in the room, appends a numeric suffix.
-     * 
+     *
      * @param name   Device name
      * @param roomId Parent room ID
      * @return Unique code (max 50 characters)
@@ -1501,7 +1485,7 @@ public class StorageLocationRestController extends BaseRestController {
      * /rest/storage/dashboard/location-counts Returns counts for Room, Device,
      * Shelf, and Rack levels (Position excluded). Only counts active
      * (non-decommissioned) locations.
-     * 
+     *
      * @return JSON map with keys: "rooms", "devices", "shelves", "racks" and
      *         integer count values
      */
@@ -1526,7 +1510,7 @@ public class StorageLocationRestController extends BaseRestController {
      * Search locations across all hierarchy levels (Room, Device, Shelf, Rack) GET
      * /rest/storage/locations/search?q={term} Returns locations matching search
      * term with full hierarchical paths
-     * 
+     *
      * @param q Search term (case-insensitive partial match)
      * @return List of matching locations with hierarchicalPath field
      */
@@ -1540,5 +1524,4 @@ public class StorageLocationRestController extends BaseRestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
 }

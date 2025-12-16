@@ -215,7 +215,6 @@ public class UserServiceImpl implements UserService {
                             return userTestSections;
                         }
                     }
-
                 }
 
                 List<String> userLabUnits = new ArrayList<>();
@@ -232,7 +231,6 @@ public class UserServiceImpl implements UserService {
                                 userLabUnits.add(roles.getLabUnit());
                             }
                         }
-
                     });
                 }
                 org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getUserTestSections",
@@ -271,7 +269,6 @@ public class UserServiceImpl implements UserService {
                                         .collect(Collectors.toList());
                                 testSections.addAll(userTestSections);
                             }
-
                         }
                     }
                 }
@@ -281,7 +278,6 @@ public class UserServiceImpl implements UserService {
         LogEvent.logWarn(this.getClass().getSimpleName(), "getUserTestSections",
                 "no principal object in spring security context. Could not get tests belonging to user");
         return new ArrayList<>();
-
     }
 
     @Override
@@ -461,5 +457,4 @@ public class UserServiceImpl implements UserService {
                         || testUnitIds.contains(programService.get(p.getId()).getTestSection().getId()))
                 .collect(Collectors.toList());
     }
-
 }

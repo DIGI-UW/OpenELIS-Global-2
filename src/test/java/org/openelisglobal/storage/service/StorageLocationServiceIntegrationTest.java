@@ -23,6 +23,7 @@ import org.springframework.test.annotation.Rollback;
  * transaction boundaries work correctly. These tests catch
  * LazyInitializationException issues that unit tests with mocks cannot detect.
  *
+ * <p>
  * Following OpenELIS test patterns: extends BaseWebContextSensitiveTest to load
  * full Spring context and hit real database with proper transaction management.
  */
@@ -47,7 +48,8 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      * relationships. This validates: 1. Service method initializes relationships
      * within transaction 2. Relationships are accessible after service method
      * returns (for REST serialization)
-     * 
+     *
+     * <p>
      * Note: Service methods initialize relationships within @Transactional to
      * ensure they're accessible when entities are serialized to JSON in REST
      * controllers.
@@ -226,7 +228,8 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
      * Test that getRoomsForAPI() includes sampleCount field that counts SampleItems
      * (not Samples). This verifies the fix for the bug where rooms dashboard was
      * counting Samples instead of SampleItems.
-     * 
+     *
+     * <p>
      * Storage tracking operates at SampleItem level (physical specimens), not
      * Sample level (orders). The query should count DISTINCT sampleItem.id, not
      * sample.id.

@@ -63,5 +63,4 @@ public class SampleRequesterServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertNotNull("Requesters list should not be null", requesters);
         Assert.assertTrue("Requesters list should not be empty", !requesters.isEmpty());
     }
-
 }

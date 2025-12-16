@@ -272,9 +272,7 @@ public class AnalyzerResultImportServiceImpl extends AuditableBaseObjectServiceI
         return new ParseResult(headers, rows, FileFormat.CSV, rows.size(), parseErrors);
     }
 
-    /**
-     * Parse a single CSV line, handling quoted values with embedded commas.
-     */
+    /** Parse a single CSV line, handling quoted values with embedded commas. */
     private String[] parseCsvLine(String line) {
         List<String> values = new ArrayList<>();
         StringBuilder current = new StringBuilder();

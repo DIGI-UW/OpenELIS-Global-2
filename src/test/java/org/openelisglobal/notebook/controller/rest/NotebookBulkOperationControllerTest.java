@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * Integration tests for NotebookBulkOperationController. Tests the REST API
  * endpoints for bulk data entry operations.
  *
+ * <p>
  * Per FR-031: System MUST support "Apply to Selected" operations. Per FR-033:
  * System MUST process bulk operations in batches of 50. Per FR-034: System MUST
  * provide bulk apply endpoint for common values.

@@ -151,7 +151,6 @@ public class DisplayListService implements LocaleChangeListener {
         if (localeResolver instanceof GlobalLocaleResolver) {
             ((GlobalLocaleResolver) localeResolver).addLocalChangeListener(this);
         }
-
     }
 
     public static DisplayListService getInstance() {

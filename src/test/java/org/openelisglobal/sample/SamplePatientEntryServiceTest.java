@@ -125,5 +125,4 @@ public class SamplePatientEntryServiceTest extends BaseWebContextSensitiveTest {
             assertNotNull("Exception should be thrown for missing patient ID", e.getMessage());
         }
     }
-
 }

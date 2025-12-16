@@ -20,7 +20,6 @@ public class SystemUserSectionServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/system-user-section.xml");
-
     }
 
     @Test
@@ -60,7 +59,5 @@ public class SystemUserSectionServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, systemUserSections.size());
         assertEquals("1", systemUserSections.get(0).getId());
         assertEquals("2", systemUserSections.get(1).getId());
-
     }
-
 }

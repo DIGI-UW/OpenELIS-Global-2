@@ -156,70 +156,76 @@ public class StorageSearchServiceImplTest {
 
     // ========== Sample Search Service Tests ==========
 
-    @Test
-    public void testSearchSamples_FiltersBySampleId() throws Exception {
-        // Filter SampleItems by ID substring
-        when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
+  @Test
+  public void testSearchSamples_FiltersBySampleId() throws Exception {
+    // Filter SampleItems by ID substring
+    when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
 
-        List<Map<String, Object>> results = searchService.searchSamples("1001");
+    List<Map<String, Object>> results = searchService.searchSamples("1001");
 
-        assertNotNull("Results should not be null", results);
-        assertEquals("Should return one matching SampleItem", 1, results.size());
-        assertEquals("Should return SampleItem with ID 1001", "1001", String.valueOf(results.get(0).get("id")));
+    assertNotNull("Results should not be null", results);
+    assertEquals("Should return one matching SampleItem", 1, results.size());
+    assertEquals(
+        "Should return SampleItem with ID 1001", "1001", String.valueOf(results.get(0).get("id")));
+  }
+
+  @Test
+  public void testSearchSamples_FiltersByAccessionPrefix() throws Exception {
+    // Filter by parent Sample accession number prefix
+    when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
+
+    List<Map<String, Object>> results = searchService.searchSamples("TB-2025");
+
+    assertNotNull("Results should not be null", results);
+    assertEquals("Should return one matching sample", 1, results.size());
+    assertEquals(
+        "Should return SampleItem with TB-2025 prefix in parent Sample accession",
+        "TB-2025-001",
+        results.get(0).get("sampleAccessionNumber"));
+  }
+
+  @Test
+  public void testSearchSamples_FiltersByLocationPath() throws Exception {
+    // Filter by location path substring
+    when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
+
+    List<Map<String, Object>> results = searchService.searchSamples("Freezer");
+
+    assertNotNull("Results should not be null", results);
+    assertTrue("Should return at least one matching sample", results.size() >= 1);
+
+    // Verify all results contain "Freezer" in location
+    for (Map<String, Object> sample : results) {
+      String location = (String) sample.get("location");
+      assertNotNull("Location should not be null", location);
+      assertTrue(
+          "Location should contain 'Freezer' (case-insensitive)",
+          location.toLowerCase().contains("freezer"));
     }
+  }
 
-    @Test
-    public void testSearchSamples_FiltersByAccessionPrefix() throws Exception {
-        // Filter by parent Sample accession number prefix
-        when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
+  @Test
+  public void testSearchSamples_OR_Logic() throws Exception {
+    // Matches if ANY field matches (SampleItem ID, External ID, parent Sample accession, or
+    // location path)
+    when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
 
-        List<Map<String, Object>> results = searchService.searchSamples("TB-2025");
+    // Query "1001" should match by SampleItem ID
+    List<Map<String, Object>> resultsById = searchService.searchSamples("1001");
+    assertEquals("Should match by SampleItem ID", 1, resultsById.size());
 
-        assertNotNull("Results should not be null", results);
-        assertEquals("Should return one matching sample", 1, results.size());
-        assertEquals("Should return SampleItem with TB-2025 prefix in parent Sample accession", "TB-2025-001", results.get(0).get("sampleAccessionNumber"));
-    }
+    // Query "TB-2025" should match by parent Sample accession number
+    List<Map<String, Object>> resultsByPrefix = searchService.searchSamples("TB-2025");
+    assertEquals("Should match by parent Sample accession number", 1, resultsByPrefix.size());
 
-    @Test
-    public void testSearchSamples_FiltersByLocationPath() throws Exception {
-        // Filter by location path substring
-        when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
+    // Query "SI-1001" should match by SampleItem External ID
+    List<Map<String, Object>> resultsByExternalId = searchService.searchSamples("SI-1001");
+    assertEquals("Should match by SampleItem External ID", 1, resultsByExternalId.size());
 
-        List<Map<String, Object>> results = searchService.searchSamples("Freezer");
-
-        assertNotNull("Results should not be null", results);
-        assertTrue("Should return at least one matching sample", results.size() >= 1);
-        
-        // Verify all results contain "Freezer" in location
-        for (Map<String, Object> sample : results) {
-            String location = (String) sample.get("location");
-            assertNotNull("Location should not be null", location);
-            assertTrue("Location should contain 'Freezer' (case-insensitive)", 
-                    location.toLowerCase().contains("freezer"));
-        }
-    }
-
-    @Test
-    public void testSearchSamples_OR_Logic() throws Exception {
-        // Matches if ANY field matches (SampleItem ID, External ID, parent Sample accession, or location path)
-        when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
-
-        // Query "1001" should match by SampleItem ID
-        List<Map<String, Object>> resultsById = searchService.searchSamples("1001");
-        assertEquals("Should match by SampleItem ID", 1, resultsById.size());
-
-        // Query "TB-2025" should match by parent Sample accession number
-        List<Map<String, Object>> resultsByPrefix = searchService.searchSamples("TB-2025");
-        assertEquals("Should match by parent Sample accession number", 1, resultsByPrefix.size());
-
-        // Query "SI-1001" should match by SampleItem External ID
-        List<Map<String, Object>> resultsByExternalId = searchService.searchSamples("SI-1001");
-        assertEquals("Should match by SampleItem External ID", 1, resultsByExternalId.size());
-
-        // Query "Freezer" should match by location path
-        List<Map<String, Object>> resultsByLocation = searchService.searchSamples("Freezer");
-        assertTrue("Should match by location path", resultsByLocation.size() >= 1);
-    }
+    // Query "Freezer" should match by location path
+    List<Map<String, Object>> resultsByLocation = searchService.searchSamples("Freezer");
+    assertTrue("Should match by location path", resultsByLocation.size() >= 1);
+  }
 
     /**
      * T-OGC-72: Test substring matching for accession numbers and external IDs.
@@ -310,120 +316,123 @@ public class StorageSearchServiceImplTest {
         }
     }
 
-    @Test
-    public void testSearchSamples_CaseInsensitive() throws Exception {
-        // Case-insensitive matching
-        when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
+  @Test
+  public void testSearchSamples_CaseInsensitive() throws Exception {
+    // Case-insensitive matching
+    when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
 
-        // Lowercase query should match uppercase location
-        List<Map<String, Object>> results = searchService.searchSamples("freezer");
+    // Lowercase query should match uppercase location
+    List<Map<String, Object>> results = searchService.searchSamples("freezer");
 
-        assertNotNull("Results should not be null", results);
-        assertTrue("Should return at least one matching sample (case-insensitive)", results.size() >= 1);
-    }
+    assertNotNull("Results should not be null", results);
+    assertTrue(
+        "Should return at least one matching sample (case-insensitive)", results.size() >= 1);
+  }
 
-    @Test
-    public void testSearchSamples_EmptyQuery_ReturnsAll() throws Exception {
-        // Empty query returns all
-        when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
+  @Test
+  public void testSearchSamples_EmptyQuery_ReturnsAll() throws Exception {
+    // Empty query returns all
+    when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
 
-        List<Map<String, Object>> results = searchService.searchSamples("");
+    List<Map<String, Object>> results = searchService.searchSamples("");
 
-        assertNotNull("Results should not be null", results);
-        assertEquals("Should return all samples when query is empty", mockSamples.size(), results.size());
-    }
+    assertNotNull("Results should not be null", results);
+    assertEquals(
+        "Should return all samples when query is empty", mockSamples.size(), results.size());
+  }
 
-    @Test
-    public void testSearchSamples_NullQuery_ReturnsAll() throws Exception {
-        // Null query returns all
-        when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
+  @Test
+  public void testSearchSamples_NullQuery_ReturnsAll() throws Exception {
+    // Null query returns all
+    when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
 
-        List<Map<String, Object>> results = searchService.searchSamples(null);
+    List<Map<String, Object>> results = searchService.searchSamples(null);
 
-        assertNotNull("Results should not be null", results);
-        assertEquals("Should return all samples when query is null", mockSamples.size(), results.size());
-    }
+    assertNotNull("Results should not be null", results);
+    assertEquals(
+        "Should return all samples when query is null", mockSamples.size(), results.size());
+  }
 
     // ========== Room Search Service Tests ==========
 
-    @Test
-    public void testSearchRooms_FiltersByNameOrCode() throws Exception {
-        // Matches name OR code
-        when(storageLocationService.getRoomsForAPI()).thenReturn(mockRoomsForAPI);
+  @Test
+  public void testSearchRooms_FiltersByNameOrCode() throws Exception {
+    // Matches name OR code
+    when(storageLocationService.getRoomsForAPI()).thenReturn(mockRoomsForAPI);
 
-        // Search by name
-        List<Map<String, Object>> resultsByName = searchService.searchRooms("Main");
-        assertNotNull("Results should not be null", resultsByName);
-        assertTrue("Should return at least one matching room by name", resultsByName.size() >= 1);
+    // Search by name
+    List<Map<String, Object>> resultsByName = searchService.searchRooms("Main");
+    assertNotNull("Results should not be null", resultsByName);
+    assertTrue("Should return at least one matching room by name", resultsByName.size() >= 1);
 
-        // Search by code
-        List<Map<String, Object>> resultsByCode = searchService.searchRooms("MAIN-LAB");
-        assertNotNull("Results should not be null", resultsByCode);
-        assertTrue("Should return at least one matching room by code", resultsByCode.size() >= 1);
-    }
+    // Search by code
+    List<Map<String, Object>> resultsByCode = searchService.searchRooms("MAIN-LAB");
+    assertNotNull("Results should not be null", resultsByCode);
+    assertTrue("Should return at least one matching room by code", resultsByCode.size() >= 1);
+  }
 
     // ========== Device Search Service Tests ==========
 
-    @Test
-    public void testSearchDevices_FiltersByNameCodeOrType() throws Exception {
-        // Matches name OR code OR type
-        when(storageLocationService.getDevicesForAPI(null)).thenReturn(mockDevicesForAPI);
+  @Test
+  public void testSearchDevices_FiltersByNameCodeOrType() throws Exception {
+    // Matches name OR code OR type
+    when(storageLocationService.getDevicesForAPI(null)).thenReturn(mockDevicesForAPI);
 
-        // Search by name
-        List<Map<String, Object>> resultsByName = searchService.searchDevices("Freezer Unit");
-        assertNotNull("Results should not be null", resultsByName);
-        assertTrue("Should return at least one matching device by name", resultsByName.size() >= 1);
+    // Search by name
+    List<Map<String, Object>> resultsByName = searchService.searchDevices("Freezer Unit");
+    assertNotNull("Results should not be null", resultsByName);
+    assertTrue("Should return at least one matching device by name", resultsByName.size() >= 1);
 
-        // Search by code
-        List<Map<String, Object>> resultsByCode = searchService.searchDevices("FRZ01");
-        assertNotNull("Results should not be null", resultsByCode);
-        assertTrue("Should return at least one matching device by code", resultsByCode.size() >= 1);
+    // Search by code
+    List<Map<String, Object>> resultsByCode = searchService.searchDevices("FRZ01");
+    assertNotNull("Results should not be null", resultsByCode);
+    assertTrue("Should return at least one matching device by code", resultsByCode.size() >= 1);
 
-        // Search by type
-        List<Map<String, Object>> resultsByType = searchService.searchDevices("freezer");
-        assertNotNull("Results should not be null", resultsByType);
-        assertTrue("Should return at least one matching device by type", resultsByType.size() >= 1);
-    }
+    // Search by type
+    List<Map<String, Object>> resultsByType = searchService.searchDevices("freezer");
+    assertNotNull("Results should not be null", resultsByType);
+    assertTrue("Should return at least one matching device by type", resultsByType.size() >= 1);
+  }
 
     // ========== Shelf Search Service Tests ==========
 
-    @Test
-    public void testSearchShelves_FiltersByLabel() throws Exception {
-        // Matches label
-        when(storageLocationService.getShelvesForAPI(null)).thenReturn(mockShelvesForAPI);
+  @Test
+  public void testSearchShelves_FiltersByLabel() throws Exception {
+    // Matches label
+    when(storageLocationService.getShelvesForAPI(null)).thenReturn(mockShelvesForAPI);
 
-        List<Map<String, Object>> results = searchService.searchShelves("Shelf-A");
+    List<Map<String, Object>> results = searchService.searchShelves("Shelf-A");
 
-        assertNotNull("Results should not be null", results);
-        assertTrue("Should return at least one matching shelf", results.size() >= 1);
-        
-        // Verify all results have label containing query
-        for (Map<String, Object> shelf : results) {
-            String label = (String) shelf.get("label");
-            assertNotNull("Label should not be null", label);
-            assertTrue("Label should contain query (case-insensitive)", 
-                    label.toLowerCase().contains("shelf-a"));
-        }
+    assertNotNull("Results should not be null", results);
+    assertTrue("Should return at least one matching shelf", results.size() >= 1);
+
+    // Verify all results have label containing query
+    for (Map<String, Object> shelf : results) {
+      String label = (String) shelf.get("label");
+      assertNotNull("Label should not be null", label);
+      assertTrue(
+          "Label should contain query (case-insensitive)", label.toLowerCase().contains("shelf-a"));
     }
+  }
 
     // ========== Rack Search Service Tests ==========
 
-    @Test
-    public void testSearchRacks_FiltersByLabel() throws Exception {
-        // Matches label
-        when(storageLocationService.getRacksForAPI(null)).thenReturn(mockRacksForAPI);
+  @Test
+  public void testSearchRacks_FiltersByLabel() throws Exception {
+    // Matches label
+    when(storageLocationService.getRacksForAPI(null)).thenReturn(mockRacksForAPI);
 
-        List<Map<String, Object>> results = searchService.searchRacks("Rack R1");
+    List<Map<String, Object>> results = searchService.searchRacks("Rack R1");
 
-        assertNotNull("Results should not be null", results);
-        assertTrue("Should return at least one matching rack", results.size() >= 1);
-        
-        // Verify all results have label containing query
-        for (Map<String, Object> rack : results) {
-            String label = (String) rack.get("label");
-            assertNotNull("Label should not be null", label);
-            assertTrue("Label should contain query (case-insensitive)", 
-                    label.toLowerCase().contains("rack r1"));
-        }
+    assertNotNull("Results should not be null", results);
+    assertTrue("Should return at least one matching rack", results.size() >= 1);
+
+    // Verify all results have label containing query
+    for (Map<String, Object> rack : results) {
+      String label = (String) rack.get("label");
+      assertNotNull("Label should not be null", label);
+      assertTrue(
+          "Label should contain query (case-insensitive)", label.toLowerCase().contains("rack r1"));
     }
+  }
 }

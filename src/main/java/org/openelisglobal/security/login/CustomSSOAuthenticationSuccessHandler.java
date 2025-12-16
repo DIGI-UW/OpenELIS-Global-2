@@ -148,7 +148,6 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
                     getRedirectStrategy().sendRedirect(request, response, "/LoginPage");
                     return;
                 }
-
             }
         }
 

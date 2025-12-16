@@ -25,9 +25,7 @@ import org.openelisglobal.medlab.valueholder.EquipmentUsageLog;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * DAO implementation for EquipmentUsageLog entity operations.
- */
+/** DAO implementation for EquipmentUsageLog entity operations. */
 @Component
 @Transactional
 public class EquipmentUsageLogDAOImpl extends BaseDAOImpl<EquipmentUsageLog, Integer> implements EquipmentUsageLogDAO {

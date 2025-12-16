@@ -259,5 +259,4 @@ public class StorageDashboardRestControllerTest extends BaseWebContextSensitiveT
         // from test data)
         assertTrue("Rooms count should include active test data", roomsCount >= 1);
     }
-
 }

@@ -18,9 +18,7 @@ import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.medlab.valueholder.QualityCheck;
 
-/**
- * DAO interface for QualityCheck entity operations.
- */
+/** DAO interface for QualityCheck entity operations. */
 public interface QualityCheckDAO extends BaseDAO<QualityCheck, Integer> {
 
     /**

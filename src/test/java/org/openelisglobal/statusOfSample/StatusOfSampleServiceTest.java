@@ -66,5 +66,4 @@ public class StatusOfSampleServiceTest extends BaseWebContextSensitiveTest {
         StatusOfSample statusOfSampleData = statusOfSampleService.getDataByStatusTypeAndStatusCode(statusOfSample);
         assertEquals("Status 1", statusOfSampleData.getStatusOfSampleName());
     }
-
 }

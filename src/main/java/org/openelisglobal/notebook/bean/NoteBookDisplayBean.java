@@ -122,5 +122,4 @@ public class NoteBookDisplayBean {
     public void setNotebookName(String notebookName) {
         this.notebookName = notebookName;
     }
-
 }

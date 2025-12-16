@@ -27,7 +27,6 @@ public class DataIndicatorServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/data-indicator.xml");
-
     }
 
     @Test
@@ -40,7 +39,6 @@ public class DataIndicatorServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("2", dataIndicators.get(1).getId());
         assertEquals("3", dataIndicators.get(2).getId());
         assertEquals("4", dataIndicators.get(3).getId());
-
     }
 
     @Test
@@ -58,7 +56,6 @@ public class DataIndicatorServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(dataIndicator);
         assertEquals("1", dataIndicator.getId());
         assertEquals("SENT", dataIndicator.getStatus());
-
     }
 
     @Test
@@ -84,7 +81,6 @@ public class DataIndicatorServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(dataIndicators.size() <= expectedPages);
-
     }
 
     @Test
@@ -170,7 +166,6 @@ public class DataIndicatorServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(dataIndicators.size() <= expectedPages);
-
     }
 
     @Test
@@ -180,7 +175,6 @@ public class DataIndicatorServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(dataIndicators.size() <= expectedPages);
-
     }
 
     @Test

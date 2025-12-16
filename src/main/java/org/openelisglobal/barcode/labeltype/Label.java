@@ -58,7 +58,7 @@ public abstract class Label {
     /**
      * Lazy initialization of barcodeLabelService. Initializes on first use to
      * ensure SpringContext is ready.
-     * 
+     *
      * @return BarcodeLabelInfoService instance
      */
     private BarcodeLabelInfoService getBarcodeLabelService() {

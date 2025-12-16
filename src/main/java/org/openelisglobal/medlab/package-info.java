@@ -8,11 +8,12 @@
  *
  * <p>
  * Key features:
+ *
  * <ul>
- * <li>Quality control at sample reception (sample-type-specific criteria)</li>
- * <li>IATA PI650 transport packaging compliance</li>
- * <li>Levey-Jennings QC charting and Westgard rule validation</li>
- * <li>Equipment usage tracking for accreditation support</li>
+ * <li>Quality control at sample reception (sample-type-specific criteria)
+ * <li>IATA PI650 transport packaging compliance
+ * <li>Levey-Jennings QC charting and Westgard rule validation
+ * <li>Equipment usage tracking for accreditation support
  * </ul>
  *
  * <p>

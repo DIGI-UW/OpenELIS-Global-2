@@ -52,7 +52,7 @@ public class AlertNotificationService {
      * Handle AlertCreatedEvent and send notification.
      *
      * <p>
-     *
+     * 
      * @Async ensures this doesn't block alert creation.
      *
      * @param event AlertCreatedEvent containing the created alert
@@ -97,9 +97,7 @@ public class AlertNotificationService {
         }
     }
 
-    /**
-     * Send email notification for alert.
-     */
+    /** Send email notification for alert. */
     private void sendEmailNotification(String subject, String message, NotificationConfigOption config) {
         try {
             // Get alert notification email from site information
@@ -127,9 +125,7 @@ public class AlertNotificationService {
         }
     }
 
-    /**
-     * Send SMS notification for alert.
-     */
+    /** Send SMS notification for alert. */
     private void sendSMSNotification(String subject, String message, NotificationConfigOption config) {
         try {
             // Get alert notification phone from site information
@@ -165,9 +161,7 @@ public class AlertNotificationService {
         }
     }
 
-    /**
-     * Send notification using appropriate sender.
-     */
+    /** Send notification using appropriate sender. */
     @SuppressWarnings({ "unchecked", "rawtypes" })
     private void sendNotification(RemoteNotification clientNotification) {
         for (ClientNotificationSender notificationSender : notificationSenders) {
@@ -177,17 +171,13 @@ public class AlertNotificationService {
         }
     }
 
-    /**
-     * Check if email is enabled for the system.
-     */
+    /** Check if email is enabled for the system. */
     private boolean emailEnabledForSystem() {
         return ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_RESULTS_SMTP_ENABLED)
                 .equals(Boolean.TRUE.toString());
     }
 
-    /**
-     * Check if SMS is enabled for the system.
-     */
+    /** Check if SMS is enabled for the system. */
     private boolean smsEnabledForSystem() {
         return ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_RESULTS_BMP_SMS_ENABLED)
                 .equals(Boolean.TRUE.toString())
@@ -215,16 +205,12 @@ public class AlertNotificationService {
         }
     }
 
-    /**
-     * Build notification subject from alert.
-     */
+    /** Build notification subject from alert. */
     private String buildNotificationSubject(Alert alert) {
         return String.format("Alert: %s - %s", alert.getSeverity(), alert.getAlertType());
     }
 
-    /**
-     * Build notification message from alert.
-     */
+    /** Build notification message from alert. */
     private String buildNotificationMessage(Alert alert) {
         StringBuilder message = new StringBuilder();
         message.append("Alert Type: ").append(alert.getAlertType()).append("\n");

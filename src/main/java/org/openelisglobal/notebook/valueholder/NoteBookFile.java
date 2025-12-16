@@ -82,5 +82,4 @@ public class NoteBookFile extends BaseObject<Integer> {
     public void setFileName(String fileName) {
         this.fileName = fileName;
     }
-
 }

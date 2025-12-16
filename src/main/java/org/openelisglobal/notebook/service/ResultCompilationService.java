@@ -113,9 +113,7 @@ public interface ResultCompilationService {
      */
     List<DeliveryRecord> getDeliveryHistory(Integer notebookId);
 
-    /**
-     * Validation summary statistics.
-     */
+    /** Validation summary statistics. */
     record ValidationSummary(long total, long valid, long invalid, long inconclusive, long pending) {
         public double validPercentage() {
             return total > 0 ? (valid * 100.0 / total) : 0;
@@ -130,9 +128,7 @@ public interface ResultCompilationService {
         }
     }
 
-    /**
-     * Export options for result compilation.
-     */
+    /** Export options for result compilation. */
     record ExportOptions(boolean includeInvalid, boolean includeInconclusive, boolean includeRawData,
             List<String> columns, String dateFormat, String title) {
 

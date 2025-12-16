@@ -40,7 +40,6 @@ public class TestCodeServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", testCodes.get(0).getCodeTypeId());
         assertEquals("2", testCodes.get(1).getCodeTypeId());
         assertEquals("3", testCodes.get(2).getCodeTypeId());
-
     }
 
     @Test
@@ -203,7 +202,6 @@ public class TestCodeServiceTest extends BaseWebContextSensitiveTest {
         testCodeService.delete(testCode1);
         List<TestCode> deletedTestCode = testCodeService.getAll();
         assertEquals(2, deletedTestCode.size());
-
     }
 
     @Test
@@ -222,5 +220,4 @@ public class TestCodeServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, testCodes.size());
         assertEquals(testCodeId.getCodeTypeId(), testCodes.get(0).getCodeTypeId());
     }
-
 }

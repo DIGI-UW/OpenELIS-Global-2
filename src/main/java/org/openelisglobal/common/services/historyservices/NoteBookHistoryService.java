@@ -145,9 +145,7 @@ public class NoteBookHistoryService extends AbstractHistoryService {
         // Ignore all other field changes
     }
 
-    /**
-     * Maps NoteBook status to action message code for audit trail display
-     */
+    /** Maps NoteBook status to action message code for audit trail display */
     private String mapStatusToActionCode(String status) {
         if (status == null) {
             return "notebook.auditTrail.action.updated";

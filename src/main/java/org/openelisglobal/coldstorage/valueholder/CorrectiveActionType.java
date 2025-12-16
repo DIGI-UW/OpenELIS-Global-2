@@ -1,38 +1,24 @@
 package org.openelisglobal.coldstorage.valueholder;
 
 public enum CorrectiveActionType {
-    /**
-     * Adjusting temperature settings
-     */
+    /** Adjusting temperature settings */
     TEMPERATURE_ADJUSTMENT,
 
-    /**
-     * Repairing or replacing equipment
-     */
+    /** Repairing or replacing equipment */
     EQUIPMENT_REPAIR,
 
-    /**
-     * Moving samples to another location
-     */
+    /** Moving samples to another location */
     SAMPLE_RELOCATION,
 
-    /**
-     * Calibrating equipment or sensors
-     */
+    /** Calibrating equipment or sensors */
     CALIBRATION,
 
-    /**
-     * Reordering inventory items
-     */
+    /** Reordering inventory items */
     ITEM_REORDER,
 
-    /**
-     * Performing maintenance tasks
-     */
+    /** Performing maintenance tasks */
     MAINTENANCE,
 
-    /**
-     * Other or custom corrective actions
-     */
+    /** Other or custom corrective actions */
     OTHER
 }

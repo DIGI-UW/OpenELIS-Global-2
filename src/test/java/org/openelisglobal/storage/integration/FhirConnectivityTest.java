@@ -29,9 +29,7 @@ public class FhirConnectivityTest {
         fhirClient = fhirContext.newRestfulGenericClient("http://localhost:8081/fhir/");
     }
 
-    /**
-     * Check if FHIR server is available. Returns true if server is reachable.
-     */
+    /** Check if FHIR server is available. Returns true if server is reachable. */
     private boolean isFhirServerAvailable() {
         try {
             fhirClient.capabilities().ofType(CapabilityStatement.class).execute();

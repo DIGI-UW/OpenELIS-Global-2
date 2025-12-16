@@ -8,9 +8,7 @@ import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookEntry.EntryStatus;
 import org.springframework.stereotype.Repository;
 
-/**
- * DAO implementation for NotebookEntry.
- */
+/** DAO implementation for NotebookEntry. */
 @Repository
 public class NotebookEntryDAOImpl extends BaseDAOImpl<NotebookEntry, Integer> implements NotebookEntryDAO {
 

@@ -82,7 +82,6 @@ public class SampleOrganizationServiceTest extends BaseWebContextSensitiveTest {
         sampleOrganizationService.delete(savedSampleOrganization);
 
         Assert.assertEquals(2, sampleOrganizationService.getAll().size());
-
     }
 
     @Test

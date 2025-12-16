@@ -219,5 +219,4 @@ public class SampleQaEventActionServiceTest extends BaseWebContextSensitiveTest 
         assertNotNull(delectedSampleQaEventActions);
         assertEquals(0, delectedSampleQaEventActions.size());
     }
-
 }

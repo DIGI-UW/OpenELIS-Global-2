@@ -10,7 +10,7 @@ public interface CodeValidationService {
      * Validate code format Rules: - Max 10 characters - Alphanumeric, hyphen,
      * underscore only - Must start with letter or number (not hyphen/underscore) -
      * Auto-converts to uppercase
-     * 
+     *
      * @param code The code to validate
      * @return Validation result with normalized code and error message
      */
@@ -18,7 +18,7 @@ public interface CodeValidationService {
 
     /**
      * Validate code length
-     * 
+     *
      * @param code The code to validate
      * @return Validation result
      */
@@ -28,7 +28,7 @@ public interface CodeValidationService {
      * Validate code uniqueness within context Checks if code already exists for a
      * different location Room: globally unique; Device/Shelf/Rack: unique within
      * parent
-     * 
+     *
      * @param code       The code to validate
      * @param context    The context type: "room", "device", "shelf", or "rack"
      * @param locationId The ID of the location being validated (for updates, allows
@@ -41,7 +41,7 @@ public interface CodeValidationService {
 
     /**
      * Auto-uppercase code
-     * 
+     *
      * @param code The code to uppercase
      * @return Uppercased code
      */

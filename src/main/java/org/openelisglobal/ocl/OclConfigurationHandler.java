@@ -40,6 +40,7 @@ import org.springframework.stereotype.Component;
  * Handler for loading OCL (Open Concept Lab) configuration files. Supports ZIP
  * format containing OCL concept collections.
  *
+ * <p>
  * OCL ZIP files are expected to contain JSON files with OCL concept
  * definitions. The handler processes these concepts and creates corresponding
  * tests, panels, and dictionaries in OpenELIS.
@@ -211,7 +212,6 @@ public class OclConfigurationHandler implements DomainConfigurationHandler {
                     LogEvent.logDebug(e);
                 }
             }
-
         }
     }
 

@@ -211,5 +211,4 @@ public class GenderServiceTest extends BaseWebContextSensitiveTest {
         Gender female = genderService.getGenderByType("F");
         assertEquals("gender.female", female.getNameKey());
     }
-
 }

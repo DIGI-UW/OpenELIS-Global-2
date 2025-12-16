@@ -71,7 +71,6 @@ public class ProviderRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals("James", personInfo.get("firstName"));
         assertEquals("Mark", personInfo.get("middleName"));
         assertEquals("Orion", personInfo.get("city"));
-
     }
 
     @Test
@@ -101,7 +100,5 @@ public class ProviderRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals(PERSON1_FIRSTNAME, personMap.get("firstName"));
         assertEquals(PERSON1_LASTNAME, personMap.get("lastName"));
         assertEquals(PERSON1_MIDDLENAME, personMap.get("middleName"));
-
     }
-
 }

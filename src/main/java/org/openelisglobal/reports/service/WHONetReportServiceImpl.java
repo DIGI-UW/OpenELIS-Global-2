@@ -141,15 +141,12 @@ public class WHONetReportServiceImpl implements WHONetReportService {
                                     }
                                 }
                             }
-
                         }
                     }
                 }
             }
-
         }
 
         return rows;
     }
-
 }

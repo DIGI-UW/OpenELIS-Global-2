@@ -83,7 +83,6 @@ public class ResultSelectListServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, selectedDictionaries.size());
         assertEquals("Dictionary Entry 1", selectedDictionaries.get(0).getDictEntry());
         assertEquals("Dictionary Entry 2", selectedDictionaries.get(1).getDictEntry());
-
     }
 
     @Test

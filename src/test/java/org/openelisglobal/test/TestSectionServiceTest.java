@@ -61,7 +61,6 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue(("page.defaultPageSize")));
         assertTrue(testSections.size() <= expectedPages);
-
     }
 
     @Test
@@ -83,7 +82,6 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
         TestSection testSection1 = testSectionService.getTestSectionById("1");
         assertEquals("TB", testSection1.getTestSectionName());
         assertEquals("SectionDescription1", testSection1.getDescription());
-
     }
 
     @Test
@@ -92,7 +90,6 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
         testSections.forEach(testSection -> {
             assertEquals("Y", testSection.getIsActive());
         });
-
     }
 
     @Test
@@ -101,7 +98,6 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
         testSections.forEach(testSection -> {
             assertEquals("N", testSection.getIsActive());
         });
-
     }
 
     @Test
@@ -118,5 +114,4 @@ public class TestSectionServiceTest extends BaseWebContextSensitiveTest {
         String localizedName = testSectionService.getUserLocalizedTesSectionName(testSection1);
         assertEquals("", localizedName);
     }
-
 }

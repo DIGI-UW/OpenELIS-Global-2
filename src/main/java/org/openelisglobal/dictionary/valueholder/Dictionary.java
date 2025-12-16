@@ -162,5 +162,4 @@ public class Dictionary extends BaseObject<String> {
     public void setLoincCode(String loincCode) {
         this.loincCode = loincCode;
     }
-
 }

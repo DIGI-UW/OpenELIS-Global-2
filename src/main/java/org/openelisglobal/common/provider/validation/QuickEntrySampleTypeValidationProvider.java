@@ -38,11 +38,13 @@ public class QuickEntrySampleTypeValidationProvider extends BaseValidationProvid
     public QuickEntrySampleTypeValidationProvider() {
         super();
     }
+
     // ==============================================================
 
     public QuickEntrySampleTypeValidationProvider(AjaxServlet ajaxServlet) {
         this.ajaxServlet = ajaxServlet;
     }
+
     // ==============================================================
 
     @Override
@@ -53,6 +55,7 @@ public class QuickEntrySampleTypeValidationProvider extends BaseValidationProvid
         String result = validate(targetId);
         ajaxServlet.sendData(Encode.forXmlContent(formField), Encode.forXmlContent(result), request, response);
     }
+
     // ==============================================================
 
     // modified for efficiency bugzilla 1367

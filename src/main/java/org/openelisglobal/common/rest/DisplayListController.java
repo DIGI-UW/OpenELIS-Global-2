@@ -124,6 +124,7 @@ public class DisplayListController extends BaseRestController {
 
     @Autowired(required = false)
     private ClientRegistrationRepository clientRegistrationRepository;
+
     private static String authorizationRequestBaseUri = "oauth2/authorization";
     Map<String, String> oauth2AuthenticationUrls = new HashMap<>();
 
@@ -151,7 +152,7 @@ public class DisplayListController extends BaseRestController {
     @ResponseBody
     public List<IdValuePair> getProjects() {
         List<Project> projectList = projectService.getAllProjects(); // Assuming a method in ProjectService to fetch all
-                                                                     // projects
+        // projects
         List<IdValuePair> projects = new ArrayList<>();
 
         // Convert Project objects to IdValuePair and add to the list
@@ -635,7 +636,6 @@ public class DisplayListController extends BaseRestController {
             });
         }
         return testItems;
-
     }
 
     @GetMapping(value = "systemroles", produces = MediaType.APPLICATION_JSON_VALUE)

@@ -22,9 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/**
- * Controller integration tests for Storage Location CRUD endpoints.
- */
+/** Controller integration tests for Storage Location CRUD endpoints. */
 @RunWith(SpringRunner.class)
 public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
 
@@ -110,48 +108,63 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                 .andExpect(jsonPath("$.communicationProtocol").value("BACnet"));
     }
 
-    @Test
-    public void testDeleteRoom_AsNonAdminUser_Returns403() throws Exception {
-        when(userRoleServiceMock.userInRole(anyString(), anyString())).thenReturn(false);
+  @Test
+  public void testDeleteRoom_AsNonAdminUser_Returns403() throws Exception {
+    when(userRoleServiceMock.userInRole(anyString(), anyString())).thenReturn(false);
 
-        this.mockMvc.perform(delete("/rest/storage/rooms/20006").contentType(MediaType.APPLICATION_JSON)
-                        .sessionAttr("userSessionData", usd))
-                .andExpect(status().isForbidden());
-    }
+    this.mockMvc
+        .perform(
+            delete("/rest/storage/rooms/20006")
+                .contentType(MediaType.APPLICATION_JSON)
+                .sessionAttr("userSessionData", usd))
+        .andExpect(status().isForbidden());
+  }
 
-    @Test
-    public void testDeleteRoom_AsAdminUser_Returns204() throws Exception {
-        when(userRoleServiceMock.userInRole(anyString(), anyString())).thenReturn(true);
+  @Test
+  public void testDeleteRoom_AsAdminUser_Returns204() throws Exception {
+    when(userRoleServiceMock.userInRole(anyString(), anyString())).thenReturn(true);
 
-        this.mockMvc.perform(delete("/rest/storage/rooms/20007").contentType(MediaType.APPLICATION_JSON)
-                        .sessionAttr("userSessionData", usd))
-                .andExpect(status().isNoContent());
-    }
+    this.mockMvc
+        .perform(
+            delete("/rest/storage/rooms/20007")
+                .contentType(MediaType.APPLICATION_JSON)
+                .sessionAttr("userSessionData", usd))
+        .andExpect(status().isNoContent());
+  }
 
-    @Test
-    public void testDeleteDevice_AsNonAdminUser_Returns403() throws Exception {
-        when(userRoleServiceMock.userInRole(anyString(), anyString())).thenReturn(false);
+  @Test
+  public void testDeleteDevice_AsNonAdminUser_Returns403() throws Exception {
+    when(userRoleServiceMock.userInRole(anyString(), anyString())).thenReturn(false);
 
-        this.mockMvc.perform(delete("/rest/storage/devices/20009").contentType(MediaType.APPLICATION_JSON)
-                        .sessionAttr("userSessionData", usd))
-                .andExpect(status().isForbidden());
-    }
+    this.mockMvc
+        .perform(
+            delete("/rest/storage/devices/20009")
+                .contentType(MediaType.APPLICATION_JSON)
+                .sessionAttr("userSessionData", usd))
+        .andExpect(status().isForbidden());
+  }
 
-    @Test
-    public void testDeleteShelf_AsNonAdminUser_Returns403() throws Exception {
-        when(userRoleServiceMock.userInRole(anyString(), anyString())).thenReturn(false);
+  @Test
+  public void testDeleteShelf_AsNonAdminUser_Returns403() throws Exception {
+    when(userRoleServiceMock.userInRole(anyString(), anyString())).thenReturn(false);
 
-        this.mockMvc.perform(delete("/rest/storage/shelves/20012").contentType(MediaType.APPLICATION_JSON)
-                        .sessionAttr("userSessionData", usd))
-                .andExpect(status().isForbidden());
-    }
+    this.mockMvc
+        .perform(
+            delete("/rest/storage/shelves/20012")
+                .contentType(MediaType.APPLICATION_JSON)
+                .sessionAttr("userSessionData", usd))
+        .andExpect(status().isForbidden());
+  }
 
-    @Test
-    public void testDeleteRack_AsNonAdminUser_Returns403() throws Exception {
-        when(userRoleServiceMock.userInRole(anyString(), anyString())).thenReturn(false);
+  @Test
+  public void testDeleteRack_AsNonAdminUser_Returns403() throws Exception {
+    when(userRoleServiceMock.userInRole(anyString(), anyString())).thenReturn(false);
 
-        this.mockMvc.perform(delete("/rest/storage/racks/20016").contentType(MediaType.APPLICATION_JSON)
-                        .sessionAttr("userSessionData", usd))
-                .andExpect(status().isForbidden());
-    }
+    this.mockMvc
+        .perform(
+            delete("/rest/storage/racks/20016")
+                .contentType(MediaType.APPLICATION_JSON)
+                .sessionAttr("userSessionData", usd))
+        .andExpect(status().isForbidden());
+  }
 }

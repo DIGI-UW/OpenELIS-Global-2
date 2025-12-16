@@ -3,9 +3,7 @@ package org.openelisglobal.storage.form;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/**
- * Form object for StorageShelf entity
- */
+/** Form object for StorageShelf entity */
 public class StorageShelfForm {
 
     private String id;

@@ -99,29 +99,29 @@ public class NotebookBulkOperationServiceTest {
         assertEquals("Should update all 120 samples", 120, updatedCount);
     }
 
-    /**
-     * Test that bulk status update changes status for all selected samples.
-     * Verifies FR-031 and status transitions.
-     */
-    @Test
-    public void testBulkUpdateStatus_changesStatusForAllSamples() {
-        // Arrange
-        when(notebookPageSampleService.bulkUpdateStatus(eq(testPageId), eq(testSampleIds), eq(Status.COMPLETED),
-                eq(testUserId)))
-                .thenReturn(10);
+  /**
+   * Test that bulk status update changes status for all selected samples. Verifies FR-031 and
+   * status transitions.
+   */
+  @Test
+  public void testBulkUpdateStatus_changesStatusForAllSamples() {
+    // Arrange
+    when(notebookPageSampleService.bulkUpdateStatus(
+            eq(testPageId), eq(testSampleIds), eq(Status.COMPLETED), eq(testUserId)))
+        .thenReturn(10);
 
-        // Act
-        int updatedCount = bulkOperationService.bulkUpdateStatus(testPageId, testSampleIds, Status.COMPLETED,
-                testUserId);
+    // Act
+    int updatedCount =
+        bulkOperationService.bulkUpdateStatus(
+            testPageId, testSampleIds, Status.COMPLETED, testUserId);
 
-        // Assert
-        assertEquals("Should update all 10 samples", 10, updatedCount);
-        verify(notebookPageSampleService).bulkUpdateStatus(testPageId, testSampleIds, Status.COMPLETED, testUserId);
-    }
+    // Assert
+    assertEquals("Should update all 10 samples", 10, updatedCount);
+    verify(notebookPageSampleService)
+        .bulkUpdateStatus(testPageId, testSampleIds, Status.COMPLETED, testUserId);
+  }
 
-    /**
-     * Test that empty sample list returns 0 updates.
-     */
+    /** Test that empty sample list returns 0 updates. */
     @Test
     public void testBulkApplyValues_emptyList_returnsZero() {
         // Act
@@ -131,9 +131,7 @@ public class NotebookBulkOperationServiceTest {
         assertEquals("Should return 0 for empty list", 0, updatedCount);
     }
 
-    /**
-     * Test that null sample list returns 0 updates.
-     */
+    /** Test that null sample list returns 0 updates. */
     @Test
     public void testBulkApplyValues_nullList_returnsZero() {
         // Act
@@ -143,9 +141,7 @@ public class NotebookBulkOperationServiceTest {
         assertEquals("Should return 0 for null list", 0, updatedCount);
     }
 
-    /**
-     * Test bulk apply with null data map returns 0 updates.
-     */
+    /** Test bulk apply with null data map returns 0 updates. */
     @Test
     public void testBulkApplyValues_nullData_returnsZero() {
         // Act
@@ -176,9 +172,7 @@ public class NotebookBulkOperationServiceTest {
         assertEquals("Percentage should be 50%", 50.0, progress.percentage(), 0.01);
     }
 
-    /**
-     * Test that JSONB data field is properly merged during bulk apply.
-     */
+    /** Test that JSONB data field is properly merged during bulk apply. */
     @Test
     public void testBulkApplyValues_mergesExistingData() {
         // Arrange - sample with existing data

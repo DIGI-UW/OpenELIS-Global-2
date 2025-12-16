@@ -82,7 +82,6 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, results.size());
         assertEquals("3", results.get(0).getId());
         assertEquals("4", results.get(1).getId());
-
     }
 
     @Test
@@ -92,7 +91,6 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(result);
         assertEquals("3", result.getId());
         assertEquals("85.0", result.getValue());
-
     }
 
     @Test
@@ -222,7 +220,6 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         Result result = resultService.getResultForAnalyteAndSampleItem(analyte, sampleItem);
         assertNotNull(result);
         assertEquals("3", result.getId());
-
     }
 
     @Test
@@ -269,7 +266,6 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(results.size() <= expectedPages);
-
     }
 
     @Test
@@ -424,7 +420,6 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(results);
         assertTrue(results.size() <= expectedPageSize);
-
     }
 
     @Test
@@ -444,7 +439,6 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(results);
         assertTrue(results.size() <= expectedPageSize);
-
     }
 
     @Test
@@ -522,7 +516,6 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         resultService.deleteAll(results1);
         List<Result> results2 = resultService.getAll();
         assertEquals(0, results2.size());
-
     }
 
     @Test
@@ -552,7 +545,6 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void getCount_shouldReturnCountOfResults() {
         int count = resultService.getCount();
         assertEquals(2, count);
-
     }
 
     @Test
@@ -571,7 +563,6 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(result1);
         assertEquals(1, results2.size());
         assertEquals("90.0", results2.get(0).getValue());
-
     }
 
     @Test
@@ -591,7 +582,6 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, results2.size());
         assertEquals(result1, results2.get(0).getId());
         assertEquals("90.0", results2.get(0).getValue());
-
     }
 
     @Test

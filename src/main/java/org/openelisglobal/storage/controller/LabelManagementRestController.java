@@ -161,9 +161,7 @@ public class LabelManagementRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Helper method to get location by type and ID
-     */
+    /** Helper method to get location by type and ID */
     private Object getLocationById(String type, String id) {
         try {
             Integer locationId = Integer.parseInt(id);
@@ -183,9 +181,7 @@ public class LabelManagementRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Helper method to get code from location
-     */
+    /** Helper method to get code from location */
     private String getLocationCode(Object location) {
         if (location instanceof StorageDevice) {
             return ((StorageDevice) location).getCode();

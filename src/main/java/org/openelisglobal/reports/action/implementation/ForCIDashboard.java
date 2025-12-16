@@ -43,6 +43,7 @@ public class ForCIDashboard extends CSVSampleExportReport implements IReportPara
     private Project project;
     private String indicStr;
     protected final SimpleDateFormat postgresDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
     // private String indicLabel;
 
     @Override

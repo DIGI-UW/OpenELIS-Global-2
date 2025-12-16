@@ -102,7 +102,7 @@ public class SampleProjectServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getSampleProjectBySampleId_shouldReturnNullIfNotFound() {
         SampleProject sampleProject = sampleProjectService.getSampleProjectBySampleId("999"); // Assuming "999" does not
-                                                                                              // exist.
+        // exist.
         assertNull(sampleProject);
     }
 
@@ -151,5 +151,4 @@ public class SampleProjectServiceTest extends BaseWebContextSensitiveTest {
         SampleProject deletedProject = sampleProjectService.getSampleProjectBySampleId("1");
         assertNull(deletedProject);
     }
-
 }

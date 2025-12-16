@@ -34,12 +34,13 @@ import org.openelisglobal.common.valueholder.BaseObject;
  *
  * <p>
  * Supports sample-type-specific QC criteria including:
+ *
  * <ul>
- * <li>Chemistry: hemolysis, lipemia, icterus, volume, delay</li>
- * <li>Hematology: clotting, anticoagulant type, delay</li>
- * <li>Stool: delay (&gt;30 min), container, contamination</li>
- * <li>Urine: delay, leakage, container</li>
- * <li>Microbiology: delay, contamination, container</li>
+ * <li>Chemistry: hemolysis, lipemia, icterus, volume, delay
+ * <li>Hematology: clotting, anticoagulant type, delay
+ * <li>Stool: delay (&gt;30 min), container, contamination
+ * <li>Urine: delay, leakage, container
+ * <li>Microbiology: delay, contamination, container
  * </ul>
  */
 @Entity

@@ -28,6 +28,7 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -93,17 +94,17 @@ public class ManifestImportServiceTest {
         testNotebook.setPages(pages);
 
         NotebookEntry entry = new NotebookEntry();
+        entry.setNotebook(testNotebook);
         when(notebookEntryService.getMatch(eq("id"), any())).thenReturn(Optional.of(entry));
         when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("20");
+        when(sampleService.insert(any(Sample.class))).thenReturn("1");
     }
 
     // =====================================================================
     // CSV Parsing Tests
     // =====================================================================
 
-    /**
-     * Test: Parse valid CSV with standard columns
-     */
+    /** Test: Parse valid CSV with standard columns */
     @Test
     public void testParseManifestCsv_ValidCsv_ReturnsRows() {
         String csv = "group_id,sample_type,collection_date,volume,num_of_samples,notes\n"
@@ -130,9 +131,7 @@ public class ManifestImportServiceTest {
         assertEquals(15, row2.numOfSamples());
     }
 
-    /**
-     * Test: Parse CSV with different column order
-     */
+    /** Test: Parse CSV with different column order */
     @Test
     public void testParseManifestCsv_DifferentColumnOrder_MapsCorrectly() {
         String csv = "notes,num_of_samples,volume,collection_date,sample_type,group_id\n"
@@ -150,9 +149,7 @@ public class ManifestImportServiceTest {
         assertEquals("Test notes", row.notes());
     }
 
-    /**
-     * Test: Parse CSV with missing optional columns
-     */
+    /** Test: Parse CSV with missing optional columns */
     @Test
     public void testParseManifestCsv_MissingOptionalColumns_SetsDefaults() {
         String csv = "group_id,sample_type,num_of_samples\n" + "GRP-001,Whole Blood,5\n";
@@ -169,9 +166,7 @@ public class ManifestImportServiceTest {
         assertNull(row.notes());
     }
 
-    /**
-     * Test: Parse CSV with invalid num_of_samples
-     */
+    /** Test: Parse CSV with invalid num_of_samples */
     @Test
     public void testParseManifestCsv_InvalidNumOfSamples_ReturnsError() {
         String csv = "group_id,sample_type,num_of_samples\n" + "GRP-001,Whole Blood,invalid\n";
@@ -188,9 +183,7 @@ public class ManifestImportServiceTest {
         assertTrue(error.message().contains("Invalid"));
     }
 
-    /**
-     * Test: Parse CSV with missing required group_id
-     */
+    /** Test: Parse CSV with missing required group_id */
     @Test
     public void testParseManifestCsv_MissingGroupId_ReturnsError() {
         String csv = "group_id,sample_type,num_of_samples\n" + ",Whole Blood,10\n";
@@ -206,9 +199,7 @@ public class ManifestImportServiceTest {
         assertTrue(error.message().toLowerCase().contains("required"));
     }
 
-    /**
-     * Test: Parse empty CSV
-     */
+    /** Test: Parse empty CSV */
     @Test
     public void testParseManifestCsv_EmptyCsv_ReturnsEmptyList() {
         String csv = "group_id,sample_type,num_of_samples\n";
@@ -226,9 +217,7 @@ public class ManifestImportServiceTest {
     // Sample Type Validation Tests
     // =====================================================================
 
-    /**
-     * Test: Valid sample types pass validation
-     */
+    /** Test: Valid sample types pass validation */
     @Test
     public void testValidateSampleTypes_ValidTypes_NoErrors() {
         List<ManifestRow> rows = Arrays.asList(
@@ -256,9 +245,7 @@ public class ManifestImportServiceTest {
         assertEquals(0, errors.size());
     }
 
-    /**
-     * Test: Invalid sample type returns error
-     */
+    /** Test: Invalid sample type returns error */
     @Test
     public void testValidateSampleTypes_InvalidType_ReturnsError() {
         List<ManifestRow> rows = Arrays
@@ -280,9 +267,7 @@ public class ManifestImportServiceTest {
     // External ID Generation Tests
     // =====================================================================
 
-    /**
-     * Test: Generate external ID with standard format
-     */
+    /** Test: Generate external ID with standard format */
     @Test
     public void testGenerateExternalId_StandardFormat() {
         String id1 = manifestImportService.generateExternalId("GRP-001", 1);
@@ -294,9 +279,7 @@ public class ManifestImportServiceTest {
         assertEquals("GRP-001-100", id3);
     }
 
-    /**
-     * Test: Generate external ID handles special characters in group ID
-     */
+    /** Test: Generate external ID handles special characters in group ID */
     @Test
     public void testGenerateExternalId_SpecialCharacters() {
         String id = manifestImportService.generateExternalId("BATCH_2024/A", 5);
@@ -350,7 +333,7 @@ public class ManifestImportServiceTest {
             return String.valueOf(Math.abs(item.getExternalId().hashCode()));
         });
 
-        ManifestImportResult result = manifestImportService.createSamplesForEntry(100, manifest, "testUser");
+        ManifestImportResult result = manifestImportService.createSamplesForEntry(100, manifest, null, "testUser");
 
         // 10 + 15 + 20 + 5 = 50 total samples
         assertEquals(50, result.totalRequested());
@@ -359,9 +342,7 @@ public class ManifestImportServiceTest {
         verify(sampleItemService, times(50)).insert(any(SampleItem.class));
     }
 
-    /**
-     * Test: Created samples have correct external_id pattern
-     */
+    /** Test: Created samples have correct external_id pattern */
     @Test
     public void testCreateSamplesFromManifest_CorrectExternalIdPattern() {
         List<ManifestRow> rows = Arrays
@@ -382,7 +363,7 @@ public class ManifestImportServiceTest {
             return "1000";
         });
 
-        manifestImportService.createSamplesForEntry(100, manifest, "testUser");
+        manifestImportService.createSamplesForEntry(100, manifest, null, "testUser");
 
         assertEquals(3, capturedItems.size());
         assertEquals("GRP-001-001", capturedItems.get(0).getExternalId());
@@ -390,9 +371,7 @@ public class ManifestImportServiceTest {
         assertEquals("GRP-001-003", capturedItems.get(2).getExternalId());
     }
 
-    /**
-     * Test: Samples are linked to notebook after creation
-     */
+    /** Test: Samples are linked to notebook after creation */
     @Test
     public void testCreateSamplesFromManifest_LinksSamplesToNotebook() {
         List<ManifestRow> rows = Arrays
@@ -407,15 +386,13 @@ public class ManifestImportServiceTest {
         when(typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(any(), eq(true))).thenReturn(wholeBlood);
         when(sampleItemService.insert(any(SampleItem.class))).thenReturn("1000");
 
-        manifestImportService.createSamplesForEntry(100, manifest, "testUser");
+        manifestImportService.createSamplesForEntry(100, manifest, null, "testUser");
 
         // Verify samples are linked to notebook
         verify(notebookSampleEntryService).linkSamplesToNotebook(eq(100), anyList());
     }
 
-    /**
-     * Test: Create samples to non-existent notebook returns error
-     */
+    /** Test: Create samples to non-existent notebook returns error */
     @Test
     public void testCreateSamplesFromManifest_NonExistentNotebook_ReturnsError() {
         List<ManifestRow> rows = Arrays
@@ -425,16 +402,14 @@ public class ManifestImportServiceTest {
         when(noteBookService.get(999)).thenReturn(null);
         when(notebookEntryService.getMatch("id", 999)).thenReturn(Optional.empty());
 
-        ManifestImportResult result = manifestImportService.createSamplesForEntry(999, manifest, "testUser");
+        ManifestImportResult result = manifestImportService.createSamplesForEntry(999, manifest, null, "testUser");
 
         assertEquals(0, result.totalCreated());
         assertEquals(1, result.errors().size());
         assertTrue(result.errors().get(0).message().toLowerCase().contains("notebook"));
     }
 
-    /**
-     * Test: Row with num_of_samples = 0 is skipped
-     */
+    /** Test: Row with num_of_samples = 0 is skipped */
     @Test
     public void testCreateSamplesFromManifest_ZeroSamples_Skipped() {
         List<ManifestRow> rows = Arrays.asList(new ManifestRow(2, "GRP-001", "Whole Blood", "2024-01-15", "5.0", 0, ""),
@@ -458,7 +433,7 @@ public class ManifestImportServiceTest {
                 .thenReturn(serum);
         when(sampleItemService.insert(any(SampleItem.class))).thenReturn("1000");
 
-        ManifestImportResult result = manifestImportService.createSamplesForEntry(100, manifest, "testUser");
+        ManifestImportResult result = manifestImportService.createSamplesForEntry(100, manifest, null, "testUser");
 
         // Only 5 samples from second row, first row skipped
         assertEquals(5, result.totalRequested());

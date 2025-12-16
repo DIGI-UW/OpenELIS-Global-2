@@ -19,7 +19,6 @@ public class OrganizationHl7SchemaServiceTest extends BaseWebContextSensitiveTes
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/organization-hl7-schema.xml");
-
     }
 
     @Test
@@ -30,7 +29,5 @@ public class OrganizationHl7SchemaServiceTest extends BaseWebContextSensitiveTes
         assertEquals("3", schemas.get(0).getCompoundId().getOrganizationId());
         assertEquals("4", schemas.get(1).getCompoundId().getOrganizationId());
         assertEquals("5", schemas.get(2).getCompoundId().getOrganizationId());
-
     }
-
 }

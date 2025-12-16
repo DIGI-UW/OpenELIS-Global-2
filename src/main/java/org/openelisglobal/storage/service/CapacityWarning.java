@@ -1,8 +1,6 @@
 package org.openelisglobal.storage.service;
 
-/**
- * Value object for rack capacity warnings
- */
+/** Value object for rack capacity warnings */
 public class CapacityWarning {
     private final int occupied;
     private final int totalCapacity;

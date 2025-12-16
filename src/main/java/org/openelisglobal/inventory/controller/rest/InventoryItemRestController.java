@@ -214,7 +214,5 @@ public class InventoryItemRestController extends BaseRestController {
             this.quantity = quantity;
             this.inStock = inStock;
         }
-
     }
-
 }

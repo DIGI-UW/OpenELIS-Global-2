@@ -23,9 +23,7 @@ import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
 
-/**
- * Unit tests for StorageLocationService deletion validation.
- */
+/** Unit tests for StorageLocationService deletion validation. */
 @RunWith(MockitoJUnitRunner.class)
 public class StorageLocationServiceTest {
 
@@ -283,14 +281,14 @@ public class StorageLocationServiceTest {
         assertFalse("Duplicate rack labels within a shelf should not be allowed", unique);
     }
 
-    @Test
-    public void testIsNameUniqueWithinParent_RoomUnique_WhenDaoReturnsNull() {
-        when(storageRoomDAO.findByName("New Lab")).thenReturn(null);
+  @Test
+  public void testIsNameUniqueWithinParent_RoomUnique_WhenDaoReturnsNull() {
+    when(storageRoomDAO.findByName("New Lab")).thenReturn(null);
 
-        boolean unique = storageLocationService.isNameUniqueWithinParent("New Lab", null, "room", null);
+    boolean unique = storageLocationService.isNameUniqueWithinParent("New Lab", null, "room", null);
 
-        assertTrue("Room names should be unique when DAO returns null", unique);
-    }
+    assertTrue("Room names should be unique when DAO returns null", unique);
+  }
 
     @Test
     public void testIsNameUniqueWithinParent_DeviceUnique_WhenExcludeIdMatchesExisting() {

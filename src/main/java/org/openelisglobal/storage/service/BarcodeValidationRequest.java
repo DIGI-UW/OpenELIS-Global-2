@@ -1,8 +1,6 @@
 package org.openelisglobal.storage.service;
 
-/**
- * Request object for barcode validation
- */
+/** Request object for barcode validation */
 public class BarcodeValidationRequest {
 
     private String barcode;

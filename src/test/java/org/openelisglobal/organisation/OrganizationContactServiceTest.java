@@ -33,7 +33,5 @@ public class OrganizationContactServiceTest extends BaseWebContextSensitiveTest 
         assertEquals(2, organizationContacts.size());
         assertEquals("Manager", organizationContacts.get(0).getPosition());
         assertEquals("Coordinator", organizationContacts.get(1).getPosition());
-
     }
-
 }

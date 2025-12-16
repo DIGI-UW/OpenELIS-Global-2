@@ -155,7 +155,6 @@ public class OrganizationServiceTest extends BaseWebContextSensitiveTest {
         List<Organization> organizationList = organisationService.getOrganizationsByTypeName(orderByProperty,
                 referralOrgType);
         assertTrue(organizationList.size() > 0);
-
     }
 
     @Test
@@ -200,7 +199,6 @@ public class OrganizationServiceTest extends BaseWebContextSensitiveTest {
         String organizationId = "3";
         List<String> typeIds = organisationService.getTypeIdsForOrganizationId(organizationId);
         assertTrue(typeIds.size() > 0);
-
     }
 
     @Test
@@ -208,5 +206,4 @@ public class OrganizationServiceTest extends BaseWebContextSensitiveTest {
         List<Organization> organizationList = organisationService.getOrganizationsByParentId("3");
         assertTrue(organizationList.size() > 0);
     }
-
 }

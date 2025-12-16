@@ -3,6 +3,7 @@ package org.openelisglobal.storage.service;
 /**
  * Result object for location deletion validation.
  *
+ * <p>
  * Represents the outcome of validating whether a storage location can be
  * deleted. Includes error information if deletion is blocked by referential
  * integrity constraints.
@@ -16,7 +17,7 @@ public class DeletionValidationResult {
 
     /**
      * Create a validation result
-     * 
+     *
      * @param success        true if location can be deleted, false otherwise
      * @param errorCode      Error code if deletion blocked (e.g.,
      *                       "REFERENTIAL_INTEGRITY_VIOLATION",
@@ -33,16 +34,14 @@ public class DeletionValidationResult {
         this.dependentCount = dependentCount;
     }
 
-    /**
-     * Create a successful validation result (deletion allowed)
-     */
+    /** Create a successful validation result (deletion allowed) */
     public static DeletionValidationResult success() {
         return new DeletionValidationResult(true, null, null, 0);
     }
 
     /**
      * Create a failed validation result due to referential integrity violation
-     * 
+     *
      * @param entityType     Type of entity being deleted (e.g., "Room", "Device")
      * @param entityName     Name of entity being deleted
      * @param dependentType  Type of dependent entities (e.g., "devices", "shelves",
@@ -58,7 +57,7 @@ public class DeletionValidationResult {
 
     /**
      * Create a failed validation result due to active sample assignments
-     * 
+     *
      * @param entityType  Type of entity being deleted (e.g., "Rack")
      * @param entityName  Name of entity being deleted
      * @param sampleCount Number of samples currently assigned

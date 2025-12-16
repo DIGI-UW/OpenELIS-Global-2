@@ -149,7 +149,6 @@ public class TestReflexUtil {
         } else {
             return new ArrayList<>();
         }
-
     }
 
     public static String makeReflexTestName(TestReflex testReflex) {
@@ -842,7 +841,6 @@ public class TestReflexUtil {
             }
 
             return false;
-
         });
     }
 

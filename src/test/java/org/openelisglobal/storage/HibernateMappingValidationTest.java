@@ -18,10 +18,12 @@ import org.openelisglobal.storage.valueholder.*;
 /**
  * Validates Hibernate ORM mappings WITHOUT requiring database connection. This
  * test layer catches entity/mapping conflicts before integration tests.
- * 
+ *
+ * <p>
  * Executes in <5 seconds, preventing ORM errors that would otherwise only
  * appear at application startup.
- * 
+ *
+ * <p>
  * ADDED: 2025-10-31 - Fills gap between unit tests (mocked) and integration
  * tests (full stack)
  */

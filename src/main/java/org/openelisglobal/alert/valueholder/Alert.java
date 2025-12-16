@@ -37,6 +37,7 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
  * Examples: - Freezer temperature alert: alertType=FREEZER_TEMPERATURE,
  * alertEntityType="Freezer", alertEntityId=5, contextData='{"temperature":
  * -15.5, "threshold": -20.0, "thresholdType": "CRITICAL_HIGH"}'
+ *
  * <p>
  * - Equipment failure alert: alertType=EQUIPMENT_FAILURE,
  * alertEntityType="Equipment", alertEntityId=12, contextData='{"errorCode":

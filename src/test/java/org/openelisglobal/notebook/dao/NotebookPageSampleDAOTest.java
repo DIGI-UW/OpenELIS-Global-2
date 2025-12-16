@@ -70,9 +70,7 @@ public class NotebookPageSampleDAOTest {
         testPageSample.setStatus(Status.PENDING);
     }
 
-    /**
-     * Test: getByPageId returns all samples for a page (uses native query)
-     */
+    /** Test: getByPageId returns all samples for a page (uses native query) */
     @Test
     @SuppressWarnings("unchecked")
     public void testGetByPageId_ReturnsAllSamples() {
@@ -96,9 +94,7 @@ public class NotebookPageSampleDAOTest {
         verify(nativeQuery).setParameter("pageId", pageId);
     }
 
-    /**
-     * Test: getByPageIdAndStatus filters by status (uses native query)
-     */
+    /** Test: getByPageIdAndStatus filters by status (uses native query) */
     @Test
     @SuppressWarnings("unchecked")
     public void testGetByPageIdAndStatus_FiltersCorrectly() {
@@ -125,9 +121,7 @@ public class NotebookPageSampleDAOTest {
         verify(nativeQuery).setParameter("status", status.name());
     }
 
-    /**
-     * Test: getByPageIdAndSampleItemId returns specific sample
-     */
+    /** Test: getByPageIdAndSampleItemId returns specific sample */
     @Test
     public void testGetByPageIdAndSampleItemId_ReturnsMatch() {
         // Setup
@@ -150,9 +144,7 @@ public class NotebookPageSampleDAOTest {
         assertEquals(testPageSample.getId(), result.getId());
     }
 
-    /**
-     * Test: getByPageIdAndSampleItemId returns null when not found
-     */
+    /** Test: getByPageIdAndSampleItemId returns null when not found */
     @Test
     public void testGetByPageIdAndSampleItemId_NotFound_ReturnsNull() {
         // Setup
@@ -172,9 +164,7 @@ public class NotebookPageSampleDAOTest {
         assertNull(result);
     }
 
-    /**
-     * Test: getStatusCountsByPageId returns correct counts for all statuses
-     */
+    /** Test: getStatusCountsByPageId returns correct counts for all statuses */
     @Test
     @SuppressWarnings("unchecked")
     public void testGetStatusCountsByPageId_ReturnsAllStatusCounts() {
@@ -200,9 +190,7 @@ public class NotebookPageSampleDAOTest {
         assertEquals(Long.valueOf(0L), result.get(Status.SKIPPED));
     }
 
-    /**
-     * Test: bulkUpdateStatus returns zero for empty list
-     */
+    /** Test: bulkUpdateStatus returns zero for empty list */
     @Test
     public void testBulkUpdateStatus_EmptyList_ReturnsZero() {
         // Execute
@@ -212,9 +200,7 @@ public class NotebookPageSampleDAOTest {
         assertEquals(0, result);
     }
 
-    /**
-     * Test: getByPageIdPaginated handles pagination correctly
-     */
+    /** Test: getByPageIdPaginated handles pagination correctly */
     @Test
     public void testGetByPageIdPaginated_AppliesPagination() {
         // Setup
@@ -242,9 +228,7 @@ public class NotebookPageSampleDAOTest {
         verify(query).setMaxResults(limit);
     }
 
-    /**
-     * Test: getCountByPageId returns correct count
-     */
+    /** Test: getCountByPageId returns correct count */
     @Test
     public void testGetCountByPageId_ReturnsCount() {
         // Setup

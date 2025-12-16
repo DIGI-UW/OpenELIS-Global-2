@@ -27,7 +27,6 @@ public class AnalyteServiceTest extends BaseWebContextSensitiveTest {
         analyteList.forEach(analyte -> {
             System.out.print(analyte.getAnalyteName() + " ");
         });
-
     }
 
     @Test
@@ -37,7 +36,6 @@ public class AnalyteServiceTest extends BaseWebContextSensitiveTest {
         Analyte analyteByName = analyteService.getAnalyteByName(analyte, false);
         assertEquals("Glucose", analyteByName.getAnalyteName());
         assertEquals("EXT123", analyteByName.getExternalId());
-
     }
 
     @Test
@@ -52,7 +50,6 @@ public class AnalyteServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("NN", insertedAnalyte.getLocalAbbreviation());
         assertEquals("EXT121", insertedAnalyte.getExternalId());
         assertEquals("New Name", insertedAnalyte.getAnalyteName());
-
     }
 
     @Test
@@ -91,5 +88,4 @@ public class AnalyteServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(deleted);
         assertEquals("N", deleted.getIsActive());
     }
-
 }

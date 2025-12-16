@@ -320,7 +320,7 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         // Find the first page by order
         NoteBookPage firstPage = pages.stream().filter(p -> p.getOrder() != null)
                 .min((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(pages.get(0)); // Fallback to first in
-                                                                                               // list if no order set
+        // list if no order set
 
         // Check if page sample already exists on first page
         NotebookPageSample existing = getByPageIdAndSampleItemId(firstPage.getId(), sampleItemId);

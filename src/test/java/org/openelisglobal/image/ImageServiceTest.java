@@ -77,7 +77,6 @@ public class ImageServiceTest extends BaseWebContextSensitiveTest {
         imageService.delete(image);
         List<Image> images = imageService.getAll();
         assertEquals(3, images.size());
-
     }
 
     @Test
@@ -113,7 +112,6 @@ public class ImageServiceTest extends BaseWebContextSensitiveTest {
         imageService.insert(image);
         List<Image> images = imageService.getAll();
         assertEquals(1, images.size());
-
     }
 
     @Test
@@ -126,7 +124,6 @@ public class ImageServiceTest extends BaseWebContextSensitiveTest {
         List<Image> images = imageService.getAll();
         assertEquals(1, images.size());
         assertNotNull(image2);
-
     }
 
     @Test
@@ -157,7 +154,6 @@ public class ImageServiceTest extends BaseWebContextSensitiveTest {
         int expectedImages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(images.size() <= expectedImages);
-
     }
 
     @Test

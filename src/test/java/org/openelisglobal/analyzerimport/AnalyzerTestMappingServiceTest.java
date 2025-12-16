@@ -206,5 +206,4 @@ public class AnalyzerTestMappingServiceTest extends BaseWebContextSensitiveTest 
         assertNotNull(delectedAnalyzerTestMapping);
         assertEquals(0, delectedAnalyzerTestMapping.size());
     }
-
 }

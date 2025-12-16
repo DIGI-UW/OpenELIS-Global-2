@@ -16,9 +16,11 @@ import org.openelisglobal.storage.valueholder.StorageRoom;
 /**
  * Integration test for FHIR Location resource creation. Tests FHIR server
  * connectivity and Location resource structure.
- * 
+ *
+ * <p>
  * Uses HTTP endpoint to avoid SSL certificate complexity in tests.
- * 
+ *
+ * <p>
  * NOTE: These tests require a running FHIR server at
  * http://localhost:8081/fhir/ Skip in CI environments where FHIR server is not
  * available.
@@ -53,9 +55,7 @@ public class StorageFhirIntegrationTest {
         testRoom.setActive(true);
     }
 
-    /**
-     * Check if FHIR server is available. Returns true if server is reachable.
-     */
+    /** Check if FHIR server is available. Returns true if server is reachable. */
     private boolean isFhirServerAvailable() {
         try {
             fhirClient.capabilities().ofType(CapabilityStatement.class).execute();

@@ -279,9 +279,7 @@ public class CorrectiveActionRestController extends BaseRestController {
         private Boolean isEdited;
     }
 
-    /**
-     * Request DTO for creating a corrective action.
-     */
+    /** Request DTO for creating a corrective action. */
     @Data
     public static class CreateCorrectiveActionRequest {
         private Long freezerId;
@@ -290,9 +288,7 @@ public class CorrectiveActionRestController extends BaseRestController {
         private Integer createdByUserId;
     }
 
-    /**
-     * Request DTO for updating a corrective action.
-     */
+    /** Request DTO for updating a corrective action. */
     @Data
     public static class UpdateCorrectiveActionRequest {
         private String description;

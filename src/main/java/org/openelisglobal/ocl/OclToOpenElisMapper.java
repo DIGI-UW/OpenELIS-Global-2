@@ -82,6 +82,7 @@ public class OclToOpenElisMapper {
 
     // Map OCL data types to OpenELIS result type IDs
     private static final Map<String, String> RESULT_TYPE_MAPPING = new HashMap<>();
+
     static {
         RESULT_TYPE_MAPPING.put("NUMERIC", "N");
         RESULT_TYPE_MAPPING.put("CODED", "D");
@@ -91,7 +92,7 @@ public class OclToOpenElisMapper {
     /**
      * Maps OCL concepts to TestAddForm objects ready for submission, applying
      * filters for datatype and concept_class.
-     * 
+     *
      * @param rootNode The root JSON node from OCL export, containing a "concepts"
      *                 array.
      * @return A list of TestAddForm objects that pass the filters.
@@ -138,7 +139,7 @@ public class OclToOpenElisMapper {
     /**
      * Maps a single OCL concept to a TestAddForm, applying filters and specific
      * mappings.
-     * 
+     *
      * @param concept The JSON node representing a single OCL concept.
      * @return A TestAddForm object if the concept passes all filters, otherwise
      *         null.
@@ -292,7 +293,6 @@ public class OclToOpenElisMapper {
             if (descriptions != null && descriptions.isArray() && descriptions.size() > 0) {
                 description = getText(descriptions.get(0), "description");
                 englishName = description;
-
             }
             if (englishName == null) {
                 englishName = getText(concept, "id");
@@ -356,7 +356,6 @@ public class OclToOpenElisMapper {
             if (dbUom != null) {
                 unitsId = dbUom.getId();
             }
-
         }
 
         jsonWad.put("uom", unitsId != null ? unitsId : "");
@@ -530,7 +529,6 @@ public class OclToOpenElisMapper {
                     }
                 }
             }
-
         }
         jsonWad.put("lowValid", lowValid);
         jsonWad.put("highValid", highValid);
@@ -620,14 +618,12 @@ public class OclToOpenElisMapper {
                     dictEntry.put("id", String.valueOf(dictionary.getId()));
                     dictEntry.put("qualified", "N");
                     dictionaryArray.add(dictEntry);
-
                 }
             }
         }
         jsonWad.put("dictionary", dictionaryArray);
         jsonWad.put("defaultTestResult", "");
         jsonWad.put("dictionaryReference", "");
-
     }
 
     public JsonNode getConceptById(String id) {
@@ -638,7 +634,6 @@ public class OclToOpenElisMapper {
                 if (conceptId.equals(id)) {
                     return conceptNode;
                 }
-
             }
         }
         return null;
@@ -646,7 +641,7 @@ public class OclToOpenElisMapper {
 
     /**
      * Helper to safely extract text from a JsonNode field.
-     * 
+     *
      * @param node  The JsonNode to extract from.
      * @param field The name of the field.
      * @return The text value, or null if the node or field is missing/null.
@@ -679,9 +674,7 @@ public class OclToOpenElisMapper {
         return typeOfSample;
     }
 
-    /**
-     * Helper method to log detailed concept information for debugging
-     */
+    /** Helper method to log detailed concept information for debugging */
     private void logConceptDetails(JsonNode concept) {
         try {
             StringBuilder details = new StringBuilder("\nConcept Details:\n");
@@ -709,7 +702,7 @@ public class OclToOpenElisMapper {
     /**
      * Helper to safely extract numeric text from a JsonNode field, handling both
      * number and text nodes.
-     * 
+     *
      * @param node  The JsonNode to extract from.
      * @param field The name of the field.
      * @return The numeric text value, or null if the node or field is

@@ -15,10 +15,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * DAO tests for StorageDeviceDAO
- * 
+ *
+ * <p>
  * Tests all HQL queries to ensure they compile and execute correctly. This
  * catches HQL property reference errors (e.g., non-existent properties).
- * 
+ *
+ * <p>
  * Uses BaseWebContextSensitiveTest (legacy pattern) since project doesn't use
  * Spring Boot. Reference: Testing Roadmap > BaseWebContextSensitiveTest (Legacy
  * Integration)
@@ -103,9 +105,7 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Name should match", "Test Device 1", result.getName());
     }
 
-    /**
-     * Test: findByCode - not found returns null
-     */
+    /** Test: findByCode - not found returns null */
     @Test
     public void testFindByCode_WithInvalidCode_ReturnsNull() {
         // Act
@@ -115,9 +115,7 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
         assertNull("Device should not be found", result);
     }
 
-    /**
-     * Test: findByParentRoomId - validates HQL query compiles and executes
-     */
+    /** Test: findByParentRoomId - validates HQL query compiles and executes */
     @Test
     public void testFindByParentRoomId_WithValidRoom_ReturnsDevices() {
         // Act: Execute HQL query
@@ -142,9 +140,7 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Code should match", "TEST-DEV1", result.getCode());
     }
 
-    /**
-     * Test: findByCodeAndParentRoom - validates HQL query compiles and executes
-     */
+    /** Test: findByCodeAndParentRoom - validates HQL query compiles and executes */
     @Test
     public void testFindByCodeAndParentRoom_WithValidParams_ReturnsDevice() {
         // Act: Execute HQL query
@@ -155,9 +151,7 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Code should match", "TEST-DEV1", result.getCode());
     }
 
-    /**
-     * Test: countByRoomId - validates HQL query compiles and executes
-     */
+    /** Test: countByRoomId - validates HQL query compiles and executes */
     @Test
     public void testCountByRoomId_WithValidRoom_ReturnsCount() {
         // Act: Execute HQL query
@@ -167,9 +161,7 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Should return count of 2", 2, count);
     }
 
-    /**
-     * Test: getAll - validates HQL query compiles and executes
-     */
+    /** Test: getAll - validates HQL query compiles and executes */
     @Test
     public void testGetAll_ReturnsAllDevices() {
         // Act: Execute HQL query

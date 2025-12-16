@@ -19,10 +19,12 @@ import org.springframework.stereotype.Component;
  * Handler for loading dictionary configuration files. Supports CSV format with
  * dictionary entries and their categories.
  *
+ * <p>
  * Expected CSV format:
  * category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode Sample
  * Types,Blood,BLD,Y,1,26881-3 Sample Types,Serum,SER,Y,2,26882-1
  *
+ * <p>
  * Notes: - First line is the header (required) - category and dictEntry are
  * required fields - localAbbreviation, isActive, sortOrder, loincCode are
  * optional - isActive defaults to "Y" if not specified

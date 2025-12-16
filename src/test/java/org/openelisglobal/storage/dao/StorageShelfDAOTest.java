@@ -16,10 +16,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * DAO tests for StorageShelfDAO
- * 
+ *
+ * <p>
  * Tests all HQL queries to ensure they compile and execute correctly. This
  * catches HQL property reference errors (e.g., non-existent properties).
- * 
+ *
+ * <p>
  * Uses BaseWebContextSensitiveTest (legacy pattern) since project doesn't use
  * Spring Boot. Reference: Testing Roadmap > BaseWebContextSensitiveTest (Legacy
  * Integration)
@@ -118,9 +120,7 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Code should match", "SHELF-A", result.getCode());
     }
 
-    /**
-     * Test: findByLabel - not found returns null
-     */
+    /** Test: findByLabel - not found returns null */
     @Test
     public void testFindByLabel_WithInvalidLabel_ReturnsNull() {
         // Act
@@ -130,9 +130,7 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
         assertNull("Shelf should not be found", result);
     }
 
-    /**
-     * Test: findByParentDeviceId - validates HQL query compiles and executes
-     */
+    /** Test: findByParentDeviceId - validates HQL query compiles and executes */
     @Test
     public void testFindByParentDeviceId_WithValidDevice_ReturnsShelves() {
         // Act: Execute HQL query
@@ -157,9 +155,7 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Label should match", "Shelf A", result.getLabel());
     }
 
-    /**
-     * Test: countByDeviceId - validates HQL query compiles and executes
-     */
+    /** Test: countByDeviceId - validates HQL query compiles and executes */
     @Test
     public void testCountByDeviceId_WithValidDevice_ReturnsCount() {
         // Act: Execute HQL query
@@ -169,9 +165,7 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Should return count of 2", 2, count);
     }
 
-    /**
-     * Test: getAll - validates HQL query compiles and executes
-     */
+    /** Test: getAll - validates HQL query compiles and executes */
     @Test
     public void testGetAll_ReturnsAllShelves() {
         // Act: Execute HQL query

@@ -33,6 +33,7 @@ import org.springframework.stereotype.Service;
 public class OdooIntegrationService {
 
     private static final Logger log = LogManager.getLogger(OdooIntegrationService.class);
+
     @Value("${org.openelisglobal.odoo.map.testname.locale:en}")
     private String testMapLocale;
 
@@ -50,7 +51,7 @@ public class OdooIntegrationService {
 
     /**
      * Creates an invoice in Odoo for the given sample data.
-     * 
+     *
      * @param updateData The sample data containing order information
      * @throws OdooOperationException if there's an error creating the invoice
      */
@@ -99,7 +100,7 @@ public class OdooIntegrationService {
 
     /**
      * Gets or creates a partner in Odoo for the patient associated with the sample.
-     * 
+     *
      * @param updateData The sample data containing patient information
      * @return The partner ID in Odoo
      */
@@ -160,7 +161,7 @@ public class OdooIntegrationService {
 
     /**
      * Finds a partner in Odoo by national ID.
-     * 
+     *
      * @param nationalId The patient's national ID
      * @return The partner ID if found, null otherwise
      */
@@ -206,7 +207,7 @@ public class OdooIntegrationService {
 
     /**
      * Finds a partner in Odoo by name as a fallback.
-     * 
+     *
      * @param firstName The patient's first name
      * @param lastName  The patient's last name
      * @return The partner ID if found, null otherwise
@@ -254,7 +255,7 @@ public class OdooIntegrationService {
 
     /**
      * Creates partner data for Odoo from patient and person information.
-     * 
+     *
      * @param patient The patient
      * @param person  The person associated with the patient
      * @return Map containing partner data for Odoo

@@ -77,7 +77,5 @@ public class UnifiedSystemUserServiceTest extends BaseWebContextSensitiveTest {
         // expect no login users after delete method invocation
         List<LoginUser> loginUsersd = loginUserService.getAll();
         assertTrue(loginUsersd.size() == 0);
-
     }
-
 }

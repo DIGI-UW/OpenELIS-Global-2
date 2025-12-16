@@ -97,107 +97,122 @@ public class SampleStorageServiceFlexibleAssignmentTest {
                 .thenReturn(java.util.Collections.singletonList(testSampleItem));
     }
 
-    @Test
-    public void testAssignSampleItemWithLocation_DeviceLevel_Valid() {
-        // Setup - external ID lookup is mocked in setUp()
-        when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
-        when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
-        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
+  @Test
+  public void testAssignSampleItemWithLocation_DeviceLevel_Valid() {
+    // Setup - external ID lookup is mocked in setUp()
+    when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
+    when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
+    when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
 
-        // Execute
-        Map<String, Object> result = sampleStorageService.assignSampleItemWithLocation(
-                TEST_EXTERNAL_ID, "10", "device", null, "Test notes");
+    // Execute
+    Map<String, Object> result =
+        sampleStorageService.assignSampleItemWithLocation(
+            TEST_EXTERNAL_ID, "10", "device", null, "Test notes");
 
-        // Verify
-        assertNotNull(result);
-        assertEquals("100", result.get("assignmentId"));
-        assertNotNull(result.get("hierarchicalPath"));
-        assertTrue(result.get("hierarchicalPath").toString().contains("Main Laboratory"));
-        assertTrue(result.get("hierarchicalPath").toString().contains("Freezer Unit 1"));
+    // Verify
+    assertNotNull(result);
+    assertEquals("100", result.get("assignmentId"));
+    assertNotNull(result.get("hierarchicalPath"));
+    assertTrue(result.get("hierarchicalPath").toString().contains("Main Laboratory"));
+    assertTrue(result.get("hierarchicalPath").toString().contains("Freezer Unit 1"));
 
-        // Verify assignment was created with correct fields
-        verify(sampleStorageAssignmentDAO).insert(argThat(assignment -> {
-            SampleStorageAssignment a = (SampleStorageAssignment) assignment;
-            return a.getLocationId().equals(10) &&
-                   a.getLocationType().equals("device") &&
-                   a.getPositionCoordinate() == null;
-        }));
-    }
+    // Verify assignment was created with correct fields
+    verify(sampleStorageAssignmentDAO)
+        .insert(
+            argThat(
+                assignment -> {
+                  SampleStorageAssignment a = (SampleStorageAssignment) assignment;
+                  return a.getLocationId().equals(10)
+                      && a.getLocationType().equals("device")
+                      && a.getPositionCoordinate() == null;
+                }));
+  }
 
-    @Test
-    public void testAssignSampleItemWithLocation_DeviceLevel_WithCoordinate_Valid() {
-        // Setup - external ID lookup is mocked in setUp()
-        when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
-        when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
-        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
+  @Test
+  public void testAssignSampleItemWithLocation_DeviceLevel_WithCoordinate_Valid() {
+    // Setup - external ID lookup is mocked in setUp()
+    when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
+    when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
+    when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
 
-        // Execute
-        Map<String, Object> result = sampleStorageService.assignSampleItemWithLocation(
-                TEST_EXTERNAL_ID, "10", "device", "A5", "Test notes");
+    // Execute
+    Map<String, Object> result =
+        sampleStorageService.assignSampleItemWithLocation(
+            TEST_EXTERNAL_ID, "10", "device", "A5", "Test notes");
 
-        // Verify
-        assertNotNull(result);
-        assertEquals("100", result.get("assignmentId"));
-        assertTrue(result.get("hierarchicalPath").toString().contains("A5"));
+    // Verify
+    assertNotNull(result);
+    assertEquals("100", result.get("assignmentId"));
+    assertTrue(result.get("hierarchicalPath").toString().contains("A5"));
 
-        // Verify assignment includes position coordinate
-        verify(sampleStorageAssignmentDAO).insert(argThat(assignment -> {
-            SampleStorageAssignment a = (SampleStorageAssignment) assignment;
-            return a.getLocationId().equals(10) &&
-                   a.getLocationType().equals("device") &&
-                   "A5".equals(a.getPositionCoordinate());
-        }));
-    }
+    // Verify assignment includes position coordinate
+    verify(sampleStorageAssignmentDAO)
+        .insert(
+            argThat(
+                assignment -> {
+                  SampleStorageAssignment a = (SampleStorageAssignment) assignment;
+                  return a.getLocationId().equals(10)
+                      && a.getLocationType().equals("device")
+                      && "A5".equals(a.getPositionCoordinate());
+                }));
+  }
 
-    @Test
-    public void testAssignSampleItemWithLocation_ShelfLevel_Valid() {
-        // Setup - external ID lookup is mocked in setUp()
-        when(storageLocationService.get(20, StorageShelf.class)).thenReturn(testShelf);
-        when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
-        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
+  @Test
+  public void testAssignSampleItemWithLocation_ShelfLevel_Valid() {
+    // Setup - external ID lookup is mocked in setUp()
+    when(storageLocationService.get(20, StorageShelf.class)).thenReturn(testShelf);
+    when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
+    when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
 
-        // Execute
-        Map<String, Object> result = sampleStorageService.assignSampleItemWithLocation(
-                TEST_EXTERNAL_ID, "20", "shelf", null, "Test notes");
+    // Execute
+    Map<String, Object> result =
+        sampleStorageService.assignSampleItemWithLocation(
+            TEST_EXTERNAL_ID, "20", "shelf", null, "Test notes");
 
-        // Verify
-        assertNotNull(result);
-        assertEquals("100", result.get("assignmentId"));
-        assertTrue(result.get("hierarchicalPath").toString().contains("Shelf-A"));
+    // Verify
+    assertNotNull(result);
+    assertEquals("100", result.get("assignmentId"));
+    assertTrue(result.get("hierarchicalPath").toString().contains("Shelf-A"));
 
-        // Verify assignment was created with correct fields
-        verify(sampleStorageAssignmentDAO).insert(argThat(assignment -> {
-            SampleStorageAssignment a = (SampleStorageAssignment) assignment;
-            return a.getLocationId().equals(20) &&
-                   a.getLocationType().equals("shelf");
-        }));
-    }
+    // Verify assignment was created with correct fields
+    verify(sampleStorageAssignmentDAO)
+        .insert(
+            argThat(
+                assignment -> {
+                  SampleStorageAssignment a = (SampleStorageAssignment) assignment;
+                  return a.getLocationId().equals(20) && a.getLocationType().equals("shelf");
+                }));
+  }
 
-    @Test
-    public void testAssignSampleItemWithLocation_RackLevel_Valid() {
-        // Setup - external ID lookup is mocked in setUp()
-        when(storageLocationService.get(30, StorageRack.class)).thenReturn(testRack);
-        when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
-        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
+  @Test
+  public void testAssignSampleItemWithLocation_RackLevel_Valid() {
+    // Setup - external ID lookup is mocked in setUp()
+    when(storageLocationService.get(30, StorageRack.class)).thenReturn(testRack);
+    when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
+    when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
 
-        // Execute
-        Map<String, Object> result = sampleStorageService.assignSampleItemWithLocation(
-                TEST_EXTERNAL_ID, "30", "rack", "B3", "Test notes");
+    // Execute
+    Map<String, Object> result =
+        sampleStorageService.assignSampleItemWithLocation(
+            TEST_EXTERNAL_ID, "30", "rack", "B3", "Test notes");
 
-        // Verify
-        assertNotNull(result);
-        assertEquals("100", result.get("assignmentId"));
-        assertTrue(result.get("hierarchicalPath").toString().contains("Rack R1"));
-        assertTrue(result.get("hierarchicalPath").toString().contains("B3"));
+    // Verify
+    assertNotNull(result);
+    assertEquals("100", result.get("assignmentId"));
+    assertTrue(result.get("hierarchicalPath").toString().contains("Rack R1"));
+    assertTrue(result.get("hierarchicalPath").toString().contains("B3"));
 
-        // Verify assignment was created with correct fields
-        verify(sampleStorageAssignmentDAO).insert(argThat(assignment -> {
-            SampleStorageAssignment a = (SampleStorageAssignment) assignment;
-            return a.getLocationId().equals(30) &&
-                   a.getLocationType().equals("rack") &&
-                   "B3".equals(a.getPositionCoordinate());
-        }));
-    }
+    // Verify assignment was created with correct fields
+    verify(sampleStorageAssignmentDAO)
+        .insert(
+            argThat(
+                assignment -> {
+                  SampleStorageAssignment a = (SampleStorageAssignment) assignment;
+                  return a.getLocationId().equals(30)
+                      && a.getLocationType().equals("rack")
+                      && "B3".equals(a.getPositionCoordinate());
+                }));
+  }
 
     @Test(expected = LIMSRuntimeException.class)
     public void testAssignSampleItemWithLocation_MissingLocationId_ThrowsException() {
@@ -343,18 +358,18 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         assertEquals("Test notes", result.get("notes"));
     }
 
-    @Test
-    public void testGetSampleItemLocation_WithNoAssignment_ReturnsEmptyMap() {
-        // Setup - no assignment found
-        when(sampleStorageAssignmentDAO.findBySampleItemId("999")).thenReturn(null);
+  @Test
+  public void testGetSampleItemLocation_WithNoAssignment_ReturnsEmptyMap() {
+    // Setup - no assignment found
+    when(sampleStorageAssignmentDAO.findBySampleItemId("999")).thenReturn(null);
 
-        // Execute
-        Map<String, Object> result = sampleStorageService.getSampleItemLocation("999");
+    // Execute
+    Map<String, Object> result = sampleStorageService.getSampleItemLocation("999");
 
-        // Verify
-        assertNotNull("Result should not be null", result);
-        assertTrue("Result should be empty when no assignment exists", result.isEmpty());
-    }
+    // Verify
+    assertNotNull("Result should not be null", result);
+    assertTrue("Result should be empty when no assignment exists", result.isEmpty());
+  }
 
     @Test
     public void testGetSampleItemLocation_WithNullId_ReturnsEmptyMap() {

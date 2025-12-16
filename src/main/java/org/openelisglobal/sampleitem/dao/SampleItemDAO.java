@@ -70,5 +70,4 @@ public interface SampleItemDAO extends BaseDAO<SampleItem, String> {
      * @throws LIMSRuntimeException if database error occurs
      */
     public List<SampleItem> getSampleItemsWithHierarchy(List<String> sampleItemIds) throws LIMSRuntimeException;
-
 }

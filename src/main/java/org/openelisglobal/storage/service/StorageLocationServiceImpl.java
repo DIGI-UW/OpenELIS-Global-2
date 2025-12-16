@@ -527,13 +527,14 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     /**
      * Calculate total capacity for a device using two-tier logic (per FR-062a,
      * FR-062b). Returns null if capacity cannot be determined.
-     * 
+     *
+     * <p>
      * Tier 1: If capacity_limit is set, use that value (manual/static limit) Tier
      * 2: If capacity_limit is NULL, calculate from child shelves: - If ALL shelves
      * have defined capacities (either static capacity_limit OR calculated from
      * their own children), sum those capacities - If ANY shelf lacks defined
      * capacity, return null (capacity cannot be determined)
-     * 
+     *
      * @param device The device to calculate capacity for
      * @return Integer capacity value, or null if capacity cannot be determined
      */
@@ -566,12 +567,13 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     /**
      * Calculate total capacity for a shelf using two-tier logic (per FR-062a,
      * FR-062b). Returns null if capacity cannot be determined.
-     * 
+     *
+     * <p>
      * Tier 1: If capacity_limit is set, use that value (manual/static limit) Tier
      * 2: If capacity_limit is NULL, calculate from child racks and their boxes: -
      * Racks are simple containers - Boxes within racks have grid dimensions (rows ×
      * columns) - Sum all box capacities across all racks
-     * 
+     *
      * @param shelf The shelf to calculate capacity for
      * @return Integer capacity value, or null if capacity cannot be determined
      */
@@ -1274,9 +1276,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         return validateDeleteConstraints(locationEntity);
     }
 
-    /**
-     * Check if a room can be deleted (no child devices, no active samples)
-     */
+    /** Check if a room can be deleted (no child devices, no active samples) */
     private boolean canDeleteRoom(StorageRoom room) {
         if (room == null || room.getId() == null) {
             return false;
@@ -1357,9 +1357,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         return true;
     }
 
-    /**
-     * OGC-75: Updated to include sample counts in error messages
-     */
+    /** OGC-75: Updated to include sample counts in error messages */
     @Override
     @Transactional(readOnly = true)
     public String getDeleteConstraintMessage(Object locationEntity) {
@@ -1422,7 +1420,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
      * distinct sample items from sample_storage_assignment table, not occupied
      * positions, to get accurate sample item counts. Storage tracking operates at
      * SampleItem level (physical specimens), not Sample level (orders).
-     * 
+     *
      * @param roomId  The room ID
      * @param devices List of devices in the room (can be null)
      * @return Count of unique sample items assigned to locations in this room
@@ -1606,9 +1604,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
     }
 
-    /**
-     * OGC-75: Count samples in shelf hierarchy (shelf + all racks)
-     */
+    /** OGC-75: Count samples in shelf hierarchy (shelf + all racks) */
     @Transactional(readOnly = true)
     private int countSamplesInShelfHierarchy(Integer shelfId) {
         List<Integer> locationIds = new ArrayList<>();
@@ -1635,9 +1631,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         }
     }
 
-    /**
-     * OGC-75: Find all child locations recursively (for cascade deletion)
-     */
+    /** OGC-75: Find all child locations recursively (for cascade deletion) */
     @Transactional(readOnly = true)
     private List<Object> findAllChildLocations(Object locationEntity) {
         List<Object> children = new ArrayList<>();
@@ -1669,9 +1663,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         return children;
     }
 
-    /**
-     * OGC-75: Unassign all samples from location and its children
-     */
+    /** OGC-75: Unassign all samples from location and its children */
     @Transactional
     private void unassignSamplesFromHierarchy(Object locationEntity) {
         List<Integer> locationIds = new ArrayList<>();

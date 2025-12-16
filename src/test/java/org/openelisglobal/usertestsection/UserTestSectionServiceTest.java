@@ -53,5 +53,4 @@ public class UserTestSectionServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("901", fullySetUpTests.get(0).getId());
         assertEquals("902", fullySetUpTests.get(1).getId());
     }
-
 }

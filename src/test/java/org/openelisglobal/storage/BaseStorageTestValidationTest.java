@@ -16,6 +16,7 @@ import org.springframework.test.annotation.Rollback;
  * Validation test to verify storage test fixtures load correctly via DBUnit
  * XML.
  *
+ * <p>
  * This test verifies that: 1. Storage hierarchy fixtures exist
  * (rooms/devices/shelves/racks) 2. E2E test data is loaded via DBUnit XML 3.
  * Data validation works correctly

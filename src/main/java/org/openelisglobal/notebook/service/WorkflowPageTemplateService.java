@@ -9,13 +9,9 @@ import org.openelisglobal.notebook.valueholder.WorkflowPageTemplate;
  */
 public interface WorkflowPageTemplateService {
 
-    /**
-     * Get all active workflow page templates.
-     */
+    /** Get all active workflow page templates. */
     List<WorkflowPageTemplate> getAllActive();
 
-    /**
-     * Get templates by workflow category (e.g., "IMMUNOLOGY").
-     */
+    /** Get templates by workflow category (e.g., "IMMUNOLOGY"). */
     List<WorkflowPageTemplate> getByCategory(String category);
 }

@@ -206,5 +206,4 @@ public class TestResult extends BaseObject<String> {
     public Boolean getDefault() {
         return isDefault;
     }
-
 }

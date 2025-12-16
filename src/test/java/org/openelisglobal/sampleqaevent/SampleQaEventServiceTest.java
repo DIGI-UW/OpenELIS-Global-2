@@ -38,7 +38,6 @@ public class SampleQaEventServiceTest extends BaseWebContextSensitiveTest {
         propertyValues.put("lastupdated", Timestamp.valueOf("2024-06-25 09:00:00"));
         orderProperties = new ArrayList<>();
         orderProperties.add("completedDate");
-
     }
 
     @Test

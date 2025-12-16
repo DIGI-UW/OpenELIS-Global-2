@@ -45,6 +45,7 @@ public class ExportTrendsByDate extends CSVSampleExportReport implements IReport
     private Project project;
     private String indicStr;
     protected static final SimpleDateFormat postgresDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
     // private String indicLabel;
 
     // @Override

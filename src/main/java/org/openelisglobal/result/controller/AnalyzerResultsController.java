@@ -743,9 +743,7 @@ public class AnalyzerResultsController extends BaseController {
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
-
         }
-
     }
 
     @RequestMapping(value = "/AnalyzerResults", method = RequestMethod.POST)

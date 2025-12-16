@@ -65,9 +65,7 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
         }
     }
 
-    /**
-     * OGC-75: Test that cascade-delete-summary endpoint returns summary
-     */
+    /** OGC-75: Test that cascade-delete-summary endpoint returns summary */
     @Test
     public void testGetCascadeDeleteSummary_ReturnsSummary() throws Exception {
         // Act
@@ -108,9 +106,7 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
                 status == 403 || status == 409 || status == 500);
     }
 
-    /**
-     * OGC-75: Test that cascade delete unassigns all samples
-     */
+    /** OGC-75: Test that cascade delete unassigns all samples */
     @Test
     public void testDeleteShelfWithCascade_UnassignsAllSamples() throws Exception {
         // Verify sample is assigned (from DBUnit dataset)
@@ -131,9 +127,7 @@ public class StorageLocationRestControllerCascadeDeleteTest extends BaseWebConte
         assertEquals("Sample assignment should be unassigned", Integer.valueOf(0), remainingAssignments);
     }
 
-    /**
-     * OGC-75: Test that cascade delete deletes all child locations
-     */
+    /** OGC-75: Test that cascade delete deletes all child locations */
     @Test
     public void testDeleteShelfWithCascade_DeletesAllChildRacks() throws Exception {
         // Verify rack exists (from DBUnit dataset)

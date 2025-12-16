@@ -26,6 +26,7 @@ package org.openelisglobal.common.action;
 public interface IActionConstants {
     /** The key for the page title in the request scope. */
     String PAGE_TITLE_KEY = "title";
+
     /** The key for the page subtitle in the request scope. */
     String PAGE_SUBTITLE_KEY = "subtitle";
 

@@ -28,6 +28,7 @@ public class ReferredTest implements IReferralResultTest {
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String referredTestId;
+
     // the shadow is to track if the test has been changed by the user
     private String referredTestIdShadow;
 

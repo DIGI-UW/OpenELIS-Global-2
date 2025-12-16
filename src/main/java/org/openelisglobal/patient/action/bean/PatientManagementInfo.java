@@ -85,6 +85,7 @@ public class PatientManagementInfo implements Serializable {
     @Pattern(regexp = ValidationHelper.PATIENT_ID_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String guid;
+
     // private UUID fhirUuid;
 
     @OptionalNotBlank(formFields = { Field.PatientNameRequired }, groups = {
@@ -130,6 +131,7 @@ public class PatientManagementInfo implements Serializable {
     @Pattern(regexp = ValidationHelper.GENDER_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String gender;
+
     // ages are display only
     private String ageYears;
     private String ageMonths;

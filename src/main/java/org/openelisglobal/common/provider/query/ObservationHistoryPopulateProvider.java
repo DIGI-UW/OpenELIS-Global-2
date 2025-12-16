@@ -50,6 +50,7 @@ public class ObservationHistoryPopulateProvider extends BaseQueryProvider {
     private static final String NATIONALITY_OBSERVATION_HISTORY = "nationality";
 
     private static final String NATIONALITY_SUFFIX = "Other";
+
     /**
      * priorDiseases and currentDiseases both have an additional field
      * xDiseasesValue
@@ -59,6 +60,7 @@ public class ObservationHistoryPopulateProvider extends BaseQueryProvider {
     private static final String DISEASES_SUFFIX = "Value";
 
     private ObservationHistoryTypeMap ohTypeMap = ObservationHistoryTypeMap.getInstance();
+
     /** All of the following occur multiple time in observation history */
     public static final String[] MULTI_LISTS = { "priorARVTreatmentINNs", "futureARVTreatmentINNs",
             "arvTreatmentAdvEffGrd", "arvTreatmentAdvEffType", "cotrimoxazoleTreatAdvEffGrd",
@@ -71,6 +73,7 @@ public class ObservationHistoryPopulateProvider extends BaseQueryProvider {
     private Patient patient = new Patient();
     private Sample sample = new Sample();
     Map<String, String> historyMap = new LinkedHashMap<>();
+
     // private String projectFormName;
     // private RequestType requestType = RequestType.UNKNOWN;
 

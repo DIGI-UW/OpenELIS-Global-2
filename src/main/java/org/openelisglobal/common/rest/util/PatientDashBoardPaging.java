@@ -36,9 +36,10 @@ import org.openelisglobal.spring.util.SpringContext;
 public class PatientDashBoardPaging {
 
     private final PagingUtility<List<OrderDisplayBean>> paging = new PagingUtility<>(); // Adjust type based on your
-                                                                                        // data
+    // data
     private static final PatientDashboardPageHelper pagingHelper = new PatientDashboardPageHelper(); // Implement helper
-                                                                                                     // class
+
+    // class
 
     public void setDatabaseResults(HttpServletRequest request, PatientDashBoardForm form, List<OrderDisplayBean> orders)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {

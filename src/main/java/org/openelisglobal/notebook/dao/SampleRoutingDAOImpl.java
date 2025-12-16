@@ -8,9 +8,7 @@ import org.openelisglobal.notebook.valueholder.SampleRouting;
 import org.openelisglobal.notebook.valueholder.SampleRouting.DestinationType;
 import org.springframework.stereotype.Component;
 
-/**
- * DAO implementation for SampleRouting entity operations.
- */
+/** DAO implementation for SampleRouting entity operations. */
 @Component
 public class SampleRoutingDAOImpl extends BaseDAOImpl<SampleRouting, Integer> implements SampleRoutingDAO {
 

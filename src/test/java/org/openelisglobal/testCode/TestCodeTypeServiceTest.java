@@ -31,7 +31,6 @@ public class TestCodeTypeServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("2", testCodeTypes.get(1).getId());
         assertEquals("3", testCodeTypes.get(2).getId());
         assertEquals("4", testCodeTypes.get(3).getId());
-
     }
 
     @Test
@@ -130,7 +129,6 @@ public class TestCodeTypeServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(testCodeTypes.size() <= expectedPages);
-
     }
 
     @Test
@@ -256,5 +254,4 @@ public class TestCodeTypeServiceTest extends BaseWebContextSensitiveTest {
         TestCodeType updatedTestCodeType = testCodeTypeService.get("1");
         assertEquals("hematology", updatedTestCodeType.getSchemaName());
     }
-
 }

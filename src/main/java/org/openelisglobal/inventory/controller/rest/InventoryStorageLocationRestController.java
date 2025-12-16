@@ -218,7 +218,6 @@ public class InventoryStorageLocationRestController extends BaseRestController {
         public PathResponse(String path) {
             this.path = path;
         }
-
     }
 
     @Setter
@@ -229,7 +228,6 @@ public class InventoryStorageLocationRestController extends BaseRestController {
         public HasActiveLotsResponse(Boolean hasActiveLots) {
             this.hasActiveLots = hasActiveLots;
         }
-
     }
 
     @Setter
@@ -240,7 +238,5 @@ public class InventoryStorageLocationRestController extends BaseRestController {
         public ErrorResponse(String error) {
             this.error = error;
         }
-
     }
-
 }

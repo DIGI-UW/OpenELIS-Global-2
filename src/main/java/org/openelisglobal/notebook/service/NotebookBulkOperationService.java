@@ -9,6 +9,7 @@ import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
  * data entry, status updates, and batch processing for efficient handling of
  * 200+ samples per workflow.
  *
+ * <p>
  * Per FR-033: Operations process in batches of 50 to prevent timeout.
  */
 public interface NotebookBulkOperationService {
@@ -17,6 +18,7 @@ public interface NotebookBulkOperationService {
      * Apply common values to multiple samples on a page. Updates the JSONB data
      * field for each sample, merging with existing data.
      *
+     * <p>
      * Per FR-031: System MUST support "Apply to Selected" to update common values
      * for multiple samples in single transaction.
      *
@@ -44,6 +46,7 @@ public interface NotebookBulkOperationService {
      * Get progress information for a notebook page. Delegates to
      * NotebookPageSampleService.getPageProgress.
      *
+     * <p>
      * Per FR-004: System MUST display progress indicators showing samples
      * completed/total per page.
      *
@@ -55,6 +58,7 @@ public interface NotebookBulkOperationService {
     /**
      * Get paginated samples for a page with optional status filter.
      *
+     * <p>
      * Per FR-040: System MUST display paginated sample grid with configurable page
      * sizes (10, 25, 50, 100).
      *

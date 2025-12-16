@@ -27,7 +27,6 @@ public class NotificationSubscriptionDAOImpl implements NotificationSubscription
         } catch (Exception e) {
             return null;
         }
-
     }
 
     @Override
@@ -69,5 +68,4 @@ public class NotificationSubscriptionDAOImpl implements NotificationSubscription
             entityManager.merge(existingSubscription); // Use merge() for existing entities
         }
     }
-
 }

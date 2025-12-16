@@ -202,5 +202,4 @@ public class SampleNewbornServiceTest extends BaseWebContextSensitiveTest {
         List<SampleNewborn> updatedSampleNewborns = sampleNewbornService.getAll();
         assertTrue(updatedSampleNewborns.isEmpty());
     }
-
 }

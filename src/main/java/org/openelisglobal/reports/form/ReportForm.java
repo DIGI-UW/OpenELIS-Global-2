@@ -856,5 +856,4 @@ public class ReportForm extends BaseForm {
     public void setCodedConclusions(List<String> codedConclusions) {
         this.codedConclusions = codedConclusions;
     }
-
 }

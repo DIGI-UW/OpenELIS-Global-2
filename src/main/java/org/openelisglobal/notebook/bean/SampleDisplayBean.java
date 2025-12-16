@@ -124,5 +124,4 @@ public class SampleDisplayBean {
             this.dateCreated = dateCreated;
         }
     }
-
 }

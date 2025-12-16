@@ -799,5 +799,4 @@ public class TestModifyEntryRestController extends BaseController {
     protected String getPageSubtitleKey() {
         return null;
     }
-
 }

@@ -32,7 +32,6 @@ public class DataResourceServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("2", dataResources.get(1).getId());
         assertEquals("3", dataResources.get(2).getId());
         assertEquals("4", dataResources.get(3).getId());
-
     }
 
     @Test
@@ -133,7 +132,6 @@ public class DataResourceServiceTest extends BaseWebContextSensitiveTest {
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(dataResources);
         assertTrue(dataResources.size() <= expectedPages);
-
     }
 
     @Test
@@ -289,5 +287,4 @@ public class DataResourceServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(updatedDataResource);
         assertEquals(savedDataResource.getName(), updatedDataResource.getName());
     }
-
 }

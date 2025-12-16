@@ -18,9 +18,7 @@ import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.medlab.valueholder.EquipmentUsageLog;
 
-/**
- * DAO interface for EquipmentUsageLog entity operations.
- */
+/** DAO interface for EquipmentUsageLog entity operations. */
 public interface EquipmentUsageLogDAO extends BaseDAO<EquipmentUsageLog, Integer> {
 
     /**

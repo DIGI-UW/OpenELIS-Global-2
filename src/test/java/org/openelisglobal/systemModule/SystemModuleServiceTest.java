@@ -40,7 +40,6 @@ public class SystemModuleServiceTest extends BaseWebContextSensitiveTest {
         systemModuleService.getData(systemModule);
         assertEquals("Module 1", systemModule.getSystemModuleName());
         assertEquals("Description for Module 1", systemModule.getDescription());
-
     }
 
     @Test
@@ -70,7 +69,5 @@ public class SystemModuleServiceTest extends BaseWebContextSensitiveTest {
 
         SystemModule systemModule2 = systemModuleService.getSystemModuleByName("Module 2");
         assertEquals("Description for Module 2", systemModule2.getDescription());
-
     }
-
 }

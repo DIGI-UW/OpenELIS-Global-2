@@ -57,6 +57,7 @@ function SampleGrid({
   onStatusFilterChange,
   loading = false,
   showHierarchy = false,
+  showPatient = false,
   additionalColumns = [],
   columns = null,
 }) {
@@ -223,7 +224,7 @@ function SampleGrid({
     }
   };
 
-  // Table headers - use custom columns if provided, otherwise use defaults
+// Table headers - use custom columns if provided, otherwise use defaults
   const baseHeaders = columns
     ? columns
     : [
@@ -259,6 +260,17 @@ function SampleGrid({
             defaultMessage: "Sample Type",
           }),
         },
+        ...(showPatient
+          ? [
+              {
+                key: "patientName",
+                header: intl.formatMessage({
+                  id: "medlab.sample.patient",
+                  defaultMessage: "Patient",
+                }),
+              },
+            ]
+          : []),
         {
           key: "collectionDate",
           header: intl.formatMessage({
@@ -337,6 +349,7 @@ function SampleGrid({
     externalId: sample.externalId || "-",
     accessionNumber: sample.accessionNumber || "-",
     sampleType: sample.sampleType || sample.typeOfSample?.description || "-",
+    patientName: sample.patientName || sample.data?.patientName || "-",
     collectionDate: sample.collectionDate || "-",
     status: sample.status || "PENDING",
     _original: sample,
@@ -462,6 +475,7 @@ function SampleGrid({
                       <TableCell>{row.externalId}</TableCell>
                       <TableCell>{row.accessionNumber}</TableCell>
                       <TableCell>{row.sampleType}</TableCell>
+                      {showPatient && <TableCell>{row.patientName}</TableCell>}
                       <TableCell>{row.collectionDate}</TableCell>
                       <TableCell>{getStatusTag(row.status)}</TableCell>
                       {additionalColumns.map((col) => (

@@ -105,5 +105,4 @@ public class ProjectServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("Expected 1 project", 1, projects.size());
         Assert.assertEquals("Integration Test Project", projects.get(0).getProjectName());
     }
-
 }

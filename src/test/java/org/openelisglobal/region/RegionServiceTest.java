@@ -33,7 +33,6 @@ public class RegionServiceTest extends BaseWebContextSensitiveTest {
             }
         }
         regionService.deleteAll(regions);
-
     }
 
     @Test

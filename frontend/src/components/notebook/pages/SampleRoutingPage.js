@@ -137,7 +137,7 @@ function SampleRoutingPage({
     return () => {
       componentMounted.current = false;
     };
-  }, [entryId, pageData?.id]);
+  }, [entryId, pageData?.id, loadPageSamples, loadRoutingSummary]);
 
   const loadPageSamples = useCallback(() => {
     if (!pageData?.id) {
@@ -159,17 +159,21 @@ function SampleRoutingPage({
       (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
+            // Patient info is stored in sample.data field from Link to Patient feature
             const transformedSamples = response.map((sample) => ({
               id: String(sample.id || sample.sampleItemId),
               externalId: sample.externalId,
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
+              patientName: sample.data?.patientName || sample.patientName || "",
+              patientId: sample.data?.patientId || "",
               // Use routing status for display - COMPLETED means routed, PENDING means awaiting routing
               status: sample.destinationType ? "COMPLETED" : "PENDING",
               routingStatus: sample.destinationType ? "ROUTED" : "UNROUTED",
               destinationType: sample.destinationType,
               wellCoordinate: sample.wellCoordinate,
+              data: sample.data, // Preserve full data for other uses
             }));
             setSamples(transformedSamples);
           } else {
@@ -294,6 +298,7 @@ function SampleRoutingPage({
         `/rest/notebook/${notebookId}/samples/assign-storage`,
         JSON.stringify(storagePayload),
         (response) => {
+          if (!componentMounted.current) return;
           setRouting(false);
           setRouteModalOpen(false);
 
@@ -319,6 +324,7 @@ function SampleRoutingPage({
       `/rest/notebook/${notebookId}/samples/route`,
       JSON.stringify(routeRequest),
       (response) => {
+        if (!componentMounted.current) return;
         setRouting(false);
         setRouteModalOpen(false);
 
@@ -451,6 +457,7 @@ function SampleRoutingPage({
           status: newStatus,
         }),
         (status) => {
+          if (!componentMounted.current) return;
           if (status === 200) {
             loadPageSamples();
             if (onProgressUpdate) {
@@ -686,6 +693,7 @@ function SampleRoutingPage({
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
                 showSelection={true}
+                showPatient={true}
                 loading={loading}
                 additionalColumns={[
                   {

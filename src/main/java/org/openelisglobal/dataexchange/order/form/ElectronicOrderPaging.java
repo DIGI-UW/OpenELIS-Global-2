@@ -35,10 +35,11 @@ import org.openelisglobal.spring.util.SpringContext;
 public class ElectronicOrderPaging {
 
     private final PagingUtility<List<ElectronicOrderDisplayItem>> paging = new PagingUtility<>(); // Adjust type based
-                                                                                                  // on your
+    // on your
     // data
     private static final ElectronicOrderPageHelper pagingHelper = new ElectronicOrderPageHelper(); // Implement helper
-                                                                                                   // class
+
+    // class
 
     public void setDatabaseResults(HttpServletRequest request, ElectronicOrderViewForm form,
             List<ElectronicOrderDisplayItem> orders)

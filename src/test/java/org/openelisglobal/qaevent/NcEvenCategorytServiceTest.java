@@ -30,7 +30,6 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", ncEvents.get(0).getId());
         assertEquals("2", ncEvents.get(1).getId());
         assertEquals("3", ncEvents.get(2).getId());
-
     }
 
     @Test
@@ -46,7 +45,6 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         List<NceCategory> categories = nceCategoryService.getAllMatching(map);
         assertEquals(1, categories.size());
         assertEquals("3", categories.get(0).getId());
-
     }
 
     @Test
@@ -56,7 +54,6 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", ncEvents.get(0).getId());
         assertEquals("2", ncEvents.get(1).getId());
         assertEquals("3", ncEvents.get(2).getId());
-
     }
 
     @Test
@@ -67,7 +64,6 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", ncEvents.get(0).getId());
         assertEquals("2", ncEvents.get(1).getId());
         assertEquals("3", ncEvents.get(2).getId());
-
     }
 
     @Test
@@ -93,7 +89,6 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         List<NceCategory> ncEvents = nceCategoryService.getAllMatchingOrdered(map, "id", false);
         assertEquals(1, ncEvents.size());
         assertEquals("3", ncEvents.get(0).getId());
-
     }
 
     @Test
@@ -102,7 +97,6 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         int pageExpected = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(ncEvents.size() <= pageExpected);
-
     }
 
     @Test
@@ -209,5 +203,4 @@ public class NcEvenCategorytServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("2", ncEvents.get(1).getId());
         assertEquals("3", ncEvents.get(2).getId());
     }
-
 }

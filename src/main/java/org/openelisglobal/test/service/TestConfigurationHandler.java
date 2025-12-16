@@ -27,12 +27,14 @@ import org.springframework.stereotype.Component;
  * Handler for loading test configuration files. Supports CSV format for
  * defining laboratory tests with their sample type mappings.
  *
+ * <p>
  * Expected CSV format:
  * testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,englishName,frenchName
  * Glucose,Biochemistry,Serum,2345-7,Y,Y,1,mg/dL,Glucose,Glucose
  * Hemoglobin,Hematology,Whole Blood,718-7,Y,Y,2,g/dL,Hemoglobin,Hémoglobine HIV
  * Rapid Test,Serology,Whole Blood,68961-2,Y,Y,3,,HIV Rapid Test,Test Rapide VIH
  *
+ * <p>
  * Notes: - First line is the header (required) - testName and testSection are
  * required fields - sampleType is optional but recommended (can specify
  * multiple separated by |) - loinc is optional but recommended for

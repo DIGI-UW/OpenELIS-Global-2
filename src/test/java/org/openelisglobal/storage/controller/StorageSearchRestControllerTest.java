@@ -21,8 +21,10 @@ import org.springframework.test.web.servlet.MvcResult;
  * tab: Search by name and code - Devices tab: Search by name, code, and type -
  * Shelves tab: Search by label - Racks tab: Search by label
  *
+ * <p>
  * All searches use case-insensitive partial/substring matching.
  *
+ * <p>
  * Uses E2E test data from storage-e2e.xml: - Samples with accession numbers
  * E2E001-E2E010 - Sample items assigned to various storage locations - Storage
  * hierarchy (rooms, devices, shelves, racks, positions)

@@ -584,6 +584,5 @@ public class OrganizationRestController extends BaseController {
             newParent.setId(childOrg.getId());
             childOrg.setOrganization(newParent);
         }
-
     }
 }

@@ -9,7 +9,8 @@ import org.junit.Test;
  * Test IHE mCSD (Mobile Care Services Discovery) compliance for storage
  * locations. Verifies hierarchical queries and identifier searches work per
  * fhir-mappings.md spec.
- * 
+ *
+ * <p>
  * NOTE: All tests in this class require FHIR server running and actual data.
  * These are integration tests - defer to Phase 6 (Polish) after full
  * implementation. Run manually when FHIR server is available: mvn test

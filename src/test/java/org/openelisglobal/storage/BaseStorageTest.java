@@ -12,12 +12,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Base test class for storage-related tests that provides unified fixture
  * loading and cleanup helpers.
- * 
+ *
+ * <p>
  * This class loads E2E test data via DBUnit XML and provides cleanup methods
  * that preserve fixtures while removing test-created data.
- * 
+ *
+ * <p>
  * Usage:
- * 
+ *
  * <pre>
  * public class MyStorageTest extends BaseStorageTest {
  *     &#64;Before
@@ -25,7 +27,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  *         super.setUp();
  *         // Your test setup
  *     }
- * 
+ *
  *     @After
  *     public void tearDown() throws Exception {
  *         super.tearDown();
@@ -33,13 +35,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
  *     }
  * }
  * </pre>
- * 
+ *
  * Fixture Data Ranges (preserved during cleanup): - Storage: IDs 1-999 (from
  * DBUnit fixtures) - Samples: E2E-* accession numbers (DBUnit fixtures) -
  * Patients: E2E-PAT-* external IDs (DBUnit fixtures) - Sample items: IDs
  * 10000-20000 (DBUnit fixtures) - Analyses: IDs 20000-30000 (DBUnit fixtures) -
  * Results: IDs 30000-40000 (DBUnit fixtures)
  *
+ * <p>
  * Storage hierarchy and E2E test data are loaded via DBUnit XML in setUp().
  */
 public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
@@ -90,7 +93,7 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
     /**
      * Validate that required test data exists. Verifies foundation data from
      * Liquibase and E2E fixture data from DBUnit XML.
-     * 
+     *
      * @throws IllegalStateException if required test data is missing
      */
     protected void validateTestData() {
@@ -123,14 +126,16 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
      * Clean up storage-related test data to ensure tests don't pollute the
      * database. This method deletes test-created entities but preserves fixture
      * data.
-     * 
+     *
+     * <p>
      * Fixture data ranges (preserved): - Storage: IDs 1-999 (from Liquibase
      * foundation data) - Samples: E2E-* accession numbers (DBUnit fixtures) -
      * Patients: E2E-PAT-* external IDs (DBUnit fixtures) - Sample items: IDs
      * 10000-20000 (DBUnit fixtures) - Analyses: IDs 20000-30000 (DBUnit fixtures) -
      * Results: IDs 30000-40000 (DBUnit fixtures) - Assignments: IDs 5000-5013
      * (DBUnit fixtures) - Movements: IDs 5000-5013 (DBUnit fixtures)
-     * 
+     *
+     * <p>
      * Test-created data (deleted): - Storage: IDs >= 1000, codes/names starting
      * with TEST- - Samples: TEST-* accession numbers (if created by tests) - Sample
      * items: IDs >= 20000 (test-created, not DBUnit fixtures) - Assignments: IDs
@@ -180,14 +185,14 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
     /**
      * Helper to get the numeric sample_item.id from the external_id. Used for
      * database verification queries and SQL inserts that require numeric IDs.
-     * 
+     *
+     * <p>
      * This method converts external IDs (user-friendly identifiers like "EXT-123")
      * to numeric IDs (database primary keys) for direct SQL operations.
-     * 
+     *
      * @param externalId The external ID (e.g., "EXT-1765401458866")
      * @return The numeric ID (integer) for the sample item
      * @throws IllegalStateException if the external ID is not found in the database
-     * 
      * @see .specify/guides/sampleitem-id-patterns.md for detailed ID pattern
      *      documentation
      */
@@ -199,5 +204,4 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
         }
         return numericId;
     }
-
 }

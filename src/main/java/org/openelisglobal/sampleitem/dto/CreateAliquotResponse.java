@@ -48,18 +48,14 @@ public class CreateAliquotResponse {
     public CreateAliquotResponse() {
     }
 
-    /**
-     * Constructor for single aliquot creation (backward compatible).
-     */
+    /** Constructor for single aliquot creation (backward compatible). */
     public CreateAliquotResponse(SampleItemDTO aliquot, BigDecimal parentUpdatedRemainingQuantity, String message) {
         this.aliquots = Collections.singletonList(aliquot);
         this.parentUpdatedRemainingQuantity = parentUpdatedRemainingQuantity;
         this.message = message;
     }
 
-    /**
-     * Constructor for bulk aliquot creation.
-     */
+    /** Constructor for bulk aliquot creation. */
     public CreateAliquotResponse(List<SampleItemDTO> aliquots, BigDecimal parentUpdatedRemainingQuantity,
             BigDecimal quantityPerAliquot, String message) {
         this.aliquots = aliquots != null ? aliquots : new ArrayList<>();
@@ -78,30 +74,22 @@ public class CreateAliquotResponse {
         return aliquots != null && !aliquots.isEmpty() ? aliquots.get(0) : null;
     }
 
-    /**
-     * Sets a single aliquot (for backward compatibility).
-     */
+    /** Sets a single aliquot (for backward compatibility). */
     public void setAliquot(SampleItemDTO aliquot) {
         this.aliquots = Collections.singletonList(aliquot);
     }
 
-    /**
-     * Returns all created aliquots.
-     */
+    /** Returns all created aliquots. */
     public List<SampleItemDTO> getAliquots() {
         return aliquots;
     }
 
-    /**
-     * Sets all created aliquots.
-     */
+    /** Sets all created aliquots. */
     public void setAliquots(List<SampleItemDTO> aliquots) {
         this.aliquots = aliquots != null ? aliquots : new ArrayList<>();
     }
 
-    /**
-     * Returns the number of aliquots created.
-     */
+    /** Returns the number of aliquots created. */
     public int getAliquotCount() {
         return aliquots != null ? aliquots.size() : 0;
     }

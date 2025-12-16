@@ -166,6 +166,7 @@ public abstract class Accessioner implements IAccessioner {
      * Sample or Patient Entry always mark the type of an analysis as a MANUAL type.
      */
     private static final String DEFAULT_ANALYSIS_TYPE = IActionConstants.ANALYSIS_TYPE_MANUAL;
+
     // private static String OBSERVATION_HISTORY_YES_ID = null;
     private static String SAMPLE_TABLE_ID = null;
 

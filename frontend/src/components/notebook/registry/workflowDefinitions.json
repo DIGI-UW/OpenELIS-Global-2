@@ -1,0 +1,279 @@
+{
+  "version": "1.0.0",
+  "description": "Workflow definitions referencing page IDs from pageRegistry.json",
+  "workflows": {
+    "immunology": {
+      "id": "immunology",
+      "name": "Immunology Workflow",
+      "titleKey": "notebook.workflow.immunology.title",
+      "defaultTitle": "Immunology Laboratory Workflow",
+      "descriptionKey": "notebook.workflow.immunology.description",
+      "defaultDescription": "9-page workflow for immunology sample processing from reception to archiving.",
+      "category": "IMMUNOLOGY",
+      "pages": [
+        {
+          "pageId": "sample-reception",
+          "order": 1,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "initial-processing",
+          "order": 2,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "assays",
+          "order": 3,
+          "required": false,
+          "titleOverride": null
+        },
+        {
+          "pageId": "child-sample-creation",
+          "order": 4,
+          "required": true,
+          "titleOverride": "Child Samples",
+          "additionalComponents": ["sample-routing"]
+        },
+        {
+          "pageId": "prep",
+          "order": 5,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "analysis",
+          "order": 6,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "storage",
+          "order": 7,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "result-compilation",
+          "order": 8,
+          "required": true,
+          "titleOverride": "Results"
+        },
+        {
+          "pageId": "end-of-project-archiving",
+          "order": 9,
+          "required": false,
+          "titleOverride": "Archive"
+        }
+      ]
+    },
+    "medlab": {
+      "id": "medlab",
+      "name": "Medical Laboratory Workflow",
+      "titleKey": "notebook.workflow.medlab.title",
+      "defaultTitle": "Medical Laboratory Workflow",
+      "descriptionKey": "notebook.workflow.medlab.description",
+      "defaultDescription": "16-page workflow for medical laboratory testing from patient registration to reporting.",
+      "category": "MEDLAB",
+      "pages": [
+        {
+          "pageId": "patient-order-entry",
+          "order": 1,
+          "required": true,
+          "titleOverride": "Patient & Lab Order"
+        },
+        {
+          "pageId": "sample-collection",
+          "order": 2,
+          "required": true,
+          "titleOverride": "Sample Collection"
+        },
+        {
+          "pageId": "transport-packaging",
+          "order": 3,
+          "required": true,
+          "titleOverride": "Transport & Packaging"
+        },
+        {
+          "pageId": "quality-check",
+          "order": 4,
+          "required": true,
+          "titleOverride": "Sample Receipt & Quality Assessment"
+        },
+        {
+          "pageId": "sample-processing",
+          "order": 5,
+          "required": false,
+          "titleOverride": "Sample Processing"
+        },
+        {
+          "pageId": "sample-storage",
+          "order": 6,
+          "required": false,
+          "titleOverride": "Storage Assignment"
+        },
+        {
+          "pageId": "testing-analyzer",
+          "order": 7,
+          "required": true,
+          "titleOverride": "Testing & Analyzer"
+        },
+        {
+          "pageId": "result-entry",
+          "order": 8,
+          "required": true,
+          "titleOverride": "Result Entry"
+        },
+        {
+          "pageId": "validation-reporting",
+          "order": 9,
+          "required": true,
+          "titleOverride": "Validation, Reporting & Performance Monitoring"
+        },
+        {
+          "pageId": "disposal-archiving",
+          "order": 10,
+          "required": false,
+          "titleOverride": "Disposal, Archiving & Accreditation"
+        }
+      ]
+    },
+    "hematology": {
+      "id": "hematology",
+      "name": "Hematology Workflow",
+      "titleKey": "notebook.workflow.hematology.title",
+      "defaultTitle": "Hematology Laboratory Workflow",
+      "descriptionKey": "notebook.workflow.hematology.description",
+      "defaultDescription": "Workflow for hematology testing including CBC and differential analysis.",
+      "category": "HEMATOLOGY",
+      "pages": [
+        {
+          "pageId": "patient-order-entry",
+          "order": 1,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "sample-reception",
+          "order": 2,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "quality-check",
+          "order": 3,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "analyzer-loading",
+          "order": 4,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "result-entry",
+          "order": 5,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "result-verification",
+          "order": 6,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "qc-review",
+          "order": 7,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "reporting",
+          "order": 8,
+          "required": true,
+          "titleOverride": null
+        }
+      ]
+    },
+    "chemistry": {
+      "id": "chemistry",
+      "name": "Clinical Chemistry Workflow",
+      "titleKey": "notebook.workflow.chemistry.title",
+      "defaultTitle": "Clinical Chemistry Workflow",
+      "descriptionKey": "notebook.workflow.chemistry.description",
+      "defaultDescription": "Workflow for clinical chemistry testing including metabolic panels.",
+      "category": "CHEMISTRY",
+      "pages": [
+        {
+          "pageId": "patient-order-entry",
+          "order": 1,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "sample-reception",
+          "order": 2,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "quality-check",
+          "order": 3,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "centrifugation",
+          "order": 4,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "aliquoting",
+          "order": 5,
+          "required": false,
+          "titleOverride": null
+        },
+        {
+          "pageId": "analyzer-loading",
+          "order": 6,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "result-entry",
+          "order": 7,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "result-verification",
+          "order": 8,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "qc-review",
+          "order": 9,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "reporting",
+          "order": 10,
+          "required": true,
+          "titleOverride": null
+        },
+        {
+          "pageId": "sample-storage",
+          "order": 11,
+          "required": false,
+          "titleOverride": null
+        }
+      ]
+    }
+  }
+}

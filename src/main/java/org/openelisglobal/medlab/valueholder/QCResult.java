@@ -38,15 +38,14 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * Supports dual-level QC (Normal and Pathologic) as required by CLIA.
  * Implements Westgard rule validation for detecting systematic and random
  * errors:
+ *
  * <ul>
- * <li>1:2s - Warning rule (one result exceeds 2 SD)</li>
- * <li>1:3s - Rejection rule (one result exceeds 3 SD)</li>
- * <li>2:2s - Rejection rule (two consecutive results exceed 2 SD same
- * side)</li>
- * <li>R:4s - Rejection rule (range of two results exceeds 4 SD)</li>
- * <li>4:1s - Rejection rule (four consecutive results exceed 1 SD same
- * side)</li>
- * <li>10x - Rejection rule (ten consecutive results on same side of mean)</li>
+ * <li>1:2s - Warning rule (one result exceeds 2 SD)
+ * <li>1:3s - Rejection rule (one result exceeds 3 SD)
+ * <li>2:2s - Rejection rule (two consecutive results exceed 2 SD same side)
+ * <li>R:4s - Rejection rule (range of two results exceeds 4 SD)
+ * <li>4:1s - Rejection rule (four consecutive results exceed 1 SD same side)
+ * <li>10x - Rejection rule (ten consecutive results on same side of mean)
  * </ul>
  */
 @Entity

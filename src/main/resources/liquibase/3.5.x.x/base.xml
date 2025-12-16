@@ -16,5 +16,7 @@
     <include file="liquibase/3.5.x.x/003-qc-result.xml"/>
     <include file="liquibase/3.5.x.x/004-equipment-usage-log.xml"/>
     <include file="liquibase/3.5.x.x/005-medlab-workflow-templates.xml"/>
+    <include file="liquibase/3.5.x.x/006-notebook-page-id.xml"/>
+    <include file="liquibase/3.5.x.x/007-notebook-experiment-types.xml"/>
 
 </databaseChangeLog>

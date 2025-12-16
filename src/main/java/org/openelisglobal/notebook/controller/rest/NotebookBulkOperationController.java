@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
  * REST controller for notebook bulk operations. Handles bulk data entry, value
  * application, and page progress tracking.
  *
+ * <p>
  * Per FR-033: System MUST process bulk operations in batches of 50. Per FR-034:
  * System MUST provide bulk apply endpoint for common values. Per FR-035: System
  * MUST provide page progress endpoint.
@@ -58,6 +59,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Bulk apply values to multiple samples on a page. POST
      * /notebook/bulk/page/{pageId}/samples/apply
      *
+     * <p>
      * Per FR-034: Apply common values to all selected samples in one request.
      *
      * @param pageId      the notebook page ID
@@ -104,6 +106,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Get progress information for a notebook page. GET
      * /notebook/bulk/page/{pageId}/progress
      *
+     * <p>
      * Per FR-035: Real-time progress tracking for bulk operations.
      *
      * @param pageId the notebook page ID
@@ -303,6 +306,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Flag a sample with validation status. POST
      * /notebook/bulk/page/{pageId}/samples/flag
      *
+     * <p>
      * Per T122: Implement sample flagging (VALID, INVALID, INCONCLUSIVE)
      *
      * @param pageId      the notebook page ID
@@ -350,6 +354,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Bulk flag samples with same status. POST
      * /notebook/bulk/page/{pageId}/samples/bulk-flag
      *
+     * <p>
      * Per T122b: Implement bulk flagging with reason for each sample
      *
      * @param pageId      the notebook page ID
@@ -393,6 +398,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Get validation summary for a page. GET
      * /notebook/bulk/page/{pageId}/validation-summary
      *
+     * <p>
      * Per T121: Get validation statistics for result compilation
      *
      * @param pageId the notebook page ID
@@ -436,6 +442,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Export results to Excel. GET
      * /notebook/bulk/notebook/{notebookId}/export/excel
      *
+     * <p>
      * Per T123: Implement Excel report generation using Apache POI
      *
      * @param notebookId          the notebook ID
@@ -487,6 +494,7 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Export results to CSV. GET /notebook/bulk/notebook/{notebookId}/export/csv
      *
+     * <p>
      * Per T129: Add export format selection (Excel, PDF, CSV)
      *
      * @param notebookId          the notebook ID
@@ -890,6 +898,7 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Record delivery of results. POST /notebook/bulk/notebook/{notebookId}/deliver
      *
+     * <p>
      * Per T125b: Implement POST /notebook/{id}/results/deliver endpoint
      *
      * @param notebookId  the notebook ID
@@ -923,6 +932,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Get delivery history for a notebook. GET
      * /notebook/bulk/notebook/{notebookId}/delivery-history
      *
+     * <p>
      * Per T129b: Add delivery confirmation tracking and display
      *
      * @param notebookId the notebook ID
@@ -1206,9 +1216,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for mark complete operation.
-     */
+    /** Request body for mark complete operation. */
     public static class MarkCompleteRequest {
         private boolean requireComplete;
         private boolean lockData;
@@ -1230,9 +1238,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for flag sample operation.
-     */
+    /** Request body for flag sample operation. */
     public static class FlagSampleRequest {
         private String sampleId;
         private String status;
@@ -1263,9 +1269,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for bulk flag operation.
-     */
+    /** Request body for bulk flag operation. */
     public static class BulkFlagRequest {
         private List<String> sampleIds;
         private String status;
@@ -1296,9 +1300,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for delivery operation.
-     */
+    /** Request body for delivery operation. */
     public static class DeliveryRequest {
         private String recipientName;
         private String recipientEmail;

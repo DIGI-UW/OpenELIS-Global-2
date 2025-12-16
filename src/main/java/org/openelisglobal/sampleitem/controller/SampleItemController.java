@@ -130,13 +130,11 @@ public class SampleItemController extends BaseController {
                     sampleItemToInsert.setExternalId(aliquotExternalId);
                     sampleItemToInsert.setFhirUuid(UUID.randomUUID());
                     sampleItemsToInsert.add(sampleItemToInsert);
-
                 }
                 lastSampleItem.setVoided(true);
                 lastSampleItem.setVoidReason("Aliquoted into new sample items");
 
                 sampleItemService.insertAliquots(lastSampleItem, sampleItemsToInsert, analysisGroups);
-
             }
 
             response.put("success", List.of("Aliquoting completed successfully"));

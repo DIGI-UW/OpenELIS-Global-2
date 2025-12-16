@@ -510,7 +510,7 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
     /**
      * Creates a FHIR QuestionnaireResponse from the questionnaire and responses
      * map.
-     * 
+     *
      * @param questionnaire The FHIR Questionnaire
      * @param responses     Map of linkId to answer value
      * @param uuid          UUID to assign to the QuestionnaireResponse
@@ -611,7 +611,7 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
 
     /**
      * Creates the appropriate FHIR type for an answer based on the question type.
-     * 
+     *
      * @param questionType The question type (string, boolean, decimal, etc.)
      * @param answerValue  The answer value as a string
      * @return The appropriate FHIR Type, or null if not supported

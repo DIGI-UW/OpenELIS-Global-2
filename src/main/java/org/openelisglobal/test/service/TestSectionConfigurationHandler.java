@@ -19,12 +19,14 @@ import org.springframework.stereotype.Component;
  * Handler for loading test section configuration files. Supports CSV format for
  * defining laboratory test sections/departments.
  *
+ * <p>
  * Expected CSV format:
  * testSectionName,description,isActive,sortOrder,isExternal,englishName,frenchName
  * Hematology,Hematology Department,Y,1,N,Hematology,Hématologie
  * Biochemistry,Biochemistry Department,Y,2,N,Biochemistry,Biochimie
  * Serology,Serology Department,Y,3,N,Serology,Sérologie
  *
+ * <p>
  * Notes: - First line is the header (required) - testSectionName is required -
  * description defaults to testSectionName if not provided - isActive defaults
  * to "Y" if not specified - sortOrder is optional (auto-assigned if not

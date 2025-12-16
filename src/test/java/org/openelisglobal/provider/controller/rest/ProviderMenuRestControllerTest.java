@@ -34,6 +34,5 @@ public class ProviderMenuRestControllerTest extends BaseWebContextSensitiveTest 
         assertEquals("providerMenuForm", formMap.get("formName"));
         assertEquals("Home", formMap.get("cancelAction"));
         assertEquals("POST", formMap.get("cancelMethod"));
-
     }
 }

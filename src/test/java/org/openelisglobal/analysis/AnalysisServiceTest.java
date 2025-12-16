@@ -355,7 +355,6 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Analysis retrievedAnalysis = aService.getAnalysisById(analysisId);
         Assert.assertEquals(analysisId, retrievedAnalysis.getId());
         Assert.assertEquals("resultfile.txt", retrievedAnalysis.getResultFile().getFileName());
-
     }
 
     @Test

@@ -1,0 +1,351 @@
+{
+  "version": "1.0.0",
+  "description": "Registry of all notebook workflow pages with unique IDs and metadata",
+  "pages": {
+    "sample-reception": {
+      "id": "sample-reception",
+      "componentKey": "SampleReceptionPage",
+      "titleKey": "notebook.page.sampleReception.title",
+      "defaultTitle": "Sample Reception",
+      "descriptionKey": "notebook.page.sampleReception.description",
+      "defaultDescription": "Link existing samples or import new samples from a manifest file.",
+      "category": "sample-management",
+      "capabilities": ["sample-linking", "manifest-import", "verification"]
+    },
+    "initial-processing": {
+      "id": "initial-processing",
+      "componentKey": "InitialProcessingPage",
+      "titleKey": "notebook.page.initialProcessing.title",
+      "defaultTitle": "Initial Processing",
+      "descriptionKey": "notebook.page.initialProcessing.description",
+      "defaultDescription": "Bulk data entry for sample processing (volume, cell count, method).",
+      "category": "processing",
+      "capabilities": ["bulk-entry", "volume-tracking", "cell-count"]
+    },
+    "assays": {
+      "id": "assays",
+      "componentKey": "AssaysPage",
+      "titleKey": "notebook.page.assays.title",
+      "defaultTitle": "Assays",
+      "descriptionKey": "notebook.page.assays.description",
+      "defaultDescription": "Perform supplementary tests/assays prior to extraction.",
+      "category": "testing",
+      "capabilities": ["test-entry", "reagent-tracking", "result-entry"]
+    },
+    "child-sample-creation": {
+      "id": "child-sample-creation",
+      "componentKey": "ChildSampleCreationPage",
+      "titleKey": "notebook.page.childSampleCreation.title",
+      "defaultTitle": "Child Sample Creation",
+      "descriptionKey": "notebook.page.childSampleCreation.description",
+      "defaultDescription": "Create child samples (aliquots) from parent samples.",
+      "category": "sample-management",
+      "capabilities": ["aliquot-creation", "child-sample-tracking"]
+    },
+    "sample-routing": {
+      "id": "sample-routing",
+      "componentKey": "SampleRoutingPage",
+      "titleKey": "notebook.page.sampleRouting.title",
+      "defaultTitle": "Sample Routing",
+      "descriptionKey": "notebook.page.sampleRouting.description",
+      "defaultDescription": "Route samples to their destination workflows or storage.",
+      "category": "sample-management",
+      "capabilities": ["destination-routing", "workflow-assignment"]
+    },
+    "prep": {
+      "id": "prep",
+      "componentKey": "PrepPage",
+      "titleKey": "notebook.page.prep.title",
+      "defaultTitle": "Prep",
+      "descriptionKey": "notebook.page.prep.description",
+      "defaultDescription": "Analysis preparation (fresh, thawed, or incubated).",
+      "category": "processing",
+      "capabilities": ["preparation-tracking", "incubation-timing"]
+    },
+    "analysis": {
+      "id": "analysis",
+      "componentKey": "AnalysisPage",
+      "titleKey": "notebook.page.analysis.title",
+      "defaultTitle": "Analysis",
+      "descriptionKey": "notebook.page.analysis.description",
+      "defaultDescription": "Import analyzer results from ELISA/Flow Cytometry.",
+      "category": "testing",
+      "capabilities": ["analyzer-import", "result-validation"]
+    },
+    "storage": {
+      "id": "storage",
+      "componentKey": "StoragePage",
+      "titleKey": "notebook.page.storage.title",
+      "defaultTitle": "Storage",
+      "descriptionKey": "notebook.page.storage.description",
+      "defaultDescription": "Post-analysis storage assignment.",
+      "category": "storage",
+      "capabilities": ["storage-assignment", "location-tracking"]
+    },
+    "result-compilation": {
+      "id": "result-compilation",
+      "componentKey": "ResultCompilationPage",
+      "titleKey": "notebook.page.resultCompilation.title",
+      "defaultTitle": "Results",
+      "descriptionKey": "notebook.page.resultCompilation.description",
+      "defaultDescription": "Compile and export results.",
+      "category": "reporting",
+      "capabilities": ["result-aggregation", "export"]
+    },
+    "end-of-project-archiving": {
+      "id": "end-of-project-archiving",
+      "componentKey": "EndOfProjectArchivingPage",
+      "titleKey": "notebook.page.archive.title",
+      "defaultTitle": "Archive",
+      "descriptionKey": "notebook.page.archive.description",
+      "defaultDescription": "End of project archiving.",
+      "category": "archiving",
+      "capabilities": ["archiving", "project-closure"]
+    },
+    "patient-order-entry": {
+      "id": "patient-order-entry",
+      "componentKey": "PatientOrderEntryPage",
+      "titleKey": "medlab.page.patientRegistration.title",
+      "defaultTitle": "Patient Registration",
+      "descriptionKey": "medlab.page.patientRegistration.description",
+      "defaultDescription": "Register multiple patients for the workflow.",
+      "category": "registration",
+      "capabilities": ["patient-registration", "batch-entry"]
+    },
+    "sample-collection": {
+      "id": "sample-collection",
+      "componentKey": "SampleCollectionPage",
+      "titleKey": "medlab.page.sampleCollection.title",
+      "defaultTitle": "Sample Collection",
+      "descriptionKey": "medlab.page.sampleCollection.description",
+      "defaultDescription": "Collect samples for lab orders. Record sample type, container, and collection details.",
+      "category": "sample-management",
+      "capabilities": [
+        "sample-collection",
+        "container-selection",
+        "collection-time",
+        "collector-tracking"
+      ]
+    },
+    "quality-check": {
+      "id": "quality-check",
+      "componentKey": "QualityCheckPage",
+      "titleKey": "medlab.page.qualityCheck.title",
+      "defaultTitle": "Sample Receipt & Quality Assessment",
+      "descriptionKey": "medlab.page.qualityCheck.description",
+      "defaultDescription": "Accept or reject samples based on defined quality rules.",
+      "category": "quality",
+      "capabilities": [
+        "labeling-check",
+        "container-check",
+        "order-matching",
+        "temperature-check",
+        "hemolysis-check",
+        "lipemia-check",
+        "icterus-check",
+        "volume-check",
+        "contamination-check",
+        "acceptance-decision",
+        "rejection-handling"
+      ]
+    },
+    "centrifugation": {
+      "id": "centrifugation",
+      "componentKey": "CentrifugationPage",
+      "titleKey": "medlab.page.centrifugation.title",
+      "defaultTitle": "Centrifugation",
+      "descriptionKey": "medlab.page.centrifugation.description",
+      "defaultDescription": "Record centrifugation parameters and timing.",
+      "category": "processing",
+      "capabilities": ["centrifuge-parameters", "timing-tracking"]
+    },
+    "aliquoting": {
+      "id": "aliquoting",
+      "componentKey": "AliquotingPage",
+      "titleKey": "medlab.page.aliquoting.title",
+      "defaultTitle": "Aliquoting",
+      "descriptionKey": "medlab.page.aliquoting.description",
+      "defaultDescription": "Create and track aliquots from parent samples.",
+      "category": "sample-management",
+      "capabilities": ["aliquot-creation", "volume-distribution"]
+    },
+    "analyzer-loading": {
+      "id": "analyzer-loading",
+      "componentKey": "AnalyzerLoadingPage",
+      "titleKey": "medlab.page.analyzerLoading.title",
+      "defaultTitle": "Analyzer Loading",
+      "descriptionKey": "medlab.page.analyzerLoading.description",
+      "defaultDescription": "Load samples onto analyzers and track positions.",
+      "category": "testing",
+      "capabilities": [
+        "analyzer-loading",
+        "position-tracking",
+        "worklist-generation"
+      ]
+    },
+    "result-entry": {
+      "id": "result-entry",
+      "componentKey": "ResultEntryPage",
+      "titleKey": "medlab.page.resultEntry.title",
+      "defaultTitle": "Result Entry",
+      "descriptionKey": "medlab.page.resultEntry.description",
+      "defaultDescription": "Enter and validate test results.",
+      "category": "testing",
+      "capabilities": ["result-entry", "validation", "auto-import"]
+    },
+    "result-verification": {
+      "id": "result-verification",
+      "componentKey": "ResultVerificationPage",
+      "titleKey": "medlab.page.resultVerification.title",
+      "defaultTitle": "Result Verification",
+      "descriptionKey": "medlab.page.resultVerification.description",
+      "defaultDescription": "Verify and approve test results.",
+      "category": "quality",
+      "capabilities": ["verification", "approval", "rejection"]
+    },
+    "qc-review": {
+      "id": "qc-review",
+      "componentKey": "QCReviewPage",
+      "titleKey": "medlab.page.qcReview.title",
+      "defaultTitle": "QC Review",
+      "descriptionKey": "medlab.page.qcReview.description",
+      "defaultDescription": "Review quality control results and Levey-Jennings charts.",
+      "category": "quality",
+      "capabilities": ["qc-review", "levey-jennings", "westgard-rules"]
+    },
+    "reporting": {
+      "id": "reporting",
+      "componentKey": "ReportingPage",
+      "titleKey": "medlab.page.reporting.title",
+      "defaultTitle": "Reporting",
+      "descriptionKey": "medlab.page.reporting.description",
+      "defaultDescription": "Generate and distribute patient reports.",
+      "category": "reporting",
+      "capabilities": ["report-generation", "distribution", "printing"]
+    },
+    "sample-storage": {
+      "id": "sample-storage",
+      "componentKey": "SampleStoragePage",
+      "titleKey": "medlab.page.sampleStorage.title",
+      "defaultTitle": "Storage Assignment & Environmental Monitoring",
+      "descriptionKey": "medlab.page.sampleStorage.description",
+      "defaultDescription": "Assign samples to storage locations, track cryovial positions, and record environmental readings.",
+      "category": "storage",
+      "capabilities": [
+        "storage-assignment",
+        "hierarchical-location",
+        "cryobox-mapping",
+        "environmental-monitoring",
+        "temperature-tracking",
+        "retention-management"
+      ]
+    },
+    "transport-packaging": {
+      "id": "transport-packaging",
+      "componentKey": "TransportPackagingPage",
+      "titleKey": "medlab.page.transportPackaging.title",
+      "defaultTitle": "Transport & Packaging",
+      "descriptionKey": "medlab.page.transportPackaging.description",
+      "defaultDescription": "Package samples for transport following IATA regulations.",
+      "category": "logistics",
+      "capabilities": [
+        "iata-compliance",
+        "packaging-verification",
+        "cold-chain"
+      ]
+    },
+    "sample-processing": {
+      "id": "sample-processing",
+      "componentKey": "SampleProcessingPage",
+      "titleKey": "medlab.page.sampleProcessing.title",
+      "defaultTitle": "Sample Processing",
+      "descriptionKey": "medlab.page.sampleProcessing.description",
+      "defaultDescription": "Process samples for testing, record derived materials, and create aliquots with parent-child traceability.",
+      "category": "processing",
+      "capabilities": [
+        "processing-type",
+        "derived-material",
+        "aliquot-creation",
+        "child-sample-tracking",
+        "bioequivalence-handling",
+        "special-handling"
+      ]
+    },
+    "testing-analyzer": {
+      "id": "testing-analyzer",
+      "componentKey": "TestingAnalyzerPage",
+      "titleKey": "medlab.page.testingAnalyzer.title",
+      "defaultTitle": "Testing & Analyzer Integration",
+      "descriptionKey": "medlab.page.testingAnalyzer.description",
+      "defaultDescription": "Execute tests on analyzers, record QC results, track technology used, and manage deviations with root cause analysis.",
+      "category": "testing",
+      "capabilities": [
+        "analyzer-selection",
+        "worklist-generation",
+        "manual-automated-testing",
+        "technology-tracking",
+        "daily-qc",
+        "calibration-status",
+        "levey-jennings",
+        "eqa-participation",
+        "deviation-handling",
+        "root-cause-analysis",
+        "abnormal-flagging",
+        "qc-lock"
+      ]
+    },
+    "validation-reporting": {
+      "id": "validation-reporting",
+      "componentKey": "ValidationReportingPage",
+      "titleKey": "medlab.page.validationReporting.title",
+      "defaultTitle": "Validation, Reporting & Performance Monitoring",
+      "descriptionKey": "medlab.page.validationReporting.description",
+      "defaultDescription": "Authorize results, generate patient reports, monitor lab performance including QC trends, TAT, acceptance rates, equipment usage, and corrective actions.",
+      "category": "validation",
+      "capabilities": [
+        "result-validation",
+        "supervisor-approval",
+        "reference-range-modification",
+        "patient-reporting",
+        "report-delivery",
+        "sample-utilization",
+        "turnaround-time",
+        "equipment-usage-reports",
+        "qc-performance-summaries",
+        "qc-pass-fail-trends",
+        "sample-acceptance-rate",
+        "instrument-uptime",
+        "corrective-actions-frequency",
+        "temperature-excursion-reports",
+        "lab-section-access-control"
+      ]
+    },
+    "disposal-archiving": {
+      "id": "disposal-archiving",
+      "componentKey": "EndOfProjectArchivingPage",
+      "titleKey": "medlab.page.disposalArchiving.title",
+      "defaultTitle": "Disposal, Archiving & Accreditation",
+      "descriptionKey": "medlab.page.disposalArchiving.description",
+      "defaultDescription": "Close the lifecycle of samples with proper disposal/archiving and ensure accreditation compliance. Supports incineration, autoclaving, chemical treatment, biobank transfer, and audit trails.",
+      "category": "archiving",
+      "capabilities": [
+        "sample-disposal",
+        "disposal-reason-tracking",
+        "disposal-method-selection",
+        "incineration",
+        "autoclaving",
+        "chemical-treatment",
+        "responsible-person-tracking",
+        "disposal-facility-logging",
+        "retention-management",
+        "bioequivalence-retention",
+        "biobank-transfer",
+        "audit-trail",
+        "sop-compliance",
+        "iso-regulatory-mapping",
+        "notebook-finalization",
+        "metadata-archiving"
+      ]
+    }
+  }
+}

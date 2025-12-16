@@ -382,9 +382,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
     }
 
-    /**
-     * Build hierarchical path for an assignment based on its locationType.
-     */
+    /** Build hierarchical path for an assignment based on its locationType. */
     private String buildHierarchicalPathForAssignment(SampleStorageAssignment assignment) {
         if (assignment == null || assignment.getLocationId() == null || assignment.getLocationType() == null) {
             return null;
@@ -952,9 +950,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
     }
 
-    /**
-     * Validate that a location entity is active (check entire hierarchy)
-     */
+    /** Validate that a location entity is active (check entire hierarchy) */
     private boolean validateLocationActiveForEntity(Object locationEntity, String locationType) {
         if (locationEntity == null) {
             return false;
@@ -1174,7 +1170,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     /**
      * Resolve SampleItem from identifier (internal ID, accession number, or
      * external reference)
-     * 
+     *
      * @param identifier Internal SampleItem ID, accession number, or external
      *                   reference
      * @return SampleItem entity

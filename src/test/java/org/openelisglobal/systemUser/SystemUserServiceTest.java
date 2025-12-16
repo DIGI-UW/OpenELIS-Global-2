@@ -58,7 +58,6 @@ public class SystemUserServiceTest extends BaseWebContextSensitiveTest {
         systemUserService.save(systemUser);
         List<SystemUser> systemUsers = systemUserService.getAllSystemUsers();
         assertTrue(systemUsers.size() == 5);
-
     }
 
     @Test

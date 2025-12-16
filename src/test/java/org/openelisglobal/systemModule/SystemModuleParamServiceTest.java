@@ -201,5 +201,4 @@ public class SystemModuleParamServiceTest extends BaseWebContextSensitiveTest {
         List<SystemModuleParam> updatedSystemModuleParams = systemModuleParamService.getAll();
         assertTrue(updatedSystemModuleParams.isEmpty());
     }
-
 }

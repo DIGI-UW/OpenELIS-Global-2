@@ -138,11 +138,13 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
     return () => {
       componentMounted.current = false;
     };
-  }, [entryId, pageData?.id]);
+  }, [entryId, pageData?.id, loadPageSamples]);
 
-  // Load rooms on mount
+  // Load rooms on mount - uses componentMounted ref from above
   useEffect(() => {
-    loadRooms();
+    if (componentMounted.current) {
+      loadRooms();
+    }
   }, []);
 
   const loadPageSamples = useCallback(() => {
@@ -210,6 +212,8 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
             sampleType: sample.sampleType || sample.typeOfSample?.description,
             collectionDate: sample.collectionDate,
             status: status,
+            patientName: sample.data?.patientName || sample.patientName || "",
+            patientId: sample.data?.patientId || "",
             storageLocation: storageLocation,
             storageCondition: storageCondition,
             retentionExpiry: sample.data?.retentionExpiry || null,
@@ -632,6 +636,7 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
       `/rest/notebook/${entryId}/samples/assign-storage`,
       JSON.stringify(payload),
       (response) => {
+        if (!componentMounted.current) return;
         setAssigning(false);
 
         if (response && response.success) {
@@ -701,6 +706,7 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
       JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
       (response) => {
+        if (!componentMounted.current) return;
         setAssigning(false);
 
         if (response && response.success) {
@@ -938,6 +944,7 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
 
       {/* Sample Grid */}
       <SampleGrid
+        gridId="storage"
         samples={samples}
         loading={loading}
         columns={columns}
@@ -945,6 +952,7 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
         selectedIds={selectedSampleIds}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        showPatient={true}
         emptyStateMessage={intl.formatMessage({
           id: "notebook.storage.noSamples",
           defaultMessage: "No samples available for storage assignment.",

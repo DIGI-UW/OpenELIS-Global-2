@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Implementation of bulk operations for notebook page samples. Processes
  * operations in batches of 50 to prevent timeout.
  *
+ * <p>
  * Per FR-033: System MUST process bulk operations in batches of 50.
  */
 @Service

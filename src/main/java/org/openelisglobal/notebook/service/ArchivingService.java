@@ -85,25 +85,19 @@ public interface ArchivingService {
      */
     TraceabilityReport generateTraceabilityReport(Integer notebookId);
 
-    /**
-     * Result of traceability verification.
-     */
+    /** Result of traceability verification. */
     record TraceabilityResult(boolean passed, List<TraceabilityCheck> checks, String summary) {
         public boolean hasCriticalFailures() {
             return checks.stream().anyMatch(c -> c.critical() && !c.passed());
         }
     }
 
-    /**
-     * Individual traceability check result.
-     */
+    /** Individual traceability check result. */
     record TraceabilityCheck(String checkName, String description, boolean passed, boolean critical,
             List<String> issues) {
     }
 
-    /**
-     * Archiving progress summary.
-     */
+    /** Archiving progress summary. */
     record ArchivingProgress(int totalSamples, int archivedSamples, int pendingSamples, int parentSamples,
             int childSamples, int archivedParents, int archivedChildren, boolean readyForFinalization) {
         public double percentComplete() {
@@ -111,23 +105,17 @@ public interface ArchivingService {
         }
     }
 
-    /**
-     * Traceability report for audit purposes.
-     */
+    /** Traceability report for audit purposes. */
     record TraceabilityReport(Integer notebookId, String notebookTitle, List<SampleLineage> lineages,
             List<MovementRecord> movements, String generatedAt, String generatedBy) {
     }
 
-    /**
-     * Sample lineage information.
-     */
+    /** Sample lineage information. */
     record SampleLineage(Integer sampleItemId, String sampleId, String externalId, Integer parentSampleItemId,
             List<Integer> childSampleItemIds, String currentLocation, String archiveLocation) {
     }
 
-    /**
-     * Movement record for audit trail.
-     */
+    /** Movement record for audit trail. */
     record MovementRecord(Integer sampleItemId, String fromLocation, String toLocation, String movedAt, String movedBy,
             String reason) {
     }

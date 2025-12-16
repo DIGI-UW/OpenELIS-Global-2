@@ -66,6 +66,7 @@ public class OrganizationForm extends BaseForm {
     @OptionalNotBlank(formFields = { Field.OrganizationAddressInfo, Field.OrgState })
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String state = "";
+
     // for display
     private Collection states;
 

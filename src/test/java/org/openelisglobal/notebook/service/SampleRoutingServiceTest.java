@@ -122,109 +122,111 @@ public class SampleRoutingServiceTest {
         }
     }
 
-    @Test
-    public void testAutoAssignWells_96Samples_AssignsAllWells() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(storageBoxDAO.get(100)).thenReturn(Optional.of(testBox));
-        when(systemUserService.get("1")).thenReturn(testUser);
-        when(routingDAO.getByNotebookIdAndSampleItemId(anyInt(), anyInt())).thenReturn(null);
-        when(routingDAO.getByBoxAndWell(anyInt(), anyInt(), any())).thenReturn(null);
+  @Test
+  public void testAutoAssignWells_96Samples_AssignsAllWells() {
+    // Arrange
+    when(noteBookService.get(1)).thenReturn(testNotebook);
+    when(storageBoxDAO.get(100)).thenReturn(Optional.of(testBox));
+    when(systemUserService.get("1")).thenReturn(testUser);
+    when(routingDAO.getByNotebookIdAndSampleItemId(anyInt(), anyInt())).thenReturn(null);
+    when(routingDAO.getByBoxAndWell(anyInt(), anyInt(), any())).thenReturn(null);
 
-        // Act - auto-assign wells for 96 samples
-        List<Integer> sampleIds = new ArrayList<>();
-        for (int i = 1; i <= 96; i++) {
-            sampleIds.add(i);
-        }
-
-        Map<Integer, String> assignments = autoAssignWells(sampleIds, 12);
-
-        // Assert - all samples should have well assignments
-        assertEquals("All 96 samples should have assignments", 96, assignments.size());
-
-        // Verify first and last wells
-        assertEquals("Sample 1 should be in A1", "A1", assignments.get(1));
-        assertEquals("Sample 96 should be in H12", "H12", assignments.get(96));
+    // Act - auto-assign wells for 96 samples
+    List<Integer> sampleIds = new ArrayList<>();
+    for (int i = 1; i <= 96; i++) {
+      sampleIds.add(i);
     }
 
-    @Test
-    public void testAutoAssignWells_SkipsOccupiedWells() {
-        // Arrange - A1 is already occupied
-        when(routingDAO.getByBoxAndWell(1, 100, "A1")).thenReturn(new SampleRouting());
-        when(routingDAO.getByBoxAndWell(1, 100, "A2")).thenReturn(null);
+    Map<Integer, String> assignments = autoAssignWells(sampleIds, 12);
 
-        // Act - assign well for new sample
-        // The implementation should skip A1 and assign A2
+    // Assert - all samples should have well assignments
+    assertEquals("All 96 samples should have assignments", 96, assignments.size());
 
-        // Assert - logic test
-        assertTrue("Should skip occupied wells", true);
-    }
+    // Verify first and last wells
+    assertEquals("Sample 1 should be in A1", "A1", assignments.get(1));
+    assertEquals("Sample 96 should be in H12", "H12", assignments.get(96));
+  }
 
-    @Test
-    public void testRouteToInternalAnalysis_ValidInputs_CreatesRouting() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(storageBoxDAO.get(100)).thenReturn(Optional.of(testBox));
-        when(systemUserService.get("1")).thenReturn(testUser);
-        when(routingDAO.getByNotebookIdAndSampleItemId(1, 50)).thenReturn(null);
-        when(routingDAO.getByBoxAndWell(1, 100, "A5")).thenReturn(null);
-        when(routingDAO.insert(any(SampleRouting.class))).thenReturn(1);
+  @Test
+  public void testAutoAssignWells_SkipsOccupiedWells() {
+    // Arrange - A1 is already occupied
+    when(routingDAO.getByBoxAndWell(1, 100, "A1")).thenReturn(new SampleRouting());
+    when(routingDAO.getByBoxAndWell(1, 100, "A2")).thenReturn(null);
 
-        // Act
-        SampleRouting routing = service.routeToInternalAnalysis(1, 50, 100, "A5", "1");
+    // Act - assign well for new sample
+    // The implementation should skip A1 and assign A2
 
-        // Assert
-        assertNotNull("Routing should be created", routing);
-        assertEquals("Destination should be INTERNAL_ANALYSIS", DestinationType.INTERNAL_ANALYSIS,
-                routing.getDestinationType());
-    }
+    // Assert - logic test
+    assertTrue("Should skip occupied wells", true);
+  }
 
-    @Test
-    public void testBulkRouteToInternalAnalysis_MultipleRoutes() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(storageBoxDAO.get(100)).thenReturn(Optional.of(testBox));
-        when(systemUserService.get("1")).thenReturn(testUser);
-        when(routingDAO.getByNotebookIdAndSampleItemId(anyInt(), anyInt())).thenReturn(null);
-        when(routingDAO.getByBoxAndWell(anyInt(), anyInt(), any())).thenReturn(null);
-        when(routingDAO.insert(any(SampleRouting.class))).thenReturn(1);
+  @Test
+  public void testRouteToInternalAnalysis_ValidInputs_CreatesRouting() {
+    // Arrange
+    when(noteBookService.get(1)).thenReturn(testNotebook);
+    when(storageBoxDAO.get(100)).thenReturn(Optional.of(testBox));
+    when(systemUserService.get("1")).thenReturn(testUser);
+    when(routingDAO.getByNotebookIdAndSampleItemId(1, 50)).thenReturn(null);
+    when(routingDAO.getByBoxAndWell(1, 100, "A5")).thenReturn(null);
+    when(routingDAO.insert(any(SampleRouting.class))).thenReturn(1);
 
-        // Act
-        List<Integer> sampleIds = List.of(1, 2, 3);
-        Map<Integer, String> wellAssignments = new HashMap<>();
-        wellAssignments.put(1, "A1");
-        wellAssignments.put(2, "A2");
-        wellAssignments.put(3, "A3");
+    // Act
+    SampleRouting routing = service.routeToInternalAnalysis(1, 50, 100, "A5", "1");
 
-        int routed = service.bulkRouteToInternalAnalysis(1, sampleIds, 100, wellAssignments, "1");
+    // Assert
+    assertNotNull("Routing should be created", routing);
+    assertEquals(
+        "Destination should be INTERNAL_ANALYSIS",
+        DestinationType.INTERNAL_ANALYSIS,
+        routing.getDestinationType());
+  }
 
-        // Assert
-        assertEquals("All 3 samples should be routed", 3, routed);
-    }
+  @Test
+  public void testBulkRouteToInternalAnalysis_MultipleRoutes() {
+    // Arrange
+    when(noteBookService.get(1)).thenReturn(testNotebook);
+    when(storageBoxDAO.get(100)).thenReturn(Optional.of(testBox));
+    when(systemUserService.get("1")).thenReturn(testUser);
+    when(routingDAO.getByNotebookIdAndSampleItemId(anyInt(), anyInt())).thenReturn(null);
+    when(routingDAO.getByBoxAndWell(anyInt(), anyInt(), any())).thenReturn(null);
+    when(routingDAO.insert(any(SampleRouting.class))).thenReturn(1);
 
-    @Test
-    public void testIsWellAvailable_EmptyWell_ReturnsTrue() {
-        // Arrange
-        when(routingDAO.getByBoxAndWell(1, 100, "A1")).thenReturn(null);
+    // Act
+    List<Integer> sampleIds = List.of(1, 2, 3);
+    Map<Integer, String> wellAssignments = new HashMap<>();
+    wellAssignments.put(1, "A1");
+    wellAssignments.put(2, "A2");
+    wellAssignments.put(3, "A3");
 
-        // Act
-        boolean available = service.isWellAvailable(1, 100, "A1");
+    int routed = service.bulkRouteToInternalAnalysis(1, sampleIds, 100, wellAssignments, "1");
 
-        // Assert
-        assertTrue("Empty well should be available", available);
-    }
+    // Assert
+    assertEquals("All 3 samples should be routed", 3, routed);
+  }
 
-    @Test
-    public void testIsWellAvailable_OccupiedWell_ReturnsFalse() {
-        // Arrange
-        when(routingDAO.getByBoxAndWell(1, 100, "A1")).thenReturn(new SampleRouting());
+  @Test
+  public void testIsWellAvailable_EmptyWell_ReturnsTrue() {
+    // Arrange
+    when(routingDAO.getByBoxAndWell(1, 100, "A1")).thenReturn(null);
 
-        // Act
-        boolean available = service.isWellAvailable(1, 100, "A1");
+    // Act
+    boolean available = service.isWellAvailable(1, 100, "A1");
 
-        // Assert
-        assertFalse("Occupied well should not be available", available);
-    }
+    // Assert
+    assertTrue("Empty well should be available", available);
+  }
+
+  @Test
+  public void testIsWellAvailable_OccupiedWell_ReturnsFalse() {
+    // Arrange
+    when(routingDAO.getByBoxAndWell(1, 100, "A1")).thenReturn(new SampleRouting());
+
+    // Act
+    boolean available = service.isWellAvailable(1, 100, "A1");
+
+    // Assert
+    assertFalse("Occupied well should not be available", available);
+  }
 
     // Helper method to generate well coordinate in row-major order
     // This matches the expected implementation in SampleRoutingServiceImpl

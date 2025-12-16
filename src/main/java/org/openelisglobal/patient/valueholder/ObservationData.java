@@ -104,6 +104,7 @@ public class ObservationData implements Serializable {
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String priorDiseasesValue; // actual string containing other Diseases which is answer to "please
+
     // specify"
 
     @Pattern(regexp = ValidationHelper.ID_REGEX)
@@ -114,6 +115,7 @@ public class ObservationData implements Serializable {
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String currentDiseasesValue; // actual string containing other Diseases which is answer to "please
+
     // specify"
 
     private List<Pair<String, String>> priorDiseasesList;
@@ -128,6 +130,7 @@ public class ObservationData implements Serializable {
             .asList(new String[] { null, null, null, null });
     private List<@SafeHtml(level = SafeHtml.SafeListLevel.NONE) String> currentARVTreatmentINNs = Arrays
             .asList(new String[] { null, null, null, null });
+
     // private List<String> initialSampleConditionINNs= Arrays.asList(new String[]
     // {null, null, null, null});
 
@@ -312,6 +315,7 @@ public class ObservationData implements Serializable {
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String clinicVisits;
+
     /** Reason for test submital */
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String reason;
@@ -1456,6 +1460,7 @@ public class ObservationData implements Serializable {
     public void setVlSuckle(String vlSuckle) {
         this.vlSuckle = vlSuckle;
     }
+
     // -------------
 
     public String getPriorVLLab() {

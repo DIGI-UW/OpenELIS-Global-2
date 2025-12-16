@@ -186,6 +186,7 @@ public class NotebookSampleEntryController extends BaseRestController {
      * Get samples for a specific notebook page with their page-specific status. GET
      * /notebook/page/{pageId}/samples
      *
+     * <p>
      * Includes hierarchy information (parent/child relationships) for display.
      *
      * @param pageId the notebook page ID
@@ -346,9 +347,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         return ResponseEntity.ok(sampleMaps);
     }
 
-    /**
-     * Build a sample map from a SampleItem entity.
-     */
+    /** Build a sample map from a SampleItem entity. */
     private Map<String, Object> buildSampleMap(SampleItem sampleItem,
             org.openelisglobal.notebook.valueholder.NotebookPageSample nps) {
         Map<String, Object> sampleMap = new HashMap<>();
@@ -397,6 +396,94 @@ public class NotebookSampleEntryController extends BaseRestController {
         }
 
         return sampleMap;
+    }
+
+    /**
+     * Bulk update sample status for a notebook page. POST
+     * /notebook/bulk/page/{pageId}/samples/status
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds and status
+     * @param httpRequest for getting user session
+     * @return update result
+     */
+    @PostMapping(value = "/bulk/page/{pageId}/samples/status", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkUpdateSampleStatus(@PathVariable("pageId") Integer pageId,
+            @RequestBody BulkStatusUpdateRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        if (request.getStatus() == null || request.getStatus().isBlank()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Status is required");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        try {
+            String statusStr = request.getStatus().trim().toUpperCase();
+            org.openelisglobal.notebook.valueholder.NotebookPageSample.Status status = org.openelisglobal.notebook.valueholder.NotebookPageSample.Status
+                    .valueOf(statusStr);
+
+            // Build collection data map from request if any collection fields are provided
+            Map<String, Object> collectionData = new HashMap<>();
+            if (request.getContainerType() != null && !request.getContainerType().isBlank()) {
+                collectionData.put("containerType", request.getContainerType());
+            }
+            if (request.getCollectionDate() != null && !request.getCollectionDate().isBlank()) {
+                collectionData.put("collectionDate", request.getCollectionDate());
+            }
+            if (request.getCollectionTime() != null && !request.getCollectionTime().isBlank()) {
+                collectionData.put("collectionTime", request.getCollectionTime());
+            }
+            if (request.getCollectorId() != null && !request.getCollectorId().isBlank()) {
+                collectionData.put("collectorId", request.getCollectorId());
+            }
+            if (request.getVolume() != null && !request.getVolume().isBlank()) {
+                collectionData.put("volume", request.getVolume());
+            }
+            if (request.getNotes() != null && !request.getNotes().isBlank()) {
+                collectionData.put("notes", request.getNotes());
+            }
+
+            // If collection data is provided, apply it first
+            if (!collectionData.isEmpty()) {
+                notebookPageSampleService.bulkApplyData(pageId, request.getSampleIds(), collectionData, sysUserId);
+            }
+
+            int updatedCount = notebookPageSampleService.bulkUpdateStatus(pageId, request.getSampleIds(), status,
+                    sysUserId);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("updatedCount", updatedCount);
+            result.put("pageId", pageId);
+            result.put("status", status.name());
+            result.put("success", true);
+
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Invalid status: " + request.getStatus());
+            error.put("validStatuses", java.util.Arrays
+                    .toString(org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.values()));
+            error.put("exceptionMessage", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Unexpected error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
     }
 
     /**
@@ -733,6 +820,7 @@ public class NotebookSampleEntryController extends BaseRestController {
      * Get box layout showing occupied wells. T086: GET
      * /notebook/{id}/box/{boxId}/layout
      *
+     * <p>
      * Returns both notebook-specific routing AND global SampleStorageAssignment
      * records to show a complete picture of occupied wells.
      *
@@ -826,6 +914,7 @@ public class NotebookSampleEntryController extends BaseRestController {
      * Assign samples to storage with conditions and retention period. T112: POST
      * /notebook/{id}/samples/assign-storage
      *
+     * <p>
      * US6: Store processed samples under defined conditions with tracked location
      * and retention period using existing SampleStorageService.
      *
@@ -1084,9 +1173,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         }
     }
 
-    /**
-     * Convert SampleRouting to a displayable map.
-     */
+    /** Convert SampleRouting to a displayable map. */
     private Map<String, Object> convertRoutingToMap(SampleRouting routing) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", routing.getId());
@@ -1201,9 +1288,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for creating an instance from template.
-     */
+    /** Request body for creating an instance from template. */
     public static class CreateInstanceRequest {
         private String title;
 
@@ -1216,9 +1301,260 @@ public class NotebookSampleEntryController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for creating child samples.
-     */
+    /** Request body for bulk status update with optional collection data. */
+    public static class BulkStatusUpdateRequest {
+        private List<Integer> sampleIds;
+        private String status;
+        // Optional collection data fields
+        private String containerType;
+        private String collectionDate;
+        private String collectionTime;
+        private String collectorId;
+        private String volume;
+        private String notes;
+        // Transport & Packaging fields (Primary)
+        private String sealStatus;
+        private Boolean barcodePresent;
+        private Boolean absorbentPresent;
+        // Transport & Packaging fields (Secondary)
+        private String secondaryPackageType;
+        private String secondaryIntegrity;
+        private Boolean watertightPressureResistant;
+        private Integer primaryContainerCount;
+        private String inspectorInitials;
+        private String inspectionTimestamp;
+        // Transport & Packaging fields (Tertiary/Outer)
+        private String transportBoxType;
+        private Boolean biohazardLabelPresent;
+        private Boolean orientationArrowsPresent;
+        private String temperatureLoggerId;
+        private String courierCompany;
+        private String trackingNumber;
+        private String conditionOnArrival;
+        private Boolean iataCompliant;
+        // Transport Status
+        private String transportStatus;
+        private Boolean nonCompliant;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public String getContainerType() {
+            return containerType;
+        }
+
+        public void setContainerType(String containerType) {
+            this.containerType = containerType;
+        }
+
+        public String getCollectionDate() {
+            return collectionDate;
+        }
+
+        public void setCollectionDate(String collectionDate) {
+            this.collectionDate = collectionDate;
+        }
+
+        public String getCollectionTime() {
+            return collectionTime;
+        }
+
+        public void setCollectionTime(String collectionTime) {
+            this.collectionTime = collectionTime;
+        }
+
+        public String getCollectorId() {
+            return collectorId;
+        }
+
+        public void setCollectorId(String collectorId) {
+            this.collectorId = collectorId;
+        }
+
+        public String getVolume() {
+            return volume;
+        }
+
+        public void setVolume(String volume) {
+            this.volume = volume;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
+        }
+
+        // Transport & Packaging getters/setters
+        public String getSealStatus() {
+            return sealStatus;
+        }
+
+        public void setSealStatus(String sealStatus) {
+            this.sealStatus = sealStatus;
+        }
+
+        public Boolean getBarcodePresent() {
+            return barcodePresent;
+        }
+
+        public void setBarcodePresent(Boolean barcodePresent) {
+            this.barcodePresent = barcodePresent;
+        }
+
+        public Boolean getAbsorbentPresent() {
+            return absorbentPresent;
+        }
+
+        public void setAbsorbentPresent(Boolean absorbentPresent) {
+            this.absorbentPresent = absorbentPresent;
+        }
+
+        public String getSecondaryPackageType() {
+            return secondaryPackageType;
+        }
+
+        public void setSecondaryPackageType(String secondaryPackageType) {
+            this.secondaryPackageType = secondaryPackageType;
+        }
+
+        public String getSecondaryIntegrity() {
+            return secondaryIntegrity;
+        }
+
+        public void setSecondaryIntegrity(String secondaryIntegrity) {
+            this.secondaryIntegrity = secondaryIntegrity;
+        }
+
+        public Boolean getWatertightPressureResistant() {
+            return watertightPressureResistant;
+        }
+
+        public void setWatertightPressureResistant(Boolean watertightPressureResistant) {
+            this.watertightPressureResistant = watertightPressureResistant;
+        }
+
+        public Integer getPrimaryContainerCount() {
+            return primaryContainerCount;
+        }
+
+        public void setPrimaryContainerCount(Integer primaryContainerCount) {
+            this.primaryContainerCount = primaryContainerCount;
+        }
+
+        public String getInspectorInitials() {
+            return inspectorInitials;
+        }
+
+        public void setInspectorInitials(String inspectorInitials) {
+            this.inspectorInitials = inspectorInitials;
+        }
+
+        public String getInspectionTimestamp() {
+            return inspectionTimestamp;
+        }
+
+        public void setInspectionTimestamp(String inspectionTimestamp) {
+            this.inspectionTimestamp = inspectionTimestamp;
+        }
+
+        public String getTransportBoxType() {
+            return transportBoxType;
+        }
+
+        public void setTransportBoxType(String transportBoxType) {
+            this.transportBoxType = transportBoxType;
+        }
+
+        public Boolean getBiohazardLabelPresent() {
+            return biohazardLabelPresent;
+        }
+
+        public void setBiohazardLabelPresent(Boolean biohazardLabelPresent) {
+            this.biohazardLabelPresent = biohazardLabelPresent;
+        }
+
+        public Boolean getOrientationArrowsPresent() {
+            return orientationArrowsPresent;
+        }
+
+        public void setOrientationArrowsPresent(Boolean orientationArrowsPresent) {
+            this.orientationArrowsPresent = orientationArrowsPresent;
+        }
+
+        public String getTemperatureLoggerId() {
+            return temperatureLoggerId;
+        }
+
+        public void setTemperatureLoggerId(String temperatureLoggerId) {
+            this.temperatureLoggerId = temperatureLoggerId;
+        }
+
+        public String getCourierCompany() {
+            return courierCompany;
+        }
+
+        public void setCourierCompany(String courierCompany) {
+            this.courierCompany = courierCompany;
+        }
+
+        public String getTrackingNumber() {
+            return trackingNumber;
+        }
+
+        public void setTrackingNumber(String trackingNumber) {
+            this.trackingNumber = trackingNumber;
+        }
+
+        public String getConditionOnArrival() {
+            return conditionOnArrival;
+        }
+
+        public void setConditionOnArrival(String conditionOnArrival) {
+            this.conditionOnArrival = conditionOnArrival;
+        }
+
+        public Boolean getIataCompliant() {
+            return iataCompliant;
+        }
+
+        public void setIataCompliant(Boolean iataCompliant) {
+            this.iataCompliant = iataCompliant;
+        }
+
+        public String getTransportStatus() {
+            return transportStatus;
+        }
+
+        public void setTransportStatus(String transportStatus) {
+            this.transportStatus = transportStatus;
+        }
+
+        public Boolean getNonCompliant() {
+            return nonCompliant;
+        }
+
+        public void setNonCompliant(Boolean nonCompliant) {
+            this.nonCompliant = nonCompliant;
+        }
+    }
+
+    /** Request body for creating child samples. */
     public static class CreateChildSamplesRequest {
         private List<Integer> parentSampleIds;
         private int childCountPerParent;
@@ -1327,9 +1663,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for storage assignment.
-     */
+    /** Request body for storage assignment. */
     public static class AssignStorageRequest {
         private List<Integer> sampleIds;
         private Integer boxId;
@@ -1366,9 +1700,7 @@ public class NotebookSampleEntryController extends BaseRestController {
             this.wellAssignments = wellAssignments;
         }
 
-        /**
-         * Convert string-keyed well assignments to integer-keyed for service layer.
-         */
+        /** Convert string-keyed well assignments to integer-keyed for service layer. */
         public Map<Integer, String> getWellAssignmentsAsIntegerMap() {
             if (wellAssignments == null) {
                 return null;
@@ -1480,9 +1812,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for routing samples.
-     */
+    /** Request body for routing samples. */
     public static class RouteSamplesRequest {
         private List<Integer> sampleIds;
         private String destinationType;

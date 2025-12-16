@@ -40,7 +40,6 @@ public class CytologySampleServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, cytologySamples.get(0).getId().intValue());
         assertEquals(2, cytologySamples.get(1).getId().intValue());
         assertEquals(3, cytologySamples.get(2).getId().intValue());
-
     }
 
     @Test
@@ -66,7 +65,6 @@ public class CytologySampleServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(expectedPages >= cytologySamples.size());
-
     }
 
     @Test
@@ -264,5 +262,4 @@ public class CytologySampleServiceTest extends BaseWebContextSensitiveTest {
         Long count = cytologySampleService.getCountWithStatusBetweenDates(statuses, from, to);
         assertEquals(1, count.longValue());
     }
-
 }

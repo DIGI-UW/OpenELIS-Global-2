@@ -21,7 +21,6 @@ public class QaObservationTypeServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/qa-observation-type.xml");
-
     }
 
     @Test
@@ -40,7 +39,6 @@ public class QaObservationTypeServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("10", observationType1.getId());
         QaObservationType observationType2 = observationTypeService.getQaObservationTypeByName("Result Check");
         assertEquals("11", observationType2.getId());
-
     }
 
     @Test
@@ -153,7 +151,6 @@ public class QaObservationTypeServiceTest extends BaseWebContextSensitiveTest {
                 false);
         assertEquals(1, observationTypes.size());
         assertEquals("10", observationTypes.get(0).getId());
-
     }
 
     @Test
@@ -163,7 +160,6 @@ public class QaObservationTypeServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(observationTypes.size() <= expectedPages);
-
     }
 
     @Test
@@ -191,5 +187,4 @@ public class QaObservationTypeServiceTest extends BaseWebContextSensitiveTest {
         List<QaObservationType> observationTypes2 = observationTypeService.getAll();
         assertEquals(3, observationTypes2.size());
     }
-
 }

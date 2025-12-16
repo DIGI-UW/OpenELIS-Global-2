@@ -21,6 +21,7 @@ import org.springframework.test.annotation.Rollback;
  * generation using shortCode from entity - Validation when shortCode is missing
  * - Print history tracking
  *
+ * <p>
  * Following OpenELIS test patterns: extends BaseWebContextSensitiveTest to load
  * full Spring context and hit real database with proper transaction management.
  */

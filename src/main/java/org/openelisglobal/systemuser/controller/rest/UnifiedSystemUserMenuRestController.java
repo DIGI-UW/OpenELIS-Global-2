@@ -319,7 +319,6 @@ public class UnifiedSystemUserMenuRestController extends BaseMenuController<Unif
             }
             // saveErrors(result);
             return findLocalForward(FWD_FAIL_DELETE);
-
         }
 
         // return findForward(FWD_SUCCESS_DELETE, form);

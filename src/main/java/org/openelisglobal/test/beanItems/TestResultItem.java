@@ -86,6 +86,7 @@ public class TestResultItem implements ResultItem, Serializable {
 
     @ValidDate(relative = DateRelation.PAST, acceptTime = true, groups = { WorkplanForm.PrintWorkplan.class })
     private String receivedDate;
+
     /*
      * N.B. test method is the type of test it is (HIV etc). analysisMethod is the
      * way the analysis is done automatic or manual
@@ -114,6 +115,7 @@ public class TestResultItem implements ResultItem, Serializable {
     // Inventory Management: tracks which lot was used for this test result
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String inventoryLotId;
+
     private double upperNormalRange = 0;
     private double lowerNormalRange = 0;
     private double upperAbnormalRange;
@@ -1046,9 +1048,7 @@ public class TestResultItem implements ResultItem, Serializable {
                 String[] contentInfo = base64Content.split(";base64,", 2);
                 setFileType(contentInfo[0]);
                 setContent(Base64.getDecoder().decode(contentInfo[1]));
-
             }
         }
-
     }
 }

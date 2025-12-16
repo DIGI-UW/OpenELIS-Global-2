@@ -51,6 +51,10 @@ public class NoteBookPage extends BaseObject<Integer> {
     @Column(name = "sample_type_id")
     private Integer sampleTypeId;
 
+    @Column(name = "page_id")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String pageId;
+
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "notebook_page_panels", joinColumns = @JoinColumn(name = "notebook_page_id"))
     @Column(name = "panel")
@@ -150,4 +154,11 @@ public class NoteBookPage extends BaseObject<Integer> {
         this.panels = panels;
     }
 
+    public String getPageId() {
+        return pageId;
+    }
+
+    public void setPageId(String pageId) {
+        this.pageId = pageId;
+    }
 }

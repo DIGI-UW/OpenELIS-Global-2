@@ -260,7 +260,6 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                         LogEvent.logWarn(this.getClass().getSimpleName(), "processRequest", "no matching requester");
                     }
                 }
-
             }
 
             if (specimen != null && !GenericValidator
@@ -414,7 +413,6 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                 requesterValuesMap.put(PROVIDER_ID, provider.getId());
                 requesterValuesMap.put(PROVIDER_PERSON_ID, provider.getPerson().getId());
             }
-
         }
         xml.append("<requester>");
         XMLUtil.appendKeyValue(PROVIDER_ID, requesterValuesMap.get(PROVIDER_ID), xml);
@@ -516,11 +514,9 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                 typeOfSample = typeOfSampleService.getTypeOfSampleForPanelId(panel.getId()).get(0);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "addToTestOrPanel",
                         "typeOfSample matching for panel is: " + typeOfSample.getDescription());
-
             }
             panels.add(new Request(panel.getPanelName(), loinc, typeOfSample.getLocalizedName()));
         }
-
     }
 
     private void createMaps(List<Request> testRequests, List<Request> panelNames) {

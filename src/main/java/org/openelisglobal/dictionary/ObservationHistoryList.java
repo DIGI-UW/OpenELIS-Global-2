@@ -108,11 +108,13 @@ public enum ObservationHistoryList {
     private boolean orderByMessageResource;
 
     private List<String> idToIndex;
+
     /**
      * Deriving one list from another involves dropping or adding one entry. This is
      * the name (local_abbrev, but check the code below) of that entry.
      */
     private String entryTag = null;
+
     /** T = Add the entry named or F= drop the entry named */
     private boolean add;
 

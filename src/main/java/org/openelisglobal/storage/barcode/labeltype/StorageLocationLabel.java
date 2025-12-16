@@ -17,7 +17,7 @@ public class StorageLocationLabel extends Label {
 
     /**
      * Create label for a storage location
-     * 
+     *
      * @param locationName     The display name of the location
      * @param locationCode     The code of the location (≤10 chars)
      * @param hierarchicalPath The full hierarchical path (e.g.,

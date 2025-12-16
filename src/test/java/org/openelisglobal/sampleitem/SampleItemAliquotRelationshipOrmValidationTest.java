@@ -151,9 +151,7 @@ public class SampleItemAliquotRelationshipOrmValidationTest {
         assertTrue("getChildSampleItem should return the set value", child == entity.getChildSampleItem());
     }
 
-    /**
-     * Helper method to assert a field exists with the expected type.
-     */
+    /** Helper method to assert a field exists with the expected type. */
     private void assertFieldExists(Class<?> clazz, String fieldName, Class<?> expectedType) {
         try {
             Field field = clazz.getDeclaredField(fieldName);

@@ -31,6 +31,7 @@ public class LoginUserServiceImpl extends AuditableBaseObjectServiceImpl<LoginUs
     private PasswordEncoder passwordEncoder;
 
     private Pattern BCRYPT_PATTERN = Pattern.compile("\\A\\$2[ya]?\\$\\d\\d\\$[./0-9A-Za-z]{53}"); // make sure this
+
     // variable is
     // current
 

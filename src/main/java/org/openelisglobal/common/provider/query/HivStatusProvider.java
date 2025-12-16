@@ -34,6 +34,7 @@ public class HivStatusProvider extends BaseQueryProvider {
             .getBean(ObservationHistoryService.class);
 
     private static final String NOT_FOUND = "Not found";
+
     /** */
     private static final String HIV_STATUS_OH_TYPE = "hivStatus";
 

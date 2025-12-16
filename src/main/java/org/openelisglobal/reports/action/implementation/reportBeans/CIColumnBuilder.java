@@ -38,11 +38,13 @@ public abstract class CIColumnBuilder extends CSVColumnBuilder {
             + ", pat.national_id, pat.external_id, pat.birth_date, per.first_name, per.last_name," + " pat.gender \n"
             + ", o.short_name as organization_code, o.name AS organization_name, sp.proj_id as" + " project_id \n"
             + ", o.datim_org_code, o.datim_org_name \n" + " ";
+
     /**
      * The column select which puts all demographic and result columns in the result
      * set.
      */
     protected static final String SELECT_ALL_DEMOGRAPHIC_AND_RESULTS = "\n, demo.*, result.*" + "\n ";
+
     /**
      * the basic SQL FROM clause for the selection from basic lab tables for sample,
      * sample_item, patient & organization

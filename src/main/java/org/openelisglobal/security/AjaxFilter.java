@@ -40,5 +40,4 @@ public class AjaxFilter implements Filter {
     @Override
     public void destroy() {
     }
-
 }

@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Implementation of BarcodeValidationService Implements 5-step validation
  * process per FR-024 through FR-027
  *
+ * <p>
  * Key features: - Two-step validation: existence check + hierarchy check -
  * Partial validation: continues through all levels even after failure - Tracks
  * first failure point for user feedback - Populates validComponents for form
@@ -347,9 +348,7 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
         return response;
     }
 
-    /**
-     * Create a map with component details for form pre-filling
-     */
+    /** Create a map with component details for form pre-filling */
     private Map<String, Object> createComponentMap(Integer id, String name, String code) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", id);
@@ -362,7 +361,7 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
      * Format error message per FR-024g specification Format: "Scanned code:
      * {barcode} ({parsed components}). {specific error}" If parsing fails: "Scanned
      * code: {barcode}. Invalid barcode format."
-     * 
+     *
      * @param rawBarcode    The original barcode string
      * @param parsed        The parsed barcode object (may be invalid)
      * @param specificError The specific error message
@@ -427,7 +426,7 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
      * Detect barcode type: location, sample, or unknown Location barcodes:
      * Hierarchical format with hyphens (e.g., "MAIN-FRZ01-SHA-RKR1") Sample
      * barcodes: Accession number formats (e.g., "25-00001", "S-2025-001")
-     * 
+     *
      * @param barcode The barcode string to analyze
      * @return "location", "sample", or "unknown"
      */

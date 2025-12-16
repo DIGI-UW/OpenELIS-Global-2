@@ -32,7 +32,8 @@ public class CodeValidationServiceImpl implements CodeValidationService {
 
     private static final int MAX_CODE_LENGTH = 10;
     private static final String CODE_PATTERN = "^[A-Z0-9][A-Z0-9_-]*$"; // Starts with letter/number, then
-                                                                        // alphanumeric/hyphen/underscore
+
+    // alphanumeric/hyphen/underscore
 
     @Override
     public CodeValidationResult validateFormat(String code) {

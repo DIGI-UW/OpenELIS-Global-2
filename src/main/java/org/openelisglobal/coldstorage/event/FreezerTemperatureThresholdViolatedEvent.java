@@ -5,9 +5,7 @@ import java.time.OffsetDateTime;
 import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
 
-/**
- * Event published when a freezer temperature reading violates a threshold.
- */
+/** Event published when a freezer temperature reading violates a threshold. */
 @Getter
 public class FreezerTemperatureThresholdViolatedEvent extends ApplicationEvent {
     private final Long freezerId;

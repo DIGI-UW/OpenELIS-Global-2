@@ -226,5 +226,4 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
 
         return null;
     }
-
 }

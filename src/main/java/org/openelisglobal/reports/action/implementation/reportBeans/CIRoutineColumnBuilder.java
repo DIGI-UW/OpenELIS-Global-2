@@ -34,11 +34,13 @@ public abstract class CIRoutineColumnBuilder extends CSVRoutineColumnBuilder {
             + " s.collection_date, s.status_id \n"
             + ", pat.national_id, pat.external_id, pat.birth_date, per.first_name, per.last_name," + " pat.gender \n"
             + ", o.short_name as organization_code, o.name AS organization_name \n" + " ";
+
     /**
      * The column select which puts all demographic and result columns in the result
      * set.
      */
     protected static final String SELECT_ALL_DEMOGRAPHIC_AND_RESULTS = "\n, demo.*, result.*" + "\n ";
+
     /**
      * the basic SQL FROM clause for the selection from basic lab tables for sample,
      * sample_item, patient & organization
@@ -47,6 +49,7 @@ public abstract class CIRoutineColumnBuilder extends CSVRoutineColumnBuilder {
             + " sample_requester AS sq, organization AS o \n" + " ";
 
     protected DateRange dateRange;
+
     // protected String projectStr;
 
     /** */

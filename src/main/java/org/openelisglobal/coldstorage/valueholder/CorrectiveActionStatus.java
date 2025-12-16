@@ -1,28 +1,18 @@
 package org.openelisglobal.coldstorage.valueholder;
 
 public enum CorrectiveActionStatus {
-    /**
-     * Action created but work not started
-     */
+    /** Action created but work not started */
     PENDING,
 
-    /**
-     * Work in progress
-     */
+    /** Work in progress */
     IN_PROGRESS,
 
-    /**
-     * Action completed successfully
-     */
+    /** Action completed successfully */
     COMPLETED,
 
-    /**
-     * Action cancelled before completion
-     */
+    /** Action cancelled before completion */
     CANCELLED,
 
-    /**
-     * Action retracted after creation
-     */
+    /** Action retracted after creation */
     RETRACTED
 }

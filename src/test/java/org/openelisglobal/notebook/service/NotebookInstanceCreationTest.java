@@ -147,9 +147,7 @@ public class NotebookInstanceCreationTest {
         verify(notebookPageSampleService, times(45)).insert(any(NotebookPageSample.class));
     }
 
-    /**
-     * Test: Linking already-linked sample is skipped (no duplicates)
-     */
+    /** Test: Linking already-linked sample is skipped (no duplicates) */
     @Test
     public void testLinkAlreadyLinkedSample_SkipsExisting() {
         // Setup
@@ -178,9 +176,7 @@ public class NotebookInstanceCreationTest {
         verify(notebookPageSampleService, times(8)).insert(any(NotebookPageSample.class));
     }
 
-    /**
-     * Test: New NotebookPageSample records have PENDING status
-     */
+    /** Test: New NotebookPageSample records have PENDING status */
     @Test
     public void testNewPageSampleRecords_HavePendingStatus() {
         // Setup
@@ -210,9 +206,7 @@ public class NotebookInstanceCreationTest {
         }
     }
 
-    /**
-     * Test: Linking to non-existent notebook throws exception
-     */
+    /** Test: Linking to non-existent notebook throws exception */
     @Test(expected = IllegalArgumentException.class)
     public void testLinkToNonExistentNotebook_ThrowsException() {
         // Setup
@@ -225,9 +219,7 @@ public class NotebookInstanceCreationTest {
         sampleEntryService.linkSamplesToNotebook(notebookId, sampleIds);
     }
 
-    /**
-     * Test: Linking non-existent sample is skipped gracefully
-     */
+    /** Test: Linking non-existent sample is skipped gracefully */
     @Test
     public void testLinkNonExistentSample_SkippedGracefully() {
         // Setup
@@ -247,9 +239,7 @@ public class NotebookInstanceCreationTest {
         verify(notebookPageSampleService, times(9)).insert(any(NotebookPageSample.class));
     }
 
-    /**
-     * Test: Linking to notebook without pages handles gracefully
-     */
+    /** Test: Linking to notebook without pages handles gracefully */
     @Test
     public void testLinkToNotebookWithoutPages_NoRecordsCreated() {
         // Setup
@@ -271,9 +261,7 @@ public class NotebookInstanceCreationTest {
         verify(notebookPageSampleService, never()).insert(any(NotebookPageSample.class));
     }
 
-    /**
-     * Test: Page progress shows 0/5 for newly linked samples
-     */
+    /** Test: Page progress shows 0/5 for newly linked samples */
     @Test
     public void testPageProgress_ShowsZeroCompletedForNewSamples() {
         // Setup - mock the progress calculation

@@ -193,5 +193,4 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         List<NceType> updatedNceTypes = nceTypeService.getAll();
         assertTrue(updatedNceTypes.isEmpty());
     }
-
 }

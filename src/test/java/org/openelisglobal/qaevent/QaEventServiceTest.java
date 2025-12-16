@@ -117,7 +117,6 @@ public class QaEventServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(events);
         assertEquals(1, events.size());
         assertEquals("1", events.get(0).getId());
-
     }
 
     @Test
@@ -256,5 +255,4 @@ public class QaEventServiceTest extends BaseWebContextSensitiveTest {
         int count = qaEventService.getCount();
         assertEquals(events.size(), count);
     }
-
 }

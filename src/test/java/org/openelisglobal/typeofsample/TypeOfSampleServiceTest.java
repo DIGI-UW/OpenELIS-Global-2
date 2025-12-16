@@ -133,7 +133,6 @@ public class TypeOfSampleServiceTest extends BaseWebContextSensitiveTest {
         List<TypeOfSample> typeOfSamples = tosSample.getTypeOfSampleForTest("5");
         Assert.assertEquals(1, typeOfSamples.size());
         Assert.assertEquals("5", typeOfSamples.get(0).getId());
-
     }
 
     @Test
@@ -156,7 +155,6 @@ public class TypeOfSampleServiceTest extends BaseWebContextSensitiveTest {
         List<org.openelisglobal.test.valueholder.Test> tests = tosSample.getAllTestsBySampleTypeId("4");
         Assert.assertEquals(1, tests.size());
         Assert.assertEquals("Fluids Test", tests.get(0).getDescription());
-
     }
 
     @Test

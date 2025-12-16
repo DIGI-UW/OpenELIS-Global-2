@@ -434,5 +434,4 @@ public class FreezerReportServiceImpl implements FreezerReportService {
         return alerts.stream().filter(alert -> alert.getStartTime() != null).anyMatch(
                 alert -> !alert.getStartTime().isBefore(startWindow) && !alert.getStartTime().isAfter(endWindow));
     }
-
 }

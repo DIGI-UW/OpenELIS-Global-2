@@ -15,7 +15,7 @@ public interface StorageDashboardService {
 
     /**
      * Filter samples by location and status (AND logic).
-     * 
+     *
      * @param location Location filter (hierarchical path substring)
      * @param status   Status filter (active, disposed, etc.)
      * @return Filtered list of samples matching both criteria
@@ -24,7 +24,7 @@ public interface StorageDashboardService {
 
     /**
      * Filter rooms by status.
-     * 
+     *
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of rooms matching status
      */
@@ -32,7 +32,7 @@ public interface StorageDashboardService {
 
     /**
      * Filter rooms by status and return as Maps (API format).
-     * 
+     *
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of rooms as Maps with all data resolved
      */
@@ -40,7 +40,7 @@ public interface StorageDashboardService {
 
     /**
      * Filter devices by type, roomId, and status (AND logic).
-     * 
+     *
      * @param deviceType   Device type filter (FREEZER, REFRIGERATOR, etc.)
      * @param roomId       Room ID filter
      * @param activeStatus true for active, false for inactive
@@ -50,7 +50,7 @@ public interface StorageDashboardService {
 
     /**
      * Filter devices by type, roomId, and status and return as Maps (API format).
-     * 
+     *
      * @param deviceType   Device type filter (FREEZER, REFRIGERATOR, etc.)
      * @param roomId       Room ID filter
      * @param activeStatus true for active, false for inactive
@@ -61,7 +61,7 @@ public interface StorageDashboardService {
 
     /**
      * Filter shelves by deviceId, roomId, and status (AND logic).
-     * 
+     *
      * @param deviceId     Device ID filter
      * @param roomId       Room ID filter
      * @param activeStatus true for active, false for inactive
@@ -72,7 +72,7 @@ public interface StorageDashboardService {
     /**
      * Filter shelves by deviceId, roomId, and status and return as Maps (API
      * format).
-     * 
+     *
      * @param deviceId     Device ID filter
      * @param roomId       Room ID filter
      * @param activeStatus true for active, false for inactive
@@ -82,7 +82,7 @@ public interface StorageDashboardService {
 
     /**
      * Filter racks by roomId, shelfId, deviceId, and status (AND logic).
-     * 
+     *
      * @param roomId       Room ID filter
      * @param shelfId      Shelf ID filter
      * @param deviceId     Device ID filter
@@ -93,7 +93,7 @@ public interface StorageDashboardService {
 
     /**
      * Get racks for API with filters and room column included (FR-065a).
-     * 
+     *
      * @param roomId       Optional room ID filter
      * @param shelfId      Optional shelf ID filter
      * @param deviceId     Optional device ID filter
@@ -106,7 +106,7 @@ public interface StorageDashboardService {
      * Get location counts by type for active locations only (FR-057, FR-057a).
      * Returns counts for Room, Device, Shelf, and Rack levels (Position excluded).
      * Only counts active (non-decommissioned) locations.
-     * 
+     *
      * @return Map with keys: "rooms", "devices", "shelves", "racks" and integer
      *         count values
      */

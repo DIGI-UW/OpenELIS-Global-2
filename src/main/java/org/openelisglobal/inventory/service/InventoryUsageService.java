@@ -6,24 +6,16 @@ import org.openelisglobal.inventory.valueholder.InventoryUsage;
 
 public interface InventoryUsageService extends BaseObjectService<InventoryUsage, Long> {
 
-    /**
-     * Get usage records by test result ID (for Lot Traceability Report)
-     */
+    /** Get usage records by test result ID (for Lot Traceability Report) */
     List<InventoryUsage> getByTestResultId(Long testResultId);
 
-    /**
-     * Get usage records by lot ID
-     */
+    /** Get usage records by lot ID */
     List<InventoryUsage> getByLotId(Long lotId);
 
-    /**
-     * Get usage records by inventory item ID
-     */
+    /** Get usage records by inventory item ID */
     List<InventoryUsage> getByInventoryItemId(Long itemId);
 
-    /**
-     * Get usage records by analysis ID
-     */
+    /** Get usage records by analysis ID */
     List<InventoryUsage> getByAnalysisId(Long analysisId);
 
     /**

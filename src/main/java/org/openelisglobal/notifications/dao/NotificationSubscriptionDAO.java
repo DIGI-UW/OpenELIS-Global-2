@@ -13,5 +13,4 @@ public interface NotificationSubscriptionDAO {
     void saveOrUpdate(NotificationSubscriptions notificationSubscription);
 
     void delete(NotificationSubscriptions ns);
-
 }

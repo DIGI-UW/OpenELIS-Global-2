@@ -44,7 +44,6 @@ public class MenuRestControllerTest extends BaseWebContextSensitiveTest {
 
         long activeCount = menuMap.stream().filter(m -> m.getMenu().getIsActive()).count();
         assertEquals("Expected number of active menus", 6, activeCount);
-
     }
 
     @Test
@@ -68,7 +67,6 @@ public class MenuRestControllerTest extends BaseWebContextSensitiveTest {
         // Assert childMenus is empty
         assertNotNull("Child menus list should not be null", menuWrapper.getChildMenus());
         assertTrue("Child menus should be empty", menuWrapper.getChildMenus().isEmpty());
-
     }
 
     @Test
@@ -140,5 +138,4 @@ public class MenuRestControllerTest extends BaseWebContextSensitiveTest {
         assertTrue("Menu should be active", menuWrapper.getMenu().getIsActive());
         assertEquals(20, menuWrapper.getMenu().getPresentationOrder());
     }
-
 }

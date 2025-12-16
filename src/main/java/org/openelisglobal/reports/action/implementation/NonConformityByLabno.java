@@ -65,6 +65,7 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
     // private Project project;
     // private String service;
     private Patient patient;
+
     // private QaEvent qaEvent;
     // private List<SampleQaEvent> sampleQaEvents;
 

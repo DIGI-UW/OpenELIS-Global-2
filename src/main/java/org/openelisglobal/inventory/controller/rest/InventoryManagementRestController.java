@@ -113,7 +113,6 @@ public class InventoryManagementRestController extends BaseRestController {
         private String testResultId;
         private String analysisId;
         private Boolean overrideExpiration;
-
     }
 
     @Setter
@@ -124,7 +123,6 @@ public class InventoryManagementRestController extends BaseRestController {
         public ConsumeResponse(List<ConsumptionRecord> consumedLots) {
             this.consumedLots = consumedLots;
         }
-
     }
 
     @Setter
@@ -139,7 +137,6 @@ public class InventoryManagementRestController extends BaseRestController {
             this.itemId = itemId;
             this.requestedQuantity = requestedQuantity;
         }
-
     }
 
     @Setter
@@ -150,7 +147,5 @@ public class InventoryManagementRestController extends BaseRestController {
         public ErrorResponse(String error) {
             this.error = error;
         }
-
     }
-
 }

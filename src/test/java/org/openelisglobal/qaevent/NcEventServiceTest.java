@@ -21,7 +21,6 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/nc-event.xml");
-
     }
 
     @Test
@@ -31,7 +30,6 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", ncEvents.get(0).getId());
         assertEquals("2", ncEvents.get(1).getId());
         assertEquals("3", ncEvents.get(2).getId());
-
     }
 
     @Test
@@ -39,7 +37,6 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
         List<NcEvent> ncEvents = ncEventService.getAllMatching("name", "Sample Mislabeling");
         assertEquals(1, ncEvents.size());
         assertEquals("1", ncEvents.get(0).getId());
-
     }
 
     @Test
@@ -99,7 +96,6 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
         int expectedPage = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(ncEvents.size() <= expectedPage);
-
     }
 
     @Test
@@ -183,5 +179,4 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
         List<NcEvent> ncEvents = ncEventService.getAll();
         assertEquals(2, ncEvents.size());
     }
-
 }

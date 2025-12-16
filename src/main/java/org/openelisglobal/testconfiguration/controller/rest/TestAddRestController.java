@@ -218,5 +218,4 @@ public class TestAddRestController extends BaseRestController {
 
         return dictionaryIdGroups;
     }
-
 }

@@ -329,5 +329,4 @@ public class AppTestConfig implements WebMvcConfigurer {
     public AnalyzerResultsController analyzerResultsController() {
         return mock(AnalyzerResultsController.class);
     }
-
 }

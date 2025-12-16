@@ -377,7 +377,6 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         patientID = patient.getId();
         patientInfo.setPatientPK(patientID);
         patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto());
-
     }
 
     @Override

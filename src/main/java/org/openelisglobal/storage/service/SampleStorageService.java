@@ -4,20 +4,16 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.storage.valueholder.StorageRack;
 
-/**
- * Service interface for sample storage assignment and movement operations
- */
+/** Service interface for sample storage assignment and movement operations */
 public interface SampleStorageService {
 
-    /**
-     * Calculate rack capacity and return warning if threshold exceeded
-     */
+    /** Calculate rack capacity and return warning if threshold exceeded */
     CapacityWarning calculateCapacity(StorageRack rack);
 
     /**
      * Get all SampleItems with storage assignments and complete hierarchical paths.
      * All relationships are eagerly fetched within the service transaction.
-     * 
+     *
      * @return List of maps, each containing: id, sampleItemId,
      *         sampleAccessionNumber, type, status, location, assignedBy, date
      */
@@ -27,7 +23,7 @@ public interface SampleStorageService {
      * Assign a SampleItem to a location using simplified polymorphic relationship
      * (locationId + locationType). Supports assignment to device, shelf, or rack
      * level with optional text-based position coordinate.
-     * 
+     *
      * @param sampleItemId       SampleItem ID
      * @param locationId         Location ID (device, shelf, or rack ID)
      * @param locationType       Location type: 'device', 'shelf', or 'rack'
@@ -72,7 +68,7 @@ public interface SampleStorageService {
 
     /**
      * Get paginated sample storage assignments for dashboard display (OGC-150).
-     * 
+     *
      * @param pageable Pagination parameters (page number, page size, sorting)
      * @return Page of SampleStorageAssignment entities
      */

@@ -140,7 +140,6 @@ public class NotificationRestController extends BaseRestController {
         }
 
         return ResponseEntity.ok().body(ns);
-
     }
 
     @PutMapping("/notification/markasread/{id}")

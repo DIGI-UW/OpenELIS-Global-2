@@ -1,4 +1,3 @@
-
 package org.openelisglobal.action;
 
 import static org.junit.Assert.assertEquals;

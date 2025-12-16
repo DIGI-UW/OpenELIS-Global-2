@@ -11,17 +11,21 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 /**
  * Unit tests for CodeGenerationService
- * 
+ *
+ * <p>
  * References: - Testing Roadmap: .specify/guides/testing-roadmap.md - Backend
  * Best Practices: .specify/guides/backend-testing-best-practices.md - Template:
  * JUnit 4 Service Test
- * 
+ *
+ * <p>
  * TDD Workflow (MANDATORY for complex logic): - RED: Write failing test first
  * (defines expected behavior) - GREEN: Write minimal code to make test pass -
  * REFACTOR: Improve code quality while keeping tests green
- * 
+ *
+ * <p>
  * Task Reference: T284
- * 
+ *
+ * <p>
  * Test Naming: test{MethodName}_{Scenario}_{ExpectedResult}
  */
 @RunWith(MockitoJUnitRunner.class)
@@ -167,9 +171,7 @@ public class CodeGenerationServiceTest {
         assertTrue("Code should be ≤10 chars", code.length() <= 10);
     }
 
-    /**
-     * Test edge cases
-     */
+    /** Test edge cases */
     @Test
     public void testEdgeCases() {
         // Test empty string

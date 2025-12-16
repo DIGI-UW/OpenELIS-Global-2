@@ -25,9 +25,7 @@ import org.openelisglobal.medlab.valueholder.QCResult;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * DAO implementation for QCResult entity operations.
- */
+/** DAO implementation for QCResult entity operations. */
 @Component
 @Transactional
 public class QCResultDAOImpl extends BaseDAOImpl<QCResult, Integer> implements QCResultDAO {

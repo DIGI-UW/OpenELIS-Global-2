@@ -196,5 +196,4 @@ public class LabComponentServiceTest extends BaseWebContextSensitiveTest {
         List<LabComponent> updatedLabComponents = labComponentService.getAll();
         assertTrue(updatedLabComponents.isEmpty());
     }
-
 }

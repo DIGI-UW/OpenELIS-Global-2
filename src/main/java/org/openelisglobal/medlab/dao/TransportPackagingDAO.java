@@ -18,9 +18,7 @@ import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.medlab.valueholder.TransportPackaging;
 
-/**
- * DAO interface for TransportPackaging entity operations.
- */
+/** DAO interface for TransportPackaging entity operations. */
 public interface TransportPackagingDAO extends BaseDAO<TransportPackaging, Integer> {
 
     /**

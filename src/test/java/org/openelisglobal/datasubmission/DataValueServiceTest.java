@@ -132,7 +132,6 @@ public class DataValueServiceTest extends BaseWebContextSensitiveTest {
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertNotNull(dataValues);
         assertTrue(dataValues.size() <= expectedPages);
-
     }
 
     @Test
@@ -286,5 +285,4 @@ public class DataValueServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(updatedDataValue);
         assertEquals(savedDataValue.getColumnName(), updatedDataValue.getColumnName());
     }
-
 }

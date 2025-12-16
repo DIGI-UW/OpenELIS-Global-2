@@ -4,9 +4,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-/**
- * Form bean for analyzer result import operations.
- */
+/** Form bean for analyzer result import operations. */
 public class AnalyzerImportForm {
 
     private Integer notebookPageId;

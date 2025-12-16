@@ -149,36 +149,48 @@ src/main/resources/liquibase/
     ├── 008-equipment-usage-log.xml
     └── 009-sample-allocation.xml
 
-# Frontend (React)
-frontend/src/
-├── components/
-│   └── medlab/                          # NEW: Medical Lab module
-│       ├── PatientRegistration.js
-│       ├── LabOrderEntry.js
-│       ├── SampleCollection.js
-│       ├── SampleReception.js
-│       ├── TransportPackagingForm.js
-│       ├── SampleAllocation.js
-│       ├── StorageManagement.js
-│       ├── EnvironmentalMonitoring.js
-│       ├── SampleProcessing.js
-│       ├── TestingWorklist.js
-│       ├── ResultEntry.js
-│       ├── QCDashboard.js
-│       │   ├── LeveyJenningsChart.js
-│       │   └── QCEntryForm.js
-│       ├── ResultValidation.js
-│       ├── ResultReporting.js
-│       ├── LabDashboard.js
-│       │   ├── TATMetrics.js
-│       │   ├── AcceptanceRateChart.js
-│       │   └── EquipmentUsageReport.js
-│       ├── SampleUtilization.js
-│       ├── DisposalManagement.js
-│       └── ArchiveBiobank.js
-└── languages/
-    ├── en.json                          # UPDATE: Add ~500 new keys
-    └── fr.json                          # UPDATE: Add ~500 new keys
+# Frontend (React) - Reuse-First Approach
+# Medical Lab workflow is implemented as a Notebook with embedded pages.
+# All pages display within the Notebook container - no standalone navigation.
+
+frontend/src/components/
+├── notebook/pages/                      # EXTEND: Add medlab-specific pages
+│   ├── PatientOrderEntryPage.js         # NEW: Patient reg + lab order (Page 1)
+│   ├── SampleCollectionPage.js          # NEW: Specimen collection (Page 2)
+│   ├── SampleReceptionPage.js           # EXTEND: Add medlab QC hooks (Page 3)
+│   ├── QualityCheckPage.js              # NEW: Sample-type QC checklist (Page 4)
+│   ├── TransportPackagingPage.js        # NEW: IATA PI650 compliance (Page 5, P2)
+│   ├── SampleRoutingPage.js             # EXTEND: Dept allocation (Page 6)
+│   ├── InitialProcessingPage.js         # EXTEND: Dept-specific methods (Page 7)
+│   ├── StorageAssignmentPage.js         # NEW: Embeds StorageHierarchySelector (Page 8)
+│   ├── EnvironmentalMonitoringPage.js   # NEW: Embeds FreezerMonitoring (Page 9)
+│   ├── AnalysisPage.js                  # EXTEND: Medlab analyzer support (Page 10)
+│   ├── QCDashboardPage.js               # NEW: Levey-Jennings charts (Page 11)
+│   │   └── LeveyJenningsChart.js        # NEW: Carbon Charts component
+│   ├── ResultValidationPage.js          # NEW: Embeds Validation.js (Page 12)
+│   ├── ResultCompilationPage.js         # REUSE AS-IS (Page 13)
+│   ├── LabDashboardPage.js              # NEW: Embeds Dashboard metrics (Page 14)
+│   ├── SampleUtilizationPage.js         # NEW: Usage tracking (Page 15)
+│   └── EndOfProjectArchivingPage.js     # REUSE AS-IS (Page 16)
+│
+├── notebook/workflow/                   # REUSE: Existing workflow components
+│   ├── SampleGrid.js                    # REUSE AS-IS: Sample display grid
+│   ├── StorageHierarchySelector.js      # REUSE AS-IS: Location picker
+│   ├── BoxLayoutViewer.js               # REUSE AS-IS: Box visualization
+│   └── NotebookWorkflowTab.js           # REUSE AS-IS: Page navigation
+│
+├── coldStorage/                         # EXTEND: Environmental monitoring
+│   └── FreezerMonitoringDashboard.js    # EXTEND: Add twice-daily schedule
+│
+├── validation/                          # EXTEND: Result validation
+│   └── Validation.js                    # EXTEND: Add department queue filtering
+│
+└── home/                                # EXTEND: Dashboard metrics
+    └── Dashboard.tsx                    # EXTEND: Add medlab-specific tiles
+
+frontend/src/languages/
+├── en.json                              # UPDATE: Add ~200 new keys (reduced due to reuse)
+└── fr.json                              # UPDATE: Add ~200 new keys
 
 # Tests
 src/test/java/org/openelisglobal/medlab/
@@ -200,10 +212,13 @@ frontend/cypress/e2e/
 └── medlabDisposal.cy.js
 ```
 
-**Structure Decision**: Web application pattern selected. New `medlab` module
-created under `org.openelisglobal.medlab`. Extends existing patient, sample, and
-result modules. Frontend creates new `components/medlab/` directory with 19 page
-components.
+**Structure Decision**: Reuse-first approach using the existing Notebook
+workflow framework. Backend creates new `medlab` module under
+`org.openelisglobal.medlab` for genuinely new entities (QualityCheck, QCResult,
+TransportPackaging). Frontend extends existing notebook pages rather than
+duplicating - only 8 new page components needed (vs 19 originally planned). All
+pages embedded within Notebook container maintaining patient context throughout
+workflow.
 
 ## Complexity Tracking
 
@@ -211,21 +226,19 @@ components.
 
 ## Implementation Milestones
 
-### Milestone 1: Foundation - Patient/Participant & Lab Orders (Backend)
+### Milestone 1: Foundation - Patient & Lab Orders (Backend)
 
-**Branch**: `feat/001-medical-lab-workflow/m1-patient-orders` **Effort**: 3-4
+**Branch**: `feat/001-medical-lab-workflow-m1-patient-orders` **Effort**: 2-3
 days **Dependencies**: None
 
 Tasks:
 
-- [ ] Extend Patient entity for participant support (enrollment status, study
-      ID)
-- [ ] Create ParticipantService for research participant management
-- [ ] Add scheduled collection support for participants
-- [ ] Verify existing LabOrder/TestRequest integration
-- [ ] Add Liquibase changesets for new columns
-- [ ] Add ORM validation tests
-- [ ] Add unit tests for ParticipantService
+- [ ] Verify existing PatientService meets medlab requirements (REUSE AS-IS)
+- [ ] Verify existing LabOrder/TestRequest integration (REUSE AS-IS)
+- [ ] Create MedLabNotebook template configuration in NoteBookService
+- [ ] Define 16-page workflow template for Medical Lab notebook
+- [ ] Add ORM validation tests for notebook integration
+- [ ] Add unit tests for notebook template creation
 
 ### Milestone 2: Sample Collection & Reception QC (Backend)
 
@@ -351,26 +364,47 @@ Tasks:
 - [ ] Add Liquibase changesets
 - [ ] Add unit tests
 
-### Milestone 10: Frontend Implementation (React)
+### Milestone 10: Frontend Implementation (React) - Reuse-First
 
-**Branch**: `feat/001-medical-lab-workflow/m10-frontend` **Effort**: 10-15 days
+**Branch**: `feat/001-medical-lab-workflow/m10-frontend` **Effort**: 6-8 days
 **Dependencies**: M1-M9 (can start partial implementation after M2)
 
-Tasks:
+The frontend uses the existing Notebook workflow framework. All 16 pages are
+embedded within the Notebook container - users never navigate away.
 
-- [ ] Create PatientRegistration and LabOrderEntry pages
-- [ ] Create SampleCollection and SampleReception pages
-- [ ] Create TransportPackagingForm page
-- [ ] Create SampleAllocation and StorageManagement pages
-- [ ] Create EnvironmentalMonitoring page with temperature charts
-- [ ] Create SampleProcessing and TestingWorklist pages
-- [ ] Create QCDashboard with Levey-Jennings charting
-- [ ] Create ResultEntry and ResultValidation pages
-- [ ] Create ResultReporting page with PDF generation
-- [ ] Create LabDashboard with KPI visualizations
-- [ ] Create SampleUtilization and DisposalManagement pages
-- [ ] Add all i18n keys (~500 en/fr translations)
-- [ ] Create Cypress E2E tests for each major workflow
+Tasks (NEW pages only - 8 components):
+
+- [ ] Create PatientOrderEntryPage.js - Patient reg + lab order (Page 1)
+- [ ] Create SampleCollectionPage.js - Specimen collection (Page 2)
+- [ ] Create QualityCheckPage.js - Sample-type QC checklist (Page 4)
+- [ ] Create TransportPackagingPage.js - IATA PI650 compliance (Page 5)
+- [ ] Create StorageAssignmentPage.js - Embeds StorageHierarchySelector (Page 8)
+- [ ] Create EnvironmentalMonitoringPage.js - Embeds FreezerMonitoring (Page 9)
+- [ ] Create QCDashboardPage.js with LeveyJenningsChart.js (Page 11)
+- [ ] Create LabDashboardPage.js - Embeds Dashboard metrics (Page 14)
+
+Tasks (EXTEND existing pages - 5 components):
+
+- [ ] Extend SampleReceptionPage.js - Add medlab QC hooks (Page 3)
+- [ ] Extend SampleRoutingPage.js - Department allocation (Page 6)
+- [ ] Extend InitialProcessingPage.js - Dept-specific methods (Page 7)
+- [ ] Extend AnalysisPage.js - Medlab analyzer support (Page 10)
+- [ ] Extend SampleGrid.js - Add utilization actions (Page 15)
+
+Tasks (EMBED existing components - 2 wrappers):
+
+- [ ] Create ResultValidationPage.js - Wraps Validation.js (Page 12)
+- [ ] Create SampleUtilizationPage.js - SampleGrid + actions (Page 15)
+
+Tasks (REUSE AS-IS - no changes needed):
+
+- ResultCompilationPage.js (Page 13)
+- EndOfProjectArchivingPage.js (Page 16)
+
+Common tasks:
+
+- [ ] Add i18n keys (~200 en/fr translations - reduced due to reuse)
+- [ ] Create Cypress E2E tests for medlab workflow
 
 ## Reusable Existing Services
 

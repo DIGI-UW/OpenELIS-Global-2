@@ -359,12 +359,13 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
         // "fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());" in the
         // implementation returns null;
 
-//        ElectronicOrderViewForm orderViewForm = new ElectronicOrderViewForm();
-//        orderViewForm.setSearchType(ElectronicOrderViewForm.SearchType.IDENTIFIER);
-//        electronicOrders = electronicOrderService.searchForStudyElectronicOrders(orderViewForm);
-//        assertNotNull(electronicOrders);
-//        assertEquals(3, electronicOrders.size());
-//        assertEquals("1", electronicOrders.get(0).getId());
+        // ElectronicOrderViewForm orderViewForm = new ElectronicOrderViewForm();
+        // orderViewForm.setSearchType(ElectronicOrderViewForm.SearchType.IDENTIFIER);
+        // electronicOrders =
+        // electronicOrderService.searchForStudyElectronicOrders(orderViewForm);
+        // assertNotNull(electronicOrders);
+        // assertEquals(3, electronicOrders.size());
+        // assertEquals("1", electronicOrders.get(0).getId());
 
     }
 

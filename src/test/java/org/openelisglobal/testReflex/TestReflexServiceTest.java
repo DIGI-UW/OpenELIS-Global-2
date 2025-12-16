@@ -43,7 +43,6 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, testReflexes.size());
         assertEquals("1001", testReflexes.get(0).getId());
         assertEquals("1002", testReflexes.get(1).getId());
-
     }
 
     @Test
@@ -129,7 +128,6 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
 
         ReflexRule reflexRuleResult = testReflexService.getReflexRuleByAnalyteId("1");
         assertEquals("Test Name", reflexRuleResult.getRuleName());
-
     }
 
     @Test
@@ -138,7 +136,6 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
 
         List<ReflexRule> reflexRules = testReflexService.getAllReflexRules();
         assertFalse(reflexRules.get(1).getActive());
-
     }
 
     @Test
@@ -163,6 +160,5 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
         List<ReflexRule> rules = testReflexService.getAllReflexRules();
 
         assertEquals("Test Name", rules.get(0).getRuleName());
-
     }
 }

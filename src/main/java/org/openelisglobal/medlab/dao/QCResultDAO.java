@@ -18,9 +18,7 @@ import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.medlab.valueholder.QCResult;
 
-/**
- * DAO interface for QCResult entity operations.
- */
+/** DAO interface for QCResult entity operations. */
 public interface QCResultDAO extends BaseDAO<QCResult, Integer> {
 
     /**

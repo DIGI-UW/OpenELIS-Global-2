@@ -553,13 +553,39 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             }
         }
 
-        noteBook.getPages().clear();
+        // Handle pages - preserve existing pages and only add new ones
+        // This prevents cascade deletion of NotebookPageSample records
         if (form.getPages() != null) {
-            for (NoteBookPage page : form.getPages()) {
-                page.setId(null);
-                page.setNotebook(noteBook);
-                noteBook.getPages().add(page);
+            // Build a map of existing pages by ID for quick lookup
+            java.util.Map<Integer, NoteBookPage> existingPagesById = new java.util.HashMap<>();
+            for (NoteBookPage existingPage : noteBook.getPages()) {
+                if (existingPage.getId() != null) {
+                    existingPagesById.put(existingPage.getId(), existingPage);
+                }
             }
+
+            // Process pages from form
+            List<NoteBookPage> updatedPages = new ArrayList<>();
+            for (NoteBookPage formPage : form.getPages()) {
+                if (formPage.getId() != null && existingPagesById.containsKey(formPage.getId())) {
+                    // Update existing page in place
+                    NoteBookPage existingPage = existingPagesById.get(formPage.getId());
+                    existingPage.setTitle(formPage.getTitle());
+                    existingPage.setOrder(formPage.getOrder());
+                    existingPage.setContent(formPage.getContent());
+                    updatedPages.add(existingPage);
+                    existingPagesById.remove(formPage.getId()); // Mark as processed
+                } else {
+                    // New page - add it
+                    formPage.setId(null);
+                    formPage.setNotebook(noteBook);
+                    updatedPages.add(formPage);
+                }
+            }
+
+            // Clear and re-add to maintain order while preserving existing page objects
+            noteBook.getPages().clear();
+            noteBook.getPages().addAll(updatedPages);
         }
 
         // Handle comments - only add new comments (those without id)

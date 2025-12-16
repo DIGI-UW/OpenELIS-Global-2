@@ -91,5 +91,4 @@ public class TypeOfSampleTestServiceTest extends BaseWebContextSensitiveTest {
         List<TypeOfSampleTest> delectedTypeOfSampleTest = typeOfSampleTestService.getAll();
         assertTrue(delectedTypeOfSampleTest.isEmpty());
     }
-
 }

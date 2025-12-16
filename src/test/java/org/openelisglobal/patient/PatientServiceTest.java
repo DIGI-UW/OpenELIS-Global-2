@@ -320,7 +320,6 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
         Patient patient = patientService.getPatientByPerson(person);
 
         Assert.assertEquals(gender, patient.getGender());
-
     }
 
     private Patient createPatient(String firstName, String LastName, String birthDate, String gender)
@@ -555,5 +554,4 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
             Assert.assertTrue(patientsPage.stream().anyMatch(p -> p.getPerson().getFirstName().equals(firstName2)));
         }
     }
-
 }

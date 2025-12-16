@@ -27,9 +27,7 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 @Table(name = "sample_routing")
 public class SampleRouting extends BaseObject<Integer> {
 
-    /**
-     * Destination types for sample routing.
-     */
+    /** Destination types for sample routing. */
     public enum DestinationType {
         /** Sample goes to analysis box with well assignment */
         INTERNAL_ANALYSIS,

@@ -80,7 +80,7 @@ function ChildSampleCreationPage({
     return () => {
       componentMounted.current = false;
     };
-  }, [entryId, pageData?.id]);
+  }, [entryId, pageData?.id, loadPageSamples]);
 
   const loadPageSamples = useCallback(() => {
     if (!pageData?.id) {
@@ -110,7 +110,9 @@ function ChildSampleCreationPage({
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
               status: sample.pageStatus || "PENDING",
-              patientName: sample.patientName,
+              // Patient info - extract from data field (linked patient) or direct field
+              patientName: sample.data?.patientName || sample.patientName || "",
+              patientId: sample.data?.patientId || "",
               volume: sample.volume,
               // Hierarchy information from backend
               hasChildren: sample.hasChildren || false,
@@ -119,6 +121,7 @@ function ChildSampleCreationPage({
               nestingLevel: sample.nestingLevel || 0,
               parentSampleItemId: sample.parentSampleItemId,
               parentExternalId: sample.parentExternalId,
+              data: sample.data,
             }));
             setSamples(transformedSamples);
           } else {
@@ -164,6 +167,7 @@ function ChildSampleCreationPage({
         pageId: pageData?.id, // Link child samples to this page for SampleRoutingPage
       }),
       (response) => {
+        if (!componentMounted.current) return;
         setCreating(false);
         setCreateModalOpen(false);
 
@@ -201,6 +205,7 @@ function ChildSampleCreationPage({
     getFromOpenElisServer(
       `/rest/notebook/samples/${parentSampleId}/children`,
       (response) => {
+        if (!componentMounted.current) return;
         setLoadingChildren(false);
         if (response && Array.isArray(response)) {
           setParentChildren(response);
@@ -228,6 +233,7 @@ function ChildSampleCreationPage({
           status: newStatus,
         }),
         (status) => {
+          if (!componentMounted.current) return;
           if (status === 200) {
             loadPageSamples();
             if (onProgressUpdate) {
@@ -260,6 +266,7 @@ function ChildSampleCreationPage({
         status: "COMPLETED",
       }),
       (status) => {
+        if (!componentMounted.current) return;
         if (status === 200) {
           loadPageSamples();
           setSelectedParentIds([]);
@@ -429,6 +436,7 @@ function ChildSampleCreationPage({
           onStatusFilterChange={setStatusFilter}
           showSelection={true}
           showHierarchy={true}
+          showPatient={true}
           loading={loading}
           additionalColumns={[
             {

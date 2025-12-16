@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import {
@@ -66,6 +66,10 @@ import {
 } from "../utils/Utils";
 import { Add, Json } from "@carbon/icons-react";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
+import {
+  pageRegistry,
+  workflowDefinitions,
+} from "./registry/pageComponentRegistry";
 
 const NoteBookEntryForm = () => {
   let breadcrumbs = [
@@ -142,6 +146,81 @@ const NoteBookEntryForm = () => {
     { id: "Reception", label: "Reception" },
     { id: "Reports", label: "Reports" },
   ]);
+
+  // Build available page templates from frontend registry only
+  // Priority: If notebook type matches a workflow definition, use pages from that workflow
+  // Otherwise, show all pages from registry grouped by category
+  const filteredWorkflowPageTemplates = useMemo(() => {
+    const templates = [];
+    const addedIds = new Set();
+
+    // Determine the workflow type (lowercase) from notebook type
+    // noteBookData.type stores the ID, so we need to look up the value from types array
+    let typeValue = null;
+    if (noteBookData.type) {
+      // First check if it's an object with dictEntry or value
+      if (typeof noteBookData.type === "object") {
+        typeValue = noteBookData.type.dictEntry || noteBookData.type.value;
+      } else {
+        // It's an ID string - look up the value from types array
+        const selectedType = types.find(
+          (t) =>
+            t.id === noteBookData.type || t.id === String(noteBookData.type),
+        );
+        typeValue = selectedType?.value || null;
+      }
+    }
+    const workflowType = typeValue ? typeValue.toLowerCase() : null;
+
+    // Check if we have a workflow definition for this type
+    const workflowDef = workflowType
+      ? workflowDefinitions.workflows[workflowType]
+      : null;
+
+    if (workflowDef && workflowDef.pages) {
+      // Use pages from the workflow definition in order
+      workflowDef.pages.forEach((workflowPage) => {
+        const pageMetadata = pageRegistry.pages[workflowPage.pageId];
+        if (pageMetadata && !addedIds.has(workflowPage.pageId)) {
+          templates.push({
+            id: `registry-${workflowPage.pageId}`,
+            name: workflowPage.titleOverride || pageMetadata.defaultTitle,
+            description: pageMetadata.defaultDescription,
+            defaultContent: pageMetadata.defaultDescription,
+            defaultInstructions: pageMetadata.defaultDescription,
+            displayOrder: workflowPage.order,
+            workflowCategory: workflowDef.category,
+            pageId: workflowPage.pageId,
+            source: "registry",
+          });
+          addedIds.add(workflowPage.pageId);
+        }
+      });
+    } else {
+      // No specific workflow - add all unique pages from registry
+      Object.values(pageRegistry.pages).forEach((page, index) => {
+        if (!addedIds.has(page.id)) {
+          templates.push({
+            id: `registry-${page.id}`,
+            name: page.defaultTitle,
+            description: page.defaultDescription,
+            defaultContent: page.defaultDescription,
+            defaultInstructions: page.defaultDescription,
+            displayOrder: index + 1,
+            workflowCategory: page.category,
+            pageId: page.id,
+            source: "registry",
+          });
+          addedIds.add(page.id);
+        }
+      });
+    }
+
+    // Sort by displayOrder
+    return templates.sort(
+      (a, b) => (a.displayOrder || 999) - (b.displayOrder || 999),
+    );
+  }, [noteBookData.type, types]);
 
   const isFormValid = () => {
     return (
@@ -276,6 +355,7 @@ const NoteBookEntryForm = () => {
     sampleTypeId: null,
     panels: [],
     tests: [],
+    pageId: null, // Registry page ID for component rendering
   });
   const [newTag, setNewTag] = useState("");
   const [pageError, setPageError] = useState("");
@@ -297,6 +377,7 @@ const NoteBookEntryForm = () => {
       sampleTypeId: null,
       panels: [],
       tests: [],
+      pageId: null,
     });
     setPageSelectedTests([]);
     setPageSelectedPanels([]);
@@ -315,8 +396,9 @@ const NoteBookEntryForm = () => {
     setSelectedTemplateId(templateId);
 
     if (templateId) {
-      const template = workflowPageTemplates.find(
-        (t) => t.id === parseInt(templateId, 10),
+      // Look up from filtered templates - handles both string IDs (registry-xxx) and numeric IDs
+      const template = filteredWorkflowPageTemplates.find(
+        (t) => String(t.id) === String(templateId),
       );
       if (template) {
         setNewPage((prev) => ({
@@ -324,6 +406,7 @@ const NoteBookEntryForm = () => {
           title: template.name || "",
           content: template.defaultContent || "",
           instructions: template.defaultInstructions || "",
+          pageId: template.pageId || null, // Store registry pageId for component rendering
         }));
       }
     }
@@ -1735,8 +1818,8 @@ const NoteBookEntryForm = () => {
           />
         )}
         {editingPageIndex === null &&
-          Array.isArray(workflowPageTemplates) &&
-          workflowPageTemplates.length > 0 && (
+          Array.isArray(filteredWorkflowPageTemplates) &&
+          filteredWorkflowPageTemplates.length > 0 && (
             <Select
               id="pageTemplate"
               name="pageTemplate"
@@ -1759,7 +1842,7 @@ const NoteBookEntryForm = () => {
                 })}
                 value=""
               />
-              {workflowPageTemplates.map((template) => (
+              {filteredWorkflowPageTemplates.map((template) => (
                 <SelectItem
                   key={template.id}
                   text={`${template.displayOrder}. ${template.name} - ${template.description}`}

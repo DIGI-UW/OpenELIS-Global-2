@@ -265,6 +265,7 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
         }
         return sample;
     }
+
     // ==============================================================
 
     @Override

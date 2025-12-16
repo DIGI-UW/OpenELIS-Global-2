@@ -19,7 +19,6 @@ public class UnifiedSystemUserRestControllerTest extends BaseWebContextSensitive
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/system-user.xml");
-
     }
 
     @Test
@@ -65,5 +64,4 @@ public class UnifiedSystemUserRestControllerTest extends BaseWebContextSensitive
         assertEquals("4", user2.get("id"));
         assertEquals("Smith,Alice", user2.get("value"));
     }
-
 }

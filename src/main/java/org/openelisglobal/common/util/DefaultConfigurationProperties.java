@@ -111,7 +111,6 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                 SpringContext.getBean(Versioning.class).getReleaseNumber());
         LogEvent.logDebug(this.getClass().getSimpleName(), "initialize", "finished initializing configuration");
         SpringContext.getBean(ConfigurationListenerService.class).refreshConfigurations();
-
     }
 
     private void copyPropertiesPreferSource(OEProperties sourceProperties, OEProperties destinationProperties) {
@@ -165,9 +164,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                     }
                 }
             }
-
         }
-
     }
 
     public String getConfigAsJSONString() throws JsonProcessingException {
@@ -384,7 +381,6 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
             } else {
                 properties.setFullValue(siteInformation.getName(), siteInformation);
             }
-
         }
         Properties externalConnectionsProperties = new Properties();
         loadExternalConnectionsFromDatabase(externalConnectionsProperties);
@@ -458,7 +454,6 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
             }
         }
         return new OEProperties();
-
     }
 
     private OEProperties loadFromPropertyFile(String propertyFile) {
@@ -481,7 +476,6 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
             }
         }
         return new OEProperties();
-
     }
 
     public static class PropertyHolder {
@@ -544,7 +538,6 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
             return Objects.equals(this.propertyValue, that.propertyValue)
                     && Objects.equals(this.localizationId, that.localizationId)
                     && areEqual(this.localizationValues, that.localizationValues);
-
         }
     }
 
@@ -649,7 +642,6 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                     setPropertyHolder(Property.valueOf(propertyName), new PropertyHolder(siteInformation.getValue()));
                 }
             }
-
         }
 
         // loaded property may have info about data type and locale that need to be
@@ -727,7 +719,5 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         public boolean containsKey(String key) {
             return allProperties.containsKey(key);
         }
-
     }
-
 }

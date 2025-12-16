@@ -46,7 +46,6 @@ public class ProviderServiceTest extends BaseWebContextSensitiveTest {
         List<Provider> providers = providerService.getAllProviders();
         assertNotNull("should return providers", providers);
         assertEquals("should return 2 providers", 2, providers.size());
-
     }
 
     @Test
@@ -90,7 +89,6 @@ public class ProviderServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(providersSearched.size() <= expectedPages);
-
     }
 
     @Test
@@ -99,7 +97,6 @@ public class ProviderServiceTest extends BaseWebContextSensitiveTest {
         providerService.deactivateProviders(providers);
         List<Provider> providersDeactivated = providerService.getAllProviders();
         providersDeactivated.forEach(provider -> assertFalse("should have false on active", provider.getActive()));
-
     }
 
     @Test
@@ -127,7 +124,6 @@ public class ProviderServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Person last name should be Doe", "Doe", provider1.getPerson().getLastName());
         assertEquals("Person last name should be Doe", "Joddy", provider1.getPerson().getMiddleName());
         assertEquals("Person last name should be Doe", "John", provider1.getPerson().getFirstName());
-
     }
 
     @Test
@@ -157,7 +153,5 @@ public class ProviderServiceTest extends BaseWebContextSensitiveTest {
         String providerType = provider1.getProviderType();
         int totalCount = providerService.getTotalSearchedProviderCount(providerType);
         assertTrue("should be a value greater than or equal to zero", totalCount >= 0);
-
     }
-
 }

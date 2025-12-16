@@ -59,7 +59,7 @@ public class ProgramAutocreateService {
 
     /**
      * Get all program resources from both classpath and filesystem
-     * 
+     *
      * @return Array of all program resources
      */
     private Resource[] getAllProgramResources() {

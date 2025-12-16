@@ -24,9 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Service implementation for SampleRouting operations.
- */
+/** Service implementation for SampleRouting operations. */
 @Service
 public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<SampleRouting, Integer>
         implements SampleRoutingService {
@@ -281,6 +279,7 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
      * has assignment RECORD (not just location) and uses move if so, otherwise
      * creates new assignment.
      *
+     * <p>
      * Note: SampleStorageAssignment has a UNIQUE constraint on sample_item_id, so
      * we must check for assignment record existence, not just whether it has a
      * location set. An assignment can exist but have null location (e.g., after

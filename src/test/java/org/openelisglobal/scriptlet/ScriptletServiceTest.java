@@ -36,7 +36,6 @@ public class ScriptletServiceTest extends BaseWebContextSensitiveTest {
         scriptletService.getData(scriptlet);
         assertEquals("Scriptlet 1", scriptlet.getScriptletName());
         assertEquals("Source1", scriptlet.getCodeSource());
-
     }
 
     @Test
@@ -54,7 +53,6 @@ public class ScriptletServiceTest extends BaseWebContextSensitiveTest {
         scriptlet = scriptletService.getScriptletByName(scriptlet);
         assertEquals("Scriptlet 1", scriptlet.getScriptletName());
         assertEquals("Source1", scriptlet.getCodeSource());
-
     }
 
     @Test

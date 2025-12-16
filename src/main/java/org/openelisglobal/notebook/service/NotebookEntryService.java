@@ -7,9 +7,7 @@ import org.openelisglobal.notebook.valueholder.NotebookEntry.EntryStatus;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
-/**
- * Service interface for NotebookEntry operations.
- */
+/** Service interface for NotebookEntry operations. */
 public interface NotebookEntryService extends BaseObjectService<NotebookEntry, Integer> {
 
     /**
@@ -22,7 +20,7 @@ public interface NotebookEntryService extends BaseObjectService<NotebookEntry, I
      */
     NotebookEntry createEntry(Integer notebookId, String title, String sysUserId);
 
-    /**
+/**
      * Create a new entry for a notebook (template) with organization.
      *
      * @param notebookId   the template notebook ID
@@ -34,59 +32,37 @@ public interface NotebookEntryService extends BaseObjectService<NotebookEntry, I
      */
     NotebookEntry createEntry(Integer notebookId, String title, Organization organization, String sysUserId);
 
-    /**
-     * Find all entries for a notebook template.
-     */
+    /** Find all entries for a notebook template. */
     List<NotebookEntry> findByNotebookId(Integer notebookId);
 
-    /**
-     * Find entries by status.
-     */
+    /** Find entries by status. */
     List<NotebookEntry> findByStatus(EntryStatus status);
 
-    /**
-     * Find entries by technician.
-     */
+    /** Find entries by technician. */
     List<NotebookEntry> findByTechnicianId(Integer technicianId);
 
-    /**
-     * Update entry status.
-     */
+    /** Update entry status. */
     void updateStatus(Integer entryId, EntryStatus status, String sysUserId);
 
-    /**
-     * Add a sample to an entry.
-     */
+    /** Add a sample to an entry. */
     void addSample(Integer entryId, SampleItem sample, String sysUserId);
 
-    /**
-     * Add multiple samples to an entry.
-     */
+    /** Add multiple samples to an entry. */
     void addSamples(Integer entryId, List<SampleItem> samples, String sysUserId);
 
-    /**
-     * Remove a sample from an entry.
-     */
+    /** Remove a sample from an entry. */
     void removeSample(Integer entryId, Integer sampleItemId, String sysUserId);
 
-    /**
-     * Get samples for an entry.
-     */
+    /** Get samples for an entry. */
     List<SampleItem> getSamples(Integer entryId);
 
-    /**
-     * Count entries for a notebook.
-     */
+    /** Count entries for a notebook. */
     Long countByNotebookId(Integer notebookId);
 
-    /**
-     * Count entries by status.
-     */
+    /** Count entries by status. */
     Long countByStatus(EntryStatus status);
 
-    /**
-     * Add a comment to an entry.
-     */
+    /** Add a comment to an entry. */
     void addComment(Integer entryId, String text, String sysUserId);
 
     /**

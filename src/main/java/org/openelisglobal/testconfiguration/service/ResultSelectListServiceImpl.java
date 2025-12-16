@@ -143,7 +143,7 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
                         filter.put("test.id", testId);
                         filter.put("value", object.get("id"));
                         Optional<TestResult> testResult = resultService.getMatch(filter); // get((String)
-                                                                                          // object.get("id"));
+                        // object.get("id"));
                         long order = (Long) object.get("order");
                         if (testResult.isPresent()) {
                             testResult.get().setSortOrder(String.valueOf(10 * order));

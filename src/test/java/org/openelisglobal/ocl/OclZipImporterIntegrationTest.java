@@ -33,7 +33,6 @@ public class OclZipImporterIntegrationTest extends BaseWebContextSensitiveTest {
             fail("OclZipImporter bean not autowired. Check Spring configuration.");
         }
         oclDirPath = this.getClass().getClassLoader().getResource("ocl").getFile();
-
     }
 
     @Test

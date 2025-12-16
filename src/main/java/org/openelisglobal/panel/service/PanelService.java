@@ -34,5 +34,4 @@ public interface PanelService extends BaseObjectService<Panel, String> {
     Localization getLocalizationForPanel(String id);
 
     Panel getPanelByLoincCode(String loincCode);
-
 }

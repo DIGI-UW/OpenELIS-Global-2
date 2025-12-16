@@ -25,9 +25,7 @@ import org.openelisglobal.medlab.valueholder.TransportPackaging;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * DAO implementation for TransportPackaging entity operations.
- */
+/** DAO implementation for TransportPackaging entity operations. */
 @Component
 @Transactional
 public class TransportPackagingDAOImpl extends BaseDAOImpl<TransportPackaging, Integer>

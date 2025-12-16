@@ -84,5 +84,4 @@ public class WHONETExportRoutineByDate extends WHONETCSVRoutineSampleExportRepor
     private WHONETCSVRoutineColumnBuilder getColumnBuilder() {
         return new WHONETCSVRoutineColumnBuilder(dateRange);
     }
-
 }

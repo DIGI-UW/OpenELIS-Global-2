@@ -38,7 +38,6 @@ public class QaObservationServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("4", list.get(3).getId());
         assertEquals("5", list.get(4).getId());
         assertEquals("6", list.get(5).getId());
-
     }
 
     @Test
@@ -76,7 +75,6 @@ public class QaObservationServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", list.get(0).getId());
         assertEquals("3", list.get(1).getId());
         assertEquals("5", list.get(2).getId());
-
     }
 
     @Test
@@ -140,7 +138,6 @@ public class QaObservationServiceTest extends BaseWebContextSensitiveTest {
         int expectedSize = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(list.size() <= expectedSize);
-
     }
 
     @Test
@@ -279,5 +276,4 @@ public class QaObservationServiceTest extends BaseWebContextSensitiveTest {
         QaObservation observation2 = qaObservationService.update(observation);
         assertEquals("1444", observation2.getObservedId());
     }
-
 }

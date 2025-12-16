@@ -55,5 +55,4 @@ public class PatientPhotoDAOImpl extends BaseDAOImpl<PatientPhoto, Integer> impl
             return null;
         }
     }
-
 }

@@ -211,9 +211,7 @@ public class FreezerServiceImpl implements FreezerService {
         return device;
     }
 
-    /**
-     * Updates an existing StorageDevice with new metadata from a Freezer.
-     */
+    /** Updates an existing StorageDevice with new metadata from a Freezer. */
     private void updateStorageDeviceFromFreezer(StorageDevice device, Freezer freezer, Long roomId, String sysUserId) {
         org.openelisglobal.storage.valueholder.StorageRoom room = (org.openelisglobal.storage.valueholder.StorageRoom) storageLocationService
                 .get(roomId.intValue(), org.openelisglobal.storage.valueholder.StorageRoom.class);

@@ -23,7 +23,7 @@ public class SampleStorageRestControllerDisposalTest extends BaseStorageTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(); // BaseStorageTest handles jdbcTemplate initialization and
-                       // cleanStorageTestData()
+        // cleanStorageTestData()
         objectMapper = new ObjectMapper();
         // Ensure SampleDisposed status exists (insert if missing, e.g., if
         // status_of_sample was truncated)
@@ -324,9 +324,7 @@ public class SampleStorageRestControllerDisposalTest extends BaseStorageTest {
         assertEquals("Reason should match expected format (without notes)", expectedReasonFormat, actualReason);
     }
 
-    /**
-     * Helper method to create a storage device for assignment tests
-     */
+    /** Helper method to create a storage device for assignment tests */
     private Integer createStorageDevice() throws Exception {
         Integer deviceId = 10000;
         // Create a storage room first
@@ -342,9 +340,7 @@ public class SampleStorageRestControllerDisposalTest extends BaseStorageTest {
         return deviceId;
     }
 
-    /**
-     * Helper method to assign a sample to a storage device
-     */
+    /** Helper method to assign a sample to a storage device */
     private void assignSampleToDevice(String sampleItemExternalId, Integer deviceId) throws Exception {
         int numericId = getSampleItemNumericId(sampleItemExternalId);
         jdbcTemplate.update(

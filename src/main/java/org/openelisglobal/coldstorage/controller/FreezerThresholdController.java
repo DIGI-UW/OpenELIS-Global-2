@@ -113,9 +113,11 @@ public class FreezerThresholdController extends BaseRestController {
         private BigDecimal humidityWarningMax;
         private BigDecimal humidityCriticalMin;
         private BigDecimal humidityCriticalMax;
+
         @Min(0)
         @Max(180)
         private Integer minExcursionMinutes;
+
         private Integer maxDurationMinutes;
 
         public ThresholdProfile toEntity() {

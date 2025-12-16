@@ -61,10 +61,11 @@ public interface SampleManagementService {
      *
      * <p>
      * Validation rules:
+     *
      * <ul>
-     * <li>Parent must exist and have remaining quantity > 0</li>
-     * <li>Quantity to transfer must not exceed parent's remaining quantity</li>
-     * <li>Quantity to transfer must be > 0</li>
+     * <li>Parent must exist and have remaining quantity > 0
+     * <li>Quantity to transfer must not exceed parent's remaining quantity
+     * <li>Quantity to transfer must be > 0
      * </ul>
      *
      * @param form      the aliquot creation request

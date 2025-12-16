@@ -14,7 +14,8 @@ import org.springframework.test.annotation.Rollback;
  * Integration tests for pagination functionality in
  * SampleStorageRestController. Tests verify that pagination parameters are
  * correctly handled and responses include pagination metadata.
- * 
+ *
+ * <p>
  * Extends BaseStorageTest to load storage hierarchy and E2E test fixtures.
  */
 @Rollback
@@ -57,7 +58,7 @@ public class SampleStorageRestControllerTest extends BaseStorageTest {
     @Test
     public void testGetSampleItems_InvalidPageSize_ReturnsBadRequest() throws Exception {
         mockMvc.perform(get("/rest/storage/sample-items").param("page", "0").param("size", "75") // Invalid - not 25,
-                                                                                                 // 50, or 100
+                // 50, or 100
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
     }

@@ -23,7 +23,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setup() throws Exception {
         executeDataSetWithStateManagement("testdata/barcode-lable-info.xml");
-
     }
 
     @Test
@@ -44,7 +43,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("3", info3.getId());
         assertEquals(200, info3.getNumPrinted());
         assertEquals("Standard", info3.getType());
-
     }
 
     @Test
@@ -52,7 +50,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         BarcodeLabelInfo barcode = barcodeLabelInfoService.get("1");
         assertEquals(100, barcode.getNumPrinted());
         assertEquals("Standard", barcode.getType());
-
     }
 
     @Test
@@ -83,7 +80,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
     public void getAll_sholdReturnAll() {
         List<BarcodeLabelInfo> barcodes = barcodeLabelInfoService.getAll();
         assertEquals(3, barcodes.size());
-
     }
 
     @Test
@@ -109,7 +105,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, barcodesUpdated.size());
         assertEquals("2", barcodesUpdated.get(0).getId());
         assertEquals("1", barcodesUpdated.get(1).getId());
-
     }
 
     @Test
@@ -118,7 +113,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, barcodeLabelInfos.size());
         assertEquals("1", barcodeLabelInfos.get(0).getId());
         assertEquals("3", barcodeLabelInfos.get(1).getId());
-
     }
 
     @Test
@@ -131,7 +125,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         barcodeLabelInfoService.insert(barcodeLabelInfo);
         List<BarcodeLabelInfo> barcodeLabelInfos = barcodeLabelInfoService.getAll();
         assertEquals(1, barcodeLabelInfos.size());
-
     }
 
     @Test
@@ -140,7 +133,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         barcodeLabelInfoService.delete(barcodeLabelInfo2);
         List<BarcodeLabelInfo> barcodeLabelInfos = barcodeLabelInfoService.getAll();
         assertEquals(2, barcodeLabelInfos.size());
-
     }
 
     @Test
@@ -150,7 +142,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         barcodeLabelInfoService.deleteAll(barcodeLabelInfos);
         List<BarcodeLabelInfo> barcodeLabelInfos2 = barcodeLabelInfoService.getAll();
         assertEquals(0, barcodeLabelInfos2.size());
-
     }
 
     @Test
@@ -169,7 +160,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", orded.get(0).getId());
         assertEquals("2", orded.get(1).getId());
         assertEquals("3", orded.get(2).getId());
-
     }
 
     @Test
@@ -178,7 +168,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, orded.size());
         assertEquals("3", orded.get(0).getId());
         assertEquals("1", orded.get(1).getId());
-
     }
 
     @Test
@@ -199,7 +188,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(pages.size() <= expectedPages);
-
     }
 
     @Test
@@ -209,7 +197,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(pages.size() <= expectedPages);
-
     }
 
     @Test
@@ -218,7 +205,6 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(pages.size() <= expectedPages);
-
     }
 
     @Test
@@ -277,5 +263,4 @@ public class BarcodeLableInforServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("2", barcodeLabelInfos.get(1).getId());
         assertEquals("1", barcodeLabelInfos.get(2).getId());
     }
-
 }

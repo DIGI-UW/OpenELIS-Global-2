@@ -1,4 +1,3 @@
-
 package org.openelisglobal.menu;
 
 import java.util.List;

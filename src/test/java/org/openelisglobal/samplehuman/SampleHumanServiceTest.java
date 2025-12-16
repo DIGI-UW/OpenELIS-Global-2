@@ -78,7 +78,6 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
         personService.save(updateSamplehuman);
 
         Assert.assertEquals("Nakibinge", humanService.getPatientForSample(samp).getPerson().getLastName());
-
     }
 
     @Test
@@ -90,7 +89,6 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
         humanService.delete(savedSampleHuman);
 
         Assert.assertEquals(2, humanService.getAll().size());
-
     }
 
     @Test
@@ -178,6 +176,5 @@ public class SampleHumanServiceTest extends BaseWebContextSensitiveTest {
         SampleHuman sHumanToUpdate = humanService.getDataBySample(sampleHuman);
 
         Assert.assertEquals("2", sHumanToUpdate.getPatientId());
-
     }
 }

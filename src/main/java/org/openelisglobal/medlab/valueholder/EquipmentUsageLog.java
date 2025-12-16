@@ -31,13 +31,14 @@ import org.openelisglobal.common.valueholder.BaseObject;
  *
  * <p>
  * Supports accreditation requirements by documenting:
+ *
  * <ul>
- * <li>Equipment usage periods (start/end time)</li>
- * <li>Operator identification</li>
- * <li>Purpose of usage (testing, calibration, QC, maintenance)</li>
- * <li>Samples processed count</li>
- * <li>Maintenance activities</li>
- * <li>Error tracking</li>
+ * <li>Equipment usage periods (start/end time)
+ * <li>Operator identification
+ * <li>Purpose of usage (testing, calibration, QC, maintenance)
+ * <li>Samples processed count
+ * <li>Maintenance activities
+ * <li>Error tracking
  * </ul>
  */
 @Entity

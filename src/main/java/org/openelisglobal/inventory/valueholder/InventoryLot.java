@@ -110,9 +110,7 @@ public class InventoryLot extends BaseObject<Long> {
         return expirationDate;
     }
 
-    /**
-     * Check if lot is expired based on effective expiration date
-     */
+    /** Check if lot is expired based on effective expiration date */
     public boolean isExpired() {
         Timestamp effectiveExpiration = getEffectiveExpirationDate();
         if (effectiveExpiration == null) {
@@ -130,9 +128,7 @@ public class InventoryLot extends BaseObject<Long> {
                 && qcStatus == QCStatus.PASSED;
     }
 
-    /**
-     * Check if lot has been opened
-     */
+    /** Check if lot has been opened */
     public boolean isOpened() {
         return dateOpened != null;
     }

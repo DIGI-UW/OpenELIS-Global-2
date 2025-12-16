@@ -220,9 +220,7 @@ public class BarcodeParsingServiceTest {
         assertFalse("Should reject null", barcodeParsingService.validateFormat(null));
     }
 
-    /**
-     * Test extractComponents method Expected: Returns list of string components
-     */
+    /** Test extractComponents method Expected: Returns list of string components */
     @Test
     public void testExtractComponents() {
         // Arrange

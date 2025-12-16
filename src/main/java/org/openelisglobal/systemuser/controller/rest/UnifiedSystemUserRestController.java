@@ -100,6 +100,7 @@ public class UnifiedSystemUserRestController extends BaseController {
 
     private static String GLOBAL_ADMIN_ID;
     private static String ID;
+
     // public static final char DEFAULT_OBFUSCATED_CHARACTER = '@';
     // public static final String ALL_LAB_UNITS = "AllLabUnits";
 
@@ -375,9 +376,8 @@ public class UnifiedSystemUserRestController extends BaseController {
             setLabunitRolesForExistingUser(form);
             form.setSelectedRoles(globalSelectedRoleIds);
             // is this meant to be returned?
-//            doFiltering = !roleIds.contains(MAINTENANCE_ADMIN_ID);
+            // doFiltering = !roleIds.contains(MAINTENANCE_ADMIN_ID);
         }
-
     }
 
     private String getProxyPassword(LoginUser login) {

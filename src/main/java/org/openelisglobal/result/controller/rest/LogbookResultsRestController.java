@@ -1,4 +1,3 @@
-
 package org.openelisglobal.result.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -182,8 +181,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private NotificationDAO notificationDAO;
     @Autowired
     private SystemUserService systemUserService;
+
     @Autowired
     private org.openelisglobal.inventory.service.InventoryUsageService inventoryUsageService;
+
     @Autowired
     private org.openelisglobal.inventory.service.InventoryLotService inventoryLotService;
 

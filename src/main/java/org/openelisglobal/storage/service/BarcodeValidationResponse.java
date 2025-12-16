@@ -15,8 +15,9 @@ public class BarcodeValidationResponse {
     private String failedStep;
     private String errorMessage;
     private Map<String, Object> validComponents;
-    private String firstMissingLevel; // 'device' | 'shelf' | 'rack' | 'position' | null if all valid or completely
-                                      // invalid
+    private String firstMissingLevel; // 'device' | 'shelf' | 'rack' | 'position' | null if all valid or
+    // completely
+    // invalid
     private boolean hasAdditionalInvalidLevels; // true if there are invalid levels beyond valid portion
 
     public BarcodeValidationResponse() {
@@ -73,9 +74,7 @@ public class BarcodeValidationResponse {
         this.validComponents = validComponents;
     }
 
-    /**
-     * Add a valid component to the response
-     */
+    /** Add a valid component to the response */
     public void addValidComponent(String key, Object value) {
         this.validComponents.put(key, value);
     }

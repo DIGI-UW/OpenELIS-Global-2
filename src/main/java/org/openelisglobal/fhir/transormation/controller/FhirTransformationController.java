@@ -135,7 +135,6 @@ public class FhirTransformationController extends BaseController {
         transformPersistFhirObjects();
 
         return info;
-
     }
 
     private void transformPersistFhirObjects() {

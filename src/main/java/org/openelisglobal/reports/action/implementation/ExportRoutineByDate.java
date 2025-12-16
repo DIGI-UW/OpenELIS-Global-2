@@ -34,6 +34,7 @@ import org.openelisglobal.spring.util.SpringContext;
 public class ExportRoutineByDate extends CSVRoutineSampleExportReport
         implements IReportParameterSetter, IReportCreator {
     protected final ProjectService projectService = SpringContext.getBean(ProjectService.class);
+
     // private String projectStr;
     // private Project project;
 
@@ -59,6 +60,7 @@ public class ExportRoutineByDate extends CSVRoutineSampleExportReport
         return MessageUtil.getMessage("reports.label.project.export") + " "
                 + MessageUtil.getContextualMessage("sample.collectionDate");
     }
+
     /*
      * protected void createReportParameters() { super.createReportParameters();
      * reportParameters.put("studyName", (project == null) ? null :

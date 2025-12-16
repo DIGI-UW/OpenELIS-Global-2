@@ -1,0 +1,11 @@
+GroupID,SampleType,NumOfSamples,CollectionDate,Volume,Notes
+BATCH-2024-001,Serum,3,2024-12-15,5.0,Routine chemistry panel
+BATCH-2024-001,Whole Blood,2,2024-12-15,3.0,CBC testing
+BATCH-2024-002,Plasma,4,2024-12-15,4.5,Coagulation studies
+BATCH-2024-002,Serum,2,2024-12-15,5.0,Lipid panel
+BATCH-2024-003,Urine,5,2024-12-15,10.0,Urinalysis
+BATCH-2024-003,Whole Blood,3,2024-12-15,3.0,Blood glucose monitoring
+BATCH-2024-004,Serum,2,2024-12-14,5.0,Thyroid function tests
+BATCH-2024-004,Plasma,1,2024-12-14,4.0,INR testing
+BATCH-2024-005,Whole Blood,4,2024-12-14,3.5,Hematology workup
+BATCH-2024-005,Serum,3,2024-12-14,5.0,Liver function tests

@@ -101,59 +101,66 @@ public class SampleStorageServiceDisposalTest {
                 .thenReturn(java.util.Collections.singletonList(testSampleItem));
     }
 
-    @Test
-    public void testDisposeSampleItem_SetsCorrectNumericStatusId() {
-        // Arrange - external ID lookup is mocked in setUp()
-        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(null);
-        // No movement record created when there's no previous assignment (no previous location)
+  @Test
+  public void testDisposeSampleItem_SetsCorrectNumericStatusId() {
+    // Arrange - external ID lookup is mocked in setUp()
+    when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(null);
+    // No movement record created when there's no previous assignment (no previous location)
 
-        // Act
-        Map<String, Object> result = sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave",
-                "Test disposal");
+    // Act
+    Map<String, Object> result =
+        sampleStorageService.disposeSampleItem(
+            TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test disposal");
 
-        // Assert
-        verify(sampleItemDAO).update(testSampleItem);
-        assertEquals("Status ID should be set to disposed status ID", DISPOSED_STATUS_ID, testSampleItem.getStatusId());
-        assertEquals(TEST_SAMPLE_ITEM_ID, result.get("sampleItemId"));
-        assertEquals("disposed", result.get("status"));
-        // Verify no movement record was created (no previous location to track)
-        verify(sampleStorageMovementDAO, never()).insert(any(SampleStorageMovement.class));
-    }
+    // Assert
+    verify(sampleItemDAO).update(testSampleItem);
+    assertEquals(
+        "Status ID should be set to disposed status ID",
+        DISPOSED_STATUS_ID,
+        testSampleItem.getStatusId());
+    assertEquals(TEST_SAMPLE_ITEM_ID, result.get("sampleItemId"));
+    assertEquals("disposed", result.get("status"));
+    // Verify no movement record was created (no previous location to track)
+    verify(sampleStorageMovementDAO, never()).insert(any(SampleStorageMovement.class));
+  }
 
-    @Test
-    public void testDisposeSampleItem_ClearsStorageAssignment() {
-        // Arrange - external ID lookup is mocked in setUp()
-        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(testAssignment);
-        when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
-        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
+  @Test
+  public void testDisposeSampleItem_ClearsStorageAssignment() {
+    // Arrange - external ID lookup is mocked in setUp()
+    when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID))
+        .thenReturn(testAssignment);
+    when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
+    when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
 
-        // Act
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
+    // Act
+    sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
 
-        // Assert - Assignment updated with null location (not deleted) for audit trail
-        verify(sampleStorageAssignmentDAO).update(testAssignment);
-        verify(sampleStorageAssignmentDAO, never()).delete(any(SampleStorageAssignment.class));
-        
-        assertNull("Location ID should be null", testAssignment.getLocationId());
-        assertNull("Location Type should be null", testAssignment.getLocationType());
-        assertNull("Position Coordinate should be null", testAssignment.getPositionCoordinate());
+    // Assert - Assignment updated with null location (not deleted) for audit trail
+    verify(sampleStorageAssignmentDAO).update(testAssignment);
+    verify(sampleStorageAssignmentDAO, never()).delete(any(SampleStorageAssignment.class));
 
-        verify(sampleItemDAO).update(testSampleItem);
-    }
+    assertNull("Location ID should be null", testAssignment.getLocationId());
+    assertNull("Location Type should be null", testAssignment.getLocationType());
+    assertNull("Position Coordinate should be null", testAssignment.getPositionCoordinate());
 
-    @Test
-    public void testDisposeSampleItem_CreatesMovementAuditRecord() {
-        // Arrange - external ID lookup is mocked in setUp()
-        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(testAssignment);
-        when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
-        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
+    verify(sampleItemDAO).update(testSampleItem);
+  }
 
-        // Act
-        sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test notes");
+  @Test
+  public void testDisposeSampleItem_CreatesMovementAuditRecord() {
+    // Arrange - external ID lookup is mocked in setUp()
+    when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID))
+        .thenReturn(testAssignment);
+    when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
+    when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(1);
 
-        // Assert
-        verify(sampleStorageMovementDAO).insert(any(SampleStorageMovement.class));
-    }
+    // Act
+    sampleStorageService.disposeSampleItem(
+        TEST_ACCESSION_NUMBER, "expired", "autoclave", "Test notes");
+
+    // Assert
+    verify(sampleStorageMovementDAO).insert(any(SampleStorageMovement.class));
+  }
 
     @Test(expected = LIMSRuntimeException.class)
     public void testDisposeSampleItem_AlreadyDisposed_ThrowsException() {
@@ -164,14 +171,15 @@ public class SampleStorageServiceDisposalTest {
         sampleStorageService.disposeSampleItem(TEST_ACCESSION_NUMBER, "expired", "autoclave", null);
     }
 
-    @Test(expected = LIMSRuntimeException.class)
-    public void testDisposeSampleItem_InvalidSampleId_ThrowsException() {
-        // Arrange - mock external ID lookup to return empty list (not found)
-        when(sampleItemService.getSampleItemsByExternalID("invalid-id")).thenReturn(java.util.Collections.emptyList());
+  @Test(expected = LIMSRuntimeException.class)
+  public void testDisposeSampleItem_InvalidSampleId_ThrowsException() {
+    // Arrange - mock external ID lookup to return empty list (not found)
+    when(sampleItemService.getSampleItemsByExternalID("invalid-id"))
+        .thenReturn(java.util.Collections.emptyList());
 
-        // Act
-        sampleStorageService.disposeSampleItem("invalid-id", "expired", "autoclave", null);
-    }
+    // Act
+    sampleStorageService.disposeSampleItem("invalid-id", "expired", "autoclave", null);
+  }
 
     @Test(expected = LIMSRuntimeException.class)
     public void testDisposeSampleItem_MissingReason_ThrowsException() {

@@ -31,9 +31,7 @@ public class SystemConfigService {
         siteIdentityDomain = siteInformationDomainService.getByName("siteIdentity");
     }
 
-    /**
-     * DTO for system configuration response (maintains API compatibility)
-     */
+    /** DTO for system configuration response (maintains API compatibility) */
     public static class SystemConfigDTO {
         private Integer modbusTcpPort = 502;
         private Integer bacnetUdpPort = 47808;

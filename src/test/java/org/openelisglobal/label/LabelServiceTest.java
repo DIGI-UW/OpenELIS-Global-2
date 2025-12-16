@@ -57,7 +57,6 @@ public class LabelServiceTest extends BaseWebContextSensitiveTest {
 
         assertNotNull(label);
         assertEquals("Default Label", label.getLabelName());
-
     }
 
     private Label createTestLabel(String id, String name, String description, String printerType,
@@ -147,5 +146,4 @@ public class LabelServiceTest extends BaseWebContextSensitiveTest {
             return "Unknown";
         }
     }
-
 }

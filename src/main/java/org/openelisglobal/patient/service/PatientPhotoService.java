@@ -9,5 +9,4 @@ public interface PatientPhotoService extends BaseObjectService<PatientPhoto, Int
     PatientPhoto savePhoto(String patientId, String photoBase64) throws LIMSRuntimeException;
 
     String getPhotoByPatientId(String patientId, boolean isThumbnail) throws LIMSRuntimeException;
-
 }

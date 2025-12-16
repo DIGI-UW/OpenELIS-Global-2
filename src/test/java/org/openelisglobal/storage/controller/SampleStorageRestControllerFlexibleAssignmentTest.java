@@ -33,7 +33,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseStora
     @Before
     public void setUp() throws Exception {
         super.setUp(); // BaseStorageTest handles jdbcTemplate initialization and
-                       // cleanStorageTestData()
+        // cleanStorageTestData()
         objectMapper = new ObjectMapper();
     }
 

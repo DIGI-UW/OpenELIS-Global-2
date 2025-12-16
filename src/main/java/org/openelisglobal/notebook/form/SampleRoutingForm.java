@@ -6,9 +6,7 @@ import java.util.Map;
 import org.openelisglobal.notebook.valueholder.SampleRouting.DestinationType;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-/**
- * Form bean for sample routing operations.
- */
+/** Form bean for sample routing operations. */
 public class SampleRoutingForm {
 
     private Integer notebookId;
@@ -22,6 +20,7 @@ public class SampleRoutingForm {
     // For EXTERNAL_LAB
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String externalLabName;
+
     private LocalDate shipmentDate;
 
     // For STORAGE

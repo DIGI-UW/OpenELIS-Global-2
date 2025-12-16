@@ -112,7 +112,6 @@ public class TestAnalyteServiceTest extends BaseWebContextSensitiveTest {
 
         List<TestAnalyte> testAnalytes = testAnalyteService.getPageOfTestAnalytes(1);
         assertTrue(testAnalytes.size() > 0);
-
     }
 
     @Test

@@ -97,7 +97,7 @@ public class UnifiedSystemUserForm extends BaseForm {
      * json object , in order to dynamically render sets of Lab Unit Roles with data
      * ,with fields that are mapped to the same path ie testSectionId and
      * selectedLabUnitRoles
-     **/
+     */
     @JsonIgnore
     private JSONObject userLabRoleData;
 

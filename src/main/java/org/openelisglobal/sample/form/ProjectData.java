@@ -17,6 +17,7 @@ public class ProjectData implements Serializable {
     }
 
     private static final long serialVersionUID = -6470190207790723782L;
+
     // ALL
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String underInvestigationNote;

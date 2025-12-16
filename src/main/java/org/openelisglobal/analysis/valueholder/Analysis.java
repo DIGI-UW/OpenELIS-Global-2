@@ -518,5 +518,4 @@ public class Analysis extends BaseObject<String> implements NoteObject {
     public void setResultFile(ResultFile resultFile) {
         this.resultFile = resultFile;
     }
-
 }

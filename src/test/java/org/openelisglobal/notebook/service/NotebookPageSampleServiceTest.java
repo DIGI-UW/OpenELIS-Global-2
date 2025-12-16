@@ -80,9 +80,7 @@ public class NotebookPageSampleServiceTest {
         testPageSample.setStatus(Status.PENDING);
     }
 
-    /**
-     * Test: getPageProgress calculates correct completion percentage
-     */
+    /** Test: getPageProgress calculates correct completion percentage */
     @Test
     public void testGetPageProgress_CalculatesCorrectly() {
         // Setup
@@ -107,9 +105,7 @@ public class NotebookPageSampleServiceTest {
         assertEquals(25.0, progress.percentage(), 0.01);
     }
 
-    /**
-     * Test: getPageProgress handles empty page (no samples)
-     */
+    /** Test: getPageProgress handles empty page (no samples) */
     @Test
     public void testGetPageProgress_EmptyPage_ReturnsZeros() {
         // Setup
@@ -150,7 +146,7 @@ public class NotebookPageSampleServiceTest {
         // First batch updates 50 existing records, second batch updates 25 existing
         // records
         when(baseObjectDAO.bulkUpdateStatus(eq(pageId), anyList(), eq(Status.IN_PROGRESS))).thenReturn(50) // First
-                                                                                                           // batch
+                // batch
                 .thenReturn(25); // Second batch
         // Mock getPage to handle cases where records need to be created
         when(noteBookService.getPage(pageId)).thenReturn(testPage);
@@ -169,9 +165,7 @@ public class NotebookPageSampleServiceTest {
         verify(baseObjectDAO, times(2)).bulkUpdateStatus(eq(pageId), anyList(), eq(Status.IN_PROGRESS));
     }
 
-    /**
-     * Test: bulkApplyData merges data with existing
-     */
+    /** Test: bulkApplyData merges data with existing */
     @Test
     public void testBulkApplyData_MergesWithExisting() {
         // Setup
@@ -200,9 +194,7 @@ public class NotebookPageSampleServiceTest {
         assertEquals("Ficoll", resultData.get("method")); // Added
     }
 
-    /**
-     * Test: bulkApplyData transitions PENDING to IN_PROGRESS
-     */
+    /** Test: bulkApplyData transitions PENDING to IN_PROGRESS */
     @Test
     public void testBulkApplyData_TransitionsPendingToInProgress() {
         // Setup
@@ -226,9 +218,7 @@ public class NotebookPageSampleServiceTest {
         assertEquals(Status.IN_PROGRESS, testPageSample.getStatus());
     }
 
-    /**
-     * Test: bulkApplyData does not change IN_PROGRESS or COMPLETED status
-     */
+    /** Test: bulkApplyData does not change IN_PROGRESS or COMPLETED status */
     @Test
     public void testBulkApplyData_PreservesNonPendingStatus() {
         // Setup
@@ -282,9 +272,7 @@ public class NotebookPageSampleServiceTest {
         verify(baseObjectDAO, times(1)).insert(any(NotebookPageSample.class));
     }
 
-    /**
-     * Test: createPageSamplesForNotebook skips existing samples
-     */
+    /** Test: createPageSamplesForNotebook skips existing samples */
     @Test
     public void testCreatePageSamplesForNotebook_SkipsExisting() {
         // Setup
@@ -302,9 +290,7 @@ public class NotebookPageSampleServiceTest {
         verify(baseObjectDAO, never()).insert(any(NotebookPageSample.class));
     }
 
-    /**
-     * Test: createPageSamplesForNotebook throws for invalid notebook
-     */
+    /** Test: createPageSamplesForNotebook throws for invalid notebook */
     @Test(expected = IllegalArgumentException.class)
     public void testCreatePageSamplesForNotebook_InvalidNotebook_Throws() {
         // Setup
@@ -317,9 +303,7 @@ public class NotebookPageSampleServiceTest {
         service.createPageSamplesForNotebook(notebookId, sampleItemId);
     }
 
-    /**
-     * Test: createPageSamplesForNotebook throws for invalid sample
-     */
+    /** Test: createPageSamplesForNotebook throws for invalid sample */
     @Test(expected = IllegalArgumentException.class)
     public void testCreatePageSamplesForNotebook_InvalidSample_Throws() {
         // Setup

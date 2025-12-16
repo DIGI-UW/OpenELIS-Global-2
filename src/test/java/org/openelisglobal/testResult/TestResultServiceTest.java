@@ -52,7 +52,6 @@ public class TestResultServiceTest extends BaseWebContextSensitiveTest {
         testResults.forEach(testResult -> {
             assertTrue(testResult.getIsActive());
         });
-
     }
 
     @Test
@@ -61,7 +60,6 @@ public class TestResultServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(testResults.size() <= expectedPages);
-
     }
 
     @Test
@@ -143,7 +141,6 @@ public class TestResultServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(testResults.size() <= expectedPages);
-
     }
 
     @Test
@@ -247,5 +244,4 @@ public class TestResultServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, testResults.size());
         assertEquals("2", testResults.get(0).getId());
     }
-
 }

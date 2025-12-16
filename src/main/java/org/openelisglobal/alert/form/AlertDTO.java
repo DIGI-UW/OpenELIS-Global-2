@@ -3,9 +3,7 @@ package org.openelisglobal.alert.form;
 import java.time.OffsetDateTime;
 import lombok.Data;
 
-/**
- * Generic Alert DTO for REST API. Task Reference: T044
- */
+/** Generic Alert DTO for REST API. Task Reference: T044 */
 @Data
 public class AlertDTO {
     private Long id;

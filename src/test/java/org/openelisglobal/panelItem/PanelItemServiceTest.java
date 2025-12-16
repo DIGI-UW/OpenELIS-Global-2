@@ -44,7 +44,6 @@ public class PanelItemServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(panelItems.size() <= expectedPages);
-
     }
 
     @Test
@@ -83,5 +82,4 @@ public class PanelItemServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, panelItems.size());
         assertEquals("1", panelItems.get(0).getId());
     }
-
 }

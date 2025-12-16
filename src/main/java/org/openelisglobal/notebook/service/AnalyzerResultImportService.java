@@ -6,21 +6,15 @@ import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.notebook.valueholder.AnalyzerResultImport;
 
-/**
- * Service interface for AnalyzerResultImport operations.
- */
+/** Service interface for AnalyzerResultImport operations. */
 public interface AnalyzerResultImportService extends BaseObjectService<AnalyzerResultImport, Integer> {
 
-    /**
-     * Supported file formats for analyzer result import.
-     */
+    /** Supported file formats for analyzer result import. */
     enum FileFormat {
         CSV, XLSX, XLS
     }
 
-    /**
-     * Result of parsing an analyzer file - contains raw data and metadata.
-     */
+    /** Result of parsing an analyzer file - contains raw data and metadata. */
     record ParseResult(List<String> headers, List<Map<String, String>> rows, FileFormat format, int totalRows,
             List<String> parseErrors) {
         public boolean hasErrors() {
@@ -28,24 +22,18 @@ public interface AnalyzerResultImportService extends BaseObjectService<AnalyzerR
         }
     }
 
-    /**
-     * Result of previewing import - shows match status for each row.
-     */
+    /** Result of previewing import - shows match status for each row. */
     record ImportPreview(List<PreviewRow> rows, int matchedCount, int unmatchedCount, List<String> warnings) {
     }
 
-    /**
-     * Single row in the import preview with match status.
-     */
+    /** Single row in the import preview with match status. */
     record PreviewRow(int rowNumber, Map<String, String> data, String matchedSampleId, String matchType, // WELL_COORDINATE,
-                                                                                                         // EXTERNAL_ID,
-                                                                                                         // ACCESSION_NUMBER
+            // EXTERNAL_ID,
+            // ACCESSION_NUMBER
             String matchStatus) { // MATCHED, UNMATCHED, DUPLICATE
     }
 
-    /**
-     * Result of executing an import.
-     */
+    /** Result of executing an import. */
     record ImportResult(int importId, int totalRows, int successfulRows, int failedRows,
             List<Map<String, Object>> errors) {
         public boolean isFullySuccessful() {
@@ -53,14 +41,10 @@ public interface AnalyzerResultImportService extends BaseObjectService<AnalyzerR
         }
     }
 
-    /**
-     * Get all import records for a notebook page.
-     */
+    /** Get all import records for a notebook page. */
     List<AnalyzerResultImport> getByNotebookPageId(Integer notebookPageId);
 
-    /**
-     * Get the most recent import for a notebook page.
-     */
+    /** Get the most recent import for a notebook page. */
     AnalyzerResultImport getLatestByNotebookPageId(Integer notebookPageId);
 
     /**
@@ -81,24 +65,16 @@ public interface AnalyzerResultImportService extends BaseObjectService<AnalyzerR
             int successfulRows, int failedRows, Map<String, String> columnMapping,
             List<Map<String, Object>> errorDetails, String userId);
 
-    /**
-     * Get total successful rows imported for a notebook page.
-     */
+    /** Get total successful rows imported for a notebook page. */
     long getTotalSuccessfulRows(Integer notebookPageId);
 
-    /**
-     * Check if there are any failed imports for a notebook page.
-     */
+    /** Check if there are any failed imports for a notebook page. */
     boolean hasFailedImports(Integer notebookPageId);
 
-    /**
-     * Get import summary for a notebook page.
-     */
+    /** Get import summary for a notebook page. */
     ImportSummary getImportSummary(Integer notebookPageId);
 
-    /**
-     * Summary record for import statistics.
-     */
+    /** Summary record for import statistics. */
     record ImportSummary(int importCount, long totalRows, long successfulRows, long failedRows,
             java.sql.Timestamp lastImportDate) {
         public double overallSuccessRate() {
@@ -198,9 +174,7 @@ public interface AnalyzerResultImportService extends BaseObjectService<AnalyzerR
             String assayRunId, String operatorId, Map<String, String> machineParameters, List<String> reagentLots,
             String userId);
 
-    /**
-     * Extended recordImport that includes assay metadata.
-     */
+    /** Extended recordImport that includes assay metadata. */
     AnalyzerResultImport recordImport(Integer notebookPageId, Integer analyzerId, String fileName, int totalRows,
             int successfulRows, int failedRows, Map<String, String> columnMapping,
             List<Map<String, Object>> errorDetails, String assayRunId, String operatorId,

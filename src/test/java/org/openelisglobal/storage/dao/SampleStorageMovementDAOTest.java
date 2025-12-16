@@ -88,9 +88,7 @@ public class SampleStorageMovementDAOTest {
         verify(query).setParameter("sampleItemId", 1000);
     }
 
-    /**
-     * Test: findBySampleItemId returns empty list when no movements found
-     */
+    /** Test: findBySampleItemId returns empty list when no movements found */
     @Test
     public void testFindBySampleItemId_NoMovementsFound_ReturnsEmptyList() {
         // Setup
@@ -111,9 +109,7 @@ public class SampleStorageMovementDAOTest {
         verify(query).setParameter(eq("sampleItemId"), anyInt());
     }
 
-    /**
-     * Test: findBySampleItemId handles database errors gracefully
-     */
+    /** Test: findBySampleItemId handles database errors gracefully */
     @Test(expected = LIMSRuntimeException.class)
     public void testFindBySampleItemId_DatabaseError_ThrowsException() {
         // Setup

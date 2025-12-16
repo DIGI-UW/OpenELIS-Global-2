@@ -135,7 +135,6 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
 
         identifier = programSample.getSample().getAccessionNumber() + "(" + programSample.getProgram().getProgramName()
                 + ")";
-
     }
 
     @Override

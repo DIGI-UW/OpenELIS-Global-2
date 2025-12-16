@@ -181,9 +181,7 @@ public class LabelManagementServiceImpl implements LabelManagementService {
         }
     }
 
-    /**
-     * Generate PDF from label using BarcodeLabelMaker
-     */
+    /** Generate PDF from label using BarcodeLabelMaker */
     private ByteArrayOutputStream generatePDF(StorageLocationLabel label) {
         try {
             // Link barcode label info (for print tracking)

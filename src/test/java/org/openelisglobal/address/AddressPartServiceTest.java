@@ -62,7 +62,6 @@ public class AddressPartServiceTest extends BaseWebContextSensitiveTest {
         partService.save(savedPart);
 
         assertEquals("updatedName", savedPart.getPartName());
-
     }
 
     @Test

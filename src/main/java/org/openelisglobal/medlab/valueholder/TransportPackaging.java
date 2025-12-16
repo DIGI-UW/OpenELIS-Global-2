@@ -32,10 +32,11 @@ import org.openelisglobal.common.valueholder.BaseObject;
  *
  * <p>
  * Tracks three-tier packaging system:
+ *
  * <ul>
- * <li>Primary: Individual sample containers (vacutainer, cryovial)</li>
- * <li>Secondary: Protective packaging (biohazard bag, canister)</li>
- * <li>Tertiary: Outer shipping container (insulated shipper, rigid box)</li>
+ * <li>Primary: Individual sample containers (vacutainer, cryovial)
+ * <li>Secondary: Protective packaging (biohazard bag, canister)
+ * <li>Tertiary: Outer shipping container (insulated shipper, rigid box)
  * </ul>
  *
  * <p>

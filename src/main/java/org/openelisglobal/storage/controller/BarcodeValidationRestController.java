@@ -26,6 +26,7 @@ public class BarcodeValidationRestController {
     /**
      * Validate a storage location barcode
      *
+     * <p>
      * POST /rest/storage/barcode/validate
      *
      * @param request BarcodeValidationRequest with barcode string

@@ -18,9 +18,7 @@ import org.springframework.context.annotation.Configuration;
 @SuppressWarnings("unused")
 public class OdooConnectionConfig {
 
-    /**
-     * Creates a real Odoo connection when org.openelisglobal.odoo.enabled=true
-     */
+    /** Creates a real Odoo connection when org.openelisglobal.odoo.enabled=true */
     @Bean
     @ConditionalOnProperty(property = "org.openelisglobal.odoo.enabled", havingValue = "true")
     public OdooConnection realOdooConnection(OdooClient odooClient) {

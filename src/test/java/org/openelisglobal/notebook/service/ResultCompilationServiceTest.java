@@ -35,10 +35,12 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 /**
  * Unit tests for ResultCompilationService per US7 requirements.
  *
+ * <p>
  * US7 Goal: Compile analysis outputs into structured result files or database
  * records, deliver results to Data Management Team or designated recipients,
  * and flag invalid or inconclusive results for review.
  *
+ * <p>
  * Independent Test: Flag 3 samples as invalid with reasons, generate Excel
  * report, verify flagged samples are marked in report with status
  * (VALID/INVALID/INCONCLUSIVE) and delivery confirmation.
@@ -83,9 +85,7 @@ public class ResultCompilationServiceTest {
         testSample.setData(new HashMap<>());
     }
 
-    /**
-     * T122a: Validation status enum exists with required values.
-     */
+    /** T122a: Validation status enum exists with required values. */
     @Test
     public void testValidationStatusEnum_AllValuesExist() {
         ValidationStatus[] values = ValidationStatus.values();
@@ -110,49 +110,46 @@ public class ResultCompilationServiceTest {
         assertEquals("yellow", ValidationStatus.INCONCLUSIVE.getTagColor());
     }
 
-    /**
-     * T122: Flag sample as INVALID with reason.
-     */
-    @Test
-    public void testFlagSample_Invalid_RequiresReason() {
-        when(notebookPageSampleDAO.getBySampleItemIdAndPageId("100", 1)).thenReturn(testSample);
+  /** T122: Flag sample as INVALID with reason. */
+  @Test
+  public void testFlagSample_Invalid_RequiresReason() {
+    when(notebookPageSampleDAO.getBySampleItemIdAndPageId("100", 1)).thenReturn(testSample);
 
-        boolean result = service.flagSample(1, "100", ValidationStatus.INVALID, "Sample hemolyzed", "1");
+    boolean result =
+        service.flagSample(1, "100", ValidationStatus.INVALID, "Sample hemolyzed", "1");
 
-        assertTrue("Should successfully flag sample", result);
+    assertTrue("Should successfully flag sample", result);
 
-        ArgumentCaptor<NotebookPageSample> captor = ArgumentCaptor.forClass(NotebookPageSample.class);
-        verify(notebookPageSampleDAO).update(captor.capture());
+    ArgumentCaptor<NotebookPageSample> captor = ArgumentCaptor.forClass(NotebookPageSample.class);
+    verify(notebookPageSampleDAO).update(captor.capture());
 
-        NotebookPageSample updated = captor.getValue();
-        Map<String, Object> data = updated.getData();
+    NotebookPageSample updated = captor.getValue();
+    Map<String, Object> data = updated.getData();
 
-        assertEquals("INVALID", data.get("validationStatus"));
-        assertEquals("Sample hemolyzed", data.get("validationReason"));
-        assertEquals("1", data.get("validatedBy"));
-        assertNotNull(data.get("validatedAt"));
-    }
+    assertEquals("INVALID", data.get("validationStatus"));
+    assertEquals("Sample hemolyzed", data.get("validationReason"));
+    assertEquals("1", data.get("validatedBy"));
+    assertNotNull(data.get("validatedAt"));
+  }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testFlagSample_Invalid_WithoutReason_ThrowsException() {
-        when(notebookPageSampleDAO.getBySampleItemIdAndPageId("100", 1)).thenReturn(testSample);
+  @Test(expected = IllegalArgumentException.class)
+  public void testFlagSample_Invalid_WithoutReason_ThrowsException() {
+    when(notebookPageSampleDAO.getBySampleItemIdAndPageId("100", 1)).thenReturn(testSample);
 
-        service.flagSample(1, "100", ValidationStatus.INVALID, null, "1");
-    }
+    service.flagSample(1, "100", ValidationStatus.INVALID, null, "1");
+  }
 
-    @Test
-    public void testFlagSample_Valid_NoReasonRequired() {
-        when(notebookPageSampleDAO.getBySampleItemIdAndPageId("100", 1)).thenReturn(testSample);
+  @Test
+  public void testFlagSample_Valid_NoReasonRequired() {
+    when(notebookPageSampleDAO.getBySampleItemIdAndPageId("100", 1)).thenReturn(testSample);
 
-        boolean result = service.flagSample(1, "100", ValidationStatus.VALID, null, "1");
+    boolean result = service.flagSample(1, "100", ValidationStatus.VALID, null, "1");
 
-        assertTrue("Should successfully flag sample as VALID", result);
-        verify(notebookPageSampleDAO).update(any(NotebookPageSample.class));
-    }
+    assertTrue("Should successfully flag sample as VALID", result);
+    verify(notebookPageSampleDAO).update(any(NotebookPageSample.class));
+  }
 
-    /**
-     * T122b: Bulk flag samples with reason.
-     */
+    /** T122b: Bulk flag samples with reason. */
     @Test
     public void testBulkFlagSamples_3Samples_AllFlagged() {
         // Per US7 independent test: "Flag 3 samples as invalid with reasons"
@@ -173,9 +170,7 @@ public class ResultCompilationServiceTest {
         verify(notebookPageSampleDAO, times(3)).update(any(NotebookPageSample.class));
     }
 
-    /**
-     * T121: Validation summary statistics.
-     */
+    /** T121: Validation summary statistics. */
     @Test
     public void testGetValidationSummary_MixedStatuses() {
         NotebookPageSample validSample = createSampleWithStatus("101", ValidationStatus.VALID);
@@ -204,105 +199,99 @@ public class ResultCompilationServiceTest {
         assertEquals(5.0, summary.inconclusivePercentage(), 0.01);
     }
 
-    /**
-     * T123: Excel report generation with validation status.
-     */
-    @Test
-    public void testCompileToExcel_IncludesValidationStatus() {
-        when(noteBookService.get(1)).thenReturn(testNotebook);
+  /** T123: Excel report generation with validation status. */
+  @Test
+  public void testCompileToExcel_IncludesValidationStatus() {
+    when(noteBookService.get(1)).thenReturn(testNotebook);
 
-        NotebookPageSample validSample = createSampleWithStatus("101", ValidationStatus.VALID);
-        NotebookPageSample invalidSample = createSampleWithStatus("102", ValidationStatus.INVALID);
+    NotebookPageSample validSample = createSampleWithStatus("101", ValidationStatus.VALID);
+    NotebookPageSample invalidSample = createSampleWithStatus("102", ValidationStatus.INVALID);
 
-        when(notebookPageSampleDAO.getByNotebookId(1)).thenReturn(Arrays.asList(validSample, invalidSample));
+    when(notebookPageSampleDAO.getByNotebookId(1))
+        .thenReturn(Arrays.asList(validSample, invalidSample));
 
-        SampleItem sampleItem = mock(SampleItem.class);
-        when(sampleItem.getExternalId()).thenReturn("EXT-101");
-        when(sampleItemService.get("101")).thenReturn(sampleItem);
-        when(sampleItemService.get("102")).thenReturn(sampleItem);
+    SampleItem sampleItem = mock(SampleItem.class);
+    when(sampleItem.getExternalId()).thenReturn("EXT-101");
+    when(sampleItemService.get("101")).thenReturn(sampleItem);
+    when(sampleItemService.get("102")).thenReturn(sampleItem);
 
-        byte[] excelBytes = service.compileToExcel(1, ExportOptions.defaultOptions());
+    byte[] excelBytes = service.compileToExcel(1, ExportOptions.defaultOptions());
 
-        assertNotNull("Excel bytes should not be null", excelBytes);
-        assertTrue("Excel should have content", excelBytes.length > 0);
-    }
+    assertNotNull("Excel bytes should not be null", excelBytes);
+    assertTrue("Excel should have content", excelBytes.length > 0);
+  }
 
-    @Test
-    public void testCompileToExcel_ExcludesInvalidWhenFiltered() {
-        when(noteBookService.get(1)).thenReturn(testNotebook);
+  @Test
+  public void testCompileToExcel_ExcludesInvalidWhenFiltered() {
+    when(noteBookService.get(1)).thenReturn(testNotebook);
 
-        NotebookPageSample validSample = createSampleWithStatus("101", ValidationStatus.VALID);
-        NotebookPageSample invalidSample = createSampleWithStatus("102", ValidationStatus.INVALID);
+    NotebookPageSample validSample = createSampleWithStatus("101", ValidationStatus.VALID);
+    NotebookPageSample invalidSample = createSampleWithStatus("102", ValidationStatus.INVALID);
 
-        when(notebookPageSampleDAO.getByNotebookId(1)).thenReturn(Arrays.asList(validSample, invalidSample));
+    when(notebookPageSampleDAO.getByNotebookId(1))
+        .thenReturn(Arrays.asList(validSample, invalidSample));
 
-        SampleItem sampleItem = mock(SampleItem.class);
-        when(sampleItem.getExternalId()).thenReturn("EXT-101");
-        when(sampleItemService.get("101")).thenReturn(sampleItem);
+    SampleItem sampleItem = mock(SampleItem.class);
+    when(sampleItem.getExternalId()).thenReturn("EXT-101");
+    when(sampleItemService.get("101")).thenReturn(sampleItem);
 
-        ExportOptions options = new ExportOptions(false, true, true, null, "yyyy-MM-dd", "Results");
+    ExportOptions options = new ExportOptions(false, true, true, null, "yyyy-MM-dd", "Results");
 
-        byte[] excelBytes = service.compileToExcel(1, options);
+    byte[] excelBytes = service.compileToExcel(1, options);
 
-        assertNotNull("Excel bytes should not be null", excelBytes);
-        // Excel would have fewer rows with invalid filtered out
-    }
+    assertNotNull("Excel bytes should not be null", excelBytes);
+    // Excel would have fewer rows with invalid filtered out
+  }
 
-    /**
-     * T123a: CSV export with all result data.
-     */
-    @Test
-    public void testCompileToCsv_IncludesAllData() {
-        when(noteBookService.get(1)).thenReturn(testNotebook);
+  /** T123a: CSV export with all result data. */
+  @Test
+  public void testCompileToCsv_IncludesAllData() {
+    when(noteBookService.get(1)).thenReturn(testNotebook);
 
-        NotebookPageSample sample = createSampleWithStatus("101", ValidationStatus.VALID);
+    NotebookPageSample sample = createSampleWithStatus("101", ValidationStatus.VALID);
 
-        when(notebookPageSampleDAO.getByNotebookId(1)).thenReturn(Arrays.asList(sample));
+    when(notebookPageSampleDAO.getByNotebookId(1)).thenReturn(Arrays.asList(sample));
 
-        SampleItem sampleItem = mock(SampleItem.class);
-        when(sampleItem.getExternalId()).thenReturn("EXT-101");
-        when(sampleItemService.get("101")).thenReturn(sampleItem);
+    SampleItem sampleItem = mock(SampleItem.class);
+    when(sampleItem.getExternalId()).thenReturn("EXT-101");
+    when(sampleItemService.get("101")).thenReturn(sampleItem);
 
-        byte[] csvBytes = service.compileToCsv(1, ExportOptions.defaultOptions());
+    byte[] csvBytes = service.compileToCsv(1, ExportOptions.defaultOptions());
 
-        assertNotNull("CSV bytes should not be null", csvBytes);
+    assertNotNull("CSV bytes should not be null", csvBytes);
 
-        String csv = new String(csvBytes);
-        assertTrue("CSV should have header", csv.contains("Sample ID"));
-        assertTrue("CSV should have validation status column", csv.contains("Validation Status"));
-        assertTrue("CSV should contain sample data", csv.contains("101"));
-    }
+    String csv = new String(csvBytes);
+    assertTrue("CSV should have header", csv.contains("Sample ID"));
+    assertTrue("CSV should have validation status column", csv.contains("Validation Status"));
+    assertTrue("CSV should contain sample data", csv.contains("101"));
+  }
 
-    /**
-     * T125c: Delivery tracking.
-     */
-    @Test
-    public void testRecordDelivery_CreatesRecord() {
-        when(systemUserService.get("1")).thenReturn(testUser);
+  /** T125c: Delivery tracking. */
+  @Test
+  public void testRecordDelivery_CreatesRecord() {
+    when(systemUserService.get("1")).thenReturn(testUser);
 
         Integer deliveryId = service.recordDelivery(1, "Data Management Team", "datamanagement@lab.org", null,
                 "internal", null, null, "1");
 
-        assertNotNull("Delivery ID should not be null", deliveryId);
-        assertTrue("Delivery ID should be positive", deliveryId > 0);
-    }
+    assertNotNull("Delivery ID should not be null", deliveryId);
+    assertTrue("Delivery ID should be positive", deliveryId > 0);
+  }
 
-    @Test
-    public void testGetDeliveryHistory_ReturnsRecords() {
-        when(systemUserService.get("1")).thenReturn(testUser);
+  @Test
+  public void testGetDeliveryHistory_ReturnsRecords() {
+    when(systemUserService.get("1")).thenReturn(testUser);
 
         service.recordDelivery(1, "Data Management Team", "dm@lab.org", null, "internal", null, null, "1");
         service.recordDelivery(1, "External Reviewer", "reviewer@external.org", null, "external", null, null, "1");
 
-        List<ResultCompilationService.DeliveryRecord> history = service.getDeliveryHistory(1);
+    List<ResultCompilationService.DeliveryRecord> history = service.getDeliveryHistory(1);
 
-        assertFalse("History should not be empty", history.isEmpty());
-        assertEquals("Should have 2 delivery records", 2, history.size());
-    }
+    assertFalse("History should not be empty", history.isEmpty());
+    assertEquals("Should have 2 delivery records", 2, history.size());
+  }
 
-    /**
-     * T121: Get samples with validation for frontend display.
-     */
+    /** T121: Get samples with validation for frontend display. */
     @Test
     public void testGetSamplesWithValidation_ReturnsFormattedData() {
         NotebookPageSample sample = createSampleWithStatus("101", ValidationStatus.INVALID);

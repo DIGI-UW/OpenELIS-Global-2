@@ -82,9 +82,7 @@ public class SampleStorageAssignmentDAOTest {
         verify(query).setParameter("sampleItemId", 1000);
     }
 
-    /**
-     * Test: findBySampleItemId returns null when no assignment found
-     */
+    /** Test: findBySampleItemId returns null when no assignment found */
     @Test
     public void testFindBySampleItemId_NoAssignmentFound_ReturnsNull() {
         // Setup
@@ -105,9 +103,7 @@ public class SampleStorageAssignmentDAOTest {
         verify(query).setParameter(eq("sampleItemId"), anyInt());
     }
 
-    /**
-     * Test: findBySampleItemId handles database errors gracefully
-     */
+    /** Test: findBySampleItemId handles database errors gracefully */
     @Test(expected = LIMSRuntimeException.class)
     public void testFindBySampleItemId_DatabaseError_ThrowsException() {
         // Setup

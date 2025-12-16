@@ -97,7 +97,6 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         int expectedPages = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         assertTrue(tests.size() <= expectedPages);
-
     }
 
     @Test
@@ -112,7 +111,6 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Blood Test", test2.getDescription());
         org.openelisglobal.test.valueholder.Test test = testService.getTestById("2");
         assertEquals("Urine Test", test.getDescription());
-
     }
 
     @Test
@@ -122,7 +120,6 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
             assertEquals("Y", test.getIsActive());
             assertTrue(test.getOrderable());
         });
-
     }
 
     @Test
@@ -133,7 +130,6 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         org.openelisglobal.test.valueholder.Test test2 = testService.get("2");
         boolean isReportable2 = testService.isReportable(test2);
         assertTrue(isReportable2);
-
     }
 
     @Test
@@ -168,7 +164,6 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
     public void getTestsByLoinicCode() {
         List<org.openelisglobal.test.valueholder.Test> tests = testService.getTestsByLoincCode("123456");
         assertTrue(tests.size() > 0);
-
     }
 
     @Test
@@ -183,7 +178,6 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
         List<org.openelisglobal.test.valueholder.Test> tests = testService.getAll();
         int totalCount = testService.getTotalTestCount();
         assertEquals(tests.size(), totalCount);
-
     }
 
     @Test
@@ -283,5 +277,4 @@ public class TestServiceTest extends BaseWebContextSensitiveTest {
                 Locale.FRENCH);
         assertEquals("Urine Test", test2.getDescription());
     }
-
 }

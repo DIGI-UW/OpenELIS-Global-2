@@ -205,5 +205,4 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
         List<ReferralType> updatedReferralTypes = referralTypeService.getAll();
         assertTrue(updatedReferralTypes.isEmpty());
     }
-
 }

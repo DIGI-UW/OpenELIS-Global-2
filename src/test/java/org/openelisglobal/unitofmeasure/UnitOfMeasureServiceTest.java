@@ -29,7 +29,6 @@ public class UnitOfMeasureServiceTest extends BaseWebContextSensitiveTest {
         List<UnitOfMeasure> unitOfMeasures = unitOfMeasureService.getAll();
         assertNotNull(unitOfMeasures);
         assertTrue(unitOfMeasures.size() >= 10);
-
     }
 
     @Test

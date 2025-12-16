@@ -25,9 +25,7 @@ import org.openelisglobal.medlab.valueholder.QualityCheck;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * DAO implementation for QualityCheck entity operations.
- */
+/** DAO implementation for QualityCheck entity operations. */
 @Component
 @Transactional
 public class QualityCheckDAOImpl extends BaseDAOImpl<QualityCheck, Integer> implements QualityCheckDAO {

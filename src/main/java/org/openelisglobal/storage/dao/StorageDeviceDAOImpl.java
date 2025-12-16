@@ -133,5 +133,4 @@ public class StorageDeviceDAOImpl extends BaseDAOImpl<StorageDevice, Integer> im
             throw new LIMSRuntimeException("Error finding StorageDevice by name and parent room", e);
         }
     }
-
 }

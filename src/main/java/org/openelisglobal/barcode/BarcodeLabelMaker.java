@@ -100,7 +100,7 @@ public class BarcodeLabelMaker {
     /**
      * Lazy initialization of barcodeLabelService. Initializes on first use to
      * ensure SpringContext is ready.
-     * 
+     *
      * @return BarcodeLabelInfoService instance
      */
     private BarcodeLabelInfoService getBarcodeLabelService() {
@@ -123,7 +123,7 @@ public class BarcodeLabelMaker {
      * Lazy initialization of ENTERED_STATUS_SAMPLE_LIST. Initializes on first use
      * to ensure SpringContext is ready. Thread-safe using double-checked locking
      * pattern.
-     * 
+     *
      * @return Set containing the status ID for SampleStatus.Entered, or empty set
      *         if initialization fails
      */

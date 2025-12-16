@@ -68,5 +68,4 @@ public class SystemModuleUrlServiceTest extends BaseWebContextSensitiveTest {
         List<SystemModuleUrl> updatedSystemModuleUrls = systemModuleUrlService.getAll();
         assertTrue(updatedSystemModuleUrls.isEmpty());
     }
-
 }

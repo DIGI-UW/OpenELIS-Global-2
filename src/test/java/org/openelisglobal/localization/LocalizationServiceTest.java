@@ -119,7 +119,6 @@ public class LocalizationServiceTest extends BaseWebContextSensitiveTest {
                 LocalizationServiceImpl.LocalizationType.REPORTING_TEST_NAME.getDBDescription());
         assertEquals("Site information banner test",
                 LocalizationServiceImpl.LocalizationType.BANNER_LABEL.getDBDescription());
-
     }
 
     @Test

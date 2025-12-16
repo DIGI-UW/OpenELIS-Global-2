@@ -19,11 +19,13 @@ import org.springframework.stereotype.Component;
  * Handler for loading sample type (TypeOfSample) configuration files. Supports
  * CSV format for defining sample types.
  *
+ * <p>
  * Expected CSV format:
  * description,localAbbreviation,domain,isActive,sortOrder,englishName,frenchName
  * Whole Blood,WB,H,Y,1,Whole Blood,Sang Total Serum,SER,H,Y,2,Serum,Sérum
  * Plasma,PLS,H,Y,3,Plasma,Plasma Urine,UR,H,Y,4,Urine,Urine
  *
+ * <p>
  * Notes: - First line is the header (required) - description and
  * localAbbreviation are required fields - domain defaults to "H" (Human) if not
  * specified - isActive defaults to "Y" if not specified - sortOrder is optional

@@ -20,17 +20,21 @@ import org.openelisglobal.storage.valueholder.StorageShelf;
 
 /**
  * Unit tests for CodeValidationService
- * 
+ *
+ * <p>
  * References: - Testing Roadmap: .specify/guides/testing-roadmap.md - Backend
  * Best Practices: .specify/guides/backend-testing-best-practices.md - Template:
  * JUnit 4 Service Test
- * 
+ *
+ * <p>
  * TDD Workflow (MANDATORY for complex logic): - RED: Write failing test first
  * (defines expected behavior) - GREEN: Write minimal code to make test pass -
  * REFACTOR: Improve code quality while keeping tests green
- * 
+ *
+ * <p>
  * Task Reference: T285
- * 
+ *
+ * <p>
  * Test Naming: test{MethodName}_{Scenario}_{ExpectedResult}
  */
 @RunWith(MockitoJUnitRunner.class)
@@ -154,56 +158,57 @@ public class CodeValidationServiceTest {
         assertNotNull("Error message should mention start requirement", result.getErrorMessage());
     }
 
-    /**
-     * Test uniqueness within context
-     * T285: Uniqueness Within Context - Room: globally unique; Device/Shelf/Rack: unique within parent
-     */
-    @Test
-    public void testUniquenessWithinContext() {
-        // Test Room context (globally unique)
-        when(storageRoomDAO.findByCode("MAIN")).thenReturn(null); // Not found = unique
-        CodeValidationResult result = codeValidationService.validateUniqueness("MAIN", "room", "1", null);
-        assertTrue("Code should be unique for room", result.isValid());
+  /**
+   * Test uniqueness within context T285: Uniqueness Within Context - Room: globally unique;
+   * Device/Shelf/Rack: unique within parent
+   */
+  @Test
+  public void testUniquenessWithinContext() {
+    // Test Room context (globally unique)
+    when(storageRoomDAO.findByCode("MAIN")).thenReturn(null); // Not found = unique
+    CodeValidationResult result =
+        codeValidationService.validateUniqueness("MAIN", "room", "1", null);
+    assertTrue("Code should be unique for room", result.isValid());
 
-        // Test Room conflict (different room)
-        StorageRoom existingRoom = new StorageRoom();
-        existingRoom.setId(99);
-        when(storageRoomDAO.findByCode("MAIN")).thenReturn(existingRoom);
-        result = codeValidationService.validateUniqueness("MAIN", "room", "1", null);
-        assertFalse("Code should not be unique if exists for different room", result.isValid());
+    // Test Room conflict (different room)
+    StorageRoom existingRoom = new StorageRoom();
+    existingRoom.setId(99);
+    when(storageRoomDAO.findByCode("MAIN")).thenReturn(existingRoom);
+    result = codeValidationService.validateUniqueness("MAIN", "room", "1", null);
+    assertFalse("Code should not be unique if exists for different room", result.isValid());
 
-        // Test Room update (same room)
-        result = codeValidationService.validateUniqueness("MAIN", "room", "99", null);
-        assertTrue("Code should be unique when updating same room", result.isValid());
+    // Test Room update (same room)
+    result = codeValidationService.validateUniqueness("MAIN", "room", "99", null);
+    assertTrue("Code should be unique when updating same room", result.isValid());
 
-        // Test Device context (unique within parent room)
-        StorageRoom parentRoomForDevice = new StorageRoom();
-        parentRoomForDevice.setId(1);
-        when(storageRoomDAO.get(1)).thenReturn(Optional.of(parentRoomForDevice));
-        when(storageDeviceDAO.findByCodeAndParentRoom("FRZ01", parentRoomForDevice)).thenReturn(null);
-        result = codeValidationService.validateUniqueness("FRZ01", "device", "1", "1");
-        assertTrue("Code should be unique for device within parent room", result.isValid());
+    // Test Device context (unique within parent room)
+    StorageRoom parentRoomForDevice = new StorageRoom();
+    parentRoomForDevice.setId(1);
+    when(storageRoomDAO.get(1)).thenReturn(Optional.of(parentRoomForDevice));
+    when(storageDeviceDAO.findByCodeAndParentRoom("FRZ01", parentRoomForDevice)).thenReturn(null);
+    result = codeValidationService.validateUniqueness("FRZ01", "device", "1", "1");
+    assertTrue("Code should be unique for device within parent room", result.isValid());
 
-        // Test Shelf context (unique within parent device)
-        // Note: DAO method findByCodeAndParentDevice will be added in implementation phase
-        // For now, test that validation requires parentId
-        StorageDevice parentDevice = new StorageDevice();
-        parentDevice.setId(1);
-        when(storageDeviceDAO.get(1)).thenReturn(Optional.of(parentDevice));
-        // Shelf uniqueness check will be implemented when DAO method is added
-        result = codeValidationService.validateUniqueness("SHA", "shelf", "2", "1");
-        assertTrue("Code validation should pass (uniqueness check placeholder)", result.isValid());
+    // Test Shelf context (unique within parent device)
+    // Note: DAO method findByCodeAndParentDevice will be added in implementation phase
+    // For now, test that validation requires parentId
+    StorageDevice parentDevice = new StorageDevice();
+    parentDevice.setId(1);
+    when(storageDeviceDAO.get(1)).thenReturn(Optional.of(parentDevice));
+    // Shelf uniqueness check will be implemented when DAO method is added
+    result = codeValidationService.validateUniqueness("SHA", "shelf", "2", "1");
+    assertTrue("Code validation should pass (uniqueness check placeholder)", result.isValid());
 
-        // Test Rack context (unique within parent shelf)
-        // Note: DAO method findByCodeAndParentShelf will be added in implementation phase
-        // For now, test that validation requires parentId
-        StorageShelf parentShelf = new StorageShelf();
-        parentShelf.setId(1);
-        when(storageShelfDAO.get(1)).thenReturn(Optional.of(parentShelf));
-        // Rack uniqueness check will be implemented when DAO method is added
-        result = codeValidationService.validateUniqueness("RKR1", "rack", "3", "1");
-        assertTrue("Code validation should pass (uniqueness check placeholder)", result.isValid());
-    }
+    // Test Rack context (unique within parent shelf)
+    // Note: DAO method findByCodeAndParentShelf will be added in implementation phase
+    // For now, test that validation requires parentId
+    StorageShelf parentShelf = new StorageShelf();
+    parentShelf.setId(1);
+    when(storageShelfDAO.get(1)).thenReturn(Optional.of(parentShelf));
+    // Rack uniqueness check will be implemented when DAO method is added
+    result = codeValidationService.validateUniqueness("RKR1", "rack", "3", "1");
+    assertTrue("Code validation should pass (uniqueness check placeholder)", result.isValid());
+  }
 
     /**
      * Test auto-uppercase helper method T285: Auto-Uppercase Helper - Converts

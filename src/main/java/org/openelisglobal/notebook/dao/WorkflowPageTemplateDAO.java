@@ -9,13 +9,9 @@ import org.openelisglobal.notebook.valueholder.WorkflowPageTemplate;
  */
 public interface WorkflowPageTemplateDAO {
 
-    /**
-     * Find all active templates ordered by display order.
-     */
+    /** Find all active templates ordered by display order. */
     List<WorkflowPageTemplate> findAllActive();
 
-    /**
-     * Find templates by workflow category.
-     */
+    /** Find templates by workflow category. */
     List<WorkflowPageTemplate> findByCategory(String category);
 }

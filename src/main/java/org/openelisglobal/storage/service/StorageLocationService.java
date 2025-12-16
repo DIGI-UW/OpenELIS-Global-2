@@ -76,7 +76,7 @@ public interface StorageLocationService {
     /**
      * Search locations across all hierarchy levels (Room, Device, Shelf, Rack)
      * Returns locations matching search term with full hierarchical paths
-     * 
+     *
      * @param searchTerm Search term (case-insensitive partial match)
      * @return List of matching locations as Maps with hierarchicalPath field
      */
@@ -87,7 +87,7 @@ public interface StorageLocationService {
     /**
      * Validate if a location entity can be deleted (no child locations, no active
      * samples)
-     * 
+     *
      * @param locationEntity Location entity to validate (Room, Device, Shelf, or
      *                       Rack)
      * @return true if location can be deleted, false if constraints exist
@@ -96,7 +96,7 @@ public interface StorageLocationService {
 
     /**
      * Check if a location can be deleted
-     * 
+     *
      * @param locationEntity Location entity to check
      * @return true if location can be deleted, false if constraints exist
      */
@@ -104,7 +104,7 @@ public interface StorageLocationService {
 
     /**
      * Get user-friendly error message explaining why a location cannot be deleted
-     * 
+     *
      * @param locationEntity Location entity that cannot be deleted
      * @return Error message explaining the constraint (e.g., "Cannot delete Room
      *         'Main Laboratory' because it contains 8 devices")
@@ -113,7 +113,7 @@ public interface StorageLocationService {
 
     /**
      * OGC-75: Get summary of what will be deleted in a cascade delete operation
-     * 
+     *
      * @param locationEntity Location entity to get cascade delete summary for
      * @return Map containing: childLocations (Map with counts by type), sampleCount
      *         (int), childLocationType (String - type of child locations),
@@ -124,7 +124,7 @@ public interface StorageLocationService {
     /**
      * OGC-75: Delete location with cascade deletion of all child locations and
      * unassignment of all samples
-     * 
+     *
      * @param id            Location ID
      * @param locationClass Location entity class (StorageRoom, StorageDevice,
      *                      StorageShelf, or StorageRack)

@@ -267,5 +267,4 @@ public class PersonServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("No row with the given identifier exists: [org.openelisglobal.person.valueholder.Person#2]",
                 throwable.getMessage());
     }
-
 }

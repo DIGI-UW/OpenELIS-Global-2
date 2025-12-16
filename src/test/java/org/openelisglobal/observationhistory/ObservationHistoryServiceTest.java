@@ -165,7 +165,6 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
         ObservationHistory observation = observationHistoryService.getObservationForSample(ObservationType.REQUEST_DATE,
                 "3");
         assertNotNull(observation);
-
     }
 
     @Test
@@ -176,7 +175,6 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
         ObservationHistory observation = observationHistoryService
                 .getLastObservationForPatient(ObservationType.REQUEST_DATE, "3");
         assertNotNull(observation);
-
     }
 
     @Test

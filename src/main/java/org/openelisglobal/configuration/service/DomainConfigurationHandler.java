@@ -28,6 +28,7 @@ public interface DomainConfigurationHandler {
      * are loaded first. This is used to ensure dependencies are loaded before
      * dependents (e.g., sample types before tests, test sections before tests).
      *
+     * <p>
      * Default order values: - 100: Base entities (sample types, test sections,
      * units of measure) - 200: Dependent entities (tests, test-sample-type
      * mappings) - 300: Higher-level configurations (questionnaires, roles)

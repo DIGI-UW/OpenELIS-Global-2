@@ -234,13 +234,13 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
             }
 
         } else if (testName.equals("Murex") || testName.equals("Murex Combinaison") || testName.equals("Genscreen")) { // Serology
-                                                                                                                       // must
-                                                                                                                       // have
-                                                                                                                       // one
-                                                                                                                       // of
-                                                                                                                       // these
-                                                                                                                       // but
-                                                                                                                       // not
+            // must
+            // have
+            // one
+            // of
+            // these
+            // but
+            // not
             // necessarily both
             data.setShowSerologie(Boolean.TRUE);
             if (GenericValidator.isBlankOrNull(data.getVih())) {

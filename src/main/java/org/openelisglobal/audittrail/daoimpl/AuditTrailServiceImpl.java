@@ -467,7 +467,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                             }
 
                             propertyPreUpdateState = o2Value;
-
                         }
                     } catch (RuntimeException | NoSuchMethodException | IllegalAccessException
                             | InvocationTargetException e) {
@@ -1389,7 +1388,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 lvb.setValue(propertyPreUpdateState);
                 LogEvent.logTrace(this.getClass().getName(), "processLabelValue",
                         "lvb field: " + fieldName + " propertyPreUpdateState: " + propertyPreUpdateState);
-
             }
         }
 

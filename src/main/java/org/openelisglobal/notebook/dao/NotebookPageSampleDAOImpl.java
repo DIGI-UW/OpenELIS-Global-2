@@ -9,9 +9,7 @@ import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
 import org.springframework.stereotype.Component;
 
-/**
- * DAO implementation for NotebookPageSample entity operations.
- */
+/** DAO implementation for NotebookPageSample entity operations. */
 @Component
 public class NotebookPageSampleDAOImpl extends BaseDAOImpl<NotebookPageSample, Integer>
         implements NotebookPageSampleDAO {

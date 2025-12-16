@@ -98,7 +98,6 @@ public class AuditTrailViewWorkerImpl implements AuditTrailViewWorker {
             if (!addProgram().isEmpty()) {
                 items.addAll(addProgram());
             }
-
         }
 
         sortItemsByTime(items);

@@ -137,5 +137,4 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
 
         return resizedImage;
     }
-
 }

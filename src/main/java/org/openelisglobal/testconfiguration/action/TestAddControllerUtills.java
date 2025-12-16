@@ -381,5 +381,4 @@ public class TestAddControllerUtills {
         public String dictionaryId;
         public boolean isQuantifiable = false;
     }
-
 }

@@ -46,7 +46,6 @@ public class TestReflexRuleRestController {
             reflexService.deactivateReflexRule(id);
         } catch (Exception e) {
         }
-
     }
 
     @GetMapping(value = "reflexrules", produces = MediaType.APPLICATION_JSON_VALUE)

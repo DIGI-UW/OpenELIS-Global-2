@@ -65,110 +65,110 @@ public class ChildSampleCreationServiceTest {
         when(parentSample.getId()).thenReturn("100");
     }
 
-    @Test
-    public void testCreateChildSamples_ValidParent_CreatesChildren() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(sampleItemService.get("100")).thenReturn(parentSample);
+  @Test
+  public void testCreateChildSamples_ValidParent_CreatesChildren() {
+    // Arrange
+    when(noteBookService.get(1)).thenReturn(testNotebook);
+    when(sampleItemService.get("100")).thenReturn(parentSample);
 
-        SampleItem childSample = mock(SampleItem.class);
-        when(childSample.getId()).thenReturn("101");
-        when(sampleItemService.insert(any(SampleItem.class))).thenReturn("101");
+    SampleItem childSample = mock(SampleItem.class);
+    when(childSample.getId()).thenReturn("101");
+    when(sampleItemService.insert(any(SampleItem.class))).thenReturn("101");
 
-        // Act
-        List<Integer> parentIds = List.of(100);
-        int childCount = 2; // Create 2 children per parent
-        // This test will be updated once the createChildSamples method is implemented
-        // List<SampleItem> children = service.createChildSamples(1, parentIds,
-        // childCount);
+    // Act
+    List<Integer> parentIds = List.of(100);
+    int childCount = 2; // Create 2 children per parent
+    // This test will be updated once the createChildSamples method is implemented
+    // List<SampleItem> children = service.createChildSamples(1, parentIds,
+    // childCount);
 
-        // Assert - placeholder until implementation
-        assertTrue("Test setup is valid", testNotebook.getPages().size() == 9);
-    }
+    // Assert - placeholder until implementation
+    assertTrue("Test setup is valid", testNotebook.getPages().size() == 9);
+  }
 
-    @Test
-    public void testCreateChildSamples_MultipleParents_CreatesAllChildren() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
+  @Test
+  public void testCreateChildSamples_MultipleParents_CreatesAllChildren() {
+    // Arrange
+    when(noteBookService.get(1)).thenReturn(testNotebook);
 
-        SampleItem parent1 = mock(SampleItem.class);
-        when(parent1.getId()).thenReturn("100");
-        SampleItem parent2 = mock(SampleItem.class);
-        when(parent2.getId()).thenReturn("200");
+    SampleItem parent1 = mock(SampleItem.class);
+    when(parent1.getId()).thenReturn("100");
+    SampleItem parent2 = mock(SampleItem.class);
+    when(parent2.getId()).thenReturn("200");
 
-        when(sampleItemService.get("100")).thenReturn(parent1);
-        when(sampleItemService.get("200")).thenReturn(parent2);
+    when(sampleItemService.get("100")).thenReturn(parent1);
+    when(sampleItemService.get("200")).thenReturn(parent2);
 
-        // Act
-        List<Integer> parentIds = List.of(100, 200);
-        int childCount = 3;
-        // List<SampleItem> children = service.createChildSamples(1, parentIds,
-        // childCount);
+    // Act
+    List<Integer> parentIds = List.of(100, 200);
+    int childCount = 3;
+    // List<SampleItem> children = service.createChildSamples(1, parentIds,
+    // childCount);
 
-        // Assert - expecting 6 total children (3 per parent)
-        assertTrue("Test setup is valid", parentIds.size() == 2);
-    }
+    // Assert - expecting 6 total children (3 per parent)
+    assertTrue("Test setup is valid", parentIds.size() == 2);
+  }
 
-    @Test
-    public void testCreateChildSamples_SetsParentReference() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(sampleItemService.get("100")).thenReturn(parentSample);
+  @Test
+  public void testCreateChildSamples_SetsParentReference() {
+    // Arrange
+    when(noteBookService.get(1)).thenReturn(testNotebook);
+    when(sampleItemService.get("100")).thenReturn(parentSample);
 
-        // Act - Create child samples
-        // List<SampleItem> children = service.createChildSamples(1, List.of(100), 1);
+    // Act - Create child samples
+    // List<SampleItem> children = service.createChildSamples(1, List.of(100), 1);
 
-        // Assert - child should reference parent
-        // This will verify parent_sample_item_id is set correctly
-        assertTrue("Parent sample is set up", parentSample != null);
-    }
+    // Assert - child should reference parent
+    // This will verify parent_sample_item_id is set correctly
+    assertTrue("Parent sample is set up", parentSample != null);
+  }
 
-    @Test
-    public void testCreateChildSamples_GeneratesExternalIdPattern() {
-        // Per spec: external_id should follow pattern like "IMM-C-2024-0001"
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(sampleItemService.get("100")).thenReturn(parentSample);
+  @Test
+  public void testCreateChildSamples_GeneratesExternalIdPattern() {
+    // Per spec: external_id should follow pattern like "IMM-C-2024-0001"
+    // Arrange
+    when(noteBookService.get(1)).thenReturn(testNotebook);
+    when(sampleItemService.get("100")).thenReturn(parentSample);
 
-        // Act
-        // List<SampleItem> children = service.createChildSamples(1, List.of(100), 5);
+    // Act
+    // List<SampleItem> children = service.createChildSamples(1, List.of(100), 5);
 
-        // Assert - external_id pattern validation
-        // Each child should have pattern: {prefix}-{year}-{seq}
-        assertTrue("Test setup complete", true);
-    }
+    // Assert - external_id pattern validation
+    // Each child should have pattern: {prefix}-{year}-{seq}
+    assertTrue("Test setup complete", true);
+  }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testCreateChildSamples_InvalidNotebook_ThrowsException() {
-        // Arrange
-        when(noteBookService.get(999)).thenReturn(null);
+  @Test(expected = IllegalArgumentException.class)
+  public void testCreateChildSamples_InvalidNotebook_ThrowsException() {
+    // Arrange
+    when(noteBookService.get(999)).thenReturn(null);
 
-        // Act - should throw exception
-        // service.createChildSamples(999, List.of(100), 1);
-        throw new IllegalArgumentException("Notebook not found: 999");
-    }
+    // Act - should throw exception
+    // service.createChildSamples(999, List.of(100), 1);
+    throw new IllegalArgumentException("Notebook not found: 999");
+  }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testCreateChildSamples_InvalidParent_ThrowsException() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(sampleItemService.get(anyString())).thenReturn(null);
+  @Test(expected = IllegalArgumentException.class)
+  public void testCreateChildSamples_InvalidParent_ThrowsException() {
+    // Arrange
+    when(noteBookService.get(1)).thenReturn(testNotebook);
+    when(sampleItemService.get(anyString())).thenReturn(null);
 
-        // Act - should throw exception for invalid parent
-        // service.createChildSamples(1, List.of(999), 1);
-        throw new IllegalArgumentException("Parent sample not found");
-    }
+    // Act - should throw exception for invalid parent
+    // service.createChildSamples(1, List.of(999), 1);
+    throw new IllegalArgumentException("Parent sample not found");
+  }
 
-    @Test
-    public void testCreateChildSamples_LinksToNotebookPages() {
-        // Arrange
-        when(noteBookService.get(1)).thenReturn(testNotebook);
-        when(sampleItemService.get("100")).thenReturn(parentSample);
+  @Test
+  public void testCreateChildSamples_LinksToNotebookPages() {
+    // Arrange
+    when(noteBookService.get(1)).thenReturn(testNotebook);
+    when(sampleItemService.get("100")).thenReturn(parentSample);
 
-        // Act
-        // List<SampleItem> children = service.createChildSamples(1, List.of(100), 1);
+    // Act
+    // List<SampleItem> children = service.createChildSamples(1, List.of(100), 1);
 
-        // Assert - child should be linked to all 9 pages in notebook
-        assertEquals("Notebook has 9 pages", 9, testNotebook.getPages().size());
-    }
+    // Assert - child should be linked to all 9 pages in notebook
+    assertEquals("Notebook has 9 pages", 9, testNotebook.getPages().size());
+  }
 }

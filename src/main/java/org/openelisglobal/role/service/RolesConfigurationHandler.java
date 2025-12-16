@@ -16,11 +16,13 @@ import org.springframework.stereotype.Component;
  * Handler for loading role configuration files. Supports CSV format with role
  * entries.
  *
+ * <p>
  * Expected CSV format:
  * name,description,displayKey,active,editable,isGroupingRole,groupingParent Lab
  * Technician,Basic laboratory technician role,role.lab.tech,Y,Y,N, Results
  * Validator,Can validate test results,role.validator,Y,Y,N,
  *
+ * <p>
  * Notes: - First line is the header (required) - name is required field -
  * description, displayKey, active, editable, isGroupingRole, groupingParent are
  * optional - active and editable default to "Y" if not specified -

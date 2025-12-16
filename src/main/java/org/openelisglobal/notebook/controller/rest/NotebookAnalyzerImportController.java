@@ -53,6 +53,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
      * Parse an uploaded analyzer file and return headers/sample data. Step 1 of the
      * import wizard.
      *
+     * <p>
      * POST /rest/notebook/bulk/page/{pageId}/analyzer-import/parse
      */
     @PostMapping(value = "/{pageId}/analyzer-import/parse", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -84,8 +85,8 @@ public class NotebookAnalyzerImportController extends BaseRestController {
             response.put("totalRows", parseResult.totalRows());
             response.put("sampleData",
                     parseResult.rows().size() > 5 ? parseResult.rows().subList(0, 5) : parseResult.rows()); // First 5
-                                                                                                            // rows for
-                                                                                                            // preview
+            // rows for
+            // preview
             if (parseResult.hasErrors()) {
                 response.put("parseErrors", parseResult.parseErrors());
             }
@@ -111,6 +112,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
      * Preview import by matching rows to samples. Step 2 of the import wizard -
      * shows matched/unmatched samples.
      *
+     * <p>
      * POST /rest/notebook/bulk/page/{pageId}/analyzer-import/preview
      */
     @PostMapping(value = "/{pageId}/analyzer-import/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -179,6 +181,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
      * Execute the analyzer result import. Step 3 of the import wizard - stores
      * results in NotebookPageSample.data.
      *
+     * <p>
      * POST /rest/notebook/bulk/page/{pageId}/analyzer-import
      */
     @PostMapping(value = "/{pageId}/analyzer-import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -253,6 +256,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
      * Execute import with form data instead of multipart. Alternative endpoint for
      * JSON-based import requests.
      *
+     * <p>
      * POST /rest/notebook/bulk/page/{pageId}/analyzer-import/json
      */
     @PostMapping(value = "/{pageId}/analyzer-import/json", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -268,6 +272,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
     /**
      * Get import record by ID.
      *
+     * <p>
      * GET /rest/notebook/bulk/page/{pageId}/analyzer-import/{importId}
      */
     @GetMapping("/{pageId}/analyzer-import/{importId}")
@@ -308,6 +313,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
     /**
      * Get all import records for a page.
      *
+     * <p>
      * GET /rest/notebook/bulk/page/{pageId}/analyzer-import
      */
     @GetMapping("/{pageId}/analyzer-import")
@@ -351,6 +357,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
     /**
      * Get import summary for a page.
      *
+     * <p>
      * GET /rest/notebook/bulk/page/{pageId}/analyzer-import/summary
      */
     @GetMapping("/{pageId}/analyzer-import/summary")
@@ -382,6 +389,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
      * Add manual results to selected samples. POST
      * /rest/notebook/bulk/page/{pageId}/manual-results
      *
+     * <p>
      * Allows technicians to manually enter results for selected samples when
      * automated import is not available or applicable.
      */
@@ -475,9 +483,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for manual result entry.
-     */
+    /** Request body for manual result entry. */
     public static class ManualResultRequest {
         private List<Integer> sampleIds;
         private String result;

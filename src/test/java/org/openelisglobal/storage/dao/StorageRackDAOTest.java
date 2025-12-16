@@ -17,10 +17,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * DAO tests for StorageRackDAO
- * 
+ *
+ * <p>
  * Tests all HQL queries to ensure they compile and execute correctly. This
  * catches HQL property reference errors (e.g., non-existent properties).
- * 
+ *
+ * <p>
  * Uses BaseWebContextSensitiveTest (legacy pattern) since project doesn't use
  * Spring Boot. Reference: Testing Roadmap > BaseWebContextSensitiveTest (Legacy
  * Integration)
@@ -133,9 +135,7 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Short code should match", "RACK-1", result.getShortCode());
     }
 
-    /**
-     * Test: findByLabel - not found returns null
-     */
+    /** Test: findByLabel - not found returns null */
     @Test
     public void testFindByLabel_WithInvalidLabel_ReturnsNull() {
         // Act
@@ -145,9 +145,7 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
         assertNull("Rack should not be found", result);
     }
 
-    /**
-     * Test: findByParentShelfId - validates HQL query compiles and executes
-     */
+    /** Test: findByParentShelfId - validates HQL query compiles and executes */
     @Test
     public void testFindByParentShelfId_WithValidShelf_ReturnsRacks() {
         // Act: Execute HQL query
@@ -172,9 +170,7 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Label should match", "Rack 1", result.getLabel());
     }
 
-    /**
-     * Test: countByShelfId - validates HQL query compiles and executes
-     */
+    /** Test: countByShelfId - validates HQL query compiles and executes */
     @Test
     public void testCountByShelfId_WithValidShelf_ReturnsCount() {
         // Act: Execute HQL query
@@ -184,9 +180,7 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
         assertEquals("Should return count of 2", 2, count);
     }
 
-    /**
-     * Test: getAll - validates HQL query compiles and executes
-     */
+    /** Test: getAll - validates HQL query compiles and executes */
     @Test
     public void testGetAll_ReturnsAllRacks() {
         // Act: Execute HQL query

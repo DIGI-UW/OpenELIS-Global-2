@@ -312,9 +312,7 @@ public class SampleManagementRestController extends BaseRestController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 
-    /**
-     * Error response object for REST API errors.
-     */
+    /** Error response object for REST API errors. */
     public static class ErrorResponse {
         private String error;
         private String message;

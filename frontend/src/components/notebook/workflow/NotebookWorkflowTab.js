@@ -1,4 +1,4 @@
-import React, {
+import {
   useContext,
   useState,
   useEffect,
@@ -6,61 +6,40 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import {
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
-  Loading,
-  Grid,
-  Column,
-  Button,
-  Tag,
-} from "@carbon/react";
+import { Loading, Grid, Column, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import PageNavigation from "./PageNavigation";
-import SampleReceptionPage from "../pages/SampleReceptionPage";
-import InitialProcessingPage from "../pages/InitialProcessingPage";
-import AssaysPage from "../pages/AssaysPage";
-import ChildSampleCreationPage from "../pages/ChildSampleCreationPage";
-import SampleRoutingPage from "../pages/SampleRoutingPage";
-import PrepPage from "../pages/PrepPage";
-import AnalysisPage from "../pages/AnalysisPage";
-import StoragePage from "../pages/StoragePage";
-import ResultCompilationPage from "../pages/ResultCompilationPage";
-import EndOfProjectArchivingPage from "../pages/EndOfProjectArchivingPage";
+import {
+  buildWorkflowPages,
+  getWorkflowDefinition,
+  renderPageComponent,
+} from "../registry";
 import "./NotebookWorkflow.css";
 
 /**
- * Default workflow pages for immunology workflow.
- * Per spec: Reception → Processing → Assays → Child Samples → Prep → Analysis → Storage → Results → Archive
- * Note: Page 4 "Child Samples" includes BOTH child sample creation AND destination routing (per User Story 4)
+ * Default workflow type when notebook doesn't specify one.
+ * Falls back to immunology for backwards compatibility.
  */
-const DEFAULT_WORKFLOW_PAGES = [
-  { id: "default-1", order: 1, title: "Sample Reception" },
-  { id: "default-2", order: 2, title: "Initial Processing" },
-  { id: "default-3", order: 3, title: "Assays" },
-  { id: "default-4", order: 4, title: "Child Samples" },
-  { id: "default-5", order: 5, title: "Prep" },
-  { id: "default-6", order: 6, title: "Analysis" },
-  { id: "default-7", order: 7, title: "Storage" },
-  { id: "default-8", order: 8, title: "Results" },
-  { id: "default-9", order: 9, title: "Archive" },
-];
+const DEFAULT_WORKFLOW_TYPE = "immunology";
 
 /**
- * NotebookWorkflowTab - Container component for immunology workflow pages.
- * Displays the 9-page workflow with progress indicators and navigation.
+ * NotebookWorkflowTab - Container component for notebook workflow pages.
+ * Dynamically renders workflow pages based on the notebook's workflow type
+ * using the page registry system.
  *
  * @param {Object} props
  * @param {number} props.notebookId - The notebook template ID (will auto-create entry if needed)
  * @param {number} props.entryId - The notebook entry ID (direct entry access)
+ * @param {string} props.workflowType - Override workflow type (optional, defaults to notebook's type or 'immunology')
  */
-function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
+function NotebookWorkflowTab({
+  notebookId,
+  entryId: propEntryId,
+  workflowType: propWorkflowType,
+}) {
   const componentMounted = useRef(false);
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible } =
@@ -75,14 +54,112 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   const [activePage, setActivePage] = useState(0);
   const [samples, setSamples] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [workflowType, setWorkflowType] = useState(
+    propWorkflowType || DEFAULT_WORKFLOW_TYPE,
+  );
 
-  // Use actual pages if available, otherwise use default workflow pages
-  const effectivePages = useMemo(() => {
-    if (pages && pages.length > 0) {
-      return pages;
+  /**
+   * Determine effective workflow type from props, notebook, or default.
+   */
+  const effectiveWorkflowType = useMemo(() => {
+    if (propWorkflowType) return propWorkflowType;
+    if (notebook?.type) {
+      // Map notebook type to workflow ID
+      // Handle both string types and object types with dictEntry
+      const typeMap = {
+        IMMUNOLOGY: "immunology",
+        MEDLAB: "medlab",
+        HEMATOLOGY: "hematology",
+        CHEMISTRY: "chemistry",
+      };
+      // Extract type value - could be string, object with dictEntry, or object with value
+      const typeValue =
+        typeof notebook.type === "string"
+          ? notebook.type
+          : notebook.type?.dictEntry || notebook.type?.value || null;
+      if (typeValue) {
+        const normalizedType = typeValue.toUpperCase();
+        return typeMap[normalizedType] || DEFAULT_WORKFLOW_TYPE;
+      }
     }
-    return DEFAULT_WORKFLOW_PAGES;
-  }, [pages]);
+    return workflowType || DEFAULT_WORKFLOW_TYPE;
+  }, [propWorkflowType, notebook, workflowType]);
+
+  /**
+   * Build effective pages from workflow definition and page registry.
+   * Falls back to notebook-defined pages if available.
+   */
+  const effectivePages = useMemo(() => {
+    // If notebook has explicit pages, use those with registry enhancement
+    if (pages && pages.length > 0) {
+      const enhancedPages = pages.map((page, index) => ({
+        ...page,
+        order: page.order || index + 1,
+        pageId: page.pageId || guessPageIdFromTitle(page.title),
+      }));
+      // Sort by order to maintain correct page sequence
+      return enhancedPages.sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
+    // Otherwise, build from workflow definition
+    const workflowPages = buildWorkflowPages(effectiveWorkflowType);
+    if (workflowPages.length > 0) {
+      return workflowPages;
+    }
+
+    // Final fallback to immunology workflow
+    return buildWorkflowPages(DEFAULT_WORKFLOW_TYPE);
+  }, [pages, effectiveWorkflowType]);
+
+  /**
+   * Guess page ID from title for backwards compatibility with
+   * notebooks that don't have pageId set.
+   */
+  function guessPageIdFromTitle(title) {
+    if (!title) return null;
+    const titleLower = title.toLowerCase();
+    const mappings = {
+      "sample reception": "sample-reception",
+      reception: "sample-reception",
+      "initial processing": "initial-processing",
+      processing: "initial-processing",
+      assays: "assays",
+      "child sample": "child-sample-creation",
+      "child samples": "child-sample-creation",
+      routing: "sample-routing",
+      prep: "prep",
+      preparation: "prep",
+      analysis: "analysis",
+      storage: "storage",
+      results: "result-compilation",
+      "result compilation": "result-compilation",
+      archive: "end-of-project-archiving",
+      archiving: "end-of-project-archiving",
+      patient: "patient-order-entry",
+      "order entry": "patient-order-entry",
+      "lab order": "patient-order-entry",
+      "sample collection": "sample-collection",
+      collection: "sample-collection",
+      "quality check": "quality-check",
+      "quality control": "quality-check",
+      "sample quality": "quality-check",
+      centrifugation: "centrifugation",
+      aliquot: "aliquoting",
+      analyzer: "analyzer-loading",
+      "result entry": "result-entry",
+      verification: "result-verification",
+      "qc review": "qc-review",
+      reporting: "reporting",
+      transport: "transport-packaging",
+    };
+
+    for (const [key, pageId] of Object.entries(mappings)) {
+      if (titleLower.includes(key)) {
+        return pageId;
+      }
+    }
+    return null;
+  }
 
   useEffect(() => {
     componentMounted.current = true;
@@ -133,6 +210,10 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
             (nbResponse) => {
               if (componentMounted.current && nbResponse) {
                 setPages(nbResponse.pages || []);
+                // Update workflow type from notebook
+                if (nbResponse.type && typeof nbResponse.type === "string") {
+                  setWorkflowType(nbResponse.type.toLowerCase());
+                }
               }
             },
           );
@@ -156,6 +237,10 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
       if (componentMounted.current && nbResponse) {
         setNotebook(nbResponse);
         setPages(nbResponse.pages || []);
+        // Update workflow type from notebook
+        if (nbResponse.type && typeof nbResponse.type === "string") {
+          setWorkflowType(nbResponse.type.toLowerCase());
+        }
 
         // Check if there's an existing entry for this notebook
         getFromOpenElisServer(
@@ -291,148 +376,33 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     }
   }, [entryId]);
 
-  // Render page-specific content based on page order
-  // Per spec: Reception → Processing → Assays → Child Samples → Prep → Analysis → Storage → Results → Archive
+  /**
+   * Render page content using the dynamic registry system.
+   */
   const renderPageContent = (page) => {
-    const pageOrder = page.order || 1;
     const progress = getProgressForPage(page.id);
 
-    // Debug logging
-    console.log("renderPageContent called:", { page, pageOrder, entryId });
-
-    switch (pageOrder) {
-      case 1:
-        // Page 1: Sample Reception - Link existing samples or create from manifest
-        return (
-          <SampleReceptionPage
-            key={`reception-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 2:
-        // Page 2: Initial Processing - Bulk data entry (volume, cell count, method)
-        return (
-          <InitialProcessingPage
-            key={`processing-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 3:
-        // Page 3: Assays - Perform supplementary tests/assays prior to extraction
-        // Record test type, operator, reagents used, and results
-        return (
-          <AssaysPage
-            key={`assays-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 4:
-        // Page 4: Child Samples - Create child samples AND route to destinations
-        // Per User Story 4: "Child Sample Creation with Destination Routing"
-        // This page combines both ChildSampleCreationPage AND SampleRoutingPage
-        return (
-          <React.Fragment key={`child-samples-${page.id}`}>
-            <ChildSampleCreationPage
-              key={`child-creation-${page.id}`}
-              entryId={entryId}
-              notebookId={notebook?.id}
-              pageData={page}
-              progress={progress}
-              onProgressUpdate={handleProgressUpdate}
-            />
-            <div className="routing-section" style={{ marginTop: "2rem" }}>
-              <h4 style={{ marginBottom: "1rem" }}>
-                <FormattedMessage
-                  id="notebook.workflow.page4.routing"
-                  defaultMessage="Destination Routing"
-                />
-              </h4>
-              <SampleRoutingPage
-                key={`routing-${page.id}`}
-                entryId={entryId}
-                notebookId={notebook?.id}
-                pageData={page}
-                progress={progress}
-                onProgressUpdate={handleProgressUpdate}
-              />
-            </div>
-          </React.Fragment>
-        );
-      case 5:
-        // Page 5: Prep - Analysis preparation (fresh, thawed, or incubated)
-        return (
-          <PrepPage
-            key={`prep-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 6:
-        // Page 6: Analysis - Import analyzer results from ELISA/Flow Cytometry
-        return (
-          <AnalysisPage
-            key={`analysis-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 7:
-        // Page 7: Storage - Post-analysis storage assignment
-        return (
-          <StoragePage
-            key={`storage-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 8:
-        // Page 8: Results - Compile and export results (US7)
-        return (
-          <ResultCompilationPage
-            key={`results-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 9:
-        // Page 9: Archive - End of project archiving (US8)
-        return (
-          <EndOfProjectArchivingPage
-            key={`archive-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      default:
-        return (
-          <div className="page-placeholder">
-            <FormattedMessage
-              id="notebook.workflow.pageDefault.description"
-              defaultMessage="Page content for workflow step {step}"
-              values={{ step: pageOrder }}
-            />
-          </div>
-        );
+    // Use the registry to render the page component
+    if (page.pageId) {
+      return renderPageComponent(page, {
+        entryId,
+        pageData: page,
+        progress,
+        onProgressUpdate: handleProgressUpdate,
+        notebookId: notebook?.id,
+      });
     }
+
+    // Fallback for pages without pageId
+    return (
+      <div className="page-placeholder">
+        <FormattedMessage
+          id="notebook.workflow.pageDefault.description"
+          defaultMessage="Page content for workflow step {step}"
+          values={{ step: page.order }}
+        />
+      </div>
+    );
   };
 
   if (loading) {
@@ -487,6 +457,9 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   const displayTitle = entry?.title || notebook?.title;
   const displayStatus = entry?.status || notebook?.status;
 
+  // Get workflow definition for display
+  const workflowDef = getWorkflowDefinition(effectiveWorkflowType);
+
   return (
     <div className="notebook-workflow-container">
       <Grid fullWidth>
@@ -495,6 +468,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
             <h2>{displayTitle}</h2>
             <div className="workflow-meta">
               <Tag type="blue">{displayStatus}</Tag>
+              {workflowDef && <Tag type="teal">{workflowDef.name}</Tag>}
               <span className="sample-count">
                 <FormattedMessage
                   id="notebook.workflow.sampleCount"
@@ -538,17 +512,16 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
                 </div>
 
                 <div className="page-content">
-                  {effectivePages[activePage].content && (
+                  {effectivePages[activePage].instructions && (
                     <div
                       className="page-instructions"
                       dangerouslySetInnerHTML={{
-                        __html: effectivePages[activePage].content,
+                        __html: effectivePages[activePage].instructions,
                       }}
                     />
                   )}
 
-                  {/* Page-specific content rendered based on page order */}
-                  {/* Key forces React to unmount/remount when switching pages to reset state */}
+                  {/* Page-specific content rendered via registry */}
                   <div key={`page-content-${effectivePages[activePage].id}`}>
                     {renderPageContent(effectivePages[activePage])}
                   </div>

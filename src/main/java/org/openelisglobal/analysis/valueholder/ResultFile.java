@@ -75,7 +75,5 @@ public class ResultFile extends BaseObject<Integer> {
     @Override
     public void setId(Integer id) {
         this.id = id;
-
     }
-
 }

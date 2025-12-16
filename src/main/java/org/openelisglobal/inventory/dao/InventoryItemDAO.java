@@ -8,29 +8,19 @@ import org.openelisglobal.inventory.valueholder.InventoryItem;
 
 public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
 
-    /**
-     * Get all active inventory items
-     */
+    /** Get all active inventory items */
     List<InventoryItem> getAllActive() throws LIMSRuntimeException;
 
-    /**
-     * Get inventory items by type
-     */
+    /** Get inventory items by type */
     List<InventoryItem> getByItemType(ItemType itemType) throws LIMSRuntimeException;
 
-    /**
-     * Get inventory items by category
-     */
+    /** Get inventory items by category */
     List<InventoryItem> getByCategory(String category) throws LIMSRuntimeException;
 
-    /**
-     * Search inventory items by name (partial match)
-     */
+    /** Search inventory items by name (partial match) */
     List<InventoryItem> searchByName(String name) throws LIMSRuntimeException;
 
-    /**
-     * Get inventory item by FHIR UUID
-     */
+    /** Get inventory item by FHIR UUID */
     InventoryItem getByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
 
     /**

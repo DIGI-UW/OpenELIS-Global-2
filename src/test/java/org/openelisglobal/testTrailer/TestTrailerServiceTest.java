@@ -76,5 +76,4 @@ public class TestTrailerServiceTest extends BaseWebContextSensitiveTest {
         List<TestTrailer> testTrailers = testTrailerService.getAllTestTrailers();
         assertEquals(3, testTrailers.size());
     }
-
 }

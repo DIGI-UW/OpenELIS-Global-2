@@ -122,5 +122,4 @@ public class PathologySampleServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(Integer.parseInt("2"), pathologySampleForm.getBlocks().size());
         Assert.assertEquals("2", pathologySampleForm.getSystemUserId());
     }
-
 }
