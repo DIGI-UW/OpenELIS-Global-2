@@ -218,8 +218,8 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                                             + targetPage.getId() + " title='" + targetPage.getTitle() + "'");
                         } else {
                             LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
-                                    "T150: Sample " + sampleId + " already exists on targetPage id=" + targetPage.getId()
-                                            + " with status=" + existingOnTargetPage.getStatus());
+                                    "T150: Sample " + sampleId + " already exists on targetPage id="
+                                            + targetPage.getId() + " with status=" + existingOnTargetPage.getStatus());
                         }
                     } else {
                         LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",

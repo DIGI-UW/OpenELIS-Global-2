@@ -1133,8 +1133,8 @@ public class NotebookSampleEntryController extends BaseRestController {
     }
 
     /**
-     * Get report history for a specific notebook page.
-     * GET /notebook/page/{pageId}/reports
+     * Get report history for a specific notebook page. GET
+     * /notebook/page/{pageId}/reports
      *
      * Returns an empty list for now - report history storage not yet implemented.
      *

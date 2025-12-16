@@ -551,7 +551,7 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
     @Override
     @Transactional
     public Integer recordDelivery(Integer notebookId, String recipientName, String recipientEmail, Integer fileId,
-            String userId) {
+            String deliveryType, String regulatoryBody, String notes, String userId) {
         // Get file name (fileId is optional, may be null for direct delivery)
         String fileName = fileId != null ? "File_" + fileId : "Direct Delivery";
 
@@ -563,9 +563,12 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         }
 
         DeliveryRecord record = new DeliveryRecord(nextDeliveryId++, recipientName, recipientEmail, fileName,
-                LocalDateTime.now(), deliveredBy);
+                deliveryType, regulatoryBody, notes, LocalDateTime.now(), deliveredBy);
 
         deliveryRecords.add(record);
+
+        LogEvent.logInfo(this.getClass().getName(), "recordDelivery", "Recorded delivery for notebook " + notebookId
+                + " to " + recipientName + " (type: " + deliveryType + ", regulatory: " + regulatoryBody + ")");
 
         return record.id();
     }

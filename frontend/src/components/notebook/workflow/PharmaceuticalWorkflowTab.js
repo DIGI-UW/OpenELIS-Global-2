@@ -6,61 +6,56 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import {
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
-  Loading,
-  Grid,
-  Column,
-  Button,
-  Tag,
-} from "@carbon/react";
+import { Loading, Grid, Column, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import PageNavigation from "./PageNavigation";
-import SampleReceptionPage from "../pages/SampleReceptionPage";
-import InitialProcessingPage from "../pages/InitialProcessingPage";
-import AssaysPage from "../pages/AssaysPage";
-import ChildSampleCreationPage from "../pages/ChildSampleCreationPage";
-import SampleRoutingPage from "../pages/SampleRoutingPage";
-import PrepPage from "../pages/PrepPage";
-import AnalysisPage from "../pages/AnalysisPage";
-import StoragePage from "../pages/StoragePage";
-import ResultCompilationPage from "../pages/ResultCompilationPage";
-import EndOfProjectArchivingPage from "../pages/EndOfProjectArchivingPage";
+import {
+  PharmaceuticalSampleCreationPage,
+  PharmaceuticalQualityCheckPage,
+  PharmaceuticalProcessingPage,
+  PharmaceuticalTestingPage,
+  PharmaceuticalStoragePage,
+  PharmaceuticalReportingPage,
+  PharmaceuticalDisposalPage,
+} from "../pages/pharma";
 import "./NotebookWorkflow.css";
 
 /**
- * Default workflow pages for immunology workflow.
- * Per spec: Reception → Processing → Assays → Child Samples → Prep → Analysis → Storage → Results → Archive
- * Note: Page 4 "Child Samples" includes BOTH child sample creation AND destination routing (per User Story 4)
+ * Default workflow pages for Pharmaceuticals workflow.
+ * Page 1: Sample Creation & Full Metadata Capture
+ * Page 2: Raw Sample Quality Check (QC)
+ * Page 3: Sample Processing & Aliquoting
+ * Page 4: Assay & Test Execution
+ * Page 5: Storage & Inventory Management
+ * Page 6: Reporting & Performance Monitoring
+ * Page 7: Disposal & Archiving
  */
-const DEFAULT_WORKFLOW_PAGES = [
-  { id: "default-1", order: 1, title: "Sample Reception" },
-  { id: "default-2", order: 2, title: "Initial Processing" },
-  { id: "default-3", order: 3, title: "Assays" },
-  { id: "default-4", order: 4, title: "Child Samples" },
-  { id: "default-5", order: 5, title: "Prep" },
-  { id: "default-6", order: 6, title: "Analysis" },
-  { id: "default-7", order: 7, title: "Storage" },
-  { id: "default-8", order: 8, title: "Results" },
-  { id: "default-9", order: 9, title: "Archive" },
+const DEFAULT_PHARMA_WORKFLOW_PAGES = [
+  {
+    id: "default-1",
+    order: 1,
+    title: "Sample Creation & Full Metadata Capture",
+  },
+  { id: "default-2", order: 2, title: "Raw Sample Quality Check (QC)" },
+  { id: "default-3", order: 3, title: "Sample Processing & Aliquoting" },
+  { id: "default-4", order: 4, title: "Assay & Test Execution" },
+  { id: "default-5", order: 5, title: "Storage & Inventory Management" },
+  { id: "default-6", order: 6, title: "Reporting & Performance Monitoring" },
+  { id: "default-7", order: 7, title: "Disposal & Archiving" },
 ];
 
 /**
- * NotebookWorkflowTab - Container component for immunology workflow pages.
- * Displays the 9-page workflow with progress indicators and navigation.
+ * PharmaceuticalWorkflowTab - Container component for Pharmaceuticals workflow pages.
+ * Displays the pharma-specific workflow with progress indicators and navigation.
  *
  * @param {Object} props
  * @param {number} props.notebookId - The notebook template ID (will auto-create entry if needed)
  * @param {number} props.entryId - The notebook entry ID (direct entry access)
  */
-function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
+function PharmaceuticalWorkflowTab({ notebookId, entryId: propEntryId }) {
   const componentMounted = useRef(false);
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible } =
@@ -76,12 +71,17 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   const [samples, setSamples] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Use actual pages if available, otherwise use default workflow pages
+  // Use actual pages if available, otherwise use default pharma workflow pages
+  // Sort by page_order or order to ensure correct display sequence
   const effectivePages = useMemo(() => {
     if (pages && pages.length > 0) {
-      return pages;
+      return [...pages].sort((a, b) => {
+        const orderA = a.pageOrder ?? a.order ?? 0;
+        const orderB = b.pageOrder ?? b.order ?? 0;
+        return orderA - orderB;
+      });
     }
-    return DEFAULT_WORKFLOW_PAGES;
+    return DEFAULT_PHARMA_WORKFLOW_PAGES;
   }, [pages]);
 
   useEffect(() => {
@@ -91,6 +91,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     return () => {
       componentMounted.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notebookId, propEntryId]);
 
   const loadNotebookData = () => {
@@ -102,10 +103,8 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     setLoading(true);
 
     if (propEntryId) {
-      // Direct entry access - load entry and its notebook
       loadEntryData(propEntryId);
     } else if (notebookId) {
-      // Notebook ID provided - first load notebook, then get/create entry
       loadNotebookAndEntry(notebookId);
     }
   };
@@ -119,15 +118,12 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
       }
     };
 
-    // Load entry and its template notebook
     getFromOpenElisServer(`/rest/notebook-entry/${eId}`, (response) => {
       if (componentMounted.current && response) {
         setEntry(response);
         setEntryId(eId);
-        // If entry has a notebook reference, use its pages
         if (response.notebook) {
           setNotebook(response.notebook);
-          // Load pages from template notebook
           getFromOpenElisServer(
             `/rest/notebook/view/${response.notebook.id}`,
             (nbResponse) => {
@@ -141,7 +137,6 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
       checkDone();
     });
 
-    // Load samples for entry
     getFromOpenElisServer(`/rest/notebook-entry/${eId}/samples`, (response) => {
       if (componentMounted.current && response) {
         setSamples(response || []);
@@ -151,29 +146,24 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   };
 
   const loadNotebookAndEntry = (nbId) => {
-    // First load the notebook data
     getFromOpenElisServer(`/rest/notebook/view/${nbId}`, (nbResponse) => {
       if (componentMounted.current && nbResponse) {
         setNotebook(nbResponse);
         setPages(nbResponse.pages || []);
 
-        // Check if there's an existing entry for this notebook
         getFromOpenElisServer(
           `/rest/notebook-entry/by-notebook/${nbId}`,
           (entriesResponse) => {
             if (componentMounted.current) {
-              // Handle both array responses and error responses
               if (
                 entriesResponse &&
                 Array.isArray(entriesResponse) &&
                 entriesResponse.length > 0
               ) {
-                // Use the first/most recent entry
                 const existingEntry = entriesResponse[0];
                 setEntry(existingEntry);
                 setEntryId(existingEntry.id);
 
-                // Load samples for this entry
                 getFromOpenElisServer(
                   `/rest/notebook-entry/${existingEntry.id}/samples`,
                   (samplesResponse) => {
@@ -186,27 +176,18 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
                   },
                 );
               } else {
-                // No entry exists or got error - create one automatically
-                console.log(
-                  "No existing entries found for notebook",
-                  nbId,
-                  "- creating new entry",
-                );
                 createEntryForNotebook(nbId);
               }
             }
           },
         );
       } else {
-        console.error("Failed to load notebook:", nbId);
         setLoading(false);
       }
     });
   };
 
   const createEntryForNotebook = (nbId) => {
-    // Create a new entry for this notebook
-    console.log("Creating new notebook entry for notebook:", nbId);
     fetch(
       `${config.serverBaseUrl}/rest/notebook-entry/create?notebookId=${nbId}`,
       {
@@ -219,13 +200,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
       },
     )
       .then(async (response) => {
-        console.log(
-          "Entry creation HTTP status:",
-          response.status,
-          response.statusText,
-        );
         const text = await response.text();
-        console.log("Entry creation raw response:", text);
         let data = {};
         try {
           data = text ? JSON.parse(text) : {};
@@ -235,23 +210,18 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
         if (!response.ok) {
           const errorMsg =
             data.error || `HTTP ${response.status}: ${response.statusText}`;
-          console.error("Entry creation failed:", errorMsg);
           throw new Error(errorMsg);
         }
         return data;
       })
       .then((data) => {
-        console.log("Entry creation response:", data);
         if (componentMounted.current) {
           if (data && data.id) {
             setEntry(data);
             setEntryId(data.id);
             setSamples([]);
-            console.log("Entry created successfully with ID:", data.id);
           } else if (data && data.error) {
             console.error("Entry creation error:", data.error);
-          } else {
-            console.error("Entry creation returned invalid data:", data);
           }
           setLoading(false);
         }
@@ -277,7 +247,6 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     return progress;
   };
 
-  // Callback to refresh progress after page operations
   const handleProgressUpdate = useCallback(() => {
     if (entryId) {
       getFromOpenElisServer(
@@ -292,134 +261,86 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   }, [entryId]);
 
   // Render page-specific content based on page order
-  // Per spec: Reception → Processing → Assays → Child Samples → Prep → Analysis → Storage → Results → Archive
   const renderPageContent = (page) => {
     const pageOrder = page.order || 1;
     const progress = getProgressForPage(page.id);
 
-    // Debug logging
-    console.log("renderPageContent called:", { page, pageOrder, entryId });
-
     switch (pageOrder) {
       case 1:
-        // Page 1: Sample Reception - Link existing samples or create from manifest
         return (
-          <SampleReceptionPage
-            key={`reception-${page.id}`}
+          <PharmaceuticalSampleCreationPage
+            key={`pharma-create-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
           />
         );
       case 2:
-        // Page 2: Initial Processing - Bulk data entry (volume, cell count, method)
         return (
-          <InitialProcessingPage
-            key={`processing-${page.id}`}
+          <PharmaceuticalQualityCheckPage
+            key={`pharma-qc-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
           />
         );
       case 3:
-        // Page 3: Assays - Perform supplementary tests/assays prior to extraction
-        // Record test type, operator, reagents used, and results
         return (
-          <AssaysPage
-            key={`assays-${page.id}`}
+          <PharmaceuticalProcessingPage
+            key={`pharma-processing-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
           />
         );
       case 4:
-        // Page 4: Child Samples - Create child samples AND route to destinations
-        // Per User Story 4: "Child Sample Creation with Destination Routing"
-        // This page combines both ChildSampleCreationPage AND SampleRoutingPage
         return (
-          <React.Fragment key={`child-samples-${page.id}`}>
-            <ChildSampleCreationPage
-              key={`child-creation-${page.id}`}
-              entryId={entryId}
-              notebookId={notebook?.id}
-              pageData={page}
-              progress={progress}
-              onProgressUpdate={handleProgressUpdate}
-            />
-            <div className="routing-section" style={{ marginTop: "2rem" }}>
-              <h4 style={{ marginBottom: "1rem" }}>
-                <FormattedMessage
-                  id="notebook.workflow.page4.routing"
-                  defaultMessage="Destination Routing"
-                />
-              </h4>
-              <SampleRoutingPage
-                key={`routing-${page.id}`}
-                entryId={entryId}
-                notebookId={notebook?.id}
-                pageData={page}
-                progress={progress}
-                onProgressUpdate={handleProgressUpdate}
-              />
-            </div>
-          </React.Fragment>
-        );
-      case 5:
-        // Page 5: Prep - Analysis preparation (fresh, thawed, or incubated)
-        return (
-          <PrepPage
-            key={`prep-${page.id}`}
+          <PharmaceuticalTestingPage
+            key={`pharma-testing-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 5:
+        return (
+          <PharmaceuticalStoragePage
+            key={`pharma-storage-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
           />
         );
       case 6:
-        // Page 6: Analysis - Import analyzer results from ELISA/Flow Cytometry
         return (
-          <AnalysisPage
-            key={`analysis-${page.id}`}
+          <PharmaceuticalReportingPage
+            key={`pharma-reporting-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
           />
         );
       case 7:
-        // Page 7: Storage - Post-analysis storage assignment
         return (
-          <StoragePage
-            key={`storage-${page.id}`}
+          <PharmaceuticalDisposalPage
+            key={`pharma-disposal-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 8:
-        // Page 8: Results - Compile and export results (US7)
-        return (
-          <ResultCompilationPage
-            key={`results-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 9:
-        // Page 9: Archive - End of project archiving (US8)
-        return (
-          <EndOfProjectArchivingPage
-            key={`archive-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
           />
         );
       default:
@@ -438,7 +359,10 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   if (loading) {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
-        <Loading withOverlay={false} description="Loading workflow..." />
+        <Loading
+          withOverlay={false}
+          description="Loading Pharmaceuticals workflow..."
+        />
       </div>
     );
   }
@@ -457,7 +381,6 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     );
   }
 
-  // Show error if notebook is loaded but entry creation failed
   if (notebook && !entryId) {
     return (
       <div
@@ -483,17 +406,17 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     );
   }
 
-  // Get display title - prefer entry title, fall back to notebook title
   const displayTitle = entry?.title || notebook?.title;
   const displayStatus = entry?.status || notebook?.status;
 
   return (
-    <div className="notebook-workflow-container">
+    <div className="notebook-workflow-container pharma-workflow">
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
           <div className="workflow-header">
             <h2>{displayTitle}</h2>
             <div className="workflow-meta">
+              <Tag type="teal">Pharma</Tag>
               <Tag type="blue">{displayStatus}</Tag>
               <span className="sample-count">
                 <FormattedMessage
@@ -538,17 +461,12 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
                 </div>
 
                 <div className="page-content">
-                  {effectivePages[activePage].content && (
-                    <div
-                      className="page-instructions"
-                      dangerouslySetInnerHTML={{
-                        __html: effectivePages[activePage].content,
-                      }}
-                    />
+                  {effectivePages[activePage].instructions && (
+                    <div className="page-instructions">
+                      {effectivePages[activePage].instructions}
+                    </div>
                   )}
 
-                  {/* Page-specific content rendered based on page order */}
-                  {/* Key forces React to unmount/remount when switching pages to reset state */}
                   <div key={`page-content-${effectivePages[activePage].id}`}>
                     {renderPageContent(effectivePages[activePage])}
                   </div>
@@ -562,4 +480,4 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   );
 }
 
-export default NotebookWorkflowTab;
+export default PharmaceuticalWorkflowTab;

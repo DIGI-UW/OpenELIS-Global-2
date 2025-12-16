@@ -41,7 +41,7 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 1: SAMPLE CREATION & FULL METADATA CAPTURE -->
+    <!-- PAGE 1: SAMPLE CREATION AND FULL METADATA CAPTURE -->
     <!-- ======================================================== -->
     <changeSet id="create-tb-page-1-sample-creation" author="openelis-tb">
         <preConditions onFail="MARK_RAN">
@@ -54,7 +54,7 @@
                 WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 1
             </sqlCheck>
         </preConditions>
-        <comment>Create Sample Creation & Full Metadata Capture page for Tuberculosis Laboratory notebook</comment>
+        <comment>Create Sample Creation and Full Metadata Capture page for Tuberculosis Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
@@ -251,4 +251,3 @@
     </changeSet>
 
 </databaseChangeLog>
-
