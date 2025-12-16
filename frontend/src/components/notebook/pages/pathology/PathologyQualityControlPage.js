@@ -365,6 +365,7 @@ function PathologyQualityControlPage({
       min: 0,
       max: 1000,
       step: 0.1,
+      initialValue: 5,
     },
     {
       id: "clotPresence",
