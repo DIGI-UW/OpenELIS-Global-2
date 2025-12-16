@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect, useRef, useCallback } from "react";
+import { useContext, useState, useCallback, useEffect, useRef } from "react";
 import {
   Heading,
   Loading,
@@ -50,6 +50,8 @@ function TestModifyEntry() {
   const [searchFilteredTests, setSearchFilteredTests] = useState([]);
   const [showGuide, setShowGuide] = useState(false);
   const [selectedTestIdToEdit, setSelectedTestIdToEdit] = useState(null);
+  const [selectedSampleType, setSelectedSampleType] = useState("");
+  const [selectedTestSection, setSelectedTestSection] = useState("");
 
   const componentMounted = useRef(false);
 
@@ -57,11 +59,74 @@ function TestModifyEntry() {
     setShowGuide(!showGuide);
   };
 
-  // Handle filters from TestModifyFilters component
-  const handleFiltersChange = useCallback((filtered) => {
-    setFilteredTests(filtered);
-    setSearchFilteredTests(filtered); // Initialize search with filtered results
+  // Internal helper that actually calls the backend
+  const handleApiCall = useCallback((queryParams) => {
+    setIsLoading(true);
+    const apiUrl = queryParams
+      ? `/rest/TestModifyEntry?${queryParams}`
+      : "/rest/TestModifyEntry";
+
+    getFromOpenElisServer(apiUrl, (res) => {
+      if (res?.testCatBeanList) {
+        // Convert to expected format for UI
+        const testListFormat = res.testCatBeanList.map((test) => ({
+          id: test.id,
+          value:
+            test.localization?.english ||
+            test.localization?.french ||
+            "Unknown Test",
+        }));
+
+        setFilteredTests(testListFormat);
+        setSearchFilteredTests(testListFormat);
+        setTestModifyList(res);
+      } else {
+        // If no filters or no results, handle empty state
+        const emptyList = [];
+        setFilteredTests(emptyList);
+        setSearchFilteredTests(emptyList);
+        if (queryParams) {
+          // Only update test list if we have query params (filtered request)
+          setTestModifyList({ ...res, testCatBeanList: [] });
+        }
+      }
+      setIsLoading(false);
+    });
   }, []);
+
+  // Handle clearing filters from TestModifyFilters component
+  const handleClearFilters = useCallback(() => {
+    // Clear the test results immediately
+    setFilteredTests([]);
+    setSearchFilteredTests([]);
+    setSelectedSampleType("");
+    setSelectedTestSection("");
+  }, []);
+
+  // Called when user changes either filter dropdown
+  const handleFilterChange = useCallback(
+    (sampleType, testSection) => {
+      setSelectedSampleType(sampleType);
+      setSelectedTestSection(testSection);
+
+      const hasFilters =
+        sampleType?.trim() !== "" || testSection?.trim() !== "";
+
+      if (hasFilters) {
+        const params = new URLSearchParams();
+        if (sampleType && sampleType.trim() !== "") {
+          params.append("sampleType", sampleType);
+        }
+        if (testSection && testSection.trim() !== "") {
+          params.append("testSection", testSection);
+        }
+        handleApiCall(params.toString());
+      } else {
+        handleClearFilters();
+      }
+    },
+    [handleApiCall, handleClearFilters],
+  );
 
   // Handle search within filtered tests
   const handleTestsFilter = useCallback((searchFiltered) => {
@@ -72,21 +137,20 @@ function TestModifyEntry() {
     setSelectedTestIdToEdit(null);
   }, []);
 
-  const handleTestModifyEntryList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setTestModifyList(res);
-    }
-  };
-
+  // Load filter metadata on component mount (sample types, test sections, etc.)
   useEffect(() => {
     componentMounted.current = true;
     setIsLoading(true);
-    getFromOpenElisServer(`/rest/TestModifyEntry`, handleTestModifyEntryList);
+
+    // Load only filter metadata, not test data
+    getFromOpenElisServer(`/rest/TestModifyEntry`, (res) => {
+      if (res) {
+        setTestModifyList(res);
+        setIsLoading(false);
+      }
+    });
     return () => {
       componentMounted.current = false;
-      setIsLoading(false);
     };
   }, []);
 
@@ -141,7 +205,7 @@ function TestModifyEntry() {
     }
   };
 
-  if (!isLoading) {
+  if (isLoading) {
     return (
       <>
         <Loading />
@@ -289,8 +353,10 @@ function TestModifyEntry() {
               <TestModifyFilters
                 sampleTypeList={testMonifyList?.sampleTypeList}
                 labUnitList={testMonifyList?.labUnitList}
-                testCatBeanList={testMonifyList?.testCatBeanList}
-                onFilterChange={handleFiltersChange}
+                selectedSampleType={selectedSampleType}
+                selectedTestSection={selectedTestSection}
+                onFilterChange={handleFilterChange}
+                onClearFilters={handleClearFilters}
               />
               <br />
               <hr />

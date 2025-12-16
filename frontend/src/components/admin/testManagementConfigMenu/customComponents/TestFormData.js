@@ -88,7 +88,6 @@ const extractRange = (rangeStr) => {
 };
 
 export const mapTestCatBeanToFormData = (test) => {
-  console.log(JSON.stringify(test));
   return {
     testId: test.id,
     testNameEnglish: test.localization?.english || "",

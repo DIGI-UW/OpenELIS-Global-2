@@ -13,76 +13,29 @@ import { FormattedMessage, useIntl } from "react-intl";
 function TestModifyFilters({
   sampleTypeList,
   labUnitList,
-  testCatBeanList,
+  selectedSampleType,
+  selectedTestSection,
   onFilterChange,
+  onClearFilters,
 }) {
   const intl = useIntl();
-  const [selectedSampleType, setSelectedSampleType] = useState("");
-  const [selectedTestSection, setSelectedTestSection] = useState("");
-
-  useEffect(() => {
-    filterTests();
-  }, [selectedSampleType, selectedTestSection, testCatBeanList]);
-
-  const filterTests = () => {
-    if (!testCatBeanList || testCatBeanList.length === 0) {
-      onFilterChange([]);
-      return;
-    }
-
-    // If no filters are selected, don't show any tests
-    if (!selectedSampleType && !selectedTestSection) {
-      onFilterChange([]);
-      return;
-    }
-
-    let filtered = testCatBeanList;
-
-    // Filter by sample type if selected
-    if (selectedSampleType) {
-      const sampleTypeName = sampleTypeList.find(
-        (st) => st.id === selectedSampleType,
-      )?.value;
-      if (sampleTypeName) {
-        filtered = filtered.filter(
-          (test) => test.sampleType === sampleTypeName,
-        );
-      }
-    }
-
-    // Filter by test section if selected
-    if (selectedTestSection) {
-      const testSectionName = labUnitList.find(
-        (ts) => ts.id === selectedTestSection,
-      )?.value;
-      if (testSectionName) {
-        filtered = filtered.filter((test) => test.testUnit === testSectionName);
-      }
-    }
-
-    // Convert to the format expected by the UI (matching testList structure)
-    const testListFormat = filtered.map((test) => ({
-      id: test.id,
-      value:
-        test.localization?.english ||
-        test.localization?.french ||
-        "Unknown Test",
-    }));
-
-    onFilterChange(testListFormat);
-  };
 
   const handleSampleTypeChange = (e) => {
-    setSelectedSampleType(e.target.value);
+    const newValue = e.target.value;
+    onFilterChange(newValue, selectedTestSection);
   };
 
   const handleTestSectionChange = (e) => {
-    setSelectedTestSection(e.target.value);
+    const newValue = e.target.value;
+    onFilterChange(selectedSampleType, newValue);
   };
 
   const clearFilters = () => {
-    setSelectedSampleType("");
-    setSelectedTestSection("");
+    onFilterChange("", "");
+    // Notify parent to clear test results
+    if (onClearFilters) {
+      onClearFilters();
+    }
   };
 
   return (
