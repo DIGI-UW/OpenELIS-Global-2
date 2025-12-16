@@ -40,7 +40,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "organization.main.title",
-    link: "/MasterListsPage#organizationManagement",
+    link: "/MasterListsPage/organizationManagement",
   },
 ];
 
@@ -282,8 +282,8 @@ function OrganizationManagement() {
           deleteDeactivate={deleteDeactivateOrganizationManagament}
           id={selectedRowIds[0]}
           otherParmsInLink={`&startingRecNo=1`}
-          addButtonRedirectLink={`/MasterListsPage#organizationEdit?ID=0`}
-          modifyButtonRedirectLink={`/MasterListsPage#organizationEdit?ID=`}
+          addButtonRedirectLink={`/MasterListsPage/organizationEdit?ID=0`}
+          modifyButtonRedirectLink={`/MasterListsPage/organizationEdit?ID=`}
           type="type2"
         />
         <br />

@@ -14,7 +14,95 @@
     (Technical Acceptance ANALYSIS status) - canceled_status_id: References status_of_sample
     (Test Canceled ANALYSIS status) -->
 <dataset>
-    <!-- Reference Data: Localization entries for type_of_sample names -->
+    <!-- Storage hierarchy fixtures. IMPORTANT: DBUnit datasets truncate+refresh
+        the tables they touch. To keep storage tests self-contained across the full
+        suite, include the storage hierarchy rows needed by storage E2E fixtures
+        in this dataset. -->
+
+    <storage_room id="1"
+        fhir_uuid="00000000-0000-0000-0000-000000000001"
+        name="Main Laboratory" code="MAIN"
+        description="Primary laboratory storage facility" active="true"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_room id="2"
+        fhir_uuid="00000000-0000-0000-0000-000000000002"
+        name="Secondary Laboratory" code="SEC"
+        description="Secondary laboratory storage facility" active="true"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_room id="3"
+        fhir_uuid="00000000-0000-0000-0000-000000000003" name="Inactive Room"
+        code="INACTIVE" description="Inactive storage room for testing"
+        active="false" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="10"
+        fhir_uuid="00000000-0000-0000-0000-00000000000a" name="Freezer Unit 1"
+        code="FRZ01" type="freezer" temperature_setting="-80.0"
+        capacity_limit="500" active="true" parent_room_id="1" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="11"
+        fhir_uuid="00000000-0000-0000-0000-00000000000b"
+        name="Refrigerator Unit 1" code="REF01" type="refrigerator"
+        temperature_setting="4.0" capacity_limit="300" active="true"
+        parent_room_id="1" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="12"
+        fhir_uuid="00000000-0000-0000-0000-00000000000c" name="Cabinet Unit 1"
+        code="CAB01" type="cabinet" active="true" parent_room_id="2"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="13"
+        fhir_uuid="00000000-0000-0000-0000-00000000000d"
+        name="Inactive Freezer" code="INACT-FRZ" type="freezer" active="false"
+        parent_room_id="3" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="20"
+        fhir_uuid="00000000-0000-0000-0000-000000000014" label="Shelf-A"
+        code="SHA" capacity_limit="50" active="true" parent_device_id="10"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="21"
+        fhir_uuid="00000000-0000-0000-0000-000000000015" label="Shelf-B"
+        code="SHB" capacity_limit="50" active="true" parent_device_id="10"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="22"
+        fhir_uuid="00000000-0000-0000-0000-000000000016" label="Shelf-1"
+        code="SH1" active="true" parent_device_id="11" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="23"
+        fhir_uuid="00000000-0000-0000-0000-000000000017" label="Shelf-1"
+        code="SH1" active="true" parent_device_id="12" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="30"
+        fhir_uuid="00000000-0000-0000-0000-00000000001e" label="Rack R1"
+        code="RR1" active="true" parent_shelf_id="20" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="31"
+        fhir_uuid="00000000-0000-0000-0000-00000000001f" label="Rack R2"
+        code="RR2" active="true" parent_shelf_id="20" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="32"
+        fhir_uuid="00000000-0000-0000-0000-000000000020" label="Rack R3"
+        code="RR3" active="true" parent_shelf_id="21" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="33"
+        fhir_uuid="00000000-0000-0000-0000-000000000021" label="Rack R1"
+        code="RR1" active="true" parent_shelf_id="22" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="34"
+        fhir_uuid="00000000-0000-0000-0000-000000000022" label="Rack R1"
+        code="RR1" active="true" parent_shelf_id="23" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
     <localization id="1"
         description="Serum Sample Localization" english="Serum" french="Sérum"
         lastupdated="2025-01-01 12:00:00" />
@@ -25,8 +113,13 @@
         description="Blood Sample Localization" english="Blood" french="Sang"
         lastupdated="2025-01-01 12:00:00" />
 
-    <!-- Reference Data: Status of Sample entries are managed by Liquibase and
-        preserved by cleanRowsInCurrentConnection (reference tables are not truncated) -->
+    <!-- Reference Data: Status of Sample entries (required by sample foreign
+        keys) -->
+    <!-- ID 1 = "Entered" status for SAMPLE type -->
+    <status_of_sample id="1" name="Entered"
+        description="Entered" code="1" status_type="SAMPLE"
+        display_key="status.sample.entered" is_active="Y"
+        lastupdated="2025-01-01 12:00:00" />
 
     <!-- Reference Data: Type of Sample entries (required by sample_item foreign
         keys) -->
@@ -103,7 +196,7 @@
         Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A1 -->
     <sample id="1000" accession_number="E2E001"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440100" domain="H"
-        status_id="1" entered_date="2025-04-30 10:00:00"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
         received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
         is_confirmation="false" />
 
@@ -111,7 +204,7 @@
         Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A2 -->
     <sample id="1001" accession_number="E2E002"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440101" domain="H"
-        status_id="1" entered_date="2025-04-30 10:00:00"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
         received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
         is_confirmation="false" />
 
@@ -119,14 +212,14 @@
         Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A4 -->
     <sample id="1002" accession_number="E2E003"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440102" domain="H"
-        status_id="1" entered_date="2025-04-30 10:00:00"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
         received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
         is_confirmation="false" />
 
     <!-- Sample 4: E2E004 - Not assigned (for testing assignment workflow) -->
     <sample id="1003" accession_number="E2E004"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440103" domain="H"
-        status_id="1" entered_date="2025-04-30 10:00:00"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
         received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
         is_confirmation="false" />
 
@@ -134,7 +227,7 @@
         Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A5 -->
     <sample id="1004" accession_number="E2E005"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440104" domain="H"
-        status_id="1" entered_date="2025-04-30 10:00:00"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
         received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
         is_confirmation="false" />
 
@@ -142,35 +235,35 @@
         tests -->
     <sample id="1005" accession_number="E2E"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440105" domain="H"
-        status_id="1" entered_date="2025-04-30 10:00:00"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
         received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
         is_confirmation="false" />
 
     <!-- Sample 7: E2E007 - In Secondary Laboratory -->
     <sample id="1006" accession_number="E2E007"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440106" domain="H"
-        status_id="1" entered_date="2025-04-30 10:00:00"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
         received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
         is_confirmation="false" />
 
     <!-- Sample 8: E2E008 - In Main Laboratory -->
     <sample id="1007" accession_number="E2E008"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440107" domain="H"
-        status_id="1" entered_date="2025-04-30 10:00:00"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
         received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
         is_confirmation="false" />
 
     <!-- Sample 9: E2E009 - In Secondary Laboratory -->
     <sample id="1008" accession_number="E2E009"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440108" domain="H"
-        status_id="1" entered_date="2025-04-30 10:00:00"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
         received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
         is_confirmation="false" />
 
     <!-- Sample 10: E2E010 - In Main Laboratory > Refrigerator -->
     <sample id="1009" accession_number="E2E010"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440109" domain="H"
-        status_id="1" entered_date="2025-04-30 10:00:00"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
         received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
         is_confirmation="false" />
 

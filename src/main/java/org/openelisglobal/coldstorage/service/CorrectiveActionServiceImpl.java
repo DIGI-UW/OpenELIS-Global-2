@@ -6,6 +6,7 @@ import org.openelisglobal.coldstorage.dao.CorrectiveActionDAO;
 import org.openelisglobal.coldstorage.valueholder.CorrectiveAction;
 import org.openelisglobal.coldstorage.valueholder.CorrectiveActionStatus;
 import org.openelisglobal.coldstorage.valueholder.CorrectiveActionType;
+import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -20,6 +21,9 @@ public class CorrectiveActionServiceImpl extends BaseObjectServiceImpl<Correctiv
 
     @Autowired
     private CorrectiveActionDAO correctiveActionDAO;
+
+    @Autowired
+    private FreezerService freezerService;
 
     @Autowired
     private SystemUserService systemUserService;
@@ -42,13 +46,17 @@ public class CorrectiveActionServiceImpl extends BaseObjectServiceImpl<Correctiv
             throw new IllegalArgumentException("Freezer ID is required");
         }
 
+        // Fetch the managed Freezer entity from database
+        Freezer freezer = freezerService.findById(freezerId)
+                .orElseThrow(() -> new IllegalArgumentException("Freezer not found: " + freezerId));
+
         SystemUser createdBy = systemUserService.get(createdByUserId.toString());
         if (createdBy == null) {
             throw new IllegalArgumentException("User not found: " + createdByUserId);
         }
 
         CorrectiveAction action = new CorrectiveAction();
-        action.setFreezerId(freezerId);
+        action.setFreezer(freezer); // Set the managed entity directly
         action.setActionType(actionType);
         action.setDescription(description);
         action.setStatus(CorrectiveActionStatus.PENDING);

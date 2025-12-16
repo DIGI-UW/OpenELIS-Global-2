@@ -2,6 +2,7 @@ import {
   getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
   postToOpenElisServerForBlob,
+  postToOpenElisServerForPDF,
   putToOpenElisServer,
 } from "../utils/Utils";
 import config from "../../config.json";
@@ -25,7 +26,10 @@ export const fetchAlerts = async (entityType, entityId) => {
 
 export const fetchOpenAlerts = async () => {
   try {
-    const response = await getFromOpenElisServerV2("/rest/alerts");
+    const params = new URLSearchParams({ entityType: "Freezer" });
+    const response = await getFromOpenElisServerV2(
+      `/rest/alerts?${params.toString()}`,
+    );
     return Array.isArray(response) ? response : [];
   } catch (error) {
     console.error("Error fetching open alerts:", error);
@@ -57,35 +61,71 @@ const postColdStorageJson = (path, payload) =>
 
 export const acknowledgeAlert = async (alertId, userId, notes = "") => {
   return new Promise((resolve, reject) => {
-    putToOpenElisServer(
-      `/rest/alerts/${alertId}/acknowledge`,
-      JSON.stringify({ userId, notes }),
-      (response) => {
-        try {
-          const json = JSON.parse(response);
-          resolve(json);
-        } catch (e) {
-          resolve({ success: true });
-        }
+    fetch(`${config.serverBaseUrl}/rest/alerts/${alertId}/acknowledge`, {
+      credentials: "include",
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
-    );
+      body: JSON.stringify({ userId, notes }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          // For error responses, try to parse JSON error message
+          return response
+            .json()
+            .then((errorJson) => {
+              throw new Error(
+                errorJson.message ||
+                  `Failed to acknowledge alert: HTTP ${response.status}`,
+              );
+            })
+            .catch(() => {
+              throw new Error(
+                `Failed to acknowledge alert: HTTP ${response.status}`,
+              );
+            });
+        }
+        return response.json();
+      })
+      .then((json) => resolve(json))
+      .catch((error) => reject(error));
   });
 };
 
 export const resolveAlert = async (alertId, userId, resolutionNotes) => {
   return new Promise((resolve, reject) => {
-    putToOpenElisServer(
-      `/rest/alerts/${alertId}/resolve`,
-      JSON.stringify({ userId, resolutionNotes }),
-      (response) => {
-        try {
-          const json = JSON.parse(response);
-          resolve(json);
-        } catch (e) {
-          resolve({ success: true });
-        }
+    fetch(`${config.serverBaseUrl}/rest/alerts/${alertId}/resolve`, {
+      credentials: "include",
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
       },
-    );
+      body: JSON.stringify({ userId, resolutionNotes }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          // For error responses, try to parse JSON error message
+          return response
+            .json()
+            .then((errorJson) => {
+              throw new Error(
+                errorJson.message ||
+                  `Failed to resolve alert: HTTP ${response.status}`,
+              );
+            })
+            .catch(() => {
+              throw new Error(
+                `Failed to resolve alert: HTTP ${response.status}`,
+              );
+            });
+        }
+        return response.json();
+      })
+      .then((json) => resolve(json))
+      .catch((error) => reject(error));
   });
 };
 
@@ -114,11 +154,15 @@ export const fetchCorrectiveActions = async (filters = {}) => {
     params.append("endDate", filters.endDate);
   }
   const queryString = params.toString() ? `?${params.toString()}` : "";
-  return getFromOpenElisServerV2(`/rest/corrective-actions${queryString}`);
+  return getFromOpenElisServerV2(
+    `/rest/coldstorage/corrective-actions${queryString}`,
+  );
 };
 
 export const fetchCorrectiveActionById = async (actionId) => {
-  return getFromOpenElisServerV2(`/rest/corrective-actions/${actionId}`);
+  return getFromOpenElisServerV2(
+    `/rest/coldstorage/corrective-actions/${actionId}`,
+  );
 };
 
 export const createCorrectiveAction = async (
@@ -127,7 +171,7 @@ export const createCorrectiveAction = async (
   description,
   createdByUserId,
 ) => {
-  return postColdStorageJson("/rest/corrective-actions", {
+  return postColdStorageJson("/rest/coldstorage/corrective-actions", {
     freezerId,
     actionType,
     description,
@@ -143,7 +187,7 @@ export const updateCorrectiveAction = async (
 ) => {
   return new Promise((resolve, reject) => {
     putToOpenElisServer(
-      `/rest/corrective-actions/${actionId}`,
+      `/rest/coldstorage/corrective-actions/${actionId}`,
       JSON.stringify({ description, status, updatedByUserId }),
       (response) => {
         try {
@@ -164,7 +208,7 @@ export const completeCorrectiveAction = async (
 ) => {
   return new Promise((resolve, reject) => {
     putToOpenElisServer(
-      `/rest/corrective-actions/${actionId}/complete`,
+      `/rest/coldstorage/corrective-actions/${actionId}/complete`,
       JSON.stringify({ updatedByUserId, completionNotes }),
       (response) => {
         try {
@@ -185,7 +229,7 @@ export const retractCorrectiveAction = async (
 ) => {
   return new Promise((resolve, reject) => {
     putToOpenElisServer(
-      `/rest/corrective-actions/${actionId}/retract`,
+      `/rest/coldstorage/corrective-actions/${actionId}/retract`,
       JSON.stringify({ updatedByUserId, retractionReason }),
       (response) => {
         try {
@@ -209,13 +253,14 @@ export const fetchReportExcursions = async ({ freezerId, start, end }) => {
   );
 };
 
-export const fetchAuditTrail = async ({ freezerId, start, end }) => {
-  const params = new URLSearchParams({ start, end });
+export const fetchAuditTrail = async ({ freezerId }) => {
+  const params = new URLSearchParams();
   if (freezerId) {
     params.append("freezerId", freezerId);
   }
+  // Fetch all audit trail data without date filtering (client-side filtering instead)
   return getFromOpenElisServerV2(
-    `/rest/coldstorage/reports/audit-trail?${params.toString()}`,
+    `/rest/coldstorage/audit-trail${params.toString() ? `?${params.toString()}` : ""}`,
   );
 };
 
@@ -237,26 +282,22 @@ export const downloadReportDirect = ({
   freezerId,
 }) => {
   return new Promise((resolve, reject) => {
-    const endpoint = `/rest/ReportPrint`;
+    const endpoint = `/rest/coldstorage/reports/generate`;
     const payload = JSON.stringify({
-      report: reportName,
-      lowerDateRange: startDate,
-      upperDateRange: endDate,
-      // Use projectCode field per OpenELIS pattern for entity ID
-      projectCode:
-        freezerId && freezerId !== "All Freezers" ? String(freezerId) : "",
+      reportType: reportName,
+      freezerId:
+        freezerId && freezerId !== "All Freezers" ? String(freezerId) : null,
+      startDate: startDate,
+      endDate: endDate,
     });
 
-    postToOpenElisServerForBlob(
-      endpoint,
-      payload,
-      (blob, response) => {
+    postToOpenElisServerForPDF(endpoint, payload, (success, blob) => {
+      if (success) {
         resolve(blob);
-      },
-      (error) => {
-        reject(error);
-      },
-    );
+      } else {
+        reject(new Error("Failed to generate report"));
+      }
+    });
   });
 };
 
@@ -294,16 +335,53 @@ export const createDevice = async (deviceData) => {
 
 export const updateDevice = async (id, deviceData) => {
   const { roomId, ...freezer } = deviceData;
-  const params = new URLSearchParams({ roomId });
+  const params = new URLSearchParams();
+  if (roomId) {
+    params.append("roomId", roomId);
+  }
+  const queryString = params.toString() ? `?${params.toString()}` : "";
   return new Promise((resolve, reject) => {
     putToOpenElisServer(
-      `/rest/coldstorage/devices/${id}?${params.toString()}`,
+      `/rest/coldstorage/devices/${id}${queryString}`,
       JSON.stringify(freezer),
       (status) => {
         if (status === 200) {
           resolve({ success: true });
         } else {
           reject(new Error(`Failed with status: ${status}`));
+        }
+      },
+    );
+  });
+};
+
+export const updateDeviceThresholds = async (
+  id,
+  targetTemperature,
+  warningThreshold,
+  criticalThreshold,
+  pollingIntervalSeconds,
+) => {
+  return new Promise((resolve, reject) => {
+    putToOpenElisServer(
+      `/rest/coldstorage/devices/${id}/thresholds`,
+      JSON.stringify({
+        targetTemperature,
+        warningThreshold,
+        criticalThreshold,
+        pollingIntervalSeconds,
+      }),
+      (status) => {
+        if (status >= 200 && status < 300) {
+          resolve({ success: true });
+        } else {
+          reject(
+            new Error(
+              `Failed to update thresholds: HTTP ${status}${
+                status === 404 ? " - Endpoint not found" : ""
+              }`,
+            ),
+          );
         }
       },
     );

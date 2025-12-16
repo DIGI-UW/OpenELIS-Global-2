@@ -176,30 +176,23 @@ export default function CorrectiveActions() {
   const [devices, setDevices] = useState([]);
   const [users, setUsers] = useState([]);
   const [locations, setLocations] = useState([]);
-
-  // Filter states
   const [searchTerm, setSearchTerm] = useState("");
-  const [timeFilter, setTimeFilter] = useState(TIME_FILTERS[0]); // Default: Last 24 Hours
+  const [timeFilter, setTimeFilter] = useState(TIME_FILTERS[4]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-
-  // Modal states
+  const [pageSize, setPageSize] = useState(5);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isRetractModalOpen, setIsRetractModalOpen] = useState(false);
   const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
   const [isAddRoomModalOpen, setIsAddRoomModalOpen] = useState(false);
-
   const [selectedAction, setSelectedAction] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form states
   const [form, setForm] = useState({
     device: null,
     performedBy: "",
     actionType: null,
     summary: "",
-    notes: "",
   });
 
   const [editStatus, setEditStatus] = useState(null);
@@ -219,7 +212,6 @@ export default function CorrectiveActions() {
     return userSessionDetails?.loginName || "";
   }, [userSessionDetails]);
 
-  // Calculate date range for filters
   const getDateRange = useCallback((filter) => {
     const end = new Date();
     let start = new Date();
@@ -229,7 +221,6 @@ export default function CorrectiveActions() {
     } else if (filter.hours) {
       start = new Date(end.getTime() - filter.hours * 60 * 60 * 1000);
     } else {
-      // "All" filter - no date restriction
       return { startDate: null, endDate: null };
     }
 
@@ -346,11 +337,27 @@ export default function CorrectiveActions() {
   };
 
   const normalizeAction = (action) => {
-    const createdDate = action.createdAt
-      ? new Date(action.createdAt)
-      : new Date();
+    const parseDate = (dateValue) => {
+      if (!dateValue) return new Date();
+
+      if (dateValue instanceof Date) return dateValue;
+      if (typeof dateValue === "number") {
+        return new Date(dateValue * 1000);
+      }
+
+      if (typeof dateValue === "string") {
+        const parsed = new Date(dateValue);
+        if (!isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+
+      return new Date();
+    };
+
+    const createdDate = parseDate(action.createdAt);
     const updatedDate = action.updatedAt
-      ? new Date(action.updatedAt)
+      ? parseDate(action.updatedAt)
       : createdDate;
 
     const formatDate = (date) => {
@@ -362,7 +369,6 @@ export default function CorrectiveActions() {
       return `${dateStr} ${timeStr}`;
     };
 
-    // Format "Last updated by" with user and timestamp
     const updatedByText = action.updatedByName
       ? `${action.updatedByName} at ${formatDate(updatedDate)}`
       : formatDate(updatedDate);
@@ -422,7 +428,6 @@ export default function CorrectiveActions() {
       performedBy: currentUserDisplayName || "",
       actionType: null,
       summary: "",
-      notes: "",
     });
   };
 
@@ -585,6 +590,7 @@ export default function CorrectiveActions() {
       setForm((prev) => ({ ...prev, device: newDevice }));
 
       setIsDeviceModalOpen(false);
+      setIsAddModalOpen(true);
 
       notify({
         kind: NotificationKinds.success,
@@ -651,14 +657,10 @@ export default function CorrectiveActions() {
         throw new Error("Please select an action type");
       }
 
-      const description = form.notes
-        ? `${form.summary}\n\nNotes: ${form.notes}`
-        : form.summary;
-
       await createCorrectiveAction(
         parseInt(freezerId),
         form.actionType.id,
-        description,
+        form.summary,
         userSessionDetails?.userId || 1,
       );
 
@@ -778,38 +780,42 @@ export default function CorrectiveActions() {
                     </TableRow>
                   )}
 
-                  {rows.map((row) => (
-                    <TableRow key={row.id} {...getRowProps({ row })}>
-                      {row.cells.map((cell) => (
-                        <TableCell key={cell.id}>{cell.value}</TableCell>
-                      ))}
-                      <TableCell>
-                        <div style={{ display: "flex", gap: "0.5rem" }}>
-                          <Button
-                            kind="ghost"
-                            size="sm"
-                            onClick={() => handleViewAction(row._action)}
-                          >
-                            View
-                          </Button>
-                          {row._action.status !== "COMPLETED" &&
-                            row._action.status !== "RETRACTED" &&
-                            row._action.status !== "CANCELLED" && (
-                              <Button
-                                kind="danger--ghost"
-                                size="sm"
-                                renderIcon={WarningAlt}
-                                onClick={() =>
-                                  handleOpenRetractModal(row._action)
-                                }
-                              >
-                                Retract
-                              </Button>
-                            )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {rows.map((row) => {
+                    const action = paginatedActions.find(
+                      (a) => a.id === row.id,
+                    );
+                    return (
+                      <TableRow key={row.id} {...getRowProps({ row })}>
+                        {row.cells.map((cell) => (
+                          <TableCell key={cell.id}>{cell.value}</TableCell>
+                        ))}
+                        <TableCell>
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <Button
+                              kind="ghost"
+                              size="sm"
+                              onClick={() => handleViewAction(action)}
+                            >
+                              View
+                            </Button>
+                            {action &&
+                              action.status !== "COMPLETED" &&
+                              action.status !== "RETRACTED" &&
+                              action.status !== "CANCELLED" && (
+                                <Button
+                                  kind="danger--ghost"
+                                  size="sm"
+                                  renderIcon={WarningAlt}
+                                  onClick={() => handleOpenRetractModal(action)}
+                                >
+                                  Retract
+                                </Button>
+                              )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
               <Pagination
@@ -818,7 +824,7 @@ export default function CorrectiveActions() {
                 itemsPerPageText="Items per page:"
                 page={currentPage}
                 pageSize={pageSize}
-                pageSizes={[10, 20, 30, 40, 50]}
+                pageSizes={[5, 10, 20, 30, 40, 50]}
                 totalItems={filteredActions.length}
                 onChange={({ page, pageSize }) => {
                   setCurrentPage(page);
@@ -830,7 +836,6 @@ export default function CorrectiveActions() {
         </DataTable>
       )}
 
-      {/* Add Action Modal */}
       <Modal
         open={isAddModalOpen}
         onRequestClose={handleCloseAddModal}
@@ -870,7 +875,10 @@ export default function CorrectiveActions() {
               />
               <div style={{ marginTop: "0.5rem" }}>
                 <Link
-                  onClick={() => setIsDeviceModalOpen(true)}
+                  onClick={() => {
+                    setIsAddModalOpen(false);
+                    setIsDeviceModalOpen(true);
+                  }}
                   style={{ cursor: "pointer", fontSize: "0.875rem" }}
                 >
                   {devices.length === 0
@@ -905,32 +913,21 @@ export default function CorrectiveActions() {
               }
             />
 
-            <TextInput
+            <TextArea
               id="action-summary"
-              labelText="Action Summary *"
-              placeholder="Brief description of the corrective action"
+              labelText="Description *"
+              placeholder="Describe the corrective action taken, findings, and results..."
+              rows={4}
               value={form.summary}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, summary: e.target.value }))
               }
               required
             />
-
-            <TextArea
-              id="action-notes"
-              labelText="Detailed Notes"
-              placeholder="Detailed description of the action taken, findings, and results..."
-              rows={4}
-              value={form.notes}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, notes: e.target.value }))
-              }
-            />
           </Stack>
         </Form>
       </Modal>
 
-      {/* Add Room Modal */}
       <Modal
         open={isAddRoomModalOpen}
         onRequestClose={() => {
@@ -973,17 +970,18 @@ export default function CorrectiveActions() {
         </Stack>
       </Modal>
 
-      {/* Add Device Modal */}
       <AddDeviceModal
         isOpen={isDeviceModalOpen}
-        onClose={() => setIsDeviceModalOpen(false)}
+        onClose={() => {
+          setIsDeviceModalOpen(false);
+          setIsAddModalOpen(true);
+        }}
         onSubmit={handleCreateDevice}
         locations={locations}
         onAddRoom={handleAddRoom}
         editingDevice={null}
       />
 
-      {/* View/Edit Action Modal */}
       <Modal
         open={isViewModalOpen}
         onRequestClose={handleCloseViewModal}
@@ -1075,7 +1073,6 @@ export default function CorrectiveActions() {
         )}
       </Modal>
 
-      {/* Retract Action Modal */}
       <Modal
         open={isRetractModalOpen}
         onRequestClose={handleCloseRetractModal}

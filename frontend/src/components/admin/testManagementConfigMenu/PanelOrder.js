@@ -48,15 +48,15 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.panel.manage",
-    link: "/MasterListsPage#PanelManagement",
+    link: "/MasterListsPage/PanelManagement",
   },
   {
     label: "configuration.panel.order",
-    link: "/MasterListsPage#PanelOrder",
+    link: "/MasterListsPage/PanelOrder",
   },
 ];
 

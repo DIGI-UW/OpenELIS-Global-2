@@ -93,3 +93,50 @@ Cypress.Commands.add("checkStorageFixturesExist", () => {
 Cypress.Commands.add("cleanStorageFixtures", () => {
   cy.task("cleanStorageTestData");
 });
+
+/**
+ * Ensure user is logged out via API (proper auth check, not DOM-based)
+ * Checks /session endpoint and calls /Logout if authenticated
+ * Usage: cy.ensureLoggedOut()
+ */
+Cypress.Commands.add("ensureLoggedOut", () => {
+  // Check authentication status via API (same endpoint the app uses)
+  cy.request({
+    url: "/api/OpenELIS-Global/session",
+    failOnStatusCode: false,
+    credentials: "include",
+  }).then((response) => {
+    if (response.status === 200 && response.body?.authenticated === true) {
+      // User is authenticated - logout via API (same as app does)
+      const csrfToken = response.body.csrf || "";
+      cy.request({
+        method: "POST",
+        url: "/api/OpenELIS-Global/Logout",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        credentials: "include",
+        failOnStatusCode: false,
+      }).then(() => {
+        // Verify logout succeeded
+        cy.request({
+          url: "/api/OpenELIS-Global/session",
+          failOnStatusCode: false,
+          credentials: "include",
+        }).then((verifyResponse) => {
+          // After logout, session should return authenticated: false or 401/403
+          if (
+            verifyResponse.status === 200 &&
+            verifyResponse.body?.authenticated === true
+          ) {
+            cy.log(
+              "Warning: Logout API call succeeded but session still authenticated",
+            );
+          }
+        });
+      });
+    }
+    // If not authenticated, nothing to do
+  });
+});

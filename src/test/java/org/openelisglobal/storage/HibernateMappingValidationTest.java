@@ -39,7 +39,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(StorageDevice.class);
         configuration.addAnnotatedClass(StorageShelf.class);
         configuration.addAnnotatedClass(StorageRack.class);
-        configuration.addAnnotatedClass(StoragePosition.class);
+        configuration.addAnnotatedClass(StorageBox.class);
         configuration.addAnnotatedClass(SampleStorageAssignment.class);
         configuration.addAnnotatedClass(SampleStorageMovement.class);
 
@@ -83,8 +83,7 @@ public class HibernateMappingValidationTest {
         assertNotNull("StorageDevice should be registered", sessionFactory.getMetamodel().entity(StorageDevice.class));
         assertNotNull("StorageShelf should be registered", sessionFactory.getMetamodel().entity(StorageShelf.class));
         assertNotNull("StorageRack should be registered", sessionFactory.getMetamodel().entity(StorageRack.class));
-        assertNotNull("StoragePosition should be registered",
-                sessionFactory.getMetamodel().entity(StoragePosition.class));
+        assertNotNull("StorageBox should be registered", sessionFactory.getMetamodel().entity(StorageBox.class));
         assertNotNull("SampleStorageAssignment should be registered",
                 sessionFactory.getMetamodel().entity(SampleStorageAssignment.class));
         assertNotNull("SampleStorageMovement should be registered",
@@ -98,7 +97,7 @@ public class HibernateMappingValidationTest {
     @Test
     public void testStorageEntitiesHaveNoGetterConflicts() {
         Class<?>[] entities = { StorageRoom.class, StorageDevice.class, StorageShelf.class, StorageRack.class,
-                StoragePosition.class, SampleStorageAssignment.class, SampleStorageMovement.class };
+                StorageBox.class, SampleStorageAssignment.class, SampleStorageMovement.class };
 
         for (Class<?> entityClass : entities) {
             validateNoGetterConflicts(entityClass);

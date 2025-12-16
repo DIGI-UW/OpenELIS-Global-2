@@ -43,7 +43,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.analyzerTest",
-    link: "/MasterListsPage#analyzerMenu",
+    link: "/MasterListsPage/analyzerMenu",
   },
 ];
 function AnalyzerTestName() {
@@ -77,6 +77,9 @@ function AnalyzerTestName() {
   const [selectedTest, setSelectedTest] = useState(null);
   const [selectedTestId, setSelectedTestId] = useState(null);
   const [filterAnalyzer, setFilterAnalyser] = useState("");
+  const [originalAnalyzerId, setOriginalAnalyzerId] = useState(null);
+  const [originalAnalyzerTestName, setOriginalAnalyzerTestName] = useState("");
+  const [editingItemId, setEditingItemId] = useState(null);
 
   const handleMenuItems = (res) => {
     if (!res) {
@@ -108,6 +111,8 @@ function AnalyzerTestName() {
           id: item.uniqueId,
           analyzerName: `${item.analyzerName} - ${item.analyzerTestName}`,
           actualTestName: item.actualTestName,
+          analyzerTestName: item.analyzerTestName,
+          analyzerNameOnly: item.analyzerName,
         };
       });
       setFromRecordCount(AnalyzerTestName.fromRecordCount);
@@ -235,16 +240,74 @@ function AnalyzerTestName() {
     setIsAddModalOpen(false);
   };
 
-  const openUpdateModal = (AnalyzerId) => {
-    setIsUpdateModalOpen(true);
+  const openUpdateModal = () => {
+    if (selectedRowIds.length === 1) {
+      const selectedItem = AnalyzerTestNameShow.find(
+        (item) => item.id === selectedRowIds[0],
+      );
+      if (selectedItem) {
+        setEditingItemId(selectedItem.id);
+        const analyzerName = selectedItem.analyzerNameOnly;
+        const analyzerTestName = selectedItem.analyzerTestName;
+        const actualTestName = selectedItem.actualTestName;
+
+        setTestName(analyzerTestName || "");
+
+        // Find analyzer by name
+        const analyzer = analyzerList.find((a) => a.name === analyzerName);
+        if (analyzer) {
+          setSelectedAnalyzer(analyzer);
+          setSelectedAnalyzerId(analyzer.id);
+          // Store original values for update
+          setOriginalAnalyzerId(analyzer.id);
+          setOriginalAnalyzerTestName(analyzerTestName);
+        }
+
+        // Find test by value (actualTestName matches test.value)
+        // test.value format: "<test name>(<sampleType>)", extract test name by removing last bracket
+        const test = testList.find((t) => {
+          if (!t.value) return false;
+          // Extract test name by removing last bracket and its contents
+          const testNameFromValue = t.value
+            .replace(/\s*\([^)]*\)\s*$/, "")
+            .trim();
+          return testNameFromValue === actualTestName;
+        });
+        if (test) {
+          setSelectedTest(test);
+          setSelectedTestId(test.id);
+        } else {
+          // If not found by value, try to find by name or label
+          const testByName = testList.find(
+            (t) => t.name === actualTestName || t.label === actualTestName,
+          );
+          if (testByName) {
+            setSelectedTest(testByName);
+            setSelectedTestId(testByName.id);
+          }
+        }
+
+        setIsUpdateModalOpen(true);
+      }
+    }
   };
 
   const closeUpdateModal = () => {
     setIsUpdateModalOpen(false);
+    setEditingItemId(null);
+    setTestName("");
+    setSelectedAnalyzer(null);
+    setSelectedAnalyzerId(null);
+    setSelectedTest(null);
+    setSelectedTestId(null);
+    setOriginalAnalyzerId(null);
+    setOriginalAnalyzerTestName("");
   };
   const checkIfCombinationExists = () => {
     return AnalyzerTestNameShow.some(
-      (item) => item.analyzerName === `${selectedAnalyzer.name} - ${testName}`,
+      (item) =>
+        item.id !== editingItemId &&
+        item.analyzerName === `${selectedAnalyzer?.name} - ${testName}`,
     );
   };
 
@@ -265,6 +328,7 @@ function AnalyzerTestName() {
       analyzerId: selectedAnalyzerId,
       analyzerTestName: testName,
       testId: selectedTestId,
+      newMapping: true,
     };
 
     postToOpenElisServerFullResponse(
@@ -274,36 +338,42 @@ function AnalyzerTestName() {
     );
 
     closeAddModal();
-    window.location.reload();
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const handleUpdateAnalyzer = () => {
-    if (checkIfCombinationExists()) {
+    if (!originalAnalyzerId || !originalAnalyzerTestName || !selectedTestId) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
-          id: "analyzer.combinationName.notification",
+          id: "error.required.fields",
         }),
       });
       setNotificationVisible(true);
       return;
     }
-    const newAnalyzer = {
-      analyzerId: selectedAnalyzerId,
-      analyzerTestName: testName,
+
+    // Only update the testId, keep original analyzerId and analyzerTestName
+    const updateData = {
+      analyzerId: originalAnalyzerId,
+      analyzerTestName: originalAnalyzerTestName,
       testId: selectedTestId,
+      newMapping: false,
     };
 
     postToOpenElisServerFullResponse(
       "/rest/AnalyzerTestName",
-      JSON.stringify(newAnalyzer),
+      JSON.stringify(updateData),
       displayStatus,
     );
 
     closeUpdateModal();
-
-    window.location.reload();
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const renderCell = (cell, row) => {
@@ -435,11 +505,13 @@ function AnalyzerTestName() {
             items={analyzerList}
             itemToString={(item) => (item ? item.name : "")}
             selectedItem={selectedAnalyzer}
+            disabled={true}
             onChange={({ selectedItem }) => {
               setSelectedAnalyzer(selectedItem);
               setSelectedAnalyzerId(selectedItem ? selectedItem.id : null);
             }}
           />
+          <br />
           <Dropdown
             id="test-dropdown"
             titleText={intl.formatMessage({ id: "label.actualTestName" })}
@@ -458,6 +530,7 @@ function AnalyzerTestName() {
               id: "sidenav.label.admin.analyzerTest",
             })}
             value={testName}
+            readOnly
             onChange={(e) => setTestName(e.target.value)}
             required
           />

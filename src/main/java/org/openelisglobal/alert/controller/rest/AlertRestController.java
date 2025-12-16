@@ -6,9 +6,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.alert.form.AcknowledgeAlertRequest;
 import org.openelisglobal.alert.form.AlertDTO;
+import org.openelisglobal.alert.form.FreezerDTO;
 import org.openelisglobal.alert.form.ResolveAlertRequest;
 import org.openelisglobal.alert.service.AlertService;
 import org.openelisglobal.alert.valueholder.Alert;
+import org.openelisglobal.coldstorage.service.FreezerService;
+import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +28,9 @@ public class AlertRestController {
 
     @Autowired
     private AlertService alertService;
+
+    @Autowired
+    private FreezerService freezerService;
 
     @GetMapping
     public ResponseEntity<List<AlertDTO>> getAlerts(@RequestParam(required = false) String entityType,
@@ -56,16 +62,28 @@ public class AlertRestController {
     @PutMapping("/{id}/acknowledge")
     public ResponseEntity<AlertDTO> acknowledgeAlert(@PathVariable Long id,
             @RequestBody AcknowledgeAlertRequest request) {
-
-        Alert acknowledgedAlert = alertService.acknowledgeAlert(id, request.getUserId());
-        return ResponseEntity.ok(convertToDTO(acknowledgedAlert));
+        try {
+            Alert acknowledgedAlert = alertService.acknowledgeAlert(id, request.getUserId());
+            return ResponseEntity.ok(convertToDTO(acknowledgedAlert));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            // Handle optimistic locking failures and other exceptions
+            return ResponseEntity.status(500).build();
+        }
     }
 
     @PutMapping("/{id}/resolve")
     public ResponseEntity<AlertDTO> resolveAlert(@PathVariable Long id, @RequestBody ResolveAlertRequest request) {
-
-        Alert resolvedAlert = alertService.resolveAlert(id, request.getUserId(), request.getResolutionNotes());
-        return ResponseEntity.ok(convertToDTO(resolvedAlert));
+        try {
+            Alert resolvedAlert = alertService.resolveAlert(id, request.getUserId(), request.getResolutionNotes());
+            return ResponseEntity.ok(convertToDTO(resolvedAlert));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            // Handle optimistic locking failures and other exceptions
+            return ResponseEntity.status(500).build();
+        }
     }
 
     @GetMapping("/count")
@@ -98,6 +116,25 @@ public class AlertRestController {
         dto.setResolutionNotes(alert.getResolutionNotes());
         dto.setDuplicateCount(alert.getDuplicateCount());
         dto.setLastDuplicateTime(alert.getLastDuplicateTime());
+
+        if ("Freezer".equals(alert.getAlertEntityType()) && alert.getAlertEntityId() != null) {
+            try {
+                Freezer freezer = freezerService.findById(alert.getAlertEntityId()).orElse(null);
+                if (freezer != null) {
+                    FreezerDTO freezerDTO = new FreezerDTO();
+                    freezerDTO.setId(freezer.getId());
+                    freezerDTO.setName(freezer.getName());
+                    if (freezer.getStorageDevice() != null) {
+                        freezerDTO.setCode(freezer.getStorageDevice().getCode());
+                    }
+                    dto.setFreezer(freezerDTO);
+                }
+            } catch (Exception e) {
+                // Log error but don't fail the entire request
+                // The frontend will fall back to showing "Unknown"
+            }
+        }
+
         return dto;
     }
 }

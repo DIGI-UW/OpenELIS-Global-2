@@ -1,7 +1,14 @@
 FROM hapiproject/hapi:v6.6.0-tomcat
 
 USER root
-RUN apt-get update && apt-get install -y curl
+# Fix GPG key issues for Debian Bullseye repositories
+RUN apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get update --allow-releaseinfo-change || true && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY ./tomcat/hapi_server.xml /opt/bitnami/tomcat/conf/server.xml
 

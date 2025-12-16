@@ -21,22 +21,14 @@
         <createIndex indexName="idx_rack_parent_shelf" tableName="storage_rack">
             <column name="parent_shelf_id"/>
         </createIndex>
-        <createIndex indexName="idx_position_parent_device" tableName="storage_position">
-            <column name="parent_device_id"/>
-        </createIndex>
-        <createIndex indexName="idx_position_parent_shelf" tableName="storage_position">
-            <column name="parent_shelf_id"/>
-        </createIndex>
-        <createIndex indexName="idx_position_parent_rack" tableName="storage_position">
+        <createIndex indexName="idx_box_parent_rack" tableName="storage_box">
             <column name="parent_rack_id"/>
         </createIndex>
         <rollback>
             <dropIndex indexName="idx_device_parent_room" tableName="storage_device"/>
             <dropIndex indexName="idx_shelf_parent_device" tableName="storage_shelf"/>
             <dropIndex indexName="idx_rack_parent_shelf" tableName="storage_rack"/>
-            <dropIndex indexName="idx_position_parent_device" tableName="storage_position"/>
-            <dropIndex indexName="idx_position_parent_shelf" tableName="storage_position"/>
-            <dropIndex indexName="idx_position_parent_rack" tableName="storage_position"/>
+            <dropIndex indexName="idx_box_parent_rack" tableName="storage_box"/>
         </rollback>
     </changeSet>
 
@@ -59,7 +51,7 @@
         <createIndex indexName="idx_rack_fhir_uuid" tableName="storage_rack">
             <column name="fhir_uuid"/>
         </createIndex>
-        <createIndex indexName="idx_position_fhir_uuid" tableName="storage_position">
+        <createIndex indexName="idx_box_fhir_uuid" tableName="storage_box">
             <column name="fhir_uuid"/>
         </createIndex>
         <rollback>
@@ -67,7 +59,7 @@
             <dropIndex indexName="idx_device_fhir_uuid" tableName="storage_device"/>
             <dropIndex indexName="idx_shelf_fhir_uuid" tableName="storage_shelf"/>
             <dropIndex indexName="idx_rack_fhir_uuid" tableName="storage_rack"/>
-            <dropIndex indexName="idx_position_fhir_uuid" tableName="storage_position"/>
+            <dropIndex indexName="idx_box_fhir_uuid" tableName="storage_box"/>
         </rollback>
     </changeSet>
 

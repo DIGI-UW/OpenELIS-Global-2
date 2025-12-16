@@ -1,5 +1,6 @@
 package org.openelisglobal.coldstorage.service.impl;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.coldstorage.dao.FreezerDAO;
@@ -88,7 +89,6 @@ public class FreezerServiceImpl implements FreezerService {
     public Freezer updateFreezer(Long id, Freezer updatedFreezer, Long roomId, String sysUserId) {
         Freezer existing = requireFreezer(id);
 
-        // Check if name is being changed and if new name already exists
         if (!existing.getName().equals(updatedFreezer.getName())) {
             freezerDAO.findByName(updatedFreezer.getName()).ifPresent(f -> {
                 if (!f.getId().equals(id)) {
@@ -98,9 +98,7 @@ public class FreezerServiceImpl implements FreezerService {
             });
         }
 
-        // Fetch and set StorageDevice if provided, or auto-create/update one
         if (updatedFreezer.getStorageDevice() != null && updatedFreezer.getStorageDevice().getId() != null) {
-            // Link to existing StorageDevice
             StorageDevice device = (StorageDevice) storageLocationService.get(updatedFreezer.getStorageDevice().getId(),
                     StorageDevice.class);
             if (device == null) {
@@ -110,13 +108,9 @@ public class FreezerServiceImpl implements FreezerService {
             existing.setStorageDevice(device);
         } else if (updatedFreezer.getStorageDevice() != null && updatedFreezer.getStorageDevice().getType() != null
                 && roomId != null) {
-            // Auto-create or update StorageDevice if device type and roomId are
-            // provided
             if (existing.getStorageDevice() != null) {
-                // Update existing linked StorageDevice
                 updateStorageDeviceFromFreezer(existing.getStorageDevice(), updatedFreezer, roomId, sysUserId);
             } else {
-                // Create new StorageDevice
                 StorageDevice newDevice = createStorageDeviceFromFreezer(updatedFreezer, roomId, sysUserId);
                 existing.setStorageDevice(newDevice);
             }
@@ -124,7 +118,6 @@ public class FreezerServiceImpl implements FreezerService {
             existing.setStorageDevice(null);
         }
 
-        // Update fields
         existing.setName(updatedFreezer.getName());
         existing.setProtocol(updatedFreezer.getProtocol());
         existing.setHost(updatedFreezer.getHost());
@@ -147,6 +140,28 @@ public class FreezerServiceImpl implements FreezerService {
         existing.setPollingIntervalSeconds(updatedFreezer.getPollingIntervalSeconds());
 
         return freezerDAO.update(existing);
+    }
+
+    @Override
+    @Transactional
+    public Freezer updateThresholds(Long id, BigDecimal targetTemperature, BigDecimal warningThreshold,
+            BigDecimal criticalThreshold, Integer pollingIntervalSeconds, String sysUserId) {
+        Freezer freezer = requireFreezer(id);
+        freezer.setTargetTemperature(targetTemperature);
+        freezer.setWarningThreshold(warningThreshold);
+        freezer.setCriticalThreshold(criticalThreshold);
+
+        if (pollingIntervalSeconds != null) {
+            freezer.setPollingIntervalSeconds(pollingIntervalSeconds);
+        }
+
+        if (freezer.getStorageDevice() != null && targetTemperature != null) {
+            freezer.getStorageDevice().setTemperatureSetting(targetTemperature);
+            freezer.getStorageDevice().setSysUserId(sysUserId);
+            storageLocationService.update(freezer.getStorageDevice());
+        }
+
+        return freezerDAO.update(freezer);
     }
 
     @Override

@@ -1811,4 +1811,27 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
         return null;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Analysis getAnalysisBySampleItemAndTest(String sampleItemId, String testId) {
+        if (sampleItemId == null || testId == null) {
+            return null;
+        }
+
+        String sql = "from Analysis a where a.sampleItem.id = :sampleItemId and a.test.id = :testId";
+
+        try {
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("testId", Integer.parseInt(testId));
+
+            List<Analysis> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (HibernateException e) {
+            handleException(e, "getAnalysisBySampleItemAndTest");
+        }
+
+        return null;
+    }
 }

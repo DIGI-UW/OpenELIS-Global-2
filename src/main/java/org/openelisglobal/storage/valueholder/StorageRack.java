@@ -23,7 +23,7 @@ import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
  * structure Maps to FHIR Location resource with physicalType = "co" (container)
  */
 @Entity
-@Table(name = "STORAGE_RACK")
+@Table(name = "storage_rack")
 @DynamicUpdate
 @org.hibernate.annotations.OptimisticLocking(type = org.hibernate.annotations.OptimisticLockType.VERSION)
 public class StorageRack extends BaseObject<Integer> {
@@ -40,17 +40,8 @@ public class StorageRack extends BaseObject<Integer> {
     @Column(name = "LABEL", length = 100, nullable = false)
     private String label;
 
-    @Column(name = "CODE", length = 10, nullable = false)
-    private String code;
-
-    @Column(name = "ROWS", nullable = false)
-    private Integer rows;
-
-    @Column(name = "COLUMNS", nullable = false)
-    private Integer columns;
-
-    @Column(name = "POSITION_SCHEMA_HINT", length = 50)
-    private String positionSchemaHint;
+    @Column(name = "CODE", length = 10)
+    private String shortCode;
 
     @Column(name = "ACTIVE", nullable = false)
     private Boolean active;
@@ -92,13 +83,6 @@ public class StorageRack extends BaseObject<Integer> {
         }
     }
 
-    public Integer getCapacity() {
-        if (rows == null || columns == null || rows == 0 || columns == 0) {
-            return 0;
-        }
-        return rows * columns;
-    }
-
     @Override
     public Integer getId() {
         return id;
@@ -129,36 +113,12 @@ public class StorageRack extends BaseObject<Integer> {
         this.label = label;
     }
 
-    public String getCode() {
-        return code;
+    public String getShortCode() {
+        return shortCode;
     }
 
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public Integer getRows() {
-        return rows;
-    }
-
-    public void setRows(Integer rows) {
-        this.rows = rows;
-    }
-
-    public Integer getColumns() {
-        return columns;
-    }
-
-    public void setColumns(Integer columns) {
-        this.columns = columns;
-    }
-
-    public String getPositionSchemaHint() {
-        return positionSchemaHint;
-    }
-
-    public void setPositionSchemaHint(String positionSchemaHint) {
-        this.positionSchemaHint = positionSchemaHint;
+    public void setShortCode(String shortCode) {
+        this.shortCode = shortCode;
     }
 
     public Boolean getActive() {

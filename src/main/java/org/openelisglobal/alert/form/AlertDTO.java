@@ -25,4 +25,5 @@ public class AlertDTO {
     private String resolutionNotes;
     private Integer duplicateCount;
     private OffsetDateTime lastDuplicateTime;
+    private FreezerDTO freezer;
 }

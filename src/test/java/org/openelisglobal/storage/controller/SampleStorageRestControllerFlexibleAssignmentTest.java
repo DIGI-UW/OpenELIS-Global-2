@@ -7,18 +7,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
-import javax.sql.DataSource;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.storage.BaseStorageTest;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.form.SampleMovementForm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Integration tests for flexible assignment REST endpoints - Simplified
@@ -27,47 +23,25 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * backward compatibility with positionId Following TDD: Write tests BEFORE
  * implementation
  */
-public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebContextSensitiveTest {
+public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseStorageTest {
 
     private static final Logger logger = LoggerFactory
             .getLogger(SampleStorageRestControllerFlexibleAssignmentTest.class);
 
-    @Autowired
-    private DataSource dataSource;
-
     private ObjectMapper objectMapper;
-    private JdbcTemplate jdbcTemplate;
 
     @Before
     public void setUp() throws Exception {
-        super.setUp();
+        super.setUp(); // BaseStorageTest handles jdbcTemplate initialization and
+                       // cleanStorageTestData()
         objectMapper = new ObjectMapper();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-
-        // Load user data (required for assigned_by_user_id foreign key)
-        executeDataSetWithStateManagement("testdata/user-role.xml");
-
-        cleanStorageTestData();
     }
 
-    @After
-    public void tearDown() throws Exception {
-        cleanStorageTestData();
-    }
-
-    private void cleanStorageTestData() {
-        try {
-            jdbcTemplate.execute("DELETE FROM sample_storage_movement WHERE id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM sample_storage_assignment WHERE id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_rack WHERE id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id::integer >= 1000");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE id::integer >= 1000");
-        } catch (Exception e) {
-            logger.warn("Failed to clean storage test data: " + e.getMessage());
-        }
-    }
-
+    /**
+     * Creates a test sample and sample item in the database. Returns the
+     * external_id which is used to identify the sample item (resolveSampleItem only
+     * accepts accession numbers or external IDs, not numeric IDs).
+     */
     private String createSampleItemAndGetId() throws Exception {
         // Create a test sample directly via SQL (SampleItem requires a parent Sample)
         // Use direct database insertion instead of REST endpoint (which may not be
@@ -112,10 +86,13 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         } else {
             typeOfSampleId = typeOfSampleIds.get(0);
         }
+        String externalId = "TEST-SAMPLE-" + timestamp + "-TUBE-1";
         jdbcTemplate.update(
                 "INSERT INTO sample_item (id, samp_id, sort_order, sampitem_id, external_id, typeosamp_id, status_id, lastupdated) VALUES (?, ?, 1, NULL, ?, ?, ?, CURRENT_TIMESTAMP)",
-                sampleItemId, sampleId, "TEST-SAMPLE-" + timestamp + "-TUBE-1", typeOfSampleId, statusId);
-        return String.valueOf(sampleItemId);
+                sampleItemId, sampleId, externalId, typeOfSampleId, statusId);
+        // Return external_id for use with resolveSampleItem (which only accepts
+        // accession numbers or external IDs)
+        return externalId;
     }
 
     private String createRoomAndGetId(String name, String code) throws Exception {
@@ -160,10 +137,11 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
     }
 
     private String createRackAndGetId(String label, int rows, int columns, String shelfId) throws Exception {
+        // Note: Racks are now simple containers (no rows/columns)
+        // rows/columns parameters are ignored - kept for backward compatibility
         org.openelisglobal.storage.form.StorageRackForm form = new org.openelisglobal.storage.form.StorageRackForm();
         form.setLabel(label);
-        form.setRows(rows);
-        form.setColumns(columns);
+        form.setShortCode(label.substring(0, Math.min(10, label.length())).toUpperCase());
         form.setParentShelfId(shelfId);
         form.setActive(true);
 
@@ -419,8 +397,9 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         assertNull("New position coordinate should be null", movementRecord.get("new_position_coordinate"));
 
         // Verify assignment was updated
-        Map<String, Object> assignmentRecord = jdbcTemplate.queryForMap(
-                "SELECT * FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.parseInt(sampleItemId));
+        int numericSampleItemId = getSampleItemNumericId(sampleItemId);
+        Map<String, Object> assignmentRecord = jdbcTemplate
+                .queryForMap("SELECT * FROM sample_storage_assignment WHERE sample_item_id = ?", numericSampleItemId);
         assertEquals("Assignment location ID should be updated to rack", Integer.parseInt(rackId),
                 ((Number) assignmentRecord.get("location_id")).intValue());
         assertEquals("Assignment location type should be updated to 'rack'", "rack",
@@ -471,8 +450,9 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         assertTrue(json.get("newHierarchicalPath").asText().contains("C7"));
 
         // Verify positionCoordinate is saved in database
-        Map<String, Object> assignmentRecord = jdbcTemplate.queryForMap(
-                "SELECT * FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.parseInt(sampleItemId));
+        int numericSampleItemId = getSampleItemNumericId(sampleItemId);
+        Map<String, Object> assignmentRecord = jdbcTemplate
+                .queryForMap("SELECT * FROM sample_storage_assignment WHERE sample_item_id = ?", numericSampleItemId);
         assertEquals("Position coordinate should be saved", "C7", assignmentRecord.get("position_coordinate"));
 
         // Verify positionCoordinate is saved in movement record
@@ -515,8 +495,9 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
         assertNotNull(json.get("assignmentId"));
 
         // Verify positionCoordinate is saved in database
-        Map<String, Object> assignmentRecord = jdbcTemplate.queryForMap(
-                "SELECT * FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.parseInt(sampleItemId));
+        int numericSampleItemId = getSampleItemNumericId(sampleItemId);
+        Map<String, Object> assignmentRecord = jdbcTemplate
+                .queryForMap("SELECT * FROM sample_storage_assignment WHERE sample_item_id = ?", numericSampleItemId);
         assertEquals("Position coordinate should be saved", "A1", assignmentRecord.get("position_coordinate"));
     }
 
@@ -559,8 +540,9 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseWebCo
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         // Verify positionCoordinate is updated in assignment
-        Map<String, Object> assignmentRecord = jdbcTemplate.queryForMap(
-                "SELECT * FROM sample_storage_assignment WHERE sample_item_id = ?", Integer.parseInt(sampleItemId));
+        int numericSampleItemId = getSampleItemNumericId(sampleItemId);
+        Map<String, Object> assignmentRecord = jdbcTemplate
+                .queryForMap("SELECT * FROM sample_storage_assignment WHERE sample_item_id = ?", numericSampleItemId);
         assertEquals("Position coordinate should be updated in assignment", "B5",
                 assignmentRecord.get("position_coordinate"));
 

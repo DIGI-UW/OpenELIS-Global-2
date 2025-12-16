@@ -117,4 +117,21 @@ public class StorageDeviceDAOImpl extends BaseDAOImpl<StorageDevice, Integer> im
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public StorageDevice findByNameAndParentRoomId(String name, Integer parentRoomId) {
+        try {
+            String hql = "FROM StorageDevice d WHERE d.name = :name AND d.parentRoom.id = :roomId";
+            Query<StorageDevice> query = entityManager.unwrap(Session.class).createQuery(hql, StorageDevice.class);
+            query.setParameter("name", name);
+            query.setParameter("roomId", parentRoomId);
+            query.setMaxResults(1);
+            List<StorageDevice> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            logger.error("Error finding StorageDevice by name and parent room", e);
+            throw new LIMSRuntimeException("Error finding StorageDevice by name and parent room", e);
+        }
+    }
+
 }

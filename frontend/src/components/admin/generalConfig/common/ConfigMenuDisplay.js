@@ -56,7 +56,7 @@ function ConfigMenuDisplay(props) {
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
-    { label: `${props.label}`, link: `/MasterListsPage#${props.menuType}` },
+    { label: `${props.label}`, link: `/MasterListsPage/${props.menuType}` },
   ];
 
   function handleModify(event) {

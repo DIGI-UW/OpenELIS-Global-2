@@ -129,6 +129,7 @@ public class Freezer extends BaseObject<Long> {
      *
      * @return device type enum (FREEZER, REFRIGERATOR, etc.) or null if not linked
      */
+    @JsonIgnore
     public StorageDevice.DeviceType getLinkedDeviceType() {
         return storageDevice != null ? storageDevice.getTypeEnum() : null;
     }
@@ -139,6 +140,7 @@ public class Freezer extends BaseObject<Long> {
      * @return device type string ("freezer", "refrigerator", etc.) or null if not
      *         linked
      */
+    @JsonIgnore
     public String getLinkedDeviceTypeString() {
         return storageDevice != null ? storageDevice.getType() : null;
     }
@@ -148,6 +150,7 @@ public class Freezer extends BaseObject<Long> {
      *
      * @return configured temperature setting or null if not linked
      */
+    @JsonIgnore
     public BigDecimal getTemperatureSetting() {
         return storageDevice != null ? storageDevice.getTemperatureSetting() : null;
     }
