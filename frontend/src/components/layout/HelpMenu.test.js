@@ -31,7 +31,9 @@ describe("HelpMenu", () => {
     });
 
     expect(() =>
-      renderWithIntl(<HelpMenu helpOpen={false} handlePanelToggle={() => {}} />),
+      renderWithIntl(
+        <HelpMenu helpOpen={false} handlePanelToggle={() => {}} />,
+      ),
     ).not.toThrow();
   });
 
@@ -40,7 +42,8 @@ describe("HelpMenu", () => {
       if (url === "/rest/properties") {
         callback({
           "org.openelisglobal.help.manual.url": "https://example.com/manual",
-          "org.openelisglobal.help.tutorials.url": "https://example.com/tutorials",
+          "org.openelisglobal.help.tutorials.url":
+            "https://example.com/tutorials",
           "org.openelisglobal.help.release-notes.url":
             "https://example.com/release-notes",
         });
@@ -48,8 +51,9 @@ describe("HelpMenu", () => {
     });
 
     expect(() =>
-      renderWithIntl(<HelpMenu helpOpen={false} handlePanelToggle={() => {}} />),
+      renderWithIntl(
+        <HelpMenu helpOpen={false} handlePanelToggle={() => {}} />,
+      ),
     ).not.toThrow();
   });
 });
-
