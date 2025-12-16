@@ -101,7 +101,10 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
       .type(newLabel);
     cy.get('[data-testid="box-code"]').should("be.visible").type(newCode);
     cy.get('[data-testid="box-rows"]').should("be.visible").clear().type("8");
-    cy.get('[data-testid="box-columns"]').should("be.visible").clear().type("12");
+    cy.get('[data-testid="box-columns"]')
+      .should("be.visible")
+      .clear()
+      .type("12");
 
     // Save (Carbon button text)
     cy.contains("button", "Save", { timeout: 10000 })
@@ -120,9 +123,9 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
       "be.visible",
     );
     cy.get('[data-testid="box-selector"]').click({ force: true });
-    cy.contains(".cds--list-box__menu-item", newLabel, { timeout: 15000 }).should(
-      "be.visible",
-    );
+    cy.contains(".cds--list-box__menu-item", newLabel, {
+      timeout: 15000,
+    }).should("be.visible");
   });
 
   it("edits a selected box via UI and persists to backend", () => {
@@ -131,7 +134,9 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
     selectFirstRackForBoxesTab();
 
     // Select first real box
-    cy.get('[data-testid="box-selector"]').should("be.visible").click({ force: true });
+    cy.get('[data-testid="box-selector"]')
+      .should("be.visible")
+      .click({ force: true });
     cy.get(".cds--list-box__menu-item", { timeout: 10000 })
       .should("have.length.at.least", 2)
       .eq(1)
@@ -167,14 +172,19 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
 
       const checkAll = boxes.map((b) =>
         cy
-          .request({ url: `/rest/storage/boxes/${b.id}/can-delete`, failOnStatusCode: false })
+          .request({
+            url: `/rest/storage/boxes/${b.id}/can-delete`,
+            failOnStatusCode: false,
+          })
           .then((r) => ({ box: b, res: r })),
       );
 
       cy.wrap(Promise.all(checkAll)).then((results) => {
         const blocked = results.find((x) => x.res.status === 409);
         if (!blocked) {
-          cy.log("No constrained box found in fixtures; skipping constraint path.");
+          cy.log(
+            "No constrained box found in fixtures; skipping constraint path.",
+          );
           return;
         }
 
@@ -212,10 +222,10 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
           expect(interception.response.statusCode).to.be.oneOf([200, 409]);
         });
 
-        cy.contains("button", "Delete", { timeout: 10000 }).should("be.disabled");
+        cy.contains("button", "Delete", { timeout: 10000 }).should(
+          "be.disabled",
+        );
       });
     });
   });
 });
-
-
