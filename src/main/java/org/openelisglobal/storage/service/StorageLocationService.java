@@ -122,6 +122,17 @@ public interface StorageLocationService {
     Map<String, Object> getCascadeDeleteSummary(Object locationEntity);
 
     /**
+     * Check if a location can be moved to a new parent, and if samples exist
+     * downstream
+     * 
+     * @param locationEntity Location entity to check (Device, Shelf, or Rack)
+     * @param newParentId    ID of the new parent location
+     * @return Map containing: canMove (boolean), hasDownstreamSamples (boolean),
+     *         sampleCount (int), warning (String - optional warning message)
+     */
+    Map<String, Object> canMoveLocation(Object locationEntity, Integer newParentId);
+
+    /**
      * OGC-75: Delete location with cascade deletion of all child locations and
      * unassignment of all samples
      * 

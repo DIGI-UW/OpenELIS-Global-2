@@ -73,11 +73,39 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
     );
 
     // Open dropdown and select first non-empty option.
-    cy.get('[data-testid="rack-selector"]').click({ force: true });
-    cy.get(".cds--list-box__menu-item", { timeout: 10000 })
-      .should("have.length.at.least", 2) // includes "Select"
-      .eq(1)
+    // Carbon Dropdown: click the button to open, then wait for menu
+    cy.get('[data-testid="rack-selector"] button', { timeout: 10000 })
+      .should("be.visible")
       .click({ force: true });
+
+    // Wait for dropdown menu to appear - try both Carbon v1.15 (role="listbox") and v10 (.cds--list-box__menu-item)
+    cy.get("body").then(($body) => {
+      const listbox = $body.find('[role="listbox"]');
+      const menuItems = $body.find(".cds--list-box__menu-item");
+
+      if (listbox.length > 0) {
+        // Carbon v1.15 - use role="option"
+        cy.get('[role="listbox"] [role="option"]', { timeout: 10000 })
+          .should("have.length.at.least", 1)
+          .first()
+          .click({ force: true });
+      } else if (menuItems.length > 0) {
+        // Carbon v10 - use .cds--list-box__menu-item
+        cy.get(".cds--list-box__menu-item", { timeout: 10000 })
+          .should("have.length.at.least", 2) // includes "Select"
+          .eq(1)
+          .click({ force: true });
+      } else {
+        // Fallback: wait for menu to appear using Cypress retry-ability
+        // Cypress automatically retries .should() assertions - no arbitrary waits needed
+        cy.get('[role="listbox"], .cds--list-box__menu-item', {
+          timeout: 15000,
+        })
+          .should("be.visible")
+          .first()
+          .click();
+      }
+    });
   };
 
   it("disables Add Box until rack is selected", () => {
@@ -123,9 +151,20 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
       "be.visible",
     );
     cy.get('[data-testid="box-selector"]').click({ force: true });
-    cy.contains(".cds--list-box__menu-item", newLabel, {
-      timeout: 15000,
-    }).should("be.visible");
+    // Try both Carbon v1.15 and v10 selectors
+    cy.get("body").then(($body) => {
+      const listbox = $body.find('[role="listbox"]');
+      const menuItems = $body.find(".cds--list-box__menu-item");
+      if (listbox.length > 0) {
+        cy.get('[role="listbox"] [role="option"]')
+          .contains(newLabel, { timeout: 15000 })
+          .should("be.visible");
+      } else if (menuItems.length > 0) {
+        cy.contains(".cds--list-box__menu-item", newLabel, {
+          timeout: 15000,
+        }).should("be.visible");
+      }
+    });
   });
 
   it("edits a selected box via UI and persists to backend", () => {

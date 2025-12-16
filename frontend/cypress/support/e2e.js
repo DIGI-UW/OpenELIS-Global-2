@@ -102,17 +102,6 @@ Cypress.on("uncaught:exception", (err, runnable) => {
   return false;
 });
 
-// Fail-fast: Stop test execution after first failure (opt-in via CYPRESS_FAIL_FAST=true)
-// This prevents wasting time running remaining tests when one fails early
-// NOTE: Disabled by default to ensure CI uses standard exit codes (0/1)
-// Enable with: CYPRESS_FAIL_FAST=true npm run cy:run
-afterEach(function () {
-  const failFastEnabled = Cypress.env("FAIL_FAST") === true;
-  if (
-    failFastEnabled &&
-    this.currentTest &&
-    this.currentTest.state === "failed"
-  ) {
-    Cypress.stop();
-  }
-});
+// Note: No custom fail-fast hook needed
+// Cypress naturally exits with code 1 on test failures
+// CI (GitHub Actions) will see the failure and stop the workflow

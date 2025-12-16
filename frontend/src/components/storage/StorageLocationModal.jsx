@@ -15,6 +15,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
+  getFromOpenElisServer,
 } from "../utils/Utils";
 import "./StorageLocationModal.css";
 
@@ -65,6 +66,12 @@ const StorageLocationModal = ({
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [availableRooms, setAvailableRooms] = useState([]);
+  const [availableDevices, setAvailableDevices] = useState([]);
+  const [availableShelves, setAvailableShelves] = useState([]);
+  const [selectedParentRoomId, setSelectedParentRoomId] = useState(null);
+  const [selectedParentDeviceId, setSelectedParentDeviceId] = useState(null);
+  const [selectedParentShelfId, setSelectedParentShelfId] = useState(null);
 
   // Helper to get plural form for API endpoints
   const getPluralType = (type) => {
@@ -122,6 +129,65 @@ const StorageLocationModal = ({
     }
   }, [open, mode, location]);
 
+  // Load parent options when modal opens
+  useEffect(() => {
+    if (open) {
+      // Load rooms for device parent selection
+      if (locationType === "device") {
+        getFromOpenElisServer("/rest/storage/rooms", (response) => {
+          if (response && Array.isArray(response)) {
+            const activeRooms = response.filter(
+              (room) => room.active !== false,
+            );
+            setAvailableRooms(activeRooms);
+            // Initialize selected parent from prop or first room
+            if (parentRoom) {
+              setSelectedParentRoomId(String(parentRoom.id));
+            } else if (activeRooms.length > 0) {
+              setSelectedParentRoomId(String(activeRooms[0].id));
+            }
+          }
+        }).catch(() => {
+          // Silently fail - parent options are optional
+        });
+      }
+      // Load devices for shelf parent selection
+      if (locationType === "shelf") {
+        getFromOpenElisServer("/rest/storage/devices", (response) => {
+          if (response && Array.isArray(response)) {
+            const activeDevices = response.filter(
+              (device) => device.active !== false,
+            );
+            setAvailableDevices(activeDevices);
+            // Initialize selected parent from prop or first device
+            if (parentDevice) {
+              setSelectedParentDeviceId(String(parentDevice.id));
+            } else if (activeDevices.length > 0) {
+              setSelectedParentDeviceId(String(activeDevices[0].id));
+            }
+          }
+        });
+      }
+      // Load shelves for rack parent selection
+      if (locationType === "rack") {
+        getFromOpenElisServer("/rest/storage/shelves", (response) => {
+          if (response && Array.isArray(response)) {
+            const activeShelves = response.filter(
+              (shelf) => shelf.active !== false,
+            );
+            setAvailableShelves(activeShelves);
+            // Initialize selected parent from prop or first shelf
+            if (parentShelf) {
+              setSelectedParentShelfId(String(parentShelf.id));
+            } else if (activeShelves.length > 0) {
+              setSelectedParentShelfId(String(activeShelves[0].id));
+            }
+          }
+        });
+      }
+    }
+  }, [open, locationType, parentRoom, parentDevice, parentShelf]);
+
   // Reset form when modal closes
   useEffect(() => {
     if (!open) {
@@ -129,6 +195,12 @@ const StorageLocationModal = ({
       setErrors({});
       setSubmitError(null);
       setIsSubmitting(false);
+      setAvailableRooms([]);
+      setAvailableDevices([]);
+      setAvailableShelves([]);
+      setSelectedParentRoomId(null);
+      setSelectedParentDeviceId(null);
+      setSelectedParentShelfId(null);
     }
   }, [open]);
 
@@ -238,8 +310,8 @@ const StorageLocationModal = ({
         payload.port = formData.port ? parseInt(formData.port, 10) : null;
         payload.communicationProtocol =
           formData.communicationProtocol?.trim() || "BACnet";
-        if (mode === "create" && parentRoom) {
-          payload.parentRoomId = String(parentRoom.id);
+        if (mode === "create" && selectedParentRoomId) {
+          payload.parentRoomId = selectedParentRoomId;
         }
       } else if (locationType === "shelf") {
         payload.label = formData.label.trim();
@@ -248,8 +320,8 @@ const StorageLocationModal = ({
           ? parseInt(formData.capacityLimit, 10)
           : null;
         payload.active = formData.active;
-        if (mode === "create" && parentDevice) {
-          payload.parentDeviceId = String(parentDevice.id);
+        if (mode === "create" && selectedParentDeviceId) {
+          payload.parentDeviceId = selectedParentDeviceId;
         }
       } else if (locationType === "rack") {
         payload.label = formData.label.trim();
@@ -259,8 +331,8 @@ const StorageLocationModal = ({
         payload.positionSchemaHint =
           formData.positionSchemaHint?.trim() || null;
         payload.active = formData.active;
-        if (mode === "create" && parentShelf) {
-          payload.parentShelfId = String(parentShelf.id);
+        if (mode === "create" && selectedParentShelfId) {
+          payload.parentShelfId = selectedParentShelfId;
         }
       }
 
@@ -324,7 +396,7 @@ const StorageLocationModal = ({
                   }
                   handleClose();
                 })
-                .catch((err) => {
+                .catch(() => {
                   // Even if fetch fails, consider update successful if status is OK
                   if (onSave) {
                     onSave(payload);
@@ -510,16 +582,30 @@ const StorageLocationModal = ({
                     "Max 10 characters, alphanumeric with hyphens/underscores",
                 })}
               />
-              {mode === "create" && parentRoom && (
-                <TextInput
+              {mode === "create" && (
+                <Dropdown
                   id="device-parent-room"
-                  labelText={intl.formatMessage({
+                  titleText={intl.formatMessage({
                     id: "storage.device.room",
                     defaultMessage: "Room",
                   })}
-                  value={parentRoom.name || ""}
-                  disabled
-                  readOnly
+                  label={intl.formatMessage({
+                    id: "storage.device.room",
+                    defaultMessage: "Room",
+                  })}
+                  items={availableRooms}
+                  selectedItem={
+                    availableRooms.find(
+                      (r) => String(r.id) === selectedParentRoomId,
+                    ) || null
+                  }
+                  onChange={({ selectedItem }) => {
+                    if (selectedItem) {
+                      setSelectedParentRoomId(String(selectedItem.id));
+                    }
+                  }}
+                  itemToString={(item) => (item ? item.name : "")}
+                  required
                 />
               )}
               <Dropdown
@@ -643,16 +729,30 @@ const StorageLocationModal = ({
                 invalidText={errors.label}
                 required
               />
-              {mode === "create" && parentDevice && (
-                <TextInput
+              {mode === "create" && (
+                <Dropdown
                   id="shelf-parent-device"
-                  labelText={intl.formatMessage({
+                  titleText={intl.formatMessage({
                     id: "storage.shelf.device",
                     defaultMessage: "Device",
                   })}
-                  value={parentDevice.name || ""}
-                  disabled
-                  readOnly
+                  label={intl.formatMessage({
+                    id: "storage.shelf.device",
+                    defaultMessage: "Device",
+                  })}
+                  items={availableDevices}
+                  selectedItem={
+                    availableDevices.find(
+                      (d) => String(d.id) === selectedParentDeviceId,
+                    ) || null
+                  }
+                  onChange={({ selectedItem }) => {
+                    if (selectedItem) {
+                      setSelectedParentDeviceId(String(selectedItem.id));
+                    }
+                  }}
+                  itemToString={(item) => (item ? item.name : "")}
+                  required
                 />
               )}
               <TextInput
@@ -712,16 +812,30 @@ const StorageLocationModal = ({
                 invalidText={errors.label}
                 required
               />
-              {mode === "create" && parentShelf && (
-                <TextInput
+              {mode === "create" && (
+                <Dropdown
                   id="rack-parent-shelf"
-                  labelText={intl.formatMessage({
+                  titleText={intl.formatMessage({
                     id: "storage.rack.shelf",
                     defaultMessage: "Shelf",
                   })}
-                  value={parentShelf.label || ""}
-                  disabled
-                  readOnly
+                  label={intl.formatMessage({
+                    id: "storage.rack.shelf",
+                    defaultMessage: "Shelf",
+                  })}
+                  items={availableShelves}
+                  selectedItem={
+                    availableShelves.find(
+                      (s) => String(s.id) === selectedParentShelfId,
+                    ) || null
+                  }
+                  onChange={({ selectedItem }) => {
+                    if (selectedItem) {
+                      setSelectedParentShelfId(String(selectedItem.id));
+                    }
+                  }}
+                  itemToString={(item) => (item ? item.label : "")}
+                  required
                 />
               )}
               <TextInput

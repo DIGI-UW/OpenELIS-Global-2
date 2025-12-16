@@ -162,13 +162,19 @@ describe("EditLocationModal", () => {
   });
 
   /**
-   * T106: Test parent field is read-only (disabled)
+   * T106: Test parent field is editable (dropdown, not read-only)
    */
-  test("testEditModal_ParentFieldReadOnly", async () => {
+  test("testEditModal_ParentFieldEditable", async () => {
+    // Mock rooms list for dropdown
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce([
+      { id: 1, name: "Main Laboratory", active: true },
+      { id: 2, name: "Secondary Lab", active: true },
+    ]);
+
     renderWithIntl(
       <EditLocationModal
         open={true}
-        location={mockDevice}
+        location={{ ...mockDevice, parentRoomId: 1 }}
         locationType="device"
         onClose={mockOnClose}
         onSave={mockOnSave}
@@ -178,8 +184,167 @@ describe("EditLocationModal", () => {
     const parentField = await screen.findByTestId(
       "edit-location-device-parent-room",
     );
-    const inputElement = parentField.querySelector("input") || parentField;
-    expect(inputElement.disabled || inputElement.readOnly).toBe(true);
+    // Parent field should now be a Dropdown (editable), not a read-only TextInput
+    expect(parentField).toBeTruthy();
+    // Dropdown should be present and interactive
+    const dropdownButton = parentField.querySelector("button");
+    expect(dropdownButton).toBeTruthy();
+  });
+
+  /**
+   * Test parent ID is included in save payload when present
+   * This test verifies that selectedParentRoomId is included in PUT payload
+   */
+  test("testEditModal_ParentChangePersists", async () => {
+    let capturedPayload = null;
+    const mockFetch = jest.fn().mockImplementation((url, options) => {
+      if (options?.method === "PUT") {
+        capturedPayload = JSON.parse(options.body);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({ ...mockDevice, id: "2", parentRoomId: 2 }),
+      });
+    });
+    global.fetch = mockFetch;
+
+    // Mock rooms list and full location fetch with parentRoomId
+    Utils.getFromOpenElisServerV2
+      .mockResolvedValueOnce([
+        { id: 1, name: "Main Laboratory", active: true },
+        { id: 2, name: "Secondary Lab", active: true },
+      ])
+      .mockResolvedValueOnce({ ...mockDevice, parentRoomId: 1 }); // Full location fetch
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={{ ...mockDevice, parentRoomId: 1 }}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    // Wait for modal to load and parent dropdown to be initialized
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("edit-location-device-parent-room"),
+      ).toBeTruthy();
+    });
+
+    // Wait for form to be fully loaded and save button to be enabled
+    await waitFor(() => {
+      const saveButton = screen.getByTestId("edit-location-save-button");
+      expect(saveButton).toBeTruthy();
+      // Button should not be disabled (unless form is invalid)
+      // For device, we need name field filled
+      const nameField = screen.getByTestId("edit-location-device-name");
+      if (nameField.value === "") {
+        fireEvent.change(nameField, { target: { value: "Updated Device" } });
+      }
+    });
+
+    // Save
+    const saveButton = screen.getByTestId("edit-location-save-button");
+    // Check if button is disabled
+    if (!saveButton.disabled) {
+      fireEvent.click(saveButton);
+    } else {
+      // If disabled, check why - might need to fill required fields
+      const nameField = screen.getByTestId("edit-location-device-name");
+      fireEvent.change(nameField, { target: { value: "Updated Device" } });
+      await waitFor(() => {
+        const updatedSaveButton = screen.getByTestId(
+          "edit-location-save-button",
+        );
+        if (!updatedSaveButton.disabled) {
+          fireEvent.click(updatedSaveButton);
+        }
+      });
+    }
+
+    // Wait for save to complete
+    await waitFor(
+      () => {
+        expect(mockFetch).toHaveBeenCalled();
+      },
+      { timeout: 3000 },
+    );
+
+    // Verify parentRoomId is in the payload
+    expect(capturedPayload).toBeTruthy();
+    // The parentRoomId should be included if selectedParentRoomId is set
+    // Since we initialized with parentRoomId: 1, it should be "1"
+    expect(capturedPayload.parentRoomId).toBeDefined();
+    expect(capturedPayload.parentRoomId).toBe("1");
+  });
+
+  /**
+   * Test that getFromOpenElisServerV2 errors don't crash the component
+   */
+  test("testEditModal_HandlesParentOptionsLoadError", async () => {
+    // Mock getFromOpenElisServerV2 to return undefined (simulating error)
+    Utils.getFromOpenElisServerV2
+      .mockResolvedValueOnce(undefined) // Rooms fetch fails
+      .mockResolvedValueOnce({ ...mockDevice, parentRoomId: 1 }); // Full location fetch
+
+    // Should not throw
+    expect(() => {
+      renderWithIntl(
+        <EditLocationModal
+          open={true}
+          location={{ ...mockDevice, parentRoomId: 1 }}
+          locationType="device"
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
+      );
+    }).not.toThrow();
+
+    // Wait a bit for any async operations
+    await waitFor(() => {
+      const nameField = screen.queryByTestId("edit-location-device-name");
+      expect(nameField).toBeTruthy();
+    });
+  });
+
+  /**
+   * Test that parent options load correctly
+   */
+  test("testEditModal_LoadsParentOptions", async () => {
+    const mockRooms = [
+      { id: 1, name: "Main Laboratory", active: true },
+      { id: 2, name: "Secondary Lab", active: true },
+      { id: 3, name: "Inactive Lab", active: false },
+    ];
+
+    Utils.getFromOpenElisServerV2
+      .mockResolvedValueOnce(mockRooms) // Rooms list
+      .mockResolvedValueOnce({ ...mockDevice, parentRoomId: 1 }); // Full location
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={{ ...mockDevice, parentRoomId: 1 }}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(Utils.getFromOpenElisServerV2).toHaveBeenCalledWith(
+        "/rest/storage/rooms",
+      );
+    });
+
+    // Verify dropdown is rendered (should have rooms loaded)
+    const parentField = await screen.findByTestId(
+      "edit-location-device-parent-room",
+    );
+    expect(parentField).toBeTruthy();
   });
 
   /**

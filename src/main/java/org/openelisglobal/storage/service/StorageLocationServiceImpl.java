@@ -1596,6 +1596,60 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     }
 
     /**
+     * Check if a location can be moved to a new parent, and if samples exist
+     * downstream Always allows the move but warns if samples exist in the
+     * location's hierarchy
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> canMoveLocation(Object locationEntity, Integer newParentId) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("canMove", true); // Always allow move, but warn about samples
+
+        int sampleCount = 0;
+        String warning = null;
+
+        if (locationEntity instanceof StorageDevice) {
+            StorageDevice device = (StorageDevice) locationEntity;
+            sampleCount = countSamplesInDeviceHierarchy(device.getId());
+            if (sampleCount > 0) {
+                warning = String.format(
+                        "Moving this device will affect %d sample(s) assigned to this device and its child locations. The samples will remain assigned but their hierarchical path will change.",
+                        sampleCount);
+            }
+        } else if (locationEntity instanceof StorageShelf) {
+            StorageShelf shelf = (StorageShelf) locationEntity;
+            sampleCount = countSamplesInShelfHierarchy(shelf.getId());
+            if (sampleCount > 0) {
+                warning = String.format(
+                        "Moving this shelf will affect %d sample(s) assigned to this shelf and its child locations. The samples will remain assigned but their hierarchical path will change.",
+                        sampleCount);
+            }
+        } else if (locationEntity instanceof StorageRack) {
+            StorageRack rack = (StorageRack) locationEntity;
+            sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", rack.getId());
+            if (sampleCount > 0) {
+                warning = String.format(
+                        "Moving this rack will affect %d sample(s) assigned to this rack. The samples will remain assigned but their hierarchical path will change.",
+                        sampleCount);
+            }
+        } else {
+            // Rooms cannot be moved (no parent)
+            result.put("canMove", false);
+            result.put("error", "Rooms cannot be moved");
+            return result;
+        }
+
+        result.put("hasDownstreamSamples", sampleCount > 0);
+        result.put("sampleCount", sampleCount);
+        if (warning != null) {
+            result.put("warning", warning);
+        }
+
+        return result;
+    }
+
+    /**
      * OGC-75: Count samples in device hierarchy (device + all shelves + all racks)
      */
     @Transactional(readOnly = true)

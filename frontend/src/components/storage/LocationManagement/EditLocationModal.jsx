@@ -58,6 +58,19 @@ const EditLocationModal = ({
   // Track original code to detect changes and show warning
   const [originalCode, setOriginalCode] = useState("");
   const [codeChangeAcknowledged, setCodeChangeAcknowledged] = useState(false);
+  // Track parent change and constraint checking
+  const [availableRooms, setAvailableRooms] = useState([]);
+  const [availableDevices, setAvailableDevices] = useState([]);
+  const [availableShelves, setAvailableShelves] = useState([]);
+  const [selectedParentRoomId, setSelectedParentRoomId] = useState(null);
+  const [selectedParentDeviceId, setSelectedParentDeviceId] = useState(null);
+  const [selectedParentShelfId, setSelectedParentShelfId] = useState(null);
+  const [originalParentRoomId, setOriginalParentRoomId] = useState(null);
+  const [originalParentDeviceId, setOriginalParentDeviceId] = useState(null);
+  const [originalParentShelfId, setOriginalParentShelfId] = useState(null);
+  const [parentChangeWarning, setParentChangeWarning] = useState(null);
+  const [parentChangeAcknowledged, setParentChangeAcknowledged] =
+    useState(false);
   // Synchronous ref to latest form data to prevent race conditions when user toggles
   // and immediately clicks Save before React state updates
   const formDataRef = useRef(null);
@@ -170,6 +183,19 @@ const EditLocationModal = ({
             setFormData(next);
             // Store original code from full data
             setOriginalCode(fullLocation.code || "");
+            // Store original parent IDs
+            if (locationType === "device" && fullLocation.parentRoomId) {
+              setOriginalParentRoomId(String(fullLocation.parentRoomId));
+              setSelectedParentRoomId(String(fullLocation.parentRoomId));
+            }
+            if (locationType === "shelf" && fullLocation.parentDeviceId) {
+              setOriginalParentDeviceId(String(fullLocation.parentDeviceId));
+              setSelectedParentDeviceId(String(fullLocation.parentDeviceId));
+            }
+            if (locationType === "rack" && fullLocation.parentShelfId) {
+              setOriginalParentShelfId(String(fullLocation.parentShelfId));
+              setSelectedParentShelfId(String(fullLocation.parentShelfId));
+            }
             setError(null);
             setIsLoading(false);
           } else {
@@ -215,6 +241,126 @@ const EditLocationModal = ({
     };
   }, [open, location, locationType]);
 
+  // Load parent options when modal opens
+  useEffect(() => {
+    if (!open || !location) return;
+
+    let isMounted = true;
+
+    // Load rooms for device parent selection
+    if (locationType === "device") {
+      const promise = getFromOpenElisServerV2("/rest/storage/rooms");
+      if (promise && typeof promise.then === "function") {
+        promise
+          .then((response) => {
+            if (!isMounted) return;
+            if (response && Array.isArray(response)) {
+              const activeRooms = response.filter(
+                (room) => room.active !== false,
+              );
+              setAvailableRooms(activeRooms);
+            }
+          })
+          .catch((err) => {
+            if (!isMounted) return;
+            console.error("Failed to load rooms:", err);
+          });
+      } else {
+        // If promise is undefined, log but don't crash
+        console.warn(
+          "getFromOpenElisServerV2 returned undefined for /rest/storage/rooms",
+        );
+      }
+    }
+    // Load devices for shelf parent selection
+    if (locationType === "shelf") {
+      const promise = getFromOpenElisServerV2("/rest/storage/devices");
+      if (promise && typeof promise.then === "function") {
+        promise
+          .then((response) => {
+            if (!isMounted) return;
+            if (response && Array.isArray(response)) {
+              const activeDevices = response.filter(
+                (device) => device.active !== false,
+              );
+              setAvailableDevices(activeDevices);
+            }
+          })
+          .catch((err) => {
+            if (!isMounted) return;
+            console.error("Failed to load devices:", err);
+          });
+      } else {
+        console.warn(
+          "getFromOpenElisServerV2 returned undefined for /rest/storage/devices",
+        );
+      }
+    }
+    // Load shelves for rack parent selection
+    if (locationType === "rack") {
+      const promise = getFromOpenElisServerV2("/rest/storage/shelves");
+      if (promise && typeof promise.then === "function") {
+        promise
+          .then((response) => {
+            if (!isMounted) return;
+            if (response && Array.isArray(response)) {
+              const activeShelves = response.filter(
+                (shelf) => shelf.active !== false,
+              );
+              setAvailableShelves(activeShelves);
+            }
+          })
+          .catch((err) => {
+            if (!isMounted) return;
+            console.error("Failed to load shelves:", err);
+          });
+      } else {
+        console.warn(
+          "getFromOpenElisServerV2 returned undefined for /rest/storage/shelves",
+        );
+      }
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [open, location, locationType]);
+
+  // Check constraints when parent changes
+  const checkParentChangeConstraints = (newParentId) => {
+    if (!location || !location.id) return;
+
+    setParentChangeWarning(null);
+    setParentChangeAcknowledged(false);
+
+    // Build correct parameter name based on location type
+    let paramName = "";
+    if (locationType === "device") {
+      paramName = "newParentRoomId";
+    } else if (locationType === "shelf") {
+      paramName = "newParentDeviceId";
+    } else if (locationType === "rack") {
+      paramName = "newParentShelfId";
+    }
+
+    const endpoint = `/rest/storage/${getPluralType(locationType)}/${location.id}/can-move?${paramName}=${newParentId}`;
+    getFromOpenElisServerV2(endpoint)
+      .then((response) => {
+        if (response && response.hasDownstreamSamples) {
+          setParentChangeWarning({
+            message:
+              response.warning ||
+              `Moving this ${locationType} will affect ${response.sampleCount} sample(s).`,
+            sampleCount: response.sampleCount,
+          });
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to check constraints:", err);
+        // Allow move even if check fails
+      });
+  };
+
   // Reset form when modal closes
   useEffect(() => {
     if (!open) {
@@ -223,6 +369,17 @@ const EditLocationModal = ({
       setIsSubmitting(false);
       setOriginalCode("");
       setCodeChangeAcknowledged(false);
+      setAvailableRooms([]);
+      setAvailableDevices([]);
+      setAvailableShelves([]);
+      setSelectedParentRoomId(null);
+      setSelectedParentDeviceId(null);
+      setSelectedParentShelfId(null);
+      setOriginalParentRoomId(null);
+      setOriginalParentDeviceId(null);
+      setOriginalParentShelfId(null);
+      setParentChangeWarning(null);
+      setParentChangeAcknowledged(false);
     }
   }, [open]);
 
@@ -254,7 +411,7 @@ const EditLocationModal = ({
           formData.label &&
           formData.rows &&
           formData.columns);
-      if (isValid && !isSubmitting && !isSaveDisabledDueToCodeChange()) {
+      if (isValid && !isSubmitting && !isSaveDisabled()) {
         handleSave();
       }
     }
@@ -263,6 +420,17 @@ const EditLocationModal = ({
   // Check if save should be disabled due to unacknowledged code change
   const isSaveDisabledDueToCodeChange = () => {
     return hasCodeChanged() && !codeChangeAcknowledged;
+  };
+
+  // Check if save should be disabled due to unacknowledged parent change
+  const isSaveDisabledDueToParentChange = () => {
+    if (!parentChangeWarning) return false;
+    return !parentChangeAcknowledged;
+  };
+
+  // Check if save should be disabled
+  const isSaveDisabled = () => {
+    return isSaveDisabledDueToCodeChange() || isSaveDisabledDueToParentChange();
   };
 
   const handleSave = async () => {
@@ -290,6 +458,10 @@ const EditLocationModal = ({
           ? parseInt(latest.capacityLimit, 10)
           : null;
         payload.active = latest.active;
+        // Always include parent room ID if selected (backend will handle if unchanged)
+        if (selectedParentRoomId) {
+          payload.parentRoomId = selectedParentRoomId;
+        }
       } else if (locationType === "shelf") {
         payload.label = latest.label;
         payload.code = latest.code || null;
@@ -297,13 +469,21 @@ const EditLocationModal = ({
           ? parseInt(latest.capacityLimit, 10)
           : null;
         payload.active = latest.active;
+        // Always include parent device ID if selected (backend will handle if unchanged)
+        if (selectedParentDeviceId) {
+          payload.parentDeviceId = selectedParentDeviceId;
+        }
       } else if (locationType === "rack") {
         payload.label = latest.label;
         payload.code = latest.code || null;
-        payload.rows = latest.rows;
-        payload.columns = latest.columns;
+        payload.rows = parseInt(latest.rows, 10) || 0;
+        payload.columns = parseInt(latest.columns, 10) || 0;
         payload.positionSchemaHint = latest.positionSchemaHint || null;
         payload.active = latest.active;
+        // Always include parent shelf ID if selected (backend will handle if unchanged)
+        if (selectedParentShelfId) {
+          payload.parentShelfId = selectedParentShelfId;
+        }
       }
 
       // Use fetch directly to get response body for error details
@@ -560,23 +740,63 @@ const EditLocationModal = ({
                       "Max 10 characters, alphanumeric with hyphens/underscores",
                   })}
                 />
-                <TextInput
+                <Dropdown
                   id="device-parent-room"
                   data-testid="edit-location-device-parent-room"
-                  labelText={intl.formatMessage({
+                  titleText={intl.formatMessage({
                     id: "storage.location.parent.room",
                     defaultMessage: "Parent Room",
                   })}
-                  value={
-                    formData.parentRoomName ||
-                    (location && location.parentRoomName) ||
-                    (location && location.parentRoom?.name) ||
-                    (location && location.roomName) ||
-                    ""
+                  label={intl.formatMessage({
+                    id: "storage.location.parent.room",
+                    defaultMessage: "Parent Room",
+                  })}
+                  items={availableRooms}
+                  selectedItem={
+                    availableRooms.find(
+                      (r) => String(r.id) === selectedParentRoomId,
+                    ) || null
                   }
-                  disabled
-                  readOnly
+                  onChange={({ selectedItem }) => {
+                    if (selectedItem) {
+                      const newParentId = String(selectedItem.id);
+                      setSelectedParentRoomId(newParentId);
+                      // Check constraints if parent changed
+                      if (newParentId !== originalParentRoomId) {
+                        checkParentChangeConstraints(newParentId);
+                      } else {
+                        setParentChangeWarning(null);
+                        setParentChangeAcknowledged(false);
+                      }
+                    }
+                  }}
+                  itemToString={(item) => (item ? item.name : "")}
                 />
+                {parentChangeWarning && (
+                  <InlineNotification
+                    kind="warning"
+                    title={intl.formatMessage({
+                      id: "storage.parent.change.warning",
+                      defaultMessage:
+                        "Warning: Moving location affects samples",
+                    })}
+                    subtitle={parentChangeWarning.message}
+                    lowContrast
+                    hideCloseButton
+                  />
+                )}
+                {parentChangeWarning && (
+                  <Checkbox
+                    id="acknowledge-parent-change"
+                    labelText={intl.formatMessage({
+                      id: "storage.parent.change.acknowledge",
+                      defaultMessage:
+                        "I understand that moving this location will affect the hierarchical path of assigned samples",
+                    })}
+                    checked={parentChangeAcknowledged}
+                    onChange={(checked) => setParentChangeAcknowledged(checked)}
+                  />
+                )}
                 <Dropdown
                   id="device-type"
                   data-testid="edit-location-device-type"
@@ -681,23 +901,63 @@ const EditLocationModal = ({
                       "Max 10 characters, alphanumeric with hyphens/underscores",
                   })}
                 />
-                <TextInput
+                <Dropdown
                   id="shelf-parent-device"
                   data-testid="edit-location-shelf-parent-device"
-                  labelText={intl.formatMessage({
+                  titleText={intl.formatMessage({
                     id: "storage.location.parent.device",
                     defaultMessage: "Parent Device",
                   })}
-                  value={
-                    formData.parentDeviceName ||
-                    (location && location.parentDeviceName) ||
-                    (location && location.parentDevice?.name) ||
-                    (location && location.deviceName) ||
-                    ""
+                  label={intl.formatMessage({
+                    id: "storage.location.parent.device",
+                    defaultMessage: "Parent Device",
+                  })}
+                  items={availableDevices}
+                  selectedItem={
+                    availableDevices.find(
+                      (d) => String(d.id) === selectedParentDeviceId,
+                    ) || null
                   }
-                  disabled
-                  readOnly
+                  onChange={({ selectedItem }) => {
+                    if (selectedItem) {
+                      const newParentId = String(selectedItem.id);
+                      setSelectedParentDeviceId(newParentId);
+                      // Check constraints if parent changed
+                      if (newParentId !== originalParentDeviceId) {
+                        checkParentChangeConstraints(newParentId);
+                      } else {
+                        setParentChangeWarning(null);
+                        setParentChangeAcknowledged(false);
+                      }
+                    }
+                  }}
+                  itemToString={(item) => (item ? item.name : "")}
                 />
+                {parentChangeWarning && (
+                  <InlineNotification
+                    kind="warning"
+                    title={intl.formatMessage({
+                      id: "storage.parent.change.warning",
+                      defaultMessage:
+                        "Warning: Moving location affects samples",
+                    })}
+                    subtitle={parentChangeWarning.message}
+                    lowContrast
+                    hideCloseButton
+                  />
+                )}
+                {parentChangeWarning && (
+                  <Checkbox
+                    id="acknowledge-parent-change"
+                    labelText={intl.formatMessage({
+                      id: "storage.parent.change.acknowledge",
+                      defaultMessage:
+                        "I understand that moving this location will affect the hierarchical path of assigned samples",
+                    })}
+                    checked={parentChangeAcknowledged}
+                    onChange={(checked) => setParentChangeAcknowledged(checked)}
+                  />
+                )}
                 <TextInput
                   id="shelf-capacity"
                   data-testid="edit-location-shelf-capacity"
@@ -758,23 +1018,63 @@ const EditLocationModal = ({
                       "Max 10 characters, alphanumeric with hyphens/underscores",
                   })}
                 />
-                <TextInput
+                <Dropdown
                   id="rack-parent-shelf"
                   data-testid="edit-location-rack-parent-shelf"
-                  labelText={intl.formatMessage({
+                  titleText={intl.formatMessage({
                     id: "storage.location.parent.shelf",
                     defaultMessage: "Parent Shelf",
                   })}
-                  value={
-                    formData.parentShelfLabel ||
-                    (location && location.parentShelfLabel) ||
-                    (location && location.parentShelf?.label) ||
-                    (location && location.shelfLabel) ||
-                    ""
+                  label={intl.formatMessage({
+                    id: "storage.location.parent.shelf",
+                    defaultMessage: "Parent Shelf",
+                  })}
+                  items={availableShelves}
+                  selectedItem={
+                    availableShelves.find(
+                      (s) => String(s.id) === selectedParentShelfId,
+                    ) || null
                   }
-                  disabled
-                  readOnly
+                  onChange={({ selectedItem }) => {
+                    if (selectedItem) {
+                      const newParentId = String(selectedItem.id);
+                      setSelectedParentShelfId(newParentId);
+                      // Check constraints if parent changed
+                      if (newParentId !== originalParentShelfId) {
+                        checkParentChangeConstraints(newParentId);
+                      } else {
+                        setParentChangeWarning(null);
+                        setParentChangeAcknowledged(false);
+                      }
+                    }
+                  }}
+                  itemToString={(item) => (item ? item.label : "")}
                 />
+                {parentChangeWarning && (
+                  <InlineNotification
+                    kind="warning"
+                    title={intl.formatMessage({
+                      id: "storage.parent.change.warning",
+                      defaultMessage:
+                        "Warning: Moving location affects samples",
+                    })}
+                    subtitle={parentChangeWarning.message}
+                    lowContrast
+                    hideCloseButton
+                  />
+                )}
+                {parentChangeWarning && (
+                  <Checkbox
+                    id="acknowledge-parent-change"
+                    labelText={intl.formatMessage({
+                      id: "storage.parent.change.acknowledge",
+                      defaultMessage:
+                        "I understand that moving this location will affect the hierarchical path of assigned samples",
+                    })}
+                    checked={parentChangeAcknowledged}
+                    onChange={(checked) => setParentChangeAcknowledged(checked)}
+                  />
+                )}
                 <TextInput
                   id="rack-rows"
                   data-testid="edit-location-rack-rows"
@@ -881,7 +1181,7 @@ const EditLocationModal = ({
           disabled={
             isSubmitting ||
             isLoading ||
-            isSaveDisabledDueToCodeChange() ||
+            isSaveDisabled() ||
             (locationType === "room" && !formData.name) ||
             (locationType === "device" && !formData.name) ||
             (locationType === "shelf" && !formData.label) ||

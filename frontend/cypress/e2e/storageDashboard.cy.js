@@ -53,7 +53,10 @@ describe("Storage Dashboard", function () {
         cy.get("h3").then(($h3) => {
           const text = $h3.text();
           expect(text).to.satisfy(
-            (txt) => txt.includes("Total Samples") || txt.includes("Samples"),
+            (txt) =>
+              txt.includes("Total Samples") ||
+              txt.includes("Total Sample Items") ||
+              txt.includes("Samples"),
           );
         });
       });

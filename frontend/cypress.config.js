@@ -36,6 +36,16 @@ module.exports = defineConfig({
       // Storage tasks below remain registered but won't be called (harmless)
       // To re-enable: Uncomment imports in e2e.js and remove excludeSpecPattern
 
+      // Fail-fast: Stop running specs after first spec failure (official Cypress way)
+      // This prevents wasting 50+ minutes running all specs when one fails
+      on("after:spec", (spec, results) => {
+        if (results.stats.failures > 0) {
+          console.log(`\n❌ Spec failed: ${spec.relative}`);
+          console.log(`Stopping further spec execution (fail-fast enabled)\n`);
+          process.exit(1); // Standard exit code, stops remaining specs
+        }
+      });
+
       // Register all Cypress tasks in ONE handler (Cypress does not merge task handlers).
       // This keeps logging/diagnostics and fixture utilities available across specs.
       on("task", {
