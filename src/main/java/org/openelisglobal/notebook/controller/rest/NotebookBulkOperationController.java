@@ -1,6 +1,7 @@
 package org.openelisglobal.notebook.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -481,6 +482,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * /notebook/bulk/page/{pageId}/samples/storage
      *
      * Assigns samples to a specific storage location (box and well position).
+     * This endpoint now persists to the actual storage system (SampleStorageAssignment).
      *
      * @param pageId      the notebook page ID
      * @param request     contains sampleIds, data, boxId, and wellCoordinate
@@ -505,22 +507,28 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        if (request.getData() == null || request.getData().isEmpty()) {
+        if (request.getBoxId() == null) {
             Map<String, Object> error = new HashMap<>();
-            error.put("error", "No storage data provided");
+            error.put("error", "Box ID is required for storage assignment");
             return ResponseEntity.badRequest().body(error);
         }
 
-        // Apply storage data to samples
-        int updatedCount = bulkOperationService.bulkApplyValues(pageId, request.getSampleIds(), request.getData(),
+        // Use the new storage assignment service method that persists to SampleStorageAssignment
+        Map<String, Object> result = bulkOperationService.assignSamplesToStorage(
+                pageId,
+                request.getSampleIds(),
+                request.getBoxId(),
+                request.getWellCoordinate(),
+                request.getData(),
                 sysUserId);
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("updatedCount", updatedCount);
         result.put("pageId", pageId);
         result.put("boxId", request.getBoxId());
         result.put("wellCoordinate", request.getWellCoordinate());
-        result.put("success", true);
+
+        if (result.containsKey("errors") && !((java.util.List<?>) result.get("errors")).isEmpty()) {
+            return ResponseEntity.badRequest().body(result);
+        }
 
         return ResponseEntity.ok(result);
     }
@@ -531,6 +539,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      *
      * Automatically assigns samples to the next available wells in the specified
      * box, filling sequentially from the starting position (default A1).
+     * This endpoint now persists to the actual storage system (SampleStorageAssignment).
      *
      * @param pageId      the notebook page ID
      * @param request     contains sampleIds, box info, and storage metadata
@@ -561,73 +570,34 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        // Get box dimensions (default to 8x12 for 96-well plate)
-        int rows = request.getRows() != null ? request.getRows() : 8;
-        int columns = request.getColumns() != null ? request.getColumns() : 12;
+        // Use the new auto-assign storage service method that persists to SampleStorageAssignment
+        Map<String, Object> result = bulkOperationService.autoAssignSamplesToStorage(
+                pageId,
+                request.getSampleIds(),
+                request.getBoxId(),
+                request.getRows(),
+                request.getColumns(),
+                request.getOccupiedWells(),
+                request.getData(),
+                sysUserId);
 
-        // Get occupied wells from request (provided by frontend from box layout)
-        java.util.Set<String> occupiedWells = new java.util.HashSet<>();
-        if (request.getOccupiedWells() != null) {
-            occupiedWells.addAll(request.getOccupiedWells());
-        }
-
-        // Generate list of all wells in order (A1, A2, ..., A12, B1, B2, ...)
-        java.util.List<String> allWells = new java.util.ArrayList<>();
-        for (int row = 0; row < rows; row++) {
-            char rowLetter = (char) ('A' + row);
-            for (int col = 1; col <= columns; col++) {
-                allWells.add("" + rowLetter + col);
-            }
-        }
-
-        // Find available wells (not occupied)
-        java.util.List<String> availableWells = allWells.stream()
-                .filter(well -> !occupiedWells.contains(well)).collect(java.util.stream.Collectors.toList());
-
-        // Check if we have enough available wells
-        if (availableWells.size() < request.getSampleIds().size()) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "Not enough available wells. Need " + request.getSampleIds().size()
-                    + " but only " + availableWells.size() + " available.");
-            error.put("availableCount", availableWells.size());
-            error.put("requestedCount", request.getSampleIds().size());
-            return ResponseEntity.badRequest().body(error);
-        }
-
-        // Assign each sample to the next available well
-        java.util.List<Map<String, Object>> assignments = new java.util.ArrayList<>();
-        int updatedCount = 0;
-
-        for (int i = 0; i < request.getSampleIds().size(); i++) {
-            Integer sampleId = request.getSampleIds().get(i);
-            String wellCoordinate = availableWells.get(i);
-
-            // Prepare the data to apply for this sample
-            Map<String, Object> sampleData = new HashMap<>();
-            if (request.getData() != null) {
-                sampleData.putAll(request.getData());
-            }
-            sampleData.put("storageWell", wellCoordinate);
-
-            // Apply storage data to the single sample
-            int count = bulkOperationService.bulkApplyValues(pageId,
-                    java.util.Collections.singletonList(sampleId), sampleData, sysUserId);
-
-            if (count > 0) {
-                updatedCount++;
-                Map<String, Object> assignment = new HashMap<>();
-                assignment.put("sampleId", sampleId);
-                assignment.put("wellCoordinate", wellCoordinate);
-                assignments.add(assignment);
-            }
-        }
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("updatedCount", updatedCount);
         result.put("pageId", pageId);
         result.put("boxId", request.getBoxId());
-        result.put("assignments", assignments);
-        result.put("success", true);
+
+        // Return bad request if there's a top-level error OR if there are errors in the errors array
+        if (result.containsKey("error")) {
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        // Also check for errors array (individual sample failures)
+        if (result.containsKey("errors") && !((java.util.List<?>) result.get("errors")).isEmpty()) {
+            // If some samples succeeded and some failed, still return 200 but include errors
+            // If all samples failed, return 400
+            Integer updatedCount = (Integer) result.get("updatedCount");
+            if (updatedCount == null || updatedCount == 0) {
+                return ResponseEntity.badRequest().body(result);
+            }
+        }
 
         return ResponseEntity.ok(result);
     }
@@ -718,6 +688,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      */
     public static class MarkCompleteRequest {
         private boolean requireComplete;
+        private boolean lockData;
 
         public boolean isRequireComplete() {
             return requireComplete;
@@ -725,6 +696,14 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setRequireComplete(boolean requireComplete) {
             this.requireComplete = requireComplete;
+        }
+
+        public boolean isLockData() {
+            return lockData;
+        }
+
+        public void setLockData(boolean lockData) {
+            this.lockData = lockData;
         }
     }
 
@@ -950,6 +929,284 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setOccupiedWells(List<String> occupiedWells) {
             this.occupiedWells = occupiedWells;
+        }
+    }
+
+    // ========================================================================
+    // REPORT GENERATION AND REDCAP EXPORT ENDPOINTS
+    // ========================================================================
+
+    /**
+     * Generate and download a report for samples on a page.
+     * POST /notebook/bulk/page/{pageId}/generate-report
+     *
+     * Uses HttpServletResponse directly to write binary content, avoiding
+     * Spring message converter issues with byte[] responses.
+     *
+     * @param pageId       the notebook page ID
+     * @param request      contains sampleIds and report options
+     * @param httpRequest  for getting user session
+     * @param httpResponse for writing the binary response
+     */
+    @PostMapping(value = "/page/{pageId}/generate-report")
+    public void generateReport(@PathVariable("pageId") Integer pageId,
+            @RequestBody ReportGenerationRequest request, HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        try {
+            // Validate inputs
+            String reportFormat = request.getReportFormat() != null ? request.getReportFormat() : "CSV";
+            String reportType = request.getReportType() != null ? request.getReportType() : "SUMMARY";
+
+            // Generate report content based on type and format
+            byte[] reportContent = bulkOperationService.generateReport(pageId, request.getSampleIds(),
+                    reportType, reportFormat, sysUserId);
+
+            if (reportContent == null || reportContent.length == 0) {
+                httpResponse.setStatus(HttpServletResponse.SC_NO_CONTENT);
+                return;
+            }
+
+            // Determine content type and filename
+            // Note: PDF not yet implemented, falls back to CSV
+            String contentType;
+            String extension;
+            String actualFormat = reportFormat.toUpperCase();
+            switch (actualFormat) {
+                case "PDF":
+                    // PDF generation not yet implemented - return as CSV with CSV content type
+                    contentType = "text/csv; charset=UTF-8";
+                    extension = ".csv";
+                    actualFormat = "CSV"; // Update for filename
+                    break;
+                case "EXCEL":
+                    // Excel generation returns CSV for now
+                    contentType = "text/csv; charset=UTF-8";
+                    extension = ".csv";
+                    actualFormat = "CSV";
+                    break;
+                case "JSON":
+                    contentType = "application/json; charset=UTF-8";
+                    extension = ".json";
+                    break;
+                case "CSV":
+                default:
+                    contentType = "text/csv; charset=UTF-8";
+                    extension = ".csv";
+            }
+
+            String filename = "MNTD_Report_" + reportType + "_"
+                    + java.time.LocalDate.now().toString() + extension;
+
+            // Write response directly to output stream
+            httpResponse.setContentType(contentType);
+            httpResponse.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            httpResponse.setContentLength(reportContent.length);
+            httpResponse.getOutputStream().write(reportContent);
+            httpResponse.getOutputStream().flush();
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "generateReport",
+                    "Error generating report: " + e.getMessage());
+            e.printStackTrace();
+            try {
+                httpResponse.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            } catch (Exception ignored) {
+                // Response might already be committed
+            }
+        }
+    }
+
+    /**
+     * Export sample data in REDCap-compatible CSV format.
+     * POST /notebook/bulk/page/{pageId}/redcap/export
+     *
+     * Uses HttpServletResponse directly to write binary content, avoiding
+     * Spring message converter issues with byte[] responses.
+     *
+     * @param pageId       the notebook page ID
+     * @param request      contains sampleIds and REDCap configuration
+     * @param httpRequest  for getting user session
+     * @param httpResponse for writing the binary response
+     */
+    @PostMapping(value = "/page/{pageId}/redcap/export")
+    public void exportForREDCap(@PathVariable("pageId") Integer pageId,
+            @RequestBody REDCapExportRequest request, HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        try {
+            // Validate inputs
+            String recordIdField = request.getRecordIdField() != null ? request.getRecordIdField() : "record_id";
+
+            // Generate REDCap-compatible CSV
+            byte[] csvContent = bulkOperationService.generateREDCapExport(pageId, request.getSampleIds(),
+                    recordIdField, request.getEventName(), request.getInstrumentName(), sysUserId);
+
+            if (csvContent == null || csvContent.length == 0) {
+                httpResponse.setStatus(HttpServletResponse.SC_NO_CONTENT);
+                return;
+            }
+
+            String filename = "REDCap_Export_" + (request.getProjectId() != null ? request.getProjectId() : "data")
+                    + "_" + java.time.LocalDate.now().toString() + ".csv";
+
+            // Write response directly to output stream
+            httpResponse.setContentType("text/csv; charset=UTF-8");
+            httpResponse.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            httpResponse.setContentLength(csvContent.length);
+            httpResponse.getOutputStream().write(csvContent);
+            httpResponse.getOutputStream().flush();
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "exportForREDCap",
+                    "Error generating REDCap export: " + e.getMessage());
+            e.printStackTrace();
+            try {
+                httpResponse.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            } catch (Exception ignored) {
+                // Response might already be committed
+            }
+        }
+    }
+
+    /**
+     * Request body for report generation.
+     */
+    public static class ReportGenerationRequest {
+        private List<Integer> sampleIds;
+        private String reportType;
+        private String reportFormat;
+        private String dateRangeStart;
+        private String dateRangeEnd;
+        private List<String> recipientEmails;
+        private String notes;
+        private boolean saveToHistory;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getReportType() {
+            return reportType;
+        }
+
+        public void setReportType(String reportType) {
+            this.reportType = reportType;
+        }
+
+        public String getReportFormat() {
+            return reportFormat;
+        }
+
+        public void setReportFormat(String reportFormat) {
+            this.reportFormat = reportFormat;
+        }
+
+        public String getDateRangeStart() {
+            return dateRangeStart;
+        }
+
+        public void setDateRangeStart(String dateRangeStart) {
+            this.dateRangeStart = dateRangeStart;
+        }
+
+        public String getDateRangeEnd() {
+            return dateRangeEnd;
+        }
+
+        public void setDateRangeEnd(String dateRangeEnd) {
+            this.dateRangeEnd = dateRangeEnd;
+        }
+
+        public List<String> getRecipientEmails() {
+            return recipientEmails;
+        }
+
+        public void setRecipientEmails(List<String> recipientEmails) {
+            this.recipientEmails = recipientEmails;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
+        }
+
+        public boolean isSaveToHistory() {
+            return saveToHistory;
+        }
+
+        public void setSaveToHistory(boolean saveToHistory) {
+            this.saveToHistory = saveToHistory;
+        }
+    }
+
+    /**
+     * Request body for REDCap export.
+     */
+    public static class REDCapExportRequest {
+        private List<Integer> sampleIds;
+        private String projectId;
+        private String recordIdField;
+        private String eventName;
+        private String instrumentName;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getProjectId() {
+            return projectId;
+        }
+
+        public void setProjectId(String projectId) {
+            this.projectId = projectId;
+        }
+
+        public String getRecordIdField() {
+            return recordIdField;
+        }
+
+        public void setRecordIdField(String recordIdField) {
+            this.recordIdField = recordIdField;
+        }
+
+        public String getEventName() {
+            return eventName;
+        }
+
+        public void setEventName(String eventName) {
+            this.eventName = eventName;
+        }
+
+        public String getInstrumentName() {
+            return instrumentName;
+        }
+
+        public void setInstrumentName(String instrumentName) {
+            this.instrumentName = instrumentName;
         }
     }
 }

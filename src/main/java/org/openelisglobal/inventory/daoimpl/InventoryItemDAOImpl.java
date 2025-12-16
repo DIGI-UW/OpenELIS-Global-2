@@ -46,14 +46,15 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
     @Transactional(readOnly = true)
     public List<InventoryItem> getByItemType(ItemType itemType) throws LIMSRuntimeException {
         try {
-            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-            CriteriaQuery<InventoryItem> cq = cb.createQuery(InventoryItem.class);
-            Root<InventoryItem> root = cq.from(InventoryItem.class);
+            // Use native SQL to avoid type conversion issues with enum
+            String sql = "SELECT * FROM clinlims.inventory_item " + "WHERE item_type = :itemType AND is_active = 'Y' "
+                    + "ORDER BY name";
 
-            cq.select(root).where(cb.and(cb.equal(root.get("itemType"), itemType), cb.equal(root.get("isActive"), "Y")))
-                    .orderBy(cb.asc(root.get("name")));
+            @SuppressWarnings("unchecked")
+            List<InventoryItem> results = entityManager.createNativeQuery(sql, InventoryItem.class)
+                    .setParameter("itemType", itemType.name()).getResultList();
 
-            return entityManager.createQuery(cq).getResultList();
+            return results;
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting inventory items by type", e);
         }
