@@ -481,8 +481,8 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Bulk assign storage location to multiple samples on a page. POST
      * /notebook/bulk/page/{pageId}/samples/storage
      *
-     * Assigns samples to a specific storage location (box and well position).
-     * This endpoint now persists to the actual storage system (SampleStorageAssignment).
+     * Assigns samples to a specific storage location (box and well position). This
+     * endpoint now persists to the actual storage system (SampleStorageAssignment).
      *
      * @param pageId      the notebook page ID
      * @param request     contains sampleIds, data, boxId, and wellCoordinate
@@ -513,14 +513,10 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        // Use the new storage assignment service method that persists to SampleStorageAssignment
-        Map<String, Object> result = bulkOperationService.assignSamplesToStorage(
-                pageId,
-                request.getSampleIds(),
-                request.getBoxId(),
-                request.getWellCoordinate(),
-                request.getData(),
-                sysUserId);
+        // Use the new storage assignment service method that persists to
+        // SampleStorageAssignment
+        Map<String, Object> result = bulkOperationService.assignSamplesToStorage(pageId, request.getSampleIds(),
+                request.getBoxId(), request.getWellCoordinate(), request.getData(), sysUserId);
 
         result.put("pageId", pageId);
         result.put("boxId", request.getBoxId());
@@ -538,8 +534,8 @@ public class NotebookBulkOperationController extends BaseRestController {
      * /notebook/bulk/page/{pageId}/samples/storage/auto-assign
      *
      * Automatically assigns samples to the next available wells in the specified
-     * box, filling sequentially from the starting position (default A1).
-     * This endpoint now persists to the actual storage system (SampleStorageAssignment).
+     * box, filling sequentially from the starting position (default A1). This
+     * endpoint now persists to the actual storage system (SampleStorageAssignment).
      *
      * @param pageId      the notebook page ID
      * @param request     contains sampleIds, box info, and storage metadata
@@ -570,81 +566,22 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        // Use the new auto-assign storage service method that persists to SampleStorageAssignment
-        Map<String, Object> result = bulkOperationService.autoAssignSamplesToStorage(
-                pageId,
-                request.getSampleIds(),
-                request.getBoxId(),
-                request.getRows(),
-                request.getColumns(),
-                request.getOccupiedWells(),
-                request.getData(),
-                sysUserId);
+        // Use the new auto-assign storage service method that persists to
+        // SampleStorageAssignment
+        Map<String, Object> result = bulkOperationService.autoAssignSamplesToStorage(pageId, request.getSampleIds(),
+                request.getBoxId(), request.getRows(), request.getColumns(), request.getOccupiedWells(),
+                request.getData(), sysUserId);
 
-        // Generate list of all wells in order (A1, A2, ..., A12, B1, B2, ...)
-        java.util.List<String> allWells = new java.util.ArrayList<>();
-        for (int row = 0; row < rows; row++) {
-            char rowLetter = (char) ('A' + row);
-            for (int col = 1; col <= columns; col++) {
-                allWells.add("" + rowLetter + col);
-            }
-        }
-
-        // Find available wells (not occupied)
-        java.util.List<String> availableWells = allWells.stream().filter(well -> !occupiedWells.contains(well))
-                .collect(java.util.stream.Collectors.toList());
-
-        // Check if we have enough available wells
-        if (availableWells.size() < request.getSampleIds().size()) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "Not enough available wells. Need " + request.getSampleIds().size() + " but only "
-                    + availableWells.size() + " available.");
-            error.put("availableCount", availableWells.size());
-            error.put("requestedCount", request.getSampleIds().size());
-            return ResponseEntity.badRequest().body(error);
-        }
-
-        // Assign each sample to the next available well
-        java.util.List<Map<String, Object>> assignments = new java.util.ArrayList<>();
-        int updatedCount = 0;
-
-        for (int i = 0; i < request.getSampleIds().size(); i++) {
-            Integer sampleId = request.getSampleIds().get(i);
-            String wellCoordinate = availableWells.get(i);
-
-            // Prepare the data to apply for this sample
-            Map<String, Object> sampleData = new HashMap<>();
-            if (request.getData() != null) {
-                sampleData.putAll(request.getData());
-            }
-            sampleData.put("storageWell", wellCoordinate);
-
-            // Apply storage data to the single sample
-            int count = bulkOperationService.bulkApplyValues(pageId, java.util.Collections.singletonList(sampleId),
-                    sampleData, sysUserId);
-
-            if (count > 0) {
-                updatedCount++;
-                Map<String, Object> assignment = new HashMap<>();
-                assignment.put("sampleId", sampleId);
-                assignment.put("wellCoordinate", wellCoordinate);
-                assignments.add(assignment);
-            }
-        }
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("updatedCount", updatedCount);
-        result.put("pageId", pageId);
-        result.put("boxId", request.getBoxId());
-
-        // Return bad request if there's a top-level error OR if there are errors in the errors array
+        // Return bad request if there's a top-level error OR if there are errors in the
+        // errors array
         if (result.containsKey("error")) {
             return ResponseEntity.badRequest().body(result);
         }
 
         // Also check for errors array (individual sample failures)
         if (result.containsKey("errors") && !((java.util.List<?>) result.get("errors")).isEmpty()) {
-            // If some samples succeeded and some failed, still return 200 but include errors
+            // If some samples succeeded and some failed, still return 200 but include
+            // errors
             // If all samples failed, return 400
             Integer updatedCount = (Integer) result.get("updatedCount");
             if (updatedCount == null || updatedCount == 0) {
@@ -990,11 +927,11 @@ public class NotebookBulkOperationController extends BaseRestController {
     // ========================================================================
 
     /**
-     * Generate and download a report for samples on a page.
-     * POST /notebook/bulk/page/{pageId}/generate-report
+     * Generate and download a report for samples on a page. POST
+     * /notebook/bulk/page/{pageId}/generate-report
      *
-     * Uses HttpServletResponse directly to write binary content, avoiding
-     * Spring message converter issues with byte[] responses.
+     * Uses HttpServletResponse directly to write binary content, avoiding Spring
+     * message converter issues with byte[] responses.
      *
      * @param pageId       the notebook page ID
      * @param request      contains sampleIds and report options
@@ -1002,9 +939,8 @@ public class NotebookBulkOperationController extends BaseRestController {
      * @param httpResponse for writing the binary response
      */
     @PostMapping(value = "/page/{pageId}/generate-report")
-    public void generateReport(@PathVariable("pageId") Integer pageId,
-            @RequestBody ReportGenerationRequest request, HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
+    public void generateReport(@PathVariable("pageId") Integer pageId, @RequestBody ReportGenerationRequest request,
+            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -1018,8 +954,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             String reportType = request.getReportType() != null ? request.getReportType() : "SUMMARY";
 
             // Generate report content based on type and format
-            byte[] reportContent = bulkOperationService.generateReport(pageId, request.getSampleIds(),
-                    reportType, reportFormat, sysUserId);
+            byte[] reportContent = bulkOperationService.generateReport(pageId, request.getSampleIds(), reportType,
+                    reportFormat, sysUserId);
 
             if (reportContent == null || reportContent.length == 0) {
                 httpResponse.setStatus(HttpServletResponse.SC_NO_CONTENT);
@@ -1032,30 +968,29 @@ public class NotebookBulkOperationController extends BaseRestController {
             String extension;
             String actualFormat = reportFormat.toUpperCase();
             switch (actualFormat) {
-                case "PDF":
-                    // PDF generation not yet implemented - return as CSV with CSV content type
-                    contentType = "text/csv; charset=UTF-8";
-                    extension = ".csv";
-                    actualFormat = "CSV"; // Update for filename
-                    break;
-                case "EXCEL":
-                    // Excel generation returns CSV for now
-                    contentType = "text/csv; charset=UTF-8";
-                    extension = ".csv";
-                    actualFormat = "CSV";
-                    break;
-                case "JSON":
-                    contentType = "application/json; charset=UTF-8";
-                    extension = ".json";
-                    break;
-                case "CSV":
-                default:
-                    contentType = "text/csv; charset=UTF-8";
-                    extension = ".csv";
+            case "PDF":
+                // PDF generation not yet implemented - return as CSV with CSV content type
+                contentType = "text/csv; charset=UTF-8";
+                extension = ".csv";
+                actualFormat = "CSV"; // Update for filename
+                break;
+            case "EXCEL":
+                // Excel generation returns CSV for now
+                contentType = "text/csv; charset=UTF-8";
+                extension = ".csv";
+                actualFormat = "CSV";
+                break;
+            case "JSON":
+                contentType = "application/json; charset=UTF-8";
+                extension = ".json";
+                break;
+            case "CSV":
+            default:
+                contentType = "text/csv; charset=UTF-8";
+                extension = ".csv";
             }
 
-            String filename = "MNTD_Report_" + reportType + "_"
-                    + java.time.LocalDate.now().toString() + extension;
+            String filename = "MNTD_Report_" + reportType + "_" + java.time.LocalDate.now().toString() + extension;
 
             // Write response directly to output stream
             httpResponse.setContentType(contentType);
@@ -1077,11 +1012,11 @@ public class NotebookBulkOperationController extends BaseRestController {
     }
 
     /**
-     * Export sample data in REDCap-compatible CSV format.
-     * POST /notebook/bulk/page/{pageId}/redcap/export
+     * Export sample data in REDCap-compatible CSV format. POST
+     * /notebook/bulk/page/{pageId}/redcap/export
      *
-     * Uses HttpServletResponse directly to write binary content, avoiding
-     * Spring message converter issues with byte[] responses.
+     * Uses HttpServletResponse directly to write binary content, avoiding Spring
+     * message converter issues with byte[] responses.
      *
      * @param pageId       the notebook page ID
      * @param request      contains sampleIds and REDCap configuration
@@ -1089,9 +1024,8 @@ public class NotebookBulkOperationController extends BaseRestController {
      * @param httpResponse for writing the binary response
      */
     @PostMapping(value = "/page/{pageId}/redcap/export")
-    public void exportForREDCap(@PathVariable("pageId") Integer pageId,
-            @RequestBody REDCapExportRequest request, HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
+    public void exportForREDCap(@PathVariable("pageId") Integer pageId, @RequestBody REDCapExportRequest request,
+            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -1104,8 +1038,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             String recordIdField = request.getRecordIdField() != null ? request.getRecordIdField() : "record_id";
 
             // Generate REDCap-compatible CSV
-            byte[] csvContent = bulkOperationService.generateREDCapExport(pageId, request.getSampleIds(),
-                    recordIdField, request.getEventName(), request.getInstrumentName(), sysUserId);
+            byte[] csvContent = bulkOperationService.generateREDCapExport(pageId, request.getSampleIds(), recordIdField,
+                    request.getEventName(), request.getInstrumentName(), sysUserId);
 
             if (csvContent == null || csvContent.length == 0) {
                 httpResponse.setStatus(HttpServletResponse.SC_NO_CONTENT);

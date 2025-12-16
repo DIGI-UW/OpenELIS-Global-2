@@ -161,8 +161,8 @@ public class NotebookEntryRestController extends BaseRestController {
     }
 
     /**
-     * Add a new missed sample to an entry.
-     * Creates a new sample item and adds it to the entry.
+     * Add a new missed sample to an entry. Creates a new sample item and adds it to
+     * the entry.
      *
      * @param entryId the entry ID
      * @param body    request body with sample details
@@ -211,8 +211,7 @@ public class NotebookEntryRestController extends BaseRestController {
             }
 
             if (typeObj == null) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Sample type not found: " + sampleType));
+                return ResponseEntity.badRequest().body(Map.of("error", "Sample type not found: " + sampleType));
             }
 
             // Get the entry to access its samples
@@ -461,9 +460,9 @@ public class NotebookEntryRestController extends BaseRestController {
     }
 
     /**
-     * Sync pages from template to an entry's notebook instance.
-     * Adds any pages that exist in the template but are missing from the instance.
-     * This is useful when new pages are added to a template after instances were created.
+     * Sync pages from template to an entry's notebook instance. Adds any pages that
+     * exist in the template but are missing from the instance. This is useful when
+     * new pages are added to a template after instances were created.
      *
      * @param entryId the entry ID
      * @param request HTTP request for user session
