@@ -20,5 +20,7 @@
     <include file="liquibase/3.4.x.x/009-mntd-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/010-mntd-sample-types.xml"/>
     <include file="liquibase/3.4.x.x/011-tuberculosis-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/012-pharmaceuticals-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/013-pharma-sample-types.xml"/>
 
 </databaseChangeLog>

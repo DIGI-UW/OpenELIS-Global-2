@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PHARMACEUTICALS LABORATORY NOTEBOOK TEMPLATE              -->
+    <!-- Creates a predefined notebook template with two pages     -->
+    <!-- Page 1: Sample Creation &amp; Full Metadata Capture           -->
+    <!-- Page 2: Raw Sample Quality Check (QC)                     -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-pharmaceuticals-notebook-template" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Pharmaceuticals Laboratory notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Pharmaceuticals Laboratory"/>
+            <column name="objective" value="Pharmaceutical sample workflows from creation through quality check"/>
+            <column name="protocol" value="Pharmaceuticals Laboratory"/>
+            <column name="content" value="Pharmaceuticals Laboratory notebook with initial sample creation and QC pages"/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Pharmaceuticals Laboratory' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE CREATION &amp; FULL METADATA CAPTURE           -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pharmaceuticals-page-1-sample-creation" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pharmaceuticals Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Creation &amp; Full Metadata Capture page for Pharmaceuticals Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Creation &amp; Full Metadata Capture"/>
+            <column name="instructions" value="Create pharmaceutical samples with complete traceability from reception. Capture sample identity, material/category, core chemistry metadata, and any clinical context. System generates barcode/QR and sets status to Created - Pending QC."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Creation &amp; Full Metadata Capture&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;sampleIdentity&quot;: {
+      &quot;uniqueSampleId&quot;: {&quot;type&quot;: &quot;system&quot;, &quot;label&quot;: &quot;Unique Sample ID (system)&quot;},
+      &quot;sampleName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Sample name&quot;, &quot;required&quot;: true},
+      &quot;sampleCategory&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample category&quot;, &quot;options&quot;: [&quot;Pharmaceutical&quot;, &quot;Natural / Herbal&quot;, &quot;Biological / Stability&quot;, &quot;Microbiological / Environmental&quot;], &quot;required&quot;: true}
+    },
+    &quot;sampleMaterial&quot;: {
+      &quot;materialType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample type &amp; material&quot;, &quot;options&quot;: [&quot;API&quot;, &quot;Excipient&quot;, &quot;Bulk powder&quot;, &quot;Intermediate&quot;, &quot;Finished dosage form (tablet, capsule, injection, cream, patch)&quot;, &quot;Reference / impurity standard&quot;, &quot;Plant part (root, leaf, stem, flower)&quot;, &quot;Blood / plasma / urine / saliva / CSF&quot;, &quot;Animal tissue / organ / feces&quot;, &quot;Cell culture sample&quot;, &quot;Culture&quot;, &quot;Water (PW, WFI)&quot;, &quot;Environmental / equipment swab&quot;], &quot;required&quot;: true}
+    },
+    &quot;coreMetadata&quot;: {
+      &quot;chemicalName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Chemical / IUPAC name&quot;, &quot;required&quot;: false},
+      &quot;grade&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Grade / specification&quot;, &quot;required&quot;: false},
+      &quot;lotNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Lot / batch number&quot;, &quot;required&quot;: true},
+      &quot;dateOfManufacture&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Date of manufacture&quot;, &quot;required&quot;: true},
+      &quot;expiryOrRetestDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Expiry or re-test date&quot;, &quot;required&quot;: true},
+      &quot;storageCondition&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Storage condition (e.g., 25 C / 60% RH)&quot;, &quot;required&quot;: false},
+      &quot;ownerOrRequester&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Owner / requester&quot;, &quot;required&quot;: false},
+      &quot;chainOfCustodyStart&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Chain-of-custody start&quot;, &quot;required&quot;: false}
+    },
+    &quot;clinicalMetadata&quot;: {
+      &quot;patientId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Patient ID (if applicable)&quot;, &quot;required&quot;: false},
+      &quot;clinicalTrialNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Clinical trial number&quot;, &quot;required&quot;: false},
+      &quot;consentStatus&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Consent status&quot;, &quot;options&quot;: [&quot;Yes&quot;, &quot;No&quot;, &quot;Not applicable&quot;], &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Create sample record&quot;, &quot;Generate barcode/QR label&quot;, &quot;Set status: Created - Pending QC&quot;],
+  &quot;nextPage&quot;: &quot;Raw Sample Quality Check (QC)&quot;
+}"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: RAW SAMPLE QUALITY CHECK (QC)                     -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pharmaceuticals-page-2-quality-check" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pharmaceuticals Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Raw Sample Quality Check (QC) page for Pharmaceuticals Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Raw Sample Quality Check (QC)"/>
+            <column name="instructions" value="Perform initial QC on pharmaceutical samples: check container integrity, label readability, visual appearance, volume/weight, and environmental condition deviations. Record pass/fail with remarks and move compliant samples forward."/>
+            <column name="content" value="Raw Sample Quality Check (QC) - Assess condition, integrity, and readiness for further processing"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
+
