@@ -108,10 +108,12 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
 
     private void cleanTestData() {
         try {
-            jdbcTemplate.execute("DELETE FROM storage_rack WHERE id IN (2203, 2204)");
-            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE id = 2202");
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id = 2201");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE id = 2200");
+            // Delete by code to handle leftover records from previous test runs
+            // (ensures unique constraint violations don't occur)
+            jdbcTemplate.execute("DELETE FROM storage_rack WHERE code IN ('RACK-1', 'RACK-2') OR id IN (2203, 2204)");
+            jdbcTemplate.execute("DELETE FROM storage_shelf WHERE code = 'TEST-SHELF' OR id = 2202");
+            jdbcTemplate.execute("DELETE FROM storage_device WHERE code = 'TEST-DEV' OR id = 2201");
+            jdbcTemplate.execute("DELETE FROM storage_room WHERE code = 'TEST-ROOM' OR id = 2200");
         } catch (Exception e) {
             // Ignore cleanup errors
         }
@@ -130,7 +132,7 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
         // Assert
         assertNotNull("Rack should be found", result);
         assertEquals("Label should match", "Rack 1", result.getLabel());
-        assertEquals("Short code should match", "RACK-1", result.getShortCode());
+        assertEquals("Short code should match", "RACK-1", result.getCode());
     }
 
     /**

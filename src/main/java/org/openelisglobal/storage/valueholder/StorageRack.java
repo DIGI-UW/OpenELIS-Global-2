@@ -41,7 +41,7 @@ public class StorageRack extends BaseObject<Integer> {
     private String label;
 
     @Column(name = "CODE", length = 10)
-    private String shortCode;
+    private String code; // Renamed from shortCode per spec Session 2025-11-16 simplification
 
     @Column(name = "ACTIVE", nullable = false)
     private Boolean active;
@@ -113,12 +113,12 @@ public class StorageRack extends BaseObject<Integer> {
         this.label = label;
     }
 
-    public String getShortCode() {
-        return shortCode;
+    public String getCode() {
+        return code;
     }
 
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public Boolean getActive() {

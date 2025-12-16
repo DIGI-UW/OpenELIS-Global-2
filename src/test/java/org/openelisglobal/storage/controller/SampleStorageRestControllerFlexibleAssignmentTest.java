@@ -141,7 +141,7 @@ public class SampleStorageRestControllerFlexibleAssignmentTest extends BaseStora
         // rows/columns parameters are ignored - kept for backward compatibility
         org.openelisglobal.storage.form.StorageRackForm form = new org.openelisglobal.storage.form.StorageRackForm();
         form.setLabel(label);
-        form.setShortCode(label.substring(0, Math.min(10, label.length())).toUpperCase());
+            form.setCode(label.substring(0, Math.min(10, label.length())).toUpperCase());
         form.setParentShelfId(shelfId);
         form.setActive(true);
 

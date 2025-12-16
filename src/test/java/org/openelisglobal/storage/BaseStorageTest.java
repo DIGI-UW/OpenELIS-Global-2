@@ -59,6 +59,9 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
         // Load user data first (required for assigned_by_user_id foreign key)
         executeDataSetWithStateManagement("testdata/user-role.xml");
 
+        // Load type_of_sample data (required for sample_item foreign key)
+        executeDataSetWithStateManagement("testdata/typeofsample.xml");
+
         // Load storage hierarchy + E2E test data via DBUnit
         executeDataSetWithStateManagement("testdata/storage-e2e.xml");
 
@@ -144,7 +147,7 @@ public abstract class BaseStorageTest extends BaseWebContextSensitiveTest {
             // This preserves Liquibase foundation data (IDs 1-999)
             // Note: storage_position table has been removed (replaced by StorageBox)
             jdbcTemplate.execute(
-                    "DELETE FROM storage_box WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%'");
+                    "DELETE FROM storage_box WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
             jdbcTemplate.execute(
                     "DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR code LIKE 'TEST-%'");
             jdbcTemplate.execute(

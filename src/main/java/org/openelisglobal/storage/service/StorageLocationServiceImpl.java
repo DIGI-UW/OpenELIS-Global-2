@@ -334,8 +334,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return storageShelfDAO.insert(shelf);
         } else if (entity instanceof StorageRack) {
             StorageRack rack = (StorageRack) entity;
-            if (rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty()) {
-                String normalizedCode = codeValidationService.autoUppercase(rack.getShortCode());
+            if (rack.getCode() != null && !rack.getCode().trim().isEmpty()) {
+                String normalizedCode = codeValidationService.autoUppercase(rack.getCode());
                 CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
                 if (!formatResult.isValid()) {
                     throw new LIMSRuntimeException(formatResult.getErrorMessage());
@@ -350,7 +350,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 if (!uniquenessResult.isValid()) {
                     throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
                 }
-                rack.setShortCode(normalizedCode);
+                rack.setCode(normalizedCode);
             }
             return storageRackDAO.insert(rack);
         } else if (entity instanceof StorageBox) {
@@ -469,8 +469,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (existingRack == null) {
                 throw new LIMSRuntimeException("Rack not found: " + rack.getId());
             }
-            if (rack.getShortCode() != null && !rack.getShortCode().trim().isEmpty()) {
-                String normalizedCode = codeValidationService.autoUppercase(rack.getShortCode());
+            if (rack.getCode() != null && !rack.getCode().trim().isEmpty()) {
+                String normalizedCode = codeValidationService.autoUppercase(rack.getCode());
                 CodeValidationResult formatResult = codeValidationService.validateFormat(normalizedCode);
                 if (!formatResult.isValid()) {
                     throw new LIMSRuntimeException(formatResult.getErrorMessage());
@@ -485,9 +485,9 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                 if (!uniquenessResult.isValid()) {
                     throw new LIMSRuntimeException(uniquenessResult.getErrorMessage());
                 }
-                existingRack.setShortCode(normalizedCode);
+                existingRack.setCode(normalizedCode);
             } else {
-                existingRack.setShortCode(null);
+                existingRack.setCode(null);
             }
             // Update editable fields
             existingRack.setLabel(rack.getLabel());
@@ -511,7 +511,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             existingBox.setRows(box.getRows());
             existingBox.setColumns(box.getColumns());
             existingBox.setPositionSchemaHint(box.getPositionSchemaHint());
-            existingBox.setShortCode(box.getShortCode());
+            existingBox.setCode(box.getCode());
             existingBox.setActive(box.getActive());
             // Validate grid dimensions
             if (existingBox.getRows() == null || existingBox.getColumns() == null || existingBox.getRows() < 0
@@ -945,7 +945,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             Map<String, Object> map = new HashMap<>();
             map.put("id", rack.getId());
             map.put("label", rack.getLabel());
-            map.put("shortCode", rack.getShortCode());
+            map.put("code", rack.getCode());
             map.put("active", rack.getActive());
             map.put("fhirUuid", rack.getFhirUuidAsString());
 
@@ -1049,7 +1049,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             map.put("columns", box.getColumns());
             map.put("capacity", box.getCapacity());
             map.put("positionSchemaHint", box.getPositionSchemaHint());
-            map.put("shortCode", box.getShortCode());
+            map.put("code", box.getCode());
             map.put("active", box.getActive());
             map.put("fhirUuid", box.getFhirUuidAsString());
             map.put("locationType", "box");
@@ -1263,6 +1263,8 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return canDeleteShelf((StorageShelf) locationEntity);
         } else if (locationEntity instanceof StorageRack) {
             return canDeleteRack((StorageRack) locationEntity);
+        } else if (locationEntity instanceof StorageBox) {
+            return canDeleteBox((StorageBox) locationEntity);
         }
 
         return false;
@@ -1358,6 +1360,18 @@ public class StorageLocationServiceImpl implements StorageLocationService {
     }
 
     /**
+     * Check if a box can be deleted (no active samples assigned)
+     */
+    private boolean canDeleteBox(StorageBox box) {
+        if (box == null || box.getId() == null) {
+            return false;
+        }
+
+        int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("box", box.getId());
+        return sampleCount == 0;
+    }
+
+    /**
      * OGC-75: Updated to include sample counts in error messages
      */
     @Override
@@ -1412,6 +1426,14 @@ public class StorageLocationServiceImpl implements StorageLocationService {
                         sampleCount);
             }
             return "Cannot delete rack: unknown constraint";
+        } else if (locationEntity instanceof StorageBox) {
+            StorageBox box = (StorageBox) locationEntity;
+            int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("box", box.getId());
+            if (sampleCount > 0) {
+                return String.format("Cannot delete Box '%s' because it has %d sample(s) assigned", box.getLabel(),
+                        sampleCount);
+            }
+            return "Cannot delete box: unknown constraint";
         }
 
         return "Cannot delete location: unknown type";
@@ -1890,5 +1912,45 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         default:
             return true;
         }
+    }
+    
+    @Override
+    public boolean isCodeUniqueForRoom(String code, Integer excludeId) {
+        if (code == null || code.trim().isEmpty()) {
+            return true; // Null/empty codes are allowed
+        }
+        String trimmedCode = code.trim();
+        StorageRoom existingRoom = storageRoomDAO.findByCode(trimmedCode);
+        return existingRoom == null || existingRoom.getId().equals(excludeId);
+    }
+    
+    @Override
+    public boolean isCodeUniqueForDevice(String code, Integer excludeId) {
+        if (code == null || code.trim().isEmpty()) {
+            return true; // Null/empty codes are allowed
+        }
+        String trimmedCode = code.trim();
+        StorageDevice existingDevice = storageDeviceDAO.findByCode(trimmedCode);
+        return existingDevice == null || existingDevice.getId().equals(excludeId);
+    }
+    
+    @Override
+    public boolean isCodeUniqueForShelf(String code, Integer excludeId) {
+        if (code == null || code.trim().isEmpty()) {
+            return true; // Null/empty codes are allowed
+        }
+        String trimmedCode = code.trim();
+        StorageShelf existingShelf = storageShelfDAO.findByCode(trimmedCode);
+        return existingShelf == null || existingShelf.getId().equals(excludeId);
+    }
+    
+    @Override
+    public boolean isCodeUniqueForRack(String code, Integer excludeId) {
+        if (code == null || code.trim().isEmpty()) {
+            return true; // Null/empty codes are allowed
+        }
+        String trimmedCode = code.trim();
+        StorageRack existingRack = storageRackDAO.findByCode(trimmedCode);
+        return existingRack == null || existingRack.getId().equals(excludeId);
     }
 }
