@@ -1913,7 +1913,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             return true;
         }
     }
-    
+
     @Override
     public boolean isCodeUniqueForRoom(String code, Integer excludeId) {
         if (code == null || code.trim().isEmpty()) {
@@ -1923,7 +1923,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         StorageRoom existingRoom = storageRoomDAO.findByCode(trimmedCode);
         return existingRoom == null || existingRoom.getId().equals(excludeId);
     }
-    
+
     @Override
     public boolean isCodeUniqueForDevice(String code, Integer excludeId) {
         if (code == null || code.trim().isEmpty()) {
@@ -1933,7 +1933,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         StorageDevice existingDevice = storageDeviceDAO.findByCode(trimmedCode);
         return existingDevice == null || existingDevice.getId().equals(excludeId);
     }
-    
+
     @Override
     public boolean isCodeUniqueForShelf(String code, Integer excludeId) {
         if (code == null || code.trim().isEmpty()) {
@@ -1943,7 +1943,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         StorageShelf existingShelf = storageShelfDAO.findByCode(trimmedCode);
         return existingShelf == null || existingShelf.getId().equals(excludeId);
     }
-    
+
     @Override
     public boolean isCodeUniqueForRack(String code, Integer excludeId) {
         if (code == null || code.trim().isEmpty()) {

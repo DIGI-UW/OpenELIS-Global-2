@@ -82,7 +82,8 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
         try {
             // Delete by code to handle leftover records from previous test runs
             // (ensures unique constraint violations don't occur)
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE code IN ('TEST-DEV1', 'TEST-DEV2') OR id IN (2001, 2002)");
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_device WHERE code IN ('TEST-DEV1', 'TEST-DEV2') OR id IN (2001, 2002)");
             jdbcTemplate.execute("DELETE FROM storage_room WHERE code = 'TEST-ROOM' OR id = 2000");
         } catch (Exception e) {
             // Ignore cleanup errors

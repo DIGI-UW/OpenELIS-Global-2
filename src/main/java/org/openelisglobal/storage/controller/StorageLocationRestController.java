@@ -189,7 +189,7 @@ public class StorageLocationRestController extends BaseRestController {
                 error.put("error", "Room name must be unique");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
-            
+
             // Validate code uniqueness if code is being changed
             if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
                 StorageRoom existingRoom = storageLocationService.getRoom(idInt);
@@ -202,7 +202,7 @@ public class StorageLocationRestController extends BaseRestController {
                     }
                 }
             }
-            
+
             StorageRoom roomToUpdate = new StorageRoom();
             roomToUpdate.setName(form.getName());
             roomToUpdate.setCode(form.getCode()); // Code is now editable per spec FR-037l1
@@ -462,7 +462,7 @@ public class StorageLocationRestController extends BaseRestController {
                 error.put("error", "Device name must be unique within the room");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
-            
+
             // Validate code uniqueness if code is being changed (per spec FR-037l1)
             if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
                 if (!form.getCode().equals(existingDevice.getCode())) {
@@ -686,7 +686,7 @@ public class StorageLocationRestController extends BaseRestController {
                 error.put("error", "Shelf label must be unique within the device");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
-            
+
             // Validate code uniqueness if code is being changed (per spec FR-037l1)
             if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
                 if (!form.getCode().equals(existingShelf.getCode())) {
@@ -698,7 +698,7 @@ public class StorageLocationRestController extends BaseRestController {
                     }
                 }
             }
-            
+
             shelfToUpdate.setId(existingShelf.getId());
 
             storageLocationService.update(shelfToUpdate);
@@ -904,7 +904,7 @@ public class StorageLocationRestController extends BaseRestController {
                 error.put("error", "Rack label must be unique within the shelf");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
-            
+
             // Validate code uniqueness if code is being changed (per spec FR-037l1)
             if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
                 if (!form.getCode().equals(existingRack.getCode())) {
@@ -916,7 +916,7 @@ public class StorageLocationRestController extends BaseRestController {
                     }
                 }
             }
-            
+
             rackToUpdate.setId(existingRack.getId());
 
             storageLocationService.update(rackToUpdate);
@@ -1050,7 +1050,8 @@ public class StorageLocationRestController extends BaseRestController {
                 boolean codeConflict = siblingBoxes.stream()
                         .anyMatch(b -> b.getCode() != null && b.getCode().equals(form.getCode()));
                 if (codeConflict) {
-                    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Box code must be unique within the rack"));
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body(Map.of("error", "Box code must be unique within the rack"));
                 }
             }
 
@@ -1113,7 +1114,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             Integer parentRackId = existingBox.getParentRack() != null ? existingBox.getParentRack().getId() : null;
-            
+
             // Validate label uniqueness within parent rack
             if (!storageLocationService.isNameUniqueWithinParent(form.getLabel(), parentRackId, "box", idInt)) {
                 Map<String, Object> error = new HashMap<>();
@@ -1125,16 +1126,15 @@ public class StorageLocationRestController extends BaseRestController {
             if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
                 if (!form.getCode().equals(existingBox.getCode())) {
                     List<StorageBox> siblingBoxes = storageLocationService.getBoxesByRack(parentRackId);
-                    boolean codeConflict = siblingBoxes.stream()
-                            .anyMatch(b -> !b.getId().equals(existingBox.getId()) && b.getCode() != null
-                                    && b.getCode().equals(form.getCode()));
+                    boolean codeConflict = siblingBoxes.stream().anyMatch(b -> !b.getId().equals(existingBox.getId())
+                            && b.getCode() != null && b.getCode().equals(form.getCode()));
                     if (codeConflict) {
                         return ResponseEntity.status(HttpStatus.CONFLICT)
                                 .body(Map.of("error", "Box code must be unique within the rack"));
                     }
                 }
             }
-            
+
             boxToUpdate.setId(existingBox.getId());
             boxToUpdate.setParentRack(existingBox.getParentRack()); // Parent rack is read-only
 
@@ -1203,8 +1203,8 @@ public class StorageLocationRestController extends BaseRestController {
             if (!storageLocationService.canDeleteLocation(box)) {
                 int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("box", box.getId());
                 String message = storageLocationService.getDeleteConstraintMessage(box);
-                DeletionValidationResult validation =
-                        new DeletionValidationResult(false, "ACTIVE_ASSIGNMENTS", message, sampleCount);
+                DeletionValidationResult validation = new DeletionValidationResult(false, "ACTIVE_ASSIGNMENTS", message,
+                        sampleCount);
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
             }
 

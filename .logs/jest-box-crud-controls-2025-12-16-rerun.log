@@ -1,0 +1,32 @@
+
+> openelis-global-react-app@0.1.0 test
+> react-scripts test BoxCrudControls.test.jsx --watchAll=false
+
+FAIL src/components/storage/StorageDashboard/BoxCrudControls.test.jsx
+  BoxCrudControls
+    ✓ testAddButton_DisabledWithoutRack (44 ms)
+    ✕ testSelectedBox_ShowsOverflowMenu (18 ms)
+
+  ● BoxCrudControls › testSelectedBox_ShowsOverflowMenu
+
+    TypeError: expect(...).toBeInTheDocument is not a function
+
+      55 |
+      56 |     const menu = screen.getByTestId("location-actions-overflow-menu");
+    > 57 |     expect(menu).toBeInTheDocument();
+         |                  ^
+      58 |   });
+      59 | });
+      60 |
+
+      at Object.<anonymous> (src/components/storage/StorageDashboard/BoxCrudControls.test.jsx:57:18)
+      at TestScheduler.scheduleTests (node_modules/@jest/core/build/TestScheduler.js:333:13)
+      at runJest (node_modules/@jest/core/build/runJest.js:404:19)
+      at _run10000 (node_modules/@jest/core/build/cli/index.js:320:7)
+      at runCLI (node_modules/@jest/core/build/cli/index.js:173:3)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 passed, 2 total
+Snapshots:   0 total
+Time:        1.546 s, estimated 2 s
+Ran all test suites matching /BoxCrudControls.test.jsx/i.

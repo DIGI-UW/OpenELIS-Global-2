@@ -106,7 +106,7 @@ public class StorageShelfDAOImpl extends BaseDAOImpl<StorageShelf, Integer> impl
             throw new LIMSRuntimeException("Error finding StorageShelf by label and parent device ID", e);
         }
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public StorageShelf findByCode(String code) {
