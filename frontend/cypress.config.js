@@ -74,7 +74,11 @@ module.exports = defineConfig({
             console.error("Error loading test fixtures:", error);
             console.error("Loader script path:", loaderScript);
             console.error("Project root:", PROJECT_ROOT);
-            return null;
+            // Throw error to fail the test immediately with a clear message
+            // This prevents tests from running with missing fixtures
+            throw new Error(
+              `Failed to load test fixtures: ${error.message || error}. Check logs above for details.`,
+            );
           }
         },
         checkStorageFixturesExist() {
