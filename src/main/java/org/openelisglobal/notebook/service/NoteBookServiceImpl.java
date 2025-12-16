@@ -685,9 +685,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 .min((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(null);
 
         if (nextPage != null) {
-            LogEvent.logInfo(this.getClass().getName(), "getNextPage",
-                    "Found next page: id=" + nextPage.getId() + " order=" + nextPage.getOrder() + " title='"
-                            + nextPage.getTitle() + "'");
+            LogEvent.logInfo(this.getClass().getName(), "getNextPage", "Found next page: id=" + nextPage.getId()
+                    + " order=" + nextPage.getOrder() + " title='" + nextPage.getTitle() + "'");
         } else {
             LogEvent.logInfo(this.getClass().getName(), "getNextPage",
                     "No next page found for currentOrder=" + currentOrder + " (this might be the last page)");
@@ -781,7 +780,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Check by page order - order 4 is the Child Samples page where routing
         // happens, but ONLY for Immunology workflow (not MNTD)
-        // MNTD has "Sample Processing Preparation" at order 4 which is NOT a routing page
+        // MNTD has "Sample Processing Preparation" at order 4 which is NOT a routing
+        // page
         if (page.getOrder() != null && page.getOrder() == 4) {
             // Check if this is an Immunology notebook (not MNTD)
             NoteBook notebook = page.getNotebook();
@@ -935,9 +935,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 instance.getPages().add(newPage);
                 addedCount++;
 
-                LogEvent.logInfo(this.getClass().getName(), "syncPagesFromTemplate",
-                        "Added page '" + templatePage.getTitle() + "' (order=" + templateOrder
-                                + ") to instance " + instanceId);
+                LogEvent.logInfo(this.getClass().getName(), "syncPagesFromTemplate", "Added page '"
+                        + templatePage.getTitle() + "' (order=" + templateOrder + ") to instance " + instanceId);
             }
         }
 

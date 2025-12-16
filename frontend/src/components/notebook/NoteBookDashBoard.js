@@ -73,7 +73,7 @@ function NoteBookDashBoard() {
   });
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(10);
   const intl = useIntl();
 
   const setStatusList = (statusList) => {

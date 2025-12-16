@@ -27,8 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Implementation of MNTDManifestImportService for MNTD-specific CSV manifest
- * processing. Handles MNTD data points: Sample ID, Sample Source, Project
- * Name, Collection Site, Collection DateTime, Collected By.
+ * processing. Handles MNTD data points: Sample ID, Sample Source, Project Name,
+ * Collection Site, Collection DateTime, Collected By.
  */
 @Service
 public class MNTDManifestImportServiceImpl implements MNTDManifestImportService {
@@ -117,8 +117,7 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
                             ? Integer.parseInt(numOfSamplesStr.trim())
                             : 1;
                 } catch (NumberFormatException e) {
-                    errors.add(
-                            new ParseError(rowNumber, "numOfSamples", "Invalid number format: " + numOfSamplesStr));
+                    errors.add(new ParseError(rowNumber, "numOfSamples", "Invalid number format: " + numOfSamplesStr));
                     continue;
                 }
 

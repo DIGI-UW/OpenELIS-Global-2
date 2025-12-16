@@ -21,24 +21,26 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for notebook entry temperature logging.
- * Handles environmental monitoring data for MNTD and other laboratory workflows.
+ * REST controller for notebook entry temperature logging. Handles environmental
+ * monitoring data for MNTD and other laboratory workflows.
  *
- * Temperature logs are stored as JSON in the notebook_entry.data field
- * under the key "temperatureLogs".
+ * Temperature logs are stored as JSON in the notebook_entry.data field under
+ * the key "temperatureLogs".
  */
 @RestController
 @RequestMapping(value = "/rest/notebook-entry")
 public class NotebookTemperatureLogController extends BaseRestController {
 
-    // In-memory storage for temperature logs (in production, this would be persisted to database)
-    // This is a simplified implementation - in a full implementation, you would use a proper
+    // In-memory storage for temperature logs (in production, this would be
+    // persisted to database)
+    // This is a simplified implementation - in a full implementation, you would use
+    // a proper
     // service and repository layer
     private static final Map<Integer, List<TemperatureLog>> temperatureLogStore = new HashMap<>();
 
     /**
-     * Get temperature logs for a notebook entry.
-     * GET /rest/notebook-entry/{entryId}/temperature-logs
+     * Get temperature logs for a notebook entry. GET
+     * /rest/notebook-entry/{entryId}/temperature-logs
      *
      * @param entryId the notebook entry ID
      * @return list of temperature logs
@@ -64,8 +66,8 @@ public class NotebookTemperatureLogController extends BaseRestController {
     }
 
     /**
-     * Log a temperature check for a notebook entry.
-     * POST /rest/notebook-entry/{entryId}/temperature-logs
+     * Log a temperature check for a notebook entry. POST
+     * /rest/notebook-entry/{entryId}/temperature-logs
      *
      * @param entryId     the notebook entry ID
      * @param request     the temperature log data

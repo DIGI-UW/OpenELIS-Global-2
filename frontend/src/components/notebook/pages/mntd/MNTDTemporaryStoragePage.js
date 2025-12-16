@@ -32,7 +32,7 @@ import {
   Checkmark,
   Edit,
   Location,
-  AutomaticDataPlaceholder,
+  Automatic,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -756,7 +756,7 @@ function MNTDTemporaryStoragePage({
           <Button
             kind="primary"
             size="sm"
-            renderIcon={AutomaticDataPlaceholder}
+            renderIcon={Automatic}
             onClick={() => setAutoAssignModalOpen(true)}
           >
             <FormattedMessage

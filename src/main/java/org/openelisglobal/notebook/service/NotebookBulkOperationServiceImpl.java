@@ -89,8 +89,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     }
 
     /**
-     * Consume reagents from inventory when they are applied to samples.
-     * Each reagent is consumed once per sample being processed.
+     * Consume reagents from inventory when they are applied to samples. Each
+     * reagent is consumed once per sample being processed.
      *
      * @param data        the data map containing selectedReagents list
      * @param sampleCount number of samples being processed
@@ -109,8 +109,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             return;
         }
 
-        LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
-                "Processing selectedReagents: " + selectedReagentsObj + " (type: " + selectedReagentsObj.getClass().getName() + ")");
+        LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory", "Processing selectedReagents: "
+                + selectedReagentsObj + " (type: " + selectedReagentsObj.getClass().getName() + ")");
 
         List<?> rawList;
         if (selectedReagentsObj instanceof List) {
@@ -128,7 +128,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         }
 
         // Consume 1 unit of each reagent per sample
-        // (This is a simplification - in reality, different reagents may have different consumption rates)
+        // (This is a simplification - in reality, different reagents may have different
+        // consumption rates)
         double quantityPerSample = 1.0;
         double totalQuantity = quantityPerSample * sampleCount;
 
@@ -142,7 +143,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                     itemId = Long.valueOf((String) reagentIdObj);
                 } else {
                     LogEvent.logWarn(this.getClass().getName(), "consumeReagentsFromInventory",
-                            "Unknown reagent ID type: " + reagentIdObj.getClass().getName() + " value: " + reagentIdObj);
+                            "Unknown reagent ID type: " + reagentIdObj.getClass().getName() + " value: "
+                                    + reagentIdObj);
                     continue;
                 }
 
@@ -152,20 +154,18 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                 // Check if sufficient inventory is available
                 if (inventoryManagementService.isSufficientInventoryAvailable(itemId, totalQuantity)) {
                     // Consume inventory using FEFO (First Expired, First Out)
-                    inventoryManagementService.consumeInventoryFEFO(
-                            itemId,
-                            totalQuantity,
-                            null, // testResultId - not applicable for sample preparation
+                    inventoryManagementService.consumeInventoryFEFO(itemId, totalQuantity, null, // testResultId - not
+                                                                                                 // applicable for
+                                                                                                 // sample preparation
                             null, // analysisId - not applicable for sample preparation
                             userId);
 
-                    LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
-                            "Successfully consumed " + totalQuantity + " units of reagent ID " + itemId
-                                    + " for " + sampleCount + " samples");
+                    LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory", "Successfully consumed "
+                            + totalQuantity + " units of reagent ID " + itemId + " for " + sampleCount + " samples");
                 } else {
                     LogEvent.logWarn(this.getClass().getName(), "consumeReagentsFromInventory",
-                            "Insufficient inventory for reagent ID " + itemId
-                                    + " - needed " + totalQuantity + " units");
+                            "Insufficient inventory for reagent ID " + itemId + " - needed " + totalQuantity
+                                    + " units");
                 }
             } catch (NumberFormatException e) {
                 LogEvent.logWarn(this.getClass().getName(), "consumeReagentsFromInventory",
@@ -294,7 +294,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                     String errorMsg = e.getMessage();
                     // Check if it's a duplicate assignment error
                     if (errorMsg != null && errorMsg.contains("already assigned")) {
-                        errors.add("Sample " + sampleId + " is already assigned to storage. Use move operation instead.");
+                        errors.add(
+                                "Sample " + sampleId + " is already assigned to storage. Use move operation instead.");
                     } else if (errorMsg != null && errorMsg.contains("already occupied")) {
                         errors.add("Well " + wellCoordinate + " is already occupied");
                     } else {
@@ -370,8 +371,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         // Check if we have enough available wells
         if (availableWells.size() < sampleIds.size()) {
             result.put("success", false);
-            result.put("error", "Not enough available wells. Need " + sampleIds.size()
-                    + " but only " + availableWells.size() + " available.");
+            result.put("error", "Not enough available wells. Need " + sampleIds.size() + " but only "
+                    + availableWells.size() + " available.");
             result.put("availableCount", availableWells.size());
             result.put("requestedCount", sampleIds.size());
             return result;
@@ -428,14 +429,16 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                         assignedCount++;
 
                         LogEvent.logInfo(this.getClass().getName(), "autoAssignSamplesToStorage",
-                                "Auto-assigned sample " + sampleItemId + " to box " + boxId + " well " + wellCoordinate);
+                                "Auto-assigned sample " + sampleItemId + " to box " + boxId + " well "
+                                        + wellCoordinate);
                     }
                 } catch (Exception e) {
                     String errorMsg = e.getMessage();
                     if (errorMsg != null && errorMsg.contains("already assigned")) {
                         errors.add("Sample " + sampleId + " is already assigned to storage");
                     } else {
-                        errors.add("Failed to assign sample " + sampleId + " to well " + wellCoordinate + ": " + errorMsg);
+                        errors.add(
+                                "Failed to assign sample " + sampleId + " to well " + wellCoordinate + ": " + errorMsg);
                     }
                     LogEvent.logError(this.getClass().getName(), "autoAssignSamplesToStorage",
                             "Error auto-assigning sample " + sampleId + ": " + e.getMessage());
@@ -466,7 +469,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
         try {
             // Get sample data for the report
-            // Note: sampleIds are NotebookPageSample.id values (primary keys), not sampleItemIds
+            // Note: sampleIds are NotebookPageSample.id values (primary keys), not
+            // sampleItemIds
             List<Map<String, Object>> sampleData = new ArrayList<>();
             LogEvent.logInfo(this.getClass().getName(), "generateReport",
                     "Processing " + sampleIds.size() + " samples for report, format=" + reportFormat);
@@ -474,8 +478,7 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             for (Integer sampleId : sampleIds) {
                 NotebookPageSample nps = notebookPageSampleService.get(sampleId);
                 if (nps == null) {
-                    LogEvent.logWarn(this.getClass().getName(), "generateReport",
-                            "Sample not found: " + sampleId);
+                    LogEvent.logWarn(this.getClass().getName(), "generateReport", "Sample not found: " + sampleId);
                     continue;
                 }
 
@@ -498,20 +501,20 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             // Generate report based on format
             // Note: PDF generation not yet implemented - use CSV as default
             switch (reportFormat.toUpperCase()) {
-                case "CSV":
-                    return generateCSVReport(sampleData, reportType);
-                case "JSON":
-                    return generateJSONReport(sampleData, reportType);
-                case "EXCEL":
-                    return generateExcelReport(sampleData, reportType);
-                case "PDF":
-                    // PDF generation requires Apache PDFBox or iText library
-                    // For now, return CSV data - controller should be updated to not offer PDF
-                    LogEvent.logWarn(this.getClass().getName(), "generateReport",
-                            "PDF format not yet implemented, returning CSV");
-                    return generateCSVReport(sampleData, reportType);
-                default:
-                    return generateCSVReport(sampleData, reportType);
+            case "CSV":
+                return generateCSVReport(sampleData, reportType);
+            case "JSON":
+                return generateJSONReport(sampleData, reportType);
+            case "EXCEL":
+                return generateExcelReport(sampleData, reportType);
+            case "PDF":
+                // PDF generation requires Apache PDFBox or iText library
+                // For now, return CSV data - controller should be updated to not offer PDF
+                LogEvent.logWarn(this.getClass().getName(), "generateReport",
+                        "PDF format not yet implemented, returning CSV");
+                return generateCSVReport(sampleData, reportType);
+            default:
+                return generateCSVReport(sampleData, reportType);
             }
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "generateReport",
@@ -623,7 +626,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             csv.append(String.join(",", headers)).append("\n");
 
             // Write data rows
-            // Note: sampleIds are NotebookPageSample.id values (primary keys), not sampleItemIds
+            // Note: sampleIds are NotebookPageSample.id values (primary keys), not
+            // sampleItemIds
             int recordNum = 1;
             LogEvent.logInfo(this.getClass().getName(), "generateREDCapExport",
                     "Processing " + sampleIds.size() + " samples for pageId " + pageId);

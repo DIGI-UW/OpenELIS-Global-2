@@ -94,38 +94,37 @@ public interface NotebookBulkOperationService {
     int BATCH_SIZE = 50;
 
     /**
-     * Assign samples to storage location and persist to storage system.
-     * This method:
-     * 1. Validates that target wells are not already occupied
-     * 2. Creates SampleStorageAssignment records in the storage system
-     * 3. Updates notebook page sample data with storage info
+     * Assign samples to storage location and persist to storage system. This
+     * method: 1. Validates that target wells are not already occupied 2. Creates
+     * SampleStorageAssignment records in the storage system 3. Updates notebook
+     * page sample data with storage info
      *
-     * @param pageId          the notebook page ID
-     * @param sampleIds       list of sample IDs to assign
-     * @param boxId           the storage box ID
-     * @param wellCoordinate  the well coordinate (for single assignment)
-     * @param storageData     additional storage metadata (storageType, assignedBy, etc.)
-     * @param userId          the user performing the assignment
+     * @param pageId         the notebook page ID
+     * @param sampleIds      list of sample IDs to assign
+     * @param boxId          the storage box ID
+     * @param wellCoordinate the well coordinate (for single assignment)
+     * @param storageData    additional storage metadata (storageType, assignedBy,
+     *                       etc.)
+     * @param userId         the user performing the assignment
      * @return map containing assignedCount and any errors
      */
     java.util.Map<String, Object> assignSamplesToStorage(Integer pageId, List<Integer> sampleIds, Integer boxId,
             String wellCoordinate, Map<String, Object> storageData, String userId);
 
     /**
-     * Auto-assign samples to next available wells in a storage box.
-     * This method:
-     * 1. Finds next available wells in the box (not occupied)
-     * 2. Creates SampleStorageAssignment records for each sample
-     * 3. Updates notebook page sample data with storage info
+     * Auto-assign samples to next available wells in a storage box. This method: 1.
+     * Finds next available wells in the box (not occupied) 2. Creates
+     * SampleStorageAssignment records for each sample 3. Updates notebook page
+     * sample data with storage info
      *
-     * @param pageId          the notebook page ID
-     * @param sampleIds       list of sample IDs to auto-assign
-     * @param boxId           the storage box ID
-     * @param rows            number of rows in the box (default 8)
-     * @param columns         number of columns in the box (default 12)
-     * @param occupiedWells   list of already occupied well coordinates
-     * @param storageData     additional storage metadata
-     * @param userId          the user performing the assignment
+     * @param pageId        the notebook page ID
+     * @param sampleIds     list of sample IDs to auto-assign
+     * @param boxId         the storage box ID
+     * @param rows          number of rows in the box (default 8)
+     * @param columns       number of columns in the box (default 12)
+     * @param occupiedWells list of already occupied well coordinates
+     * @param storageData   additional storage metadata
+     * @param userId        the user performing the assignment
      * @return map containing assignments array and any errors
      */
     java.util.Map<String, Object> autoAssignSamplesToStorage(Integer pageId, List<Integer> sampleIds, Integer boxId,
@@ -136,7 +135,8 @@ public interface NotebookBulkOperationService {
      *
      * @param pageId       the notebook page ID
      * @param sampleIds    list of sample IDs to include in report
-     * @param reportType   type of report (SUMMARY, DETAILED, QC, STATISTICAL, AUDIT, CUSTOM)
+     * @param reportType   type of report (SUMMARY, DETAILED, QC, STATISTICAL,
+     *                     AUDIT, CUSTOM)
      * @param reportFormat output format (PDF, EXCEL, CSV, JSON)
      * @param userId       the user generating the report
      * @return byte array containing the report content
@@ -147,12 +147,12 @@ public interface NotebookBulkOperationService {
     /**
      * Generate a REDCap-compatible CSV export for samples.
      *
-     * @param pageId          the notebook page ID
-     * @param sampleIds       list of sample IDs to export
-     * @param recordIdField   the REDCap record ID field name
-     * @param eventName       optional event name for longitudinal projects
-     * @param instrumentName  optional instrument name
-     * @param userId          the user generating the export
+     * @param pageId         the notebook page ID
+     * @param sampleIds      list of sample IDs to export
+     * @param recordIdField  the REDCap record ID field name
+     * @param eventName      optional event name for longitudinal projects
+     * @param instrumentName optional instrument name
+     * @param userId         the user generating the export
      * @return byte array containing the CSV content
      */
     byte[] generateREDCapExport(Integer pageId, List<Integer> sampleIds, String recordIdField, String eventName,

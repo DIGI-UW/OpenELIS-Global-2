@@ -95,11 +95,15 @@ public interface ResultCompilationService {
      * @param recipientName  name of recipient (e.g., "Data Management Team")
      * @param recipientEmail email of recipient
      * @param fileId         ID of the delivered file (NoteBookFile)
+     * @param deliveryType   type of delivery (e.g., "email", "regulatory",
+     *                       "internal")
+     * @param regulatoryBody regulatory body name (for regulatory submissions)
+     * @param notes          additional notes about the delivery
      * @param userId         user performing delivery
      * @return delivery record ID
      */
     Integer recordDelivery(Integer notebookId, String recipientName, String recipientEmail, Integer fileId,
-            String userId);
+            String deliveryType, String regulatoryBody, String notes, String userId);
 
     /**
      * Get delivery history for a notebook.
@@ -140,8 +144,8 @@ public interface ResultCompilationService {
     /**
      * Delivery record for audit trail.
      */
-    record DeliveryRecord(Integer id, String recipientName, String recipientEmail, String fileName,
-            java.time.LocalDateTime deliveredAt, String deliveredBy) {
+    record DeliveryRecord(Integer id, String recipientName, String recipientEmail, String fileName, String deliveryType,
+            String regulatoryBody, String notes, java.time.LocalDateTime deliveredAt, String deliveredBy) {
     }
 
     /**

@@ -21,9 +21,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for reagent and instrument inventory endpoints.
- * Provides simplified API for frontend components like MNTDSampleProcessingPage
- * that need to select reagents and instruments for sample preparation.
+ * REST controller for reagent and instrument inventory endpoints. Provides
+ * simplified API for frontend components like MNTDSampleProcessingPage that
+ * need to select reagents and instruments for sample preparation.
  */
 @RestController
 @RequestMapping("/rest/inventory")
@@ -36,8 +36,8 @@ public class InventoryReagentRestController extends BaseRestController {
     private InventoryLotService inventoryLotService;
 
     /**
-     * Get all active reagents with their available lots.
-     * Returns a flat list where each entry represents a reagent item with lot information.
+     * Get all active reagents with their available lots. Returns a flat list where
+     * each entry represents a reagent item with lot information.
      *
      * @param status Optional filter - "active" returns only active items (default)
      * @return List of ReagentDTO objects
@@ -53,9 +53,7 @@ public class InventoryReagentRestController extends BaseRestController {
 
             // Filter by active status if requested
             if ("active".equalsIgnoreCase(status)) {
-                reagentItems = reagentItems.stream()
-                        .filter(item -> "Y".equals(item.getIsActive()))
-                        .toList();
+                reagentItems = reagentItems.stream().filter(item -> "Y".equals(item.getIsActive())).toList();
             }
 
             // For each reagent item, get available lots and aggregate info
@@ -76,9 +74,8 @@ public class InventoryReagentRestController extends BaseRestController {
                     InventoryLot primaryLot = lots.get(0);
                     dto.setLotId(primaryLot.getId());
                     dto.setLotNumber(primaryLot.getLotNumber());
-                    dto.setExpirationDate(primaryLot.getExpirationDate() != null
-                            ? primaryLot.getExpirationDate().toString()
-                            : null);
+                    dto.setExpirationDate(
+                            primaryLot.getExpirationDate() != null ? primaryLot.getExpirationDate().toString() : null);
                     dto.setQcStatus(primaryLot.getQcStatus() != null ? primaryLot.getQcStatus().name() : null);
 
                     // Sum total quantity across all lots
@@ -101,7 +98,8 @@ public class InventoryReagentRestController extends BaseRestController {
 
     /**
      * Get all active instruments (cartridges/analyzers) with their available lots.
-     * Returns a flat list where each entry represents an instrument item with lot information.
+     * Returns a flat list where each entry represents an instrument item with lot
+     * information.
      *
      * @param status Optional filter - "active" returns only active items (default)
      * @return List of InstrumentDTO objects
@@ -117,9 +115,7 @@ public class InventoryReagentRestController extends BaseRestController {
 
             // Filter by active status if requested
             if ("active".equalsIgnoreCase(status)) {
-                cartridgeItems = cartridgeItems.stream()
-                        .filter(item -> "Y".equals(item.getIsActive()))
-                        .toList();
+                cartridgeItems = cartridgeItems.stream().filter(item -> "Y".equals(item.getIsActive())).toList();
             }
 
             // For each cartridge item, get available lots and aggregate info
@@ -141,9 +137,8 @@ public class InventoryReagentRestController extends BaseRestController {
                     InventoryLot primaryLot = lots.get(0);
                     dto.setLotId(primaryLot.getId());
                     dto.setSerialNumber(primaryLot.getLotNumber());
-                    dto.setExpirationDate(primaryLot.getExpirationDate() != null
-                            ? primaryLot.getExpirationDate().toString()
-                            : null);
+                    dto.setExpirationDate(
+                            primaryLot.getExpirationDate() != null ? primaryLot.getExpirationDate().toString() : null);
                     dto.setQcStatus(primaryLot.getQcStatus() != null ? primaryLot.getQcStatus().name() : null);
 
                     // Sum total quantity across all lots
