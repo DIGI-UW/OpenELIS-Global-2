@@ -427,6 +427,362 @@ public class NotebookBulkOperationController extends BaseRestController {
     }
 
     /**
+     * Generate Certificate of Analysis (COA) PDF for selected samples. POST
+     * /notebook/bulk/page/{pageId}/coa/generate
+     *
+     * Generates a pharmaceutical COA document in PDF format containing: -
+     * Product/batch information - Test results and specifications - QC status and
+     * validation - Authorization signatures
+     *
+     * @param pageId      the notebook page ID
+     * @param request     COA generation request with sample IDs and metadata
+     * @param httpRequest for getting user session
+     * @param response    HTTP response to write PDF to
+     */
+    @PostMapping(value = "/page/{pageId}/coa/generate", produces = "application/pdf")
+    public void generateCOA(@PathVariable("pageId") Integer pageId, @RequestBody COAGenerationRequest request,
+            HttpServletRequest httpRequest, HttpServletResponse response) throws java.io.IOException {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            response.setStatus(401);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"User session not found\"}");
+            return;
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            response.setStatus(400);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"No sample IDs provided\"}");
+            return;
+        }
+
+        if (request.getProductName() == null || request.getProductName().isBlank()) {
+            response.setStatus(400);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"Product name is required\"}");
+            return;
+        }
+
+        if (request.getBatchNumber() == null || request.getBatchNumber().isBlank()) {
+            response.setStatus(400);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"Batch number is required\"}");
+            return;
+        }
+
+        try {
+            LogEvent.logInfo(this.getClass().getName(), "generateCOA",
+                    "Generating COA for page " + pageId + " with " + request.getSampleIds().size() + " samples");
+
+            byte[] pdfBytes = generateCOAPdf(pageId, request, sysUserId);
+
+            String filename = "COA_" + request.getBatchNumber().replaceAll("[^a-zA-Z0-9]", "_") + ".pdf";
+            response.setContentType("application/pdf");
+            response.setHeader("Content-Disposition", "attachment; filename=" + filename);
+            response.setContentLength(pdfBytes.length);
+            response.getOutputStream().write(pdfBytes);
+            response.getOutputStream().flush();
+
+            LogEvent.logInfo(this.getClass().getName(), "generateCOA",
+                    "Successfully generated COA PDF with " + pdfBytes.length + " bytes");
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "generateCOA",
+                    "Failed to generate COA for page " + pageId + ": " + e.getMessage());
+            e.printStackTrace();
+            response.setStatus(500);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"COA generation failed: " + e.getMessage() + "\"}");
+        }
+    }
+
+    /**
+     * Generate the COA PDF document using iText.
+     */
+    private byte[] generateCOAPdf(Integer pageId, COAGenerationRequest request, String sysUserId) throws Exception {
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+
+        // Create PDF document
+        com.itextpdf.text.Document document = new com.itextpdf.text.Document(com.itextpdf.text.PageSize.A4, 50, 50, 50,
+                50);
+        com.itextpdf.text.pdf.PdfWriter.getInstance(document, baos);
+        document.open();
+
+        // Fonts
+        com.itextpdf.text.Font titleFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 18,
+                com.itextpdf.text.Font.BOLD);
+        com.itextpdf.text.Font headerFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 12,
+                com.itextpdf.text.Font.BOLD);
+        com.itextpdf.text.Font normalFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 10,
+                com.itextpdf.text.Font.NORMAL);
+        com.itextpdf.text.Font smallFont = new com.itextpdf.text.Font(com.itextpdf.text.Font.FontFamily.HELVETICA, 8,
+                com.itextpdf.text.Font.NORMAL);
+
+        // Title
+        com.itextpdf.text.Paragraph title = new com.itextpdf.text.Paragraph("CERTIFICATE OF ANALYSIS", titleFont);
+        title.setAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
+        title.setSpacingAfter(20);
+        document.add(title);
+
+        // Product Information Table
+        com.itextpdf.text.pdf.PdfPTable infoTable = new com.itextpdf.text.pdf.PdfPTable(2);
+        infoTable.setWidthPercentage(100);
+        infoTable.setSpacingAfter(20);
+
+        addTableRow(infoTable, "Product Name:", request.getProductName(), headerFont, normalFont);
+        addTableRow(infoTable, "Batch/Lot Number:", request.getBatchNumber(), headerFont, normalFont);
+        if (request.getManufacturingDate() != null && !request.getManufacturingDate().isBlank()) {
+            addTableRow(infoTable, "Manufacturing Date:", request.getManufacturingDate(), headerFont, normalFont);
+        }
+        if (request.getExpiryDate() != null && !request.getExpiryDate().isBlank()) {
+            addTableRow(infoTable, "Expiry/Retest Date:", request.getExpiryDate(), headerFont, normalFont);
+        }
+        addTableRow(infoTable, "Date of Analysis:", java.time.LocalDate.now().toString(), headerFont, normalFont);
+        addTableRow(infoTable, "Number of Samples:", String.valueOf(request.getSampleIds().size()), headerFont,
+                normalFont);
+
+        document.add(infoTable);
+
+        // Specifications Section
+        if (request.getSpecifications() != null && !request.getSpecifications().isBlank()) {
+            com.itextpdf.text.Paragraph specHeader = new com.itextpdf.text.Paragraph("Specifications:", headerFont);
+            specHeader.setSpacingBefore(10);
+            document.add(specHeader);
+
+            com.itextpdf.text.Paragraph specText = new com.itextpdf.text.Paragraph(request.getSpecifications(),
+                    normalFont);
+            specText.setSpacingAfter(15);
+            document.add(specText);
+        }
+
+        // Test Results Section
+        com.itextpdf.text.Paragraph resultsHeader = new com.itextpdf.text.Paragraph("Test Results:", headerFont);
+        resultsHeader.setSpacingBefore(10);
+        resultsHeader.setSpacingAfter(10);
+        document.add(resultsHeader);
+
+        // Get sample data from the page
+        List<Map<String, Object>> samplesWithValidation = resultCompilationService.getSamplesWithValidation(pageId);
+
+        // Filter to only requested sample IDs
+        java.util.Set<Integer> requestedIds = new java.util.HashSet<>(request.getSampleIds());
+        List<Map<String, Object>> filteredSamples = samplesWithValidation.stream().filter(s -> {
+            Object idObj = s.get("id");
+            if (idObj instanceof Integer) {
+                return requestedIds.contains((Integer) idObj);
+            } else if (idObj instanceof String) {
+                try {
+                    return requestedIds.contains(Integer.parseInt((String) idObj));
+                } catch (NumberFormatException e) {
+                    return false;
+                }
+            }
+            return false;
+        }).collect(java.util.stream.Collectors.toList());
+
+        // Results Table
+        com.itextpdf.text.pdf.PdfPTable resultsTable = new com.itextpdf.text.pdf.PdfPTable(5);
+        resultsTable.setWidthPercentage(100);
+        resultsTable.setWidths(new float[] { 2, 2, 2, 2, 2 });
+
+        // Table headers
+        addTableHeader(resultsTable, "Sample ID", headerFont);
+        addTableHeader(resultsTable, "Sample Type", headerFont);
+        addTableHeader(resultsTable, "Test Result", headerFont);
+        addTableHeader(resultsTable, "QC Status", headerFont);
+        addTableHeader(resultsTable, "Validation", headerFont);
+
+        // Table rows
+        for (Map<String, Object> sample : filteredSamples) {
+            String externalId = sample.get("externalId") != null ? sample.get("externalId").toString() : "-";
+            String sampleType = sample.get("sampleType") != null ? sample.get("sampleType").toString() : "-";
+
+            // Get result from data
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) sample.get("data");
+            String testResult = "-";
+            String qcStatus = "-";
+            String validation = sample.get("validationStatus") != null ? sample.get("validationStatus").toString()
+                    : "PENDING";
+
+            if (data != null) {
+                if (data.get("assayResults") != null) {
+                    testResult = data.get("assayResults").toString();
+                } else if (data.get("results") != null) {
+                    testResult = data.get("results").toString();
+                }
+                if (data.get("qcResult") != null) {
+                    qcStatus = data.get("qcResult").toString();
+                }
+                if (data.get("validationStatus") != null) {
+                    validation = data.get("validationStatus").toString();
+                }
+            }
+
+            addTableCell(resultsTable, externalId, normalFont);
+            addTableCell(resultsTable, sampleType, normalFont);
+            addTableCell(resultsTable, testResult, normalFont);
+            addTableCell(resultsTable, qcStatus, normalFont);
+            addTableCell(resultsTable, validation, normalFont);
+        }
+
+        document.add(resultsTable);
+
+        // Conclusion
+        com.itextpdf.text.Paragraph conclusion = new com.itextpdf.text.Paragraph();
+        conclusion.setSpacingBefore(20);
+        conclusion.add(new com.itextpdf.text.Chunk("Conclusion: ", headerFont));
+        conclusion.add(new com.itextpdf.text.Chunk(
+                "The above batch has been analyzed and the results comply with the specifications.", normalFont));
+        document.add(conclusion);
+
+        // Authorization Section
+        com.itextpdf.text.Paragraph authSection = new com.itextpdf.text.Paragraph();
+        authSection.setSpacingBefore(40);
+
+        authSection.add(new com.itextpdf.text.Chunk("Authorized By: ", headerFont));
+        authSection.add(new com.itextpdf.text.Chunk(
+                request.getAuthorizedBy() != null ? request.getAuthorizedBy() : "________________", normalFont));
+        authSection.add(com.itextpdf.text.Chunk.NEWLINE);
+        authSection.add(com.itextpdf.text.Chunk.NEWLINE);
+
+        authSection.add(new com.itextpdf.text.Chunk("Date: ", headerFont));
+        authSection.add(new com.itextpdf.text.Chunk(request.getAuthorizedDate() != null ? request.getAuthorizedDate()
+                : java.time.LocalDate.now().toString(), normalFont));
+        authSection.add(com.itextpdf.text.Chunk.NEWLINE);
+        authSection.add(com.itextpdf.text.Chunk.NEWLINE);
+
+        authSection.add(new com.itextpdf.text.Chunk("Signature: ", headerFont));
+        authSection.add(new com.itextpdf.text.Chunk("________________", normalFont));
+
+        document.add(authSection);
+
+        // Footer
+        com.itextpdf.text.Paragraph footer = new com.itextpdf.text.Paragraph();
+        footer.setSpacingBefore(30);
+        footer.add(new com.itextpdf.text.Chunk("Generated: " + java.time.LocalDateTime.now().toString(), smallFont));
+        footer.add(com.itextpdf.text.Chunk.NEWLINE);
+        footer.add(new com.itextpdf.text.Chunk("This is a computer-generated document.", smallFont));
+        document.add(footer);
+
+        document.close();
+
+        return baos.toByteArray();
+    }
+
+    private void addTableRow(com.itextpdf.text.pdf.PdfPTable table, String label, String value,
+            com.itextpdf.text.Font labelFont, com.itextpdf.text.Font valueFont) {
+        com.itextpdf.text.pdf.PdfPCell labelCell = new com.itextpdf.text.pdf.PdfPCell(
+                new com.itextpdf.text.Phrase(label, labelFont));
+        labelCell.setBorder(com.itextpdf.text.Rectangle.NO_BORDER);
+        labelCell.setPadding(5);
+        table.addCell(labelCell);
+
+        com.itextpdf.text.pdf.PdfPCell valueCell = new com.itextpdf.text.pdf.PdfPCell(
+                new com.itextpdf.text.Phrase(value, valueFont));
+        valueCell.setBorder(com.itextpdf.text.Rectangle.NO_BORDER);
+        valueCell.setPadding(5);
+        table.addCell(valueCell);
+    }
+
+    private void addTableHeader(com.itextpdf.text.pdf.PdfPTable table, String text, com.itextpdf.text.Font font) {
+        com.itextpdf.text.pdf.PdfPCell cell = new com.itextpdf.text.pdf.PdfPCell(
+                new com.itextpdf.text.Phrase(text, font));
+        cell.setBackgroundColor(com.itextpdf.text.BaseColor.LIGHT_GRAY);
+        cell.setPadding(5);
+        cell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
+        table.addCell(cell);
+    }
+
+    private void addTableCell(com.itextpdf.text.pdf.PdfPTable table, String text, com.itextpdf.text.Font font) {
+        com.itextpdf.text.pdf.PdfPCell cell = new com.itextpdf.text.pdf.PdfPCell(
+                new com.itextpdf.text.Phrase(text, font));
+        cell.setPadding(5);
+        cell.setHorizontalAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
+        table.addCell(cell);
+    }
+
+    /**
+     * Request object for COA generation.
+     */
+    public static class COAGenerationRequest {
+        private List<Integer> sampleIds;
+        private String productName;
+        private String batchNumber;
+        private String manufacturingDate;
+        private String expiryDate;
+        private String specifications;
+        private String authorizedBy;
+        private String authorizedDate;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getProductName() {
+            return productName;
+        }
+
+        public void setProductName(String productName) {
+            this.productName = productName;
+        }
+
+        public String getBatchNumber() {
+            return batchNumber;
+        }
+
+        public void setBatchNumber(String batchNumber) {
+            this.batchNumber = batchNumber;
+        }
+
+        public String getManufacturingDate() {
+            return manufacturingDate;
+        }
+
+        public void setManufacturingDate(String manufacturingDate) {
+            this.manufacturingDate = manufacturingDate;
+        }
+
+        public String getExpiryDate() {
+            return expiryDate;
+        }
+
+        public void setExpiryDate(String expiryDate) {
+            this.expiryDate = expiryDate;
+        }
+
+        public String getSpecifications() {
+            return specifications;
+        }
+
+        public void setSpecifications(String specifications) {
+            this.specifications = specifications;
+        }
+
+        public String getAuthorizedBy() {
+            return authorizedBy;
+        }
+
+        public void setAuthorizedBy(String authorizedBy) {
+            this.authorizedBy = authorizedBy;
+        }
+
+        public String getAuthorizedDate() {
+            return authorizedDate;
+        }
+
+        public void setAuthorizedDate(String authorizedDate) {
+            this.authorizedDate = authorizedDate;
+        }
+    }
+
+    /**
      * Record delivery of results. POST /notebook/bulk/notebook/{notebookId}/deliver
      *
      * Per T125b: Implement POST /notebook/{id}/results/deliver endpoint
@@ -451,7 +807,8 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         Integer deliveryId = resultCompilationService.recordDelivery(notebookId, request.getRecipientName(),
-                request.getRecipientEmail(), request.getFileId(), sysUserId);
+                request.getRecipientEmail(), request.getFileId(), request.getDeliveryType(),
+                request.getRegulatoryBody(), request.getNotes(), sysUserId);
 
         return ResponseEntity.ok(Map.of("success", true, "deliveryId", deliveryId, "notebookId", notebookId,
                 "recipientName", request.getRecipientName()));
@@ -770,6 +1127,9 @@ public class NotebookBulkOperationController extends BaseRestController {
         private String recipientName;
         private String recipientEmail;
         private Integer fileId;
+        private String deliveryType;
+        private String regulatoryBody;
+        private String notes;
 
         public String getRecipientName() {
             return recipientName;
@@ -793,6 +1153,30 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setFileId(Integer fileId) {
             this.fileId = fileId;
+        }
+
+        public String getDeliveryType() {
+            return deliveryType;
+        }
+
+        public void setDeliveryType(String deliveryType) {
+            this.deliveryType = deliveryType;
+        }
+
+        public String getRegulatoryBody() {
+            return regulatoryBody;
+        }
+
+        public void setRegulatoryBody(String regulatoryBody) {
+            this.regulatoryBody = regulatoryBody;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
         }
     }
 

@@ -280,7 +280,8 @@ public class ResultCompilationServiceTest {
     public void testRecordDelivery_CreatesRecord() {
         when(systemUserService.get("1")).thenReturn(testUser);
 
-        Integer deliveryId = service.recordDelivery(1, "Data Management Team", "datamanagement@lab.org", null, "1");
+        Integer deliveryId = service.recordDelivery(1, "Data Management Team", "datamanagement@lab.org", null,
+                "internal", null, null, "1");
 
         assertNotNull("Delivery ID should not be null", deliveryId);
         assertTrue("Delivery ID should be positive", deliveryId > 0);
@@ -290,8 +291,8 @@ public class ResultCompilationServiceTest {
     public void testGetDeliveryHistory_ReturnsRecords() {
         when(systemUserService.get("1")).thenReturn(testUser);
 
-        service.recordDelivery(1, "Data Management Team", "dm@lab.org", null, "1");
-        service.recordDelivery(1, "External Reviewer", "reviewer@external.org", null, "1");
+        service.recordDelivery(1, "Data Management Team", "dm@lab.org", null, "internal", null, null, "1");
+        service.recordDelivery(1, "External Reviewer", "reviewer@external.org", null, "external", null, null, "1");
 
         List<ResultCompilationService.DeliveryRecord> history = service.getDeliveryHistory(1);
 

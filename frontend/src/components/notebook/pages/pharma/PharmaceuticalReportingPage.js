@@ -475,8 +475,8 @@ function PharmaceuticalReportingPage({
     });
   };
 
-  // Handle COA generation
-  const handleGenerateCOA = () => {
+  // Handle COA generation - generates and downloads PDF
+  const handleGenerateCOA = async () => {
     if (selectedIds.length === 0) {
       setError(
         intl.formatMessage({
@@ -505,57 +505,110 @@ function PharmaceuticalReportingPage({
 
     const numericIds = selectedIds.map((id) => parseInt(id, 10));
 
-    // Mark samples as COA generated and update with COA data
-    postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
-      JSON.stringify({
-        sampleIds: numericIds,
-        data: {
-          coaGenerated: true,
-          coaProductName: coaData.productName,
-          coaBatchNumber: coaData.batchNumber,
-          coaManufacturingDate: coaData.manufacturingDate,
-          coaExpiryDate: coaData.expiryDate,
-          coaSpecifications: coaData.specifications,
-          coaAuthorizedBy: coaData.authorizedBy,
-          coaAuthorizedDate: coaData.authorizedDate,
+    try {
+      // First, generate and download the COA PDF
+      const pdfResponse = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/coa/generate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            sampleIds: numericIds,
+            productName: coaData.productName,
+            batchNumber: coaData.batchNumber,
+            manufacturingDate: coaData.manufacturingDate,
+            expiryDate: coaData.expiryDate,
+            specifications: coaData.specifications,
+            authorizedBy: coaData.authorizedBy,
+            authorizedDate: coaData.authorizedDate,
+          }),
         },
-      }),
-      (status) => {
-        if (componentMounted.current) {
-          if (status === 200) {
-            setSuccess(
-              intl.formatMessage(
-                {
-                  id: "notebook.pharma.reporting.coaGenerated",
-                  defaultMessage:
-                    "Certificate of Analysis generated for {count} samples",
-                },
-                { count: selectedIds.length },
-              ),
-            );
-            setShowCOAModal(false);
-            setSelectedIds([]);
-            // Reset COA form
-            setCoaData({
-              productName: "",
-              batchNumber: "",
-              manufacturingDate: "",
-              expiryDate: "",
-              specifications: "",
-              authorizedBy: "",
-              authorizedDate: new Date().toISOString().split("T")[0],
-            });
-            loadSamples();
-            if (onProgressUpdate) {
-              onProgressUpdate();
+      );
+
+      const contentType = pdfResponse.headers.get("content-type") || "";
+
+      if (pdfResponse.ok && contentType.includes("application/pdf")) {
+        // Download the PDF
+        const blob = await pdfResponse.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `COA_${coaData.batchNumber.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }, 100);
+
+        // Now mark samples as COA generated in the database
+        postToOpenElisServer(
+          `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+          JSON.stringify({
+            sampleIds: numericIds,
+            data: {
+              coaGenerated: true,
+              coaProductName: coaData.productName,
+              coaBatchNumber: coaData.batchNumber,
+              coaManufacturingDate: coaData.manufacturingDate,
+              coaExpiryDate: coaData.expiryDate,
+              coaSpecifications: coaData.specifications,
+              coaAuthorizedBy: coaData.authorizedBy,
+              coaAuthorizedDate: coaData.authorizedDate,
+            },
+          }),
+          () => {
+            if (componentMounted.current) {
+              setSuccess(
+                intl.formatMessage(
+                  {
+                    id: "notebook.pharma.reporting.coaGenerated",
+                    defaultMessage:
+                      "Certificate of Analysis generated and downloaded for {count} samples",
+                  },
+                  { count: selectedIds.length },
+                ),
+              );
+              setShowCOAModal(false);
+              setSelectedIds([]);
+              // Reset COA form
+              setCoaData({
+                productName: "",
+                batchNumber: "",
+                manufacturingDate: "",
+                expiryDate: "",
+                specifications: "",
+                authorizedBy: "",
+                authorizedDate: new Date().toISOString().split("T")[0],
+              });
+              loadSamples();
+              if (onProgressUpdate) {
+                onProgressUpdate();
+              }
             }
-          } else {
-            setError("Failed to generate COA");
+          },
+        );
+      } else {
+        // Handle error response
+        let errorMessage = "Failed to generate COA";
+        try {
+          if (contentType.includes("application/json")) {
+            const errorData = await pdfResponse.json();
+            errorMessage = errorData.error || errorMessage;
           }
+        } catch {
+          // ignore parse error
         }
-      },
-    );
+        setError(errorMessage);
+      }
+    } catch (err) {
+      console.error("COA generation error:", err);
+      setError("Network error during COA generation");
+    }
   };
 
   // Handle export
