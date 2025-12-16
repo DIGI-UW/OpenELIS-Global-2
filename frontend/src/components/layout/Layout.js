@@ -50,7 +50,11 @@ export default function Layout(props) {
   // Lock mode support - push content when sidenav is locked
   const { mode, isExpanded, toggle, setMode, SIDENAV_MODES } =
     useSideNavPreference(layoutConfig);
-  const isLocked = mode === SIDENAV_MODES.LOCK;
+  // Only push content when sidenav is actually present (authenticated UX).
+  // Otherwise, a persisted LOCK mode would incorrectly shift unauthenticated pages
+  // like /login to the right (no sidenav toggle available there).
+  const isLocked =
+    userSessionDetails.authenticated && mode === SIDENAV_MODES.LOCK;
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);

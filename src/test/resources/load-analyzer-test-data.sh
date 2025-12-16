@@ -100,7 +100,7 @@ mvn exec:java \
 if [ "$VERIFY" = true ]; then
     echo ""
     echo -e "${GREEN}[INFO]${NC} Verifying loaded data..."
-    
+
     # Check if we can connect to the database via Docker
     if docker ps --format '{{.Names}}' | grep -q 'openelisglobal-database'; then
         docker exec openelisglobal-database psql -U clinlims -d clinlims -c "

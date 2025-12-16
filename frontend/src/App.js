@@ -5,6 +5,7 @@ import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
+import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import AnalyzersPage from "./pages/AnalyzersPage";
@@ -425,6 +426,12 @@ export default function App() {
                   path="/Storage/:tab"
                   component={() => <StorageDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/FreezerMonitoring"
+                  exact
+                  component={() => <FreezerMonitoringDashboard />}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/analyzers"

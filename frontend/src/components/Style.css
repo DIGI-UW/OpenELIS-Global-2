@@ -47,6 +47,24 @@ li.clickableUserDetails:hover {
   margin: 0 5% 0 2%;
 }
 
+/* -----------------------------------------------------------------------------
+ * Login page layout
+ * -----------------------------------------------------------------------------
+ * The global layout can retain a persisted LOCK sidenav mode even when the user
+ * is unauthenticated (no sidenav visible). These wrappers ensure the login form
+ * stays horizontally centered regardless of surrounding layout state.
+ */
+.oe-loginPageContent {
+  width: 100%;
+}
+
+.oe-loginPageCenter {
+  width: 100%;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* REMOVED: Forcing black text caused dark mode input issues 
    Carbon's <Theme theme="white"> handles this correctly */
 .inputText {

@@ -246,17 +246,35 @@ function OEHeader({
   };
   const hideTimerRef = useRef(null);
 
+  /**
+   * Returns true if ANY child/grandchild matches currentPath.
+   *
+   * Important: Do NOT match the item itself here. Otherwise a parent item like
+   * /analyzers would be considered an "active child" for /analyzers/errors.
+   */
   const hasActiveDescendant = (item, currentPath) => {
-    const actionPath = item.menu.actionURL || "";
-    const normalized = actionPath.split(/[?#]/)[0] || "";
-    const exact = normalized && currentPath === normalized;
-    const prefix =
-      normalized &&
-      normalized.length > 1 &&
-      currentPath.startsWith(normalized + "/");
-    if (exact || prefix) return true;
-    return item.childMenus?.some((child) =>
-      hasActiveDescendant(child, currentPath),
+    const normalizePath = (url) => {
+      if (!url) return "";
+      const pathOnly = url.split(/[?#]/)[0] || "";
+      if (pathOnly.length > 1 && pathOnly.endsWith("/")) {
+        return pathOnly.slice(0, -1);
+      }
+      return pathOnly;
+    };
+
+    const isPathActive = (url) => {
+      const normalized = normalizePath(url);
+      if (!normalized) return false;
+      const exact = currentPath === normalized;
+      const prefix =
+        normalized.length > 1 && currentPath.startsWith(normalized + "/");
+      return exact || prefix;
+    };
+
+    return item.childMenus?.some(
+      (child) =>
+        isPathActive(child.menu.actionURL) ||
+        hasActiveDescendant(child, currentPath),
     );
   };
 
@@ -277,7 +295,7 @@ function OEHeader({
       return <React.Fragment key={path}></React.Fragment>;
     }
 
-    // URL matching: exact match OR prefix match (for parent routes)
+    // URL matching helpers
     // Normalize to ignore query/hash to fix cases like /WorkPlanByTest?type=test
     const normalizePath = (url) => {
       if (!url) return "";
@@ -296,8 +314,13 @@ function OEHeader({
       actionPath &&
       actionPath.length > 1 &&
       currentPath.startsWith(actionPath + "/");
-    const isLeafActive = !!actionPath && (exactMatch || prefixMatch);
     const hasChildren = menuItem.childMenus.length > 0;
+    // Active rule:
+    // - Leaf items: exact OR prefix (supports base routes like /Storage/:tab)
+    // - Parent items: exact only (avoid /analyzers being active for /analyzers/errors)
+    const isLeafActive = hasChildren
+      ? !!actionPath && exactMatch
+      : !!actionPath && (exactMatch || prefixMatch);
 
     // Handler for label click - navigate (leaf items only)
     const handleLabelClick = (e) => {

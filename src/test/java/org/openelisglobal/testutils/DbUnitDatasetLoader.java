@@ -5,8 +5,6 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.Properties;
-
-import org.dbunit.DatabaseUnitException;
 import org.dbunit.database.DatabaseConfig;
 import org.dbunit.database.DatabaseConnection;
 import org.dbunit.database.IDatabaseConnection;
@@ -18,10 +16,13 @@ import org.dbunit.operation.DatabaseOperation;
 /**
  * Standalone DBUnit Dataset Loader for Manual and E2E Testing.
  * 
- * <p>Loads DBUnit Flat XML datasets into the database without requiring
- * the full Spring test context. Can be run via Maven exec plugin.</p>
+ * <p>
+ * Loads DBUnit Flat XML datasets into the database without requiring the full
+ * Spring test context. Can be run via Maven exec plugin.
+ * </p>
  * 
  * <h3>Usage:</h3>
+ * 
  * <pre>
  * # Load a specific dataset
  * mvn exec:java -Dexec.mainClass="org.openelisglobal.testutils.DbUnitDatasetLoader" \
@@ -39,9 +40,10 @@ import org.dbunit.operation.DatabaseOperation;
  * 
  * <h3>Environment Variables (alternative to system properties):</h3>
  * <ul>
- *   <li>DB_URL - JDBC URL (default: jdbc:postgresql://localhost:15432/clinlims)</li>
- *   <li>DB_USER - Database user (default: clinlims)</li>
- *   <li>DB_PASSWORD - Database password (default: clinlims)</li>
+ * <li>DB_URL - JDBC URL (default:
+ * jdbc:postgresql://localhost:15432/clinlims)</li>
+ * <li>DB_USER - Database user (default: clinlims)</li>
+ * <li>DB_PASSWORD - Database password (default: clinlims)</li>
  * </ul>
  * 
  * @see org.openelisglobal.BaseWebContextSensitiveTest#executeDataSetWithStateManagement
@@ -91,16 +93,18 @@ public class DbUnitDatasetLoader {
     /**
      * Load a DBUnit dataset into the database.
      *
-     * @param datasetPath Path to the dataset file (relative to classpath or absolute)
-     * @param url JDBC URL
-     * @param user Database user
-     * @param password Database password
-     * @param schema Database schema
-     * @param operationType DBUnit operation type (CLEAN_INSERT, INSERT, REFRESH, etc.)
+     * @param datasetPath   Path to the dataset file (relative to classpath or
+     *                      absolute)
+     * @param url           JDBC URL
+     * @param user          Database user
+     * @param password      Database password
+     * @param schema        Database schema
+     * @param operationType DBUnit operation type (CLEAN_INSERT, INSERT, REFRESH,
+     *                      etc.)
      */
-    public static void loadDataset(String datasetPath, String url, String user, 
-            String password, String schema, String operationType) throws Exception {
-        
+    public static void loadDataset(String datasetPath, String url, String user, String password, String schema,
+            String operationType) throws Exception {
+
         // Load PostgreSQL driver
         Class.forName("org.postgresql.Driver");
 
@@ -108,34 +112,33 @@ public class DbUnitDatasetLoader {
         Properties props = new Properties();
         props.setProperty("user", user);
         props.setProperty("password", password);
-        
+
         try (Connection jdbcConnection = DriverManager.getConnection(url, props)) {
             // Set schema
             jdbcConnection.createStatement().execute("SET search_path TO " + schema);
 
             // Create DBUnit connection
             IDatabaseConnection dbConnection = new DatabaseConnection(jdbcConnection, schema);
-            
+
             // Configure for PostgreSQL
             DatabaseConfig config = dbConnection.getConfig();
-            config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, 
-                    new PostgresqlDataTypeFactory());
+            config.setProperty(DatabaseConfig.PROPERTY_DATATYPE_FACTORY, new PostgresqlDataTypeFactory());
             config.setProperty(DatabaseConfig.FEATURE_QUALIFIED_TABLE_NAMES, false);
             config.setProperty(DatabaseConfig.FEATURE_CASE_SENSITIVE_TABLE_NAMES, false);
 
             // Load dataset
             IDataSet dataSet = loadDataSetFromPath(datasetPath);
-            
+
             // Get operation
             DatabaseOperation dbOperation = getOperation(operationType);
-            
+
             // Execute
             System.out.println("Loading " + dataSet.getTableNames().length + " tables...");
             for (String tableName : dataSet.getTableNames()) {
                 int rowCount = dataSet.getTable(tableName).getRowCount();
                 System.out.println("  - " + tableName + ": " + rowCount + " rows");
             }
-            
+
             dbOperation.execute(dbConnection, dataSet);
         }
     }
@@ -164,23 +167,23 @@ public class DbUnitDatasetLoader {
      */
     private static DatabaseOperation getOperation(String operationType) {
         switch (operationType) {
-            case "CLEAN_INSERT":
-                return DatabaseOperation.CLEAN_INSERT;
-            case "INSERT":
-                return DatabaseOperation.INSERT;
-            case "REFRESH":
-                return DatabaseOperation.REFRESH;
-            case "UPDATE":
-                return DatabaseOperation.UPDATE;
-            case "DELETE":
-                return DatabaseOperation.DELETE;
-            case "DELETE_ALL":
-                return DatabaseOperation.DELETE_ALL;
-            case "TRUNCATE":
-                return DatabaseOperation.TRUNCATE_TABLE;
-            default:
-                System.out.println("Unknown operation '" + operationType + "', using CLEAN_INSERT");
-                return DatabaseOperation.CLEAN_INSERT;
+        case "CLEAN_INSERT":
+            return DatabaseOperation.CLEAN_INSERT;
+        case "INSERT":
+            return DatabaseOperation.INSERT;
+        case "REFRESH":
+            return DatabaseOperation.REFRESH;
+        case "UPDATE":
+            return DatabaseOperation.UPDATE;
+        case "DELETE":
+            return DatabaseOperation.DELETE;
+        case "DELETE_ALL":
+            return DatabaseOperation.DELETE_ALL;
+        case "TRUNCATE":
+            return DatabaseOperation.TRUNCATE_TABLE;
+        default:
+            System.out.println("Unknown operation '" + operationType + "', using CLEAN_INSERT");
+            return DatabaseOperation.CLEAN_INSERT;
         }
     }
 
