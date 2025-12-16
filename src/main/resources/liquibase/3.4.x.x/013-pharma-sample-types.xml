@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- PHARMACEUTICALS SAMPLE TYPES                              -->
+    <!-- Adds sample types used by the Pharmaceuticals manifest    -->
+    <!-- ======================================================== -->
+
+    <!-- Finished dosage form -->
+    <changeSet id="add-pharma-localization-finished-dosage-form" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Finished dosage form' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Finished dosage form"/>
+            <column name="french" value="Forme dosage finie"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pharma-sample-type-finished-dosage-form" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'finished dosage form'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Finished dosage form"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Finished dosage form' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- API -->
+    <changeSet id="add-pharma-localization-api" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'API' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="API"/>
+            <column name="french" value="API"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pharma-sample-type-api" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'api'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="API"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'API' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Natural / Herbal -->
+    <changeSet id="add-pharma-localization-natural-herbal" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Natural / Herbal' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Natural / Herbal"/>
+            <column name="french" value="Naturel / Herboristerie"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pharma-sample-type-natural-herbal" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'natural / herbal'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Natural / Herbal"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Natural / Herbal' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Water (PW, WFI) -->
+    <changeSet id="add-pharma-localization-water-pw-wfi" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Water (PW, WFI)' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Water (PW, WFI)"/>
+            <column name="french" value="Eau (PW, WFI)"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pharma-sample-type-water-pw-wfi" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'water (pw, wfi)'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Water (PW, WFI)"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Water (PW, WFI)' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
+

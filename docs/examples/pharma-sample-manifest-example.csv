@@ -1,0 +1,6 @@
+group_id,sample_type,num_of_samples,chemical_name,grade,lot_number,date_of_manufacture,expiry_or_retest_date,storage_condition,owner,patient_id,clinical_trial_number,consent_status,notes
+PHARMA-001,Finished dosage form (tablet, capsule, injection, cream, patch),1,Paracetamol,USP,LOT-12345,2025-01-15,2027-01-15,"25 C / 60% RH","ACME Pharma","PAT-001","CT-2025-01","Yes","Blister pack, intact seal"
+PHARMA-002,API,1,Ibuprofen,Ph. Eur.,LOT-ABC-22,2024-11-01,2026-11-01,"2-8 C","ACME Pharma","","","Not applicable","Raw powder, amber bottle"
+PHARMA-003,Natural / Herbal,2,Neem extract,Food grade,LOT-HERB-9,2024-10-10,2025-10-10,"Ambient","Herbal Labs","","","Not applicable","Leaf/stem mix"
+PHARMA-004,Water (PW, WFI),3,,,"LOT-WFI-77",2025-02-01,2025-05-01,"Ambient","Utility","PAT-004","","No","WFI sampling bottles"
+
