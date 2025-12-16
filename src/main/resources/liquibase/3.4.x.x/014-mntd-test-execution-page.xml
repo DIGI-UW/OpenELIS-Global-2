@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 8: TEST EXECUTION & RAW DATA CAPTURE -->
+    <!-- Purpose: Collect machine outputs and validate results -->
+    <!-- Who uses it: Technician, Data manager -->
+    <!-- Data Entered: -->
+    <!--   - Execution Confirmation: Run completed (Yes/No), Run issues -->
+    <!--   - Raw Data: File upload, Machine-generated data, Metadata (run ID, kit lot, operator) -->
+    <!--   - Post-Test QC: QC pass/fail, Repeat test option -->
+    <!-- System Actions: -->
+    <!--   - Raw data stored securely -->
+    <!--   - Sample status updated -->
+    <!-- Leads to: Result Interpretation & Analysis Page -->
+    <!-- ======================================================== -->
+    <changeSet id="create-mntd-page-8-test-execution" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND n.is_template = true AND np.page_order = 8
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Test Execution and Raw Data Capture page for MNTD Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Test Execution &amp; Raw Data Capture"/>
+            <column name="instructions" value="Collect machine outputs and validate results. Record execution confirmation (run completed Yes/No, run issues if any). Upload or enter raw data files and machine-generated results. Capture run metadata (run ID, kit lot number, operator). Perform post-test quality control (QC pass/fail) and decide if repeat test is needed. System stores raw data securely and updates sample status."/>
+            <column name="content" value="{&quot;pageDescription&quot;:&quot;Test Execution and Raw Data Capture&quot;,&quot;dataPoints&quot;:{&quot;executionConfirmation&quot;:{&quot;runCompleted&quot;:{&quot;type&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Run Completed&quot;,&quot;options&quot;:[&quot;Yes&quot;,&quot;No&quot;],&quot;required&quot;:true},&quot;runIssues&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Run Issues&quot;,&quot;multiline&quot;:true,&quot;conditionalOn&quot;:&quot;runCompleted == No&quot;,&quot;required&quot;:false}},&quot;rawData&quot;:{&quot;fileUpload&quot;:{&quot;type&quot;:&quot;file&quot;,&quot;label&quot;:&quot;Raw Data File&quot;,&quot;accept&quot;:&quot;.csv,.xlsx,.txt,.xml&quot;,&quot;required&quot;:false},&quot;machineData&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Machine-Generated Data&quot;,&quot;multiline&quot;:true,&quot;required&quot;:false},&quot;runId&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Run ID&quot;,&quot;required&quot;:false},&quot;kitLot&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Kit Lot Number&quot;,&quot;required&quot;:false},&quot;operator&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Operator&quot;,&quot;required&quot;:false}},&quot;postTestQC&quot;:{&quot;qcResult&quot;:{&quot;type&quot;:&quot;choice&quot;,&quot;label&quot;:&quot;Post-Test QC Result&quot;,&quot;options&quot;:[&quot;Pass&quot;,&quot;Fail&quot;],&quot;required&quot;:true},&quot;repeatTest&quot;:{&quot;type&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Repeat Test Required&quot;,&quot;conditionalOn&quot;:&quot;qcResult == Fail&quot;,&quot;required&quot;:false},&quot;qcNotes&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;QC Notes&quot;,&quot;multiline&quot;:true,&quot;required&quot;:false}}},&quot;systemActions&quot;:[&quot;Store raw data securely&quot;,&quot;Update sample status&quot;,&quot;Link results to sample record&quot;],&quot;bulkOperations&quot;:{&quot;enabled&quot;:true,&quot;applyToSelected&quot;:[&quot;runCompleted&quot;,&quot;runId&quot;,&quot;kitLot&quot;,&quot;operator&quot;,&quot;qcResult&quot;]},&quot;nextPage&quot;:&quot;Result Interpretation and Analysis&quot;}"/>
+            <column name="page_order" value="8"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true) AND page_order = 8</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template for MNTD Test Execution & Raw Data Capture -->
+    <changeSet id="insert-mntd-test-execution-workflow-template" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'MNTD' AND display_order = 8
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert MNTD Test Execution and Raw Data Capture workflow page template</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="108"/>
+            <column name="name" value="Test Execution &amp; Raw Data Capture"/>
+            <column name="display_key" value="workflow.page.mntd.testExecution"/>
+            <column name="description" value="Collect machine outputs and validate results through post-test quality control"/>
+            <column name="default_instructions" value="Record execution confirmation (run completed Yes/No, issues). Upload raw data files or enter machine-generated data. Capture run metadata (run ID, kit lot, operator). Perform post-test QC (pass/fail) and decide on repeat testing if needed."/>
+            <column name="default_content" value="Test Execution and Raw Data Capture - Machine output collection and validation"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="8"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MNTD"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'MNTD' AND display_order = 8</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -6,7 +6,15 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { Loading, Grid, Column, Tag } from "@carbon/react";
+import {
+  Loading,
+  Grid,
+  Column,
+  Tag,
+  Button,
+  InlineNotification,
+} from "@carbon/react";
+import { Renew } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
@@ -17,6 +25,12 @@ import {
   MNTDReceptionVerificationPage,
   MNTDTemporaryStoragePage,
   MNTDSampleProcessingPage,
+  MNTDAliquotingPage,
+  MNTDProcessingQCPage,
+  MNTDTestAssignmentPage,
+  MNTDTestExecutionPage,
+  MNTDDataAnalysisPage,
+  MNTDReportingREDCapPage,
 } from "../pages/mntd";
 import "./NotebookWorkflow.css";
 
@@ -26,12 +40,24 @@ import "./NotebookWorkflow.css";
  * Page 2: Laboratory Reception & Verification
  * Page 3: Temporary Storage Assignment
  * Page 4: Sample Processing Preparation
+ * Page 5: Aliquoting / Bulk Sample Import
+ * Page 6: Processing & Quality Control
+ * Page 7: Test Assignment & Machine Scheduling
+ * Page 8: Test Execution & Raw Data Capture
+ * Page 9: Data Analysis & Export
+ * Page 10: Reporting & REDCap Integration
  */
 const DEFAULT_MNTD_WORKFLOW_PAGES = [
   { id: "default-1", order: 1, title: "Sample Intake / Sample Creation" },
   { id: "default-2", order: 2, title: "Laboratory Reception & Verification" },
   { id: "default-3", order: 3, title: "Temporary Storage Assignment" },
   { id: "default-4", order: 4, title: "Sample Processing Preparation" },
+  { id: "default-5", order: 5, title: "Aliquoting / Bulk Sample Import" },
+  { id: "default-6", order: 6, title: "Processing & Quality Control" },
+  { id: "default-7", order: 7, title: "Test Assignment & Machine Scheduling" },
+  { id: "default-8", order: 8, title: "Test Execution & Raw Data Capture" },
+  { id: "default-9", order: 9, title: "Data Analysis & Export" },
+  { id: "default-10", order: 10, title: "Reporting & REDCap Integration" },
 ];
 
 /**
@@ -57,6 +83,8 @@ function MNTDWorkflowTab({ notebookId, entryId: propEntryId }) {
   const [activePage, setActivePage] = useState(0);
   const [samples, setSamples] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState(null);
 
   // Use actual pages if available, otherwise use default MNTD workflow pages
   const effectivePages = useMemo(() => {
@@ -241,6 +269,77 @@ function MNTDWorkflowTab({ notebookId, entryId: propEntryId }) {
     }
   }, [entryId]);
 
+  // Sync pages from template to instance (adds missing pages)
+  const handleSyncPages = useCallback(() => {
+    if (!entryId) return;
+
+    setSyncing(true);
+    setSyncMessage(null);
+
+    fetch(`${config.serverBaseUrl}/rest/notebook-entry/${entryId}/sync-pages`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (componentMounted.current) {
+          if (data.success) {
+            if (data.pagesAdded > 0) {
+              setSyncMessage({
+                kind: "success",
+                text: intl.formatMessage(
+                  {
+                    id: "notebook.workflow.syncSuccess",
+                    defaultMessage:
+                      "{count} new page(s) added from template. Refreshing...",
+                  },
+                  { count: data.pagesAdded },
+                ),
+              });
+              // Reload the notebook data to get new pages
+              setTimeout(() => {
+                loadNotebookData();
+                setSyncMessage(null);
+              }, 1500);
+            } else {
+              setSyncMessage({
+                kind: "info",
+                text: intl.formatMessage({
+                  id: "notebook.workflow.syncNoChanges",
+                  defaultMessage:
+                    "All pages are already in sync with the template.",
+                }),
+              });
+              setTimeout(() => setSyncMessage(null), 3000);
+            }
+          } else {
+            setSyncMessage({
+              kind: "error",
+              text: data.error || "Sync failed",
+            });
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("Sync pages error:", error);
+        if (componentMounted.current) {
+          setSyncMessage({
+            kind: "error",
+            text: error.message || "Failed to sync pages",
+          });
+        }
+      })
+      .finally(() => {
+        if (componentMounted.current) {
+          setSyncing(false);
+        }
+      });
+  }, [entryId, intl]);
+
   // Render MNTD page-specific content based on page order
   const renderPageContent = (page) => {
     const pageOrder = page.order || 1;
@@ -288,6 +387,78 @@ function MNTDWorkflowTab({ notebookId, entryId: propEntryId }) {
         return (
           <MNTDSampleProcessingPage
             key={`processing-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 5:
+        // Page 5: Aliquoting / Bulk Sample Import
+        return (
+          <MNTDAliquotingPage
+            key={`aliquoting-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 6:
+        // Page 6: Processing & Quality Control
+        return (
+          <MNTDProcessingQCPage
+            key={`processingqc-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 7:
+        // Page 7: Test Assignment & Machine Scheduling
+        return (
+          <MNTDTestAssignmentPage
+            key={`testassignment-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 8:
+        // Page 8: Test Execution & Raw Data Capture
+        return (
+          <MNTDTestExecutionPage
+            key={`testexecution-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 9:
+        // Page 9: Data Analysis & Export
+        return (
+          <MNTDDataAnalysisPage
+            key={`dataanalysis-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 10:
+        // Page 10: Reporting & REDCap Integration
+        return (
+          <MNTDReportingREDCapPage
+            key={`reporting-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
@@ -373,8 +544,38 @@ function MNTDWorkflowTab({ notebookId, entryId: propEntryId }) {
                   values={{ count: samples.length }}
                 />
               </span>
+              <Button
+                kind="ghost"
+                size="sm"
+                renderIcon={Renew}
+                onClick={handleSyncPages}
+                disabled={syncing || !entryId}
+                style={{ marginLeft: "1rem" }}
+              >
+                {syncing ? (
+                  <FormattedMessage
+                    id="notebook.workflow.syncing"
+                    defaultMessage="Syncing..."
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="notebook.workflow.syncPages"
+                    defaultMessage="Sync Pages"
+                  />
+                )}
+              </Button>
             </div>
           </div>
+          {syncMessage && (
+            <InlineNotification
+              kind={syncMessage.kind}
+              title=""
+              subtitle={syncMessage.text}
+              lowContrast
+              onCloseButtonClick={() => setSyncMessage(null)}
+              style={{ marginTop: "0.5rem" }}
+            />
+          )}
         </Column>
       </Grid>
 

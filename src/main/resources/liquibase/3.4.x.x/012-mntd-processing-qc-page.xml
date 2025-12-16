@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 6: PROCESSING & QUALITY CONTROL -->
+    <!-- Purpose: Execute lab processes and verify integrity -->
+    <!-- Who uses it: Lab technician, Supervisor -->
+    <!-- Data Entered: -->
+    <!--   - Processing Execution: Protocol used, Start & end time, Technician -->
+    <!--   - Quality Control: QC result (Pass/Fail), QC metrics (Ct value, yield, integrity, etc.) -->
+    <!--   - Decision if failed: Re-extract, Re-run, Discard -->
+    <!-- System Actions: -->
+    <!--   - Status updated: Processed - QC Passed, Processed - QC Failed -->
+    <!--   - Automatic branching for rework -->
+    <!-- Leads to: Test Assignment & Machine Scheduling Page -->
+    <!-- ======================================================== -->
+    <changeSet id="create-mntd-page-6-processing-qc" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND n.is_template = true AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Processing and Quality Control page for MNTD Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Processing &amp; Quality Control"/>
+            <column name="instructions" value="Execute lab processes and verify sample integrity through quality control checks. Record processing execution data: Protocol used (DNA Extraction, RNA Extraction, PCR Amplification, ELISA, Microscopy, RDT, Culture, Sequencing), Start and end time, Technician name. Record QC results: Pass or Fail, QC metrics (Ct value, Yield in ng/uL, Integrity RIN/DV200, other metrics). If QC fails, select action: Re-extract, Re-run, or Discard. System updates status to Processed - QC Passed or Processed - QC Failed and handles automatic branching for rework samples."/>
+            <column name="content" value="{&quot;pageDescription&quot;:&quot;Processing and Quality Control&quot;,&quot;dataPoints&quot;:{&quot;processingExecution&quot;:{&quot;protocol&quot;:{&quot;type&quot;:&quot;choice&quot;,&quot;label&quot;:&quot;Protocol Used&quot;,&quot;options&quot;:[&quot;DNA Extraction&quot;,&quot;RNA Extraction&quot;,&quot;PCR Amplification&quot;,&quot;ELISA&quot;,&quot;Microscopy&quot;,&quot;RDT&quot;,&quot;Culture&quot;,&quot;Sequencing&quot;,&quot;Other&quot;],&quot;required&quot;:true},&quot;startDateTime&quot;:{&quot;type&quot;:&quot;dateTime&quot;,&quot;label&quot;:&quot;Start Date/Time&quot;,&quot;required&quot;:true},&quot;endDateTime&quot;:{&quot;type&quot;:&quot;dateTime&quot;,&quot;label&quot;:&quot;End Date/Time&quot;,&quot;required&quot;:false},&quot;technician&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Technician&quot;,&quot;required&quot;:true},&quot;processingNotes&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Processing Notes&quot;,&quot;multiline&quot;:true,&quot;required&quot;:false}},&quot;qualityControl&quot;:{&quot;qcResult&quot;:{&quot;type&quot;:&quot;choice&quot;,&quot;label&quot;:&quot;QC Result&quot;,&quot;options&quot;:[&quot;Pass&quot;,&quot;Fail&quot;],&quot;required&quot;:true},&quot;ctValue&quot;:{&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;Ct Value&quot;,&quot;min&quot;:0,&quot;step&quot;:0.1,&quot;required&quot;:false},&quot;yield&quot;:{&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;Yield (ng/uL)&quot;,&quot;required&quot;:false},&quot;integrity&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Integrity (RIN/DV200)&quot;,&quot;required&quot;:false},&quot;otherMetrics&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Other Metrics&quot;,&quot;required&quot;:false},&quot;qcTechnician&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;QC Technician&quot;,&quot;required&quot;:false},&quot;qcDate&quot;:{&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;QC Date&quot;,&quot;required&quot;:false},&quot;qcNotes&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;QC Notes&quot;,&quot;multiline&quot;:true,&quot;required&quot;:false}},&quot;failedDecision&quot;:{&quot;action&quot;:{&quot;type&quot;:&quot;choice&quot;,&quot;label&quot;:&quot;Action if Failed&quot;,&quot;options&quot;:[&quot;Re-extract&quot;,&quot;Re-run&quot;,&quot;Discard&quot;],&quot;conditionalOn&quot;:&quot;qcResult == Fail&quot;,&quot;required&quot;:false}}},&quot;systemActions&quot;:[&quot;Update sample status: Processed - QC Passed&quot;,&quot;Update sample status: Processed - QC Failed&quot;,&quot;Automatic branching for rework&quot;],&quot;bulkOperations&quot;:{&quot;enabled&quot;:true,&quot;applyToSelected&quot;:[&quot;protocol&quot;,&quot;startDateTime&quot;,&quot;endDateTime&quot;,&quot;technician&quot;,&quot;qcResult&quot;,&quot;qcTechnician&quot;,&quot;qcDate&quot;]},&quot;nextPage&quot;:&quot;Test Assignment and Machine Scheduling&quot;}"/>
+            <column name="page_order" value="6"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true) AND page_order = 6</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template for MNTD Processing & QC -->
+    <changeSet id="insert-mntd-processing-qc-workflow-template" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'MNTD' AND display_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert MNTD Processing and QC workflow page template</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="106"/>
+            <column name="name" value="Processing &amp; Quality Control"/>
+            <column name="display_key" value="workflow.page.mntd.processingQc"/>
+            <column name="description" value="Execute lab processes and verify sample integrity through quality control checks"/>
+            <column name="default_instructions" value="Record processing execution: Protocol used, Start/End time, Technician. Record QC results: Pass/Fail, QC metrics (Ct value, Yield, Integrity). If failed, select action: Re-extract, Re-run, or Discard. System updates status accordingly."/>
+            <column name="default_content" value="Processing and Quality Control - Lab process execution and QC verification"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="6"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MNTD"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'MNTD' AND display_order = 6</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

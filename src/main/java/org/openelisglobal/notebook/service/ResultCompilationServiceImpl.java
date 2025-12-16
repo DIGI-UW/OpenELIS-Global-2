@@ -97,24 +97,10 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
 
         pageSample.setData(data);
 
-        // When a sample is validated (any status except PENDING), mark page status as
-        // COMPLETED
-        if (status != ValidationStatus.PENDING) {
-            pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-            pageSample.setCompletedAt(new Timestamp(System.currentTimeMillis()));
-            // Set completed by user if possible
-            if (userId != null) {
-                try {
-                    SystemUser user = systemUserService.get(userId);
-                    if (user != null) {
-                        pageSample.setCompletedBy(user);
-                    }
-                } catch (Exception e) {
-                    LogEvent.logWarn(this.getClass().getName(), "flagSample",
-                            "Could not set completedBy user: " + e.getMessage());
-                }
-            }
-        }
+        // Note: Flagging a sample only updates the validationStatus in the data JSONB.
+        // The pageStatus (PENDING/IN_PROGRESS/COMPLETED) is NOT changed by flagging.
+        // The user must explicitly use "Send to Reporting" to mark samples as COMPLETED
+        // and trigger the T150 flow to the next page.
 
         notebookPageSampleDAO.update(pageSample);
 

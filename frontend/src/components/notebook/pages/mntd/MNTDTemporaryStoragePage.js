@@ -24,6 +24,7 @@ import {
   RadioButtonGroup,
   RadioButton,
   NumberInput,
+  Checkbox,
 } from "@carbon/react";
 import {
   Archive,
@@ -37,6 +38,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
+  postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
@@ -97,16 +99,19 @@ function MNTDTemporaryStoragePage({
     assignedBy: "",
     assignedDateTime: new Date().toISOString().slice(0, 16),
     notes: "",
+    temperatureMonitoringConfirmed: false, // Confirmation that freezer temperature monitoring is done twice daily
   });
 
   // Auto-assignment modal state
   const [autoAssignModalOpen, setAutoAssignModalOpen] = useState(false);
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+  const [autoAssignModalError, setAutoAssignModalError] = useState(null);
   const [autoAssignValues, setAutoAssignValues] = useState({
     storageType: "",
     assignedBy: "",
     assignedDateTime: new Date().toISOString().slice(0, 16),
     notes: "",
+    temperatureMonitoringConfirmed: false, // Confirmation that freezer temperature monitoring is done twice daily
   });
 
   // Environmental monitoring modal state
@@ -196,15 +201,47 @@ function MNTDTemporaryStoragePage({
     );
   }, [entryId]);
 
-  // Handle storage hierarchy selection change
-  const handleStorageSelectionChange = useCallback((selection) => {
-    setStorageSelection(selection);
+  // Load box occupancy from storage API
+  const loadBoxOccupancy = useCallback((boxId) => {
+    if (!boxId) return;
+
+    getFromOpenElisServer(
+      `/rest/storage/boxes/${boxId}/occupancy`,
+      (response) => {
+        if (componentMounted.current && response) {
+          // Convert occupiedCoordinates map to the format expected by BoxLayoutViewer
+          // occupiedCoordinates is { "A1": { sampleId: "...", accessionNumber: "..." }, ... }
+          const occupiedCoordinates = response.occupiedCoordinates || {};
+          setBoxLayout(occupiedCoordinates);
+        }
+      },
+    );
   }, []);
 
-  // Handle box layout loaded
-  const handleBoxLayoutLoaded = useCallback((wells) => {
-    setBoxLayout(wells || {});
-  }, []);
+  // Handle storage hierarchy selection change
+  const handleStorageSelectionChange = useCallback(
+    (selection) => {
+      setStorageSelection(selection);
+      // When box selection changes, load its occupancy from storage system
+      if (selection.box?.id) {
+        loadBoxOccupancy(selection.box.id);
+      } else {
+        setBoxLayout({});
+      }
+    },
+    [loadBoxOccupancy],
+  );
+
+  // Handle box layout loaded (from StorageHierarchySelector - fallback)
+  const handleBoxLayoutLoaded = useCallback(
+    (wells) => {
+      // Only use if we don't already have layout from storage API
+      if (Object.keys(boxLayout).length === 0) {
+        setBoxLayout(wells || {});
+      }
+    },
+    [boxLayout],
+  );
 
   // Handle well click from BoxLayoutViewer
   const handleWellClick = useCallback(
@@ -273,40 +310,61 @@ function MNTDTemporaryStoragePage({
         assignedBy: bulkAssignValues.assignedBy,
         assignedDateTime: bulkAssignValues.assignedDateTime,
         notes: bulkAssignValues.notes,
+        temperatureMonitoringConfirmed:
+          bulkAssignValues.temperatureMonitoringConfirmed,
       },
       boxId: storageSelection.box?.id,
       wellCoordinate: selectedWell,
     };
 
-    postToOpenElisServer(
+    postToOpenElisServerJsonResponse(
       `/rest/notebook/bulk/page/${pageData.id}/samples/storage`,
       JSON.stringify(assignData),
-      (status) => {
+      (response) => {
         setIsAssigning(false);
-        if (status === 200) {
-          setSuccessMessage(
-            `Assigned ${selectedSampleIds.length} sample(s) to storage at ${storagePath} > ${selectedWell}.`,
-          );
+        const assignedCount = response?.assignedCount || 0;
+        const hasErrors =
+          response?.errors &&
+          Array.isArray(response.errors) &&
+          response.errors.length > 0;
+
+        // Check if any samples were assigned successfully
+        if (assignedCount > 0) {
+          // Some or all samples assigned successfully
+          if (hasErrors) {
+            // Partial success - show both success and error messages
+            setSuccessMessage(
+              `Assigned ${assignedCount} sample(s) to storage at ${storagePath} > ${selectedWell}.`,
+            );
+            setError(
+              `Some samples could not be assigned: ${response.errors.join("; ")}`,
+            );
+          } else {
+            // Full success
+            setSuccessMessage(
+              `Assigned ${assignedCount} sample(s) to storage at ${storagePath} > ${selectedWell}.`,
+            );
+          }
           setAssignStorageModalOpen(false);
           setSelectedWell(null);
           loadPageSamples();
           setSelectedSampleIds([]);
-          // Reload box layout
-          if (storageSelection.box && entryId) {
-            getFromOpenElisServer(
-              `/rest/notebook/${entryId}/box/${storageSelection.box.id}/layout`,
-              (response) => {
-                if (componentMounted.current && response) {
-                  setBoxLayout(response.wells || {});
-                }
-              },
-            );
+          // Reload box layout from storage API
+          if (storageSelection.box) {
+            loadBoxOccupancy(storageSelection.box.id);
           }
           if (onProgressUpdate) {
             onProgressUpdate();
           }
         } else {
-          setError("Failed to assign storage. Please try again.");
+          // No samples assigned - show error
+          let errorMessage =
+            response?.error || "Failed to assign storage. Please try again.";
+          if (hasErrors) {
+            // Show all detailed errors
+            errorMessage = response.errors.join("; ");
+          }
+          setError(errorMessage);
         }
       },
     );
@@ -370,6 +428,8 @@ function MNTDTemporaryStoragePage({
         assignedBy: autoAssignValues.assignedBy,
         assignedDateTime: autoAssignValues.assignedDateTime,
         notes: autoAssignValues.notes,
+        temperatureMonitoringConfirmed:
+          autoAssignValues.temperatureMonitoringConfirmed,
       },
       boxId: storageSelection.box?.id,
       rows: storageSelection.box?.rows || 8,
@@ -377,43 +437,61 @@ function MNTDTemporaryStoragePage({
       occupiedWells: occupiedWells,
     };
 
-    postToOpenElisServer(
+    postToOpenElisServerJsonResponse(
       `/rest/notebook/bulk/page/${pageData.id}/samples/storage/auto-assign`,
       JSON.stringify(autoAssignData),
-      (status, response) => {
+      (response) => {
         setIsAutoAssigning(false);
-        if (status === 200) {
-          const responseData =
-            typeof response === "string" ? JSON.parse(response) : response;
-          const assignmentCount = responseData?.updatedCount || 0;
 
-          setSuccessMessage(
-            `Auto-assigned ${assignmentCount} sample(s) to storage in ${storageSelection.box?.label}.`,
-          );
+        // Check for HTTP error status (set by postToOpenElisServerJsonResponse for non-OK responses)
+        const isHttpError =
+          response?.status >= 400 || response?.statusCode >= 400;
+
+        const assignmentCount = response?.updatedCount || 0;
+        const hasErrors =
+          response?.errors &&
+          Array.isArray(response.errors) &&
+          response.errors.length > 0;
+
+        // Check if any samples were assigned successfully and no HTTP error
+        if (assignmentCount > 0 && !isHttpError) {
+          // Some or all samples assigned successfully
+          setAutoAssignModalError(null);
+          if (hasErrors) {
+            // Partial success - show both success and error messages
+            setSuccessMessage(
+              `Auto-assigned ${assignmentCount} sample(s) to storage in ${storageSelection.box?.label}.`,
+            );
+            setError(
+              `Some samples could not be assigned: ${response.errors.join("; ")}`,
+            );
+          } else {
+            // Full success
+            setSuccessMessage(
+              `Auto-assigned ${assignmentCount} sample(s) to storage in ${storageSelection.box?.label}.`,
+            );
+          }
           setAutoAssignModalOpen(false);
           loadPageSamples();
           setSelectedSampleIds([]);
-          // Reload box layout
-          if (storageSelection.box && entryId) {
-            getFromOpenElisServer(
-              `/rest/notebook/${entryId}/box/${storageSelection.box.id}/layout`,
-              (layoutResponse) => {
-                if (componentMounted.current && layoutResponse) {
-                  setBoxLayout(layoutResponse.wells || {});
-                }
-              },
-            );
+          // Reload box layout from storage API
+          if (storageSelection.box) {
+            loadBoxOccupancy(storageSelection.box.id);
           }
           if (onProgressUpdate) {
             onProgressUpdate();
           }
         } else {
-          const errorData =
-            typeof response === "string" ? JSON.parse(response) : response;
-          setError(
-            errorData?.error ||
-              "Failed to auto-assign storage. Please try again.",
-          );
+          // No samples assigned or HTTP error - show error in modal (don't close it)
+          let errorMessage =
+            response?.error ||
+            response?.message ||
+            "Failed to auto-assign storage. Please try again.";
+          if (hasErrors) {
+            // Show all detailed errors
+            errorMessage = response.errors.join("; ");
+          }
+          setAutoAssignModalError(errorMessage);
         }
       },
     );
@@ -435,14 +513,21 @@ function MNTDTemporaryStoragePage({
       return;
     }
 
+    // Validate temperature value is a valid number
+    const tempValue = parseFloat(temperatureLog.temperatureValue);
+    if (isNaN(tempValue)) {
+      setError("Temperature value must be a valid number.");
+      return;
+    }
+
     setIsLoggingTemp(true);
     setError(null);
 
+    // Build log data - DO NOT include entryId as it's in the URL path
     const logData = {
-      entryId: entryId,
       freezerId: temperatureLog.freezerId,
       checkTime: temperatureLog.checkTime,
-      temperatureValue: parseFloat(temperatureLog.temperatureValue),
+      temperatureValue: tempValue,
       temperatureUnit: temperatureLog.temperatureUnit,
       checkedBy: temperatureLog.checkedBy,
       checkedDateTime: temperatureLog.checkedDateTime,
@@ -532,6 +617,41 @@ function MNTDTemporaryStoragePage({
   const pendingCount = samples.filter((s) => !s.storageWell).length;
   const completedCount = samples.filter((s) => s.status === "COMPLETED").length;
 
+  // Calculate preview wells for auto-assignment
+  const getAutoAssignPreview = useCallback(() => {
+    if (!storageSelection.box || selectedSampleIds.length === 0) {
+      return { previewWells: [], availableCount: 0 };
+    }
+
+    const rows = storageSelection.box?.rows || 8;
+    const columns = storageSelection.box?.columns || 12;
+    const occupiedWells = new Set(Object.keys(boxLayout));
+
+    // Generate all wells in order (A1, A2, ..., A12, B1, B2, ...)
+    const allWells = [];
+    for (let row = 0; row < rows; row++) {
+      const rowLetter = String.fromCharCode("A".charCodeAt(0) + row);
+      for (let col = 1; col <= columns; col++) {
+        allWells.push(`${rowLetter}${col}`);
+      }
+    }
+
+    // Find available wells
+    const availableWells = allWells.filter((well) => !occupiedWells.has(well));
+
+    // Get preview wells (wells that will be assigned)
+    const previewWells = availableWells.slice(0, selectedSampleIds.length);
+
+    return {
+      previewWells,
+      availableCount: availableWells.length,
+      totalWells: rows * columns,
+      occupiedCount: occupiedWells.size,
+    };
+  }, [storageSelection.box, selectedSampleIds, boxLayout]);
+
+  const autoAssignPreview = getAutoAssignPreview();
+
   // Get storage status tag
   const getStorageTag = (sample) => {
     if (sample.storageWell) {
@@ -551,6 +671,7 @@ function MNTDTemporaryStoragePage({
       assignedBy: "",
       assignedDateTime: new Date().toISOString().slice(0, 16),
       notes: "",
+      temperatureMonitoringConfirmed: false,
     });
     setSelectedWell(null);
   };
@@ -971,6 +1092,24 @@ function MNTDTemporaryStoragePage({
               placeholder="Optional notes..."
             />
           </Column>
+
+          <Column lg={16} md={8} sm={4}>
+            <Checkbox
+              id="temperatureMonitoringConfirmed"
+              labelText={intl.formatMessage({
+                id: "notebook.mntd.temperatureMonitoringConfirmed",
+                defaultMessage:
+                  "I confirm that monitoring of freezer temperature is done twice a day",
+              })}
+              checked={bulkAssignValues.temperatureMonitoringConfirmed}
+              onChange={(e, { checked }) =>
+                setBulkAssignValues((prev) => ({
+                  ...prev,
+                  temperatureMonitoringConfirmed: checked,
+                }))
+              }
+            />
+          </Column>
         </Grid>
       </Modal>
 
@@ -1155,6 +1294,7 @@ function MNTDTemporaryStoragePage({
         open={autoAssignModalOpen}
         onRequestClose={() => {
           setAutoAssignModalOpen(false);
+          setAutoAssignModalError(null);
         }}
         modalHeading={intl.formatMessage({
           id: "notebook.mntd.autoAssign.title",
@@ -1178,10 +1318,22 @@ function MNTDTemporaryStoragePage({
         onRequestSubmit={handleAutoAssign}
         onSecondarySubmit={() => {
           setAutoAssignModalOpen(false);
+          setAutoAssignModalError(null);
         }}
-        size="md"
+        size="lg"
         primaryButtonDisabled={isAutoAssigning}
       >
+        {/* Error notification inside modal */}
+        {autoAssignModalError && (
+          <InlineNotification
+            kind="error"
+            title={autoAssignModalError}
+            onClose={() => setAutoAssignModalError(null)}
+            lowContrast
+            style={{ marginBottom: "1rem" }}
+          />
+        )}
+
         <p className="modal-description">
           <FormattedMessage
             id="notebook.mntd.autoAssign.description"
@@ -1218,19 +1370,170 @@ function MNTDTemporaryStoragePage({
               ]
                 .filter(Boolean)
                 .join(" > ")}
-              <div style={{ marginTop: "0.5rem" }}>
+              <div
+                style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem" }}
+              >
                 <Tag type="blue">
-                  <FormattedMessage
-                    id="notebook.mntd.autoAssign.availableWells"
-                    defaultMessage="{available} wells available"
-                    values={{
-                      available:
-                        (storageSelection.box?.rows || 8) *
-                          (storageSelection.box?.columns || 12) -
-                        Object.keys(boxLayout).length,
+                  {autoAssignPreview.availableCount} wells available
+                </Tag>
+                <Tag type="green">
+                  {autoAssignPreview.previewWells.length} will be assigned
+                </Tag>
+              </div>
+            </div>
+          </Column>
+
+          {/* Box Layout Preview */}
+          <Column lg={16} md={8} sm={4}>
+            <div style={{ marginBottom: "1rem" }}>
+              <h6 style={{ marginBottom: "0.5rem" }}>
+                <FormattedMessage
+                  id="notebook.mntd.autoAssign.preview"
+                  defaultMessage="Assignment Preview"
+                />
+              </h6>
+              <div
+                className="box-grid-container"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: `auto repeat(${storageSelection.box?.columns || 12}, 1fr)`,
+                  gap: "2px",
+                  fontSize: "10px",
+                  maxWidth: "100%",
+                  overflowX: "auto",
+                }}
+              >
+                {/* Column headers */}
+                <div style={{ padding: "2px 4px" }}></div>
+                {Array.from(
+                  { length: storageSelection.box?.columns || 12 },
+                  (_, i) => (
+                    <div
+                      key={`col-${i}`}
+                      style={{
+                        textAlign: "center",
+                        fontWeight: "bold",
+                        padding: "2px",
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                  ),
+                )}
+
+                {/* Grid rows */}
+                {Array.from(
+                  { length: storageSelection.box?.rows || 8 },
+                  (_, rowIdx) => {
+                    const rowLetter = String.fromCharCode(
+                      "A".charCodeAt(0) + rowIdx,
+                    );
+                    return (
+                      <React.Fragment key={`row-${rowIdx}`}>
+                        <div
+                          style={{
+                            fontWeight: "bold",
+                            padding: "2px 4px",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          {rowLetter}
+                        </div>
+                        {Array.from(
+                          { length: storageSelection.box?.columns || 12 },
+                          (_, colIdx) => {
+                            const wellCoord = `${rowLetter}${colIdx + 1}`;
+                            const isOccupied = boxLayout[wellCoord];
+                            const willBeAssigned =
+                              autoAssignPreview.previewWells.includes(
+                                wellCoord,
+                              );
+
+                            let bgColor = "#e0e0e0"; // Empty
+                            let borderColor = "#c0c0c0";
+                            if (isOccupied) {
+                              bgColor = "#a8a8a8"; // Already occupied
+                              borderColor = "#808080";
+                            } else if (willBeAssigned) {
+                              bgColor = "#42be65"; // Will be assigned (green)
+                              borderColor = "#24a148";
+                            }
+
+                            return (
+                              <div
+                                key={wellCoord}
+                                title={
+                                  isOccupied
+                                    ? `${wellCoord} - Occupied`
+                                    : willBeAssigned
+                                      ? `${wellCoord} - Will be assigned`
+                                      : `${wellCoord} - Empty`
+                                }
+                                style={{
+                                  width: "20px",
+                                  height: "20px",
+                                  borderRadius: "50%",
+                                  backgroundColor: bgColor,
+                                  border: `1px solid ${borderColor}`,
+                                  margin: "auto",
+                                }}
+                              />
+                            );
+                          },
+                        )}
+                      </React.Fragment>
+                    );
+                  },
+                )}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "1rem",
+                  marginTop: "0.5rem",
+                  fontSize: "12px",
+                }}
+              >
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "4px" }}
+                >
+                  <div
+                    style={{
+                      width: "12px",
+                      height: "12px",
+                      borderRadius: "50%",
+                      backgroundColor: "#42be65",
                     }}
                   />
-                </Tag>
+                  <span>Will be assigned</span>
+                </div>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "4px" }}
+                >
+                  <div
+                    style={{
+                      width: "12px",
+                      height: "12px",
+                      borderRadius: "50%",
+                      backgroundColor: "#a8a8a8",
+                    }}
+                  />
+                  <span>Already occupied</span>
+                </div>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "4px" }}
+                >
+                  <div
+                    style={{
+                      width: "12px",
+                      height: "12px",
+                      borderRadius: "50%",
+                      backgroundColor: "#e0e0e0",
+                    }}
+                  />
+                  <span>Empty</span>
+                </div>
               </div>
             </div>
           </Column>
@@ -1311,6 +1614,24 @@ function MNTDTemporaryStoragePage({
                 }))
               }
               placeholder="Optional notes..."
+            />
+          </Column>
+
+          <Column lg={16} md={8} sm={4}>
+            <Checkbox
+              id="autoAssignTemperatureMonitoringConfirmed"
+              labelText={intl.formatMessage({
+                id: "notebook.mntd.temperatureMonitoringConfirmed",
+                defaultMessage:
+                  "I confirm that monitoring of freezer temperature is done twice a day",
+              })}
+              checked={autoAssignValues.temperatureMonitoringConfirmed}
+              onChange={(e, { checked }) =>
+                setAutoAssignValues((prev) => ({
+                  ...prev,
+                  temperatureMonitoringConfirmed: checked,
+                }))
+              }
             />
           </Column>
         </Grid>

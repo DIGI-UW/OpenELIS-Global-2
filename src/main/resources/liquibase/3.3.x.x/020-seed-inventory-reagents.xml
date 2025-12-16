@@ -1,0 +1,859 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Seed Inventory Reagents and Instruments for MNTD Workflow
+        ===========================================================
+        Pre-populates inventory with common laboratory reagents and instruments
+        used in sample processing workflows (extraction, aliquoting, etc.)
+    -->
+
+    <!-- ========================================
+         REAGENTS - DNA/RNA Extraction & Processing
+         ======================================== -->
+
+    <changeSet id="seed-reagent-001-dna-extraction-kit" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'DNA Extraction Kit' AND item_type = 'REAGENT';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed DNA Extraction Kit reagent</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, stability_after_opening, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'DNA Extraction Kit',
+                'Complete kit for genomic DNA extraction from blood, tissue, and cell samples',
+                'REAGENT',
+                'Extraction',
+                'Qiagen',
+                'QIA-69504',
+                '15-25°C (Room Temperature)',
+                'kits',
+                5,
+                30,
+                180,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-reagent-002-rna-preservation-buffer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'RNA Preservation Buffer' AND item_type = 'REAGENT';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed RNA Preservation Buffer reagent</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, stability_after_opening, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'RNA Preservation Buffer',
+                'Stabilizes and protects RNA in biological samples for downstream processing',
+                'REAGENT',
+                'Preservation',
+                'Thermo Fisher',
+                'AM7020',
+                '2-8°C (Refrigerated)',
+                'ml',
+                100,
+                45,
+                90,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-reagent-003-pcr-master-mix" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'PCR Master Mix' AND item_type = 'REAGENT';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed PCR Master Mix reagent</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, stability_after_opening, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'PCR Master Mix',
+                '2X concentrated ready-to-use PCR master mix with Taq polymerase',
+                'REAGENT',
+                'Amplification',
+                'Promega',
+                'M7122',
+                '-20°C (Frozen)',
+                'reactions',
+                50,
+                60,
+                30,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-reagent-004-malaria-rdt-buffer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Malaria RDT Buffer' AND item_type = 'REAGENT';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Malaria RDT Buffer reagent</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, stability_after_opening, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Malaria RDT Buffer',
+                'Assay buffer solution for malaria rapid diagnostic tests',
+                'REAGENT',
+                'Diagnostics',
+                'SD Biosensor',
+                'SDB-05FK60',
+                '2-30°C',
+                'ml',
+                50,
+                30,
+                60,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-reagent-005-lysis-buffer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Cell Lysis Buffer' AND item_type = 'REAGENT';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Cell Lysis Buffer reagent</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, stability_after_opening, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Cell Lysis Buffer',
+                'Non-denaturing lysis buffer for cell membrane disruption',
+                'REAGENT',
+                'Extraction',
+                'Cell Signaling',
+                'CST-9803',
+                '2-8°C (Refrigerated)',
+                'ml',
+                100,
+                30,
+                60,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-reagent-006-proteinase-k" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Proteinase K Solution' AND item_type = 'REAGENT';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Proteinase K Solution reagent</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, stability_after_opening, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Proteinase K Solution',
+                'Broad-spectrum serine protease for protein digestion in nucleic acid extraction',
+                'REAGENT',
+                'Extraction',
+                'Qiagen',
+                'QIA-19131',
+                '2-8°C (Refrigerated)',
+                'ml',
+                20,
+                45,
+                90,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-reagent-007-ethanol" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Ethanol (Molecular Biology Grade)' AND item_type = 'REAGENT';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Ethanol (Molecular Biology Grade) reagent</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, stability_after_opening, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Ethanol (Molecular Biology Grade)',
+                '100% ethanol suitable for molecular biology applications',
+                'REAGENT',
+                'General',
+                'Sigma-Aldrich',
+                'E7023',
+                '15-25°C (Room Temperature)',
+                'liters',
+                2,
+                90,
+                365,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-reagent-008-nuclease-free-water" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Nuclease-Free Water' AND item_type = 'REAGENT';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Nuclease-Free Water reagent</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, stability_after_opening, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Nuclease-Free Water',
+                'DNase/RNase-free water for molecular biology applications',
+                'REAGENT',
+                'General',
+                'Ambion',
+                'AM9937',
+                '15-25°C (Room Temperature)',
+                'ml',
+                500,
+                60,
+                180,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <!-- ========================================
+         INSTRUMENTS/CARTRIDGES - Laboratory Equipment
+         ======================================== -->
+
+    <changeSet id="seed-instrument-001-centrifuge" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Microcentrifuge' AND item_type = 'CARTRIDGE';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Microcentrifuge instrument</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                calibration_required, compatible_analyzers, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Microcentrifuge',
+                'High-speed benchtop microcentrifuge for 1.5/2.0ml tubes',
+                'CARTRIDGE',
+                'Separation',
+                'Eppendorf',
+                '5424R',
+                'Room Temperature',
+                'units',
+                'Y',
+                'Standard 1.5ml/2.0ml microtubes',
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-instrument-002-thermocycler" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'PCR Thermocycler' AND item_type = 'CARTRIDGE';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed PCR Thermocycler instrument</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                calibration_required, compatible_analyzers, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'PCR Thermocycler',
+                '96-well gradient thermal cycler for PCR amplification',
+                'CARTRIDGE',
+                'Amplification',
+                'Bio-Rad',
+                'T100',
+                'Room Temperature',
+                'units',
+                'Y',
+                '96-well plates, 0.2ml PCR tubes',
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-instrument-003-vortex-mixer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Vortex Mixer' AND item_type = 'CARTRIDGE';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Vortex Mixer instrument</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                calibration_required, compatible_analyzers, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Vortex Mixer',
+                'Variable speed vortex mixer for sample mixing',
+                'CARTRIDGE',
+                'Mixing',
+                'Scientific Industries',
+                'SI-0236',
+                'Room Temperature',
+                'units',
+                'N',
+                'Standard tubes and plates',
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-instrument-004-micropipette-set" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Micropipette Set' AND item_type = 'CARTRIDGE';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Micropipette Set instrument</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                calibration_required, compatible_analyzers, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Micropipette Set',
+                'Set of calibrated micropipettes (P10, P20, P200, P1000)',
+                'CARTRIDGE',
+                'Liquid Handling',
+                'Gilson',
+                'PIPETMAN-SET',
+                'Room Temperature',
+                'sets',
+                'Y',
+                'Standard pipette tips',
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-instrument-005-biosafety-cabinet" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Biosafety Cabinet Class II' AND item_type = 'CARTRIDGE';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Biosafety Cabinet Class II instrument</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                calibration_required, compatible_analyzers, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Biosafety Cabinet Class II',
+                'Class II Type A2 biological safety cabinet for sample processing',
+                'CARTRIDGE',
+                'Containment',
+                'Thermo Fisher',
+                '1300-Series',
+                'Laboratory Installation',
+                'units',
+                'Y',
+                'HEPA filtered workspace',
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-instrument-006-spectrophotometer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'NanoDrop Spectrophotometer' AND item_type = 'CARTRIDGE';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed NanoDrop Spectrophotometer instrument</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                calibration_required, compatible_analyzers, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'NanoDrop Spectrophotometer',
+                'Micro-volume UV-Vis spectrophotometer for nucleic acid quantification',
+                'CARTRIDGE',
+                'Quantification',
+                'Thermo Fisher',
+                'ND-2000',
+                'Room Temperature',
+                'units',
+                'Y',
+                'Direct sample measurement (1-2µl)',
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <!-- ========================================
+         INVENTORY LOTS - Sample lots for reagents
+         ======================================== -->
+
+    <changeSet id="seed-lot-001-dna-extraction-kit" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'EK-2024-001';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed DNA Extraction Kit lot</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                expiration_date, receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'DNA Extraction Kit' AND item_type = 'REAGENT'),
+                'EK-2024-001',
+                NOW() + INTERVAL '12 months',
+                NOW(),
+                50,
+                50,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-002-rna-preservation-buffer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'RPB-2024-002';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed RNA Preservation Buffer lot</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                expiration_date, receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'RNA Preservation Buffer' AND item_type = 'REAGENT'),
+                'RPB-2024-002',
+                NOW() + INTERVAL '18 months',
+                NOW(),
+                500,
+                500,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-003-pcr-master-mix" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'PM-2024-003';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed PCR Master Mix lot</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                expiration_date, receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'PCR Master Mix' AND item_type = 'REAGENT'),
+                'PM-2024-003',
+                NOW() + INTERVAL '6 months',
+                NOW(),
+                200,
+                200,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-004-malaria-rdt-buffer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'MRK-2024-004';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Malaria RDT Buffer lot</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                expiration_date, receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'Malaria RDT Buffer' AND item_type = 'REAGENT'),
+                'MRK-2024-004',
+                NOW() + INTERVAL '24 months',
+                NOW(),
+                100,
+                100,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-005-cell-lysis-buffer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'CLB-2024-005';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Cell Lysis Buffer lot</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                expiration_date, receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'Cell Lysis Buffer' AND item_type = 'REAGENT'),
+                'CLB-2024-005',
+                NOW() + INTERVAL '12 months',
+                NOW(),
+                250,
+                250,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-006-proteinase-k" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'PK-2024-006';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Proteinase K Solution lot</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                expiration_date, receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'Proteinase K Solution' AND item_type = 'REAGENT'),
+                'PK-2024-006',
+                NOW() + INTERVAL '18 months',
+                NOW(),
+                50,
+                50,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-007-ethanol" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'ETH-2024-007';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Ethanol lot</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                expiration_date, receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'Ethanol (Molecular Biology Grade)' AND item_type = 'REAGENT'),
+                'ETH-2024-007',
+                NOW() + INTERVAL '36 months',
+                NOW(),
+                10,
+                10,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-008-nuclease-free-water" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'NFW-2024-008';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Nuclease-Free Water lot</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                expiration_date, receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'Nuclease-Free Water' AND item_type = 'REAGENT'),
+                'NFW-2024-008',
+                NOW() + INTERVAL '24 months',
+                NOW(),
+                1000,
+                1000,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <!-- ========================================
+         INSTRUMENT LOTS (Serial Numbers)
+         ======================================== -->
+
+    <changeSet id="seed-lot-009-centrifuge" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'CF-001';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Microcentrifuge serial</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'Microcentrifuge' AND item_type = 'CARTRIDGE'),
+                'CF-001',
+                NOW(),
+                1,
+                1,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-010-thermocycler" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'TC-002';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed PCR Thermocycler serial</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'PCR Thermocycler' AND item_type = 'CARTRIDGE'),
+                'TC-002',
+                NOW(),
+                1,
+                1,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-011-vortex-mixer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'VM-003';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Vortex Mixer serial</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'Vortex Mixer' AND item_type = 'CARTRIDGE'),
+                'VM-003',
+                NOW(),
+                1,
+                1,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-012-micropipette-set" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'MP-004';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Micropipette Set serial</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'Micropipette Set' AND item_type = 'CARTRIDGE'),
+                'MP-004',
+                NOW(),
+                1,
+                1,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-013-biosafety-cabinet" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'BSC-005';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Biosafety Cabinet serial</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'Biosafety Cabinet Class II' AND item_type = 'CARTRIDGE'),
+                'BSC-005',
+                NOW(),
+                1,
+                1,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-lot-014-spectrophotometer" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_lot
+                WHERE lot_number = 'ND-006';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed NanoDrop Spectrophotometer serial</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            ) VALUES (
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                (SELECT id FROM clinlims.inventory_item WHERE name = 'NanoDrop Spectrophotometer' AND item_type = 'CARTRIDGE'),
+                'ND-006',
+                NOW(),
+                1,
+                1,
+                'PASSED',
+                'ACTIVE'
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

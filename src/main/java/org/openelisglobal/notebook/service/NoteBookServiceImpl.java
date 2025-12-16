@@ -13,6 +13,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.common.dao.BaseDAO;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
@@ -636,34 +637,63 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Transactional(readOnly = true)
     public NoteBookPage getNextPage(Integer pageId) {
         if (pageId == null) {
+            LogEvent.logDebug(this.getClass().getName(), "getNextPage", "pageId is null");
             return null;
         }
 
         NoteBookPage currentPage = noteBookPageDAO.get(pageId).orElse(null);
         if (currentPage == null) {
+            LogEvent.logDebug(this.getClass().getName(), "getNextPage", "currentPage not found for pageId=" + pageId);
             return null;
         }
 
         // Get the notebook and its pages
         NoteBook notebook = currentPage.getNotebook();
         if (notebook == null) {
+            LogEvent.logDebug(this.getClass().getName(), "getNextPage",
+                    "notebook is null for pageId=" + pageId + " title='" + currentPage.getTitle() + "'");
             return null;
         }
 
         Hibernate.initialize(notebook.getPages());
         List<NoteBookPage> pages = notebook.getPages();
         if (pages == null || pages.isEmpty()) {
+            LogEvent.logDebug(this.getClass().getName(), "getNextPage",
+                    "pages is empty for notebook id=" + notebook.getId());
             return null;
         }
 
         // Sort pages by order and find the next one
         Integer currentOrder = currentPage.getOrder();
         if (currentOrder == null) {
+            LogEvent.logDebug(this.getClass().getName(), "getNextPage",
+                    "currentOrder is null for pageId=" + pageId + " title='" + currentPage.getTitle() + "'");
             return null;
         }
 
-        return pages.stream().filter(p -> p.getOrder() != null && p.getOrder() > currentOrder)
+        LogEvent.logInfo(this.getClass().getName(), "getNextPage",
+                "Finding next page: currentPageId=" + pageId + " currentOrder=" + currentOrder + " title='"
+                        + currentPage.getTitle() + "' notebookId=" + notebook.getId() + " totalPages=" + pages.size());
+
+        // Log all pages for debugging
+        for (NoteBookPage p : pages) {
+            LogEvent.logDebug(this.getClass().getName(), "getNextPage",
+                    "  Page: id=" + p.getId() + " order=" + p.getOrder() + " title='" + p.getTitle() + "'");
+        }
+
+        NoteBookPage nextPage = pages.stream().filter(p -> p.getOrder() != null && p.getOrder() > currentOrder)
                 .min((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(null);
+
+        if (nextPage != null) {
+            LogEvent.logInfo(this.getClass().getName(), "getNextPage",
+                    "Found next page: id=" + nextPage.getId() + " order=" + nextPage.getOrder() + " title='"
+                            + nextPage.getTitle() + "'");
+        } else {
+            LogEvent.logInfo(this.getClass().getName(), "getNextPage",
+                    "No next page found for currentOrder=" + currentOrder + " (this might be the last page)");
+        }
+
+        return nextPage;
     }
 
     @Override
@@ -743,15 +773,29 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             return true;
         }
 
-        // Also check by page order - order 4 is the Child Samples page where routing
-        // happens
-        if (page.getOrder() != null && page.getOrder() == 4) {
+        // Check for "child sample" in title since routing is combined with child
+        // sample creation (Immunology workflow)
+        if (title.contains("child sample")) {
             return true;
         }
 
-        // Also check for "child sample" in title since routing is combined with child
-        // sample creation
-        return title.contains("child sample");
+        // Check by page order - order 4 is the Child Samples page where routing
+        // happens, but ONLY for Immunology workflow (not MNTD)
+        // MNTD has "Sample Processing Preparation" at order 4 which is NOT a routing page
+        if (page.getOrder() != null && page.getOrder() == 4) {
+            // Check if this is an Immunology notebook (not MNTD)
+            NoteBook notebook = page.getNotebook();
+            if (notebook != null) {
+                Hibernate.initialize(notebook);
+                String notebookTitle = notebook.getTitle() != null ? notebook.getTitle().toLowerCase() : "";
+                // Only treat order 4 as routing for Immunology workflows
+                if (notebookTitle.contains("immunology")) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     @Override
@@ -810,6 +854,102 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         Hibernate.initialize(notebook.getFiles());
         return notebook.getFiles() != null ? notebook.getFiles() : new ArrayList<>();
+    }
+
+    @Override
+    @Transactional
+    public int syncPagesFromTemplate(Integer instanceId, String sysUserId) {
+        if (instanceId == null) {
+            throw new IllegalArgumentException("Instance ID is required");
+        }
+
+        NoteBook instance = get(instanceId);
+        if (instance == null) {
+            throw new IllegalArgumentException("Notebook instance not found: " + instanceId);
+        }
+
+        if (instance.getIsTemplate() != null && instance.getIsTemplate()) {
+            throw new IllegalArgumentException("Cannot sync pages for a template notebook");
+        }
+
+        // Find the parent template
+        NoteBook template = baseObjectDAO.findParentTemplate(instanceId);
+        if (template == null) {
+            LogEvent.logWarn(this.getClass().getName(), "syncPagesFromTemplate",
+                    "No parent template found for instance " + instanceId);
+            return 0;
+        }
+
+        // Initialize pages collections
+        Hibernate.initialize(template.getPages());
+        Hibernate.initialize(instance.getPages());
+        if (template.getPages() != null) {
+            for (NoteBookPage p : template.getPages()) {
+                Hibernate.initialize(p.getPanels());
+                Hibernate.initialize(p.getTests());
+            }
+        }
+
+        List<NoteBookPage> templatePages = template.getPages();
+        List<NoteBookPage> instancePages = instance.getPages();
+
+        if (templatePages == null || templatePages.isEmpty()) {
+            return 0;
+        }
+
+        // Create a set of existing page orders in the instance
+        java.util.Set<Integer> existingOrders = new java.util.HashSet<>();
+        if (instancePages != null) {
+            for (NoteBookPage p : instancePages) {
+                if (p.getOrder() != null) {
+                    existingOrders.add(p.getOrder());
+                }
+            }
+        }
+
+        // Add any missing pages from template to instance
+        int addedCount = 0;
+        for (NoteBookPage templatePage : templatePages) {
+            Integer templateOrder = templatePage.getOrder();
+            if (templateOrder == null) {
+                continue; // Skip pages without order
+            }
+
+            if (!existingOrders.contains(templateOrder)) {
+                // This page is in template but not in instance - add it
+                NoteBookPage newPage = new NoteBookPage();
+                newPage.setTitle(templatePage.getTitle());
+                newPage.setOrder(templatePage.getOrder());
+                newPage.setContent(templatePage.getContent());
+                newPage.setNotebook(instance);
+                newPage.setCompleted(false);
+
+                // Copy panels and tests references
+                if (templatePage.getPanels() != null) {
+                    newPage.getPanels().addAll(templatePage.getPanels());
+                }
+                if (templatePage.getTests() != null) {
+                    newPage.getTests().addAll(templatePage.getTests());
+                }
+
+                instance.getPages().add(newPage);
+                addedCount++;
+
+                LogEvent.logInfo(this.getClass().getName(), "syncPagesFromTemplate",
+                        "Added page '" + templatePage.getTitle() + "' (order=" + templateOrder
+                                + ") to instance " + instanceId);
+            }
+        }
+
+        if (addedCount > 0) {
+            // Set sysUserId for audit trail and update
+            instance.setSysUserId(sysUserId);
+            update(instance);
+            LogEvent.logInfo(this.getClass().getName(), "syncPagesFromTemplate",
+                    "Synced " + addedCount + " pages from template " + template.getId() + " to instance " + instanceId);
+        }
+
+        return addedCount;
     }
 
 }
