@@ -1,0 +1,14 @@
+
+> openelis-global-react-app@0.1.0 test
+> react-scripts test BoxCrudControls.test.jsx --watchAll=false
+
+PASS src/components/storage/StorageDashboard/BoxCrudControls.test.jsx
+  BoxCrudControls
+    ✓ testAddButton_DisabledWithoutRack (44 ms)
+    ✓ testSelectedBox_ShowsOverflowMenu (19 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        1.612 s, estimated 2 s
+Ran all test suites matching /BoxCrudControls.test.jsx/i.

@@ -175,10 +175,13 @@ public interface StorageLocationService {
      * @return true if unique within scope, false otherwise
      */
     boolean isNameUniqueWithinParent(String name, Integer parentId, String locationType, Integer excludeId);
-    
+
     // Code uniqueness validation methods (added per spec FR-037l1)
     boolean isCodeUniqueForRoom(String code, Integer excludeId);
+
     boolean isCodeUniqueForDevice(String code, Integer excludeId);
+
     boolean isCodeUniqueForShelf(String code, Integer excludeId);
+
     boolean isCodeUniqueForRack(String code, Integer excludeId);
 }
