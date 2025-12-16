@@ -47,10 +47,13 @@ import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
 import LocationFilterDropdown from "./StorageDashboard/LocationFilterDropdown";
+import BoxCrudControls from "./StorageDashboard/BoxCrudControls";
 import SampleActionsContainer from "./SampleStorage/SampleActionsContainer";
 import LocationActionsOverflowMenu from "./LocationManagement/LocationActionsOverflowMenu";
 import EditLocationModal from "./LocationManagement/EditLocationModal";
 import DeleteLocationModal from "./LocationManagement/DeleteLocationModal";
+import EditBoxModal from "./LocationManagement/EditBoxModal";
+import DeleteBoxModal from "./LocationManagement/DeleteBoxModal";
 import StorageLocationModal from "./StorageLocationModal";
 import PrintLabelButton from "./LocationManagement/PrintLabelButton";
 import PrintLabelConfirmationDialog from "./LocationManagement/PrintLabelConfirmationDialog";
@@ -131,7 +134,7 @@ const StorageDashboard = () => {
   const [samples, setSamples] = useState([]);
   const [selectedRackIdForGrid, setSelectedRackIdForGrid] = useState("");
   const [selectedRackForGrid, setSelectedRackForGrid] = useState(null);
-  const [boxes, setBoxes] = useState([]);
+  const [boxesForGrid, setBoxesForGrid] = useState([]); // Boxes for grid assignment workflow
   const [boxesLoading, setBoxesLoading] = useState(false);
   const [boxesError, setBoxesError] = useState(null);
   const [selectedBoxId, setSelectedBoxId] = useState("");
@@ -140,6 +143,12 @@ const StorageDashboard = () => {
   const [assignSampleId, setAssignSampleId] = useState("");
   const [assignNotes, setAssignNotes] = useState("");
   const [assignStatus, setAssignStatus] = useState(null);
+
+  // Box CRUD modal state
+  const [boxModalOpen, setBoxModalOpen] = useState(false);
+  const [boxModalMode, setBoxModalMode] = useState("create"); // "create" | "edit"
+  const [selectedBoxForCrud, setSelectedBoxForCrud] = useState(null);
+  const [boxDeleteModalOpen, setBoxDeleteModalOpen] = useState(false);
 
   // OGC-150: Pagination state
   const [page, setPage] = useState(1); // Carbon Pagination uses 1-based indexing
@@ -1502,7 +1511,7 @@ const StorageDashboard = () => {
   const fetchBoxesForRack = useCallback(
     (rackId) => {
       if (!rackId) {
-        setBoxes([]);
+        setBoxesForGrid([]);
         setSelectedBox(null);
         return;
       }
@@ -1535,7 +1544,7 @@ const StorageDashboard = () => {
               ...box,
               occupied: occupiedIds.has(box.id?.toString()),
             })) || [];
-          setBoxes(merged);
+          setBoxesForGrid(merged);
 
           // Update selected box with fresh data if one is selected
           if (selectedBoxId) {
@@ -1569,7 +1578,7 @@ const StorageDashboard = () => {
     if (selectedRackIdForGrid) {
       fetchBoxesForRack(selectedRackIdForGrid);
     } else {
-      setBoxes([]);
+      setBoxesForGrid([]);
       setSelectedBoxId("");
       setSelectedBox(null);
     }
@@ -1603,6 +1612,80 @@ const StorageDashboard = () => {
     setSelectedBox(box);
     setSelectedCoordinate("");
     setAssignStatus(null);
+  };
+
+  const handleCreateBox = () => {
+    if (!selectedRackIdForGrid) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "storage.box.validation.parentRack.required",
+          defaultMessage: "Please select a rack first.",
+        }),
+        kind: "error",
+      });
+      setNotificationVisible(true);
+      return;
+    }
+    setSelectedBoxForCrud(null);
+    setBoxModalMode("create");
+    setBoxModalOpen(true);
+  };
+
+  const handleEditBox = (box) => {
+    setSelectedBoxForCrud(box);
+    setBoxModalMode("edit");
+    setBoxModalOpen(true);
+  };
+
+  const handleDeleteBox = (box) => {
+    setSelectedBoxForCrud(box);
+    setBoxDeleteModalOpen(true);
+  };
+
+  const handleBoxModalClose = () => {
+    setBoxModalOpen(false);
+    setSelectedBoxForCrud(null);
+  };
+
+  const handleBoxDeleteModalClose = () => {
+    setBoxDeleteModalOpen(false);
+    setSelectedBoxForCrud(null);
+  };
+
+  const handleBoxSaved = async (savedBox) => {
+    if (selectedRackIdForGrid) {
+      await fetchBoxesForRack(selectedRackIdForGrid);
+    }
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage(
+        {
+          id: "storage.box.save.success",
+          defaultMessage: "{label} saved successfully",
+        },
+        { label: savedBox?.label || "" },
+      ),
+      kind: "success",
+    });
+    setNotificationVisible(true);
+    handleBoxModalClose();
+  };
+
+  const handleBoxDeleted = async () => {
+    if (selectedRackIdForGrid) {
+      await fetchBoxesForRack(selectedRackIdForGrid);
+    }
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "storage.box.delete.success",
+        defaultMessage: "Box deleted successfully",
+      }),
+      kind: "success",
+    });
+    setNotificationVisible(true);
+    handleBoxDeleteModalClose();
   };
 
   const handleCoordinateSelect = (coordinate, isOccupied) => {
@@ -2790,12 +2873,13 @@ const StorageDashboard = () => {
     ...rack,
   }));
 
-  const boxDropdownItems = (boxes || []).map((box) => ({
+  const boxDropdownItems = (boxesForGrid || []).map((box) => ({
     id: box.id,
     label: box.label,
     description: `${box.type || ""} (${box.rows || 0}×${box.columns || 0}) ${box.occupied ? "• Occupied" : ""}`,
     ...box,
   }));
+
 
   const renderBoxGrid = () => {
     if (!selectedBox) {
@@ -4418,15 +4502,42 @@ const StorageDashboard = () => {
               <TabPanel>
                 <Grid fullWidth className="boxes-tab">
                   <Column lg={16} md={8} sm={4} className="boxes-tab-header">
-                    <h3 className="table-title">
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <div>
+                        <h3 className="table-title">
+                          <FormattedMessage
+                            id="storage.tab.boxes"
+                            defaultMessage="Boxes"
+                          />
+                        </h3>
+                        <p className="helper-text">
+                          <FormattedMessage
+                            id="storage.boxes.helper"
+                            defaultMessage="Manage boxes/plates or select a rack and box to assign samples to coordinates."
+                          />
+                        </p>
+                      </div>
+                    </div>
+                  </Column>
+
+                  {/* Grid Assignment Section (existing functionality) */}
+                  <Column lg={16} md={8} sm={4} className="boxes-tab-header">
+                    <h4>
                       <FormattedMessage
-                        id="storage.tab.boxes"
-                        defaultMessage="Boxes"
+                        id="storage.boxes.grid.assignment"
+                        defaultMessage="Grid Assignment"
                       />
-                    </h3>
+                    </h4>
                     <p className="helper-text">
                       <FormattedMessage
-                        id="storage.boxes.helper"
+                        id="storage.boxes.helper.grid"
                         defaultMessage="Select a rack, then a box (plate) to view its grid and assign samples to coordinates."
                       />
                     </p>
@@ -4491,6 +4602,13 @@ const StorageDashboard = () => {
                         handleBoxSelect(selectedItem)
                       }
                       disabled={!selectedRackIdForGrid || boxesLoading}
+                    />
+                    <BoxCrudControls
+                      selectedRackId={selectedRackIdForGrid}
+                      selectedBox={selectedBox}
+                      onCreate={handleCreateBox}
+                      onEdit={handleEditBox}
+                      onDelete={handleDeleteBox}
                     />
                   </Column>
 
@@ -4671,6 +4789,20 @@ const StorageDashboard = () => {
         locationType={selectedLocationType}
         onClose={handleDeleteModalClose}
         onDelete={handleDeleteModalConfirm}
+      />
+      <EditBoxModal
+        open={boxModalOpen}
+        mode={boxModalMode}
+        box={selectedBoxForCrud}
+        parentRack={selectedRackForGrid}
+        onClose={handleBoxModalClose}
+        onSave={handleBoxSaved}
+      />
+      <DeleteBoxModal
+        open={boxDeleteModalOpen}
+        box={selectedBoxForCrud}
+        onClose={handleBoxDeleteModalClose}
+        onDeleted={handleBoxDeleted}
       />
       {/* Print Label Confirmation Dialog (single instance) */}
       <PrintLabelConfirmationDialog

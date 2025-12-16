@@ -512,7 +512,7 @@ const EditLocationModal = ({
                     id: "storage.location.active",
                     defaultMessage: "Active",
                   })}
-                  toggled={formData.active === true}
+                  toggled={normalizeActive(formData.active)}
                   onToggle={(checked) => handleFieldChange("active", checked)}
                 />
               </>
@@ -604,6 +604,14 @@ const EditLocationModal = ({
                     handleFieldChange("temperatureSetting", e.target.value)
                   }
                   type="number"
+                  invalid={
+                    formData.temperatureSetting !== "" &&
+                    isNaN(Number(formData.temperatureSetting))
+                  }
+                  invalidText={intl.formatMessage({
+                    id: "storage.device.temperature.invalid",
+                    defaultMessage: "Please enter a valid number",
+                  })}
                 />
                 <TextInput
                   id="device-capacity"
@@ -646,6 +654,26 @@ const EditLocationModal = ({
                   required
                 />
                 <TextInput
+                  id="shelf-code"
+                  data-testid="edit-location-shelf-code"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.code",
+                    defaultMessage: "Code",
+                  })}
+                  value={formData.code || ""}
+                  onChange={(e) => {
+                    // Auto-uppercase on input and limit to 10 chars
+                    const value = e.target.value.toUpperCase().slice(0, 10);
+                    handleFieldChange("code", value);
+                  }}
+                  maxLength={10}
+                  helperText={intl.formatMessage({
+                    id: "storage.location.code.helper",
+                    defaultMessage:
+                      "Max 10 characters, alphanumeric with hyphens/underscores",
+                  })}
+                />
+                <TextInput
                   id="shelf-parent-device"
                   data-testid="edit-location-shelf-parent-device"
                   labelText={intl.formatMessage({
@@ -675,26 +703,6 @@ const EditLocationModal = ({
                   }
                   type="number"
                 />
-                <TextInput
-                  id="shelf-code"
-                  data-testid="edit-location-shelf-code"
-                  labelText={intl.formatMessage({
-                    id: "storage.location.code",
-                    defaultMessage: "Code",
-                  })}
-                  value={formData.code || ""}
-                  onChange={(e) => {
-                    // Auto-uppercase on input and limit to 10 chars
-                    const value = e.target.value.toUpperCase().slice(0, 10);
-                    handleFieldChange("code", value);
-                  }}
-                  maxLength={10}
-                  helperText={intl.formatMessage({
-                    id: "storage.location.code.helper",
-                    defaultMessage:
-                      "Max 10 characters, alphanumeric with hyphens/underscores",
-                  })}
-                />
                 <Toggle
                   id="shelf-active"
                   data-testid="edit-location-shelf-active"
@@ -702,7 +710,7 @@ const EditLocationModal = ({
                     id: "storage.location.active",
                     defaultMessage: "Active",
                   })}
-                  toggled={formData.active === true}
+                  toggled={normalizeActive(formData.active)}
                   onToggle={(checked) => handleFieldChange("active", checked)}
                 />
               </>
@@ -721,6 +729,26 @@ const EditLocationModal = ({
                   value={formData.label || ""}
                   onChange={(e) => handleFieldChange("label", e.target.value)}
                   required
+                />
+                <TextInput
+                  id="rack-code"
+                  data-testid="edit-location-rack-code"
+                  labelText={intl.formatMessage({
+                    id: "storage.location.code",
+                    defaultMessage: "Code",
+                  })}
+                  value={formData.code || ""}
+                  onChange={(e) => {
+                    // Auto-uppercase on input and limit to 10 chars
+                    const value = e.target.value.toUpperCase().slice(0, 10);
+                    handleFieldChange("code", value);
+                  }}
+                  maxLength={10}
+                  helperText={intl.formatMessage({
+                    id: "storage.location.code.helper",
+                    defaultMessage:
+                      "Max 10 characters, alphanumeric with hyphens/underscores",
+                  })}
                 />
                 <TextInput
                   id="rack-parent-shelf"
@@ -781,26 +809,6 @@ const EditLocationModal = ({
                     handleFieldChange("positionSchemaHint", e.target.value)
                   }
                 />
-                <TextInput
-                  id="rack-code"
-                  data-testid="edit-location-rack-code"
-                  labelText={intl.formatMessage({
-                    id: "storage.location.code",
-                    defaultMessage: "Code",
-                  })}
-                  value={formData.code || ""}
-                  onChange={(e) => {
-                    // Auto-uppercase on input and limit to 10 chars
-                    const value = e.target.value.toUpperCase().slice(0, 10);
-                    handleFieldChange("code", value);
-                  }}
-                  maxLength={10}
-                  helperText={intl.formatMessage({
-                    id: "storage.location.code.helper",
-                    defaultMessage:
-                      "Max 10 characters, alphanumeric with hyphens/underscores",
-                  })}
-                />
                 <Toggle
                   id="rack-active"
                   data-testid="edit-location-rack-active"
@@ -808,7 +816,7 @@ const EditLocationModal = ({
                     id: "storage.location.active",
                     defaultMessage: "Active",
                   })}
-                  toggled={formData.active === true}
+                  toggled={normalizeActive(formData.active)}
                   onToggle={(checked) => handleFieldChange("active", checked)}
                 />
               </>

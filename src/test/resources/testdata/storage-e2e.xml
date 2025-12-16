@@ -109,18 +109,18 @@
     <storage_box id="100"
         fhir_uuid="00000000-0000-0000-0000-000000000064" label="Plate A"
         type="96-well" rows="8" columns="12"
-        position_schema_hint="letter-number" short_code="PA" active="true"
+        position_schema_hint="letter-number" code="PA" active="true"
         parent_rack_id="30" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
     <storage_box id="101"
         fhir_uuid="00000000-0000-0000-0000-000000000065" label="Plate B"
         type="96-well" rows="8" columns="12"
-        position_schema_hint="letter-number" short_code="PB" active="true"
+        position_schema_hint="letter-number" code="PB" active="true"
         parent_rack_id="30" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
     <!-- Parent rack 33 (Refrigerator Unit 1 -> Shelf-1 -> Rack R1) -->
     <storage_box id="102"
         fhir_uuid="00000000-0000-0000-0000-000000000066" label="Plate C"
         type="24-well" rows="4" columns="6"
-        position_schema_hint="letter-number" short_code="PC" active="true"
+        position_schema_hint="letter-number" code="PC" active="true"
         parent_rack_id="33" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
 
     <!-- E2E Test Fixtures: Patients -->

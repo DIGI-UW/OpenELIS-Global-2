@@ -189,10 +189,23 @@ public class StorageLocationRestController extends BaseRestController {
                 error.put("error", "Room name must be unique");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
+            
+            // Validate code uniqueness if code is being changed
+            if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
+                StorageRoom existingRoom = storageLocationService.getRoom(idInt);
+                if (existingRoom != null && !form.getCode().equals(existingRoom.getCode())) {
+                    // Code is being changed - validate uniqueness
+                    if (!storageLocationService.isCodeUniqueForRoom(form.getCode(), idInt)) {
+                        Map<String, Object> error = new HashMap<>();
+                        error.put("error", "Room code must be unique");
+                        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                    }
+                }
+            }
+            
             StorageRoom roomToUpdate = new StorageRoom();
             roomToUpdate.setName(form.getName());
-            // Code is read-only - ignored if provided in form
-            // roomToUpdate.setCode(form.getCode()); // Do not set code - it's read-only
+            roomToUpdate.setCode(form.getCode()); // Code is now editable per spec FR-037l1
             roomToUpdate.setDescription(form.getDescription());
             roomToUpdate.setActive(form.getActive());
 
@@ -449,6 +462,18 @@ public class StorageLocationRestController extends BaseRestController {
                 error.put("error", "Device name must be unique within the room");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
+            
+            // Validate code uniqueness if code is being changed (per spec FR-037l1)
+            if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
+                if (!form.getCode().equals(existingDevice.getCode())) {
+                    // Code is being changed - validate uniqueness
+                    if (!storageLocationService.isCodeUniqueForDevice(form.getCode(), idInt)) {
+                        Map<String, Object> error = new HashMap<>();
+                        error.put("error", "Device code must be unique");
+                        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                    }
+                }
+            }
             deviceToUpdate.setId(existingDevice.getId());
 
             storageLocationService.update(deviceToUpdate);
@@ -661,6 +686,19 @@ public class StorageLocationRestController extends BaseRestController {
                 error.put("error", "Shelf label must be unique within the device");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
+            
+            // Validate code uniqueness if code is being changed (per spec FR-037l1)
+            if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
+                if (!form.getCode().equals(existingShelf.getCode())) {
+                    // Code is being changed - validate uniqueness
+                    if (!storageLocationService.isCodeUniqueForShelf(form.getCode(), idInt)) {
+                        Map<String, Object> error = new HashMap<>();
+                        error.put("error", "Shelf code must be unique");
+                        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                    }
+                }
+            }
+            
             shelfToUpdate.setId(existingShelf.getId());
 
             storageLocationService.update(shelfToUpdate);
@@ -771,7 +809,7 @@ public class StorageLocationRestController extends BaseRestController {
         try {
             StorageRack rack = new StorageRack();
             rack.setLabel(form.getLabel());
-            rack.setShortCode(form.getShortCode());
+            rack.setCode(form.getCode());
             rack.setActive(form.getActive() != null ? form.getActive() : true);
             rack.setFhirUuid(UUID.randomUUID());
             rack.setSysUserId("1"); // Default system user for REST API
@@ -850,7 +888,7 @@ public class StorageLocationRestController extends BaseRestController {
             Integer idInt = Integer.parseInt(id);
             StorageRack rackToUpdate = new StorageRack();
             rackToUpdate.setLabel(form.getLabel());
-            rackToUpdate.setShortCode(form.getShortCode());
+            rackToUpdate.setCode(form.getCode());
             // parentShelf is read-only - ignored if provided
             rackToUpdate.setActive(form.getActive());
 
@@ -866,6 +904,19 @@ public class StorageLocationRestController extends BaseRestController {
                 error.put("error", "Rack label must be unique within the shelf");
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
+            
+            // Validate code uniqueness if code is being changed (per spec FR-037l1)
+            if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
+                if (!form.getCode().equals(existingRack.getCode())) {
+                    // Code is being changed - validate uniqueness
+                    if (!storageLocationService.isCodeUniqueForRack(form.getCode(), idInt)) {
+                        Map<String, Object> error = new HashMap<>();
+                        error.put("error", "Rack code must be unique");
+                        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                    }
+                }
+            }
+            
             rackToUpdate.setId(existingRack.getId());
 
             storageLocationService.update(rackToUpdate);
@@ -981,7 +1032,7 @@ public class StorageLocationRestController extends BaseRestController {
             box.setRows(form.getRows());
             box.setColumns(form.getColumns());
             box.setPositionSchemaHint(form.getPositionSchemaHint());
-            box.setShortCode(form.getShortCode());
+            box.setCode(form.getCode());
             box.setActive(form.getActive() != null ? form.getActive() : true);
             box.setFhirUuid(UUID.randomUUID());
             box.setSysUserId("1"); // Default system user for REST API
@@ -992,6 +1043,16 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent rack not found"));
             }
             box.setParentRack(parentRack);
+
+            // Validate code uniqueness within parent rack
+            if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
+                List<StorageBox> siblingBoxes = storageLocationService.getBoxesByRack(parentRackId);
+                boolean codeConflict = siblingBoxes.stream()
+                        .anyMatch(b -> b.getCode() != null && b.getCode().equals(form.getCode()));
+                if (codeConflict) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Box code must be unique within the rack"));
+                }
+            }
 
             Integer id = storageLocationService.insert(box);
             box.setId(id);
@@ -1029,6 +1090,128 @@ public class StorageLocationRestController extends BaseRestController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting boxes", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PutMapping("/boxes/{id}")
+    public ResponseEntity<?> updateBox(@PathVariable String id, @Valid @RequestBody StorageBoxForm form) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageBox boxToUpdate = new StorageBox();
+            boxToUpdate.setLabel(form.getLabel());
+            boxToUpdate.setType(form.getType());
+            boxToUpdate.setRows(form.getRows());
+            boxToUpdate.setColumns(form.getColumns());
+            boxToUpdate.setPositionSchemaHint(form.getPositionSchemaHint());
+            boxToUpdate.setCode(form.getCode());
+            boxToUpdate.setActive(form.getActive() != null ? form.getActive() : true);
+
+            // Get existing box to preserve ID and parent rack
+            StorageBox existingBox = (StorageBox) storageLocationService.get(idInt, StorageBox.class);
+            if (existingBox == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            Integer parentRackId = existingBox.getParentRack() != null ? existingBox.getParentRack().getId() : null;
+            
+            // Validate label uniqueness within parent rack
+            if (!storageLocationService.isNameUniqueWithinParent(form.getLabel(), parentRackId, "box", idInt)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Box label must be unique within the rack");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
+
+            // Validate code uniqueness within parent rack
+            if (form.getCode() != null && !form.getCode().trim().isEmpty()) {
+                if (!form.getCode().equals(existingBox.getCode())) {
+                    List<StorageBox> siblingBoxes = storageLocationService.getBoxesByRack(parentRackId);
+                    boolean codeConflict = siblingBoxes.stream()
+                            .anyMatch(b -> !b.getId().equals(existingBox.getId()) && b.getCode() != null
+                                    && b.getCode().equals(form.getCode()));
+                    if (codeConflict) {
+                        return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(Map.of("error", "Box code must be unique within the rack"));
+                    }
+                }
+            }
+            
+            boxToUpdate.setId(existingBox.getId());
+            boxToUpdate.setParentRack(existingBox.getParentRack()); // Parent rack is read-only
+
+            storageLocationService.update(boxToUpdate);
+            StorageBox updatedBox = (StorageBox) storageLocationService.get(idInt, StorageBox.class);
+            return ResponseEntity.ok(toBoxResponse(updatedBox));
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            logger.warn("Validation error updating box: {}", e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            logger.error("Error updating box", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    /**
+     * OGC-75: Check if a box can be deleted (pre-flight check for frontend)
+     */
+    @GetMapping("/boxes/{id}/can-delete")
+    public ResponseEntity<Map<String, Object>> canDeleteBox(@PathVariable String id, HttpServletRequest request) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageBox box = (StorageBox) storageLocationService.get(idInt, StorageBox.class);
+            if (box == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            boolean isAdmin = checkAdminStatus(request);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("isAdmin", isAdmin);
+
+            if (storageLocationService.canDeleteLocation(box)) {
+                response.put("canDelete", true);
+                return ResponseEntity.ok(response);
+            } else {
+                String message = storageLocationService.getDeleteConstraintMessage(box);
+                response.put("canDelete", false);
+                response.put("error", "Cannot delete box");
+                response.put("message", message);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+        } catch (Exception e) {
+            logger.error("Error checking box delete constraints", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @DeleteMapping("/boxes/{id}")
+    public ResponseEntity<?> deleteBox(@PathVariable String id, HttpServletRequest request) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageBox box = (StorageBox) storageLocationService.get(idInt, StorageBox.class);
+            if (box == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            boolean isAdmin = checkAdminStatus(request);
+            if (!isAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            // Check if box can be deleted (no assigned samples)
+            if (!storageLocationService.canDeleteLocation(box)) {
+                int sampleCount = sampleStorageAssignmentDAO.countByLocationTypeAndId("box", box.getId());
+                String message = storageLocationService.getDeleteConstraintMessage(box);
+                DeletionValidationResult validation =
+                        new DeletionValidationResult(false, "ACTIVE_ASSIGNMENTS", message, sampleCount);
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(validation);
+            }
+
+            storageLocationService.delete(box);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            logger.error("Error deleting box", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -1239,7 +1422,7 @@ public class StorageLocationRestController extends BaseRestController {
         StorageRackResponse response = new StorageRackResponse();
         response.setId(rack.getId());
         response.setLabel(rack.getLabel());
-        response.setShortCode(rack.getShortCode());
+        response.setCode(rack.getCode());
         response.setActive(rack.getActive());
         response.setFhirUuid(rack.getFhirUuidAsString());
 
@@ -1285,7 +1468,7 @@ public class StorageLocationRestController extends BaseRestController {
         response.setColumns(box.getColumns());
         response.setCapacity(box.getCapacity());
         response.setPositionSchemaHint(box.getPositionSchemaHint());
-        response.setShortCode(box.getShortCode());
+        response.setCode(box.getCode());
         response.setActive(box.getActive());
 
         Map<String, Map<String, String>> occupiedCoordinatesMap = sampleStorageAssignmentDAO
