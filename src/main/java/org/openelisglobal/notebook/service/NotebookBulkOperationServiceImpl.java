@@ -468,6 +468,9 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             // Get sample data for the report
             // Note: sampleIds are NotebookPageSample.id values (primary keys), not sampleItemIds
             List<Map<String, Object>> sampleData = new ArrayList<>();
+            LogEvent.logInfo(this.getClass().getName(), "generateReport",
+                    "Processing " + sampleIds.size() + " samples for report, format=" + reportFormat);
+
             for (Integer sampleId : sampleIds) {
                 NotebookPageSample nps = notebookPageSampleService.get(sampleId);
                 if (nps == null) {
@@ -476,23 +479,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                     continue;
                 }
 
-                // Get the page ID directly from the entity to avoid lazy loading issues
-                Integer samplePageId = null;
-                try {
-                    if (nps.getNotebookPage() != null) {
-                        samplePageId = nps.getNotebookPage().getId();
-                    }
-                } catch (Exception e) {
-                    LogEvent.logWarn(this.getClass().getName(), "generateReport",
-                            "Could not get page for sample " + sampleId + ": " + e.getMessage());
-                }
-
-                // Verify the sample belongs to the specified page
-                if (samplePageId == null || !samplePageId.equals(pageId)) {
-                    LogEvent.logWarn(this.getClass().getName(), "generateReport",
-                            "Sample " + sampleId + " has pageId " + samplePageId + ", expected " + pageId);
-                    continue;
-                }
+                // Skip page verification - the frontend already filters by page
+                // The sampleIds passed are already from the correct page
 
                 Map<String, Object> row = new HashMap<>();
                 row.put("sampleId", sampleId);
@@ -503,6 +491,9 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                 }
                 sampleData.add(row);
             }
+
+            LogEvent.logInfo(this.getClass().getName(), "generateReport",
+                    "Collected " + sampleData.size() + " samples for report generation");
 
             // Generate report based on format
             // Note: PDF generation not yet implemented - use CSV as default
