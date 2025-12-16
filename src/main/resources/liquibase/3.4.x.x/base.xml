@@ -20,9 +20,14 @@
     <include file="liquibase/3.4.x.x/009-mntd-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/010-mntd-sample-types.xml"/>
     <include file="liquibase/3.4.x.x/011-mntd-aliquoting-page.xml"/>
+    <include file="liquibase/3.4.x.x/011-tuberculosis-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/012-mntd-processing-qc-page.xml"/>
+    <include file="liquibase/3.4.x.x/012-pharmaceuticals-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/012-notebook-access-control.xml"/>
     <include file="liquibase/3.4.x.x/013-mntd-test-assignment-page.xml"/>
+    <include file="liquibase/3.4.x.x/013-pharma-sample-types.xml"/>
     <include file="liquibase/3.4.x.x/014-mntd-test-execution-page.xml"/>
+    <include file="liquibase/3.4.x.x/014-pharmaceuticals-additional-pages.xml"/>
     <include file="liquibase/3.4.x.x/015-mntd-reporting-redcap-page.xml"/>
     <include file="liquibase/3.4.x.x/016-mntd-data-analysis-page.xml"/>
     <include file="liquibase/3.4.x.x/017-fix-mntd-page-order.xml"/>
@@ -61,5 +66,8 @@
     <include file="liquibase/3.4.x.x/039-seed-inventory-enzymes.xml"/>
     <include file="liquibase/3.4.x.x/040-seed-inventory-antibiotics.xml"/>
     <include file="liquibase/3.4.x.x/035-notebook-entry-manifest-description.xml"/>
+    <include file="liquibase/3.4.x.x/019-pathology-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/020-pathology-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/021-fix-pathology-page-order.xml"/>
 
 </databaseChangeLog>

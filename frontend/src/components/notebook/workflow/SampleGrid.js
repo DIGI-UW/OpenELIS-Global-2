@@ -62,7 +62,7 @@ function SampleGrid({
 }) {
   const intl = useIntl();
 
-  // Pagination state
+  // Pagination state - default page size 10
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 

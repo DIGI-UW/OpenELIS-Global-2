@@ -1,0 +1,850 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- PATHOLOGY LABORATORY SAMPLE TYPES -->
+    <!-- Defines specimen types specific to pathology workflows -->
+    <!-- Each sample type requires a localization entry first -->
+    <!-- ======================================================== -->
+
+    <!-- ======================= -->
+    <!-- HISTOPATHOLOGY SAMPLES -->
+    <!-- ======================= -->
+
+    <!-- FFPE tissue block -->
+    <changeSet id="add-pathology-localization-ffpe-block" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'FFPE tissue block' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="FFPE tissue block"/>
+            <column name="french" value="Bloc tissulaire FFPE"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-ffpe-block" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'ffpe tissue block'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="FFPE tissue block"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="FFPE"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="1"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'FFPE tissue block' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Fresh biopsy -->
+    <changeSet id="add-pathology-localization-fresh-biopsy" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Fresh biopsy' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Fresh biopsy"/>
+            <column name="french" value="Biopsie fraîche"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-fresh-biopsy" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'fresh biopsy'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Fresh biopsy"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="FBX"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="2"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Fresh biopsy' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Surgical resection -->
+    <changeSet id="add-pathology-localization-surgical-resection" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Surgical resection' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Surgical resection"/>
+            <column name="french" value="Résection chirurgicale"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-surgical-resection" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'surgical resection'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Surgical resection"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="SRX"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="3"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Surgical resection' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- CYTOPATHOLOGY SAMPLES -->
+    <!-- ======================= -->
+
+    <!-- Fine needle aspirate (FNA) -->
+    <changeSet id="add-pathology-localization-fna" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Fine needle aspirate (FNA)' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Fine needle aspirate (FNA)"/>
+            <column name="french" value="Ponction à l'aiguille fine (PAF)"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-fna" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'fine needle aspirate (fna)'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Fine needle aspirate (FNA)"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="FNA"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="4"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Fine needle aspirate (FNA)' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Pleural fluid -->
+    <changeSet id="add-pathology-localization-pleural-fluid" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Pleural fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Pleural fluid"/>
+            <column name="french" value="Liquide pleural"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-pleural-fluid" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'pleural fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Pleural fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="PLF"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="5"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Pleural fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Peritoneal fluid -->
+    <changeSet id="add-pathology-localization-peritoneal-fluid" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Peritoneal fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Peritoneal fluid"/>
+            <column name="french" value="Liquide péritonéal"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-peritoneal-fluid" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'peritoneal fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Peritoneal fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="PEF"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="6"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Peritoneal fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Pericardial fluid -->
+    <changeSet id="add-pathology-localization-pericardial-fluid" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Pericardial fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Pericardial fluid"/>
+            <column name="french" value="Liquide péricardique"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-pericardial-fluid" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'pericardial fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Pericardial fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="PCF"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="7"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Pericardial fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- CSF for cytology -->
+    <changeSet id="add-pathology-localization-csf-cyto" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'CSF for cytology' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="CSF for cytology"/>
+            <column name="french" value="LCR pour cytologie"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-csf-cyto" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'csf for cytology'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="CSF for cytology"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="CSFC"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="8"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'CSF for cytology' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Urine for cytology -->
+    <changeSet id="add-pathology-localization-urine-cyto" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Urine for cytology' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Urine for cytology"/>
+            <column name="french" value="Urine pour cytologie"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-urine-cyto" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'urine for cytology'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Urine for cytology"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="URC"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="9"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Urine for cytology' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Sputum for cytology -->
+    <changeSet id="add-pathology-localization-sputum-cyto" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Sputum for cytology' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Sputum for cytology"/>
+            <column name="french" value="Crachat pour cytologie"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-sputum-cyto" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'sputum for cytology'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Sputum for cytology"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="SPC"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="10"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Sputum for cytology' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Cervical smear -->
+    <changeSet id="add-pathology-localization-cervical-smear" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Cervical smear' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Cervical smear"/>
+            <column name="french" value="Frottis cervical"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-cervical-smear" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'cervical smear'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Cervical smear"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="CVS"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="11"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Cervical smear' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- HEMATOLOGY SAMPLES -->
+    <!-- ======================= -->
+
+    <!-- EDTA blood (peripheral smear) -->
+    <changeSet id="add-pathology-localization-edta-blood-smear" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'EDTA blood (peripheral smear)' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="EDTA blood (peripheral smear)"/>
+            <column name="french" value="Sang EDTA (frottis périphérique)"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-edta-blood-smear" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'edta blood (peripheral smear)'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="EDTA blood (peripheral smear)"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="PBS"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="12"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'EDTA blood (peripheral smear)' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- RESEARCH SAMPLES -->
+    <!-- ======================= -->
+
+    <!-- Human tissue (fresh) -->
+    <changeSet id="add-pathology-localization-human-tissue-fresh" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Human tissue (fresh)' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Human tissue (fresh)"/>
+            <column name="french" value="Tissu humain (frais)"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-human-tissue-fresh" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'human tissue (fresh)'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Human tissue (fresh)"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="HTF"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="13"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Human tissue (fresh)' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Human tissue (frozen) -->
+    <changeSet id="add-pathology-localization-human-tissue-frozen" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Human tissue (frozen)' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Human tissue (frozen)"/>
+            <column name="french" value="Tissu humain (congelé)"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-human-tissue-frozen" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'human tissue (frozen)'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Human tissue (frozen)"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="HTZ"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="14"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Human tissue (frozen)' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Human tissue (FFPE) -->
+    <changeSet id="add-pathology-localization-human-tissue-ffpe" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Human tissue (FFPE)' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Human tissue (FFPE)"/>
+            <column name="french" value="Tissu humain (FFPE)"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-human-tissue-ffpe" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'human tissue (ffpe)'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Human tissue (FFPE)"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="HTP"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="15"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Human tissue (FFPE)' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Animal tissue (mouse footpad) -->
+    <changeSet id="add-pathology-localization-animal-tissue-footpad" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Animal tissue (mouse footpad)' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Animal tissue (mouse footpad)"/>
+            <column name="french" value="Tissu animal (coussinet de souris)"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-animal-tissue-footpad" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'animal tissue (mouse footpad)'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Animal tissue (mouse footpad)"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="MFP"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="16"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Animal tissue (mouse footpad)' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Animal tissue (nerve) -->
+    <changeSet id="add-pathology-localization-animal-tissue-nerve" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Animal tissue (nerve)' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Animal tissue (nerve)"/>
+            <column name="french" value="Tissu animal (nerf)"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-animal-tissue-nerve" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'animal tissue (nerve)'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Animal tissue (nerve)"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="ANV"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="17"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Animal tissue (nerve)' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Bacterial/cellular pellet -->
+    <changeSet id="add-pathology-localization-bacterial-pellet" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Bacterial/cellular pellet' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Bacterial/cellular pellet"/>
+            <column name="french" value="Culot bactérien/cellulaire"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-bacterial-pellet" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'bacterial/cellular pellet'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Bacterial/cellular pellet"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="BCP"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="18"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Bacterial/cellular pellet' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Primary cell culture -->
+    <changeSet id="add-pathology-localization-cell-culture" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Primary cell culture' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Primary cell culture"/>
+            <column name="french" value="Culture cellulaire primaire"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-cell-culture" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'primary cell culture'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Primary cell culture"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="PCC"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="19"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Primary cell culture' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- PROCESSED SAMPLES (Child samples) -->
+    <!-- ======================= -->
+
+    <!-- Tissue slide -->
+    <changeSet id="add-pathology-localization-tissue-slide" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Tissue slide' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Tissue slide"/>
+            <column name="french" value="Lame tissulaire"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-tissue-slide" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'tissue slide'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Tissue slide"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="TSL"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="20"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Tissue slide' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Cell block -->
+    <changeSet id="add-pathology-localization-cell-block" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Cell block' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Cell block"/>
+            <column name="french" value="Bloc cellulaire"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-cell-block" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'cell block'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Cell block"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="CBK"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="21"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Cell block' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- LBC (Liquid-Based Cytology) vial -->
+    <changeSet id="add-pathology-localization-lbc-vial" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'LBC (Liquid-Based Cytology) vial' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="LBC (Liquid-Based Cytology) vial"/>
+            <column name="french" value="Flacon LBC (Cytologie en milieu liquide)"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-lbc-vial" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'lbc (liquid-based cytology) vial'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="LBC (Liquid-Based Cytology) vial"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="LBC"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="22"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'LBC (Liquid-Based Cytology) vial' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Blood smear slide -->
+    <changeSet id="add-pathology-localization-blood-smear" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Blood smear slide' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Blood smear slide"/>
+            <column name="french" value="Lame de frottis sanguin"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-blood-smear" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'blood smear slide'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Blood smear slide"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="BSS"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="23"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Blood smear slide' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Nucleic acid extract -->
+    <changeSet id="add-pathology-localization-nucleic-acid-extract" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Nucleic acid extract' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Nucleic acid extract"/>
+            <column name="french" value="Extrait d'acide nucléique"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-nucleic-acid-extract" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'nucleic acid extract'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Nucleic acid extract"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="NAE"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="24"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Nucleic acid extract' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

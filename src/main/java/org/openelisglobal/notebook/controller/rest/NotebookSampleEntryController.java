@@ -562,6 +562,70 @@ public class NotebookSampleEntryController extends BaseRestController {
     }
 
     /**
+     * Delete samples from a notebook page. POST
+     * /notebook/page/{pageId}/samples/delete
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds to delete
+     * @param httpRequest for getting user session
+     * @return deletion result with count
+     */
+    @PostMapping(value = "/page/{pageId}/samples/delete", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> deleteSamplesFromPage(@PathVariable("pageId") Integer pageId,
+            @RequestBody DeleteSamplesRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        // Verify page exists
+        NoteBookPage page = noteBookService.getPage(pageId);
+        if (page == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        int deletedCount = 0;
+        List<String> errors = new java.util.ArrayList<>();
+
+        for (Integer sampleId : request.getSampleIds()) {
+            try {
+                // Remove the NotebookPageSample record (link between page and sample)
+                org.openelisglobal.notebook.valueholder.NotebookPageSample nps = notebookPageSampleService
+                        .getByPageIdAndSampleItemId(pageId, sampleId);
+                if (nps != null) {
+                    notebookPageSampleService.delete(nps);
+                    deletedCount++;
+                } else {
+                    errors.add("Sample " + sampleId + " not found on page");
+                }
+            } catch (Exception e) {
+                errors.add("Error deleting sample " + sampleId + ": " + e.getMessage());
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("deletedCount", deletedCount);
+        result.put("pageId", pageId);
+        result.put("totalRequested", request.getSampleIds().size());
+        result.put("success", errors.isEmpty());
+        if (!errors.isEmpty()) {
+            result.put("errors", errors);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Create a notebook instance from a template.
      *
      * @param templateId  the template ID
@@ -2530,6 +2594,21 @@ public class NotebookSampleEntryController extends BaseRestController {
 
         public void setRequiresInvestigation(boolean requiresInvestigation) {
             this.requiresInvestigation = requiresInvestigation;
+        }
+    }
+
+    /**
+     * Request body for deleting samples from a page.
+     */
+    public static class DeleteSamplesRequest {
+        private List<Integer> sampleIds;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
         }
     }
 }
