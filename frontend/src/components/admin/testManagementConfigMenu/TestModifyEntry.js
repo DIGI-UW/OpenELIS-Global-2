@@ -31,11 +31,11 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.test.modify",
-    link: "/MasterListsPage#TestModifyEntry",
+    link: "/MasterListsPage/TestModifyEntry",
   },
 ];
 
