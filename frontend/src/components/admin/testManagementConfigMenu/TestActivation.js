@@ -333,6 +333,10 @@ function TestActivation() {
           const sample = changedTestActivationData?.activeTestList.find(
             (s) => String(s.sampleType.id) === String(sampleTypeId),
           );
+          console.log(sample?.inactiveTests?.length);
+          console.log(sample?.activeTests?.length);
+          console.log(sample?.inactiveTests?.length > 0);
+          console.log(sample?.activeTests?.length === 1);
           if (
             sample?.inactiveTests?.length > 0 &&
             sample?.activeTests?.length === 1
@@ -432,6 +436,8 @@ function TestActivation() {
           const sample = changedTestActivationData?.inactiveTestList.find(
             (s) => String(s.sampleType.id) === String(sampleTypeId),
           );
+          console.log(sample?.activeTests?.length > 0);
+          console.log(sample?.inactiveTests?.length === 1); // 0 or 1
           if (sample?.activeTests?.length > 0 && sample?.inactiveTests === 1) {
             if (!deactivateSample.some((item) => item.id === sampleTypeId)) {
               deactivateSample.push({ id: sampleTypeId });
@@ -564,6 +570,8 @@ function TestActivation() {
           const sample = changedTestActivationData?.inactiveTestList.find(
             (s) => String(s.sampleType.id) === String(sampleTypeId),
           );
+          console.log(sample?.activeTests?.length > 0);
+          console.log(sample?.inactiveTests?.length === 1); // 0 or 1
           if (
             sample?.activateTest?.length > 0 &&
             sample?.inactiveTest?.length === 1
