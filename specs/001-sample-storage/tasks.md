@@ -2410,7 +2410,7 @@ stories
       - Files: `frontend/src/components/storage/StorageDashboard.test.jsx`,
         `frontend/src/components/storage/StorageDashboard/BoxCrudControls.test.jsx`
 
-- [ ] T143l Write Cypress E2E tests for box CRUD workflow (C3 CHK028):
+- [x] T143l Write Cypress E2E tests for box CRUD workflow (C3 CHK028) ✅:
       - Create box/plate under selected rack
       - Edit selected box/plate (label/code) and verify persisted
       - Delete box/plate (including constraint validation path)
