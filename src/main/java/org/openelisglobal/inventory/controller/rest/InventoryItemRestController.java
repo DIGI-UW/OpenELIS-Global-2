@@ -141,12 +141,12 @@ public class InventoryItemRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
             item.setSysUserId(sysUserId);
 
-            // Generate FHIR UUID if not provided
             if (item.getFhirUuid() == null) {
                 item.setFhirUuid(java.util.UUID.randomUUID());
             }
 
-            InventoryItem savedItem = inventoryItemService.save(item);
+            Long itemId = inventoryItemService.insert(item);
+            InventoryItem savedItem = inventoryItemService.get(itemId);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedItem);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -158,30 +158,17 @@ public class InventoryItemRestController extends BaseRestController {
     public ResponseEntity<InventoryItem> update(@PathVariable String id, @Valid @RequestBody InventoryItem item,
             HttpServletRequest request) {
         try {
-            InventoryItem existingItem = inventoryItemService.get(Long.valueOf(id));
-            if (existingItem == null) {
+            if (inventoryItemService.get(Long.valueOf(id)) == null) {
                 return ResponseEntity.notFound().build();
             }
 
-            // Update only the fields that can be changed
-            existingItem.setName(item.getName());
-            existingItem.setItemType(item.getItemType());
-            existingItem.setCategory(item.getCategory());
-            existingItem.setManufacturer(item.getManufacturer());
-            existingItem.setUnits(item.getUnits());
-            existingItem.setLowStockThreshold(item.getLowStockThreshold());
-
-            // Type-specific fields
-            existingItem.setStabilityAfterOpening(item.getStabilityAfterOpening());
-            existingItem.setStorageRequirements(item.getStorageRequirements());
-            existingItem.setCompatibleAnalyzers(item.getCompatibleAnalyzers());
-            existingItem.setTestsPerKit(item.getTestsPerKit());
+            item.setId(Long.valueOf(id));
 
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
-            existingItem.setSysUserId(sysUserId);
+            item.setSysUserId(sysUserId);
 
-            InventoryItem updatedItem = inventoryItemService.update(existingItem);
+            InventoryItem updatedItem = inventoryItemService.update(item);
             return ResponseEntity.ok(updatedItem);
         } catch (Exception e) {
             LogEvent.logError(e);

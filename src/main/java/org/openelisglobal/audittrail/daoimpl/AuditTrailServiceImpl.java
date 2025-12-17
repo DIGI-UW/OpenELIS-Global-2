@@ -46,9 +46,8 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     private HistoryService historyService;
 
     // For an insert log the id, sys_user_id, ref id, reftable, timestamp, activity
-    // (='I'). The change column would be blank, since the
-    // before data did not contain anything. Note: This requires making the changes
-    // column (in history table) nullable
+    // (='I'). Store the initial field values in changes column with format:
+    // <field name="fieldName"><new>initialValue</new></field>
     @Override
     public void saveNewHistory(BaseObject newObject, String sysUserId, String tableName) throws LIMSRuntimeException {
 
@@ -96,6 +95,15 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             hist.setTimestamp(timestamp);
             hist.setActivity(IActionConstants.AUDIT_TRAIL_INSERT);
             hist.setReferenceTable(referenceTable.getId());
+
+            String xml = getInsertChanges(newObject, tableName);
+            if (xml != null && xml.length() > 0) {
+                byte[] bytes = xml.getBytes();
+                hist.setChanges(bytes);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "saveNewHistory",
+                        "Created INSERT history with changes XML length: " + xml.length());
+            }
+
             insertData(hist);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "saveNewHistory",
@@ -104,6 +112,60 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error occurred logging INSERT", e);
         }
+    }
+
+    /**
+     * Captures initial field values for INSERT operations. Generates XML with
+     * format: &lt;field
+     * name="fieldName"&gt;&lt;new&gt;value&lt;/new&gt;&lt;/field&gt;
+     *
+     * @param newObject the newly created object
+     * @param tableName the database table name
+     * @return XML string containing initial field values, or null if no fields
+     *         captured
+     */
+    private String getInsertChanges(BaseObject newObject, String tableName) {
+        Vector<LabelValuePair> optionList = new Vector<>();
+        Class objectClass = newObject.getClass();
+        Field[] fields = getAllFields(objectClass, null);
+
+        for (int i = 0; i < fields.length; i++) {
+            fields[i].setAccessible(true);
+
+            if (Modifier.isTransient(fields[i].getModifiers()) || Modifier.isFinal(fields[i].getModifiers())
+                    || Modifier.isStatic(fields[i].getModifiers())) {
+                continue;
+            }
+
+            String fieldName = fields[i].getName();
+
+            if (fieldName.equals("id") || fieldName.equals("sysUserId") || fieldName.equals("systemUser")
+                    || fieldName.equals("originalLastupdated")) {
+                continue;
+            }
+
+            try {
+                Object fieldValue = fields[i].get(newObject);
+                if (fieldValue != null) {
+                    String value = fieldValue.toString();
+
+                    if (value.startsWith("{org.openelisglobal")) {
+                        continue;
+                    }
+
+                    String combinedValue = "|||" + value;
+                    optionList.add(new LabelValuePair(fieldName, combinedValue));
+                }
+            } catch (Exception e) {
+                LogEvent.logTrace(this.getClass().getName(), "getInsertChanges",
+                        "Skipping field " + fieldName + " due to: " + e.getMessage());
+            }
+        }
+
+        if (optionList.size() > 0) {
+            return getXMLFormat(optionList);
+        }
+        return null;
     }
 
     @Override
@@ -465,17 +527,16 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     } else {
                         LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges",
                                 "Field " + fields[ii].getName() + " values differ, processing change");
-                        LabelValuePair lvb = processLabelValue(fieldName, propertyPreUpdateState, existingObject,
-                                newObject);
-                        if (lvb != null) {
-                            LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges",
-                                    "Added change for field: " + fields[ii].getName() + ", label: " + lvb.getLabel()
-                                            + ", value: " + lvb.getValue());
-                            optionList.add(new LabelValuePair(lvb.getLabel(), lvb.getValue()));
-                        } else {
-                            LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges",
-                                    "processLabelValue returned null for field: " + fields[ii].getName());
-                        }
+
+                        String oldValue = propertyPreUpdateState != null ? propertyPreUpdateState : "";
+                        String newValue = propertyNewState != null ? propertyNewState : "";
+                        String combinedValue = oldValue + "|||" + newValue;
+
+                        LabelValuePair lvb = new LabelValuePair(fieldName, combinedValue);
+
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "getChanges", "Added change for field: "
+                                + fields[ii].getName() + ", old: " + oldValue + ", new: " + newValue);
+                        optionList.add(lvb);
                     }
                 }
             }
@@ -1336,21 +1397,67 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     }
 
     /**
-     * Convert to xml format
+     * Converts field changes to XML format. Supports both old and new values in
+     * format: &lt;field
+     * name="fieldName"&gt;&lt;old&gt;...&lt;/old&gt;&lt;new&gt;...&lt;/new&gt;&lt;/field&gt;
+     * Values are delimited by ||| in the LabelValuePair (oldValue|||newValue).
      *
-     * @param list the list to be converted
-     * @return xml string
+     * @param list Vector of LabelValuePair containing field names and values
+     * @return XML string representation of changes
      */
     private String getXMLFormat(Vector list) {
         StringBuilder xml = new StringBuilder();
 
         for (int i = 0; i < list.size(); i++) {
             LabelValuePair lvp = (LabelValuePair) list.elementAt(i);
-            XMLUtil.appendKeyValue(lvp.getLabel(), lvp.getValue(), xml);
-            xml.append("\n");
+            String fieldName = lvp.getLabel();
+            String value = lvp.getValue();
+
+            if (value != null && value.contains("|||")) {
+                String[] parts = value.split("\\|\\|\\|", -1);
+                String oldValue = parts.length > 0 ? parts[0] : "";
+                String newValue = parts.length > 1 ? parts[1] : "";
+
+                xml.append("<field name=\"").append(escapeXmlAttribute(fieldName)).append("\">");
+                xml.append("<old>").append(escapeXmlContent(oldValue)).append("</old>");
+                xml.append("<new>").append(escapeXmlContent(newValue)).append("</new>");
+                xml.append("</field>\n");
+            } else {
+                XMLUtil.appendKeyValue(fieldName, value, xml);
+                xml.append("\n");
+            }
         }
 
         return xml.toString();
+    }
+
+    /**
+     * Escapes special characters for safe use in XML attribute values. Prevents XML
+     * injection by encoding &amp;, &lt;, &gt;, &quot;, and &apos;.
+     *
+     * @param value the attribute value to escape
+     * @return XML-safe attribute value
+     */
+    private String escapeXmlAttribute(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+                .replace("'", "&apos;");
+    }
+
+    /**
+     * Escapes special characters for safe use in XML element content. Prevents XML
+     * injection by encoding &amp;, &lt;, and &gt;.
+     *
+     * @param value the content value to escape
+     * @return XML-safe content value
+     */
+    private String escapeXmlContent(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     /**

@@ -31,11 +31,11 @@
 
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="../storage/storage-device-connectivity.xml"/>
-  <include relativeToChangelogFile="true" file="018-inventory-audit-log.xml"/>
   <include relativeToChangelogFile="true" file="019-fix-inventory-menu-order.xml"/>
   <include relativeToChangelogFile="true" file="019-make-audit-user-nullable.xml"/>
 
   <!-- Seed inventory reagents and instruments for MNTD workflow -->
   <include relativeToChangelogFile="true" file="020-seed-inventory-reagents.xml"/>
   <include relativeToChangelogFile="true" file="021-increase-inventory-quantities.xml"/>
+  <include relativeToChangelogFile="true" file="020-register-inventory-audit-trail.xml"/>
 </databaseChangeLog>

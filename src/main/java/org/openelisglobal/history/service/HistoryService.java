@@ -10,4 +10,6 @@ public interface HistoryService extends BaseObjectService<History, String> {
     List<History> getHistoryByRefIdAndRefTableId(String Id, String Table) throws LIMSRuntimeException;
 
     List<History> getHistoryByRefIdAndRefTableId(History history) throws LIMSRuntimeException;
+
+    List<History> getAllHistoryByRefTableId(String tableId) throws LIMSRuntimeException;
 }
