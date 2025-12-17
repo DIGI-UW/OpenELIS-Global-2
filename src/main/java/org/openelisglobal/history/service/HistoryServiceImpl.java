@@ -61,4 +61,10 @@ public class HistoryServiceImpl extends AuditableBaseObjectServiceImpl<History, 
     public void delete(History history) {
         baseObjectDAO.delete(history);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<History> getAllHistoryByRefTableId(String tableId) throws LIMSRuntimeException {
+        return baseObjectDAO.getAllHistoryByRefTableId(tableId);
+    }
 }

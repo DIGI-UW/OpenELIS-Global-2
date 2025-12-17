@@ -24,13 +24,14 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
     private InventoryLotDAO inventoryLotDAO;
 
     @Autowired
-    private InventoryItemDAO inventoryItemDAO;
+    private InventoryLotService inventoryLotService;
 
     @Autowired
-    private InventoryAuditService auditService;
+    private InventoryItemDAO inventoryItemDAO;
 
     public InventoryUsageServiceImpl() {
         super(InventoryUsage.class);
+        this.auditTrailLog = true; // Enable generic audit trail
     }
 
     @Override
@@ -97,21 +98,23 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
 
         Long id = insert(usage);
 
+        // Detach from session so audit can compare properly
+        inventoryLotDAO.evict(lot);
+
         // Deduct quantity from lot
         Double newQuantity = currentQuantity - quantityUsed;
         lot.setCurrentQuantity(newQuantity);
         lot.setSysUserId(sysUserId);
-        inventoryLotDAO.update(lot);
 
         // Update lot status to CONSUMED if quantity reaches zero
         if (newQuantity <= 0) {
             lot.setStatus(org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus.CONSUMED);
-            inventoryLotDAO.update(lot);
         }
 
-        // Log usage in audit trail
-        auditService.logLotUsage(lotId, quantityUsed, testResultId, analysisId, sysUserId);
+        // Use service to ensure audit trail is captured
+        inventoryLotService.update(lot);
 
+        // Audit logging is automatic via auditTrailLog = true in constructor
         return get(id);
     }
 }

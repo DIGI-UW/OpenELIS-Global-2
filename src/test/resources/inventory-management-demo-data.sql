@@ -10,7 +10,7 @@
 --   ✓ All lot statuses (ACTIVE, IN_USE, EXPIRED, CONSUMED, DISPOSED, QUARANTINED)
 --   ✓ All QC statuses (PENDING, PASSED, FAILED, QUARANTINED)
 --   ✓ All transaction types (RECEIPT, CONSUMPTION, ADJUSTMENT, DISPOSAL, OPENING, QC_TEST, MANUAL)
---   ✓ All audit operations (ITEM_CREATE, LOT_RECEIVE, LOT_OPEN, LOT_QC_UPDATE, LOT_ADJUST, LOT_DISPOSE, etc.)
+--   ✓ Generic audit trail (INSERT, UPDATE, DELETE activities with XML field changes)
 --   ✓ FEFO scenarios (First Expired, First Out)
 --   ✓ Low stock scenarios
 --   ✓ Expiring/expired lots
@@ -675,202 +675,161 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval('clinlims.inventory_usage_seq', (SELECT COALESCE(MAX(id), 0) FROM clinlims.inventory_usage), true);
 
 -- ============================================================================
--- SECTION 6: Audit Logs (Comprehensive Operation Tracking)
+-- SECTION 6: Generic Audit Trail (History Table) - Representative Samples
+-- ============================================================================
+-- Note: In production, audit entries are created automatically via auditTrailLog=true
+-- in service constructors. These entries demonstrate the generic audit format.
+--
+-- The generic audit trail captures ALL field changes automatically using:
+--   - activity: INSERT, UPDATE, DELETE
+--   - changes: XML format showing field-level before/after values
+--   - referenceTable: Links to reference_tables registry
+--
+-- Reference Table IDs (from 020-register-inventory-audit-trail.xml):
+--   INVENTORY_ITEM               → reference_tables entry
+--   INVENTORY_LOT                → reference_tables entry
+--   INVENTORY_STORAGE_LOCATION   → reference_tables entry
 -- ============================================================================
 
-INSERT INTO clinlims.inventory_audit_log (id, timestamp, performed_by_user, operation_type, entity_type,
-                                           entity_id, related_entity_type, related_entity_id,
-                                           before_state, after_state, operation_details,
-                                           item_id, item_name, lot_id, lot_number, location_id)
-VALUES
-    -- ========== ITEM_CREATE Operations ==========
-    (6000, CURRENT_DATE - INTERVAL '6 months', 1, 'ITEM_CREATE', 'ITEM',
-     2000, NULL, NULL,
-     NULL,
-     '{"name":"COVID-19 PCR Master Mix","item_type":"REAGENT","manufacturer":"ThermoFisher Scientific"}',
-     'Created new reagent item in catalog',
-     2000, 'COVID-19 PCR Master Mix', NULL, NULL, NULL),
+-- Get reference table IDs dynamically
+DO $$
+DECLARE
+    v_item_ref_table_id NUMERIC;
+    v_lot_ref_table_id NUMERIC;
+    v_location_ref_table_id NUMERIC;
+BEGIN
+    SELECT id INTO v_item_ref_table_id
+    FROM clinlims.reference_tables
+    WHERE name = 'inventory_item';
 
-    (6001, CURRENT_DATE - INTERVAL '6 months', 1, 'ITEM_CREATE', 'ITEM',
-     2001, NULL, NULL,
-     NULL,
-     '{"name":"HIV RNA Extraction Kit","item_type":"REAGENT","manufacturer":"Qiagen"}',
-     'Created new reagent item in catalog',
-     2001, 'HIV RNA Extraction Kit', NULL, NULL, NULL),
+    SELECT id INTO v_lot_ref_table_id
+    FROM clinlims.reference_tables
+    WHERE name = 'inventory_lot';
 
-    -- ========== LOT_RECEIVE Operations ==========
-    (6002, CURRENT_DATE - INTERVAL '2 months', 1, 'LOT_RECEIVE', 'LOT',
-     3000, 'ITEM', 2000,
-     NULL,
-     '{"lot_number":"COV-PCR-2024-001","initial_quantity":50.0,"expiration_date":"' || (CURRENT_DATE + INTERVAL '6 months')::TEXT || '","qc_status":"PASSED","status":"ACTIVE"}',
-     'Received new lot from vendor. Invoice #INV-2024-123',
-     2000, 'COVID-19 PCR Master Mix', 3000, 'COV-PCR-2024-001', 1009),
+    SELECT id INTO v_location_ref_table_id
+    FROM clinlims.reference_tables
+    WHERE name = 'inventory_storage_location';
 
-    (6003, CURRENT_DATE - INTERVAL '3 months', 1, 'LOT_RECEIVE', 'LOT',
-     3003, 'ITEM', 2001,
-     NULL,
-     '{"lot_number":"HIV-EXT-2024-078","initial_quantity":100.0,"expiration_date":"' || (CURRENT_DATE + INTERVAL '1 year')::TEXT || '","qc_status":"PASSED","status":"ACTIVE"}',
-     'Received HIV extraction kit - quarterly order',
-     2001, 'HIV RNA Extraction Kit', 3003, 'HIV-EXT-2024-078', 1005),
+    -- ========== Sample INSERT audit entries (Item creation) ==========
+    INSERT INTO clinlims.history (id, reference_id, reference_table, timestamp, activity, changes, sys_user_id)
+    VALUES
+    -- Item 2000: COVID-19 PCR Master Mix created
+    (nextval('clinlims.history_seq'), '2000', v_item_ref_table_id,
+     CURRENT_DATE - INTERVAL '6 months', 'I',
+     E'<field name="name"><new>COVID-19 PCR Master Mix</new></field><field name="itemType"><new>REAGENT</new></field><field name="manufacturer"><new>ThermoFisher Scientific</new></field><field name="catalogNumber"><new>TF-COV-MM-500</new></field><field name="isActive"><new>true</new></field>'::bytea,
+     '1'),
 
-    (6004, CURRENT_DATE - INTERVAL '1 week', 1, 'LOT_RECEIVE', 'LOT',
-     3004, 'ITEM', 2001,
-     NULL,
-     '{"lot_number":"HIV-EXT-2024-092","initial_quantity":100.0,"expiration_date":"' || (CURRENT_DATE + INTERVAL '8 months')::TEXT || '","qc_status":"PENDING","status":"ACTIVE"}',
-     'New HIV extraction kit lot - awaiting QC approval',
-     2001, 'HIV RNA Extraction Kit', 3004, 'HIV-EXT-2024-092', 1005),
+    -- Item 2001: HIV RNA Extraction Kit created
+    (nextval('clinlims.history_seq'), '2001', v_item_ref_table_id,
+     CURRENT_DATE - INTERVAL '6 months', 'I',
+     E'<field name="name"><new>HIV RNA Extraction Kit</new></field><field name="itemType"><new>REAGENT</new></field><field name="manufacturer"><new>Qiagen</new></field><field name="catalogNumber"><new>QIA-HIV-96</new></field><field name="isActive"><new>true</new></field>'::bytea,
+     '1'),
 
-    -- ========== LOT_OPEN Operations ==========
-    (6005, CURRENT_DATE - INTERVAL '15 days', 1, 'LOT_OPEN', 'LOT',
-     3000, 'ITEM', 2000,
-     '{"status":"ACTIVE","date_opened":null,"calculated_expiry_after_opening":null}',
-     '{"status":"IN_USE","date_opened":"' || (CURRENT_DATE - INTERVAL '15 days')::TEXT || '","calculated_expiry_after_opening":"' || (CURRENT_DATE + INTERVAL '75 days')::TEXT || '"}',
-     'Lot opened for COVID testing batch. Stability after opening: 90 days',
-     2000, 'COVID-19 PCR Master Mix', 3000, 'COV-PCR-2024-001', 1009),
+    -- ===========LOT INSERT Audits (Lot Receipt) ==========
+    -- Lot 3000: COVID PCR lot received
+    (nextval('clinlims.history_seq'), '3000', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '2 months', 'I',
+     (E'<field name="lotNumber"><new>COV-PCR-2024-001</new></field><field name="initialQuantity"><new>50.0</new></field><field name="currentQuantity"><new>50.0</new></field><field name="expirationDate"><new>' || (CURRENT_DATE + INTERVAL '6 months')::TEXT || '</new></field><field name="qcStatus"><new>PASSED</new></field><field name="status"><new>ACTIVE</new></field>')::bytea,
+     '1'),
 
-    (6006, CURRENT_DATE - INTERVAL '1 month', 1, 'LOT_OPEN', 'LOT',
-     3003, 'ITEM', 2001,
-     '{"status":"ACTIVE","date_opened":null,"calculated_expiry_after_opening":null}',
-     '{"status":"IN_USE","date_opened":"' || (CURRENT_DATE - INTERVAL '1 month')::TEXT || '","calculated_expiry_after_opening":"' || (CURRENT_DATE + INTERVAL '5 months')::TEXT || '"}',
-     'Lot opened for HIV viral load batch. Stability after opening: 180 days',
-     2001, 'HIV RNA Extraction Kit', 3003, 'HIV-EXT-2024-078', 1005),
+    -- Lot 3003: HIV extraction kit lot received
+    (nextval('clinlims.history_seq'), '3003', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '3 months', 'I',
+     (E'<field name="lotNumber"><new>HIV-EXT-2024-078</new></field><field name="initialQuantity"><new>100.0</new></field><field name="currentQuantity"><new>100.0</new></field><field name="expirationDate"><new>' || (CURRENT_DATE + INTERVAL '1 year')::TEXT || '</new></field><field name="qcStatus"><new>PASSED</new></field><field name="status"><new>ACTIVE</new></field>')::bytea,
+     '1'),
 
-    (6007, CURRENT_DATE - INTERVAL '10 months', 1, 'LOT_OPEN', 'LOT',
-     3010, 'ITEM', 2005,
-     '{"status":"ACTIVE","date_opened":null,"calculated_expiry_after_opening":null}',
-     '{"status":"IN_USE","date_opened":"' || (CURRENT_DATE - INTERVAL '10 months')::TEXT || '","calculated_expiry_after_opening":"' || (CURRENT_DATE - INTERVAL '8 months')::TEXT || '"}',
-     'Lot opened for renal panel testing. Stability after opening: 60 days',
-     2005, 'Creatinine Reagent Kit', 3010, 'CREAT-2023-234', 1002),
+    -- ========== LOT UPDATE Audits (Lot Opening) ==========
+    -- Lot 3000: Opened for use
+    (nextval('clinlims.history_seq'), '3000', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '15 days', 'U',
+     (E'<field name="status"><old>ACTIVE</old><new>IN_USE</new></field><field name="dateOpened"><old></old><new>' || (CURRENT_DATE - INTERVAL '15 days')::TEXT || '</new></field><field name="calculatedExpiryAfterOpening"><old></old><new>' || (CURRENT_DATE + INTERVAL '75 days')::TEXT || '</new></field>')::bytea,
+     '1'),
 
-    -- ========== LOT_QC_UPDATE Operations ==========
-    (6008, CURRENT_DATE - INTERVAL '11 weeks', 1, 'LOT_QC_UPDATE', 'LOT',
-     3003, 'ITEM', 2001,
-     '{"qc_status":"PENDING"}',
-     '{"qc_status":"PASSED"}',
-     'QC approved - Ct values within acceptable range. QC Run ID: 50001',
-     2001, 'HIV RNA Extraction Kit', 3003, 'HIV-EXT-2024-078', 1005),
+    -- Lot 3003: Opened for use
+    (nextval('clinlims.history_seq'), '3003', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '1 month', 'U',
+     (E'<field name="status"><old>ACTIVE</old><new>IN_USE</new></field><field name="dateOpened"><old></old><new>' || (CURRENT_DATE - INTERVAL '1 month')::TEXT || '</new></field><field name="calculatedExpiryAfterOpening"><old></old><new>' || (CURRENT_DATE + INTERVAL '5 months')::TEXT || '</new></field>')::bytea,
+     '1'),
 
-    (6009, CURRENT_DATE - INTERVAL '7 weeks', 1, 'LOT_QC_UPDATE', 'LOT',
-     3005, 'ITEM', 2001,
-     '{"qc_status":"PENDING"}',
-     '{"qc_status":"FAILED"}',
-     'QC FAILED - Ct values consistently out of range. QC Run ID: 50002. Vendor contacted.',
-     2001, 'HIV RNA Extraction Kit', 3005, 'HIV-EXT-2024-056', 1005),
+    -- ========== LOT UPDATE Audits (QC Status Changes) ==========
+    -- Lot 3003: QC approved
+    (nextval('clinlims.history_seq'), '3003', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '11 weeks', 'U',
+     E'<field name="qcStatus"><old>PENDING</old><new>PASSED</new></field>'::bytea,
+     '1'),
 
-    (6010, CURRENT_DATE - INTERVAL '19 weeks', 1, 'LOT_QC_UPDATE', 'LOT',
-     3037, 'ITEM', 2002,
-     '{"qc_status":"PENDING"}',
-     '{"qc_status":"FAILED"}',
-     'QC FAILED - Out of specification. QC Run ID: 50003. Marked for disposal.',
-     2002, 'Hepatitis B PCR Reagent', 3037, 'HBV-PCR-2023-078', 1005),
+    -- Lot 3005: QC failed
+    (nextval('clinlims.history_seq'), '3005', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '7 weeks', 'U',
+     E'<field name="qcStatus"><old>PENDING</old><new>FAILED</new></field><field name="status"><old>ACTIVE</old><new>QUARANTINED</new></field>'::bytea,
+     '1'),
 
-    -- ========== LOT_STATUS_UPDATE Operations ==========
-    (6011, CURRENT_DATE - INTERVAL '2 weeks', 1, 'LOT_STATUS_UPDATE', 'LOT',
-     3006, 'ITEM', 2002,
-     '{"status":"IN_USE","qc_status":"PASSED"}',
-     '{"status":"QUARANTINED","qc_status":"QUARANTINED"}',
-     'Lot quarantined pending investigation of suspicious QC results. Batch 34567 results under review.',
-     2002, 'Hepatitis B PCR Reagent', 3006, 'HBV-PCR-2024-034', 1005),
+    -- ========== LOT UPDATE Audits (Status Changes) ==========
+    -- Lot 3006: Quarantined
+    (nextval('clinlims.history_seq'), '3006', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '2 weeks', 'U',
+     E'<field name="status"><old>IN_USE</old><new>QUARANTINED</new></field><field name="qcStatus"><old>PASSED</old><new>QUARANTINED</new></field>'::bytea,
+     '1'),
 
-    (6012, CURRENT_DATE - INTERVAL '1 month', 1, 'LOT_STATUS_UPDATE', 'LOT',
-     3007, 'ITEM', 2003,
-     '{"status":"IN_USE","current_quantity":80.0}',
-     '{"status":"CONSUMED","current_quantity":0.0}',
-     'Lot fully consumed. Final batch: 67890',
-     2003, 'TB MGIT Culture Medium', 3007, 'TB-MGIT-2024-012', 1002),
+    -- Lot 3007: Fully consumed
+    (nextval('clinlims.history_seq'), '3007', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '1 month', 'U',
+     E'<field name="status"><old>IN_USE</old><new>CONSUMED</new></field><field name="currentQuantity"><old>80.0</old><new>0.0</new></field>'::bytea,
+     '1'),
 
-    (6013, CURRENT_DATE, 1, 'LOT_STATUS_UPDATE', 'LOT',
-     3010, 'ITEM', 2005,
-     '{"status":"IN_USE","expiration_date":"' || (CURRENT_DATE - INTERVAL '10 days')::TEXT || '"}',
-     '{"status":"EXPIRED","expiration_date":"' || (CURRENT_DATE - INTERVAL '10 days')::TEXT || '"}',
-     'Lot automatically marked as expired. System check detected expiration.',
-     2005, 'Creatinine Reagent Kit', 3010, 'CREAT-2023-234', 1002),
+    -- Lot 3010: Expired
+    (nextval('clinlims.history_seq'), '3010', v_lot_ref_table_id,
+     CURRENT_DATE, 'U',
+     E'<field name="status"><old>IN_USE</old><new>EXPIRED</new></field>'::bytea,
+     '1'),
 
-    -- ========== LOT_ADJUST Operations ==========
-    (6014, CURRENT_DATE - INTERVAL '1 week', 1, 'LOT_ADJUST', 'LOT',
-     3008, 'ITEM', 2004,
-     '{"current_quantity":170.0}',
-     '{"current_quantity":165.0}',
-     'Inventory adjustment: -5.0 mL. Reason: Physical count adjustment after spill cleanup. Location: MAIN-REFG01',
-     2004, 'Glucose Reagent Solution', 3008, 'GLU-2024-156', 1002),
+    -- ========== LOT UPDATE Audits (Quantity Adjustments) ==========
+    -- Lot 3008: Inventory adjustment (spill)
+    (nextval('clinlims.history_seq'), '3008', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '1 week', 'U',
+     E'<field name="currentQuantity"><old>170.0</old><new>165.0</new></field>'::bytea,
+     '1'),
 
-    -- ========== LOT_DISPOSE Operations ==========
-    (6015, CURRENT_DATE - INTERVAL '2 months', 1, 'LOT_DISPOSE', 'LOT',
-     3036, 'ITEM', 2005,
-     '{"status":"EXPIRED","current_quantity":23.0}',
-     '{"status":"DISPOSED","current_quantity":0.0}',
-     'Lot disposed. Reason: Expiration. Expired 3 months ago. Disposed by: Lab Manager. Disposal method: Chemical waste protocol.',
-     2005, 'Creatinine Reagent Kit', 3036, 'CREAT-2023-189', 1002),
+    -- ========== LOT UPDATE Audits (Disposal) ==========
+    -- Lot 3036: Disposed due to expiration
+    (nextval('clinlims.history_seq'), '3036', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '2 months', 'U',
+     E'<field name="status"><old>EXPIRED</old><new>DISPOSED</new></field><field name="currentQuantity"><old>23.0</old><new>0.0</new></field>'::bytea,
+     '1'),
 
-    (6016, CURRENT_DATE - INTERVAL '18 weeks', 1, 'LOT_DISPOSE', 'LOT',
-     3037, 'ITEM', 2002,
-     '{"status":"ACTIVE","current_quantity":30.0,"qc_status":"FAILED"}',
-     '{"status":"DISPOSED","current_quantity":0.0,"qc_status":"FAILED"}',
-     'Lot disposed. Reason: Quality Failure. QC failed validation. Vendor notified for replacement. RMA #2024-0567',
-     2002, 'Hepatitis B PCR Reagent', 3037, 'HBV-PCR-2023-078', 1005),
+    -- Lot 3037: Disposed due to QC failure
+    (nextval('clinlims.history_seq'), '3037', v_lot_ref_table_id,
+     CURRENT_DATE - INTERVAL '18 weeks', 'U',
+     E'<field name="status"><old>ACTIVE</old><new>DISPOSED</new></field><field name="currentQuantity"><old>30.0</old><new>0.0</new></field>'::bytea,
+     '1'),
 
-    (6017, CURRENT_DATE - INTERVAL '2 months', 1, 'LOT_DISPOSE', 'LOT',
-     3038, 'ITEM', 2010,
-     '{"status":"IN_USE","current_quantity":127.0}',
-     '{"status":"DISPOSED","current_quantity":0.0}',
-     'Lot disposed. Reason: Damage/Compromise. Refrigerator malfunction (Temp exceeded 35°C for 8 hours). All kits compromised. Incident report #2024-0234',
-     2010, 'Malaria RDT (Pf/Pan)', 3038, 'MAL-RDT-2023-234', 1007),
+    -- ========== ITEM UPDATE Audits ==========
+    -- Item 2001: Low stock threshold increased
+    (nextval('clinlims.history_seq'), '2001', v_item_ref_table_id,
+     CURRENT_DATE - INTERVAL '1 month', 'U',
+     E'<field name="lowStockThreshold"><old>5</old><new>10</new></field>'::bytea,
+     '1'),
 
-    -- ========== LOCATION_CREATE Operations ==========
-    (6018, CURRENT_DATE - INTERVAL '1 year', 1, 'LOCATION_CREATE', 'LOCATION',
-     1000, NULL, NULL,
-     NULL,
-     '{"name":"Main Laboratory","location_code":"MAIN","location_type":"ROOM"}',
-     'Created top-level storage location',
-     NULL, NULL, NULL, NULL, 1000),
+    -- Item 2010: Alert threshold adjusted for malaria season
+    (nextval('clinlims.history_seq'), '2010', v_item_ref_table_id,
+     CURRENT_DATE - INTERVAL '2 weeks', 'U',
+     E'<field name="lowStockThreshold"><old>25</old><new>50</new></field>'::bytea,
+     '1'),
 
-    (6019, CURRENT_DATE - INTERVAL '1 year', 1, 'LOCATION_CREATE', 'LOCATION',
-     1001, 'LOCATION', 1000,
-     NULL,
-     '{"name":"Ultra-Low Freezer A1","location_code":"MAIN-FRZ01","location_type":"FREEZER","parent_location_id":1000,"temperature_min":-85.0,"temperature_max":-75.0}',
-     'Added ultra-low freezer to Main Lab',
-     NULL, NULL, NULL, NULL, 1001),
+    -- ========== LOCATION INSERT Audits ==========
+    -- Location 1000: Main Laboratory created
+    (nextval('clinlims.history_seq'), '1000', v_location_ref_table_id,
+     CURRENT_DATE - INTERVAL '1 year', 'I',
+     E'<field name="name"><new>Main Laboratory</new></field><field name="locationCode"><new>MAIN</new></field><field name="locationType"><new>ROOM</new></field><field name="isActive"><new>true</new></field>'::bytea,
+     '1'),
 
-    -- ========== USAGE_RECORD Operations ==========
-    (6020, CURRENT_DATE - INTERVAL '14 days', 1, 'USAGE_RECORD', 'USAGE',
-     5000, 'LOT', 3000,
-     NULL,
-     '{"lot_id":3000,"quantity_used":5.5,"test_result_id":12345}',
-     'Used 5.5 mL for COVID PCR testing batch. 55 tests performed. FEFO lot selected (earliest expiration).',
-     2000, 'COVID-19 PCR Master Mix', 3000, 'COV-PCR-2024-001', NULL),
+    -- Location 1001: Ultra-Low Freezer created
+    (nextval('clinlims.history_seq'), '1001', v_location_ref_table_id,
+     CURRENT_DATE - INTERVAL '1 year', 'I',
+     E'<field name="name"><new>Ultra-Low Freezer A1</new></field><field name="locationCode"><new>MAIN-FRZ01</new></field><field name="locationType"><new>FREEZER</new></field><field name="parentLocationId"><new>1000</new></field><field name="temperatureMin"><new>-85.0</new></field><field name="temperatureMax"><new>-75.0</new></field><field name="isActive"><new>true</new></field>'::bytea,
+     '1');
 
-    (6021, CURRENT_DATE - INTERVAL '2 weeks', 1, 'USAGE_RECORD', 'USAGE',
-     5002, 'LOT', 3003,
-     NULL,
-     '{"lot_id":3003,"quantity_used":13.0,"test_result_id":23456}',
-     'Used for 13 HIV viral load extractions. Batch processing.',
-     2001, 'HIV RNA Extraction Kit', 3003, 'HIV-EXT-2024-078', NULL),
-
-    (6022, CURRENT_DATE - INTERVAL '1 month', 1, 'USAGE_RECORD', 'USAGE',
-     5009, 'LOT', 3016,
-     NULL,
-     '{"lot_id":3016,"quantity_used":75.0,"test_result_id":89012}',
-     'Malaria RDT usage - peak season. FEFO lot 3016 selected (expiring in 3 months).',
-     2010, 'Malaria RDT (Pf/Pan)', 3016, 'MAL-RDT-2024-045', NULL),
-
-    -- ========== ITEM_UPDATE Operations ==========
-    (6023, CURRENT_DATE - INTERVAL '1 month', 1, 'ITEM_UPDATE', 'ITEM',
-     2001, NULL, NULL,
-     '{"low_stock_threshold":5,"expiration_alert_days":30}',
-     '{"low_stock_threshold":10,"expiration_alert_days":30}',
-     'Increased low stock threshold due to increased testing volume',
-     2001, 'HIV RNA Extraction Kit', NULL, NULL, NULL),
-
-    (6024, CURRENT_DATE - INTERVAL '2 weeks', 1, 'ITEM_UPDATE', 'ITEM',
-     2010, NULL, NULL,
-     '{"low_stock_threshold":25,"expiration_alert_days":60}',
-     '{"low_stock_threshold":50,"expiration_alert_days":60}',
-     'Adjusted alert threshold for malaria season preparation',
-     2010, 'Malaria RDT (Pf/Pan)', NULL, NULL, NULL)
-ON CONFLICT (id) DO NOTHING;
-
--- Update sequence for inventory_audit_log
-SELECT setval('clinlims.inventory_audit_log_seq', (SELECT COALESCE(MAX(id), 0) FROM clinlims.inventory_audit_log), true);
+END $$;
 
 -- ============================================================================
 -- SECTION 7: Summary Statistics and Validation
@@ -897,7 +856,11 @@ BEGIN
     SELECT COUNT(*) INTO v_lot_count FROM clinlims.inventory_lot WHERE id >= 3000;
     SELECT COUNT(*) INTO v_transaction_count FROM clinlims.inventory_transaction WHERE id >= 4000;
     SELECT COUNT(*) INTO v_usage_count FROM clinlims.inventory_usage WHERE id >= 5000;
-    SELECT COUNT(*) INTO v_audit_count FROM clinlims.inventory_audit_log WHERE id >= 6000;
+
+    -- Count generic audit trail entries for inventory entities
+    SELECT COUNT(*) INTO v_audit_count FROM clinlims.history h
+    JOIN clinlims.reference_tables rt ON h.reference_table = rt.id
+    WHERE rt.name IN ('inventory_item', 'inventory_lot', 'inventory_storage_location');
 
     -- Calculate dashboard metrics
     SELECT COUNT(DISTINCT il.id) INTO v_low_stock_count
@@ -946,7 +909,7 @@ BEGIN
     RAISE NOTICE '  Inventory Lots:          %', v_lot_count;
     RAISE NOTICE '  Transactions:            % (RECEIPT, CONSUMPTION, ADJUSTMENT, DISPOSAL, etc.)', v_transaction_count;
     RAISE NOTICE '  Usage Records:           % (linked to test results)', v_usage_count;
-    RAISE NOTICE '  Audit Log Entries:       % (comprehensive operation tracking)', v_audit_count;
+    RAISE NOTICE '  Generic Audit Trail:     % history entries (INSERT/UPDATE/DELETE)', v_audit_count;
     RAISE NOTICE '';
     RAISE NOTICE '------------------------------------------------------------';
     RAISE NOTICE 'DASHBOARD ALERTS (Real-time Status):';
@@ -963,13 +926,14 @@ BEGIN
     RAISE NOTICE '  ✓ All lot statuses (6 statuses)';
     RAISE NOTICE '  ✓ All QC statuses (4 statuses)';
     RAISE NOTICE '  ✓ All transaction types (7 types)';
-    RAISE NOTICE '  ✓ All audit operations (17+ operation types)';
+    RAISE NOTICE '  ✓ Generic audit trail (INSERT, UPDATE, DELETE with XML changes)';
     RAISE NOTICE '  ✓ FEFO scenarios (First Expired, First Out)';
     RAISE NOTICE '  ✓ QC workflows (pass/fail/quarantine)';
     RAISE NOTICE '  ✓ Disposal workflows (expiration, QC failure, damage)';
     RAISE NOTICE '  ✓ Lot adjustments (physical count corrections)';
     RAISE NOTICE '  ✓ Usage tracking (test result linkage)';
     RAISE NOTICE '  ✓ Storage location hierarchy (4 levels)';
+    RAISE NOTICE '  ✓ Automatic field-level change tracking via history table';
     RAISE NOTICE '';
     RAISE NOTICE '============================================================';
     RAISE NOTICE 'Data loaded successfully!';
