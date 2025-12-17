@@ -6,6 +6,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.springframework.context.MessageSource;
+import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.support.MessageSourceResourceBundle;
 
@@ -74,7 +75,7 @@ public class MessageUtil {
      * @return - message for key in locale
      */
     public static String getMessage(String key, Object[] args, String defaultMessage, Locale locale) {
-        return instance.messageSource.getMessage(key, args, defaultMessage, locale);
+        return ensureMessageSource().getMessage(key, args, defaultMessage, locale);
     }
 
     /**
@@ -116,10 +117,44 @@ public class MessageUtil {
     }
 
     public static MessageSourceResourceBundle getMessageSourceAsResourceBundle() {
-        return new MessageSourceResourceBundle(instance.messageSource, LocaleContextHolder.getLocale());
+        return new MessageSourceResourceBundle(ensureMessageSource(), LocaleContextHolder.getLocale());
     }
 
     public static boolean messageNotFound(String message, String key) {
         return key.equals(message);
+    }
+
+    private static MessageSource ensureMessageSource() {
+        if (instance == null || instance.messageSource == null) {
+            instance = new MessageUtil();
+            instance.messageSource = new FallbackMessageSource();
+        }
+        return instance.messageSource;
+    }
+
+    /**
+     * Minimal message source for test contexts without Spring wiring. Simply
+     * returns the default message if provided, otherwise the key.
+     */
+    private static class FallbackMessageSource implements MessageSource {
+        @Override
+        public String getMessage(String code, Object[] args, String defaultMessage, Locale locale) {
+            return defaultMessage != null ? defaultMessage : code;
+        }
+
+        @Override
+        public String getMessage(String code, Object[] args, Locale locale) throws NoSuchMessageException {
+            return code;
+        }
+
+        @Override
+        public String getMessage(org.springframework.context.MessageSourceResolvable resolvable, Locale locale)
+                throws NoSuchMessageException {
+            String[] codes = resolvable.getCodes();
+            if (codes != null && codes.length > 0) {
+                return codes[0];
+            }
+            return "";
+        }
     }
 }

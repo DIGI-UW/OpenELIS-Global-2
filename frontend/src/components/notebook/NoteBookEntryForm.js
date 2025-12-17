@@ -125,6 +125,23 @@ const NoteBookEntryForm = () => {
   const [pagePanelSearchTerm, setPagePanelSearchTerm] = useState("");
   const [pageSearchBoxTests, setPageSearchBoxTests] = useState([]);
   const [pageSearchBoxPanels, setPageSearchBoxPanels] = useState([]);
+  const [workflowPageTemplates, setWorkflowPageTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [organizations, setOrganizations] = useState([]);
+  const [selectedOrganizations, setSelectedOrganizations] = useState([]);
+  const [departmentsLoaded, setDepartmentsLoaded] = useState(false);
+  const [pendingSelectedDeptIds, setPendingSelectedDeptIds] = useState(null);
+  const [selectedAllowedRoles, setSelectedAllowedRoles] = useState([]);
+  const [rolesLoaded, setRolesLoaded] = useState(false);
+  const [pendingSelectedRoleIds, setPendingSelectedRoleIds] = useState(null);
+  const [availableRoles] = useState([
+    { id: "Technician", label: "Technician" },
+    { id: "Supervisor", label: "Supervisor" },
+    { id: "Results", label: "Results" },
+    { id: "Validation", label: "Validation" },
+    { id: "Reception", label: "Reception" },
+    { id: "Reports", label: "Reports" },
+  ]);
 
   const isFormValid = () => {
     return (
@@ -202,6 +219,14 @@ const NoteBookEntryForm = () => {
     noteBookForm.comments = comments
       .filter((c) => c.id === null)
       .map((c) => ({ id: null, text: c.text }));
+    // Access control: departments (test sections) and allowed roles
+    // Only send if they were successfully loaded (to avoid accidentally clearing them)
+    if (departmentsLoaded || mode === MODES.CREATE) {
+      noteBookForm.departmentIds = selectedOrganizations.map((dept) => dept.id);
+    }
+    if (rolesLoaded || mode === MODES.CREATE) {
+      noteBookForm.allowedRoles = selectedAllowedRoles.map((role) => role.id);
+    }
     console.log(JSON.stringify(noteBookForm));
     var url =
       mode === MODES.EDIT
@@ -280,7 +305,28 @@ const NoteBookEntryForm = () => {
     setPagePanelSearchTerm("");
     setEditingPageIndex(null);
     setPageError("");
+    setSelectedTemplateId("");
     setShowPageModal(true);
+  };
+
+  // Handle template selection - populate page fields from template
+  const handleTemplateSelect = (event) => {
+    const templateId = event.target.value;
+    setSelectedTemplateId(templateId);
+
+    if (templateId) {
+      const template = workflowPageTemplates.find(
+        (t) => t.id === parseInt(templateId, 10),
+      );
+      if (template) {
+        setNewPage((prev) => ({
+          ...prev,
+          title: template.name || "",
+          content: template.defaultContent || "",
+          instructions: template.defaultInstructions || "",
+        }));
+      }
+    }
   };
 
   // Open modal for editing existing page
@@ -623,6 +669,29 @@ const NoteBookEntryForm = () => {
             })),
           );
         }
+        // Load departments and allowed roles for access control
+        if (data.id) {
+          getFromOpenElisServer(
+            `/rest/notebook/${data.id}/departments`,
+            (deptsResponse) => {
+              if (Array.isArray(deptsResponse)) {
+                // Store IDs to match against organizations list once it's loaded
+                setPendingSelectedDeptIds(deptsResponse.map((dept) => dept.id));
+                setDepartmentsLoaded(true);
+              }
+            },
+          );
+          getFromOpenElisServer(
+            `/rest/notebook/${data.id}/allowed-roles`,
+            (rolesResponse) => {
+              if (Array.isArray(rolesResponse)) {
+                // Store role IDs to match against availableRoles
+                setPendingSelectedRoleIds(rolesResponse);
+                setRolesLoaded(true);
+              }
+            },
+          );
+        }
         // Load audit trail
         loadAuditTrail(data.id);
         setLoading(false);
@@ -683,11 +752,85 @@ const NoteBookEntryForm = () => {
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/user-sample-types", setSampleTypes);
     getFromOpenElisServer("/rest/notebook/questionnaires", setQuestionnaires);
+    getFromOpenElisServer("/rest/notebook/departments", (depts) => {
+      if (Array.isArray(depts)) {
+        setOrganizations(
+          depts.map((dept) => ({
+            id: dept.id,
+            label: dept.name || dept.shortName,
+          })),
+        );
+      }
+    });
     getFromOpenElisServer("/rest/panels", setAllPanels);
+    getFromOpenElisServer(
+      "/rest/notebook/workflow-page-templates",
+      (response) => {
+        if (Array.isArray(response)) {
+          setWorkflowPageTemplates(response);
+        } else {
+          setWorkflowPageTemplates([]);
+        }
+      },
+    );
     return () => {
       componentMounted.current = false;
     };
   }, []);
+
+  // Match pending selected department IDs to actual organization objects once both are loaded
+  useEffect(() => {
+    if (
+      pendingSelectedDeptIds !== null &&
+      organizations.length > 0 &&
+      pendingSelectedDeptIds.length > 0
+    ) {
+      // Convert IDs to strings for comparison to handle any type mismatches
+      const pendingIdsAsStrings = pendingSelectedDeptIds.map((id) =>
+        String(id),
+      );
+      const matchedOrgs = organizations.filter((org) =>
+        pendingIdsAsStrings.includes(String(org.id)),
+      );
+      console.log(
+        "Matching departments - pending:",
+        pendingIdsAsStrings,
+        "organizations:",
+        organizations.map((o) => o.id),
+        "matched:",
+        matchedOrgs,
+      );
+      setSelectedOrganizations(matchedOrgs);
+      setPendingSelectedDeptIds(null); // Clear pending to avoid re-running
+    }
+  }, [pendingSelectedDeptIds, organizations]);
+
+  // Match pending selected role IDs to actual role objects once loaded
+  useEffect(() => {
+    if (
+      pendingSelectedRoleIds !== null &&
+      availableRoles.length > 0 &&
+      pendingSelectedRoleIds.length > 0
+    ) {
+      // Convert IDs to strings for comparison
+      const pendingRolesAsStrings = pendingSelectedRoleIds.map((id) =>
+        String(id),
+      );
+      const matchedRoles = availableRoles.filter((role) =>
+        pendingRolesAsStrings.includes(String(role.id)),
+      );
+      console.log(
+        "Matching roles - pending:",
+        pendingRolesAsStrings,
+        "available:",
+        availableRoles.map((r) => r.id),
+        "matched:",
+        matchedRoles,
+      );
+      setSelectedAllowedRoles(matchedRoles);
+      setPendingSelectedRoleIds(null); // Clear pending to avoid re-running
+    }
+  }, [pendingSelectedRoleIds, availableRoles]);
 
   useEffect(() => {
     if (!notebookid) {
@@ -886,6 +1029,68 @@ const NoteBookEntryForm = () => {
                     );
                   })}
                 </Select>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <Select
+                  id="organizations"
+                  labelText={intl.formatMessage({
+                    id: "notebook.label.organizations",
+                    defaultMessage: "Department",
+                  })}
+                  value={
+                    selectedOrganizations.length > 0
+                      ? selectedOrganizations[0].id
+                      : ""
+                  }
+                  onChange={(event) => {
+                    const selectedId = event.target.value;
+                    if (selectedId) {
+                      const selectedOrg = organizations.find(
+                        (org) => String(org.id) === String(selectedId),
+                      );
+                      setSelectedOrganizations(
+                        selectedOrg ? [selectedOrg] : [],
+                      );
+                      setDepartmentsLoaded(true);
+                    } else {
+                      setSelectedOrganizations([]);
+                      setDepartmentsLoaded(true);
+                    }
+                  }}
+                >
+                  <SelectItem
+                    text={intl.formatMessage({
+                      id: "label.button.select",
+                      defaultMessage: "Select department",
+                    })}
+                    value=""
+                  />
+                  {organizations.map((org) => (
+                    <SelectItem key={org.id} text={org.label} value={org.id} />
+                  ))}
+                </Select>
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <FilterableMultiSelect
+                  id="allowedRoles"
+                  titleText={intl.formatMessage({
+                    id: "notebook.label.allowedRoles",
+                    defaultMessage: "Allowed Roles",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.label.selectRoles",
+                    defaultMessage: "Select roles that can create entries",
+                  })}
+                  items={availableRoles}
+                  itemToString={(item) => (item ? item.label : "")}
+                  selectedItems={selectedAllowedRoles}
+                  onChange={({ selectedItems }) => {
+                    setSelectedAllowedRoles(selectedItems || []);
+                  }}
+                />
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <br />
@@ -1500,6 +1705,40 @@ const NoteBookEntryForm = () => {
             subtitle={pageError}
           />
         )}
+        {editingPageIndex === null &&
+          Array.isArray(workflowPageTemplates) &&
+          workflowPageTemplates.length > 0 && (
+            <Select
+              id="pageTemplate"
+              name="pageTemplate"
+              labelText={intl.formatMessage({
+                id: "notebook.page.modal.template.label",
+                defaultMessage: "Use Template (Optional)",
+              })}
+              value={selectedTemplateId}
+              onChange={handleTemplateSelect}
+              helperText={intl.formatMessage({
+                id: "notebook.page.modal.template.helper",
+                defaultMessage:
+                  "Select a predefined workflow page template to auto-fill fields",
+              })}
+            >
+              <SelectItem
+                text={intl.formatMessage({
+                  id: "notebook.page.modal.template.none",
+                  defaultMessage: "-- No template (custom page) --",
+                })}
+                value=""
+              />
+              {workflowPageTemplates.map((template) => (
+                <SelectItem
+                  key={template.id}
+                  text={`${template.displayOrder}. ${template.name} - ${template.description}`}
+                  value={template.id}
+                />
+              ))}
+            </Select>
+          )}
         <TextInput
           id="title"
           name="title"

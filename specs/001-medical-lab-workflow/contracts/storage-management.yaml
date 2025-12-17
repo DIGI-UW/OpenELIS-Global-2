@@ -1,0 +1,328 @@
+# Storage Management API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Sample Storage and Location Management
+
+openapi: 3.0.3
+info:
+  title: Storage Management API
+  version: 1.0.0
+  description: API endpoints for hierarchical sample storage management
+
+paths:
+  /rest/medlab/storage/locations:
+    get:
+      summary: List storage locations
+      operationId: listStorageLocations
+      tags: [StorageManagement]
+      parameters:
+        - name: parentId
+          in: query
+          schema:
+            type: integer
+          description: Filter by parent location
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/LocationType"
+        - name: available
+          in: query
+          schema:
+            type: boolean
+          description: Only show locations with available space
+      responses:
+        "200":
+          description: Storage locations list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StorageLocationResponse"
+
+  /rest/medlab/storage/locations/{id}:
+    get:
+      summary: Get storage location details
+      operationId: getStorageLocation
+      tags: [StorageManagement]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Storage location details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageLocationDetail"
+        "404":
+          description: Location not found
+
+  /rest/medlab/storage/assign:
+    post:
+      summary: Assign sample to storage location
+      operationId: assignStorage
+      tags: [StorageManagement]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StorageAssignmentForm"
+      responses:
+        "201":
+          description: Sample assigned to storage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageAssignmentResponse"
+        "400":
+          description: Invalid input or location full
+        "404":
+          description: Sample or location not found
+
+  /rest/medlab/storage/assign/{id}:
+    get:
+      summary: Get storage assignment
+      operationId: getStorageAssignment
+      tags: [StorageManagement]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Storage assignment details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageAssignmentResponse"
+        "404":
+          description: Assignment not found
+
+    delete:
+      summary: Remove sample from storage
+      operationId: removeFromStorage
+      tags: [StorageManagement]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+      responses:
+        "200":
+          description: Sample removed from storage
+        "404":
+          description: Assignment not found
+
+  /rest/medlab/storage/search:
+    get:
+      summary: Search for sample location
+      operationId: searchSampleLocation
+      tags: [StorageManagement]
+      parameters:
+        - name: barcode
+          in: query
+          schema:
+            type: string
+        - name: sampleItemId
+          in: query
+          schema:
+            type: integer
+        - name: patientId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sample storage locations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StorageAssignmentResponse"
+
+  /rest/medlab/storage/cryobox/{id}/wells:
+    get:
+      summary: Get cryo-box well map
+      operationId: getCryoboxWells
+      tags: [StorageManagement]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cryo-box well occupancy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CryoboxWellMap"
+        "404":
+          description: Cryo-box not found
+
+components:
+  schemas:
+    StorageAssignmentForm:
+      type: object
+      required: [sampleItemId, locationId, assignedBy]
+      properties:
+        sampleItemId:
+          type: integer
+        locationId:
+          type: integer
+        wellPosition:
+          type: string
+          description: For cryo-box (e.g., A1, B5, I9)
+          pattern: "^[A-I][1-9]$"
+        assignedBy:
+          type: integer
+        notes:
+          type: string
+          maxLength: 255
+
+    StorageAssignmentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        sampleType:
+          type: string
+        locationId:
+          type: integer
+        locationPath:
+          type: string
+          description: "Building > Room > Freezer > Rack > Box"
+        wellPosition:
+          type: string
+        assignedDate:
+          type: string
+          format: date-time
+        assignedByName:
+          type: string
+        storageTemperature:
+          type: string
+        notes:
+          type: string
+
+    StorageLocationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/LocationType"
+        parentId:
+          type: integer
+        parentName:
+          type: string
+        capacity:
+          type: integer
+        occupied:
+          type: integer
+        available:
+          type: integer
+        temperatureRange:
+          type: string
+
+    StorageLocationDetail:
+      allOf:
+        - $ref: "#/components/schemas/StorageLocationResponse"
+        - type: object
+          properties:
+            path:
+              type: string
+            children:
+              type: array
+              items:
+                $ref: "#/components/schemas/StorageLocationResponse"
+            samples:
+              type: array
+              items:
+                $ref: "#/components/schemas/StorageAssignmentResponse"
+            lastTemperatureReading:
+              type: number
+              format: float
+            lastTemperatureReadingTime:
+              type: string
+              format: date-time
+
+    CryoboxWellMap:
+      type: object
+      properties:
+        cryoboxId:
+          type: integer
+        cryoboxName:
+          type: string
+        rows:
+          type: integer
+          example: 9
+        columns:
+          type: integer
+          example: 9
+        totalWells:
+          type: integer
+          example: 81
+        occupiedWells:
+          type: integer
+        wells:
+          type: array
+          items:
+            $ref: "#/components/schemas/WellOccupancy"
+
+    WellOccupancy:
+      type: object
+      properties:
+        position:
+          type: string
+          example: "A1"
+        occupied:
+          type: boolean
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        sampleType:
+          type: string
+        storedDate:
+          type: string
+          format: date-time
+
+    LocationType:
+      type: string
+      enum:
+        - building
+        - room
+        - refrigerator
+        - freezer
+        - deep_freezer
+        - rack
+        - shelf
+        - cryobox

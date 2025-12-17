@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
@@ -21,13 +22,17 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.valueholder.TestSection;
 
 @Entity
 @Table(name = "notebook")
@@ -36,7 +41,8 @@ public class NoteBook extends BaseObject<Integer> {
     private static final long serialVersionUID = -979624722823577192L;
 
     public enum NoteBookStatus {
-        DRAFT("Draft"), SUBMITTED("Submitted"), FINALIZED("Finalized"), LOCKED("Locked"), ARCHIVED("Archived");
+        DRAFT("Draft"), SUBMITTED("Submitted"), FINALIZED("Finalized"), LOCKED("Locked"), ARCHIVED("Archived"),
+        ACTIVE("Active");
 
         private String display;
 
@@ -117,8 +123,22 @@ public class NoteBook extends BaseObject<Integer> {
     @OneToMany
     @JoinTable(name = "notebook_entries", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "entry_id"))
     private List<NoteBook> entries;
-    @Column(name = "questionnaire_fhir_uuid")
+
+    @Column(name = "questionnaire_fhir_uuid", columnDefinition = "uuid")
     private UUID questionnaireFhirUuid;
+
+    @ManyToMany
+    @JoinTable(name = "notebook_organizations", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "organization_id"))
+    private Set<Organization> organizations = new HashSet<>();
+
+    @ManyToMany
+    @JoinTable(name = "notebook_departments", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "test_section_id"))
+    private Set<TestSection> departments = new HashSet<>();
+
+    @ElementCollection
+    @CollectionTable(name = "notebook_allowed_roles", joinColumns = @JoinColumn(name = "notebook_id"))
+    @Column(name = "role")
+    private Set<String> allowedRoles = new HashSet<>();
 
     @Override
     public Integer getId() {
@@ -293,5 +313,38 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setCreator(SystemUser creator) {
         this.creator = creator;
+    }
+
+    public Set<Organization> getOrganizations() {
+        if (organizations == null) {
+            organizations = new HashSet<>();
+        }
+        return organizations;
+    }
+
+    public void setOrganizations(Set<Organization> organizations) {
+        this.organizations = organizations;
+    }
+
+    public Set<TestSection> getDepartments() {
+        if (departments == null) {
+            departments = new HashSet<>();
+        }
+        return departments;
+    }
+
+    public void setDepartments(Set<TestSection> departments) {
+        this.departments = departments;
+    }
+
+    public Set<String> getAllowedRoles() {
+        if (allowedRoles == null) {
+            allowedRoles = new HashSet<>();
+        }
+        return allowedRoles;
+    }
+
+    public void setAllowedRoles(Set<String> allowedRoles) {
+        this.allowedRoles = allowedRoles;
     }
 }

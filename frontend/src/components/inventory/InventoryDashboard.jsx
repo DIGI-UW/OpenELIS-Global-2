@@ -8,9 +8,13 @@ import {
   TableHeader,
   TableBody,
   TableCell,
+  TableSelectAll,
+  TableSelectRow,
   TableToolbar,
   TableToolbarContent,
   TableToolbarSearch,
+  TableBatchActions,
+  TableBatchAction,
   Button,
   Dropdown,
   Tag,
@@ -20,6 +24,11 @@ import {
   Grid,
   Column,
   Tile,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -32,6 +41,8 @@ import LotAdjustmentModal from "./LotAdjustmentModal";
 import DisposeLotModal from "./DisposeLotModal";
 import UpdateQCStatusModal from "./UpdateQCStatusModal";
 import LotDetailsPanel from "./LotDetailsPanel";
+import AuditLogViewer from "./AuditLogViewer";
+import StorageLocationManagement from "./StorageLocationManagement";
 import "./InventoryList.css";
 
 const InventoryDashboard = () => {
@@ -68,7 +79,7 @@ const InventoryDashboard = () => {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
 
   const [lotModalOpen, setLotModalOpen] = useState(false);
   const [usageModalOpen, setUsageModalOpen] = useState(false);
@@ -76,7 +87,10 @@ const InventoryDashboard = () => {
   const [disposalModalOpen, setDisposalModalOpen] = useState(false);
   const [qcStatusModalOpen, setQcStatusModalOpen] = useState(false);
   const [detailsPanelOpen, setDetailsPanelOpen] = useState(false);
+  const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null); // For item-based FEFO usage
+  const [selectedLotsForDisposal, setSelectedLotsForDisposal] = useState([]);
 
   const itemTypes = [
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
@@ -271,6 +285,7 @@ const InventoryDashboard = () => {
         const item = items[lot.inventoryItem?.id];
         return (
           lot.lotNumber?.toLowerCase().includes(searchLower) ||
+          lot.barcode?.toLowerCase().includes(searchLower) ||
           item?.name?.toLowerCase().includes(searchLower)
         );
       });
@@ -379,314 +394,427 @@ const InventoryDashboard = () => {
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
-      <Grid className="inventory-metrics-grid" fullWidth={false}>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile">
-            <div className="metric-value">{metrics.totalLots}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.totalLots" />
-            </div>
-          </Tile>
-        </Column>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile metric-warning">
-            <div className="metric-value">{metrics.lowStock}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.lowStock" />
-            </div>
-          </Tile>
-        </Column>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile metric-expiring">
-            <div className="metric-value">{metrics.expiringSoon}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.expiringSoon" />
-            </div>
-          </Tile>
-        </Column>
-        <Column lg={4} md={2} sm={4} className="inventory-metric-column">
-          <Tile className="inventory-metric-tile metric-expired">
-            <div className="metric-value">{metrics.expired}</div>
-            <div className="metric-label">
-              <FormattedMessage id="inventory.metrics.expired" />
-            </div>
-          </Tile>
-        </Column>
-      </Grid>
+      <Tabs>
+        <TabList aria-label="Inventory Management Tabs" contained>
+          <Tab>Inventory Lots</Tab>
+          <Tab>Storage Locations</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel>
+            <Grid className="inventory-metrics-grid" fullWidth={false}>
+              <Column lg={4} md={2} sm={4} className="inventory-metric-column">
+                <Tile className="inventory-metric-tile">
+                  <div className="metric-value">{metrics.totalLots}</div>
+                  <div className="metric-label">
+                    <FormattedMessage id="inventory.metrics.totalLots" />
+                  </div>
+                </Tile>
+              </Column>
+              <Column lg={4} md={2} sm={4} className="inventory-metric-column">
+                <Tile className="inventory-metric-tile metric-warning">
+                  <div className="metric-value">{metrics.lowStock}</div>
+                  <div className="metric-label">
+                    <FormattedMessage id="inventory.metrics.lowStock" />
+                  </div>
+                </Tile>
+              </Column>
+              <Column lg={4} md={2} sm={4} className="inventory-metric-column">
+                <Tile className="inventory-metric-tile metric-expiring">
+                  <div className="metric-value">{metrics.expiringSoon}</div>
+                  <div className="metric-label">
+                    <FormattedMessage id="inventory.metrics.expiringSoon" />
+                  </div>
+                </Tile>
+              </Column>
+              <Column lg={4} md={2} sm={4} className="inventory-metric-column">
+                <Tile className="inventory-metric-tile metric-expired">
+                  <div className="metric-value">{metrics.expired}</div>
+                  <div className="metric-label">
+                    <FormattedMessage id="inventory.metrics.expired" />
+                  </div>
+                </Tile>
+              </Column>
+            </Grid>
 
-      <DataTable rows={rows} headers={headers} isSortable>
-        {({
-          rows,
-          headers,
-          getHeaderProps,
-          getRowProps,
-          getTableProps,
-          getTableContainerProps,
-        }) => (
-          <TableContainer title="" description="" {...getTableContainerProps()}>
-            <TableToolbar>
-              <TableToolbarContent>
-                <TableToolbarSearch
-                  placeholder={intl.formatMessage({
-                    id: "inventory.search.placeholder",
-                  })}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  value={searchTerm}
-                />
+            <DataTable rows={rows} headers={headers} isSortable radio={false}>
+              {({
+                rows,
+                headers,
+                getHeaderProps,
+                getRowProps,
+                getSelectionProps,
+                getTableProps,
+                getTableContainerProps,
+                selectedRows,
+                selectRow,
+              }) => {
+                const handleBatchDispose = () => {
+                  const selectedLots = selectedRows.map((row) => {
+                    const lotIndex = rows.findIndex((r) => r.id === row.id);
+                    return paginatedLots[lotIndex];
+                  });
+                  setSelectedLotsForDisposal(selectedLots);
+                  setSelectedLot(null);
+                  setDisposalModalOpen(true);
+                };
 
-                <Dropdown
-                  id="type-filter"
-                  titleText=""
-                  label={intl.formatMessage({
-                    id: "inventory.filter.type",
-                  })}
-                  items={itemTypes}
-                  itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={itemTypes.find((t) => t.id === typeFilter)}
-                  onChange={({ selectedItem }) =>
-                    setTypeFilter(selectedItem.id)
-                  }
-                  size="md"
-                />
+                return (
+                  <TableContainer
+                    title=""
+                    description=""
+                    {...getTableContainerProps()}
+                  >
+                    <TableToolbar>
+                      <TableBatchActions
+                        {...getSelectionProps()}
+                        onSelectAll={() => {
+                          rows.forEach((row) => selectRow(row.id));
+                        }}
+                        onCancel={() => {
+                          // Clear all selections when cancel is clicked
+                          selectedRows.forEach((rowId) => selectRow(rowId));
+                        }}
+                        totalSelected={selectedRows.length}
+                        shouldShowBatchActions={selectedRows.length > 0}
+                      >
+                        <TableBatchAction
+                          renderIcon={() => null}
+                          onClick={handleBatchDispose}
+                        >
+                          <FormattedMessage
+                            id="disposal.batch.button"
+                            defaultMessage="Dispose Selected ({count})"
+                            values={{ count: selectedRows.length }}
+                          />
+                        </TableBatchAction>
+                      </TableBatchActions>
+                      <TableToolbarContent>
+                        <TableToolbarSearch
+                          placeholder={intl.formatMessage({
+                            id: "inventory.search.placeholder",
+                          })}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          value={searchTerm}
+                        />
 
-                <Dropdown
-                  id="status-filter"
-                  titleText=""
-                  label={intl.formatMessage({
-                    id: "inventory.filter.status",
-                  })}
-                  items={statusOptions}
-                  itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={statusOptions.find(
-                    (s) => s.id === statusFilter,
-                  )}
-                  onChange={({ selectedItem }) =>
-                    setStatusFilter(selectedItem.id)
-                  }
-                  size="md"
-                />
-
-                <Button
-                  renderIcon={Add}
-                  onClick={() => {
-                    setSelectedLot(null);
-                    setLotModalOpen(true);
-                  }}
-                >
-                  <FormattedMessage id="inventory.add.button" />
-                </Button>
-              </TableToolbarContent>
-            </TableToolbar>
-
-            <Table {...getTableProps()}>
-              <TableHead>
-                <TableRow>
-                  {headers.map((header) => (
-                    <TableHeader
-                      key={header.key}
-                      {...getHeaderProps({ header })}
-                    >
-                      {header.header}
-                    </TableHeader>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={headers.length}>Loading...</TableCell>
-                  </TableRow>
-                ) : rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={headers.length}>
-                      No inventory items found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  rows.map((row, rowIndex) => {
-                    const lot = paginatedLots[rowIndex];
-                    return (
-                      <TableRow key={row.id} {...getRowProps({ row })}>
-                        {row.cells.map((cell) => {
-                          if (cell.info.header === "stockStatus") {
-                            const status = cell.value;
-                            return (
-                              <TableCell key={cell.id}>
-                                {status && (
-                                  <Tag type={status.kind}>{status.label}</Tag>
-                                )}
-                              </TableCell>
-                            );
+                        <Dropdown
+                          id="type-filter"
+                          titleText=""
+                          label={intl.formatMessage({
+                            id: "inventory.filter.type",
+                          })}
+                          items={itemTypes}
+                          itemToString={(item) => (item ? item.text : "")}
+                          selectedItem={itemTypes.find(
+                            (t) => t.id === typeFilter,
+                          )}
+                          onChange={({ selectedItem }) =>
+                            setTypeFilter(selectedItem.id)
                           }
+                          size="md"
+                        />
 
-                          if (cell.info.header === "actions") {
-                            return (
-                              <TableCell key={cell.id}>
-                                <OverflowMenu
-                                  size="sm"
-                                  flipped
-                                  ariaLabel={intl.formatMessage({
-                                    id: "label.button.action",
-                                  })}
-                                >
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "lot.details.view",
-                                    })}
-                                    onClick={() => handleViewDetails(lot)}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "button.edit",
-                                    })}
-                                    onClick={() => handleEditLot(lot)}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "usage.record.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setUsageModalOpen(true);
-                                    }}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "adjustment.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setAdjustmentModalOpen(true);
-                                    }}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "qc.status.update.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setQcStatusModalOpen(true);
-                                    }}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "disposal.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setDisposalModalOpen(true);
-                                    }}
-                                    isDelete
-                                  />
-                                </OverflowMenu>
-                              </TableCell>
-                            );
+                        <Dropdown
+                          id="status-filter"
+                          titleText=""
+                          label={intl.formatMessage({
+                            id: "inventory.filter.status",
+                          })}
+                          items={statusOptions}
+                          itemToString={(item) => (item ? item.text : "")}
+                          selectedItem={statusOptions.find(
+                            (s) => s.id === statusFilter,
+                          )}
+                          onChange={({ selectedItem }) =>
+                            setStatusFilter(selectedItem.id)
                           }
+                          size="md"
+                        />
 
-                          return (
-                            <TableCell key={cell.id}>{cell.value}</TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
+                        <Button
+                          renderIcon={Add}
+                          onClick={() => {
+                            setSelectedLot(null);
+                            setLotModalOpen(true);
+                          }}
+                        >
+                          <FormattedMessage id="inventory.add.button" />
+                        </Button>
+                      </TableToolbarContent>
+                    </TableToolbar>
 
-            {!loading && rows.length > 0 && (
-              <Pagination
-                backwardText="Previous page"
-                forwardText="Next page"
-                itemsPerPageText="Items per page:"
-                page={page}
-                pageSize={pageSize}
-                pageSizes={[10, 20, 30, 40, 50]}
-                totalItems={filteredLots.length}
-                onChange={({ page, pageSize }) => {
-                  setPage(page);
-                  setPageSize(pageSize);
+                    <Table {...getTableProps()}>
+                      <TableHead>
+                        <TableRow>
+                          <TableSelectAll {...getSelectionProps()} />
+                          {headers.map((header) => (
+                            <TableHeader
+                              key={header.key}
+                              {...getHeaderProps({ header })}
+                            >
+                              {header.header}
+                            </TableHeader>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {loading ? (
+                          <TableRow>
+                            <TableCell colSpan={headers.length}>
+                              Loading...
+                            </TableCell>
+                          </TableRow>
+                        ) : rows.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={headers.length}>
+                              No inventory items found
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          rows.map((row, rowIndex) => {
+                            const lot = paginatedLots[rowIndex];
+                            return (
+                              <TableRow key={row.id} {...getRowProps({ row })}>
+                                <TableSelectRow
+                                  {...getSelectionProps({ row })}
+                                />
+                                {row.cells.map((cell) => {
+                                  if (cell.info.header === "stockStatus") {
+                                    const status = cell.value;
+                                    return (
+                                      <TableCell key={cell.id}>
+                                        {status && (
+                                          <Tag type={status.kind}>
+                                            {status.label}
+                                          </Tag>
+                                        )}
+                                      </TableCell>
+                                    );
+                                  }
+
+                                  if (cell.info.header === "actions") {
+                                    return (
+                                      <TableCell key={cell.id}>
+                                        <OverflowMenu
+                                          size="sm"
+                                          flipped
+                                          ariaLabel={intl.formatMessage({
+                                            id: "label.button.action",
+                                          })}
+                                        >
+                                          <OverflowMenuItem
+                                            itemText={intl.formatMessage({
+                                              id: "lot.details.view",
+                                            })}
+                                            onClick={() =>
+                                              handleViewDetails(lot)
+                                            }
+                                          />
+                                          <OverflowMenuItem
+                                            itemText={intl.formatMessage({
+                                              id: "button.edit",
+                                            })}
+                                            onClick={() => handleEditLot(lot)}
+                                          />
+                                          <OverflowMenuItem
+                                            itemText={intl.formatMessage({
+                                              id: "usage.record.button",
+                                            })}
+                                            onClick={() => {
+                                              setSelectedLot(lot);
+                                              setSelectedItem(null);
+                                              setUsageModalOpen(true);
+                                            }}
+                                          />
+                                          <OverflowMenuItem
+                                            itemText={intl.formatMessage({
+                                              id: "usage.record.fefo.button",
+                                            })}
+                                            onClick={() => {
+                                              setSelectedItem(
+                                                lot.inventoryItem,
+                                              );
+                                              setSelectedLot(null);
+                                              setUsageModalOpen(true);
+                                            }}
+                                          />
+                                          <OverflowMenuItem
+                                            itemText={intl.formatMessage({
+                                              id: "adjustment.button",
+                                            })}
+                                            onClick={() => {
+                                              setSelectedLot(lot);
+                                              setAdjustmentModalOpen(true);
+                                            }}
+                                          />
+                                          <OverflowMenuItem
+                                            itemText={intl.formatMessage({
+                                              id: "qc.status.update.button",
+                                            })}
+                                            onClick={() => {
+                                              setSelectedLot(lot);
+                                              setQcStatusModalOpen(true);
+                                            }}
+                                          />
+                                          <OverflowMenuItem
+                                            itemText={intl.formatMessage({
+                                              id: "audit.log.view.button",
+                                            })}
+                                            onClick={() => {
+                                              setSelectedLot(lot);
+                                              setAuditLogOpen(true);
+                                            }}
+                                          />
+                                          <OverflowMenuItem
+                                            itemText={intl.formatMessage({
+                                              id: "disposal.button",
+                                            })}
+                                            onClick={() => {
+                                              setSelectedLot(lot);
+                                              setDisposalModalOpen(true);
+                                            }}
+                                            isDelete
+                                          />
+                                        </OverflowMenu>
+                                      </TableCell>
+                                    );
+                                  }
+
+                                  return (
+                                    <TableCell key={cell.id}>
+                                      {cell.value}
+                                    </TableCell>
+                                  );
+                                })}
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+
+                    {!loading && rows.length > 0 && (
+                      <Pagination
+                        backwardText="Previous page"
+                        forwardText="Next page"
+                        itemsPerPageText="Items per page:"
+                        page={page}
+                        pageSize={pageSize}
+                        pageSizes={[10, 20, 30, 40, 50]}
+                        totalItems={filteredLots.length}
+                        onChange={({ page, pageSize }) => {
+                          setPage(page);
+                          setPageSize(pageSize);
+                        }}
+                      />
+                    )}
+                  </TableContainer>
+                );
+              }}
+            </DataTable>
+
+            {/* Lot Entry Modal */}
+            {lotModalOpen && (
+              <LotEntryModal
+                open={lotModalOpen}
+                onClose={() => {
+                  setLotModalOpen(false);
+                  setSelectedLot(null);
                 }}
+                onSave={handleLotSaved}
+                lot={selectedLot}
               />
             )}
-          </TableContainer>
-        )}
-      </DataTable>
 
-      {/* Lot Entry Modal */}
-      {lotModalOpen && (
-        <LotEntryModal
-          open={lotModalOpen}
-          onClose={() => {
-            setLotModalOpen(false);
-            setSelectedLot(null);
-          }}
-          onSave={handleLotSaved}
-          lot={selectedLot}
-        />
-      )}
+            {/* Record Usage Modal */}
+            {usageModalOpen && (
+              <RecordUsageModal
+                open={usageModalOpen}
+                onClose={() => {
+                  setUsageModalOpen(false);
+                  setSelectedLot(null);
+                  setSelectedItem(null);
+                }}
+                onSave={handleUsageSaved}
+                lot={selectedLot}
+                item={selectedItem}
+              />
+            )}
 
-      {/* Record Usage Modal */}
-      {usageModalOpen && (
-        <RecordUsageModal
-          open={usageModalOpen}
-          onClose={() => {
-            setUsageModalOpen(false);
-            setSelectedLot(null);
-          }}
-          onSave={handleUsageSaved}
-          lot={selectedLot}
-        />
-      )}
+            {/* Lot Adjustment Modal */}
+            {adjustmentModalOpen && (
+              <LotAdjustmentModal
+                open={adjustmentModalOpen}
+                onClose={() => {
+                  setAdjustmentModalOpen(false);
+                  setSelectedLot(null);
+                }}
+                onSave={handleAdjustmentSaved}
+                lot={selectedLot}
+              />
+            )}
 
-      {/* Lot Adjustment Modal */}
-      {adjustmentModalOpen && (
-        <LotAdjustmentModal
-          open={adjustmentModalOpen}
-          onClose={() => {
-            setAdjustmentModalOpen(false);
-            setSelectedLot(null);
-          }}
-          onSave={handleAdjustmentSaved}
-          lot={selectedLot}
-        />
-      )}
+            {/* Dispose Lot Modal */}
+            {disposalModalOpen && (
+              <DisposeLotModal
+                open={disposalModalOpen}
+                onClose={() => {
+                  setDisposalModalOpen(false);
+                  setSelectedLot(null);
+                  setSelectedLotsForDisposal([]);
+                }}
+                onSave={handleDisposalSaved}
+                lot={selectedLot}
+                lots={
+                  selectedLotsForDisposal.length > 0
+                    ? selectedLotsForDisposal
+                    : selectedLot
+                      ? [selectedLot]
+                      : []
+                }
+              />
+            )}
 
-      {/* Dispose Lot Modal */}
-      {disposalModalOpen && (
-        <DisposeLotModal
-          open={disposalModalOpen}
-          onClose={() => {
-            setDisposalModalOpen(false);
-            setSelectedLot(null);
-          }}
-          onSave={handleDisposalSaved}
-          lot={selectedLot}
-        />
-      )}
+            {/* Update QC Status Modal */}
+            {qcStatusModalOpen && (
+              <UpdateQCStatusModal
+                open={qcStatusModalOpen}
+                onClose={() => {
+                  setQcStatusModalOpen(false);
+                  setSelectedLot(null);
+                }}
+                onSave={handleQCStatusSaved}
+                lot={selectedLot}
+              />
+            )}
 
-      {/* Update QC Status Modal */}
-      {qcStatusModalOpen && (
-        <UpdateQCStatusModal
-          open={qcStatusModalOpen}
-          onClose={() => {
-            setQcStatusModalOpen(false);
-            setSelectedLot(null);
-          }}
-          onSave={handleQCStatusSaved}
-          lot={selectedLot}
-        />
-      )}
+            {/* Lot Details Panel (Slide-out) */}
+            <LotDetailsPanel
+              open={detailsPanelOpen}
+              onClose={() => {
+                setDetailsPanelOpen(false);
+                setSelectedLot(null);
+              }}
+              lot={selectedLot}
+            />
 
-      {/* Lot Details Panel (Slide-out) */}
-      <LotDetailsPanel
-        open={detailsPanelOpen}
-        onClose={() => {
-          setDetailsPanelOpen(false);
-          setSelectedLot(null);
-        }}
-        lot={selectedLot}
-      />
+            {/* Audit Log Viewer */}
+            <AuditLogViewer
+              open={auditLogOpen}
+              onClose={() => {
+                setAuditLogOpen(false);
+                setSelectedLot(null);
+              }}
+              entityType="LOT"
+              entityId={selectedLot?.id}
+              entityName={selectedLot?.lotNumber}
+            />
+          </TabPanel>
+          <TabPanel>
+            <StorageLocationManagement />
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
     </>
   );
 };

@@ -64,4 +64,22 @@ public interface SampleItemAliquotRelationshipDAO extends BaseDAO<SampleItemAliq
      */
     SampleItemAliquotRelationship getByParentAndChild(SampleItem parentSampleItem, SampleItem childSampleItem)
             throws LIMSRuntimeException;
+
+    /**
+     * Get all aliquot relationships for a given parent sample item ID.
+     *
+     * @param parentSampleItemId the parent sample item ID
+     * @return list of aliquot relationships for this parent
+     * @throws LIMSRuntimeException if database error occurs
+     */
+    List<SampleItemAliquotRelationship> getByParentSampleItemId(String parentSampleItemId) throws LIMSRuntimeException;
+
+    /**
+     * Get all aliquot relationships where the given sample item is the child.
+     *
+     * @param childSampleItemId the child sample item ID
+     * @return list of aliquot relationships where this sample is the child
+     * @throws LIMSRuntimeException if database error occurs
+     */
+    List<SampleItemAliquotRelationship> getByChildSampleItemId(String childSampleItemId) throws LIMSRuntimeException;
 }

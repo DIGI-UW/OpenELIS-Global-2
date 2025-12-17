@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 7: TEST ASSIGNMENT & MACHINE SCHEDULING -->
+    <!-- Purpose: Link samples to experiments and machines -->
+    <!-- Who uses it: Lab manager, Technician -->
+    <!-- Data Entered: -->
+    <!--   - Test Assignment: Experiment category, Specific assay/protocol -->
+    <!--   - Machine Scheduling: Instrument selected, Date & time slot, Operator name -->
+    <!-- System Actions: -->
+    <!--   - Send test order to machine (if integrated) -->
+    <!--   - Block machine calendar -->
+    <!--   - Log user activity -->
+    <!-- Leads to: Test Execution & Raw Data Page -->
+    <!-- ======================================================== -->
+    <changeSet id="create-mntd-page-7-test-assignment" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND n.is_template = true AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Test Assignment and Machine Scheduling page for MNTD Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Test Assignment &amp; Machine Scheduling"/>
+            <column name="instructions" value="Link samples to experiments and schedule machine time. Assign experiment category: Molecular (qPCR, PCR), Genomics, Digital PCR, Serology (ELISA, Multiplex), Culture, or Flow Cytometry. Specify the assay or protocol to use. For machine scheduling, select the instrument, date and time slot, and assign an operator. System will send test orders to integrated machines, block machine calendar, and log user activity."/>
+            <column name="content" value="{&quot;pageDescription&quot;:&quot;Test Assignment and Machine Scheduling&quot;,&quot;dataPoints&quot;:{&quot;testAssignment&quot;:{&quot;experimentCategory&quot;:{&quot;type&quot;:&quot;choice&quot;,&quot;label&quot;:&quot;Experiment Category&quot;,&quot;options&quot;:[&quot;Molecular (qPCR)&quot;,&quot;Molecular (PCR)&quot;,&quot;Genomics&quot;,&quot;Digital PCR&quot;,&quot;Serology (ELISA)&quot;,&quot;Serology (Multiplex)&quot;,&quot;Culture&quot;,&quot;Flow Cytometry&quot;],&quot;required&quot;:true},&quot;specificAssay&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Specific Assay / Protocol&quot;,&quot;example&quot;:&quot;Malaria Pf/Pv qPCR, Leishmania ELISA&quot;,&quot;required&quot;:false},&quot;assignmentNotes&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Assignment Notes&quot;,&quot;multiline&quot;:true,&quot;required&quot;:false}},&quot;machineScheduling&quot;:{&quot;instrument&quot;:{&quot;type&quot;:&quot;reference&quot;,&quot;label&quot;:&quot;Instrument&quot;,&quot;source&quot;:&quot;instrument_inventory&quot;,&quot;required&quot;:true},&quot;scheduledDate&quot;:{&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;Scheduled Date&quot;,&quot;required&quot;:true},&quot;scheduledTime&quot;:{&quot;type&quot;:&quot;time&quot;,&quot;label&quot;:&quot;Time Slot&quot;,&quot;required&quot;:false},&quot;operatorName&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Operator Name&quot;,&quot;required&quot;:false},&quot;schedulingNotes&quot;:{&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Scheduling Notes&quot;,&quot;multiline&quot;:true,&quot;required&quot;:false}}},&quot;systemActions&quot;:[&quot;Send test order to machine (if integrated)&quot;,&quot;Block machine calendar&quot;,&quot;Log user activity&quot;],&quot;bulkOperations&quot;:{&quot;enabled&quot;:true,&quot;applyToSelected&quot;:[&quot;experimentCategory&quot;,&quot;specificAssay&quot;,&quot;instrument&quot;,&quot;scheduledDate&quot;,&quot;scheduledTime&quot;,&quot;operatorName&quot;]},&quot;nextPage&quot;:&quot;Test Execution and Raw Data&quot;}"/>
+            <column name="page_order" value="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true) AND page_order = 7</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template for MNTD Test Assignment & Machine Scheduling -->
+    <changeSet id="insert-mntd-test-assignment-workflow-template" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'MNTD' AND display_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert MNTD Test Assignment and Machine Scheduling workflow page template</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="107"/>
+            <column name="name" value="Test Assignment &amp; Machine Scheduling"/>
+            <column name="display_key" value="workflow.page.mntd.testAssignment"/>
+            <column name="description" value="Link samples to experiments and schedule machine time for test execution"/>
+            <column name="default_instructions" value="Assign experiment category (Molecular qPCR/PCR, Genomics, Digital PCR, Serology ELISA/Multiplex, Culture, Flow Cytometry) and specific assay. Schedule instrument, date/time slot, and operator. System sends test orders to integrated machines."/>
+            <column name="default_content" value="Test Assignment and Machine Scheduling - Experiment and instrument scheduling"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="7"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MNTD"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'MNTD' AND display_order = 7</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

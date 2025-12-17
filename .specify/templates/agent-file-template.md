@@ -2,9 +2,6 @@
 
 Auto-generated from all feature plans. Last updated: [DATE]
 
-**Constitution**: See `.specify/memory/constitution.md` for non-negotiable
-development principles.
-
 ## Active Technologies
 
 [EXTRACTED FROM ALL PLAN.MD FILES]
@@ -25,46 +22,13 @@ development principles.
 [ACTUAL STRUCTURE FROM PLANS]
 ```
 
-**OpenELIS Backend Pattern**: `org.openelisglobal.{module}.{layer}`
-
-- Layers: valueholder (JPA entities) → dao (data access) → service (business
-  logic) → controller (REST) → form (DTOs)
-
 ## Commands
 
 [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES]
 
-**OpenELIS Development Commands**:
-
-```bash
-# Backend formatting + build
-mvn spotless:apply && mvn clean install -DskipTests -Dmaven.test.skip=true
-
-# Frontend formatting + dev server
-cd frontend && npm run format && npm start
-
-# Run E2E tests
-cd frontend && npm run cy:run
-
-# Hot reload backend (rebuild + restart container)
-mvn clean install -DskipTests -Dmaven.test.skip=true && docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
-```
-
 ## Code Style
 
 [LANGUAGE-SPECIFIC, ONLY FOR LANGUAGES IN USE]
-
-**OpenELIS Conventions**:
-
-- **Java**: Use Spotless formatter (`tools/OpenELIS_java_formatter.xml`), NO
-  native SQL in code
-- **React**: Use Prettier, ALL UI components from `@carbon/react`, ALL strings
-  via React Intl
-- **FHIR**: Extend `FhirTransformService` for entity↔FHIR conversion, sync via
-  `FhirPersistanceService`
-- **Database**: Liquibase changesets ONLY (NO direct DDL/DML)
-- **Tests**: JUnit 4 for backend, Jest + Cypress for frontend, >80% backend
-  coverage goal, >70% frontend coverage goal
 
 ## Recent Changes
 

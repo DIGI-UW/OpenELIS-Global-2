@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Increase Inventory Quantities for Demo/Testing
+        ===============================================
+        Updates the seed inventory lots with higher quantities to support
+        bulk sample processing operations (e.g., 200+ samples per batch).
+    -->
+
+    <changeSet id="increase-inventory-lot-quantities" author="mherman22">
+        <comment>Increase inventory lot quantities for bulk sample processing</comment>
+        <sql>
+            -- Update all reagent lots to have 10000 units for demo/testing
+            UPDATE clinlims.inventory_lot
+            SET initial_quantity = 10000,
+                current_quantity = 10000
+            WHERE lot_number IN (
+                'EK-2024-001',   -- DNA Extraction Kit
+                'RPB-2024-002',  -- RNA Preservation Buffer
+                'PM-2024-003',   -- PCR Master Mix
+                'MRK-2024-004',  -- Malaria RDT Buffer
+                'CLB-2024-005',  -- Cell Lysis Buffer
+                'PK-2024-006',   -- Proteinase K Solution
+                'ETH-2024-007',  -- Ethanol
+                'NFW-2024-008'   -- Nuclease-Free Water
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

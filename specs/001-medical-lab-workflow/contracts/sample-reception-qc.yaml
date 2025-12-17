@@ -1,0 +1,304 @@
+# Sample Reception & Quality Check API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Sample Reception and QC
+
+openapi: 3.0.3
+info:
+  title: Sample Reception & QC API
+  version: 1.0.0
+  description: API endpoints for sample reception and quality control checks
+
+paths:
+  /rest/medlab/reception:
+    post:
+      summary: Receive sample and perform QC check
+      operationId: receiveSample
+      tags: [SampleReception]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SampleReceptionForm"
+      responses:
+        "201":
+          description: Sample received and QC recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QualityCheckResponse"
+        "400":
+          description: Invalid input
+        "404":
+          description: Sample not found
+
+    get:
+      summary: List samples pending reception
+      operationId: listPendingReception
+      tags: [SampleReception]
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: shipmentId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Pending samples list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendingReception"
+
+  /rest/medlab/reception/{id}:
+    get:
+      summary: Get QC check details
+      operationId: getQualityCheck
+      tags: [SampleReception]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Quality check details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QualityCheckResponse"
+        "404":
+          description: Quality check not found
+
+    put:
+      summary: Update QC check
+      operationId: updateQualityCheck
+      tags: [SampleReception]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SampleReceptionForm"
+      responses:
+        "200":
+          description: Quality check updated
+        "404":
+          description: Quality check not found
+
+  /rest/medlab/reception/criteria/{sampleType}:
+    get:
+      summary: Get QC criteria for sample type
+      operationId: getQCCriteria
+      tags: [SampleReception]
+      parameters:
+        - name: sampleType
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/SampleType"
+      responses:
+        "200":
+          description: QC criteria for sample type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCCriteria"
+
+  /rest/medlab/reception/{id}/corrective-action:
+    post:
+      summary: Record corrective action for rejected sample
+      operationId: recordCorrectiveAction
+      tags: [SampleReception]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CorrectiveActionForm"
+      responses:
+        "200":
+          description: Corrective action recorded
+        "404":
+          description: Quality check not found
+
+components:
+  schemas:
+    SampleReceptionForm:
+      type: object
+      required: [sampleItemId, checkedBy]
+      properties:
+        sampleItemId:
+          type: integer
+        checkedBy:
+          type: integer
+        delayMinutes:
+          type: integer
+          minimum: 0
+        volumeMl:
+          type: number
+          format: float
+        hemolysis:
+          type: boolean
+        lipemia:
+          type: boolean
+        icterus:
+          type: boolean
+        clotting:
+          type: boolean
+        anticoagulantType:
+          type: string
+          enum: [EDTA, citrate, heparin, fluoride, none]
+        contamination:
+          type: boolean
+        containerProper:
+          type: boolean
+        leakage:
+          type: boolean
+        notes:
+          type: string
+          maxLength: 500
+
+    QualityCheckResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        checkDate:
+          type: string
+          format: date-time
+        checkedByName:
+          type: string
+        delayMinutes:
+          type: integer
+        delayPassed:
+          type: boolean
+        volumeMl:
+          type: number
+        volumePassed:
+          type: boolean
+        hemolysis:
+          type: boolean
+        lipemia:
+          type: boolean
+        icterus:
+          type: boolean
+        clotting:
+          type: boolean
+        contamination:
+          type: boolean
+        containerProper:
+          type: boolean
+        leakage:
+          type: boolean
+        overallStatus:
+          type: string
+          enum: [ACCEPTED, REJECTED]
+        rejectionReason:
+          type: string
+        correctiveAction:
+          type: string
+          enum: [RECOLLECTION, RETURN_TO_SUBMITTER]
+        fhirUuid:
+          type: string
+          format: uuid
+
+    PendingReception:
+      type: object
+      properties:
+        sampleItemId:
+          type: integer
+        barcode:
+          type: string
+        patientName:
+          type: string
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        collectionTime:
+          type: string
+          format: date-time
+        shipmentId:
+          type: string
+        priority:
+          type: string
+          enum: [STAT, ROUTINE]
+
+    QCCriteria:
+      type: object
+      properties:
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        maxDelayMinutes:
+          type: integer
+        minVolumeMl:
+          type: number
+        checkHemolysis:
+          type: boolean
+        checkLipemia:
+          type: boolean
+        checkIcterus:
+          type: boolean
+        checkClotting:
+          type: boolean
+        requiredAnticoagulants:
+          type: array
+          items:
+            type: string
+        checkContamination:
+          type: boolean
+        additionalCriteria:
+          type: object
+          additionalProperties:
+            type: string
+
+    CorrectiveActionForm:
+      type: object
+      required: [action, reason]
+      properties:
+        action:
+          type: string
+          enum: [RECOLLECTION, RETURN_TO_SUBMITTER]
+        reason:
+          type: string
+          maxLength: 255
+        notifySubmitter:
+          type: boolean
+          default: true
+        notes:
+          type: string
+          maxLength: 500
+
+    SampleType:
+      type: string
+      enum:
+        - chemistry
+        - hematology
+        - stool
+        - urine
+        - microbiology
+        - serology

@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -24,6 +25,9 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Autowired
     private InventoryTransactionService transactionService;
 
+    @Autowired
+    private InventoryAuditService auditService;
+
     public InventoryLotServiceImpl() {
         super(InventoryLot.class);
     }
@@ -31,6 +35,34 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Override
     protected InventoryLotDAO getBaseObjectDAO() {
         return inventoryLotDAO;
+    }
+
+    @Override
+    @Transactional
+    public Long insert(InventoryLot lot) {
+        // Ensure UUID is set before insert
+        if (lot.getFhirUuid() == null) {
+            lot.setFhirUuid(UUID.randomUUID());
+        }
+
+        Long result = super.insert(lot);
+        auditService.logLotReceive(lot, lot.getSysUserId());
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public InventoryLot update(InventoryLot lot) {
+        // Get the before state for audit logging
+        InventoryLot beforeState = get(lot.getId());
+        InventoryLot result = super.update(lot);
+
+        // Log the update to audit trail
+        if (lot.getSysUserId() != null) {
+            auditService.logLotUpdate(beforeState, result, lot.getSysUserId());
+        }
+
+        return result;
     }
 
     @Override
@@ -94,11 +126,11 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalStateException("Can only open lots with ACTIVE status");
         }
 
-        // Update status to IN_USE
+        InventoryLot before = cloneLot(lot);
+
         lot.setStatus(LotStatus.IN_USE);
         lot.setDateOpened(openedDate);
 
-        // Calculate expiry after opening for reagents
         InventoryItem item = lot.getInventoryItem();
         if (item != null && item.isReagent() && item.getStabilityAfterOpening() != null) {
             Calendar cal = Calendar.getInstance();
@@ -111,10 +143,10 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
         update(lot);
 
-        // Record transaction
         transactionService.recordTransaction(lotId, TransactionType.OPENING, 0.0, // No quantity change
                 lot.getCurrentQuantity(), null, null, "Lot opened", sysUserId);
 
+        auditService.logLotOpen(before, lot, sysUserId);
         return lot;
     }
 
@@ -126,19 +158,20 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
+        InventoryLot before = cloneLot(lot);
+
         QCStatus oldStatus = lot.getQcStatus();
         lot.setQcStatus(qcStatus);
         lot.setSysUserId(sysUserId);
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
         update(lot);
 
-        // Build transaction notes
         String transactionNotes = buildQCStatusNotes(oldStatus, qcStatus, notes);
 
-        // Record transaction
         transactionService.recordTransaction(lotId, TransactionType.QC_TEST, 0.0, // No quantity change
                 lot.getCurrentQuantity(), null, null, transactionNotes, sysUserId);
 
+        auditService.logLotQCUpdate(before, lot, notes, sysUserId);
         return lot;
     }
 
@@ -150,11 +183,14 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
+        InventoryLot before = cloneLot(lot);
+
         lot.setStatus(status);
         lot.setSysUserId(sysUserId);
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
         update(lot);
 
+        auditService.logLotStatusUpdate(before, lot, sysUserId);
         return lot;
     }
 
@@ -170,6 +206,8 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Quantity cannot be negative");
         }
 
+        InventoryLot before = cloneLot(lot);
+
         Double oldQuantity = lot.getCurrentQuantity();
         Double quantityChange = newQuantity - oldQuantity;
 
@@ -177,17 +215,16 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         lot.setSysUserId(sysUserId);
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
 
-        // Update status based on quantity
         if (newQuantity == 0 && lot.getStatus() != LotStatus.DISPOSED) {
             lot.setStatus(LotStatus.CONSUMED);
         }
 
         update(lot);
 
-        // Record transaction
         transactionService.recordTransaction(lotId, TransactionType.ADJUSTMENT, quantityChange, newQuantity, null, null,
                 reason != null ? reason : "Manual quantity adjustment", sysUserId);
 
+        auditService.logLotAdjust(before, lot, reason, sysUserId);
         return lot;
     }
 
@@ -199,6 +236,8 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
+        InventoryLot before = cloneLot(lot);
+
         Double quantityDisposed = lot.getCurrentQuantity();
         lot.setCurrentQuantity(0.0);
         lot.setStatus(LotStatus.DISPOSED);
@@ -206,11 +245,11 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
         update(lot);
 
-        // Record transaction with reason and notes
         String transactionNotes = buildDisposalNotes(reason, notes);
         transactionService.recordTransaction(lotId, TransactionType.DISPOSAL, -quantityDisposed, 0.0, null, null,
                 transactionNotes, sysUserId);
 
+        auditService.logLotDispose(before, lot, reason, notes, sysUserId);
         return lot;
     }
 
@@ -263,11 +302,34 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             update(lot);
             count++;
 
-            // Record transaction
             transactionService.recordTransaction(lot.getId(), TransactionType.MANUAL, 0.0, lot.getCurrentQuantity(),
                     null, null, "Automatically marked as expired", "SYSTEM");
         }
 
         return count;
+    }
+
+    /**
+     * Creates a shallow clone of the lot for audit "before" state. We create a new
+     * instance to avoid Hibernate session issues when comparing before/after
+     * states.
+     */
+    private InventoryLot cloneLot(InventoryLot lot) {
+        InventoryLot clone = new InventoryLot();
+        clone.setId(lot.getId());
+        clone.setLotNumber(lot.getLotNumber());
+        clone.setInventoryItem(lot.getInventoryItem());
+        clone.setStorageLocation(lot.getStorageLocation());
+        clone.setInitialQuantity(lot.getInitialQuantity());
+        clone.setCurrentQuantity(lot.getCurrentQuantity());
+        clone.setStatus(lot.getStatus());
+        clone.setQcStatus(lot.getQcStatus());
+        clone.setReceiptDate(lot.getReceiptDate());
+        clone.setExpirationDate(lot.getExpirationDate());
+        clone.setDateOpened(lot.getDateOpened());
+        clone.setCalculatedExpiryAfterOpening(lot.getCalculatedExpiryAfterOpening());
+        clone.setSysUserId(lot.getSysUserId());
+        clone.setLastupdated(lot.getLastupdated());
+        return clone;
     }
 }

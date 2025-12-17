@@ -107,4 +107,33 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
     public void setCreatorName(String creatorName) {
         this.creatorName = creatorName;
     }
+
+    private java.util.Set<org.openelisglobal.organization.valueholder.Organization> organizations;
+    private java.util.Set<org.openelisglobal.test.valueholder.TestSection> departments;
+    private java.util.Set<String> allowedRoles;
+
+    public java.util.Set<org.openelisglobal.organization.valueholder.Organization> getOrganizations() {
+        return organizations;
+    }
+
+    public void setOrganizations(
+            java.util.Set<org.openelisglobal.organization.valueholder.Organization> organizations) {
+        this.organizations = organizations;
+    }
+
+    public java.util.Set<org.openelisglobal.test.valueholder.TestSection> getDepartments() {
+        return departments;
+    }
+
+    public void setDepartments(java.util.Set<org.openelisglobal.test.valueholder.TestSection> departments) {
+        this.departments = departments;
+    }
+
+    public java.util.Set<String> getAllowedRoles() {
+        return allowedRoles;
+    }
+
+    public void setAllowedRoles(java.util.Set<String> allowedRoles) {
+        this.allowedRoles = allowedRoles;
+    }
 }

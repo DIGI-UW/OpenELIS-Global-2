@@ -27,15 +27,22 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.bean.NoteBookDashboardMetrics;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
-import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.service.NoteBookSampleService;
 import org.openelisglobal.notebook.service.NoteBookService;
+import org.openelisglobal.notebook.service.NotebookSecurityService;
+import org.openelisglobal.notebook.service.WorkflowPageTemplateService;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
+import org.openelisglobal.notebook.valueholder.WorkflowPageTemplate;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -59,10 +66,22 @@ public class NoteBookRestController extends BaseRestController {
     private NoteBookSampleService noteBookSampleService;
 
     @Autowired
+    private WorkflowPageTemplateService workflowPageTemplateService;
+
+    @Autowired
     private FhirConfig fhirConfig;
 
     @Autowired
     private FhirUtil fhirUtil;
+
+    @Autowired
+    private NotebookSecurityService notebookSecurityService;
+
+    @Autowired
+    private TestSectionService testSectionService;
+
+    @Autowired
+    private OrganizationService organizationService;
 
     @GetMapping(value = "/dashboard/entries", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -70,28 +89,60 @@ public class NoteBookRestController extends BaseRestController {
             @RequestParam(required = false) List<NoteBookStatus> statuses,
             @RequestParam(required = false) List<String> types, @RequestParam(required = false) List<String> tags,
             @RequestParam(required = false) String fromDate, @RequestParam(required = false) String toDate,
-            @RequestParam(required = false) Integer noteBookId) {
+            @RequestParam(required = false) Integer noteBookId, HttpServletRequest request) {
 
-        List<NoteBookDisplayBean> results = noteBookService
-                .filterNoteBookEntries(statuses, types, tags, getFormatedDate(fromDate), getFormatedDate(toDate),
-                        noteBookId)
-                .stream().map(e -> noteBookService.convertToDisplayBean(e.getId())).collect(Collectors.toList());
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // If specific notebook template is requested, check access to it first
+        if (noteBookId != null) {
+            if (!notebookSecurityService.canViewTemplate(noteBookId, sysUserId, loginLabUnit)) {
+                return ResponseEntity.ok(new ArrayList<>());
+            }
+        }
+
+        List<NoteBookDisplayBean> results = noteBookService.filterNoteBookEntries(statuses, types, tags,
+                getFormatedDate(fromDate), getFormatedDate(toDate), noteBookId).stream().filter(entry -> {
+                    // Security Check: User must be able to view the parent template of the entry
+                    NoteBook parent = noteBookService.getParentTemplate(entry.getId());
+                    if (parent != null) {
+                        return notebookSecurityService.canViewTemplate(parent.getId(), sysUserId, loginLabUnit);
+                    }
+                    // If no parent (standalone?), check the entry itself as if it were a
+                    // template/independent
+                    // But entries usually don't have depts/orgs set, so this might be open.
+                    // Assuming if no parent, we check the entry using the same rules (it might have
+                    // its own restrictions)
+                    return notebookSecurityService.canViewTemplate(entry.getId(), sysUserId, loginLabUnit);
+                }).map(e -> noteBookService.convertToDisplayBean(e.getId())).collect(Collectors.toList());
         return ResponseEntity.ok(results);
     }
 
     @GetMapping(value = "/dashboard/notebooks", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<NoteBookDisplayBean>> getAllNoteBooks() {
+    public ResponseEntity<List<NoteBookDisplayBean>> getAllNoteBooks(HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
 
+        // Use ID-based canViewTemplate to avoid lazy initialization issues
         List<NoteBookDisplayBean> results = noteBookService.getAllTemplateNoteBooks().stream()
+                .filter(nb -> notebookSecurityService.canViewTemplate(nb.getId(), sysUserId, loginLabUnit))
                 .map(e -> noteBookService.convertToDisplayBean(e.getId())).collect(Collectors.toList());
         return ResponseEntity.ok(results);
     }
 
     @GetMapping(value = "/dashboard/entries/{noteBookId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<NoteBookDisplayBean>> getNoteBookEntries(
-            @PathVariable("noteBookId") Integer noteBookId) {
+    public ResponseEntity<List<NoteBookDisplayBean>> getNoteBookEntries(@PathVariable("noteBookId") Integer noteBookId,
+            HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // First check if user can view the template
+        // Using ID-based check which handles safe fetching of departments/organizations
+        if (!notebookSecurityService.canViewTemplate(noteBookId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.ok(new ArrayList<>());
+        }
 
         List<NoteBookDisplayBean> results = noteBookService.getNoteBookEntries(noteBookId).stream()
                 .map(e -> noteBookService.convertToDisplayBean(e.getId())).collect(Collectors.toList());
@@ -142,15 +193,79 @@ public class NoteBookRestController extends BaseRestController {
 
     @GetMapping(value = "/view/{noteBookId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<NoteBookFullDisplayBean> getNoteBookEntry(@PathVariable("noteBookId") Integer noteBookId) {
+    public ResponseEntity<?> getNoteBookEntry(@PathVariable("noteBookId") Integer noteBookId,
+            HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        NoteBook notebook = noteBookService.get(noteBookId);
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        boolean isAllowed = false;
+
+        // If it's a template, check template permissions directly
+        if (Boolean.TRUE.equals(notebook.getIsTemplate())) {
+            isAllowed = notebookSecurityService.canViewTemplate(noteBookId, sysUserId, loginLabUnit);
+        } else {
+            // If it's an entry, permission is inherited from the parent template
+            NoteBook parent = noteBookService.getParentTemplate(noteBookId);
+            if (parent != null) {
+                isAllowed = notebookSecurityService.canViewTemplate(parent.getId(), sysUserId, loginLabUnit);
+            } else {
+                // Standalone/Orphaned entry - strict check, mostly for admins or fallback
+                // If user is admin, allow. Otherwise deny as we can't verify org access.
+                // Could potentially check if user is the creator/technician here.
+                if (notebookSecurityService.hasGlobalAdminRole(sysUserId)) {
+                    isAllowed = true;
+                } else if (notebook.getTechnician() != null
+                        && String.valueOf(notebook.getTechnician().getId()).equals(sysUserId)) {
+                    // Allow technician assigned to the notebook to view it
+                    isAllowed = true;
+                } else if (notebook.getCreator() != null
+                        && String.valueOf(notebook.getCreator().getId()).equals(sysUserId)) {
+                    // Allow creator to view it
+                    isAllowed = true;
+                }
+            }
+        }
+
+        if (!isAllowed) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied to this notebook"));
+        }
+
         return ResponseEntity.ok(noteBookService.convertToFullDisplayBean(noteBookId));
+    }
+
+    /**
+     * Get all available workflow page templates for adding to notebook templates.
+     */
+    @GetMapping(value = "/workflow-page-templates", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<WorkflowPageTemplate>> getWorkflowPageTemplates(
+            @RequestParam(required = false) String category) {
+        List<WorkflowPageTemplate> templates;
+        if (category != null && !category.isEmpty()) {
+            templates = workflowPageTemplateService.getByCategory(category);
+        } else {
+            templates = workflowPageTemplateService.getAllActive();
+        }
+        return ResponseEntity.ok(templates);
     }
 
     @PostMapping(value = "/update/{noteBookId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Integer>> updateNoteBookEntry(@PathVariable("noteBookId") Integer noteBookId,
+    public ResponseEntity<?> updateNoteBookEntry(@PathVariable("noteBookId") Integer noteBookId,
             @RequestBody NoteBookForm form, HttpServletRequest request) {
-        form.setSystemUserId(Integer.valueOf(this.getSysUserId(request)));
+        String sysUserId = getSysUserId(request);
+
+        // Only admin can edit notebook templates
+        if (!notebookSecurityService.canEditTemplate(sysUserId)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Admin access required to edit templates"));
+        }
+
+        form.setSystemUserId(Integer.valueOf(sysUserId));
         noteBookService.updateWithFormValues(noteBookId, form);
 
         return ResponseEntity.ok(Map.of("id", noteBookId));
@@ -158,17 +273,80 @@ public class NoteBookRestController extends BaseRestController {
 
     @PostMapping(value = "/updatestatus/{noteBookId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public void updateNoteBookStatus(@PathVariable("noteBookId") Integer noteBookId,
+    public ResponseEntity<?> updateNoteBookStatus(@PathVariable("noteBookId") Integer noteBookId,
             @RequestParam(required = false) NoteBookStatus status, HttpServletRequest request) {
-        noteBookService.updateWithStatus(noteBookId, status, this.getSysUserId(request));
+        String sysUserId = getSysUserId(request);
+
+        // Only admin can update notebook template status
+        if (!notebookSecurityService.canEditTemplate(sysUserId)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Admin access required to update template status"));
+        }
+
+        noteBookService.updateWithStatus(noteBookId, status, sysUserId);
+        return ResponseEntity.ok(Map.of("id", noteBookId, "status", status.name()));
     }
 
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Integer>> createNoteBookEntry(@RequestBody NoteBookForm form,
-            HttpServletRequest request) {
-        form.setSystemUserId(Integer.valueOf(this.getSysUserId(request)));
+    public ResponseEntity<?> createNoteBookEntry(@RequestBody NoteBookForm form, HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "createNoteBookEntry",
+                "Creating notebook entry: isTemplate=" + form.getIsTemplate() + ", templateId=" + form.getTemplateId()
+                        + ", sysUserId=" + sysUserId + ", loginLabUnit=" + loginLabUnit);
+
+        // Check permissions:
+        // 1. If creating a template, must be Admin
+        // 2. If creating an entry from a template, must have canCreateEntry permission
+        // on that template
+        if (Boolean.TRUE.equals(form.getIsTemplate())) {
+            if (!notebookSecurityService.canEditTemplate(sysUserId)) {
+                org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "createNoteBookEntry",
+                        "403: Admin access required to create templates");
+                return ResponseEntity.status(403).body(Map.of("error", "Admin access required to create templates"));
+            }
+        } else if (form.getTemplateId() != null) {
+            boolean canCreate = notebookSecurityService.canCreateEntry(form.getTemplateId(), sysUserId, loginLabUnit);
+            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "createNoteBookEntry",
+                    "canCreateEntry result=" + canCreate + " for templateId=" + form.getTemplateId());
+            if (!canCreate) {
+                // Get more details for the error message
+                boolean canView = notebookSecurityService.canViewTemplate(form.getTemplateId(), sysUserId,
+                        loginLabUnit);
+                String errorMsg;
+                if (!canView) {
+                    errorMsg = "Access denied. This template is not assigned to your department: " + loginLabUnit;
+                } else {
+                    // User can view but lacks required role
+                    java.util.Set<String> allowedRoles = noteBookService.getNoteBookAllowedRoles(form.getTemplateId());
+                    if (allowedRoles != null && !allowedRoles.isEmpty()) {
+                        errorMsg = "Access denied. You need one of these roles to create entries: "
+                                + String.join(", ", allowedRoles);
+                    } else {
+                        errorMsg = "Access denied to create entry from this template";
+                    }
+                }
+                org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "createNoteBookEntry",
+                        "403: " + errorMsg);
+                return ResponseEntity.status(403).body(Map.of("error", errorMsg));
+            }
+        } else {
+            // Creating a standalone notebook (not a template, not from a template)
+            // Default to requiring admin or specific permission? existing logic was admin
+            // only.
+            // Keeping admin only for un-templated notebooks to be safe.
+            if (!notebookSecurityService.canEditTemplate(sysUserId)) {
+                org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "createNoteBookEntry",
+                        "403: Access denied to create standalone notebook");
+                return ResponseEntity.status(403).body(Map.of("error", "Access denied to create standalone notebook"));
+            }
+        }
+
+        form.setSystemUserId(Integer.valueOf(sysUserId));
         NoteBook noteBook = noteBookService.createWithFormValues(form);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "createNoteBookEntry",
+                "Successfully created notebook entry with id=" + noteBook.getId());
         return ResponseEntity.ok(Map.of("id", noteBook.getId()));
     }
 
@@ -215,8 +393,12 @@ public class NoteBookRestController extends BaseRestController {
 
     @GetMapping(value = "/list", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<NoteBookDisplayBean>> getAvailableNotebooks() {
+    public ResponseEntity<List<NoteBookDisplayBean>> getAvailableNotebooks(HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
         List<NoteBookDisplayBean> results = noteBookService.getAllActiveNotebooks().stream()
+                .filter(nb -> notebookSecurityService.canViewTemplate(nb, sysUserId, loginLabUnit))
                 .map(notebook -> noteBookService.convertToDisplayBean(notebook.getId())).collect(Collectors.toList());
         return ResponseEntity.ok(results);
     }
@@ -278,6 +460,241 @@ public class NoteBookRestController extends BaseRestController {
         }
 
         return ResponseEntity.ok(questionnaires);
+    }
+
+    /**
+     * Get all organizations for dropdown selection in notebook template
+     * configuration. Returns active organizations with id, name, and short name for
+     * display.
+     *
+     * @return list of organizations as IdValuePair (id=organizationId,
+     *         value=organizationName)
+     */
+    @GetMapping(value = "/organizations", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<Map<String, String>>> getAllOrganizations() {
+        List<Organization> organizations = organizationService.getActiveOrganizations();
+
+        List<Map<String, String>> result = organizations.stream()
+                .map(org -> Map.of("id", org.getId(), "name",
+                        org.getOrganizationName() != null ? org.getOrganizationName() : "", "shortName",
+                        org.getShortName() != null ? org.getShortName() : ""))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Get all departments (test sections/lab units) for dropdown selection in
+     * notebook template configuration. These are the departments that can be
+     * assigned to users for access control.
+     *
+     * @return list of departments with id and name
+     */
+    @GetMapping(value = "/departments", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<Map<String, String>>> getAllDepartments() {
+        List<TestSection> testSections = testSectionService.getAllActiveTestSections();
+
+        List<Map<String, String>> result = testSections.stream()
+                .map(ts -> Map.of("id", ts.getId(), "name",
+                        ts.getLocalizedName() != null ? ts.getLocalizedName() : ts.getTestSectionName(), "shortName",
+                        ts.getTestSectionName() != null ? ts.getTestSectionName() : ""))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Get organizations assigned to a specific notebook template.
+     *
+     * @param noteBookId the template notebook ID
+     * @return list of organizations assigned to this template
+     */
+    @GetMapping(value = "/{noteBookId}/organizations", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getTemplateOrganizations(@PathVariable("noteBookId") Integer noteBookId,
+            HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Check if user can view this template
+        if (!notebookSecurityService.canViewTemplate(noteBookId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied to this notebook template"));
+        }
+
+        List<Map<String, String>> result = noteBookService.getNoteBookOrganizations(noteBookId).stream()
+                .map(org -> Map.of("id", org.getId(), "name",
+                        org.getOrganizationName() != null ? org.getOrganizationName() : "", "shortName",
+                        org.getShortName() != null ? org.getShortName() : ""))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Update organizations assigned to a notebook template. Only admins can update
+     * template organizations.
+     *
+     * @param noteBookId      the template notebook ID
+     * @param organizationIds list of organization IDs to assign
+     * @param request         HTTP request for user session
+     * @return success response
+     */
+    @PostMapping(value = "/{noteBookId}/organizations", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> updateTemplateOrganizations(@PathVariable("noteBookId") Integer noteBookId,
+            @RequestBody Map<String, List<String>> body, HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+
+        // Only admin can edit notebook templates
+        if (!notebookSecurityService.canEditTemplate(sysUserId)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Admin access required to edit templates"));
+        }
+
+        NoteBook notebook = noteBookService.get(noteBookId);
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<String> organizationIds = body.get("organizationIds");
+        noteBookService.updateTemplateOrganizations(noteBookId, organizationIds, sysUserId);
+
+        return ResponseEntity.ok(Map.of("id", noteBookId, "success", true));
+    }
+
+    /**
+     * Get allowed roles for a notebook template.
+     *
+     * @param noteBookId the template notebook ID
+     * @return list of allowed role names
+     */
+    @GetMapping(value = "/{noteBookId}/allowed-roles", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getTemplateAllowedRoles(@PathVariable("noteBookId") Integer noteBookId,
+            HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Check if user can view this template
+        if (!notebookSecurityService.canViewTemplate(noteBookId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied to this notebook template"));
+        }
+
+        return ResponseEntity.ok(noteBookService.getNoteBookAllowedRoles(noteBookId));
+    }
+
+    /**
+     * Update allowed roles for a notebook template. Only admins can update template
+     * allowed roles.
+     *
+     * @param noteBookId   the template notebook ID
+     * @param allowedRoles list of role names to allow
+     * @param request      HTTP request for user session
+     * @return success response
+     */
+    @PostMapping(value = "/{noteBookId}/allowed-roles", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> updateTemplateAllowedRoles(@PathVariable("noteBookId") Integer noteBookId,
+            @RequestBody Map<String, List<String>> body, HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+
+        // Only admin can edit notebook templates
+        if (!notebookSecurityService.canEditTemplate(sysUserId)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Admin access required to edit templates"));
+        }
+
+        NoteBook notebook = noteBookService.get(noteBookId);
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<String> allowedRoles = body.get("allowedRoles");
+        noteBookService.updateTemplateAllowedRoles(noteBookId, allowedRoles, sysUserId);
+
+        return ResponseEntity.ok(Map.of("id", noteBookId, "success", true));
+    }
+
+    /**
+     * Get departments (test sections) assigned to a specific notebook template.
+     *
+     * @param noteBookId the template notebook ID
+     * @return list of departments assigned to this template
+     */
+    @GetMapping(value = "/{noteBookId}/departments", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getTemplateDepartments(@PathVariable("noteBookId") Integer noteBookId,
+            HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Check if user can view this template
+        if (!notebookSecurityService.canViewTemplate(noteBookId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied to this notebook template"));
+        }
+
+        List<Map<String, String>> result = noteBookService.getNoteBookDepartments(noteBookId).stream()
+                .map(ts -> Map.of("id", ts.getId(), "name",
+                        ts.getLocalizedName() != null ? ts.getLocalizedName() : ts.getTestSectionName(), "shortName",
+                        ts.getTestSectionName() != null ? ts.getTestSectionName() : ""))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Update departments (test sections) assigned to a notebook template. Only
+     * admins can update template departments.
+     *
+     * @param noteBookId    the template notebook ID
+     * @param departmentIds list of test section IDs to assign
+     * @param request       HTTP request for user session
+     * @return success response
+     */
+    @PostMapping(value = "/{noteBookId}/departments", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> updateTemplateDepartments(@PathVariable("noteBookId") Integer noteBookId,
+            @RequestBody Map<String, List<String>> body, HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+
+        // Only admin can edit notebook templates
+        if (!notebookSecurityService.canEditTemplate(sysUserId)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Admin access required to edit templates"));
+        }
+
+        NoteBook notebook = noteBookService.get(noteBookId);
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<String> departmentIds = body.get("departmentIds");
+        noteBookService.updateTemplateDepartments(noteBookId, departmentIds, sysUserId);
+
+        return ResponseEntity.ok(Map.of("id", noteBookId, "success", true));
+    }
+
+    /**
+     * Get the login lab unit name for the current user from session. Returns the
+     * TestSection localized name which maps to lab unit names used in access
+     * control.
+     *
+     * @param request the HTTP request
+     * @return the login lab unit name, or null if not set
+     */
+    private String getLoginLabUnit(HttpServletRequest request) {
+        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+        if (usd == null) {
+            return null;
+        }
+        int loginLabUnitId = usd.getLoginLabUnit();
+        if (loginLabUnitId == 0) {
+            return null;
+        }
+        TestSection testSection = testSectionService.getTestSectionById(String.valueOf(loginLabUnitId));
+        if (testSection != null) {
+            return testSection.getLocalizedName();
+        }
+        return null;
     }
 
 }

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-51: Immunology Laboratory Workflow Feature -->
+    <!-- Includes: NotebookPageSample, AnalyzerResultImport, SampleRouting tables -->
+    <!-- and page_type column extension to notebook_page -->
+
+    <include file="liquibase/3.4.x.x/001-notebook-page-sample.xml"/>
+    <include file="liquibase/3.4.x.x/002-analyzer-result-import.xml"/>
+    <include file="liquibase/3.4.x.x/003-sample-routing.xml"/>
+    <include file="liquibase/3.4.x.x/004-notebook-page-type.xml"/>
+    <include file="liquibase/3.4.x.x/005-notebook-entry-refactor.xml"/>
+    <include file="liquibase/3.4.x.x/006-workflow-page-templates.xml"/>
+    <include file="liquibase/3.4.x.x/007-fix-location-type-constraint.xml"/>
+    <include file="liquibase/3.4.x.x/008-immunology-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/009-mntd-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/010-mntd-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/011-mntd-aliquoting-page.xml"/>
+    <include file="liquibase/3.4.x.x/012-mntd-processing-qc-page.xml"/>
+    <include file="liquibase/3.4.x.x/013-mntd-test-assignment-page.xml"/>
+    <include file="liquibase/3.4.x.x/014-mntd-test-execution-page.xml"/>
+    <include file="liquibase/3.4.x.x/015-mntd-reporting-redcap-page.xml"/>
+    <include file="liquibase/3.4.x.x/016-mntd-data-analysis-page.xml"/>
+    <include file="liquibase/3.4.x.x/017-fix-mntd-page-order.xml"/>
+    <include file="liquibase/3.4.x.x/018-notebook-page-reference-table.xml"/>
+    <include file="liquibase/3.4.x.x/012-pharmaceuticals-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/013-pharma-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/014-pharmaceuticals-additional-pages.xml"/>
+    <include file="liquibase/3.4.x.x/012-notebook-access-control.xml"/>
+
+</databaseChangeLog>

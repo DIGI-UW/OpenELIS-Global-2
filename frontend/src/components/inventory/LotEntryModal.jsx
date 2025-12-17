@@ -18,7 +18,7 @@ import {
   InventoryManagementAPI,
   StorageLocationAPI,
 } from "./InventoryService";
-import StorageLocationModal from "./StorageLocationModal";
+import StorageLocationFormModal from "./StorageLocationFormModal";
 
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
@@ -97,27 +97,57 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     }
   };
 
+  // Build hierarchical location tree with indentation
+  const flattenLocationTree = (locations) => {
+    const rootLocations = locations.filter((loc) => !loc.parentLocation);
+
+    const flattenNode = (location, depth = 0) => {
+      const children = locations.filter(
+        (loc) => loc.parentLocation?.id === location.id,
+      );
+
+      const indent = "\u00A0\u00A0".repeat(depth); // Non-breaking spaces
+      const prefix = depth > 0 ? "├─ " : "";
+
+      return [
+        {
+          id: location.id,
+          text: `${indent}${prefix}${location.name}`,
+          location: location,
+          depth: depth,
+        },
+        ...children.flatMap((child) => flattenNode(child, depth + 1)),
+      ];
+    };
+
+    return rootLocations.flatMap((loc) => flattenNode(loc));
+  };
+
   const fetchLocations = async () => {
     try {
       const allLocations = await StorageLocationAPI.getAll();
       const validLocations = Array.isArray(allLocations) ? allLocations : [];
-      setLocations(
-        validLocations.map((loc) => ({
-          id: loc.id,
-          text: loc.name,
-          location: loc,
-        })),
-      );
+
+      // Build hierarchical tree with indentation
+      const hierarchicalLocations = flattenLocationTree(validLocations);
+
+      setLocations(hierarchicalLocations);
     } catch (err) {
       console.error("Error fetching locations:", err);
       setLocations([]);
     }
   };
 
-  const handleLocationCreated = (newLocation) => {
-    setLocationModalOpen(false);
-    fetchLocations();
-    handleChange("storageLocation", newLocation);
+  const handleLocationCreated = async (locationData) => {
+    try {
+      const newLocation = await StorageLocationAPI.create(locationData);
+      setLocationModalOpen(false);
+      await fetchLocations();
+      handleChange("storageLocation", newLocation);
+    } catch (err) {
+      console.error("Error creating storage location:", err);
+      setError("Failed to create storage location");
+    }
   };
 
   const handleChange = (field, value) => {
@@ -349,11 +379,11 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         </Stack>
       </Modal>
 
-      {/* Storage Location Creation Modal */}
-      <StorageLocationModal
-        open={locationModalOpen}
+      <StorageLocationFormModal
+        isOpen={locationModalOpen}
         onClose={() => setLocationModalOpen(false)}
-        onSave={handleLocationCreated}
+        onSubmit={handleLocationCreated}
+        mode="create"
       />
     </>
   );

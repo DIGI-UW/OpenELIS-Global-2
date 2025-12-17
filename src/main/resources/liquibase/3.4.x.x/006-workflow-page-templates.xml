@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- WORKFLOW PAGE TEMPLATES TABLE -->
+    <!-- Predefined page templates for immunology workflow that users -->
+    <!-- can select when configuring notebook templates -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-workflow-page-template-table" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create workflow_page_template table for predefined page templates</comment>
+
+        <createTable tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_key" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="description" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="default_instructions" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="default_content" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="page_type" type="VARCHAR(30)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="display_order" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="workflow_category" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="workflow_page_template_seq" schemaName="clinlims" startValue="100"/>
+
+        <rollback>
+            <dropTable tableName="workflow_page_template" schemaName="clinlims"/>
+            <dropSequence sequenceName="workflow_page_template_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Insert immunology workflow page templates -->
+    <changeSet id="insert-immunology-workflow-page-templates" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Insert predefined immunology workflow page templates</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="1"/>
+            <column name="name" value="Sample Reception"/>
+            <column name="display_key" value="workflow.page.sampleReception"/>
+            <column name="description" value="Verify sample receipt and condition"/>
+            <column name="default_instructions" value="Verify sample receipt and condition. Check that all samples match the manifest. Inspect for damage, proper labeling, and temperature compliance."/>
+            <column name="default_content" value="Sample Reception - Batch verification of incoming samples"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="IMMUNOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="2"/>
+            <column name="name" value="Initial Processing"/>
+            <column name="display_key" value="workflow.page.initialProcessing"/>
+            <column name="description" value="Centrifugation and visual inspection"/>
+            <column name="default_instructions" value="Perform initial processing steps including centrifugation and visual inspection. Record any quality issues."/>
+            <column name="default_content" value="Initial Processing - Centrifugation and sample preparation"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="IMMUNOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="3"/>
+            <column name="name" value="Additional Assays"/>
+            <column name="display_key" value="workflow.page.aliquoting"/>
+            <column name="description" value="Perform supplementary tests or assays prior to extraction"/>
+            <column name="default_instructions" value="Record test type, operator, reagents used, and results"/>
+            <column name="default_content" value="Record test type, operator, reagents used, and results"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="IMMUNOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="4"/>
+            <column name="name" value="Child Sample Creation"/>
+            <column name="display_key" value="workflow.page.childSampleCreation"/>
+            <column name="description" value="Create child samples for specific tests"/>
+            <column name="default_instructions" value="Create child samples for specific test requirements. Route samples to appropriate destinations (internal analysis, external lab, or storage)."/>
+            <column name="default_content" value="Child Sample Creation - Branching workflow for sample routing"/>
+            <column name="page_type" value="BRANCHING"/>
+            <column name="display_order" value="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="IMMUNOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="5"/>
+            <column name="name" value="Plate Setup"/>
+            <column name="display_key" value="workflow.page.plateSetup"/>
+            <column name="description" value="Assign samples to analyzer plates"/>
+            <column name="default_instructions" value="Assign samples to analyzer plates with well coordinates. Use row-major ordering (A1, A2...B1, B2...)."/>
+            <column name="default_content" value="Plate Setup - Well coordinate assignment for analyzer"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="5"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="IMMUNOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="6"/>
+            <column name="name" value="Analyzer Results"/>
+            <column name="display_key" value="workflow.page.analyzerResults"/>
+            <column name="description" value="Import and review analyzer results"/>
+            <column name="default_instructions" value="Import analyzer results from CSV/Excel. Match results to samples by well coordinate or sample ID. Review and validate results."/>
+            <column name="default_content" value="Analyzer Results - Import and match analyzer output"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="6"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="IMMUNOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="7"/>
+            <column name="name" value="Post-Analysis"/>
+            <column name="display_key" value="workflow.page.postAnalysis"/>
+            <column name="description" value="Post-analysis review and QC"/>
+            <column name="default_instructions" value="Perform post-analysis review and quality checks. Flag any outliers or failed QC samples for repeat testing."/>
+            <column name="default_content" value="Post-Analysis - Individual sample review and QC"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="7"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="IMMUNOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="8"/>
+            <column name="name" value="Compilation"/>
+            <column name="display_key" value="workflow.page.compilation"/>
+            <column name="description" value="Compile final results"/>
+            <column name="default_instructions" value="Compile final results and prepare for reporting. Aggregate data from all test runs."/>
+            <column name="default_content" value="Compilation - Aggregate results for reporting"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="display_order" value="8"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="IMMUNOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="9"/>
+            <column name="name" value="Archiving"/>
+            <column name="display_key" value="workflow.page.archiving"/>
+            <column name="description" value="Archive samples and finalize"/>
+            <column name="default_instructions" value="Archive samples and finalize documentation. Assign storage locations and complete audit trail."/>
+            <column name="default_content" value="Archiving - Final storage assignment and documentation"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="9"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="IMMUNOLOGY"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'IMMUNOLOGY'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

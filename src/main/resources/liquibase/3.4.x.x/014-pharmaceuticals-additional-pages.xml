@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PHARMACEUTICALS LABORATORY ADDITIONAL PAGES              -->
+    <!-- Adds pages 3-7 to complete the pharmaceutical workflow   -->
+    <!-- Page 3: Sample Processing &amp; Aliquoting                   -->
+    <!-- Page 4: Assay &amp; Test Execution                           -->
+    <!-- Page 5: Storage &amp; Inventory Management                   -->
+    <!-- Page 6: Reporting &amp; Performance Monitoring               -->
+    <!-- Page 7: Disposal &amp; Archiving                             -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- UPDATE PAGE_TYPE CONSTRAINT TO ADD PHARMA TYPES          -->
+    <!-- Required for pharmaceutical workflow pages               -->
+    <!-- ======================================================== -->
+    <changeSet id="update-page-type-constraint-add-pharma-types" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_constraint WHERE conname = 'chk_page_type'
+            </sqlCheck>
+        </preConditions>
+        <comment>Update CHECK constraint to add CHILD_SAMPLE_CREATION and ASSAY_EXECUTION for pharmaceutical workflow.</comment>
+        <sql>
+            ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+            ALTER TABLE clinlims.notebook_page
+            ADD CONSTRAINT chk_page_type
+            CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION', 'STORAGE_ASSIGNMENT', 'CHILD_SAMPLE_CREATION', 'ASSAY_EXECUTION'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+                ALTER TABLE clinlims.notebook_page
+                ADD CONSTRAINT chk_page_type
+                CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION', 'STORAGE_ASSIGNMENT'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: SAMPLE PROCESSING &amp; ALIQUOTING                   -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pharmaceuticals-page-3-processing" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pharmaceuticals Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Processing &amp; Aliquoting page for Pharmaceuticals Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Processing &amp; Aliquoting"/>
+            <column name="instructions" value="Prepare samples for downstream analytical assays. Perform weighing, grinding, homogenization, extraction/dissolution. Create aliquots with parent-child traceability, including unique aliquot IDs and barcode/QR labels."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Processing &amp; Aliquoting&quot;,
+  &quot;processingActivities&quot;: {
+    &quot;pharmaceutical&quot;: [&quot;Weighing&quot;, &quot;Grinding&quot;, &quot;Homogenization&quot;, &quot;Extraction/Dissolution&quot;, &quot;Calibration solution prep&quot;, &quot;Reference solution prep&quot;],
+    &quot;biological&quot;: [&quot;Centrifugation&quot;, &quot;Aliquoting&quot;, &quot;Tissue homogenization&quot;, &quot;Biosafety handling&quot;],
+    &quot;microbiological&quot;: [&quot;Swab streaking&quot;, &quot;Inoculation&quot;, &quot;Filtration&quot;, &quot;Enrichment/selective plating&quot;]
+  },
+  &quot;aliquoting&quot;: {
+    &quot;solidSamples&quot;: &quot;Weighed into single-run portions&quot;,
+    &quot;liquidSamples&quot;: &quot;Mixed and dispensed into cryovials&quot;,
+    &quot;biologicalSamples&quot;: &quot;Centrifuged and snap-frozen&quot;
+  },
+  &quot;labeling&quot;: {
+    &quot;parentSampleId&quot;: true,
+    &quot;aliquotId&quot;: &quot;Sequential (A01, A02...)&quot;,
+    &quot;aliquotDate&quot;: true,
+    &quot;analystInitials&quot;: true,
+    &quot;barcodeQrCode&quot;: true
+  },
+  &quot;systemActions&quot;: [&quot;Log processing steps&quot;, &quot;Link derived material to parent&quot;, &quot;Enforce parent-child traceability&quot;, &quot;Track usage history&quot;]
+}"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="CHILD_SAMPLE_CREATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: ASSAY &amp; TEST EXECUTION                           -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pharmaceuticals-page-4-testing" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pharmaceuticals Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Assay &amp; Test Execution page for Pharmaceuticals Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Assay &amp; Test Execution"/>
+            <column name="instructions" value="Perform analytical testing with data integrity. Execute pharmaceutical assays (TLC, UV-Vis, FTIR, HPLC, titration, GC, LC-MS/MS), physical tests (dissolution, friability, hardness), and stability testing per ICH guidelines. Include positive/negative controls, internal standards, and replicates."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Assay &amp; Test Execution&quot;,
+  &quot;assayTypes&quot;: {
+    &quot;pharmaceutical&quot;: {
+      &quot;identification&quot;: [&quot;TLC&quot;, &quot;UV-Vis&quot;, &quot;FTIR&quot;],
+      &quot;potencyAssay&quot;: [&quot;HPLC&quot;, &quot;Titration&quot;, &quot;UV-Vis spectrophotometry&quot;],
+      &quot;impurityProfiling&quot;: [&quot;HPLC&quot;, &quot;GC&quot;, &quot;LC-MS/MS&quot;],
+      &quot;physicalTests&quot;: [&quot;Dissolution&quot;, &quot;Disintegration&quot;, &quot;Friability&quot;, &quot;Hardness&quot;, &quot;Viscosity&quot;],
+      &quot;stabilityTesting&quot;: &quot;ICH guidelines&quot;
+    },
+    &quot;biological&quot;: [&quot;Clinical chemistry&quot;, &quot;ELISA&quot;, &quot;HPLC/LC-MS/MS (PK)&quot;, &quot;PCR/qPCR&quot;, &quot;Genotyping&quot;],
+    &quot;microbiological&quot;: [&quot;TAMC&quot;, &quot;TYMC&quot;, &quot;Sterility&quot;, &quot;LAL&quot;, &quot;TOC&quot;, &quot;Conductivity&quot;, &quot;MIC&quot;, &quot;AET&quot;],
+    &quot;herbalNatural&quot;: [&quot;Phytochemical screening&quot;, &quot;HPLC fingerprinting&quot;, &quot;Bioactivity/toxicity assays&quot;]
+  },
+  &quot;qualityControls&quot;: {
+    &quot;positiveControl&quot;: true,
+    &quot;negativeControl&quot;: true,
+    &quot;internalStandards&quot;: true,
+    &quot;replicates&quot;: &quot;Duplicate/Triplicate&quot;,
+    &quot;acceptanceCriteria&quot;: &quot;%RSD / CV within limits&quot;
+  },
+  &quot;deviationHandling&quot;: {
+    &quot;logDeviation&quot;: true,
+    &quot;rootCause&quot;: true,
+    &quot;capaRecorded&quot;: true
+  },
+  &quot;systemActions&quot;: [&quot;Link results to sample&quot;, &quot;Status: Results Pending Review&quot;]
+}"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="ASSAY_EXECUTION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true) AND page_order = 4</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: STORAGE &amp; INVENTORY MANAGEMENT                   -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pharmaceuticals-page-5-storage" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pharmaceuticals Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Storage &amp; Inventory Management page for Pharmaceuticals Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Storage &amp; Inventory Management"/>
+            <column name="instructions" value="Assign samples to hierarchical storage (Room - Device - Rack - Box - Position). Set storage conditions per sample type: Pharmaceuticals (15-25C/2-8C/-20C), Biologicals (-80C/LN2), Microbiologicals (-80C stocks). Monitor environmental conditions and execute contingency plans for excursions."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Storage &amp; Inventory Management&quot;,
+  &quot;storageHierarchy&quot;: &quot;Room - Device - Rack - Box - Position&quot;,
+  &quot;storageConditions&quot;: {
+    &quot;pharmaceutical&quot;: {
+      &quot;controlledRoomTemp&quot;: &quot;15-25C&quot;,
+      &quot;refrigerated&quot;: &quot;2-8C&quot;,
+      &quot;frozen&quot;: &quot;-20C&quot;,
+      &quot;protectFromLight&quot;: true,
+      &quot;protectFromHumidity&quot;: true
+    },
+    &quot;biological&quot;: {
+      &quot;ultraLow&quot;: &quot;-80C&quot;,
+      &quot;liquidNitrogen&quot;: &quot;LN2 vapor phase&quot;
+    },
+    &quot;microbiological&quot;: {
+      &quot;glycerolStocks&quot;: &quot;-80C&quot;,
+      &quot;waterSamples&quot;: &quot;Refrigerated within holding time&quot;
+    }
+  },
+  &quot;environmentalMonitoring&quot;: {
+    &quot;continuousMonitoring&quot;: true,
+    &quot;alarmExcursionLogging&quot;: true,
+    &quot;contingencyPlan&quot;: true
+  },
+  &quot;systemActions&quot;: [&quot;Maintain location history&quot;, &quot;Record excursions&quot;, &quot;Track retrieval/distribution&quot;]
+}"/>
+            <column name="page_order" value="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true) AND page_order = 5</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 6: REPORTING &amp; PERFORMANCE MONITORING               -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pharmaceuticals-page-6-reporting" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pharmaceuticals Laboratory' AND n.is_template = true AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Reporting &amp; Performance Monitoring page for Pharmaceuticals Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Reporting &amp; Performance Monitoring"/>
+            <column name="instructions" value="Generate routine reports (intake logs, utilization, TAT) and track laboratory performance metrics (QC pass rates, assay success rates). View real-time dashboards and create external reporting summaries for collaborators, regulatory agencies, and surveillance networks."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Reporting &amp; Performance Monitoring&quot;,
+  &quot;routineReports&quot;: {
+    &quot;sampleIntake&quot;: &quot;Daily/weekly intake logs&quot;,
+    &quot;utilization&quot;: &quot;Sample and reagent utilization&quot;,
+    &quot;tat&quot;: &quot;Turnaround time reports&quot;
+  },
+  &quot;performanceMetrics&quot;: {
+    &quot;qcPassRates&quot;: true,
+    &quot;assaySuccessRates&quot;: true,
+    &quot;deviationTrends&quot;: true
+  },
+  &quot;dashboards&quot;: {
+    &quot;realTimeKPIs&quot;: true,
+    &quot;complianceMetrics&quot;: true
+  },
+  &quot;externalReporting&quot;: {
+    &quot;collaborators&quot;: true,
+    &quot;regulatoryAgencies&quot;: true,
+    &quot;surveillanceNetworks&quot;: true
+  },
+  &quot;systemActions&quot;: [&quot;Generate reports&quot;, &quot;Export to PDF/Excel&quot;, &quot;Schedule automated reports&quot;]
+}"/>
+            <column name="page_order" value="6"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true) AND page_order = 6</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 7: DISPOSAL &amp; ARCHIVING                             -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pharmaceuticals-page-7-disposal" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pharmaceuticals Laboratory' AND n.is_template = true AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Disposal &amp; Archiving page for Pharmaceuticals Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Disposal &amp; Archiving"/>
+            <column name="instructions" value="Close sample lifecycle compliantly. Dispose samples based on criteria (expiry, exhaustion, failed QC, safety). Apply material-specific disposal methods (incineration for pharmaceuticals, autoclaving for biologicals). Archive raw data, final reports, and lineage for 5-10 years per GxP/GMP requirements."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Disposal &amp; Archiving&quot;,
+  &quot;disposalCriteria&quot;: [&quot;Expiry&quot;, &quot;Exhaustion&quot;, &quot;Failed QC&quot;, &quot;Safety concerns&quot;],
+  &quot;disposalMethods&quot;: {
+    &quot;pharmaceutical&quot;: &quot;High-temperature incineration&quot;,
+    &quot;biological&quot;: &quot;Autoclaving&quot;,
+    &quot;chemical&quot;: &quot;Chemical neutralization&quot;,
+    &quot;general&quot;: &quot;Certified waste disposal&quot;
+  },
+  &quot;approvalRequired&quot;: {
+    &quot;labSupervisor&quot;: true,
+    &quot;biosafetyOfficer&quot;: true
+  },
+  &quot;archiving&quot;: {
+    &quot;rawData&quot;: true,
+    &quot;finalReports&quot;: true,
+    &quot;lineageAuditTrails&quot;: true,
+    &quot;retentionPeriod&quot;: &quot;5-10 years (GxP/GMP)&quot;,
+    &quot;retentionSamples&quot;: &quot;Until 1 year post-expiry of last production batch&quot;
+  },
+  &quot;systemActions&quot;: [&quot;Mark sample Closed&quot;, &quot;Lock records&quot;, &quot;Archive to long-term storage&quot;]
+}"/>
+            <column name="page_order" value="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true) AND page_order = 7</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

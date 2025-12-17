@@ -47,6 +47,13 @@ public class InventoryLotRestController extends BaseRestController {
     public ResponseEntity<List<InventoryLot>> getAll() {
         try {
             List<InventoryLot> lots = inventoryLotService.getAll();
+            // Eagerly fetch inventoryItem to avoid lazy loading issues during JSON
+            // serialization
+            lots.forEach(lot -> {
+                if (lot.getInventoryItem() != null) {
+                    lot.getInventoryItem().getName(); // Force Hibernate to load the entity
+                }
+            });
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -332,6 +339,38 @@ public class InventoryLotRestController extends BaseRestController {
         }
     }
 
+    @PostMapping(value = "/batch-dispose", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<BatchDisposeResponse> batchDispose(@RequestBody BatchDisposeRequest request,
+            HttpServletRequest httpRequest) {
+        try {
+            UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
+            String sysUserId = String.valueOf(usd.getSystemUserId());
+
+            int successCount = 0;
+            int failedCount = 0;
+            StringBuilder errors = new StringBuilder();
+
+            for (Long lotId : request.getLotIds()) {
+                try {
+                    inventoryLotService.disposeLot(lotId, request.getReason(), request.getNotes(), sysUserId);
+                    successCount++;
+                } catch (Exception e) {
+                    failedCount++;
+                    errors.append("Lot ID ").append(lotId).append(": ").append(e.getMessage()).append("; ");
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "batchDispose",
+                            "Failed to dispose lot " + lotId + ": " + e.getMessage());
+                }
+            }
+
+            BatchDisposeResponse response = new BatchDisposeResponse(successCount, failedCount,
+                    errors.length() > 0 ? errors.toString() : null);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @PostMapping(value = "/process-expired", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ProcessExpiredResponse> processExpired() {
         try {
@@ -399,6 +438,30 @@ public class InventoryLotRestController extends BaseRestController {
 
         public ProcessExpiredResponse(Integer lotsUpdated) {
             this.lotsUpdated = lotsUpdated;
+        }
+
+    }
+
+    @Setter
+    @Getter
+    public static class BatchDisposeRequest {
+        private List<Long> lotIds;
+        private String reason;
+        private String notes;
+
+    }
+
+    @Setter
+    @Getter
+    public static class BatchDisposeResponse {
+        private Integer successCount;
+        private Integer failedCount;
+        private String errors;
+
+        public BatchDisposeResponse(Integer successCount, Integer failedCount, String errors) {
+            this.successCount = successCount;
+            this.failedCount = failedCount;
+            this.errors = errors;
         }
 
     }

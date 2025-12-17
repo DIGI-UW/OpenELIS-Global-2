@@ -60,6 +60,14 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryAuditLog</class>
+        <!-- Notebook Entry entities (OGC-51 Immunology Workflow) -->
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntry</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntryComment</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookPageSample</class>
+        <class>org.openelisglobal.notebook.valueholder.AnalyzerResultImport</class>
+        <class>org.openelisglobal.notebook.valueholder.SampleRouting</class>
+        <class>org.openelisglobal.notebook.valueholder.WorkflowPageTemplate</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"

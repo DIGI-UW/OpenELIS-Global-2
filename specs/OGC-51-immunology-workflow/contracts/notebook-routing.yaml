@@ -1,0 +1,350 @@
+openapi: 3.0.3
+info:
+  title: Notebook Sample Routing API
+  description: |
+    API for routing samples to different destinations in immunology workflow.
+    Supports internal analysis (with well assignment), external lab, and storage routing.
+  version: 1.0.0
+
+servers:
+  - url: /rest
+    description: OpenELIS REST API
+
+paths:
+  /notebook/{notebookId}/samples/route:
+    post:
+      summary: Route samples to destinations
+      description: |
+        Route selected samples to a destination. Request structure varies by destination type:
+        - INTERNAL_ANALYSIS: Requires boxId, auto-assigns well coordinates
+        - EXTERNAL_LAB: Requires externalLabName
+        - STORAGE: Requires locationId and locationType
+      operationId: routeSamples
+      tags:
+        - Sample Routing
+      parameters:
+        - name: notebookId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/InternalAnalysisRoutingRequest'
+                - $ref: '#/components/schemas/ExternalLabRoutingRequest'
+                - $ref: '#/components/schemas/StorageRoutingRequest'
+              discriminator:
+                propertyName: destinationType
+                mapping:
+                  INTERNAL_ANALYSIS: '#/components/schemas/InternalAnalysisRoutingRequest'
+                  EXTERNAL_LAB: '#/components/schemas/ExternalLabRoutingRequest'
+                  STORAGE: '#/components/schemas/StorageRoutingRequest'
+      responses:
+        '200':
+          description: Samples routed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingResponse'
+        '400':
+          description: Invalid request (e.g., insufficient wells available)
+        '404':
+          description: Notebook or samples not found
+
+  /notebook/{notebookId}/samples/routing:
+    get:
+      summary: Get routing status for all samples
+      description: Returns routing destination for all samples in the notebook
+      operationId: getSampleRoutingStatus
+      tags:
+        - Sample Routing
+      parameters:
+        - name: notebookId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: filter
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ALL, ROUTED, UNROUTED]
+            default: ALL
+      responses:
+        '200':
+          description: Routing status list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SampleRoutingStatus'
+        '404':
+          description: Notebook not found
+
+  /notebook/{notebookId}/box/{boxId}/layout:
+    get:
+      summary: Get visual box layout
+      description: Returns the well grid with sample assignments for a box
+      operationId: getBoxLayout
+      tags:
+        - Sample Routing
+      parameters:
+        - name: notebookId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: boxId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Box layout with well assignments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoxLayoutResponse'
+        '404':
+          description: Notebook or box not found
+
+  /notebook/{notebookId}/boxes/available:
+    get:
+      summary: Get available analysis boxes
+      description: Returns list of boxes that can be used for internal analysis routing
+      operationId: getAvailableBoxes
+      tags:
+        - Sample Routing
+      parameters:
+        - name: notebookId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: minAvailable
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+          description: Minimum available wells required
+      responses:
+        '200':
+          description: Available boxes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AvailableBox'
+
+components:
+  schemas:
+    InternalAnalysisRoutingRequest:
+      type: object
+      required:
+        - sampleIds
+        - destinationType
+        - boxId
+      properties:
+        sampleIds:
+          type: array
+          items:
+            type: integer
+          description: SampleItem IDs to route
+          maxItems: 500
+        destinationType:
+          type: string
+          enum: [INTERNAL_ANALYSIS]
+        boxId:
+          type: integer
+          description: Target analysis box/plate ID
+        startingWell:
+          type: string
+          pattern: '^[A-Z][0-9]+$'
+          description: Optional starting well (default is first available)
+          example: "A1"
+
+    ExternalLabRoutingRequest:
+      type: object
+      required:
+        - sampleIds
+        - destinationType
+        - externalLabName
+      properties:
+        sampleIds:
+          type: array
+          items:
+            type: integer
+          maxItems: 500
+        destinationType:
+          type: string
+          enum: [EXTERNAL_LAB]
+        externalLabName:
+          type: string
+          description: Name of the external laboratory
+        shipmentDate:
+          type: string
+          format: date
+          description: Expected shipment date
+
+    StorageRoutingRequest:
+      type: object
+      required:
+        - sampleIds
+        - destinationType
+        - locationId
+        - locationType
+      properties:
+        sampleIds:
+          type: array
+          items:
+            type: integer
+          maxItems: 500
+        destinationType:
+          type: string
+          enum: [STORAGE]
+        locationId:
+          type: integer
+          description: Storage location ID (device, shelf, rack, or box)
+        locationType:
+          type: string
+          enum: [device, shelf, rack, box]
+
+    RoutingResponse:
+      type: object
+      properties:
+        routed:
+          type: integer
+          description: Number of samples successfully routed
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/WellAssignment'
+          description: Well assignments (only for INTERNAL_ANALYSIS)
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              sampleId:
+                type: integer
+              message:
+                type: string
+
+    WellAssignment:
+      type: object
+      properties:
+        sampleId:
+          type: integer
+          description: SampleItem ID
+        well:
+          type: string
+          description: Assigned well coordinate
+          example: "A1"
+
+    SampleRoutingStatus:
+      type: object
+      properties:
+        sampleId:
+          type: integer
+          description: SampleItem ID
+        externalId:
+          type: string
+          description: External sample ID
+        destination:
+          type: string
+          enum: [INTERNAL_ANALYSIS, EXTERNAL_LAB, STORAGE, null]
+        boxId:
+          type: integer
+          description: Box ID (for INTERNAL_ANALYSIS)
+        well:
+          type: string
+          description: Well coordinate (for INTERNAL_ANALYSIS)
+        location:
+          type: string
+          description: Hierarchical path (for STORAGE)
+        labName:
+          type: string
+          description: Lab name (for EXTERNAL_LAB)
+        shipmentDate:
+          type: string
+          format: date
+          description: Shipment date (for EXTERNAL_LAB)
+        routedAt:
+          type: string
+          format: date-time
+
+    BoxLayoutResponse:
+      type: object
+      properties:
+        boxId:
+          type: integer
+        label:
+          type: string
+          description: Box label/name
+        format:
+          type: string
+          description: Box format (e.g., "96-well", "384-well")
+        rows:
+          type: integer
+          description: Number of rows (e.g., 8 for 96-well)
+        columns:
+          type: integer
+          description: Number of columns (e.g., 12 for 96-well)
+        occupiedCount:
+          type: integer
+          description: Number of occupied wells
+        availableCount:
+          type: integer
+          description: Number of available wells
+        wells:
+          type: array
+          items:
+            $ref: '#/components/schemas/WellInfo'
+          description: All wells in the box
+
+    WellInfo:
+      type: object
+      properties:
+        coordinate:
+          type: string
+          description: Well coordinate (e.g., "A1")
+        status:
+          type: string
+          enum: [occupied, available]
+        sampleId:
+          type: integer
+          description: SampleItem ID (if occupied)
+        externalId:
+          type: string
+          description: External sample ID (if occupied)
+
+    AvailableBox:
+      type: object
+      properties:
+        boxId:
+          type: integer
+        label:
+          type: string
+        format:
+          type: string
+        capacity:
+          type: integer
+          description: Total wells
+        occupied:
+          type: integer
+          description: Occupied wells
+        available:
+          type: integer
+          description: Available wells
+        path:
+          type: string
+          description: Hierarchical location path

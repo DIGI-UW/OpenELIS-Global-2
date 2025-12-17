@@ -1,0 +1,333 @@
+openapi: 3.0.3
+info:
+  title: Notebook Analyzer Import API
+  description: |
+    API for importing bulk results from laboratory analyzers.
+    Supports CSV and Excel files with column mapping and well coordinate matching.
+  version: 1.0.0
+
+servers:
+  - url: /rest
+    description: OpenELIS REST API
+
+paths:
+  /notebook/bulk/page/{pageId}/analyzer-import:
+    post:
+      summary: Import analyzer results
+      description: |
+        Upload analyzer export file and import results to samples.
+        Matches by well coordinate (primary) or sample ID (fallback).
+      operationId: importAnalyzerResults
+      tags:
+        - Analyzer Import
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Notebook page ID (typically Page 6 - Analysis)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - columnMapping
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file from analyzer
+                analyzerId:
+                  type: integer
+                  description: Optional - Analyzer entity ID
+                boxId:
+                  type: integer
+                  description: Box ID for well coordinate matching
+                assayRunId:
+                  type: string
+                  description: Assay run identifier (e.g., "RUN-2024-042")
+                columnMapping:
+                  type: string
+                  description: JSON string of column mappings
+            encoding:
+              columnMapping:
+                contentType: application/json
+      responses:
+        '200':
+          description: Import complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerImportResponse'
+        '400':
+          description: Invalid file or mapping
+        '404':
+          description: Page not found
+
+  /notebook/bulk/page/{pageId}/analyzer-import/{importId}:
+    get:
+      summary: Get import details
+      description: Returns details of a specific analyzer import including errors
+      operationId: getAnalyzerImportDetails
+      tags:
+        - Analyzer Import
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: importId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Import details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerImportDetails'
+        '404':
+          description: Import not found
+
+  /notebook/bulk/page/{pageId}/analyzer-import/preview:
+    post:
+      summary: Preview analyzer import
+      description: |
+        Parse file and show preview without importing.
+        Validates sample matching and shows potential errors.
+      operationId: previewAnalyzerImport
+      tags:
+        - Analyzer Import
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - columnMapping
+              properties:
+                file:
+                  type: string
+                  format: binary
+                boxId:
+                  type: integer
+                columnMapping:
+                  type: string
+      responses:
+        '200':
+          description: Preview result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerImportPreview'
+        '400':
+          description: Invalid file format
+
+  /notebook/bulk/page/{pageId}/analyzer-imports:
+    get:
+      summary: List analyzer imports for page
+      description: Returns history of analyzer imports for a page
+      operationId: listAnalyzerImports
+      tags:
+        - Analyzer Import
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Import history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AnalyzerImportSummary'
+
+components:
+  schemas:
+    AnalyzerColumnMapping:
+      type: object
+      properties:
+        wellCoordinate:
+          type: string
+          description: Column name for well coordinate (e.g., "Well", "Position")
+        sampleId:
+          type: string
+          description: Column name for sample ID (fallback matching)
+        resultColumns:
+          type: array
+          items:
+            type: string
+          description: Column names for result values to import
+          example: ["CD4_Pct", "CD8_Pct", "Ratio"]
+      description: At least wellCoordinate or sampleId must be provided
+
+    AnalyzerImportResponse:
+      type: object
+      properties:
+        importId:
+          type: integer
+          description: ID for retrieving import details later
+        total:
+          type: integer
+          description: Total rows in file
+        matchedByWell:
+          type: integer
+          description: Rows matched by well coordinate
+        matchedBySampleId:
+          type: integer
+          description: Rows matched by sample ID (fallback)
+        failed:
+          type: integer
+          description: Rows that could not be matched
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportRowError'
+          description: First 10 errors (use importId for full list)
+
+    ImportRowError:
+      type: object
+      properties:
+        row:
+          type: integer
+          description: Row number (1-indexed, excluding header)
+        well:
+          type: string
+          description: Well coordinate from file
+        sampleId:
+          type: string
+          description: Sample ID from file
+        message:
+          type: string
+          description: Error description
+          example: "No sample assigned to well F9"
+
+    AnalyzerImportDetails:
+      type: object
+      properties:
+        id:
+          type: integer
+        pageId:
+          type: integer
+        analyzerId:
+          type: integer
+        analyzerName:
+          type: string
+        fileName:
+          type: string
+        importDate:
+          type: string
+          format: date-time
+        importedBy:
+          type: string
+          description: Username who imported
+        assayRunId:
+          type: string
+        totalRows:
+          type: integer
+        successfulRows:
+          type: integer
+        failedRows:
+          type: integer
+        columnMapping:
+          $ref: '#/components/schemas/AnalyzerColumnMapping'
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportRowError'
+          description: All errors for this import
+
+    AnalyzerImportPreview:
+      type: object
+      properties:
+        totalRows:
+          type: integer
+          description: Total data rows (excluding header)
+        validRows:
+          type: integer
+          description: Rows that can be matched
+        invalidRows:
+          type: integer
+          description: Rows that cannot be matched
+        detectedColumns:
+          type: array
+          items:
+            type: string
+          description: Column headers found in file
+        previewData:
+          type: array
+          items:
+            $ref: '#/components/schemas/PreviewRow'
+          description: First 10 rows with match status
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportRowError'
+          description: First 10 errors
+
+    PreviewRow:
+      type: object
+      properties:
+        row:
+          type: integer
+        wellCoordinate:
+          type: string
+        sampleId:
+          type: string
+        matchedSampleId:
+          type: integer
+          description: Matched SampleItem ID (null if no match)
+        matchType:
+          type: string
+          enum: [WELL, SAMPLE_ID, NONE]
+        status:
+          type: string
+          enum: [READY, ERROR]
+        errorMessage:
+          type: string
+        values:
+          type: object
+          additionalProperties: true
+          description: Result values from file
+
+    AnalyzerImportSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        fileName:
+          type: string
+        analyzerName:
+          type: string
+        importDate:
+          type: string
+          format: date-time
+        importedBy:
+          type: string
+        totalRows:
+          type: integer
+        successfulRows:
+          type: integer
+        failedRows:
+          type: integer
+        assayRunId:
+          type: string

@@ -1,6 +1,7 @@
 package org.openelisglobal.inventory.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
@@ -28,6 +29,7 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.LocationType;
 @Entity
 @Access(AccessType.FIELD)
 @Table(name = "inventory_storage_location")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class InventoryStorageLocation extends BaseObject<Long> {
 
     private static final long serialVersionUID = 1L;

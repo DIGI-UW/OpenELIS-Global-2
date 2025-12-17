@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.controller.rest;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import lombok.Getter;
@@ -105,11 +106,13 @@ public class InventoryManagementRestController extends BaseRestController {
 
     @Setter
     @Getter
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ConsumeRequest {
         private String itemId;
         private Double quantity;
         private String testResultId;
         private String analysisId;
+        private Boolean overrideExpiration;
 
     }
 

@@ -50,7 +50,18 @@ public class DateUtil {
     private static final long WEEK_MS = DAY_IN_MILLSEC * 7L;
 
     static {
-        AMBIGUOUS_DATE_CHAR = ConfigurationProperties.getInstance().getPropertyValue(Property.AmbiguousDateHolder);
+        String ambiguousChar;
+        try {
+            ambiguousChar = ConfigurationProperties.getInstance().getPropertyValue(Property.AmbiguousDateHolder);
+        } catch (Exception e) {
+            // Provide a safe fallback when configuration is unavailable in lightweight test
+            // contexts (e.g., unit tests without Spring).
+            LogEvent.logWarn(DateUtil.class.getName(), "static_init",
+                    "Falling back to default ambiguous date char due to config load failure: " + e.getMessage());
+            ambiguousChar = "X";
+        }
+
+        AMBIGUOUS_DATE_CHAR = ambiguousChar;
         AMBIGUOUS_DATE_REGEX = "(?i)" + AMBIGUOUS_DATE_CHAR + AMBIGUOUS_DATE_CHAR;
         AMBIGUOUS_DATE_SEGMENT = AMBIGUOUS_DATE_CHAR + AMBIGUOUS_DATE_CHAR;
     }
@@ -657,22 +668,39 @@ public class DateUtil {
 
     public static String getDateFormat() {
         Locale locale = getDateFormatLocale();
-        return MessageUtil.getMessage("date.format.formatKey", locale);
+        String pattern = MessageUtil.getMessage("date.format.formatKey", locale);
+        if (GenericValidator.isBlankOrNull(pattern) || pattern.contains("formatKey")) {
+            // Safe fallback for test contexts without message bundles
+            return "MM/dd/yyyy";
+        }
+        return pattern;
     }
 
     public static String getTimeFormat() {
         Locale locale = getDateFormatLocale();
-        return MessageUtil.getMessage("time.format.formatKey", locale);
+        String pattern = MessageUtil.getMessage("time.format.formatKey", locale);
+        if (GenericValidator.isBlankOrNull(pattern) || pattern.contains("formatKey")) {
+            return "HH:mm";
+        }
+        return pattern;
     }
 
     public static String getDateTimeFormat() {
         Locale locale = getDateFormatLocale();
-        return MessageUtil.getMessage("timestamp.format.formatKey", locale);
+        String pattern = MessageUtil.getMessage("timestamp.format.formatKey", locale);
+        if (GenericValidator.isBlankOrNull(pattern) || pattern.contains("formatKey")) {
+            return "yyyy-MM-dd HH:mm";
+        }
+        return pattern;
     }
 
     public static String getDateTime12HourFormat() {
         Locale locale = getDateFormatLocale();
-        return MessageUtil.getMessage("timestamp.format.formatKey.12", locale);
+        String pattern = MessageUtil.getMessage("timestamp.format.formatKey.12", locale);
+        if (GenericValidator.isBlankOrNull(pattern) || pattern.contains("formatKey")) {
+            return "yyyy-MM-dd hh:mm a";
+        }
+        return pattern;
     }
 
     public static Locale getDateFormatLocale() {
