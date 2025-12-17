@@ -2759,6 +2759,12 @@
   "notebook.pharma.reporting.qcParameters.oosFlagging": "OOS Flagging",
   "notebook.pharma.reporting.qcParameters.saveSuccess": "Quality Control Parameters saved successfully",
   "notebook.pharma.reporting.qcParameters.saveError": "Failed to save Quality Control Parameters",
+  "notebook.pharma.reporting.qcParameters.historyTitle": "QC Parameters Change History",
+  "notebook.pharma.reporting.qcParameters.noHistory": "No change history available. Changes will be tracked after you make and save modifications.",
   "button.saving": "Saving...",
-  "label.description": "Description"
+  "button.history": "History",
+  "label.description": "Description",
+  "label.timestamp": "Timestamp",
+  "label.user": "User",
+  "label.action": "Action"
 }

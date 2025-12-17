@@ -67,6 +67,13 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
     @Transactional
     public InventoryUsage recordUsage(Long lotId, Long itemId, Double quantityUsed, Long testResultId, Long analysisId,
             String sysUserId) {
+        // Default behavior: deduct quantity from lot
+        return recordUsage(lotId, itemId, quantityUsed, testResultId, analysisId, sysUserId, true);
+    }
+
+    @Override
+    public InventoryUsage recordUsage(Long lotId, Long itemId, Double quantityUsed, Long testResultId, Long analysisId,
+            String sysUserId, boolean deductQuantity) {
 
         InventoryLot lot = inventoryLotDAO.get(lotId)
                 .orElseThrow(() -> new IllegalArgumentException("Lot not found: " + lotId));
@@ -78,9 +85,9 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
             throw new IllegalArgumentException("Quantity used must be greater than 0");
         }
 
-        // Check if lot has sufficient quantity
+        // Check if lot has sufficient quantity (only if we're deducting)
         Double currentQuantity = lot.getCurrentQuantity();
-        if (currentQuantity == null || currentQuantity < quantityUsed) {
+        if (deductQuantity && (currentQuantity == null || currentQuantity < quantityUsed)) {
             throw new IllegalArgumentException(
                     "Insufficient quantity in lot. Available: " + currentQuantity + ", Requested: " + quantityUsed);
         }
@@ -98,21 +105,24 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
 
         Long id = insert(usage);
 
-        // Detach from session so audit can compare properly
-        inventoryLotDAO.evict(lot);
+        // Only deduct quantity if requested (avoid double deduction when called from consumeInventoryFEFO)
+        if (deductQuantity) {
+            // Detach from session so audit can compare properly
+            inventoryLotDAO.evict(lot);
 
-        // Deduct quantity from lot
-        Double newQuantity = currentQuantity - quantityUsed;
-        lot.setCurrentQuantity(newQuantity);
-        lot.setSysUserId(sysUserId);
+            // Deduct quantity from lot
+            Double newQuantity = currentQuantity - quantityUsed;
+            lot.setCurrentQuantity(newQuantity);
+            lot.setSysUserId(sysUserId);
 
-        // Update lot status to CONSUMED if quantity reaches zero
-        if (newQuantity <= 0) {
-            lot.setStatus(org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus.CONSUMED);
+            // Update lot status to CONSUMED if quantity reaches zero
+            if (newQuantity <= 0) {
+                lot.setStatus(org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus.CONSUMED);
+            }
+
+            // Use service to ensure audit trail is captured
+            inventoryLotService.update(lot);
         }
-
-        // Use service to ensure audit trail is captured
-        inventoryLotService.update(lot);
 
         // Audit logging is automatic via auditTrailLog = true in constructor
         return get(id);

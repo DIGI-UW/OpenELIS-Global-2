@@ -1015,13 +1015,45 @@ public class NotebookSampleEntryController extends BaseRestController {
                                 String wellCoord = wellAssignments != null ? wellAssignments.get(sampleId) : null;
                                 if (wellCoord != null) {
                                     data.put("wellCoordinate", wellCoord);
-                                    // Build storage location string
-                                    org.openelisglobal.storage.valueholder.StorageBox box = storageBoxDAO
-                                            .get(request.getBoxId()).orElse(null);
-                                    if (box != null) {
-                                        data.put("storageLocation", box.getLabel() + " - " + wellCoord);
+                                    data.put("storageWell", wellCoord); // Frontend expects this field name
+                                }
+                                // Build storage location string and save box info
+                                org.openelisglobal.storage.valueholder.StorageBox box = storageBoxDAO
+                                        .get(request.getBoxId()).orElse(null);
+                                if (box != null) {
+                                    String boxLabel = box.getLabel();
+                                    data.put("storageBox", boxLabel); // Frontend expects this field name
+                                    if (wellCoord != null) {
+                                        data.put("storageLocation", boxLabel + " - " + wellCoord);
                                     } else {
+                                        data.put("storageLocation", boxLabel);
+                                    }
+                                    // Build storage path from box hierarchy if available
+                                    StringBuilder pathBuilder = new StringBuilder();
+                                    if (box.getParentRack() != null) {
+                                        if (box.getParentRack().getParentShelf() != null) {
+                                            if (box.getParentRack().getParentShelf().getParentDevice() != null) {
+                                                pathBuilder
+                                                        .append(box.getParentRack().getParentShelf().getParentDevice()
+                                                                .getName())
+                                                        .append(" > ");
+                                            }
+                                            pathBuilder.append(box.getParentRack().getParentShelf().getLabel())
+                                                    .append(" > ");
+                                        }
+                                        pathBuilder.append(box.getParentRack().getLabel()).append(" > ");
+                                    }
+                                    pathBuilder.append(boxLabel);
+                                    if (wellCoord != null) {
+                                        pathBuilder.append(" - ").append(wellCoord);
+                                    }
+                                    data.put("storagePath", pathBuilder.toString());
+                                } else {
+                                    data.put("storageBox", "Box " + request.getBoxId());
+                                    if (wellCoord != null) {
                                         data.put("storageLocation", "Box " + request.getBoxId() + " - " + wellCoord);
+                                    } else {
+                                        data.put("storageLocation", "Box " + request.getBoxId());
                                     }
                                 }
                             }
@@ -1090,8 +1122,10 @@ public class NotebookSampleEntryController extends BaseRestController {
     }
 
     /**
-     * Find the Storage page (Page 7 - "Post-Analysis Storage") for a notebook. The
-     * page is identified by title containing "storage" or order = 7.
+     * Find the Storage page for a notebook. The page is identified by title
+     * containing "storage" or "inventory", or by common page orders: - Page 5 for
+     * Pharma workflow (Storage & Inventory Management) - Page 7 for MNTD workflow
+     * (Post-Analysis Storage)
      *
      * @param notebook the notebook
      * @return the storage page, or null if not found
@@ -1109,17 +1143,20 @@ public class NotebookSampleEntryController extends BaseRestController {
                 return null;
             }
 
-            // First try to find by title containing "storage"
+            // First try to find by title containing "storage" or "inventory"
             for (NoteBookPage page : pages) {
                 String title = page.getTitle();
-                if (title != null && title.toLowerCase().contains("storage")) {
-                    return page;
+                if (title != null) {
+                    String lowerTitle = title.toLowerCase();
+                    if (lowerTitle.contains("storage") || lowerTitle.contains("inventory")) {
+                        return page;
+                    }
                 }
             }
 
-            // Fallback: find page with order = 7 (Post-Analysis Storage)
+            // Fallback: find page with order = 5 (Pharma Storage) or 7 (MNTD Storage)
             for (NoteBookPage page : pages) {
-                if (page.getOrder() != null && page.getOrder() == 7) {
+                if (page.getOrder() != null && (page.getOrder() == 5 || page.getOrder() == 7)) {
                     return page;
                 }
             }

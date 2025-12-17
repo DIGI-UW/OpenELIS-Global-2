@@ -52,6 +52,7 @@ import {
   Edit,
   Save,
   Close,
+  Time,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -177,19 +178,71 @@ function PharmaceuticalReportingPage({
     }
   }, [pageData?.content]);
 
-  const qcParameters = parseQcParameters();
+  // Local state for QC parameters (allows updates without waiting for parent refresh)
+  const [savedQcParams, setSavedQcParams] = useState(null);
+
+  // Initialize savedQcParams from pageData when it changes
+  useEffect(() => {
+    const parsed = parseQcParameters();
+    if (parsed) {
+      setSavedQcParams(parsed);
+    }
+  }, [parseQcParameters]);
+
+  // Use saved local state if available, otherwise parse from props
+  const qcParameters = savedQcParams || parseQcParameters();
 
   // QC Parameters editing state
   const [qcEditMode, setQcEditMode] = useState(false);
   const [qcSaving, setQcSaving] = useState(false);
   const [editableQcParams, setEditableQcParams] = useState(null);
 
+  // QC Parameters history state
+  const [qcHistoryModalOpen, setQcHistoryModalOpen] = useState(false);
+  const [qcHistory, setQcHistory] = useState([]);
+  const [qcHistoryLoading, setQcHistoryLoading] = useState(false);
+
+  // Default QC parameters structure for new entries
+  const defaultQcParams = {
+    controlsRequired: {
+      positiveControls: { enabled: false, description: "" },
+      negativeControls: { enabled: false, description: "" },
+      internalStandards: {
+        enabled: false,
+        description: "",
+        applicableMethods: [],
+      },
+    },
+    acceptanceCriteria: {
+      replicates: { preferred: "", minimum: "", description: "" },
+      rsdLimit: { relatedSubstances: "", assay: "" },
+      cvLimit: { value: "" },
+      precisionRequirements: { guideline: "" },
+      referenceStandardsComparison: { enabled: false },
+      pharmacopeialSpecifications: { standards: [] },
+    },
+    deviationManagement: {
+      logInLmis: { enabled: false, description: "" },
+      documentReason: { enabled: false, description: "" },
+      capa: { enabled: false, description: "", timeline: "" },
+      oosFlagging: { enabled: false, description: "", workflow: "" },
+    },
+  };
+
   // Initialize editable QC params when entering edit mode
+  // Only initialize once when qcEditMode becomes true
+  const prevEditModeRef = useRef(false);
   useEffect(() => {
-    if (qcEditMode && qcParameters) {
-      setEditableQcParams(JSON.parse(JSON.stringify(qcParameters)));
+    // Only initialize when transitioning from false to true
+    if (qcEditMode && !prevEditModeRef.current) {
+      // Use existing params or default structure
+      const baseParams = qcParameters
+        ? JSON.parse(JSON.stringify(qcParameters))
+        : JSON.parse(JSON.stringify(defaultQcParams));
+      setEditableQcParams(baseParams);
     }
-  }, [qcEditMode, qcParameters]);
+    prevEditModeRef.current = qcEditMode;
+  }, [qcEditMode]); // Remove qcParameters from deps to avoid resetting on every render
 
   // Helper to update nested QC parameter values
   const updateQcParam = (path, value) => {
@@ -207,59 +260,87 @@ function PharmaceuticalReportingPage({
   };
 
   // Save QC parameters
-  const handleSaveQcParams = async () => {
-    if (!pageData?.id || !editableQcParams) return;
+  const handleSaveQcParams = () => {
+    if (!pageData?.id) {
+      console.error("Cannot save QC params: pageData.id is missing");
+      setError("Page ID is missing");
+      return;
+    }
+    if (!editableQcParams) {
+      console.error("Cannot save QC params: editableQcParams is null");
+      setError("No parameters to save");
+      return;
+    }
 
     setQcSaving(true);
     setError(null);
 
-    try {
-      const contentJson = JSON.stringify({
-        qualityControlParameters: editableQcParams,
-      });
+    const contentJson = JSON.stringify({
+      qualityControlParameters: editableQcParams,
+    });
 
-      const response = await postToOpenElisServerJsonResponse(
-        `/rest/notebook/bulk/page/${pageData.id}/content`,
-        JSON.stringify({ content: contentJson }),
-      );
+    console.log("Saving QC params to page:", pageData.id);
+    console.log("Content to save:", contentJson);
 
-      if (response.success) {
-        setSuccess(
-          intl.formatMessage({
-            id: "notebook.pharma.reporting.qcParameters.saveSuccess",
-            defaultMessage: "Quality Control Parameters saved successfully",
-          }),
-        );
-        setQcEditMode(false);
-        // Trigger a refresh of page data if callback available
-        if (onProgressUpdate) {
-          onProgressUpdate();
-        }
-      } else {
-        setError(
-          response.error ||
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/bulk/page/${pageData.id}/content`,
+      JSON.stringify({ content: contentJson }),
+      (response) => {
+        console.log("Save response:", response);
+        setQcSaving(false);
+        if (response && response.success) {
+          // Update local state with saved values to prevent revert
+          setSavedQcParams(JSON.parse(JSON.stringify(editableQcParams)));
+          setSuccess(
             intl.formatMessage({
-              id: "notebook.pharma.reporting.qcParameters.saveError",
-              defaultMessage: "Failed to save Quality Control Parameters",
+              id: "notebook.pharma.reporting.qcParameters.saveSuccess",
+              defaultMessage: "Quality Control Parameters saved successfully",
             }),
-        );
-      }
-    } catch (err) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.pharma.reporting.qcParameters.saveError",
-          defaultMessage: "Failed to save Quality Control Parameters",
-        }),
-      );
-    } finally {
-      setQcSaving(false);
-    }
+          );
+          setQcEditMode(false);
+          setEditableQcParams(null);
+          // Trigger a refresh of page data if callback available
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          console.error("Save failed:", response);
+          setError(
+            response?.error ||
+              intl.formatMessage({
+                id: "notebook.pharma.reporting.qcParameters.saveError",
+                defaultMessage: "Failed to save Quality Control Parameters",
+              }),
+          );
+        }
+      },
+    );
   };
 
   // Cancel QC editing
   const handleCancelQcEdit = () => {
     setQcEditMode(false);
     setEditableQcParams(null);
+  };
+
+  // Fetch QC parameters history
+  const handleViewQcHistory = () => {
+    if (!pageData?.id) return;
+
+    setQcHistoryLoading(true);
+    setQcHistoryModalOpen(true);
+
+    getFromOpenElisServer(
+      `/rest/notebook/bulk/page/${pageData.id}/content/history`,
+      (response) => {
+        setQcHistoryLoading(false);
+        if (response && response.history) {
+          setQcHistory(response.history);
+        } else {
+          setQcHistory([]);
+        }
+      },
+    );
   };
 
   // Validation status options (pharmaceutical-specific)
@@ -1191,39 +1272,54 @@ function PharmaceuticalReportingPage({
         </Column>
       </Grid>
 
-      {/* Quality Control Parameters Section */}
-      {(qcParameters || qcEditMode) && (
-        <div className="qc-parameters-section" style={{ marginTop: "1.5rem" }}>
-          <Accordion>
-            <AccordionItem
-              title={
+      {/* Quality Control Parameters Section - Always visible to allow adding/editing */}
+      <div className="qc-parameters-section" style={{ marginTop: "1.5rem" }}>
+        <Accordion>
+          <AccordionItem
+            title={
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  width: "100%",
+                  justifyContent: "space-between",
+                }}
+              >
                 <span
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "0.5rem",
-                    width: "100%",
-                    justifyContent: "space-between",
                   }}
                 >
-                  <span
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    <Chemistry size={20} />
-                    <FormattedMessage
-                      id="notebook.pharma.reporting.qcParameters.title"
-                      defaultMessage="Quality Control Parameters"
-                    />
-                  </span>
-                  <span
-                    style={{ display: "flex", gap: "0.5rem" }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {!qcEditMode ? (
+                  <Chemistry size={20} />
+                  <FormattedMessage
+                    id="notebook.pharma.reporting.qcParameters.title"
+                    defaultMessage="Quality Control Parameters"
+                  />
+                </span>
+                <span
+                  style={{ display: "flex", gap: "0.5rem" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {!qcEditMode ? (
+                    <>
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        renderIcon={Time}
+                        iconDescription={intl.formatMessage({
+                          id: "button.history",
+                          defaultMessage: "History",
+                        })}
+                        onClick={handleViewQcHistory}
+                      >
+                        <FormattedMessage
+                          id="button.history"
+                          defaultMessage="History"
+                        />
+                      </Button>
                       <Button
                         kind="ghost"
                         size="sm"
@@ -1239,801 +1335,793 @@ function PharmaceuticalReportingPage({
                           defaultMessage="Edit"
                         />
                       </Button>
-                    ) : (
-                      <>
-                        <Button
-                          kind="secondary"
-                          size="sm"
-                          renderIcon={Close}
-                          onClick={handleCancelQcEdit}
-                          disabled={qcSaving}
-                        >
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        kind="secondary"
+                        size="sm"
+                        renderIcon={Close}
+                        onClick={handleCancelQcEdit}
+                        disabled={qcSaving}
+                      >
+                        <FormattedMessage
+                          id="button.cancel"
+                          defaultMessage="Cancel"
+                        />
+                      </Button>
+                      <Button
+                        kind="primary"
+                        size="sm"
+                        renderIcon={Save}
+                        onClick={handleSaveQcParams}
+                        disabled={qcSaving}
+                      >
+                        {qcSaving ? (
                           <FormattedMessage
-                            id="button.cancel"
-                            defaultMessage="Cancel"
+                            id="button.saving"
+                            defaultMessage="Saving..."
                           />
-                        </Button>
-                        <Button
-                          kind="primary"
-                          size="sm"
-                          renderIcon={Save}
-                          onClick={handleSaveQcParams}
-                          disabled={qcSaving}
-                        >
-                          {qcSaving ? (
-                            <FormattedMessage
-                              id="button.saving"
-                              defaultMessage="Saving..."
-                            />
-                          ) : (
-                            <FormattedMessage
-                              id="button.save"
-                              defaultMessage="Save"
-                            />
-                          )}
-                        </Button>
-                      </>
-                    )}
-                  </span>
+                        ) : (
+                          <FormattedMessage
+                            id="button.save"
+                            defaultMessage="Save"
+                          />
+                        )}
+                      </Button>
+                    </>
+                  )}
                 </span>
-              }
-              open
-            >
-              <Grid fullWidth style={{ padding: "1rem 0" }}>
-                {/* Controls Required */}
-                <Column lg={5} md={4} sm={4}>
-                  <Tile className="qc-param-tile">
-                    <div className="qc-param-header">
-                      <Chemistry size={20} />
-                      <h5>
-                        <FormattedMessage
-                          id="notebook.pharma.reporting.qcParameters.controlsRequired"
-                          defaultMessage="Controls Required"
-                        />
-                      </h5>
+              </span>
+            }
+            open
+          >
+            <Grid fullWidth style={{ padding: "1rem 0" }}>
+              {/* Controls Required */}
+              <Column lg={5} md={4} sm={4}>
+                <Tile className="qc-param-tile">
+                  <div className="qc-param-header">
+                    <Chemistry size={20} />
+                    <h5>
+                      <FormattedMessage
+                        id="notebook.pharma.reporting.qcParameters.controlsRequired"
+                        defaultMessage="Controls Required"
+                      />
+                    </h5>
+                  </div>
+                  {qcEditMode && editableQcParams ? (
+                    <div className="qc-param-edit-list">
+                      <Toggle
+                        id="positiveControls-toggle"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.positiveControls",
+                          defaultMessage: "Positive Controls",
+                        })}
+                        toggled={
+                          editableQcParams.controlsRequired?.positiveControls
+                            ?.enabled || false
+                        }
+                        onToggle={(checked) =>
+                          updateQcParam(
+                            "controlsRequired.positiveControls.enabled",
+                            checked,
+                          )
+                        }
+                      />
+                      <TextInput
+                        id="positiveControls-desc"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "label.description",
+                          defaultMessage: "Description",
+                        })}
+                        value={
+                          editableQcParams.controlsRequired?.positiveControls
+                            ?.description || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "controlsRequired.positiveControls.description",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
+                      />
+                      <Toggle
+                        id="negativeControls-toggle"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.negativeControls",
+                          defaultMessage: "Negative Controls",
+                        })}
+                        toggled={
+                          editableQcParams.controlsRequired?.negativeControls
+                            ?.enabled || false
+                        }
+                        onToggle={(checked) =>
+                          updateQcParam(
+                            "controlsRequired.negativeControls.enabled",
+                            checked,
+                          )
+                        }
+                      />
+                      <TextInput
+                        id="negativeControls-desc"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "label.description",
+                          defaultMessage: "Description",
+                        })}
+                        value={
+                          editableQcParams.controlsRequired?.negativeControls
+                            ?.description || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "controlsRequired.negativeControls.description",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
+                      />
+                      <Toggle
+                        id="internalStandards-toggle"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.internalStandards",
+                          defaultMessage: "Internal Standards",
+                        })}
+                        toggled={
+                          editableQcParams.controlsRequired?.internalStandards
+                            ?.enabled || false
+                        }
+                        onToggle={(checked) =>
+                          updateQcParam(
+                            "controlsRequired.internalStandards.enabled",
+                            checked,
+                          )
+                        }
+                      />
+                      <TextInput
+                        id="internalStandards-desc"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "label.description",
+                          defaultMessage: "Description",
+                        })}
+                        value={
+                          editableQcParams.controlsRequired?.internalStandards
+                            ?.description || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "controlsRequired.internalStandards.description",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginTop: "0.5rem" }}
+                      />
                     </div>
-                    {qcEditMode && editableQcParams ? (
-                      <div className="qc-param-edit-list">
-                        <Toggle
-                          id="positiveControls-toggle"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.positiveControls",
-                            defaultMessage: "Positive Controls",
-                          })}
-                          toggled={
-                            editableQcParams.controlsRequired?.positiveControls
-                              ?.enabled || false
-                          }
-                          onToggle={(checked) =>
-                            updateQcParam(
-                              "controlsRequired.positiveControls.enabled",
-                              checked,
-                            )
-                          }
-                        />
-                        <TextInput
-                          id="positiveControls-desc"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "label.description",
-                            defaultMessage: "Description",
-                          })}
-                          value={
-                            editableQcParams.controlsRequired?.positiveControls
-                              ?.description || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "controlsRequired.positiveControls.description",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
-                        />
-                        <Toggle
-                          id="negativeControls-toggle"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.negativeControls",
-                            defaultMessage: "Negative Controls",
-                          })}
-                          toggled={
-                            editableQcParams.controlsRequired?.negativeControls
-                              ?.enabled || false
-                          }
-                          onToggle={(checked) =>
-                            updateQcParam(
-                              "controlsRequired.negativeControls.enabled",
-                              checked,
-                            )
-                          }
-                        />
-                        <TextInput
-                          id="negativeControls-desc"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "label.description",
-                            defaultMessage: "Description",
-                          })}
-                          value={
-                            editableQcParams.controlsRequired?.negativeControls
-                              ?.description || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "controlsRequired.negativeControls.description",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
-                        />
-                        <Toggle
-                          id="internalStandards-toggle"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.internalStandards",
-                            defaultMessage: "Internal Standards",
-                          })}
-                          toggled={
-                            editableQcParams.controlsRequired?.internalStandards
-                              ?.enabled || false
-                          }
-                          onToggle={(checked) =>
-                            updateQcParam(
-                              "controlsRequired.internalStandards.enabled",
-                              checked,
-                            )
-                          }
-                        />
-                        <TextInput
-                          id="internalStandards-desc"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "label.description",
-                            defaultMessage: "Description",
-                          })}
-                          value={
-                            editableQcParams.controlsRequired?.internalStandards
-                              ?.description || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "controlsRequired.internalStandards.description",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginTop: "0.5rem" }}
-                        />
-                      </div>
-                    ) : (
-                      <UnorderedList nested className="qc-param-list">
-                        {qcParameters?.controlsRequired?.positiveControls
-                          ?.enabled && (
-                          <ListItem>
-                            <Tag type="green" size="sm">
-                              <Checkmark size={12} />
-                            </Tag>
-                            <span style={{ marginLeft: "0.5rem" }}>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.positiveControls"
-                                defaultMessage="Positive Controls"
-                              />
-                            </span>
-                            {qcParameters.controlsRequired.positiveControls
-                              .description && (
-                              <p className="qc-param-description">
-                                {
-                                  qcParameters.controlsRequired.positiveControls
-                                    .description
-                                }
-                              </p>
-                            )}
-                          </ListItem>
-                        )}
-                        {qcParameters?.controlsRequired?.negativeControls
-                          ?.enabled && (
-                          <ListItem>
-                            <Tag type="green" size="sm">
-                              <Checkmark size={12} />
-                            </Tag>
-                            <span style={{ marginLeft: "0.5rem" }}>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.negativeControls"
-                                defaultMessage="Negative Controls"
-                              />
-                            </span>
-                            {qcParameters.controlsRequired.negativeControls
-                              .description && (
-                              <p className="qc-param-description">
-                                {
-                                  qcParameters.controlsRequired.negativeControls
-                                    .description
-                                }
-                              </p>
-                            )}
-                          </ListItem>
-                        )}
-                        {qcParameters?.controlsRequired?.internalStandards
-                          ?.enabled && (
-                          <ListItem>
-                            <Tag type="green" size="sm">
-                              <Checkmark size={12} />
-                            </Tag>
-                            <span style={{ marginLeft: "0.5rem" }}>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.internalStandards"
-                                defaultMessage="Internal Standards"
-                              />
-                            </span>
-                            {qcParameters.controlsRequired.internalStandards
-                              .description && (
-                              <p className="qc-param-description">
-                                {
-                                  qcParameters.controlsRequired
-                                    .internalStandards.description
-                                }
-                              </p>
-                            )}
-                            {qcParameters.controlsRequired.internalStandards
-                              .applicableMethods && (
-                              <div className="qc-param-tags">
-                                {qcParameters.controlsRequired.internalStandards.applicableMethods.map(
-                                  (method) => (
-                                    <Tag key={method} type="blue" size="sm">
-                                      {method}
-                                    </Tag>
-                                  ),
-                                )}
-                              </div>
-                            )}
-                          </ListItem>
-                        )}
-                      </UnorderedList>
-                    )}
-                  </Tile>
-                </Column>
-
-                {/* Acceptance Criteria */}
-                <Column lg={6} md={4} sm={4}>
-                  <Tile className="qc-param-tile">
-                    <div className="qc-param-header">
-                      <Rule size={20} />
-                      <h5>
-                        <FormattedMessage
-                          id="notebook.pharma.reporting.qcParameters.acceptanceCriteria"
-                          defaultMessage="Acceptance Criteria"
-                        />
-                      </h5>
-                    </div>
-                    {qcEditMode && editableQcParams ? (
-                      <div className="qc-param-edit-list">
-                        <TextInput
-                          id="replicates-preferred"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.replicates",
-                            defaultMessage: "Replicates (Preferred)",
-                          })}
-                          value={
-                            editableQcParams.acceptanceCriteria?.replicates
-                              ?.preferred || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "acceptanceCriteria.replicates.preferred",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginBottom: "1rem" }}
-                        />
-                        <TextInput
-                          id="rsd-relatedSubstances"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.relatedSubstances",
-                            defaultMessage: "%RSD - Related Substances",
-                          })}
-                          value={
-                            editableQcParams.acceptanceCriteria?.rsdLimit
-                              ?.relatedSubstances || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "acceptanceCriteria.rsdLimit.relatedSubstances",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginBottom: "0.5rem" }}
-                        />
-                        <TextInput
-                          id="rsd-assay"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.assay",
-                            defaultMessage: "%RSD - Assay",
-                          })}
-                          value={
-                            editableQcParams.acceptanceCriteria?.rsdLimit
-                              ?.assay || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "acceptanceCriteria.rsdLimit.assay",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginBottom: "1rem" }}
-                        />
-                        <TextInput
-                          id="cv-limit"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.cvLimit",
-                            defaultMessage: "CV Limit",
-                          })}
-                          value={
-                            editableQcParams.acceptanceCriteria?.cvLimit
-                              ?.value || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "acceptanceCriteria.cvLimit.value",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginBottom: "1rem" }}
-                        />
-                        <TextInput
-                          id="precision-guideline"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.precision",
-                            defaultMessage: "Precision Guideline",
-                          })}
-                          value={
-                            editableQcParams.acceptanceCriteria
-                              ?.precisionRequirements?.guideline || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "acceptanceCriteria.precisionRequirements.guideline",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginBottom: "1rem" }}
-                        />
-                        <Toggle
-                          id="referenceStandards-toggle"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.referenceStandards",
-                            defaultMessage: "Reference Standards Comparison",
-                          })}
-                          toggled={
-                            editableQcParams.acceptanceCriteria
-                              ?.referenceStandardsComparison?.enabled || false
-                          }
-                          onToggle={(checked) =>
-                            updateQcParam(
-                              "acceptanceCriteria.referenceStandardsComparison.enabled",
-                              checked,
-                            )
-                          }
-                        />
-                      </div>
-                    ) : (
-                      <UnorderedList nested className="qc-param-list">
-                        {qcParameters?.acceptanceCriteria?.replicates && (
-                          <ListItem>
-                            <strong>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.replicates"
-                                defaultMessage="Replicates:"
-                              />
-                            </strong>{" "}
-                            {qcParameters.acceptanceCriteria.replicates
-                              .preferred ||
-                              qcParameters.acceptanceCriteria.replicates
-                                .minimum}
-                            {qcParameters.acceptanceCriteria.replicates
-                              .description && (
-                              <p className="qc-param-description">
-                                {
-                                  qcParameters.acceptanceCriteria.replicates
-                                    .description
-                                }
-                              </p>
-                            )}
-                          </ListItem>
-                        )}
-                        {qcParameters?.acceptanceCriteria?.rsdLimit && (
-                          <ListItem>
-                            <strong>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.rsdLimit"
-                                defaultMessage="%RSD Limits:"
-                              />
-                            </strong>
-                            <div className="qc-param-sub-items">
-                              {qcParameters.acceptanceCriteria.rsdLimit
-                                .relatedSubstances && (
-                                <span>
-                                  <FormattedMessage
-                                    id="notebook.pharma.reporting.qcParameters.relatedSubstances"
-                                    defaultMessage="Related Substances:"
-                                  />{" "}
-                                  {
-                                    qcParameters.acceptanceCriteria.rsdLimit
-                                      .relatedSubstances
-                                  }
-                                </span>
-                              )}
-                              {qcParameters.acceptanceCriteria.rsdLimit
-                                .assay && (
-                                <span>
-                                  <FormattedMessage
-                                    id="notebook.pharma.reporting.qcParameters.assay"
-                                    defaultMessage="Assay:"
-                                  />{" "}
-                                  {
-                                    qcParameters.acceptanceCriteria.rsdLimit
-                                      .assay
-                                  }
-                                </span>
-                              )}
-                            </div>
-                          </ListItem>
-                        )}
-                        {qcParameters?.acceptanceCriteria?.cvLimit && (
-                          <ListItem>
-                            <strong>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.cvLimit"
-                                defaultMessage="CV Limit:"
-                              />
-                            </strong>{" "}
-                            {qcParameters.acceptanceCriteria.cvLimit.value}
-                          </ListItem>
-                        )}
-                        {qcParameters?.acceptanceCriteria
-                          ?.precisionRequirements && (
-                          <ListItem>
-                            <strong>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.precision"
-                                defaultMessage="Precision:"
-                              />
-                            </strong>{" "}
-                            {
-                              qcParameters.acceptanceCriteria
-                                .precisionRequirements.guideline
-                            }
-                          </ListItem>
-                        )}
-                        {qcParameters?.acceptanceCriteria
-                          ?.referenceStandardsComparison?.enabled && (
-                          <ListItem>
-                            <Tag type="green" size="sm">
-                              <Checkmark size={12} />
-                            </Tag>
-                            <span style={{ marginLeft: "0.5rem" }}>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.referenceStandards"
-                                defaultMessage="Reference Standards Comparison"
-                              />
-                            </span>
-                          </ListItem>
-                        )}
-                        {qcParameters?.acceptanceCriteria
-                          ?.pharmacopeialSpecifications && (
-                          <ListItem>
-                            <strong>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.pharmacopeialSpecs"
-                                defaultMessage="Pharmacopeial Specifications:"
-                              />
-                            </strong>
+                  ) : (
+                    <UnorderedList nested className="qc-param-list">
+                      {qcParameters?.controlsRequired?.positiveControls
+                        ?.enabled && (
+                        <ListItem>
+                          <Tag type="green" size="sm">
+                            <Checkmark size={12} />
+                          </Tag>
+                          <span style={{ marginLeft: "0.5rem" }}>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.positiveControls"
+                              defaultMessage="Positive Controls"
+                            />
+                          </span>
+                          {qcParameters.controlsRequired.positiveControls
+                            .description && (
+                            <p className="qc-param-description">
+                              {
+                                qcParameters.controlsRequired.positiveControls
+                                  .description
+                              }
+                            </p>
+                          )}
+                        </ListItem>
+                      )}
+                      {qcParameters?.controlsRequired?.negativeControls
+                        ?.enabled && (
+                        <ListItem>
+                          <Tag type="green" size="sm">
+                            <Checkmark size={12} />
+                          </Tag>
+                          <span style={{ marginLeft: "0.5rem" }}>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.negativeControls"
+                              defaultMessage="Negative Controls"
+                            />
+                          </span>
+                          {qcParameters.controlsRequired.negativeControls
+                            .description && (
+                            <p className="qc-param-description">
+                              {
+                                qcParameters.controlsRequired.negativeControls
+                                  .description
+                              }
+                            </p>
+                          )}
+                        </ListItem>
+                      )}
+                      {qcParameters?.controlsRequired?.internalStandards
+                        ?.enabled && (
+                        <ListItem>
+                          <Tag type="green" size="sm">
+                            <Checkmark size={12} />
+                          </Tag>
+                          <span style={{ marginLeft: "0.5rem" }}>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.internalStandards"
+                              defaultMessage="Internal Standards"
+                            />
+                          </span>
+                          {qcParameters.controlsRequired.internalStandards
+                            .description && (
+                            <p className="qc-param-description">
+                              {
+                                qcParameters.controlsRequired.internalStandards
+                                  .description
+                              }
+                            </p>
+                          )}
+                          {qcParameters.controlsRequired.internalStandards
+                            .applicableMethods && (
                             <div className="qc-param-tags">
-                              {qcParameters.acceptanceCriteria.pharmacopeialSpecifications.standards?.map(
-                                (spec) => (
-                                  <Tag key={spec} type="purple" size="sm">
-                                    {spec}
+                              {qcParameters.controlsRequired.internalStandards.applicableMethods.map(
+                                (method) => (
+                                  <Tag key={method} type="blue" size="sm">
+                                    {method}
                                   </Tag>
                                 ),
                               )}
                             </div>
-                          </ListItem>
-                        )}
-                      </UnorderedList>
-                    )}
-                  </Tile>
-                </Column>
+                          )}
+                        </ListItem>
+                      )}
+                    </UnorderedList>
+                  )}
+                </Tile>
+              </Column>
 
-                {/* Deviation Management */}
-                <Column lg={5} md={4} sm={4}>
-                  <Tile className="qc-param-tile">
-                    <div className="qc-param-header">
-                      <TaskComplete size={20} />
-                      <h5>
-                        <FormattedMessage
-                          id="notebook.pharma.reporting.qcParameters.deviationManagement"
-                          defaultMessage="Deviation Management"
-                        />
-                      </h5>
+              {/* Acceptance Criteria */}
+              <Column lg={6} md={4} sm={4}>
+                <Tile className="qc-param-tile">
+                  <div className="qc-param-header">
+                    <Rule size={20} />
+                    <h5>
+                      <FormattedMessage
+                        id="notebook.pharma.reporting.qcParameters.acceptanceCriteria"
+                        defaultMessage="Acceptance Criteria"
+                      />
+                    </h5>
+                  </div>
+                  {qcEditMode && editableQcParams ? (
+                    <div className="qc-param-edit-list">
+                      <TextInput
+                        id="replicates-preferred"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.replicates",
+                          defaultMessage: "Replicates (Preferred)",
+                        })}
+                        value={
+                          editableQcParams.acceptanceCriteria?.replicates
+                            ?.preferred || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "acceptanceCriteria.replicates.preferred",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginBottom: "1rem" }}
+                      />
+                      <TextInput
+                        id="rsd-relatedSubstances"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.relatedSubstances",
+                          defaultMessage: "%RSD - Related Substances",
+                        })}
+                        value={
+                          editableQcParams.acceptanceCriteria?.rsdLimit
+                            ?.relatedSubstances || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "acceptanceCriteria.rsdLimit.relatedSubstances",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginBottom: "0.5rem" }}
+                      />
+                      <TextInput
+                        id="rsd-assay"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.assay",
+                          defaultMessage: "%RSD - Assay",
+                        })}
+                        value={
+                          editableQcParams.acceptanceCriteria?.rsdLimit
+                            ?.assay || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "acceptanceCriteria.rsdLimit.assay",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginBottom: "1rem" }}
+                      />
+                      <TextInput
+                        id="cv-limit"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.cvLimit",
+                          defaultMessage: "CV Limit",
+                        })}
+                        value={
+                          editableQcParams.acceptanceCriteria?.cvLimit?.value ||
+                          ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "acceptanceCriteria.cvLimit.value",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginBottom: "1rem" }}
+                      />
+                      <TextInput
+                        id="precision-guideline"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.precision",
+                          defaultMessage: "Precision Guideline",
+                        })}
+                        value={
+                          editableQcParams.acceptanceCriteria
+                            ?.precisionRequirements?.guideline || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "acceptanceCriteria.precisionRequirements.guideline",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginBottom: "1rem" }}
+                      />
+                      <Toggle
+                        id="referenceStandards-toggle"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.referenceStandards",
+                          defaultMessage: "Reference Standards Comparison",
+                        })}
+                        toggled={
+                          editableQcParams.acceptanceCriteria
+                            ?.referenceStandardsComparison?.enabled || false
+                        }
+                        onToggle={(checked) =>
+                          updateQcParam(
+                            "acceptanceCriteria.referenceStandardsComparison.enabled",
+                            checked,
+                          )
+                        }
+                      />
                     </div>
-                    {qcEditMode && editableQcParams ? (
-                      <div className="qc-param-edit-list">
-                        <Toggle
-                          id="logInLmis-toggle"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.logInLmis",
-                            defaultMessage: "Log in LMIS",
-                          })}
-                          toggled={
-                            editableQcParams.deviationManagement?.logInLmis
-                              ?.enabled || false
-                          }
-                          onToggle={(checked) =>
-                            updateQcParam(
-                              "deviationManagement.logInLmis.enabled",
-                              checked,
-                            )
-                          }
-                        />
-                        <TextInput
-                          id="logInLmis-desc"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "label.description",
-                            defaultMessage: "Description",
-                          })}
-                          value={
-                            editableQcParams.deviationManagement?.logInLmis
-                              ?.description || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "deviationManagement.logInLmis.description",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
-                        />
-                        <Toggle
-                          id="documentReason-toggle"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.documentReason",
-                            defaultMessage: "Document Reason",
-                          })}
-                          toggled={
-                            editableQcParams.deviationManagement?.documentReason
-                              ?.enabled || false
-                          }
-                          onToggle={(checked) =>
-                            updateQcParam(
-                              "deviationManagement.documentReason.enabled",
-                              checked,
-                            )
-                          }
-                        />
-                        <TextInput
-                          id="documentReason-desc"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "label.description",
-                            defaultMessage: "Description",
-                          })}
-                          value={
-                            editableQcParams.deviationManagement?.documentReason
-                              ?.description || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "deviationManagement.documentReason.description",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
-                        />
-                        <Toggle
-                          id="capa-toggle"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.capa",
-                            defaultMessage: "CAPA Required",
-                          })}
-                          toggled={
-                            editableQcParams.deviationManagement?.capa
-                              ?.enabled || false
-                          }
-                          onToggle={(checked) =>
-                            updateQcParam(
-                              "deviationManagement.capa.enabled",
-                              checked,
-                            )
-                          }
-                        />
-                        <TextInput
-                          id="capa-desc"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "label.description",
-                            defaultMessage: "Description",
-                          })}
-                          value={
-                            editableQcParams.deviationManagement?.capa
-                              ?.description || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "deviationManagement.capa.description",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
-                        />
-                        <Toggle
-                          id="oosFlagging-toggle"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "notebook.pharma.reporting.qcParameters.oosFlagging",
-                            defaultMessage: "OOS Flagging",
-                          })}
-                          toggled={
-                            editableQcParams.deviationManagement?.oosFlagging
-                              ?.enabled || false
-                          }
-                          onToggle={(checked) =>
-                            updateQcParam(
-                              "deviationManagement.oosFlagging.enabled",
-                              checked,
-                            )
-                          }
-                        />
-                        <TextInput
-                          id="oosFlagging-desc"
-                          size="sm"
-                          labelText={intl.formatMessage({
-                            id: "label.description",
-                            defaultMessage: "Description",
-                          })}
-                          value={
-                            editableQcParams.deviationManagement?.oosFlagging
-                              ?.description || ""
-                          }
-                          onChange={(e) =>
-                            updateQcParam(
-                              "deviationManagement.oosFlagging.description",
-                              e.target.value,
-                            )
-                          }
-                          style={{ marginTop: "0.5rem" }}
-                        />
-                      </div>
-                    ) : (
-                      <UnorderedList nested className="qc-param-list">
-                        {qcParameters?.deviationManagement?.logInLmis
-                          ?.enabled && (
-                          <ListItem>
-                            <Tag type="green" size="sm">
-                              <Checkmark size={12} />
-                            </Tag>
-                            <span style={{ marginLeft: "0.5rem" }}>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.logInLmis"
-                                defaultMessage="Log in LMIS"
-                              />
-                            </span>
-                            {qcParameters.deviationManagement.logInLmis
-                              .description && (
-                              <p className="qc-param-description">
+                  ) : (
+                    <UnorderedList nested className="qc-param-list">
+                      {qcParameters?.acceptanceCriteria?.replicates && (
+                        <ListItem>
+                          <strong>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.replicates"
+                              defaultMessage="Replicates:"
+                            />
+                          </strong>{" "}
+                          {qcParameters.acceptanceCriteria.replicates
+                            .preferred ||
+                            qcParameters.acceptanceCriteria.replicates.minimum}
+                          {qcParameters.acceptanceCriteria.replicates
+                            .description && (
+                            <p className="qc-param-description">
+                              {
+                                qcParameters.acceptanceCriteria.replicates
+                                  .description
+                              }
+                            </p>
+                          )}
+                        </ListItem>
+                      )}
+                      {qcParameters?.acceptanceCriteria?.rsdLimit && (
+                        <ListItem>
+                          <strong>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.rsdLimit"
+                              defaultMessage="%RSD Limits:"
+                            />
+                          </strong>
+                          <div className="qc-param-sub-items">
+                            {qcParameters.acceptanceCriteria.rsdLimit
+                              .relatedSubstances && (
+                              <span>
+                                <FormattedMessage
+                                  id="notebook.pharma.reporting.qcParameters.relatedSubstances"
+                                  defaultMessage="Related Substances:"
+                                />{" "}
                                 {
-                                  qcParameters.deviationManagement.logInLmis
-                                    .description
+                                  qcParameters.acceptanceCriteria.rsdLimit
+                                    .relatedSubstances
                                 }
-                              </p>
+                              </span>
                             )}
-                          </ListItem>
-                        )}
-                        {qcParameters?.deviationManagement?.documentReason
-                          ?.enabled && (
-                          <ListItem>
-                            <Tag type="green" size="sm">
-                              <Checkmark size={12} />
-                            </Tag>
-                            <span style={{ marginLeft: "0.5rem" }}>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.documentReason"
-                                defaultMessage="Document Reason"
-                              />
-                            </span>
-                            {qcParameters.deviationManagement.documentReason
-                              .description && (
-                              <p className="qc-param-description">
-                                {
-                                  qcParameters.deviationManagement
-                                    .documentReason.description
-                                }
-                              </p>
+                            {qcParameters.acceptanceCriteria.rsdLimit.assay && (
+                              <span>
+                                <FormattedMessage
+                                  id="notebook.pharma.reporting.qcParameters.assay"
+                                  defaultMessage="Assay:"
+                                />{" "}
+                                {qcParameters.acceptanceCriteria.rsdLimit.assay}
+                              </span>
                             )}
-                          </ListItem>
-                        )}
-                        {qcParameters?.deviationManagement?.capa?.enabled && (
-                          <ListItem>
-                            <Tag type="green" size="sm">
-                              <Checkmark size={12} />
-                            </Tag>
-                            <span style={{ marginLeft: "0.5rem" }}>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.capa"
-                                defaultMessage="CAPA Required"
-                              />
-                            </span>
-                            {qcParameters.deviationManagement.capa
-                              .description && (
-                              <p className="qc-param-description">
-                                {
-                                  qcParameters.deviationManagement.capa
-                                    .description
-                                }
-                              </p>
-                            )}
-                            {qcParameters.deviationManagement.capa.timeline && (
-                              <p className="qc-param-timeline">
-                                <Tag type="cyan" size="sm">
-                                  {
-                                    qcParameters.deviationManagement.capa
-                                      .timeline
-                                  }
+                          </div>
+                        </ListItem>
+                      )}
+                      {qcParameters?.acceptanceCriteria?.cvLimit && (
+                        <ListItem>
+                          <strong>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.cvLimit"
+                              defaultMessage="CV Limit:"
+                            />
+                          </strong>{" "}
+                          {qcParameters.acceptanceCriteria.cvLimit.value}
+                        </ListItem>
+                      )}
+                      {qcParameters?.acceptanceCriteria
+                        ?.precisionRequirements && (
+                        <ListItem>
+                          <strong>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.precision"
+                              defaultMessage="Precision:"
+                            />
+                          </strong>{" "}
+                          {
+                            qcParameters.acceptanceCriteria
+                              .precisionRequirements.guideline
+                          }
+                        </ListItem>
+                      )}
+                      {qcParameters?.acceptanceCriteria
+                        ?.referenceStandardsComparison?.enabled && (
+                        <ListItem>
+                          <Tag type="green" size="sm">
+                            <Checkmark size={12} />
+                          </Tag>
+                          <span style={{ marginLeft: "0.5rem" }}>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.referenceStandards"
+                              defaultMessage="Reference Standards Comparison"
+                            />
+                          </span>
+                        </ListItem>
+                      )}
+                      {qcParameters?.acceptanceCriteria
+                        ?.pharmacopeialSpecifications && (
+                        <ListItem>
+                          <strong>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.pharmacopeialSpecs"
+                              defaultMessage="Pharmacopeial Specifications:"
+                            />
+                          </strong>
+                          <div className="qc-param-tags">
+                            {qcParameters.acceptanceCriteria.pharmacopeialSpecifications.standards?.map(
+                              (spec) => (
+                                <Tag key={spec} type="purple" size="sm">
+                                  {spec}
                                 </Tag>
-                              </p>
+                              ),
                             )}
-                          </ListItem>
-                        )}
-                        {qcParameters?.deviationManagement?.oosFlagging
-                          ?.enabled && (
-                          <ListItem>
-                            <Tag type="red" size="sm">
-                              <Warning size={12} />
-                            </Tag>
-                            <span style={{ marginLeft: "0.5rem" }}>
-                              <FormattedMessage
-                                id="notebook.pharma.reporting.qcParameters.oosFlagging"
-                                defaultMessage="OOS Flagging"
-                              />
-                            </span>
-                            {qcParameters.deviationManagement.oosFlagging
-                              .description && (
-                              <p className="qc-param-description">
-                                {
-                                  qcParameters.deviationManagement.oosFlagging
-                                    .description
-                                }
-                              </p>
-                            )}
-                            {qcParameters.deviationManagement.oosFlagging
-                              .workflow && (
-                              <p className="qc-param-workflow">
-                                {
-                                  qcParameters.deviationManagement.oosFlagging
-                                    .workflow
-                                }
-                              </p>
-                            )}
-                          </ListItem>
-                        )}
-                      </UnorderedList>
-                    )}
-                  </Tile>
-                </Column>
-              </Grid>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      )}
+                          </div>
+                        </ListItem>
+                      )}
+                    </UnorderedList>
+                  )}
+                </Tile>
+              </Column>
+
+              {/* Deviation Management */}
+              <Column lg={5} md={4} sm={4}>
+                <Tile className="qc-param-tile">
+                  <div className="qc-param-header">
+                    <TaskComplete size={20} />
+                    <h5>
+                      <FormattedMessage
+                        id="notebook.pharma.reporting.qcParameters.deviationManagement"
+                        defaultMessage="Deviation Management"
+                      />
+                    </h5>
+                  </div>
+                  {qcEditMode && editableQcParams ? (
+                    <div className="qc-param-edit-list">
+                      <Toggle
+                        id="logInLmis-toggle"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.logInLmis",
+                          defaultMessage: "Log in LMIS",
+                        })}
+                        toggled={
+                          editableQcParams.deviationManagement?.logInLmis
+                            ?.enabled || false
+                        }
+                        onToggle={(checked) =>
+                          updateQcParam(
+                            "deviationManagement.logInLmis.enabled",
+                            checked,
+                          )
+                        }
+                      />
+                      <TextInput
+                        id="logInLmis-desc"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "label.description",
+                          defaultMessage: "Description",
+                        })}
+                        value={
+                          editableQcParams.deviationManagement?.logInLmis
+                            ?.description || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "deviationManagement.logInLmis.description",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
+                      />
+                      <Toggle
+                        id="documentReason-toggle"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.documentReason",
+                          defaultMessage: "Document Reason",
+                        })}
+                        toggled={
+                          editableQcParams.deviationManagement?.documentReason
+                            ?.enabled || false
+                        }
+                        onToggle={(checked) =>
+                          updateQcParam(
+                            "deviationManagement.documentReason.enabled",
+                            checked,
+                          )
+                        }
+                      />
+                      <TextInput
+                        id="documentReason-desc"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "label.description",
+                          defaultMessage: "Description",
+                        })}
+                        value={
+                          editableQcParams.deviationManagement?.documentReason
+                            ?.description || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "deviationManagement.documentReason.description",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
+                      />
+                      <Toggle
+                        id="capa-toggle"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.capa",
+                          defaultMessage: "CAPA Required",
+                        })}
+                        toggled={
+                          editableQcParams.deviationManagement?.capa?.enabled ||
+                          false
+                        }
+                        onToggle={(checked) =>
+                          updateQcParam(
+                            "deviationManagement.capa.enabled",
+                            checked,
+                          )
+                        }
+                      />
+                      <TextInput
+                        id="capa-desc"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "label.description",
+                          defaultMessage: "Description",
+                        })}
+                        value={
+                          editableQcParams.deviationManagement?.capa
+                            ?.description || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "deviationManagement.capa.description",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
+                      />
+                      <Toggle
+                        id="oosFlagging-toggle"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "notebook.pharma.reporting.qcParameters.oosFlagging",
+                          defaultMessage: "OOS Flagging",
+                        })}
+                        toggled={
+                          editableQcParams.deviationManagement?.oosFlagging
+                            ?.enabled || false
+                        }
+                        onToggle={(checked) =>
+                          updateQcParam(
+                            "deviationManagement.oosFlagging.enabled",
+                            checked,
+                          )
+                        }
+                      />
+                      <TextInput
+                        id="oosFlagging-desc"
+                        size="sm"
+                        labelText={intl.formatMessage({
+                          id: "label.description",
+                          defaultMessage: "Description",
+                        })}
+                        value={
+                          editableQcParams.deviationManagement?.oosFlagging
+                            ?.description || ""
+                        }
+                        onChange={(e) =>
+                          updateQcParam(
+                            "deviationManagement.oosFlagging.description",
+                            e.target.value,
+                          )
+                        }
+                        style={{ marginTop: "0.5rem" }}
+                      />
+                    </div>
+                  ) : (
+                    <UnorderedList nested className="qc-param-list">
+                      {qcParameters?.deviationManagement?.logInLmis
+                        ?.enabled && (
+                        <ListItem>
+                          <Tag type="green" size="sm">
+                            <Checkmark size={12} />
+                          </Tag>
+                          <span style={{ marginLeft: "0.5rem" }}>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.logInLmis"
+                              defaultMessage="Log in LMIS"
+                            />
+                          </span>
+                          {qcParameters.deviationManagement.logInLmis
+                            .description && (
+                            <p className="qc-param-description">
+                              {
+                                qcParameters.deviationManagement.logInLmis
+                                  .description
+                              }
+                            </p>
+                          )}
+                        </ListItem>
+                      )}
+                      {qcParameters?.deviationManagement?.documentReason
+                        ?.enabled && (
+                        <ListItem>
+                          <Tag type="green" size="sm">
+                            <Checkmark size={12} />
+                          </Tag>
+                          <span style={{ marginLeft: "0.5rem" }}>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.documentReason"
+                              defaultMessage="Document Reason"
+                            />
+                          </span>
+                          {qcParameters.deviationManagement.documentReason
+                            .description && (
+                            <p className="qc-param-description">
+                              {
+                                qcParameters.deviationManagement.documentReason
+                                  .description
+                              }
+                            </p>
+                          )}
+                        </ListItem>
+                      )}
+                      {qcParameters?.deviationManagement?.capa?.enabled && (
+                        <ListItem>
+                          <Tag type="green" size="sm">
+                            <Checkmark size={12} />
+                          </Tag>
+                          <span style={{ marginLeft: "0.5rem" }}>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.capa"
+                              defaultMessage="CAPA Required"
+                            />
+                          </span>
+                          {qcParameters.deviationManagement.capa
+                            .description && (
+                            <p className="qc-param-description">
+                              {
+                                qcParameters.deviationManagement.capa
+                                  .description
+                              }
+                            </p>
+                          )}
+                          {qcParameters.deviationManagement.capa.timeline && (
+                            <p className="qc-param-timeline">
+                              <Tag type="cyan" size="sm">
+                                {qcParameters.deviationManagement.capa.timeline}
+                              </Tag>
+                            </p>
+                          )}
+                        </ListItem>
+                      )}
+                      {qcParameters?.deviationManagement?.oosFlagging
+                        ?.enabled && (
+                        <ListItem>
+                          <Tag type="red" size="sm">
+                            <Warning size={12} />
+                          </Tag>
+                          <span style={{ marginLeft: "0.5rem" }}>
+                            <FormattedMessage
+                              id="notebook.pharma.reporting.qcParameters.oosFlagging"
+                              defaultMessage="OOS Flagging"
+                            />
+                          </span>
+                          {qcParameters.deviationManagement.oosFlagging
+                            .description && (
+                            <p className="qc-param-description">
+                              {
+                                qcParameters.deviationManagement.oosFlagging
+                                  .description
+                              }
+                            </p>
+                          )}
+                          {qcParameters.deviationManagement.oosFlagging
+                            .workflow && (
+                            <p className="qc-param-workflow">
+                              {
+                                qcParameters.deviationManagement.oosFlagging
+                                  .workflow
+                              }
+                            </p>
+                          )}
+                        </ListItem>
+                      )}
+                    </UnorderedList>
+                  )}
+                </Tile>
+              </Column>
+            </Grid>
+          </AccordionItem>
+        </Accordion>
+      </div>
 
       {/* Action Buttons */}
       <div className="page-actions-bar" style={{ marginTop: "1rem" }}>
@@ -2785,6 +2873,103 @@ function PharmaceuticalReportingPage({
             placeholder="Additional notes about the delivery..."
             rows={3}
           />
+        </div>
+      </Modal>
+
+      {/* QC Parameters History Modal */}
+      <Modal
+        open={qcHistoryModalOpen}
+        onRequestClose={() => setQcHistoryModalOpen(false)}
+        modalHeading={intl.formatMessage({
+          id: "notebook.pharma.reporting.qcParameters.historyTitle",
+          defaultMessage: "QC Parameters Change History",
+        })}
+        passiveModal
+        size="lg"
+      >
+        <div style={{ minHeight: "200px" }}>
+          {qcHistoryLoading ? (
+            <Loading
+              description={intl.formatMessage({
+                id: "loading",
+                defaultMessage: "Loading...",
+              })}
+              withOverlay={false}
+            />
+          ) : qcHistory.length === 0 ? (
+            <p style={{ color: "#525252", fontStyle: "italic" }}>
+              <FormattedMessage
+                id="notebook.pharma.reporting.qcParameters.noHistory"
+                defaultMessage="No change history available. Changes will be tracked after you make and save modifications."
+              />
+            </p>
+          ) : (
+            <DataTable
+              rows={qcHistory.map((item, idx) => ({
+                id: String(idx),
+                timestamp: item.timestamp || "-",
+                user: item.user || "-",
+                action: item.action || "-",
+              }))}
+              headers={[
+                {
+                  key: "timestamp",
+                  header: intl.formatMessage({
+                    id: "label.timestamp",
+                    defaultMessage: "Timestamp",
+                  }),
+                },
+                {
+                  key: "user",
+                  header: intl.formatMessage({
+                    id: "label.user",
+                    defaultMessage: "User",
+                  }),
+                },
+                {
+                  key: "action",
+                  header: intl.formatMessage({
+                    id: "label.action",
+                    defaultMessage: "Action",
+                  }),
+                },
+              ]}
+            >
+              {({
+                rows,
+                headers,
+                getTableProps,
+                getHeaderProps,
+                getRowProps,
+              }) => (
+                <TableContainer>
+                  <Table {...getTableProps()} size="sm">
+                    <TableHead>
+                      <TableRow>
+                        {headers.map((header) => (
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rows.map((row) => (
+                        <TableRow key={row.id} {...getRowProps({ row })}>
+                          {row.cells.map((cell) => (
+                            <TableCell key={cell.id}>{cell.value}</TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </DataTable>
+          )}
         </div>
       </Modal>
     </div>

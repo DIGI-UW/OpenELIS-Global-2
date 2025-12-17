@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Create table to store inventory instrument IDs for notebooks -->
+    <changeSet author="claude" id="create-notebook-inventory-instruments-table">
+        <comment>Create table to store inventory instrument IDs for notebook templates</comment>
+
+        <createTable schemaName="clinlims" tableName="notebook_inventory_instruments">
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="inventory_item_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="notebook_inventory_instruments"
+            baseColumnNames="notebook_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="notebook"
+            referencedColumnNames="id"
+            constraintName="fk_notebook_inv_instruments_notebook"
+            onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="notebook_inventory_instruments"
+            baseColumnNames="inventory_item_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="inventory_item"
+            referencedColumnNames="id"
+            constraintName="fk_notebook_inv_instruments_item"
+            onDelete="CASCADE"/>
+
+        <createIndex schemaName="clinlims" tableName="notebook_inventory_instruments" indexName="idx_notebook_inv_instruments_notebook">
+            <column name="notebook_id"/>
+        </createIndex>
+
+    </changeSet>
+
+</databaseChangeLog>

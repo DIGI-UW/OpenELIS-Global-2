@@ -129,8 +129,8 @@ BEGIN;
 HEADER
 
 echo -e "${YELLOW}Extracting system roles...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- System Roles'
+echo "-- System Roles" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.system_role (id, name, description, is_grouping_role, grouping_parent, display_key, active, editable) VALUES ('
     || id || ', '
     || quote_literal(name) || ', '
@@ -147,8 +147,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting system modules...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- System Modules'
+echo "-- System Modules" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.system_module (id, name, description, has_select_flag, has_add_flag, has_update_flag, has_delete_flag) VALUES ('
     || id || ', '
     || quote_literal(name) || ', '
@@ -164,8 +164,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting system role-module mappings...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- System Role Module Mappings'
+echo "-- System Role Module Mappings" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.system_role_module (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id) VALUES ('
     || id || ', '
     || COALESCE(quote_literal(has_select), '''Y''') || ', '
@@ -181,8 +181,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting organization types...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- Organization Types'
+echo "-- Organization Types" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.organization_type (id, short_name, description, name_display_key, lastupdated) VALUES ('
     || id || ', '
     || quote_literal(short_name) || ', '
@@ -196,8 +196,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting organizations...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- Organizations'
+echo "-- Organizations" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.organization (id, name, city, zip_code, mls_sentinel_lab_flag, org_mlt_org_mlt_id, org_id, short_name, multiple_unit, street_address, state, internet_address, clia_num, pws_id, lastupdated, mls_lab_flag, is_active, local_abbrev, code, datim_org_code, datim_org_name) VALUES ('
     || id || ', '
     || quote_literal(name) || ', '
@@ -227,8 +227,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting organization-type mappings...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- Organization-Type Mappings'
+echo "-- Organization-Type Mappings" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.organization_organization_type (org_id, org_type_id) VALUES ('
     || org_id || ', '
     || org_type_id
@@ -239,8 +239,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting localization entries for test sections...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- Localization entries for test sections'
+echo "-- Localization entries for test sections" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.localization (id, description, english, french, lastupdated) VALUES ('
     || l.id || ', '
     || COALESCE(quote_literal(l.description), '''test section name''') || ', '
@@ -255,8 +255,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting test sections (departments)...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- Test Sections (Departments/Lab Units)'
+echo "-- Test Sections (Departments/Lab Units)" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.test_section (id, name, description, org_id, is_external, lastupdated, parent_test_section, sort_order, is_active, name_localization_id, display_key) VALUES ('
     || id || ', '
     || COALESCE(quote_literal(name), 'NULL') || ', '
@@ -276,8 +276,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting units of measure...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- Units of Measure'
+echo "-- Units of Measure" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.unit_of_measure (id, name, description, lastupdated) VALUES ('
     || id || ', '
     || COALESCE(quote_literal(name), 'NULL') || ', '
@@ -292,8 +292,8 @@ echo "" >> "$OUTPUT_FILE"
 # Export login users with or without passwords
 echo -e "${YELLOW}Extracting login users...${NC}"
 if [ "$EXPORT_PASSWORDS" = true ]; then
-    docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- Login Users (with password hashes)'
+    echo "-- Login Users (with password hashes)" >> "$OUTPUT_FILE"
+    docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.login_user (id, login_name, password, password_expired_dt, account_locked, account_disabled, is_admin, user_time_out) VALUES ('
     || id || ', '
     || quote_literal(login_name) || ', '
@@ -309,8 +309,8 @@ ORDER BY id;
 EOF
 else
     # Export without actual password hashes - use a default placeholder
-    docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- Login Users (passwords redacted - users will need to reset)'
+    echo "-- Login Users (passwords redacted - users will need to reset)" >> "$OUTPUT_FILE"
+    docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.login_user (id, login_name, password, password_expired_dt, account_locked, account_disabled, is_admin, user_time_out) VALUES ('
     || id || ', '
     || quote_literal(login_name) || ', '
@@ -328,8 +328,8 @@ fi
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting system users...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- System Users'
+echo "-- System Users" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.system_user (id, external_id, login_name, last_name, first_name, initials, is_active, is_employee, lastupdated) VALUES ('
     || id || ', '
     || COALESCE(quote_literal(external_id), 'NULL') || ', '
@@ -347,8 +347,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting user role assignments...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- User Role Assignments'
+echo "-- User Role Assignments" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.system_user_role (system_user_id, role_id) VALUES ('
     || system_user_id || ', '
     || role_id
@@ -359,8 +359,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting user section permissions...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- User Section (Department) Permissions'
+echo "-- User Section (Department) Permissions" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.system_user_section (id, has_view, has_assign, has_complete, has_release, has_cancel, system_user_id, test_section_id) VALUES ('
     || id || ', '
     || COALESCE(quote_literal(has_view), '''Y''') || ', '
@@ -377,8 +377,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting user module permissions...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- User Module Permissions'
+echo "-- User Module Permissions" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.system_user_module (id, has_select, has_add, has_update, has_delete, system_user_id, system_module_id) VALUES ('
     || id || ', '
     || COALESCE(quote_literal(has_select), '''Y''') || ', '
@@ -394,8 +394,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting user lab unit roles container...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- User Lab Unit Roles Container'
+echo "-- User Lab Unit Roles Container" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.user_lab_unit_roles (system_user_id, last_updated) VALUES ('
     || system_user_id || ', '
     || 'NOW()'
@@ -406,8 +406,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting lab unit role mappings...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- Lab Unit Role Map'
+echo "-- Lab Unit Role Map" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.lab_unit_role_map (lab_unit_role_map_id, lab_unit) VALUES ('
     || lab_unit_role_map_id || ', '
     || quote_literal(lab_unit)
@@ -418,8 +418,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting lab roles...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- Lab Roles (roles within lab units)'
+echo "-- Lab Roles (roles within lab units)" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role) VALUES ('
     || lab_unit_role_map_id || ', '
     || quote_literal(role)
@@ -430,8 +430,8 @@ EOF
 echo "" >> "$OUTPUT_FILE"
 
 echo -e "${YELLOW}Extracting user-lab unit role assignments...${NC}"
-docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" << 'EOF' >> "$OUTPUT_FILE"
-\echo '-- User Lab Unit Role Assignments'
+echo "-- User Lab Unit Role Assignments" >> "$OUTPUT_FILE"
+docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A << 'EOF' >> "$OUTPUT_FILE"
 SELECT 'INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES ('
     || system_user_id || ', '
     || lab_unit_role_map_id
@@ -445,24 +445,22 @@ echo "" >> "$OUTPUT_FILE"
 echo -e "${YELLOW}Adding sequence updates...${NC}"
 cat >> "$OUTPUT_FILE" << 'SEQUENCES'
 -- Update sequences to avoid ID conflicts
-\echo '-- Updating sequences'
-
-SELECT setval('clinlims.login_user_seq', COALESCE((SELECT MAX(id) FROM clinlims.login_user), 0) + 1, false);
-SELECT setval('clinlims.system_user_seq', COALESCE((SELECT MAX(id) FROM clinlims.system_user), 0) + 1, false);
-SELECT setval('clinlims.system_role_seq', COALESCE((SELECT MAX(id) FROM clinlims.system_role), 0) + 1, false);
-SELECT setval('clinlims.system_module_seq', COALESCE((SELECT MAX(id) FROM clinlims.system_module), 0) + 1, false);
-SELECT setval('clinlims.system_role_module_seq', COALESCE((SELECT MAX(id) FROM clinlims.system_role_module), 0) + 1, false);
-SELECT setval('clinlims.system_user_module_seq', COALESCE((SELECT MAX(id) FROM clinlims.system_user_module), 0) + 1, false);
-SELECT setval('clinlims.system_user_section_seq', COALESCE((SELECT MAX(id) FROM clinlims.system_user_section), 0) + 1, false);
-SELECT setval('clinlims.organization_seq', COALESCE((SELECT MAX(id) FROM clinlims.organization), 0) + 1, false);
-SELECT setval('clinlims.organization_type_seq', COALESCE((SELECT MAX(id) FROM clinlims.organization_type), 0) + 1, false);
-SELECT setval('clinlims.test_section_seq', COALESCE((SELECT MAX(id) FROM clinlims.test_section), 0) + 1, false);
-SELECT setval('clinlims.unit_of_measure_seq', COALESCE((SELECT MAX(id) FROM clinlims.unit_of_measure), 0) + 1, false);
-SELECT setval('clinlims.localization_seq', COALESCE((SELECT MAX(id) FROM clinlims.localization), 0) + 1, false);
+SELECT setval('clinlims.login_user_seq', (COALESCE((SELECT MAX(id) FROM clinlims.login_user), 0) + 1)::bigint, false);
+SELECT setval('clinlims.system_user_seq', (COALESCE((SELECT MAX(id) FROM clinlims.system_user), 0) + 1)::bigint, false);
+SELECT setval('clinlims.system_role_seq', (COALESCE((SELECT MAX(id) FROM clinlims.system_role), 0) + 1)::bigint, false);
+SELECT setval('clinlims.system_module_seq', (COALESCE((SELECT MAX(id) FROM clinlims.system_module), 0) + 1)::bigint, false);
+SELECT setval('clinlims.system_role_module_seq', (COALESCE((SELECT MAX(id) FROM clinlims.system_role_module), 0) + 1)::bigint, false);
+SELECT setval('clinlims.system_user_module_seq', (COALESCE((SELECT MAX(id) FROM clinlims.system_user_module), 0) + 1)::bigint, false);
+SELECT setval('clinlims.system_user_section_seq', (COALESCE((SELECT MAX(id) FROM clinlims.system_user_section), 0) + 1)::bigint, false);
+SELECT setval('clinlims.organization_seq', (COALESCE((SELECT MAX(id) FROM clinlims.organization), 0) + 1)::bigint, false);
+SELECT setval('clinlims.organization_type_seq', (COALESCE((SELECT MAX(id) FROM clinlims.organization_type), 0) + 1)::bigint, false);
+SELECT setval('clinlims.test_section_seq', (COALESCE((SELECT MAX(id) FROM clinlims.test_section), 0) + 1)::bigint, false);
+SELECT setval('clinlims.unit_of_measure_seq', (COALESCE((SELECT MAX(id) FROM clinlims.unit_of_measure), 0) + 1)::bigint, false);
+SELECT setval('clinlims.localization_seq', (COALESCE((SELECT MAX(id) FROM clinlims.localization), 0) + 1)::bigint, false);
 
 COMMIT;
 
-\echo 'Data import complete!'
+-- Data import complete!
 SEQUENCES
 
 echo ""

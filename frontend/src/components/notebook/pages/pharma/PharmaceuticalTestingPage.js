@@ -17,8 +17,15 @@ import {
   Tile,
   Checkbox,
   NumberInput,
+  MultiSelect,
 } from "@carbon/react";
-import { Add, CheckmarkFilled, Warning, Renew } from "@carbon/react/icons";
+import {
+  Add,
+  CheckmarkFilled,
+  Warning,
+  Renew,
+  InventoryManagement,
+} from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -47,6 +54,7 @@ function PharmaceuticalTestingPage({
   pageData,
   progress,
   onProgressUpdate,
+  templateInstruments,
 }) {
   const componentMounted = useRef(true);
   const intl = useIntl();
@@ -59,16 +67,24 @@ function PharmaceuticalTestingPage({
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // Instruments and reagents from inventory
+  const [instruments, setInstruments] = useState([]);
+  const [loadingInstruments, setLoadingInstruments] = useState(false);
+  const [reagents, setReagents] = useState([]);
+  const [loadingReagents, setLoadingReagents] = useState(false);
+
   // Assay recording modal state
   const [showAssayModal, setShowAssayModal] = useState(false);
   const [assayData, setAssayData] = useState({
     assayCategory: "",
     testType: "",
     operator: "",
-    reagentsUsed: "",
     results: "",
     notes: "",
     performedDate: new Date().toISOString().split("T")[0],
+    // Instruments and reagents used for testing
+    selectedInstruments: [],
+    selectedReagents: [],
     // QC fields
     positiveControlResult: "",
     negativeControlResult: "",
@@ -151,6 +167,83 @@ function PharmaceuticalTestingPage({
   // Get test types based on selected category
   const availableTestTypes = testTypesByCategory[assayData.assayCategory] || [];
 
+  // Load instruments from template or inventory
+  const loadInstruments = useCallback(() => {
+    // If template has configured instruments, use those exclusively
+    if (templateInstruments && templateInstruments.length > 0) {
+      setInstruments(
+        templateInstruments.map((analyzer) => ({
+          id: analyzer.id,
+          label: analyzer.value,
+          name: analyzer.value,
+        })),
+      );
+      setLoadingInstruments(false);
+      return;
+    }
+
+    // Fallback: load from inventory if no template instruments configured
+    setLoadingInstruments(true);
+    getFromOpenElisServer(
+      "/rest/inventory/instruments?status=active",
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            setInstruments(
+              response.map((i) => ({
+                id: i.id,
+                label: `${i.name} (${i.serialNumber || "N/A"})`,
+                name: i.name,
+                serialNumber: i.serialNumber,
+                ...i,
+              })),
+            );
+          }
+          setLoadingInstruments(false);
+        }
+      },
+    );
+  }, [templateInstruments]);
+
+  // Load reagents from inventory for consumption tracking
+  const loadReagents = useCallback(() => {
+    setLoadingReagents(true);
+    getFromOpenElisServer(
+      "/rest/inventory/reagents?status=active",
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            setReagents(
+              response.map((r) => ({
+                id: r.id,
+                label: `${r.name} (Lot: ${r.lotNumber || "N/A"})`,
+                name: r.name,
+                lotNumber: r.lotNumber,
+                ...r,
+              })),
+            );
+          }
+          setLoadingReagents(false);
+        }
+      },
+    );
+  }, []);
+
+  // Helper to get category display text from ID
+  const getCategoryDisplayText = useCallback((categoryId) => {
+    if (!categoryId) return "";
+    const category = assayCategories.find((c) => c.id === categoryId);
+    return category ? category.text : categoryId;
+  }, []);
+
+  // Helper to get test type display text from ID
+  const getTestTypeDisplayText = useCallback((categoryId, testTypeValue) => {
+    if (!testTypeValue) return "";
+    // testType is stored as the display text (e.g., "HPLC (High-Performance Liquid Chromatography)")
+    // so we can return it directly
+    return testTypeValue;
+  }, []);
+
   // Load samples for this specific page
   const loadSamples = useCallback(() => {
     if (!pageData?.id || String(pageData.id).startsWith("default-")) {
@@ -166,23 +259,41 @@ function PharmaceuticalTestingPage({
       (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
-            const transformedSamples = response.map((sample) => ({
-              id: String(sample.id || sample.sampleItemId),
-              externalId: sample.externalId,
-              accessionNumber: sample.accessionNumber,
-              sampleType: sample.sampleType || sample.typeOfSample?.description,
-              collectionDate: sample.collectionDate,
-              status: sample.pageStatus || "PENDING",
-              sampleCategory: sample.data?.sampleCategory,
-              lotNumber: sample.data?.lotNumber,
-              // Assay-specific data
-              assayCategory: sample.data?.assayCategory || "",
-              assayTestType: sample.data?.testType || "",
-              assayOperator: sample.data?.operator || "",
-              assayResults: sample.data?.results || "",
-              assayDate: sample.data?.performedDate || "",
-              hasDeviation: sample.data?.hasDeviation || false,
-            }));
+            const transformedSamples = response.map((sample) => {
+              const categoryId = sample.data?.assayCategory || "";
+              const testTypeValue = sample.data?.testType || "";
+
+              return {
+                id: String(sample.id || sample.sampleItemId),
+                sampleItemId: sample.sampleItemId, // Keep sampleItemId for backend API calls
+                externalId: sample.externalId,
+                accessionNumber: sample.accessionNumber,
+                sampleType:
+                  sample.sampleType || sample.typeOfSample?.description,
+                collectionDate: sample.collectionDate,
+                status: sample.pageStatus || "PENDING",
+                // Category and lot can come from multiple sources
+                sampleCategory:
+                  sample.data?.sampleCategory ||
+                  sample.sampleCategory ||
+                  sample.typeOfSample?.description ||
+                  "",
+                lotNumber:
+                  sample.data?.lotNumber ||
+                  sample.lotNumber ||
+                  sample.batchNumber ||
+                  "",
+                // Assay-specific data - store both ID and display value
+                assayCategory: categoryId,
+                assayCategoryDisplay: getCategoryDisplayText(categoryId),
+                assayTestType: testTypeValue,
+                assayTestTypeDisplay: testTypeValue, // Already stored as display text
+                assayOperator: sample.data?.operator || "",
+                assayResults: sample.data?.results || "",
+                assayDate: sample.data?.performedDate || "",
+                hasDeviation: sample.data?.hasDeviation || false,
+              };
+            });
             setSamples(transformedSamples);
           } else {
             setSamples([]);
@@ -191,7 +302,7 @@ function PharmaceuticalTestingPage({
         }
       },
     );
-  }, [pageData?.id]);
+  }, [pageData?.id, getCategoryDisplayText]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -200,11 +311,13 @@ function PharmaceuticalTestingPage({
     setError(null);
     setSuccess(null);
     loadSamples();
+    loadInstruments();
+    loadReagents();
 
     return () => {
       componentMounted.current = false;
     };
-  }, [pageData?.id, loadSamples]);
+  }, [pageData?.id, loadSamples, loadInstruments, loadReagents]);
 
   const handleStatusChange = useCallback(
     (sampleIds, newStatus) => {
@@ -258,10 +371,11 @@ function PharmaceuticalTestingPage({
       assayCategory: "",
       testType: "",
       operator: "",
-      reagentsUsed: "",
       results: "",
       notes: "",
       performedDate: new Date().toISOString().split("T")[0],
+      selectedInstruments: [],
+      selectedReagents: [],
       positiveControlResult: "",
       negativeControlResult: "",
       internalStandardUsed: false,
@@ -292,20 +406,27 @@ function PharmaceuticalTestingPage({
       return;
     }
 
-    const numericIds = selectedIds.map((id) => parseInt(id, 10));
+    // Convert selected IDs to sampleItemIds for the backend API
+    const sampleItemIds = selectedIds
+      .map((id) => {
+        const sample = samples.find((s) => s.id === id);
+        return sample?.sampleItemId;
+      })
+      .filter((id) => id != null);
 
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
       JSON.stringify({
-        sampleIds: numericIds,
+        sampleIds: sampleItemIds,
         data: {
           assayCategory: assayData.assayCategory,
           testType: assayData.testType,
           operator: assayData.operator,
-          reagentsUsed: assayData.reagentsUsed,
           results: assayData.results,
           notes: assayData.notes,
           performedDate: assayData.performedDate,
+          selectedInstruments: assayData.selectedInstruments,
+          selectedReagents: assayData.selectedReagents,
           positiveControlResult: assayData.positiveControlResult,
           negativeControlResult: assayData.negativeControlResult,
           internalStandardUsed: assayData.internalStandardUsed,
@@ -325,7 +446,7 @@ function PharmaceuticalTestingPage({
             postToOpenElisServer(
               `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
               JSON.stringify({
-                sampleIds: numericIds,
+                sampleIds: sampleItemIds,
                 status: "IN_PROGRESS",
               }),
               () => {
@@ -375,6 +496,25 @@ function PharmaceuticalTestingPage({
     (s) => s.status === "IN_PROGRESS",
   ).length;
   const deviationCount = samples.filter((s) => s.hasDeviation).length;
+
+  // Render status with color-coded tags
+  const renderStatus = (status) => {
+    const statusConfig = {
+      COMPLETED: { type: "green", label: "Completed" },
+      IN_PROGRESS: { type: "blue", label: "In Progress" },
+      PENDING: { type: "gray", label: "Pending" },
+      FAILED: { type: "red", label: "Failed" },
+      ON_HOLD: { type: "purple", label: "On Hold" },
+    };
+
+    const config = statusConfig[status] || { type: "gray", label: status };
+
+    return (
+      <Tag type={config.type} size="sm">
+        {config.label}
+      </Tag>
+    );
+  };
 
   // Render test info column
   const renderTestInfo = (sample) => {
@@ -566,9 +706,26 @@ function PharmaceuticalTestingPage({
           columns={[
             { key: "accessionNumber", header: "Accession Number" },
             { key: "externalId", header: "Sample ID" },
-            { key: "sampleCategory", header: "Category" },
-            { key: "lotNumber", header: "Lot / Batch" },
-            { key: "status", header: "Status" },
+            {
+              key: "assayCategoryDisplay",
+              header: "Category",
+              render: (value) => value || "-",
+            },
+            {
+              key: "assayTestTypeDisplay",
+              header: "Test Type",
+              render: (value) => value || "-",
+            },
+            {
+              key: "assayResults",
+              header: "Result",
+              render: (value) => value || "-",
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (value) => renderStatus(value),
+            },
           ]}
           additionalColumns={[
             {
@@ -709,21 +866,7 @@ function PharmaceuticalTestingPage({
             </Column>
           </Grid>
 
-          {/* Reagents and Results */}
-          <TextArea
-            id="reagents"
-            labelText={intl.formatMessage({
-              id: "notebook.pharma.testing.reagentsUsed",
-              defaultMessage: "Reagents / Standards Used",
-            })}
-            value={assayData.reagentsUsed}
-            onChange={(e) =>
-              setAssayData({ ...assayData, reagentsUsed: e.target.value })
-            }
-            placeholder="List reagents, lot numbers, internal standards..."
-            rows={2}
-          />
-
+          {/* Results */}
           <TextArea
             id="results"
             labelText={intl.formatMessage({
@@ -737,6 +880,78 @@ function PharmaceuticalTestingPage({
             placeholder="Enter test results..."
             rows={3}
           />
+
+          {/* Reagent & Instrument Selection */}
+          <div style={{ marginTop: "1rem" }}>
+            <h5
+              style={{
+                marginBottom: "0.5rem",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <InventoryManagement
+                size={16}
+                style={{ marginRight: "0.5rem" }}
+              />
+              <FormattedMessage
+                id="notebook.pharma.testing.inventorySelection"
+                defaultMessage="Reagent & Instrument Selection"
+              />
+            </h5>
+            <Grid fullWidth narrow>
+              <Column lg={8} md={4} sm={4}>
+                <MultiSelect
+                  id="selectedReagents"
+                  titleText={intl.formatMessage({
+                    id: "notebook.pharma.testing.reagentsUsed",
+                    defaultMessage: "Reagents Used",
+                  })}
+                  label={intl.formatMessage({
+                    id: "notebook.pharma.testing.reagents.placeholder",
+                    defaultMessage: "Select reagents...",
+                  })}
+                  items={reagents}
+                  itemToString={(item) => (item ? item.label : "")}
+                  selectedItems={reagents.filter((r) =>
+                    assayData.selectedReagents.includes(r.id),
+                  )}
+                  onChange={({ selectedItems }) =>
+                    setAssayData({
+                      ...assayData,
+                      selectedReagents: selectedItems.map((r) => r.id),
+                    })
+                  }
+                  disabled={loadingReagents}
+                />
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <MultiSelect
+                  id="selectedInstruments"
+                  titleText={intl.formatMessage({
+                    id: "notebook.pharma.testing.instrumentsUsed",
+                    defaultMessage: "Instruments Used",
+                  })}
+                  label={intl.formatMessage({
+                    id: "notebook.pharma.testing.instruments.placeholder",
+                    defaultMessage: "Select test instruments...",
+                  })}
+                  items={instruments}
+                  itemToString={(item) => (item ? item.label : "")}
+                  selectedItems={instruments.filter((i) =>
+                    assayData.selectedInstruments.includes(i.id),
+                  )}
+                  onChange={({ selectedItems }) =>
+                    setAssayData({
+                      ...assayData,
+                      selectedInstruments: selectedItems.map((i) => i.id),
+                    })
+                  }
+                  disabled={loadingInstruments}
+                />
+              </Column>
+            </Grid>
+          </div>
 
           {/* Quality Controls Section */}
           <h5 style={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}>

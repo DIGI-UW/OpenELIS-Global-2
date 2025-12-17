@@ -52,8 +52,18 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
         int updatedCount = 0;
 
-        // Process inventory consumption for selected reagents (once per bulk operation)
-        consumeReagentsFromInventory(data, sampleIds.size(), userId);
+        // Count samples that DON'T already have reagents applied (to avoid double consumption)
+        int samplesNeedingReagents = countSamplesWithoutReagents(pageId, sampleIds);
+        LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
+                "Total samples: " + sampleIds.size() + ", samples needing reagents: " + samplesNeedingReagents);
+
+        // Process inventory consumption only for samples that don't have reagents yet
+        if (samplesNeedingReagents > 0) {
+            consumeReagentsFromInventory(data, samplesNeedingReagents, userId);
+        } else {
+            LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
+                    "Skipping reagent consumption - all samples already have reagents applied");
+        }
 
         // Process in batches of BATCH_SIZE (50)
         for (int i = 0; i < sampleIds.size(); i += BATCH_SIZE) {
@@ -89,6 +99,50 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     }
 
     /**
+     * Count samples that don't already have reagents applied to avoid double
+     * consumption when bulk apply is called multiple times.
+     *
+     * @param pageId    the notebook page ID
+     * @param sampleIds list of sample IDs to check
+     * @return count of samples that don't have selectedReagents in their data
+     */
+    private int countSamplesWithoutReagents(Integer pageId, List<Integer> sampleIds) {
+        int count = 0;
+        int samplesWithReagents = 0;
+        int samplesNotFound = 0;
+
+        for (Integer sampleId : sampleIds) {
+            NotebookPageSample nps = notebookPageSampleService.getByPageIdAndSampleItemId(pageId, sampleId);
+            if (nps != null) {
+                Map<String, Object> existingData = nps.getData();
+                // Sample needs reagents if it has no data or no selectedReagents key,
+                // or if selectedReagents is an empty list
+                if (existingData == null) {
+                    count++;
+                } else {
+                    Object selectedReagents = existingData.get("selectedReagents");
+                    if (selectedReagents == null) {
+                        count++;
+                    } else if (selectedReagents instanceof List && ((List<?>) selectedReagents).isEmpty()) {
+                        count++;
+                    } else {
+                        samplesWithReagents++;
+                    }
+                }
+            } else {
+                samplesNotFound++;
+            }
+        }
+
+        LogEvent.logInfo(this.getClass().getName(), "countSamplesWithoutReagents",
+                "Page " + pageId + ": Total requested=" + sampleIds.size() +
+                ", needReagents=" + count + ", alreadyHaveReagents=" + samplesWithReagents +
+                ", notFound=" + samplesNotFound);
+
+        return count;
+    }
+
+    /**
      * Consume reagents from inventory when they are applied to samples. Each
      * reagent is consumed once per sample being processed.
      *
@@ -99,7 +153,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     @SuppressWarnings("unchecked")
     private void consumeReagentsFromInventory(Map<String, Object> data, int sampleCount, String userId) {
         LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
-                "Starting inventory consumption for " + sampleCount + " samples. Data keys: " + data.keySet());
+                "Starting inventory consumption for " + sampleCount + " samples. Data keys: " + data.keySet() +
+                ". NOTE: Each reagent will consume " + sampleCount + " units (1 per sample).");
 
         // Check for selected reagents in the data
         Object selectedReagentsObj = data.get("selectedReagents");
@@ -126,6 +181,10 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                     "selectedReagents list is empty");
             return;
         }
+
+        LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
+                "Processing " + rawList.size() + " reagent type(s). Total consumption will be " +
+                rawList.size() + " * " + sampleCount + " = " + (rawList.size() * sampleCount) + " units across all reagents");
 
         // Consume 1 unit of each reagent per sample
         // (This is a simplification - in reality, different reagents may have different

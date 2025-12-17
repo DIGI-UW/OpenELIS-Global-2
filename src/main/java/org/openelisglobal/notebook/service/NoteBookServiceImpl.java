@@ -87,6 +87,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Autowired
     private TestSectionService testSectionService;
 
+    @Autowired
+    private org.openelisglobal.inventory.service.InventoryItemService inventoryItemService;
+
     public NoteBookServiceImpl() {
         super(NoteBook.class);
         this.auditTrailLog = true;
@@ -233,6 +236,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         Hibernate.initialize(noteBook.getTags());
         Hibernate.initialize(noteBook.getSamples());
         Hibernate.initialize(noteBook.getAnalysers());
+        Hibernate.initialize(noteBook.getInventoryInstrumentIds());
         Hibernate.initialize(noteBook.getPages());
         // Initialize panels and tests for each page (panels is LAZY to avoid
         // MultipleBagFetchException)
@@ -322,6 +326,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         NoteBook noteBook = get(noteBookId);
         if (noteBook != null) {
             Hibernate.initialize(noteBook.getAnalysers());
+            Hibernate.initialize(noteBook.getInventoryInstrumentIds());
             Hibernate.initialize(noteBook.getSamples());
             Hibernate.initialize(noteBook.getPages());
 
@@ -349,9 +354,38 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             fullDisplayBean.setContent(noteBook.getContent());
             fullDisplayBean.setObjective(noteBook.getObjective());
             fullDisplayBean.setProtocol(noteBook.getProtocol());
-            List<IdValuePair> analyzers = noteBook.getAnalysers().stream()
-                    .map(analyzer -> new IdValuePair(analyzer.getId(), analyzer.getName())).toList();
-            fullDisplayBean.setAnalyzers(analyzers);
+            // Prefer inventory instruments over legacy analyzers
+            List<IdValuePair> instrumentList = new ArrayList<>();
+            List<Long> instrumentIds = noteBook.getInventoryInstrumentIds();
+
+            // If this is an entry (not a template) and has no instruments, get from parent template
+            if ((instrumentIds == null || instrumentIds.isEmpty())
+                    && noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+                NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
+                if (parentTemplate != null) {
+                    Hibernate.initialize(parentTemplate.getInventoryInstrumentIds());
+                    instrumentIds = parentTemplate.getInventoryInstrumentIds();
+                }
+            }
+
+            if (instrumentIds != null && !instrumentIds.isEmpty()) {
+                for (Long instrumentId : instrumentIds) {
+                    try {
+                        var inventoryItem = inventoryItemService.get(instrumentId);
+                        if (inventoryItem != null) {
+                            instrumentList.add(new IdValuePair(inventoryItem.getId().toString(), inventoryItem.getName()));
+                        }
+                    } catch (Exception e) {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "convertToFullDisplayBean",
+                                "Could not find inventory item with id: " + instrumentId);
+                    }
+                }
+            } else {
+                // Fallback to legacy analyzers if no inventory instruments
+                instrumentList = noteBook.getAnalysers().stream()
+                        .map(analyzer -> new IdValuePair(analyzer.getId(), analyzer.getName())).toList();
+            }
+            fullDisplayBean.setAnalyzers(instrumentList);
             fullDisplayBean.setPages(noteBook.getPages());
             fullDisplayBean.setFiles(noteBook.getFiles());
             // Initialize author for each comment
@@ -491,6 +525,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             for (Integer analyserId : form.getAnalyzerIds()) {
                 noteBook.getAnalysers().add(analyzerService.get(analyserId.toString()));
             }
+        }
+
+        // Handle inventory instruments
+        noteBook.getInventoryInstrumentIds().clear();
+        if (form.getInventoryInstrumentIds() != null) {
+            noteBook.getInventoryInstrumentIds().addAll(form.getInventoryInstrumentIds());
         }
 
         noteBook.getSamples().clear();
@@ -684,9 +724,14 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             instance.setTags(new ArrayList<>(template.getTags()));
         }
 
-        // Copy analyzers
+        // Copy analyzers (legacy)
         if (template.getAnalysers() != null) {
             instance.getAnalysers().addAll(template.getAnalysers());
+        }
+
+        // Copy inventory instruments
+        if (template.getInventoryInstrumentIds() != null) {
+            instance.getInventoryInstrumentIds().addAll(template.getInventoryInstrumentIds());
         }
 
         // Set creator and technician

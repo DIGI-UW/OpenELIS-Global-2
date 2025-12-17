@@ -286,6 +286,7 @@ function PharmaceuticalWorkflowTab({ notebookId, entryId: propEntryId }) {
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
+            templateInstruments={notebook?.analyzers}
           />
         );
       case 3:
@@ -297,6 +298,7 @@ function PharmaceuticalWorkflowTab({ notebookId, entryId: propEntryId }) {
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
+            templateInstruments={notebook?.analyzers}
           />
         );
       case 4:
@@ -308,6 +310,7 @@ function PharmaceuticalWorkflowTab({ notebookId, entryId: propEntryId }) {
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
+            templateInstruments={notebook?.analyzers}
           />
         );
       case 5:
@@ -319,6 +322,7 @@ function PharmaceuticalWorkflowTab({ notebookId, entryId: propEntryId }) {
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
+            templateInstruments={notebook?.analyzers}
           />
         );
       case 6:

@@ -16,14 +16,7 @@ import {
   Loading,
   Checkbox,
 } from "@carbon/react";
-import {
-  TrashCan,
-  Archive,
-  Renew,
-  CheckmarkFilled,
-  Warning,
-  Locked,
-} from "@carbon/react/icons";
+import { TrashCan, Archive, Renew, Warning, Locked } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -46,12 +39,14 @@ import "../../workflow/NotebookWorkflow.css";
  * @param {Object} props.pageData - Page configuration data
  * @param {Object} props.progress - Page progress info
  * @param {function} props.onProgressUpdate - Callback when progress changes
+ * @param {number} props.notebookId - The notebook ID for fetching storage routing data
  */
 function PharmaceuticalDisposalPage({
   entryId,
   pageData,
   progress,
   onProgressUpdate,
+  notebookId,
 }) {
   const componentMounted = useRef(true);
   const intl = useIntl();
@@ -113,7 +108,7 @@ function PharmaceuticalDisposalPage({
     { value: "transfer_archive", label: "Transfer to Archive Facility" },
   ];
 
-  // Load samples for this specific page
+  // Load samples for this specific page, also fetching storage data from Storage page (page 5)
   const loadSamples = useCallback(() => {
     if (!pageData?.id || String(pageData.id).startsWith("default-")) {
       setLoading(false);
@@ -123,41 +118,127 @@ function PharmaceuticalDisposalPage({
     setLoading(true);
     setError(null);
 
+    let pageSamples = [];
+    let storagePageSamples = [];
+
+    const finishProcessing = () => {
+      if (componentMounted.current) {
+        // Build storage map from Storage page samples
+        const storageMap = {};
+        storagePageSamples.forEach((sample) => {
+          const sampleId = String(sample.id || sample.sampleItemId);
+          if (sample.data) {
+            storageMap[sampleId] = {
+              storageRoom: sample.data.storageRoom,
+              storageFreezer: sample.data.storageFreezer,
+              storageRack: sample.data.storageRack,
+              storageBox: sample.data.storageBox,
+              storageWell:
+                sample.data.storageWell || sample.data.wellCoordinate,
+              storagePath: sample.data.storagePath,
+              storageLocation: sample.data.storageLocation,
+            };
+          }
+        });
+
+        const transformedSamples = pageSamples.map((sample) => {
+          const sampleId = String(sample.id || sample.sampleItemId);
+          const storageData = storageMap[sampleId];
+
+          // Merge storage data: prefer page data, fallback to Storage page data
+          const storageRoom =
+            sample.data?.storageRoom || storageData?.storageRoom || null;
+          const storageRack =
+            sample.data?.storageRack || storageData?.storageRack || null;
+          const storageBox =
+            sample.data?.storageBox || storageData?.storageBox || null;
+          const storageWell =
+            sample.data?.storageWell ||
+            sample.data?.wellCoordinate ||
+            storageData?.storageWell ||
+            null;
+          const storagePath =
+            sample.data?.storagePath || storageData?.storagePath || null;
+          const storageFreezer =
+            sample.data?.storageFreezer || storageData?.storageFreezer || null;
+
+          return {
+            id: sampleId,
+            externalId: sample.externalId,
+            accessionNumber: sample.accessionNumber,
+            sampleType: sample.sampleType || sample.typeOfSample?.description,
+            collectionDate: sample.collectionDate,
+            status: sample.pageStatus || "PENDING",
+            sampleCategory: sample.data?.sampleCategory,
+            lotNumber: sample.data?.lotNumber,
+            expiryDate: sample.data?.expiryOrRetestDate,
+            storageLocation:
+              sample.data?.storageLocation || storageData?.storageLocation,
+            // Storage assignment data (merged from page and Storage page data)
+            storagePath: storagePath,
+            storageBox: storageBox,
+            storageWell: storageWell,
+            storageRoom: storageRoom,
+            storageRack: storageRack,
+            storageFreezer: storageFreezer,
+            // Disposal-specific data
+            disposalReason: sample.data?.disposalReason || "",
+            disposalMethod: sample.data?.disposalMethod || "",
+            disposalDate: sample.data?.disposalDate || "",
+            disposedBy: sample.data?.disposedBy || "",
+            archiveLocation: sample.data?.archiveLocation || "",
+            isRetentionSample: sample.data?.isRetentionSample || false,
+            isClosed: sample.data?.isClosed || false,
+          };
+        });
+        setSamples(transformedSamples);
+        calculateSummary(transformedSamples);
+        setLoading(false);
+      }
+    };
+
+    // Load this page's samples first
     getFromOpenElisServer(
       `/rest/notebook/page/${pageData.id}/samples`,
       (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            const transformedSamples = response.map((sample) => ({
-              id: String(sample.id || sample.sampleItemId),
-              externalId: sample.externalId,
-              accessionNumber: sample.accessionNumber,
-              sampleType: sample.sampleType || sample.typeOfSample?.description,
-              collectionDate: sample.collectionDate,
-              status: sample.pageStatus || "PENDING",
-              sampleCategory: sample.data?.sampleCategory,
-              lotNumber: sample.data?.lotNumber,
-              expiryDate: sample.data?.expiryOrRetestDate,
-              storageLocation: sample.data?.storageLocation,
-              // Disposal-specific data
-              disposalReason: sample.data?.disposalReason || "",
-              disposalMethod: sample.data?.disposalMethod || "",
-              disposalDate: sample.data?.disposalDate || "",
-              disposedBy: sample.data?.disposedBy || "",
-              archiveLocation: sample.data?.archiveLocation || "",
-              isRetentionSample: sample.data?.isRetentionSample || false,
-              isClosed: sample.data?.isClosed || false,
-            }));
-            setSamples(transformedSamples);
-            calculateSummary(transformedSamples);
-          } else {
-            setSamples([]);
-          }
-          setLoading(false);
+        if (response && Array.isArray(response)) {
+          pageSamples = response;
+        }
+
+        // Now fetch notebook pages to find the Storage page (order 5)
+        if (notebookId) {
+          getFromOpenElisServer(
+            `/rest/notebook/view/${notebookId}`,
+            (nbResponse) => {
+              if (nbResponse && nbResponse.pages) {
+                // Find Storage page (order 5)
+                const storagePage = nbResponse.pages.find(
+                  (p) => (p.pageOrder || p.order) === 5,
+                );
+                if (storagePage && storagePage.id) {
+                  getFromOpenElisServer(
+                    `/rest/notebook/page/${storagePage.id}/samples`,
+                    (storageResponse) => {
+                      if (storageResponse && Array.isArray(storageResponse)) {
+                        storagePageSamples = storageResponse;
+                      }
+                      finishProcessing();
+                    },
+                  );
+                } else {
+                  finishProcessing();
+                }
+              } else {
+                finishProcessing();
+              }
+            },
+          );
+        } else {
+          finishProcessing();
         }
       },
     );
-  }, [pageData?.id]);
+  }, [pageData?.id, notebookId]);
 
   // Calculate summary
   const calculateSummary = (sampleData) => {
@@ -306,7 +387,8 @@ function PharmaceuticalDisposalPage({
     );
   };
 
-  const handleMarkAsRetention = () => {
+  // Simply flag samples as retention (storage is assigned on the Storage page)
+  const handleMarkAsRetention = useCallback(() => {
     if (selectedIds.length === 0) {
       setError(
         intl.formatMessage({
@@ -317,12 +399,25 @@ function PharmaceuticalDisposalPage({
       return;
     }
 
-    if (!pageData?.id || String(pageData.id).startsWith("default-")) {
+    const hasRealPageId =
+      pageData?.id && !String(pageData.id).startsWith("default-");
+    if (!hasRealPageId) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.pharma.disposal.noPage",
+          defaultMessage:
+            "Cannot update samples: Page not properly initialized.",
+        }),
+      );
       return;
     }
 
+    setError(null);
+    setSuccess(null);
+
     const numericIds = selectedIds.map((id) => parseInt(id, 10));
 
+    // Simply mark samples as retention samples
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
       JSON.stringify({
@@ -337,8 +432,9 @@ function PharmaceuticalDisposalPage({
             setSuccess(
               intl.formatMessage(
                 {
-                  id: "notebook.pharma.disposal.markedRetention",
-                  defaultMessage: "Marked {count} samples as retention samples",
+                  id: "notebook.pharma.disposal.retentionMarked",
+                  defaultMessage:
+                    "Marked {count} sample(s) as retention. Assign storage on the Storage & Inventory page.",
                 },
                 { count: selectedIds.length },
               ),
@@ -349,33 +445,36 @@ function PharmaceuticalDisposalPage({
               onProgressUpdate();
             }
           } else {
-            setError(response?.error || "Failed to mark samples");
+            setError(response?.error || "Failed to mark samples as retention");
           }
         }
       },
     );
-  };
+  }, [selectedIds, pageData?.id, intl, loadSamples, onProgressUpdate]);
 
   // Render disposal status tag
   const renderDisposalTag = (sample) => {
-    if (sample.isClosed) {
-      return (
-        <Tag type="purple" renderIcon={Locked} size="sm">
-          Closed
-        </Tag>
-      );
-    }
+    // Disposed takes priority - show if sample has been disposed
     if (sample.disposalDate) {
       return (
-        <Tag type="green" renderIcon={TrashCan} size="sm">
+        <Tag type="red" renderIcon={TrashCan} size="sm">
           Disposed
         </Tag>
       );
     }
+    // Retention samples (stored for future reference)
     if (sample.isRetentionSample) {
       return (
         <Tag type="cyan" renderIcon={Archive} size="sm">
-          Retention
+          Retained
+        </Tag>
+      );
+    }
+    // Closed but not disposed or retained
+    if (sample.isClosed) {
+      return (
+        <Tag type="purple" renderIcon={Locked} size="sm">
+          Closed
         </Tag>
       );
     }
@@ -576,10 +675,59 @@ function PharmaceuticalDisposalPage({
           columns={[
             { key: "accessionNumber", header: "Accession Number" },
             { key: "externalId", header: "Sample ID" },
-            { key: "sampleCategory", header: "Category" },
-            { key: "lotNumber", header: "Lot / Batch" },
-            { key: "storageLocation", header: "Storage" },
-            { key: "status", header: "Status" },
+            {
+              key: "sampleType",
+              header: intl.formatMessage({
+                id: "notebook.pharma.disposal.sampleType",
+                defaultMessage: "Sample Type",
+              }),
+              render: (value) => value || "-",
+            },
+            {
+              key: "retentionStatus",
+              header: intl.formatMessage({
+                id: "notebook.pharma.disposal.retentionStatus",
+                defaultMessage: "Status",
+              }),
+              render: (value, row) => renderDisposalTag(row),
+            },
+            {
+              key: "storage",
+              header: intl.formatMessage({
+                id: "notebook.pharma.disposal.storage",
+                defaultMessage: "Storage Location",
+              }),
+              render: (value, row) => {
+                // If we have a full storagePath, use it and append well coordinate
+                if (row.storagePath) {
+                  const displayPath = row.storageWell
+                    ? `${row.storagePath} > ${row.storageWell}`
+                    : row.storagePath;
+                  return <span title={displayPath}>{displayPath}</span>;
+                }
+
+                // Build storage path from individual components: room > rack > box > coordinate
+                const pathParts = [
+                  row.storageRoom,
+                  row.storageFreezer,
+                  row.storageRack,
+                  row.storageBox,
+                  row.storageWell,
+                ].filter(Boolean);
+
+                if (pathParts.length > 0) {
+                  const displayPath = pathParts.join(" > ");
+                  return <span title={displayPath}>{displayPath}</span>;
+                }
+
+                // Fallback to storageLocation field
+                if (row.storageLocation) {
+                  return row.storageLocation;
+                }
+
+                return <span style={{ color: "#8d8d8d" }}>-</span>;
+              },
+            },
           ]}
           additionalColumns={[
             {
@@ -589,14 +737,6 @@ function PharmaceuticalDisposalPage({
                 defaultMessage: "Expiry",
               }),
               render: renderExpiryStatus,
-            },
-            {
-              key: "disposalStatus",
-              header: intl.formatMessage({
-                id: "notebook.pharma.disposal.disposalStatus",
-                defaultMessage: "Disposal Status",
-              }),
-              render: renderDisposalTag,
             },
           ]}
         />
