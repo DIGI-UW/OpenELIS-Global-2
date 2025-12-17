@@ -48,14 +48,17 @@ public class NoteBookPageServiceImpl extends AuditableBaseObjectServiceImpl<Note
     @Override
     @Transactional
     public NoteBookPage updatePageContent(Integer pageId, String newContentJson, String sysUserId) {
+        // First, get and detach the page to capture original state for audit trail
         NoteBookPage page = get(pageId);
         if (page == null) {
             throw new IllegalArgumentException("Page not found: " + pageId);
         }
 
+        // Store original content before modification
+        String existingContent = page.getContent();
+
         try {
-            // Merge new content with existing content
-            String existingContent = page.getContent();
+            // Calculate merged content
             String mergedContent;
 
             if (existingContent == null || existingContent.isBlank()) {
@@ -80,6 +83,11 @@ public class NoteBookPageServiceImpl extends AuditableBaseObjectServiceImpl<Note
                 }
             }
 
+            // Evict the page from session to allow fresh fetch for audit comparison
+            baseObjectDAO.evict(page);
+
+            // Re-fetch to get a fresh managed entity
+            page = get(pageId);
             page.setContent(mergedContent);
             page.setSysUserId(sysUserId);
             update(page);

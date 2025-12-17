@@ -107,6 +107,11 @@ public class NoteBook extends BaseObject<Integer> {
     private List<Analyzer> analysers;
 
     @ElementCollection
+    @CollectionTable(name = "notebook_inventory_instruments", joinColumns = @JoinColumn(name = "notebook_id"))
+    @Column(name = "inventory_item_id")
+    private List<Long> inventoryInstrumentIds = new ArrayList<>();
+
+    @ElementCollection
     @CollectionTable(name = "notebook_tags", joinColumns = @JoinColumn(name = "notebook_id"))
     @Column(name = "tag")
     private List<String> tags;
@@ -221,6 +226,17 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setAnalysers(List<Analyzer> analysers) {
         this.analysers = analysers;
+    }
+
+    public List<Long> getInventoryInstrumentIds() {
+        if (inventoryInstrumentIds == null) {
+            inventoryInstrumentIds = new ArrayList<>();
+        }
+        return inventoryInstrumentIds;
+    }
+
+    public void setInventoryInstrumentIds(List<Long> inventoryInstrumentIds) {
+        this.inventoryInstrumentIds = inventoryInstrumentIds;
     }
 
     public List<String> getTags() {

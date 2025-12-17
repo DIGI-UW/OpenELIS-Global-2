@@ -2647,6 +2647,12 @@
   "notebook.pharma.reporting.qcParameters.oosFlagging": "Signalement OOS",
   "notebook.pharma.reporting.qcParameters.saveSuccess": "Paramètres de contrôle qualité enregistrés avec succès",
   "notebook.pharma.reporting.qcParameters.saveError": "Échec de l'enregistrement des paramètres de contrôle qualité",
+  "notebook.pharma.reporting.qcParameters.historyTitle": "Historique des modifications des paramètres CQ",
+  "notebook.pharma.reporting.qcParameters.noHistory": "Aucun historique de modifications disponible. Les modifications seront suivies après avoir effectué et enregistré des changements.",
   "button.saving": "Enregistrement...",
-  "label.description": "Description"
+  "button.history": "Historique",
+  "label.description": "Description",
+  "label.timestamp": "Horodatage",
+  "label.user": "Utilisateur",
+  "label.action": "Action"
 }

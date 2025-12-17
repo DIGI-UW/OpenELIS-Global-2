@@ -55,6 +55,7 @@ function PharmaceuticalProcessingPage({
   pageData,
   progress,
   onProgressUpdate,
+  templateInstruments,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -93,16 +94,6 @@ function PharmaceuticalProcessingPage({
   const [parentChildren, setParentChildren] = useState([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
 
-  // Add missed sample modal (like MNTD)
-  const [addSampleModalOpen, setAddSampleModalOpen] = useState(false);
-  const [newSampleData, setNewSampleData] = useState({
-    externalId: "",
-    sampleType: "",
-    parentSampleId: "",
-    notes: "",
-  });
-  const [isAddingSample, setIsAddingSample] = useState(false);
-
   // Reagents and instruments from inventory
   const [reagents, setReagents] = useState([]);
   const [instruments, setInstruments] = useState([]);
@@ -129,7 +120,6 @@ function PharmaceuticalProcessingPage({
     componentMounted.current = true;
     loadPageSamples();
     loadReagents();
-    loadInstruments();
     loadSampleTypes();
 
     return () => {
@@ -158,6 +148,7 @@ function PharmaceuticalProcessingPage({
           if (response && Array.isArray(response)) {
             const transformedSamples = response.map((sample) => ({
               id: String(sample.id || sample.sampleItemId),
+              sampleItemId: sample.sampleItemId, // Keep sampleItemId for backend API calls
               externalId: sample.externalId,
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType || sample.typeOfSample?.description,
@@ -244,6 +235,20 @@ function PharmaceuticalProcessingPage({
   }, []);
 
   const loadInstruments = useCallback(() => {
+    // If template has configured instruments, use those exclusively
+    if (templateInstruments && templateInstruments.length > 0) {
+      setInstruments(
+        templateInstruments.map((analyzer) => ({
+          id: analyzer.id,
+          label: analyzer.value,
+          name: analyzer.value,
+        })),
+      );
+      setLoadingInstruments(false);
+      return;
+    }
+
+    // Fallback: load from inventory if no template instruments configured
     setLoadingInstruments(true);
     getFromOpenElisServer(
       "/rest/inventory/instruments?status=active",
@@ -260,7 +265,7 @@ function PharmaceuticalProcessingPage({
               })),
             );
           } else {
-            // Mock data for pharma instruments
+            // Mock data for pharma instruments (development fallback)
             setInstruments([
               {
                 id: "1",
@@ -298,7 +303,12 @@ function PharmaceuticalProcessingPage({
         }
       },
     );
-  }, []);
+  }, [templateInstruments]);
+
+  // Load instruments on mount and when template instruments change
+  useEffect(() => {
+    loadInstruments();
+  }, [loadInstruments]);
 
   const loadSampleTypes = useCallback(() => {
     getFromOpenElisServer(
@@ -364,8 +374,16 @@ function PharmaceuticalProcessingPage({
     setIsBulkApplying(true);
     setError(null);
 
+    // Convert selected IDs to sampleItemIds for the backend API
+    const sampleItemIds = selectedParentIds
+      .map((id) => {
+        const sample = samples.find((s) => s.id === id);
+        return sample?.sampleItemId;
+      })
+      .filter((id) => id != null);
+
     const applyData = {
-      sampleIds: selectedParentIds.map((id) => parseInt(id, 10)),
+      sampleIds: sampleItemIds,
       data: {
         processingMethod: bulkPrepareValues.processingMethod,
         technicianName: bulkPrepareValues.technicianName,
@@ -452,10 +470,18 @@ function PharmaceuticalProcessingPage({
     setCreating(true);
     setError(null);
 
+    // Convert selected IDs to sampleItemIds for the backend API
+    const parentSampleItemIds = selectedParentIds
+      .map((id) => {
+        const sample = samples.find((s) => s.id === id);
+        return sample?.sampleItemId;
+      })
+      .filter((id) => id != null);
+
     postToOpenElisServerJsonResponse(
       `/rest/notebook/${notebookId}/samples/create-children`,
       JSON.stringify({
-        parentSampleIds: selectedParentIds.map((id) => parseInt(id, 10)),
+        parentSampleIds: parentSampleItemIds,
         childCountPerParent: childCount,
         externalIdPrefix: externalIdPrefix,
         pageId: pageData?.id,
@@ -522,73 +548,6 @@ function PharmaceuticalProcessingPage({
     );
   }, []);
 
-  // Handle add missed sample (like MNTD)
-  const handleAddMissedSample = useCallback(() => {
-    if (!newSampleData.externalId || !newSampleData.sampleType) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.page.pharma.processing.error.missingFields",
-          defaultMessage: "Sample ID and Sample Type are required.",
-        }),
-      );
-      return;
-    }
-
-    setIsAddingSample(true);
-    setError(null);
-
-    const sampleData = {
-      entryId: entryId,
-      pageId: pageData?.id,
-      externalId: newSampleData.externalId,
-      sampleType: newSampleData.sampleType,
-      parentSampleId: newSampleData.parentSampleId || null,
-      notes: newSampleData.notes,
-      source: "LATE_REGISTRATION",
-    };
-
-    postToOpenElisServer(
-      `/rest/notebook-entry/${entryId}/samples/add`,
-      JSON.stringify(sampleData),
-      (status) => {
-        setIsAddingSample(false);
-        if (status === 200 || status === 201) {
-          setSuccess(
-            intl.formatMessage({
-              id: "notebook.page.pharma.processing.success.added",
-              defaultMessage: "Sample registered successfully.",
-            }),
-          );
-          setAddSampleModalOpen(false);
-          setNewSampleData({
-            externalId: "",
-            sampleType: "",
-            parentSampleId: "",
-            notes: "",
-          });
-          loadPageSamples();
-          if (onProgressUpdate) {
-            onProgressUpdate();
-          }
-        } else {
-          setError(
-            intl.formatMessage({
-              id: "notebook.page.pharma.processing.error.add",
-              defaultMessage: "Failed to add sample. Please try again.",
-            }),
-          );
-        }
-      },
-    );
-  }, [
-    entryId,
-    pageData?.id,
-    newSampleData,
-    intl,
-    loadPageSamples,
-    onProgressUpdate,
-  ]);
-
   // Handle bulk mark as processed
   const handleBulkMarkProcessed = useCallback(() => {
     if (selectedParentIds.length === 0) return;
@@ -623,10 +582,18 @@ function PharmaceuticalProcessingPage({
       return;
     }
 
+    // Convert selected IDs to sampleItemIds for the backend API
+    const statusSampleItemIds = selectedParentIds
+      .map((id) => {
+        const sample = samples.find((s) => s.id === id);
+        return sample?.sampleItemId;
+      })
+      .filter((id) => id != null);
+
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
       JSON.stringify({
-        sampleIds: selectedParentIds.map((id) => parseInt(id, 10)),
+        sampleIds: statusSampleItemIds,
         status: "COMPLETED",
       }),
       (status) => {
@@ -819,18 +786,6 @@ function PharmaceuticalProcessingPage({
             id="notebook.page.pharma.processing.createAliquots"
             defaultMessage="Create Aliquots ({count})"
             values={{ count: selectedParentIds.length }}
-          />
-        </Button>
-
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Add}
-          onClick={() => setAddSampleModalOpen(true)}
-        >
-          <FormattedMessage
-            id="notebook.page.pharma.processing.addSample"
-            defaultMessage="Add Sample"
           />
         </Button>
 
@@ -1331,133 +1286,6 @@ function PharmaceuticalProcessingPage({
             )}
           </DataTable>
         )}
-      </Modal>
-
-      {/* Add Sample Modal */}
-      <Modal
-        open={addSampleModalOpen}
-        onRequestClose={() => setAddSampleModalOpen(false)}
-        modalHeading={intl.formatMessage({
-          id: "notebook.pharma.addSample.title",
-          defaultMessage: "Register Additional Sample",
-        })}
-        primaryButtonText={
-          isAddingSample
-            ? intl.formatMessage({
-                id: "label.adding",
-                defaultMessage: "Adding...",
-              })
-            : intl.formatMessage({
-                id: "label.add",
-                defaultMessage: "Add Sample",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleAddMissedSample}
-        onSecondarySubmit={() => setAddSampleModalOpen(false)}
-        size="md"
-        primaryButtonDisabled={isAddingSample}
-      >
-        <p className="modal-description">
-          <FormattedMessage
-            id="notebook.pharma.addSample.description"
-            defaultMessage="Register a sample that was missed during initial intake or needs to be added to this workflow."
-          />
-        </p>
-
-        <Grid fullWidth>
-          <Column lg={16} md={8} sm={4}>
-            <TextInput
-              id="newExternalId"
-              labelText={intl.formatMessage({
-                id: "notebook.pharma.sampleId",
-                defaultMessage: "Sample ID *",
-              })}
-              value={newSampleData.externalId}
-              onChange={(e) =>
-                setNewSampleData((prev) => ({
-                  ...prev,
-                  externalId: e.target.value,
-                }))
-              }
-              placeholder="Enter sample ID"
-              required
-            />
-          </Column>
-
-          <Column lg={16} md={8} sm={4}>
-            <Select
-              id="newSampleType"
-              labelText={intl.formatMessage({
-                id: "notebook.pharma.sampleType",
-                defaultMessage: "Sample Type *",
-              })}
-              value={newSampleData.sampleType}
-              onChange={(e) =>
-                setNewSampleData((prev) => ({
-                  ...prev,
-                  sampleType: e.target.value,
-                }))
-              }
-            >
-              <SelectItem value="" text="Select sample type..." />
-              {sampleTypes.map((type) => (
-                <SelectItem
-                  key={type.id || type.value}
-                  value={type.value || type.id}
-                  text={type.label || type.value}
-                />
-              ))}
-            </Select>
-          </Column>
-
-          <Column lg={16} md={8} sm={4}>
-            <Select
-              id="parentSampleId"
-              labelText={intl.formatMessage({
-                id: "notebook.pharma.parentSample",
-                defaultMessage: "Parent Sample (optional)",
-              })}
-              value={newSampleData.parentSampleId}
-              onChange={(e) =>
-                setNewSampleData((prev) => ({
-                  ...prev,
-                  parentSampleId: e.target.value,
-                }))
-              }
-            >
-              <SelectItem
-                value=""
-                text="Select parent sample (if applicable)..."
-              />
-              {samples.map((sample) => (
-                <SelectItem
-                  key={sample.id}
-                  value={sample.id}
-                  text={`${sample.externalId} - ${sample.sampleType}`}
-                />
-              ))}
-            </Select>
-          </Column>
-
-          <Column lg={16} md={8} sm={4}>
-            <TextArea
-              id="missedSampleNotes"
-              labelText={intl.formatMessage({
-                id: "notebook.pharma.notes",
-                defaultMessage: "Notes",
-              })}
-              value={newSampleData.notes}
-              onChange={(e) =>
-                setNewSampleData((prev) => ({ ...prev, notes: e.target.value }))
-              }
-              placeholder="Reason for late registration, additional notes, etc."
-            />
-          </Column>
-        </Grid>
       </Modal>
     </div>
   );

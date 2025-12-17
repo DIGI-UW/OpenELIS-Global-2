@@ -91,7 +91,8 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             transactionService.recordTransaction(lot.getId(), TransactionType.CONSUMPTION, -quantityFromThisLot,
                     newQuantity, testResultId, referenceTypeStr, notes, sysUserId);
 
-            usageService.recordUsage(lot.getId(), itemId, quantityFromThisLot, testResultId, analysisId, sysUserId);
+            // Pass false for deductQuantity since we already deducted above
+            usageService.recordUsage(lot.getId(), itemId, quantityFromThisLot, testResultId, analysisId, sysUserId, false);
 
             consumptionRecords
                     .add(new ConsumptionRecord(lot.getId(), lot.getLotNumber(), quantityFromThisLot, newQuantity));
