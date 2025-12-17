@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- ANALYTICS LABORATORY -->
+    <!-- NOTEBOOK TEMPLATE -->
+    <!-- Creates a predefined notebook template with workflow pages -->
+    <!-- for Bioanalytical and Pharmaceutical Analysis -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-analytics-notebook-template" author="openelis-analytics">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Analytics Laboratory notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Analytics Laboratory"/>
+            <column name="objective" value="Complete bioanalytical and pharmaceutical analysis workflow"/>
+            <column name="protocol" value="Standard Analytics Laboratory Protocol"/>
+            <column name="content" value="Analytics Laboratory notebook template for bioanalytical and pharmaceutical analysis including sample creation, metadata capture, and test assignment."/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Analytics Laboratory' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE CREATION & FULL METADATA CAPTURE -->
+    <!-- Purpose: Create the analytical sample as the primary entity -->
+    <!-- and register it for bioanalytical or pharmaceutical analysis -->
+    <!-- Who uses it: Reception staff / analysts -->
+    <!-- Data Points: -->
+    <!--   A. Sample Identity: Identifier, Barcode/QR, Source -->
+    <!--   B. Sample Category: Bioanalytical, Pharmaceutical analysis -->
+    <!--   C. Sample Type: API, Tablet, Capsule, Suspension, etc. -->
+    <!--   D. Sample Context: Requesting unit, Requested tests, Study ID -->
+    <!--   E. Storage & Handling: Condition, Received date/time, Received by -->
+    <!-- System Actions: Create record, generate label, set status -->
+    <!-- ======================================================== -->
+    <changeSet id="create-analytics-page-1-sample-creation" author="openelis-analytics">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Analytics Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Creation and Full Metadata Capture page for Analytics Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Creation &amp; Full Metadata Capture"/>
+            <column name="instructions" value="Create the analytical sample as the primary entity and register it for bioanalytical or pharmaceutical analysis. Capture all sample metadata including: Sample Identity (Identifier, Barcode/QR code, Source - Medical Laboratory/Researcher/External client), Sample Category (Bioanalytical/Pharmaceutical analysis), Sample Type (API/Tablet/Capsule/Suspension/Injection/Cream-ointment/Processed biological sample/Other), Sample Context (Requesting unit, Requested tests - multi-select, Study/Project ID), Storage and Handling (Storage condition, Received date/time, Received by). System generates label and sets status to 'Created - Pending Test Assignment'."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Creation &amp; Full Metadata Capture&quot;,
+  &quot;purpose&quot;: &quot;Create the analytical sample as the primary entity and register it for bioanalytical or pharmaceutical analysis&quot;,
+  &quot;usedBy&quot;: [&quot;Reception staff&quot;, &quot;Analysts&quot;],
+  &quot;dataPoints&quot;: {
+    &quot;sampleIdentity&quot;: {
+      &quot;sampleIdentifier&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Sample Identifier&quot;, &quot;description&quot;: &quot;Retained from originating lab or newly assigned&quot;, &quot;required&quot;: true},
+      &quot;barcodeQR&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Barcode / QR code&quot;, &quot;required&quot;: false},
+      &quot;sampleSource&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample Source&quot;, &quot;options&quot;: [&quot;Medical Laboratory (processed biological sample)&quot;, &quot;Researcher&quot;, &quot;External client (outsourced analysis)&quot;], &quot;required&quot;: true}
+    },
+    &quot;sampleCategory&quot;: {
+      &quot;category&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample Category&quot;, &quot;options&quot;: [&quot;Bioanalytical&quot;, &quot;Pharmaceutical analysis (physicochemical / R&amp;D)&quot;], &quot;required&quot;: true}
+    },
+    &quot;sampleType&quot;: {
+      &quot;type&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample Type&quot;, &quot;options&quot;: [&quot;API&quot;, &quot;Tablet&quot;, &quot;Capsule&quot;, &quot;Suspension&quot;, &quot;Injection&quot;, &quot;Cream / ointment&quot;, &quot;Processed biological sample (plasma, serum, urine)&quot;, &quot;Other&quot;], &quot;required&quot;: true}
+    },
+    &quot;sampleContext&quot;: {
+      &quot;requestingUnit&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Requesting unit / researcher / client&quot;, &quot;required&quot;: true},
+      &quot;requestedTests&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Requested tests&quot;, &quot;options&quot;: [&quot;Assay&quot;, &quot;Dissolution&quot;, &quot;Disintegration&quot;, &quot;Friability&quot;, &quot;Hardness&quot;, &quot;Identity test&quot;, &quot;Bioanalytical quantification&quot;], &quot;required&quot;: true},
+      &quot;studyProjectId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Study / project ID&quot;, &quot;required&quot;: false}
+    },
+    &quot;storageHandling&quot;: {
+      &quot;storageCondition&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Storage condition prior to testing&quot;, &quot;required&quot;: false},
+      &quot;receivedDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Received date &amp; time&quot;, &quot;required&quot;: true},
+      &quot;receivedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Received by (name / initials)&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Sample record created&quot;, &quot;Label generated&quot;, &quot;Sample status: Created - Pending Test Assignment&quot;],
+  &quot;nextPage&quot;: &quot;Test Assignment &amp; Preparation&quot;
+}"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: TEST ASSIGNMENT & PREPARATION -->
+    <!-- Purpose: Assign responsibility and select analytical methods -->
+    <!-- Who uses it: Lab supervisor / section head -->
+    <!-- Data Points: -->
+    <!--   A. Personnel Assignment: Role, Analyst name, Assignment date -->
+    <!--   B. Method Selection: Analytical methodology (multi-select) -->
+    <!-- System Actions: Worklist created, status updated -->
+    <!-- ======================================================== -->
+    <changeSet id="create-analytics-page-2-test-assignment" author="openelis-analytics">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Analytics Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Test Assignment and Preparation page for Analytics Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Test Assignment &amp; Preparation"/>
+            <column name="instructions" value="Assign responsibility and select analytical methods per sample. For Personnel Assignment: select assigned role (Chemical Analyst/Pharmacist/Researcher), enter assigned analyst name, and set assignment date. For Method Selection: choose analytical methodology from multi-select options (HPLC, UV-Vis, LC-MS/MS, Dissolution USP I/II, Hardness test, Friability test, Disintegration test, Identity test). System creates worklist and updates status to 'Assigned - Ready for Analysis'."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Test Assignment &amp; Preparation&quot;,
+  &quot;purpose&quot;: &quot;Assign responsibility and select analytical methods per sample&quot;,
+  &quot;usedBy&quot;: [&quot;Lab supervisor&quot;, &quot;Section head&quot;],
+  &quot;dataPoints&quot;: {
+    &quot;personnelAssignment&quot;: {
+      &quot;assignedRole&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Assigned role&quot;, &quot;options&quot;: [&quot;Chemical Analyst&quot;, &quot;Pharmacist&quot;, &quot;Researcher&quot;], &quot;required&quot;: true},
+      &quot;assignedAnalystName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Assigned analyst name&quot;, &quot;required&quot;: true},
+      &quot;assignmentDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Assignment date&quot;, &quot;required&quot;: true}
+    },
+    &quot;methodSelection&quot;: {
+      &quot;analyticalMethodology&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Analytical methodology&quot;, &quot;options&quot;: [&quot;HPLC&quot;, &quot;UV-Vis&quot;, &quot;LC-MS/MS&quot;, &quot;Dissolution (USP I / USP II)&quot;, &quot;Hardness test&quot;, &quot;Friability test&quot;, &quot;Disintegration test&quot;, &quot;Identity test&quot;], &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Worklist created&quot;, &quot;Sample status: Assigned - Ready for Analysis&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;assignedRole&quot;, &quot;assignedAnalystName&quot;, &quot;assignmentDate&quot;, &quot;analyticalMethodology&quot;]
+  },
+  &quot;nextPage&quot;: &quot;Analysis / Test Execution&quot;
+}"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: ANALYSIS / TEST EXECUTION -->
+    <!-- Purpose: Perform analytical testing while preserving data integrity -->
+    <!-- Who uses it: Analysts -->
+    <!-- Data Points: -->
+    <!--   - Test start date & time, Instrument used, Method reference/SOP -->
+    <!--   - Instrument-Specific Data (HPLC/UV-Vis/LC-MS/MS or Physical tests) -->
+    <!-- System Actions: Raw data attached, status updated -->
+    <!-- ======================================================== -->
+    <changeSet id="create-analytics-page-3-test-execution" author="openelis-analytics">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Analytics Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Analysis / Test Execution page for Analytics Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Analysis / Test Execution"/>
+            <column name="instructions" value="Perform analytical testing while preserving data integrity. Record: Test start date and time, Instrument used, Method reference/SOP, Analyst performing test. For Chromatographic/Spectroscopic tests (HPLC/UV-Vis/LC-MS/MS): Run ID, System suitability status, Calibration status, Raw data file reference. For Physical tests - Dissolution: Apparatus type (USP I/II), RPM, Medium, Time points. For Hardness/Friability/Disintegration: Individual values, Average, Acceptance decision. System attaches raw data and sets status to 'Analysis Completed - Pending Review'."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Analysis / Test Execution&quot;,
+  &quot;purpose&quot;: &quot;Perform analytical testing while preserving data integrity&quot;,
+  &quot;usedBy&quot;: [&quot;Analysts&quot;],
+  &quot;dataPoints&quot;: {
+    &quot;testExecution&quot;: {
+      &quot;testStartDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Test start date &amp; time&quot;, &quot;required&quot;: true},
+      &quot;instrumentUsed&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Instrument used&quot;, &quot;required&quot;: true},
+      &quot;methodReference&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Method reference / SOP&quot;, &quot;required&quot;: true},
+      &quot;analystPerforming&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Analyst performing test&quot;, &quot;required&quot;: true}
+    },
+    &quot;chromatographicSpectroscopic&quot;: {
+      &quot;runId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Run ID&quot;, &quot;conditionalOn&quot;: &quot;methodType == chromatographic&quot;, &quot;required&quot;: false},
+      &quot;systemSuitabilityStatus&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;System suitability status&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;], &quot;conditionalOn&quot;: &quot;methodType == chromatographic&quot;, &quot;required&quot;: false},
+      &quot;calibrationStatus&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Calibration status&quot;, &quot;options&quot;: [&quot;Valid&quot;, &quot;Expired&quot;, &quot;Not Required&quot;], &quot;required&quot;: false},
+      &quot;rawDataFileRef&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Raw data file reference&quot;, &quot;required&quot;: false}
+    },
+    &quot;dissolution&quot;: {
+      &quot;apparatusType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Apparatus type&quot;, &quot;options&quot;: [&quot;USP I (Basket)&quot;, &quot;USP II (Paddle)&quot;], &quot;conditionalOn&quot;: &quot;testType == dissolution&quot;, &quot;required&quot;: false},
+      &quot;rpm&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;RPM&quot;, &quot;required&quot;: false},
+      &quot;medium&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Medium&quot;, &quot;required&quot;: false},
+      &quot;timePoints&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Time points&quot;, &quot;required&quot;: false}
+    },
+    &quot;physicalTests&quot;: {
+      &quot;individualValues&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Individual values&quot;, &quot;required&quot;: false},
+      &quot;average&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Average&quot;, &quot;required&quot;: false},
+      &quot;acceptanceDecision&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Acceptance decision&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;], &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Raw data attached to sample&quot;, &quot;Sample status: Analysis Completed - Pending Review&quot;],
+  &quot;nextPage&quot;: &quot;Result Review, Reporting &amp; Release&quot;
+}"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: RESULT REVIEW, REPORTING & RELEASE -->
+    <!-- Purpose: Validate and release analytical results -->
+    <!-- Who uses it: Senior analyst / supervisor -->
+    <!-- Data Points: -->
+    <!--   - Review & Validation: Reviewed by, Review date, Compliance, Comments -->
+    <!--   - Reporting: Report generated, Version, Released to -->
+    <!-- System Actions: Results locked, Audit trail finalized -->
+    <!-- ======================================================== -->
+    <changeSet id="create-analytics-page-4-result-review" author="openelis-analytics">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Analytics Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Result Review, Reporting and Release page for Analytics Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Result Review, Reporting &amp; Release"/>
+            <column name="instructions" value="Validate and release analytical results. For Review and Validation: Record Reviewed by (name), Review date, Compliance with specification (Pass/Fail), Comments. For Reporting: Generate Analytical Result Report, Record report version, Select release recipients (Requesting unit, Researcher, Client). System locks results after approval, finalizes audit trail, and sets status to 'Results Released'."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Result Review, Reporting &amp; Release&quot;,
+  &quot;purpose&quot;: &quot;Validate and release analytical results&quot;,
+  &quot;usedBy&quot;: [&quot;Senior analyst&quot;, &quot;Supervisor&quot;],
+  &quot;dataPoints&quot;: {
+    &quot;reviewValidation&quot;: {
+      &quot;reviewedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Reviewed by&quot;, &quot;required&quot;: true},
+      &quot;reviewDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Review date&quot;, &quot;required&quot;: true},
+      &quot;complianceWithSpec&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Compliance with specification&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;], &quot;required&quot;: true},
+      &quot;comments&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Comments&quot;, &quot;required&quot;: false}
+    },
+    &quot;reporting&quot;: {
+      &quot;reportGenerated&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Analytical Result Report generated&quot;, &quot;required&quot;: true},
+      &quot;reportVersion&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Report version&quot;, &quot;required&quot;: false},
+      &quot;releasedTo&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Released to&quot;, &quot;options&quot;: [&quot;Requesting unit&quot;, &quot;Researcher&quot;, &quot;Client&quot;], &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Results locked after approval&quot;, &quot;Audit trail finalized&quot;, &quot;Sample status: Results Released&quot;],
+  &quot;nextPage&quot;: &quot;Post-Test Sample &amp; Data Handling&quot;
+}"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true) AND page_order = 4</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: POST-TEST SAMPLE & DATA HANDLING -->
+    <!-- Purpose: Manage retention, biorepository transfer, long-term traceability -->
+    <!-- Who uses it: Store manager / data manager -->
+    <!-- Data Points: -->
+    <!--   - Sample Retention: Required, Quantity, Duration -->
+    <!--   - Biorepository Transfer: Transfer, Date, Receiving lab, Condition -->
+    <!--   - Data Handling: Raw data archived, Reports archived, Retention period -->
+    <!-- System Actions: Lifecycle marked Completed, Records preserved -->
+    <!-- ======================================================== -->
+    <changeSet id="create-analytics-page-5-post-test-handling" author="openelis-analytics">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Analytics Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Post-Test Sample and Data Handling page for Analytics Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Post-Test Sample &amp; Data Handling"/>
+            <column name="instructions" value="Manage retention, biorepository transfer, and long-term traceability. For Sample Retention: Record if retention is required (Yes/No), Retention quantity, Retention duration (Stability study/Legal hold/Protocol-defined). For Biorepository Transfer: Record if transfer required (Yes/No), Transfer date, Receiving laboratory, Storage condition. For Data Handling: Mark raw data as archived, Final reports archived, Record retention period. System marks sample lifecycle as Completed and preserves records for compliance."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Post-Test Sample &amp; Data Handling&quot;,
+  &quot;purpose&quot;: &quot;Manage retention, biorepository transfer, and long-term traceability&quot;,
+  &quot;usedBy&quot;: [&quot;Store manager&quot;, &quot;Data manager&quot;],
+  &quot;dataPoints&quot;: {
+    &quot;sampleRetention&quot;: {
+      &quot;retentionRequired&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Retention required&quot;, &quot;options&quot;: [&quot;Yes&quot;, &quot;No&quot;], &quot;required&quot;: true},
+      &quot;retentionQuantity&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Retention quantity&quot;, &quot;conditionalOn&quot;: &quot;retentionRequired == Yes&quot;, &quot;required&quot;: false},
+      &quot;retentionDuration&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Retention duration&quot;, &quot;options&quot;: [&quot;Stability study&quot;, &quot;Legal hold&quot;, &quot;Protocol-defined&quot;], &quot;conditionalOn&quot;: &quot;retentionRequired == Yes&quot;, &quot;required&quot;: false}
+    },
+    &quot;biorepositoryTransfer&quot;: {
+      &quot;transferRequired&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Transfer to biorepository&quot;, &quot;options&quot;: [&quot;Yes&quot;, &quot;No&quot;], &quot;required&quot;: true},
+      &quot;transferDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Transfer date&quot;, &quot;conditionalOn&quot;: &quot;transferRequired == Yes&quot;, &quot;required&quot;: false},
+      &quot;receivingLaboratory&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Receiving laboratory&quot;, &quot;conditionalOn&quot;: &quot;transferRequired == Yes&quot;, &quot;required&quot;: false},
+      &quot;storageCondition&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Storage condition&quot;, &quot;conditionalOn&quot;: &quot;transferRequired == Yes&quot;, &quot;required&quot;: false}
+    },
+    &quot;dataHandling&quot;: {
+      &quot;rawDataArchived&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Raw data archived&quot;, &quot;required&quot;: true},
+      &quot;finalReportsArchived&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Final reports archived&quot;, &quot;required&quot;: true},
+      &quot;retentionPeriodLogged&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Retention period logged&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Sample lifecycle marked Completed&quot;, &quot;Records preserved for compliance&quot;],
+  &quot;nextPage&quot;: null
+}"/>
+            <column name="page_order" value="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Analytics Laboratory' AND is_template = true) AND page_order = 5</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- ANALYTICS WORKFLOW PAGE TEMPLATES (for reference/selection) -->
+    <!-- ======================================================== -->
+    <changeSet id="insert-analytics-workflow-page-templates" author="openelis-analytics">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'ANALYTICS'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert predefined Analytics workflow page templates</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="201"/>
+            <column name="name" value="Sample Creation &amp; Full Metadata Capture"/>
+            <column name="display_key" value="workflow.page.analytics.sampleCreation"/>
+            <column name="description" value="Create the analytical sample and register it for bioanalytical or pharmaceutical analysis"/>
+            <column name="default_instructions" value="Capture sample identity (identifier, barcode, source), category (bioanalytical/pharmaceutical), type (API/Tablet/Capsule/etc.), context (requesting unit, requested tests, study ID), and storage handling (condition, received date/time, received by). System generates label and sets status."/>
+            <column name="default_content" value="Sample Creation and Full Metadata Capture - Initial screen for Analytics Laboratory"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="ANALYTICS"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="202"/>
+            <column name="name" value="Test Assignment &amp; Preparation"/>
+            <column name="display_key" value="workflow.page.analytics.testAssignment"/>
+            <column name="description" value="Assign responsibility and select analytical methods per sample"/>
+            <column name="default_instructions" value="Assign personnel (role, analyst name, date) and select analytical methodology (HPLC, UV-Vis, LC-MS/MS, Dissolution, Hardness test, Friability test, Disintegration test, Identity test). Supports bulk assignment."/>
+            <column name="default_content" value="Test Assignment and Preparation - Analyst and method assignment for Analytics Laboratory"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="ANALYTICS"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="203"/>
+            <column name="name" value="Analysis / Test Execution"/>
+            <column name="display_key" value="workflow.page.analytics.testExecution"/>
+            <column name="description" value="Perform analytical testing while preserving data integrity"/>
+            <column name="default_instructions" value="Record test execution details (start time, instrument, method/SOP, analyst). For chromatographic tests: Run ID, system suitability, calibration status, raw data reference. For physical tests: apparatus type, RPM, medium, time points, individual values, average, acceptance decision."/>
+            <column name="default_content" value="Analysis / Test Execution - Perform and document analytical testing"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="ANALYTICS"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="204"/>
+            <column name="name" value="Result Review, Reporting &amp; Release"/>
+            <column name="display_key" value="workflow.page.analytics.resultReview"/>
+            <column name="description" value="Validate and release analytical results"/>
+            <column name="default_instructions" value="Review and validate results (reviewed by, date, compliance, comments). Generate and release reports (report version, release recipients). System locks results and finalizes audit trail."/>
+            <column name="default_content" value="Result Review, Reporting and Release - Validate and release analytical results"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="ANALYTICS"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="205"/>
+            <column name="name" value="Post-Test Sample &amp; Data Handling"/>
+            <column name="display_key" value="workflow.page.analytics.postTestHandling"/>
+            <column name="description" value="Manage retention, biorepository transfer, and long-term traceability"/>
+            <column name="default_instructions" value="Record sample retention requirements (quantity, duration). Document biorepository transfer (date, receiving lab, conditions). Archive raw data and final reports. System marks lifecycle complete and preserves records."/>
+            <column name="default_content" value="Post-Test Sample and Data Handling - Manage retention and archiving"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="5"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="ANALYTICS"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'ANALYTICS'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
