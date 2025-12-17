@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Grid,
   Column,
@@ -12,6 +12,8 @@ import {
   RadioButtonGroup,
   RadioButton,
   Tag,
+  Checkbox,
+  TextInput,
 } from "@carbon/react";
 import { Checkmark, Edit } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -24,16 +26,34 @@ import "../../workflow/NotebookWorkflow.css";
 
 /**
  * PharmaceuticalQualityCheckPage - Page 2 of the Pharmaceuticals workflow.
- * Performs initial QC verification similar to MNTDReceptionVerificationPage.
+ * Performs initial QC verification with sample type-specific criteria.
  *
- * QC Data Points (per pharma spec):
- * - Container Integrity (intact/compromised)
- * - Label Readability (readable/illegible)
- * - Appearance Match (yes/no - compared to specification)
- * - Environmental Deviations (yes/no with notes)
- * - QC Result (Pass/Fail/Pass with remarks)
- * - QC Remarks
- * - Action if Fail (Discard/Notify/Proceed with remarks)
+ * QC RAW SAMPLE CRITERIA:
+ * 1. Pharmaceutical Sample Checks:
+ *    - Label accuracy (matches requisition)
+ *    - Container integrity (no leaks/tampering)
+ *    - Quantity/Volume (meets minimum)
+ *    - Physical appearance (matches pharmacopeial description)
+ *    - Expiry/Validity
+ *    - Storage/transport compliance (e.g., 25°C / 60% RH)
+ *
+ * 2. Biological Sample Checks:
+ *    - Label accuracy
+ *    - Container integrity
+ *    - Volume/Quantity
+ *    - Visual integrity (free from hemolysis/contamination)
+ *    - Transport/Storage compliance
+ *    - Biosafety risk labeling
+ *
+ * 3. Microbiological/Environmental Checks:
+ *    - Container integrity (especially sterility)
+ *    - Sample Volume/Quantity
+ *    - Holding time (within timeframe)
+ *    - Transport/Storage compliance
+ *
+ * Pass/Fail Actions:
+ * - Pass: Proceed to processing
+ * - Fail: Reject, log in LMIS, notify submitter, request replacement
  */
 function PharmaceuticalQualityCheckPage({
   entryId,
@@ -54,15 +74,37 @@ function PharmaceuticalQualityCheckPage({
   // Bulk apply modal state
   const [bulkApplyModalOpen, setBulkApplyModalOpen] = useState(false);
   const [isBulkApplying, setIsBulkApplying] = useState(false);
+  const [sampleType, setSampleType] = useState("pharmaceutical");
+
+  // Pharmaceutical Sample Checks
   const [bulkApplyValues, setBulkApplyValues] = useState({
-    containerIntegrity: "",
-    labelReadability: "",
-    appearanceMatch: null,
-    environmentalDeviation: null,
-    deviationNotes: "",
+    // Pharmaceutical checks
+    pharmaLabelAccuracy: null,
+    pharmaContainerIntegrity: null,
+    pharmaQuantityVolume: null,
+    pharmaPhysicalAppearance: null,
+    pharmaExpiryValidity: null,
+    pharmaStorageCompliance: null,
+    pharmaStorageConditions: "",
+    // Biological checks
+    bioLabelAccuracy: null,
+    bioContainerIntegrity: null,
+    bioVolumeQuantity: null,
+    bioVisualIntegrity: null,
+    bioTransportCompliance: null,
+    bioBiosafetyLabeling: null,
+    // Microbiological/Environmental checks
+    microContainerIntegrity: null,
+    microSampleVolume: null,
+    microHoldingTime: null,
+    microTransportCompliance: null,
+    // QC Result & Actions
     qcResult: "",
     qcRemarks: "",
     failAction: "",
+    rejectionReason: "",
+    notifySubmitter: false,
+    requestReplacement: false,
   });
 
   useEffect(() => {
@@ -99,16 +141,13 @@ function PharmaceuticalQualityCheckPage({
               externalId: sample.externalId,
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType || sample.typeOfSample?.description,
+              sampleTypeCategory: sample.data?.sampleType, // QC category (pharmaceutical/biological/microbiological)
               status: sample.pageStatus || sample.status || "PENDING",
               // QC fields from data
-              containerIntegrity: sample.data?.containerIntegrity,
-              labelReadability: sample.data?.labelReadability,
-              appearanceMatch: sample.data?.appearanceMatch,
-              environmentalDeviation: sample.data?.environmentalDeviation,
-              deviationNotes: sample.data?.deviationNotes,
               qcResult: sample.data?.qcResult,
               qcRemarks: sample.data?.qcRemarks,
               failAction: sample.data?.failAction,
+              rejectionReason: sample.data?.rejectionReason,
             }));
             setSamples(transformedSamples);
           } else {
@@ -125,17 +164,102 @@ function PharmaceuticalQualityCheckPage({
 
   // Reset bulk apply form
   const resetBulkApplyValues = () => {
+    setSampleType("pharmaceutical");
     setBulkApplyValues({
-      containerIntegrity: "",
-      labelReadability: "",
-      appearanceMatch: null,
-      environmentalDeviation: null,
-      deviationNotes: "",
+      // Pharmaceutical checks
+      pharmaLabelAccuracy: null,
+      pharmaContainerIntegrity: null,
+      pharmaQuantityVolume: null,
+      pharmaPhysicalAppearance: null,
+      pharmaExpiryValidity: null,
+      pharmaStorageCompliance: null,
+      pharmaStorageConditions: "",
+      // Biological checks
+      bioLabelAccuracy: null,
+      bioContainerIntegrity: null,
+      bioVolumeQuantity: null,
+      bioVisualIntegrity: null,
+      bioTransportCompliance: null,
+      bioBiosafetyLabeling: null,
+      // Microbiological/Environmental checks
+      microContainerIntegrity: null,
+      microSampleVolume: null,
+      microHoldingTime: null,
+      microTransportCompliance: null,
+      // QC Result & Actions
       qcResult: "",
       qcRemarks: "",
       failAction: "",
+      rejectionReason: "",
+      notifySubmitter: false,
+      requestReplacement: false,
     });
   };
+
+  // Auto-calculate QC result based on checklist items
+  const calculateQcResult = useCallback(() => {
+    let hasAnyFail = false;
+    let hasAnyCheck = false;
+
+    if (sampleType === "pharmaceutical") {
+      const pharmaChecks = [
+        bulkApplyValues.pharmaLabelAccuracy,
+        bulkApplyValues.pharmaContainerIntegrity,
+        bulkApplyValues.pharmaQuantityVolume,
+        bulkApplyValues.pharmaPhysicalAppearance,
+        bulkApplyValues.pharmaExpiryValidity,
+        bulkApplyValues.pharmaStorageCompliance,
+      ];
+      pharmaChecks.forEach((check) => {
+        if (check !== null) {
+          hasAnyCheck = true;
+          if (check === false) hasAnyFail = true;
+        }
+      });
+    } else if (sampleType === "biological") {
+      const bioChecks = [
+        bulkApplyValues.bioLabelAccuracy,
+        bulkApplyValues.bioContainerIntegrity,
+        bulkApplyValues.bioVolumeQuantity,
+        bulkApplyValues.bioVisualIntegrity,
+        bulkApplyValues.bioTransportCompliance,
+        bulkApplyValues.bioBiosafetyLabeling,
+      ];
+      bioChecks.forEach((check) => {
+        if (check !== null) {
+          hasAnyCheck = true;
+          if (check === false) hasAnyFail = true;
+        }
+      });
+    } else if (sampleType === "microbiological") {
+      const microChecks = [
+        bulkApplyValues.microContainerIntegrity,
+        bulkApplyValues.microSampleVolume,
+        bulkApplyValues.microHoldingTime,
+        bulkApplyValues.microTransportCompliance,
+      ];
+      microChecks.forEach((check) => {
+        if (check !== null) {
+          hasAnyCheck = true;
+          if (check === false) hasAnyFail = true;
+        }
+      });
+    }
+
+    if (!hasAnyCheck) return "";
+    return hasAnyFail ? "Fail" : "Pass";
+  }, [sampleType, bulkApplyValues]);
+
+  // Update QC result when checks change
+  useEffect(() => {
+    const calculatedResult = calculateQcResult();
+    if (calculatedResult && bulkApplyValues.qcResult !== calculatedResult) {
+      setBulkApplyValues((prev) => ({
+        ...prev,
+        qcResult: calculatedResult,
+      }));
+    }
+  }, [calculateQcResult, bulkApplyValues.qcResult]);
 
   // Handle bulk apply
   const handleBulkApply = useCallback(() => {
@@ -160,28 +284,81 @@ function PharmaceuticalQualityCheckPage({
       return;
     }
 
-    // Build data object with only non-empty values
-    const data = {};
-    if (bulkApplyValues.containerIntegrity)
-      data.containerIntegrity = bulkApplyValues.containerIntegrity;
-    if (bulkApplyValues.labelReadability)
-      data.labelReadability = bulkApplyValues.labelReadability;
-    if (bulkApplyValues.appearanceMatch !== null)
-      data.appearanceMatch = bulkApplyValues.appearanceMatch;
-    if (bulkApplyValues.environmentalDeviation !== null)
-      data.environmentalDeviation = bulkApplyValues.environmentalDeviation;
-    if (bulkApplyValues.deviationNotes)
-      data.deviationNotes = bulkApplyValues.deviationNotes;
+    // Build data object with only non-empty/non-null values based on sample type
+    const data = {
+      sampleType,
+    };
+
+    // Add pharmaceutical checks if applicable
+    if (sampleType === "pharmaceutical") {
+      if (bulkApplyValues.pharmaLabelAccuracy !== null)
+        data.pharmaLabelAccuracy = bulkApplyValues.pharmaLabelAccuracy;
+      if (bulkApplyValues.pharmaContainerIntegrity !== null)
+        data.pharmaContainerIntegrity =
+          bulkApplyValues.pharmaContainerIntegrity;
+      if (bulkApplyValues.pharmaQuantityVolume !== null)
+        data.pharmaQuantityVolume = bulkApplyValues.pharmaQuantityVolume;
+      if (bulkApplyValues.pharmaPhysicalAppearance !== null)
+        data.pharmaPhysicalAppearance =
+          bulkApplyValues.pharmaPhysicalAppearance;
+      if (bulkApplyValues.pharmaExpiryValidity !== null)
+        data.pharmaExpiryValidity = bulkApplyValues.pharmaExpiryValidity;
+      if (bulkApplyValues.pharmaStorageCompliance !== null)
+        data.pharmaStorageCompliance = bulkApplyValues.pharmaStorageCompliance;
+      if (bulkApplyValues.pharmaStorageConditions)
+        data.pharmaStorageConditions = bulkApplyValues.pharmaStorageConditions;
+    }
+
+    // Add biological checks if applicable
+    if (sampleType === "biological") {
+      if (bulkApplyValues.bioLabelAccuracy !== null)
+        data.bioLabelAccuracy = bulkApplyValues.bioLabelAccuracy;
+      if (bulkApplyValues.bioContainerIntegrity !== null)
+        data.bioContainerIntegrity = bulkApplyValues.bioContainerIntegrity;
+      if (bulkApplyValues.bioVolumeQuantity !== null)
+        data.bioVolumeQuantity = bulkApplyValues.bioVolumeQuantity;
+      if (bulkApplyValues.bioVisualIntegrity !== null)
+        data.bioVisualIntegrity = bulkApplyValues.bioVisualIntegrity;
+      if (bulkApplyValues.bioTransportCompliance !== null)
+        data.bioTransportCompliance = bulkApplyValues.bioTransportCompliance;
+      if (bulkApplyValues.bioBiosafetyLabeling !== null)
+        data.bioBiosafetyLabeling = bulkApplyValues.bioBiosafetyLabeling;
+    }
+
+    // Add microbiological/environmental checks if applicable
+    if (sampleType === "microbiological") {
+      if (bulkApplyValues.microContainerIntegrity !== null)
+        data.microContainerIntegrity = bulkApplyValues.microContainerIntegrity;
+      if (bulkApplyValues.microSampleVolume !== null)
+        data.microSampleVolume = bulkApplyValues.microSampleVolume;
+      if (bulkApplyValues.microHoldingTime !== null)
+        data.microHoldingTime = bulkApplyValues.microHoldingTime;
+      if (bulkApplyValues.microTransportCompliance !== null)
+        data.microTransportCompliance =
+          bulkApplyValues.microTransportCompliance;
+    }
+
+    // Add QC result and actions
     if (bulkApplyValues.qcResult) data.qcResult = bulkApplyValues.qcResult;
     if (bulkApplyValues.qcRemarks) data.qcRemarks = bulkApplyValues.qcRemarks;
     if (bulkApplyValues.failAction)
       data.failAction = bulkApplyValues.failAction;
+    if (bulkApplyValues.rejectionReason)
+      data.rejectionReason = bulkApplyValues.rejectionReason;
+    if (bulkApplyValues.notifySubmitter)
+      data.notifySubmitter = bulkApplyValues.notifySubmitter;
+    if (bulkApplyValues.requestReplacement)
+      data.requestReplacement = bulkApplyValues.requestReplacement;
 
-    if (Object.keys(data).length === 0) {
+    // Check if any QC checks were actually performed
+    const hasAnyCheck =
+      Object.keys(data).filter((k) => k !== "sampleType").length > 0;
+    if (!hasAnyCheck) {
       setError(
         intl.formatMessage({
           id: "notebook.page.pharma.qc.error.noData",
-          defaultMessage: "Please fill in at least one field before applying.",
+          defaultMessage:
+            "Please complete at least one QC check before applying.",
         }),
       );
       return;
@@ -199,15 +376,33 @@ function PharmaceuticalQualityCheckPage({
       (status) => {
         setIsBulkApplying(false);
         if (status === 200) {
-          setSuccessMessage(
-            intl.formatMessage(
-              {
-                id: "notebook.page.pharma.qc.applied",
-                defaultMessage: "Applied QC values to {count} sample(s).",
-              },
-              { count: selectedSampleIds.length },
-            ),
-          );
+          const resultMessage =
+            bulkApplyValues.qcResult === "Pass"
+              ? intl.formatMessage(
+                  {
+                    id: "notebook.page.pharma.qc.applied.pass",
+                    defaultMessage:
+                      "QC passed for {count} sample(s). Samples can proceed to processing.",
+                  },
+                  { count: selectedSampleIds.length },
+                )
+              : bulkApplyValues.qcResult === "Fail"
+                ? intl.formatMessage(
+                    {
+                      id: "notebook.page.pharma.qc.applied.fail",
+                      defaultMessage:
+                        "QC failed for {count} sample(s). Samples rejected and logged.",
+                    },
+                    { count: selectedSampleIds.length },
+                  )
+                : intl.formatMessage(
+                    {
+                      id: "notebook.page.pharma.qc.applied",
+                      defaultMessage: "Applied QC values to {count} sample(s).",
+                    },
+                    { count: selectedSampleIds.length },
+                  );
+          setSuccessMessage(resultMessage);
           setBulkApplyModalOpen(false);
           setSelectedSampleIds([]);
           loadPageSamples();
@@ -227,6 +422,7 @@ function PharmaceuticalQualityCheckPage({
   }, [
     selectedSampleIds,
     bulkApplyValues,
+    sampleType,
     hasRealPageId,
     intl,
     loadPageSamples,
@@ -268,24 +464,60 @@ function PharmaceuticalQualityCheckPage({
       return;
     }
 
-    postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-      JSON.stringify({
-        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-        status: "COMPLETED",
-      }),
-      (status) => {
-        if (status === 200) {
-          setSuccessMessage(
-            intl.formatMessage(
+    // Separate samples by their fail action
+    // Rejected/Discarded samples should NOT proceed to next page
+    const rejectedSamples = selectedSamples.filter(
+      (s) => s.failAction === "reject" || s.failAction === "discard",
+    );
+    const passingSamples = selectedSamples.filter(
+      (s) => s.failAction !== "reject" && s.failAction !== "discard",
+    );
+
+    // Track how many requests we need to make
+    let completedRequests = 0;
+    let failedRequests = 0;
+    const totalRequests =
+      (passingSamples.length > 0 ? 1 : 0) +
+      (rejectedSamples.length > 0 ? 1 : 0);
+
+    const handleRequestComplete = () => {
+      completedRequests++;
+      if (completedRequests === totalRequests) {
+        if (failedRequests === 0) {
+          // Build appropriate success message
+          let message = "";
+          if (passingSamples.length > 0 && rejectedSamples.length > 0) {
+            message = intl.formatMessage(
+              {
+                id: "notebook.page.pharma.qc.completedMixed",
+                defaultMessage:
+                  "{passCount} sample(s) completed QC and can proceed to Processing. {rejectCount} sample(s) were rejected/discarded and will not proceed.",
+              },
+              {
+                passCount: passingSamples.length,
+                rejectCount: rejectedSamples.length,
+              },
+            );
+          } else if (rejectedSamples.length > 0) {
+            message = intl.formatMessage(
+              {
+                id: "notebook.page.pharma.qc.completedRejected",
+                defaultMessage:
+                  "{count} sample(s) were rejected/discarded. They will not proceed to Processing.",
+              },
+              { count: rejectedSamples.length },
+            );
+          } else {
+            message = intl.formatMessage(
               {
                 id: "notebook.page.pharma.qc.completed",
                 defaultMessage:
                   "Marked {count} sample(s) as QC Complete. They can now proceed to Processing.",
               },
-              { count: selectedSampleIds.length },
-            ),
-          );
+              { count: passingSamples.length },
+            );
+          }
+          setSuccessMessage(message);
           setSelectedSampleIds([]);
           loadPageSamples();
           if (onProgressUpdate) {
@@ -299,8 +531,47 @@ function PharmaceuticalQualityCheckPage({
             }),
           );
         }
-      },
-    );
+      }
+    };
+
+    // Update passing samples to COMPLETED (they will proceed to next page)
+    if (passingSamples.length > 0) {
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: passingSamples.map((s) => parseInt(s.id, 10)),
+          status: "COMPLETED",
+        }),
+        (status) => {
+          if (status !== 200) {
+            failedRequests++;
+          }
+          handleRequestComplete();
+        },
+      );
+    }
+
+    // Update rejected/discarded samples to SKIPPED (they will NOT proceed to next page)
+    if (rejectedSamples.length > 0) {
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: rejectedSamples.map((s) => parseInt(s.id, 10)),
+          status: "SKIPPED",
+        }),
+        (status) => {
+          if (status !== 200) {
+            failedRequests++;
+          }
+          handleRequestComplete();
+        },
+      );
+    }
+
+    // If no samples to process, just return
+    if (totalRequests === 0) {
+      return;
+    }
   }, [
     selectedSampleIds,
     samples,
@@ -324,6 +595,18 @@ function PharmaceuticalQualityCheckPage({
     if (qcResult === "Fail") return <Tag type="red">Fail</Tag>;
     if (qcResult === "Pass with remarks") return <Tag type="teal">Pass*</Tag>;
     return <Tag type="gray">{qcResult}</Tag>;
+  };
+
+  // Get sample type tag
+  const getSampleTypeTag = (sampleTypeCategory) => {
+    if (!sampleTypeCategory) return null;
+    if (sampleTypeCategory === "pharmaceutical")
+      return <Tag type="blue">Pharma</Tag>;
+    if (sampleTypeCategory === "biological")
+      return <Tag type="purple">Bio</Tag>;
+    if (sampleTypeCategory === "microbiological")
+      return <Tag type="cyan">Micro</Tag>;
+    return <Tag type="gray">{sampleTypeCategory}</Tag>;
   };
 
   return (
@@ -449,34 +732,241 @@ function PharmaceuticalQualityCheckPage({
         />
       )}
 
-      {/* Sample Grid */}
-      <div className="sample-grid-container">
-        <SampleGrid
-          samples={samples}
-          selectedIds={selectedSampleIds}
-          onSelectionChange={setSelectedSampleIds}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          showSelection={true}
-          loading={loading}
-          columns={[
-            { key: "accessionNumber", header: "Accession Number" },
-            { key: "externalId", header: "Sample ID" },
-            { key: "sampleType", header: "Sample Type" },
-            { key: "containerIntegrity", header: "Container" },
-            {
-              key: "qcResult",
-              header: "QC Result",
-              render: (value) => getQCTag(value),
-            },
-            { key: "status", header: "Status" },
-          ]}
-        />
+      {/* Pending QC Samples Table */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.pharma.qc.pendingTable.title"
+              defaultMessage="Samples Pending QC"
+            />
+            <Tag type="gray" className="count-tag">
+              {
+                samples.filter(
+                  (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
+                ).length
+              }
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.pharma.qc.pendingTable.description"
+              defaultMessage="Select samples and use 'Bulk Apply QC' to perform quality checks. Samples with QC result can be marked as complete."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          <SampleGrid
+            gridId="pending-qc"
+            samples={samples.filter(
+              (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
+            )}
+            selectedIds={selectedSampleIds}
+            onSelectionChange={setSelectedSampleIds}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            showSelection={true}
+            loading={loading}
+            columns={[
+              {
+                key: "accessionNumber",
+                header: intl.formatMessage({
+                  id: "notebook.grid.accessionNumber",
+                  defaultMessage: "Accession Number",
+                }),
+              },
+              {
+                key: "externalId",
+                header: intl.formatMessage({
+                  id: "notebook.grid.sampleId",
+                  defaultMessage: "Sample ID",
+                }),
+              },
+              {
+                key: "sampleType",
+                header: intl.formatMessage({
+                  id: "notebook.grid.sampleType",
+                  defaultMessage: "Sample Type",
+                }),
+              },
+              {
+                key: "sampleTypeCategory",
+                header: intl.formatMessage({
+                  id: "notebook.grid.qcCategory",
+                  defaultMessage: "QC Category",
+                }),
+                render: (value) => getSampleTypeTag(value),
+              },
+              {
+                key: "qcResult",
+                header: intl.formatMessage({
+                  id: "notebook.grid.qcResult",
+                  defaultMessage: "QC Result",
+                }),
+                render: (value) => getQCTag(value),
+              },
+              {
+                key: "status",
+                header: intl.formatMessage({
+                  id: "notebook.grid.status",
+                  defaultMessage: "Status",
+                }),
+              },
+            ]}
+          />
+        </div>
+        {!loading &&
+          samples.filter(
+            (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
+          ).length === 0 && (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.pharma.qc.pendingTable.empty"
+                  defaultMessage="No samples pending QC. All samples have been processed."
+                />
+              </p>
+            </div>
+          )}
       </div>
 
-      {/* Empty state */}
+      {/* Completed QC Samples Table */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.pharma.qc.completedTable.title"
+              defaultMessage="QC Completed Samples"
+            />
+            <Tag type="green" className="count-tag">
+              {
+                samples.filter(
+                  (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+                ).length
+              }
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.pharma.qc.completedTable.description"
+              defaultMessage="Samples that have completed quality check. Passed samples can proceed to processing."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          <SampleGrid
+            gridId="completed-qc"
+            samples={samples.filter(
+              (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+            )}
+            selectedIds={[]}
+            showSelection={false}
+            loading={loading}
+            columns={[
+              {
+                key: "accessionNumber",
+                header: intl.formatMessage({
+                  id: "notebook.grid.accessionNumber",
+                  defaultMessage: "Accession Number",
+                }),
+              },
+              {
+                key: "externalId",
+                header: intl.formatMessage({
+                  id: "notebook.grid.sampleId",
+                  defaultMessage: "Sample ID",
+                }),
+              },
+              {
+                key: "sampleType",
+                header: intl.formatMessage({
+                  id: "notebook.grid.sampleType",
+                  defaultMessage: "Sample Type",
+                }),
+              },
+              {
+                key: "sampleTypeCategory",
+                header: intl.formatMessage({
+                  id: "notebook.grid.qcCategory",
+                  defaultMessage: "QC Category",
+                }),
+                render: (value) => getSampleTypeTag(value),
+              },
+              {
+                key: "qcResult",
+                header: intl.formatMessage({
+                  id: "notebook.grid.qcResult",
+                  defaultMessage: "QC Result",
+                }),
+                render: (value) => getQCTag(value),
+              },
+              {
+                key: "failAction",
+                header: intl.formatMessage({
+                  id: "notebook.grid.failAction",
+                  defaultMessage: "Action Taken",
+                }),
+                render: (value) => {
+                  if (!value) return "-";
+                  if (value === "reject") return <Tag type="red">Rejected</Tag>;
+                  if (value === "discard")
+                    return <Tag type="magenta">Discarded</Tag>;
+                  if (value === "quarantine")
+                    return <Tag type="purple">Quarantined</Tag>;
+                  return value;
+                },
+              },
+              {
+                key: "status",
+                header: intl.formatMessage({
+                  id: "notebook.grid.disposition",
+                  defaultMessage: "Disposition",
+                }),
+                render: (value) => {
+                  if (value === "SKIPPED") {
+                    return (
+                      <Tag type="red">
+                        <FormattedMessage
+                          id="notebook.disposition.notProceeding"
+                          defaultMessage="Not Proceeding"
+                        />
+                      </Tag>
+                    );
+                  }
+                  if (value === "COMPLETED") {
+                    return (
+                      <Tag type="green">
+                        <FormattedMessage
+                          id="notebook.disposition.proceeding"
+                          defaultMessage="Proceeding"
+                        />
+                      </Tag>
+                    );
+                  }
+                  return "-";
+                },
+              },
+            ]}
+          />
+        </div>
+        {!loading &&
+          samples.filter(
+            (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+          ).length === 0 && (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.pharma.qc.completedTable.empty"
+                  defaultMessage="No samples have completed QC yet."
+                />
+              </p>
+            </div>
+          )}
+      </div>
+
+      {/* Global empty state - only show when no samples at all */}
       {!loading && samples.length === 0 && (
-        <div className="empty-state">
+        <div className="empty-state global-empty">
           <p>
             <FormattedMessage
               id="notebook.page.pharma.qc.empty"
@@ -492,7 +982,7 @@ function PharmaceuticalQualityCheckPage({
         onRequestClose={() => setBulkApplyModalOpen(false)}
         modalHeading={intl.formatMessage({
           id: "notebook.pharma.bulkApply.title",
-          defaultMessage: "Bulk Apply QC Values",
+          defaultMessage: "Raw Sample Quality Check (QC)",
         })}
         primaryButtonText={
           isBulkApplying
@@ -500,7 +990,20 @@ function PharmaceuticalQualityCheckPage({
                 id: "label.applying",
                 defaultMessage: "Applying...",
               })
-            : intl.formatMessage({ id: "label.apply", defaultMessage: "Apply" })
+            : bulkApplyValues.qcResult === "Pass"
+              ? intl.formatMessage({
+                  id: "notebook.pharma.qc.action.pass",
+                  defaultMessage: "Pass - Proceed to Processing",
+                })
+              : bulkApplyValues.qcResult === "Fail"
+                ? intl.formatMessage({
+                    id: "notebook.pharma.qc.action.fail",
+                    defaultMessage: "Fail - Reject Sample(s)",
+                  })
+                : intl.formatMessage({
+                    id: "label.apply",
+                    defaultMessage: "Apply QC",
+                  })
         }
         secondaryButtonText={intl.formatMessage({
           id: "label.cancel",
@@ -509,224 +1012,876 @@ function PharmaceuticalQualityCheckPage({
         onRequestSubmit={handleBulkApply}
         onSecondarySubmit={() => setBulkApplyModalOpen(false)}
         size="lg"
-        primaryButtonDisabled={isBulkApplying}
+        primaryButtonDisabled={isBulkApplying || !bulkApplyValues.qcResult}
+        danger={bulkApplyValues.qcResult === "Fail"}
       >
-        <p className="modal-description">
-          <FormattedMessage
-            id="notebook.pharma.bulkApply.description"
-            defaultMessage="Apply the following QC values to {count} selected sample(s). Only non-empty values will be applied."
-            values={{ count: selectedSampleIds.length }}
-          />
-        </p>
+        <div className="qc-bulk-apply-modal">
+          <p className="modal-description">
+            <FormattedMessage
+              id="notebook.pharma.bulkApply.description"
+              defaultMessage="Perform quality checks on {count} selected sample(s). Complete the checklist for the appropriate sample type."
+              values={{ count: selectedSampleIds.length }}
+            />
+          </p>
 
-        <Grid fullWidth>
-          {/* Physical Inspection */}
-          <Column lg={16} md={8} sm={4}>
-            <h5 style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
-              <FormattedMessage
-                id="notebook.pharma.qc.section.physical"
-                defaultMessage="Physical Inspection"
-              />
-            </h5>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="containerIntegrity"
-              labelText={intl.formatMessage({
-                id: "notebook.pharma.qc.field.container",
-                defaultMessage: "Container Integrity",
-              })}
-              value={bulkApplyValues.containerIntegrity}
-              onChange={(e) =>
-                setBulkApplyValues((prev) => ({
-                  ...prev,
-                  containerIntegrity: e.target.value,
-                }))
-              }
-            >
-              <SelectItem value="" text="Select..." />
-              <SelectItem value="Intact" text="Intact" />
-              <SelectItem value="Compromised" text="Compromised" />
-            </Select>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="labelReadability"
-              labelText={intl.formatMessage({
-                id: "notebook.pharma.qc.field.label",
-                defaultMessage: "Label Readability",
-              })}
-              value={bulkApplyValues.labelReadability}
-              onChange={(e) =>
-                setBulkApplyValues((prev) => ({
-                  ...prev,
-                  labelReadability: e.target.value,
-                }))
-              }
-            >
-              <SelectItem value="" text="Select..." />
-              <SelectItem value="Readable" text="Readable" />
-              <SelectItem value="Illegible" text="Illegible" />
-            </Select>
-          </Column>
-
-          {/* Verification */}
-          <Column lg={16} md={8} sm={4}>
-            <h5 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>
-              <FormattedMessage
-                id="notebook.pharma.qc.section.verification"
-                defaultMessage="Verification"
-              />
-            </h5>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <RadioButtonGroup
-              legendText={intl.formatMessage({
-                id: "notebook.pharma.qc.field.appearance",
-                defaultMessage: "Appearance matches specification",
-              })}
-              name="appearanceMatch"
-              valueSelected={
-                bulkApplyValues.appearanceMatch === true
-                  ? "yes"
-                  : bulkApplyValues.appearanceMatch === false
-                    ? "no"
-                    : ""
-              }
-              onChange={(value) =>
-                setBulkApplyValues((prev) => ({
-                  ...prev,
-                  appearanceMatch: value === "yes",
-                }))
-              }
-            >
-              <RadioButton labelText="Yes" value="yes" id="appearance-yes" />
-              <RadioButton labelText="No" value="no" id="appearance-no" />
-            </RadioButtonGroup>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <RadioButtonGroup
-              legendText={intl.formatMessage({
-                id: "notebook.pharma.qc.field.deviation",
-                defaultMessage: "Environmental deviation detected",
-              })}
-              name="environmentalDeviation"
-              valueSelected={
-                bulkApplyValues.environmentalDeviation === true
-                  ? "yes"
-                  : bulkApplyValues.environmentalDeviation === false
-                    ? "no"
-                    : ""
-              }
-              onChange={(value) =>
-                setBulkApplyValues((prev) => ({
-                  ...prev,
-                  environmentalDeviation: value === "yes",
-                }))
-              }
-            >
-              <RadioButton labelText="Yes" value="yes" id="deviation-yes" />
-              <RadioButton labelText="No" value="no" id="deviation-no" />
-            </RadioButtonGroup>
-          </Column>
-
-          {bulkApplyValues.environmentalDeviation && (
+          {/* Sample Type Selection */}
+          <Grid fullWidth>
             <Column lg={16} md={8} sm={4}>
-              <TextArea
-                id="deviationNotes"
-                labelText={intl.formatMessage({
-                  id: "notebook.pharma.qc.field.deviationNotes",
-                  defaultMessage: "Deviation Notes",
-                })}
-                value={bulkApplyValues.deviationNotes}
-                onChange={(e) =>
-                  setBulkApplyValues((prev) => ({
-                    ...prev,
-                    deviationNotes: e.target.value,
-                  }))
-                }
-                placeholder="Describe environmental deviation..."
-              />
-            </Column>
-          )}
-
-          {/* Quality Assessment */}
-          <Column lg={16} md={8} sm={4}>
-            <h5 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>
-              <FormattedMessage
-                id="notebook.pharma.qc.section.assessment"
-                defaultMessage="Quality Assessment"
-              />
-            </h5>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="qcResult"
-              labelText={intl.formatMessage({
-                id: "notebook.pharma.qc.field.result",
-                defaultMessage: "QC Result",
-              })}
-              value={bulkApplyValues.qcResult}
-              onChange={(e) =>
-                setBulkApplyValues((prev) => ({
-                  ...prev,
-                  qcResult: e.target.value,
-                }))
-              }
-            >
-              <SelectItem value="" text="Select QC result..." />
-              <SelectItem value="Pass" text="Pass" />
-              <SelectItem value="Fail" text="Fail" />
-              <SelectItem value="Pass with remarks" text="Pass with remarks" />
-            </Select>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            {bulkApplyValues.qcResult === "Fail" && (
               <Select
-                id="failAction"
+                id="sampleType"
                 labelText={intl.formatMessage({
-                  id: "notebook.pharma.qc.field.failAction",
-                  defaultMessage: "Action if Fail",
+                  id: "notebook.pharma.qc.sampleType",
+                  defaultMessage: "Sample Type Category",
                 })}
-                value={bulkApplyValues.failAction}
-                onChange={(e) =>
-                  setBulkApplyValues((prev) => ({
-                    ...prev,
-                    failAction: e.target.value,
-                  }))
-                }
+                value={sampleType}
+                onChange={(e) => {
+                  setSampleType(e.target.value);
+                  // Reset checks when sample type changes
+                  resetBulkApplyValues();
+                  setSampleType(e.target.value);
+                }}
               >
-                <SelectItem value="" text="Select action..." />
-                <SelectItem value="Discard" text="Discard sample" />
-                <SelectItem value="Notify" text="Notify submitter" />
                 <SelectItem
-                  value="Proceed with remarks"
-                  text="Proceed with remarks"
+                  value="pharmaceutical"
+                  text={intl.formatMessage({
+                    id: "notebook.pharma.qc.type.pharmaceutical",
+                    defaultMessage: "Pharmaceutical Sample",
+                  })}
+                />
+                <SelectItem
+                  value="biological"
+                  text={intl.formatMessage({
+                    id: "notebook.pharma.qc.type.biological",
+                    defaultMessage: "Biological Sample",
+                  })}
+                />
+                <SelectItem
+                  value="microbiological"
+                  text={intl.formatMessage({
+                    id: "notebook.pharma.qc.type.microbiological",
+                    defaultMessage: "Microbiological/Environmental Sample",
+                  })}
                 />
               </Select>
-            )}
-          </Column>
-          <Column lg={16} md={8} sm={4}>
-            {(bulkApplyValues.qcResult === "Fail" ||
-              bulkApplyValues.qcResult === "Pass with remarks") && (
-              <TextArea
-                id="qcRemarks"
-                labelText={intl.formatMessage({
-                  id: "notebook.pharma.qc.field.remarks",
-                  defaultMessage: "QC Remarks",
-                })}
-                value={bulkApplyValues.qcRemarks}
-                onChange={(e) =>
-                  setBulkApplyValues((prev) => ({
-                    ...prev,
-                    qcRemarks: e.target.value,
-                  }))
-                }
-                placeholder="Enter QC remarks..."
+            </Column>
+          </Grid>
+
+          {/* Pharmaceutical Sample Checks */}
+          {sampleType === "pharmaceutical" && (
+            <div className="qc-section">
+              <h5 className="qc-section-header">
+                <FormattedMessage
+                  id="notebook.pharma.qc.section.pharmaChecks"
+                  defaultMessage="Pharmaceutical Sample Checks"
+                />
+              </h5>
+              <Grid fullWidth className="qc-checklist">
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.pharma.labelAccuracy",
+                      defaultMessage: "Label accuracy (matches requisition)",
+                    })}
+                    name="pharmaLabelAccuracy"
+                    valueSelected={
+                      bulkApplyValues.pharmaLabelAccuracy === true
+                        ? "pass"
+                        : bulkApplyValues.pharmaLabelAccuracy === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        pharmaLabelAccuracy: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="pharma-label-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="pharma-label-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.pharma.containerIntegrity",
+                      defaultMessage:
+                        "Container integrity (no leaks/tampering)",
+                    })}
+                    name="pharmaContainerIntegrity"
+                    valueSelected={
+                      bulkApplyValues.pharmaContainerIntegrity === true
+                        ? "pass"
+                        : bulkApplyValues.pharmaContainerIntegrity === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        pharmaContainerIntegrity: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="pharma-container-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="pharma-container-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.pharma.quantityVolume",
+                      defaultMessage: "Quantity/Volume (meets minimum)",
+                    })}
+                    name="pharmaQuantityVolume"
+                    valueSelected={
+                      bulkApplyValues.pharmaQuantityVolume === true
+                        ? "pass"
+                        : bulkApplyValues.pharmaQuantityVolume === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        pharmaQuantityVolume: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="pharma-qty-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="pharma-qty-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.pharma.physicalAppearance",
+                      defaultMessage:
+                        "Physical appearance (matches pharmacopeial description)",
+                    })}
+                    name="pharmaPhysicalAppearance"
+                    valueSelected={
+                      bulkApplyValues.pharmaPhysicalAppearance === true
+                        ? "pass"
+                        : bulkApplyValues.pharmaPhysicalAppearance === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        pharmaPhysicalAppearance: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="pharma-appearance-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="pharma-appearance-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.pharma.expiryValidity",
+                      defaultMessage: "Expiry/Validity (not expired)",
+                    })}
+                    name="pharmaExpiryValidity"
+                    valueSelected={
+                      bulkApplyValues.pharmaExpiryValidity === true
+                        ? "pass"
+                        : bulkApplyValues.pharmaExpiryValidity === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        pharmaExpiryValidity: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="pharma-expiry-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="pharma-expiry-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.pharma.storageCompliance",
+                      defaultMessage: "Storage/transport compliance",
+                    })}
+                    name="pharmaStorageCompliance"
+                    valueSelected={
+                      bulkApplyValues.pharmaStorageCompliance === true
+                        ? "pass"
+                        : bulkApplyValues.pharmaStorageCompliance === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        pharmaStorageCompliance: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="pharma-storage-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="pharma-storage-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  <TextInput
+                    id="pharmaStorageConditions"
+                    labelText={intl.formatMessage({
+                      id: "notebook.pharma.qc.pharma.storageConditions",
+                      defaultMessage:
+                        "Storage conditions (e.g., 25°C / 60% RH)",
+                    })}
+                    value={bulkApplyValues.pharmaStorageConditions}
+                    onChange={(e) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        pharmaStorageConditions: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g., 25°C / 60% RH"
+                  />
+                </Column>
+              </Grid>
+            </div>
+          )}
+
+          {/* Biological Sample Checks */}
+          {sampleType === "biological" && (
+            <div className="qc-section">
+              <h5 className="qc-section-header">
+                <FormattedMessage
+                  id="notebook.pharma.qc.section.bioChecks"
+                  defaultMessage="Biological Sample Checks"
+                />
+              </h5>
+              <Grid fullWidth className="qc-checklist">
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.bio.labelAccuracy",
+                      defaultMessage: "Label accuracy",
+                    })}
+                    name="bioLabelAccuracy"
+                    valueSelected={
+                      bulkApplyValues.bioLabelAccuracy === true
+                        ? "pass"
+                        : bulkApplyValues.bioLabelAccuracy === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        bioLabelAccuracy: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="bio-label-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="bio-label-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.bio.containerIntegrity",
+                      defaultMessage: "Container integrity",
+                    })}
+                    name="bioContainerIntegrity"
+                    valueSelected={
+                      bulkApplyValues.bioContainerIntegrity === true
+                        ? "pass"
+                        : bulkApplyValues.bioContainerIntegrity === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        bioContainerIntegrity: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="bio-container-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="bio-container-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.bio.volumeQuantity",
+                      defaultMessage: "Volume/Quantity",
+                    })}
+                    name="bioVolumeQuantity"
+                    valueSelected={
+                      bulkApplyValues.bioVolumeQuantity === true
+                        ? "pass"
+                        : bulkApplyValues.bioVolumeQuantity === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        bioVolumeQuantity: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="bio-volume-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="bio-volume-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.bio.visualIntegrity",
+                      defaultMessage:
+                        "Visual integrity (free from hemolysis/contamination)",
+                    })}
+                    name="bioVisualIntegrity"
+                    valueSelected={
+                      bulkApplyValues.bioVisualIntegrity === true
+                        ? "pass"
+                        : bulkApplyValues.bioVisualIntegrity === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        bioVisualIntegrity: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="bio-visual-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="bio-visual-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.bio.transportCompliance",
+                      defaultMessage: "Transport/Storage compliance",
+                    })}
+                    name="bioTransportCompliance"
+                    valueSelected={
+                      bulkApplyValues.bioTransportCompliance === true
+                        ? "pass"
+                        : bulkApplyValues.bioTransportCompliance === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        bioTransportCompliance: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="bio-transport-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="bio-transport-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.bio.biosafetyLabeling",
+                      defaultMessage: "Biosafety risk labeling",
+                    })}
+                    name="bioBiosafetyLabeling"
+                    valueSelected={
+                      bulkApplyValues.bioBiosafetyLabeling === true
+                        ? "pass"
+                        : bulkApplyValues.bioBiosafetyLabeling === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        bioBiosafetyLabeling: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="bio-biosafety-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="bio-biosafety-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+              </Grid>
+            </div>
+          )}
+
+          {/* Microbiological/Environmental Sample Checks */}
+          {sampleType === "microbiological" && (
+            <div className="qc-section">
+              <h5 className="qc-section-header">
+                <FormattedMessage
+                  id="notebook.pharma.qc.section.microChecks"
+                  defaultMessage="Microbiological/Environmental Checks"
+                />
+              </h5>
+              <Grid fullWidth className="qc-checklist">
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.micro.containerIntegrity",
+                      defaultMessage:
+                        "Container integrity (especially sterility)",
+                    })}
+                    name="microContainerIntegrity"
+                    valueSelected={
+                      bulkApplyValues.microContainerIntegrity === true
+                        ? "pass"
+                        : bulkApplyValues.microContainerIntegrity === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        microContainerIntegrity: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="micro-container-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="micro-container-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.micro.sampleVolume",
+                      defaultMessage: "Sample Volume/Quantity",
+                    })}
+                    name="microSampleVolume"
+                    valueSelected={
+                      bulkApplyValues.microSampleVolume === true
+                        ? "pass"
+                        : bulkApplyValues.microSampleVolume === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        microSampleVolume: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="micro-volume-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="micro-volume-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.micro.holdingTime",
+                      defaultMessage: "Holding time (within timeframe)",
+                    })}
+                    name="microHoldingTime"
+                    valueSelected={
+                      bulkApplyValues.microHoldingTime === true
+                        ? "pass"
+                        : bulkApplyValues.microHoldingTime === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        microHoldingTime: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="micro-holding-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="micro-holding-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.pharma.qc.micro.transportCompliance",
+                      defaultMessage: "Transport/Storage compliance",
+                    })}
+                    name="microTransportCompliance"
+                    valueSelected={
+                      bulkApplyValues.microTransportCompliance === true
+                        ? "pass"
+                        : bulkApplyValues.microTransportCompliance === false
+                          ? "fail"
+                          : ""
+                    }
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        microTransportCompliance: value === "pass",
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText="Pass"
+                      value="pass"
+                      id="micro-transport-pass"
+                    />
+                    <RadioButton
+                      labelText="Fail"
+                      value="fail"
+                      id="micro-transport-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+              </Grid>
+            </div>
+          )}
+
+          {/* QC Result Summary */}
+          <div className="qc-section qc-result-section">
+            <h5 className="qc-section-header">
+              <FormattedMessage
+                id="notebook.pharma.qc.section.result"
+                defaultMessage="QC Result"
               />
-            )}
-          </Column>
-        </Grid>
+            </h5>
+            <Grid fullWidth>
+              <Column lg={8} md={4} sm={4}>
+                <div className="qc-result-display">
+                  {bulkApplyValues.qcResult === "Pass" && (
+                    <Tag type="green" size="lg">
+                      <FormattedMessage
+                        id="notebook.pharma.qc.result.pass"
+                        defaultMessage="PASS - Proceed to Processing"
+                      />
+                    </Tag>
+                  )}
+                  {bulkApplyValues.qcResult === "Fail" && (
+                    <Tag type="red" size="lg">
+                      <FormattedMessage
+                        id="notebook.pharma.qc.result.fail"
+                        defaultMessage="FAIL - Reject Sample"
+                      />
+                    </Tag>
+                  )}
+                  {!bulkApplyValues.qcResult && (
+                    <Tag type="gray" size="lg">
+                      <FormattedMessage
+                        id="notebook.pharma.qc.result.pending"
+                        defaultMessage="Complete checklist above"
+                      />
+                    </Tag>
+                  )}
+                </div>
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <Select
+                  id="qcResultOverride"
+                  labelText={intl.formatMessage({
+                    id: "notebook.pharma.qc.resultOverride",
+                    defaultMessage: "Override QC Result (optional)",
+                  })}
+                  value={bulkApplyValues.qcResult}
+                  onChange={(e) =>
+                    setBulkApplyValues((prev) => ({
+                      ...prev,
+                      qcResult: e.target.value,
+                    }))
+                  }
+                >
+                  <SelectItem value="" text="Auto (based on checklist)" />
+                  <SelectItem value="Pass" text="Pass" />
+                  <SelectItem value="Fail" text="Fail" />
+                </Select>
+              </Column>
+            </Grid>
+          </div>
+
+          {/* Fail Actions */}
+          {bulkApplyValues.qcResult === "Fail" && (
+            <div className="qc-section qc-fail-actions">
+              <h5 className="qc-section-header">
+                <FormattedMessage
+                  id="notebook.pharma.qc.section.failActions"
+                  defaultMessage="Fail Actions"
+                />
+              </h5>
+              <InlineNotification
+                kind="warning"
+                title={intl.formatMessage({
+                  id: "notebook.pharma.qc.failWarning.title",
+                  defaultMessage: "Sample(s) will be rejected",
+                })}
+                subtitle={intl.formatMessage({
+                  id: "notebook.pharma.qc.failWarning.subtitle",
+                  defaultMessage:
+                    "Failed samples will be logged in LMIS and marked for rejection.",
+                })}
+                hideCloseButton
+                lowContrast
+              />
+              <Grid fullWidth>
+                <Column lg={16} md={8} sm={4}>
+                  <TextArea
+                    id="rejectionReason"
+                    labelText={intl.formatMessage({
+                      id: "notebook.pharma.qc.rejectionReason",
+                      defaultMessage: "Rejection Reason",
+                    })}
+                    value={bulkApplyValues.rejectionReason}
+                    onChange={(e) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        rejectionReason: e.target.value,
+                      }))
+                    }
+                    placeholder={intl.formatMessage({
+                      id: "notebook.pharma.qc.rejectionReason.placeholder",
+                      defaultMessage:
+                        "Describe the reason for rejection (required for audit trail)...",
+                    })}
+                    required
+                  />
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <Select
+                    id="failAction"
+                    labelText={intl.formatMessage({
+                      id: "notebook.pharma.qc.failAction",
+                      defaultMessage: "Primary Action",
+                    })}
+                    value={bulkApplyValues.failAction}
+                    onChange={(e) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        failAction: e.target.value,
+                      }))
+                    }
+                  >
+                    <SelectItem value="" text="Select action..." />
+                    <SelectItem
+                      value="reject"
+                      text={intl.formatMessage({
+                        id: "notebook.pharma.qc.failAction.reject",
+                        defaultMessage: "Reject and log in LMIS",
+                      })}
+                    />
+                    <SelectItem
+                      value="discard"
+                      text={intl.formatMessage({
+                        id: "notebook.pharma.qc.failAction.discard",
+                        defaultMessage: "Discard sample",
+                      })}
+                    />
+                    <SelectItem
+                      value="quarantine"
+                      text={intl.formatMessage({
+                        id: "notebook.pharma.qc.failAction.quarantine",
+                        defaultMessage: "Quarantine for review",
+                      })}
+                    />
+                  </Select>
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <div className="qc-fail-checkboxes">
+                    <Checkbox
+                      id="notifySubmitter"
+                      labelText={intl.formatMessage({
+                        id: "notebook.pharma.qc.notifySubmitter",
+                        defaultMessage: "Notify submitter",
+                      })}
+                      checked={bulkApplyValues.notifySubmitter}
+                      onChange={(_, { checked }) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          notifySubmitter: checked,
+                        }))
+                      }
+                    />
+                    <Checkbox
+                      id="requestReplacement"
+                      labelText={intl.formatMessage({
+                        id: "notebook.pharma.qc.requestReplacement",
+                        defaultMessage: "Request replacement sample",
+                      })}
+                      checked={bulkApplyValues.requestReplacement}
+                      onChange={(_, { checked }) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          requestReplacement: checked,
+                        }))
+                      }
+                    />
+                  </div>
+                </Column>
+              </Grid>
+            </div>
+          )}
+
+          {/* Remarks (for both Pass and Fail) */}
+          <div className="qc-section">
+            <Grid fullWidth>
+              <Column lg={16} md={8} sm={4}>
+                <TextArea
+                  id="qcRemarks"
+                  labelText={intl.formatMessage({
+                    id: "notebook.pharma.qc.remarks",
+                    defaultMessage: "QC Remarks (optional)",
+                  })}
+                  value={bulkApplyValues.qcRemarks}
+                  onChange={(e) =>
+                    setBulkApplyValues((prev) => ({
+                      ...prev,
+                      qcRemarks: e.target.value,
+                    }))
+                  }
+                  placeholder={intl.formatMessage({
+                    id: "notebook.pharma.qc.remarks.placeholder",
+                    defaultMessage:
+                      "Add any additional notes or observations...",
+                  })}
+                />
+              </Column>
+            </Grid>
+          </div>
+        </div>
       </Modal>
     </div>
   );

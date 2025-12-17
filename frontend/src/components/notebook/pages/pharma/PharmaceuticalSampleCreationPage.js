@@ -1,5 +1,18 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Grid, Column, Button, Tile, InlineNotification } from "@carbon/react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
+import {
+  Grid,
+  Column,
+  Button,
+  Tile,
+  InlineNotification,
+  Tag,
+} from "@carbon/react";
 import { Upload, Checkmark } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -31,7 +44,6 @@ function PharmaceuticalSampleCreationPage({
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -174,8 +186,18 @@ function PharmaceuticalSampleCreationPage({
     pageData?.id,
   ]);
 
-  const pendingCount = samples.filter((s) => s.status === "PENDING").length;
-  const completedCount = samples.filter((s) => s.status === "COMPLETED").length;
+  // Split samples into pending and completed
+  const pendingSamples = useMemo(
+    () => samples.filter((s) => s.status === "PENDING"),
+    [samples],
+  );
+  const completedSamples = useMemo(
+    () => samples.filter((s) => s.status === "COMPLETED"),
+    [samples],
+  );
+
+  const pendingCount = pendingSamples.length;
+  const completedCount = completedSamples.length;
 
   return (
     <div className="pharma-sample-creation-page">
@@ -278,31 +300,143 @@ function PharmaceuticalSampleCreationPage({
         />
       )}
 
-      {/* Sample Grid */}
-      <div className="sample-grid-container">
-        <SampleGrid
-          samples={samples}
-          selectedIds={selectedSampleIds}
-          onSelectionChange={setSelectedSampleIds}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          showSelection={true}
-          loading={loading}
-          columns={[
-            { key: "accessionNumber", header: "Accession Number" },
-            { key: "externalId", header: "Sample ID" },
-            { key: "sampleCategory", header: "Category" },
-            { key: "sampleMaterial", header: "Material" },
-            { key: "lotNumber", header: "Lot / Batch" },
-            { key: "storageCondition", header: "Storage" },
-            { key: "status", header: "Status" },
-          ]}
-        />
+      {/* Pending Samples Table */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.pharma.pendingSamples.title"
+              defaultMessage="Pending Registration"
+            />
+            <Tag type="gray" size="sm" className="count-tag">
+              {pendingCount}
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.pharma.pendingSamples.description"
+              defaultMessage="Samples awaiting registration. Select samples and mark as Registered to move them to the completed section."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          {!loading && pendingSamples.length === 0 ? (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.pharma.pendingSamples.empty"
+                  defaultMessage="No pending samples. Import a manifest to add samples."
+                />
+              </p>
+            </div>
+          ) : (
+            <SampleGrid
+              gridId="pending-samples"
+              samples={pendingSamples}
+              selectedIds={selectedSampleIds}
+              onSelectionChange={setSelectedSampleIds}
+              showSelection={true}
+              loading={loading}
+              additionalColumns={[
+                {
+                  key: "sampleType",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.sampleType",
+                    defaultMessage: "Sample Type",
+                  }),
+                  render: (sample) => sample.sampleType || "-",
+                },
+                {
+                  key: "lotNumber",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.lotNumber",
+                    defaultMessage: "Lot / Batch",
+                  }),
+                  render: (sample) => sample.lotNumber || "-",
+                },
+                {
+                  key: "storageCondition",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.storage",
+                    defaultMessage: "Storage",
+                  }),
+                  render: (sample) => sample.storageCondition || "-",
+                },
+              ]}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Empty state */}
+      {/* Completed / Registered Samples Table */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.pharma.completedSamples.title"
+              defaultMessage="Registered Samples"
+            />
+            <Tag type="green" size="sm" className="count-tag">
+              {completedCount}
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.pharma.completedSamples.description"
+              defaultMessage="Samples that have been registered and are ready for the next workflow step (QC)."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          {!loading && completedSamples.length === 0 ? (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.pharma.completedSamples.empty"
+                  defaultMessage="No registered samples yet. Select pending samples and mark them as registered."
+                />
+              </p>
+            </div>
+          ) : (
+            <SampleGrid
+              gridId="completed-samples"
+              samples={completedSamples}
+              showSelection={false}
+              loading={loading}
+              additionalColumns={[
+                {
+                  key: "sampleType",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.sampleType",
+                    defaultMessage: "Sample Type",
+                  }),
+                  render: (sample) => sample.sampleType || "-",
+                },
+                {
+                  key: "lotNumber",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.lotNumber",
+                    defaultMessage: "Lot / Batch",
+                  }),
+                  render: (sample) => sample.lotNumber || "-",
+                },
+                {
+                  key: "storageCondition",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.storage",
+                    defaultMessage: "Storage",
+                  }),
+                  render: (sample) => sample.storageCondition || "-",
+                },
+              ]}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Global Empty state - only show when no samples at all */}
       {!loading && samples.length === 0 && (
-        <div className="empty-state">
+        <div className="empty-state global-empty">
           <p>
             <FormattedMessage
               id="notebook.page.pharma.empty"
