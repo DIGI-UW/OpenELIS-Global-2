@@ -383,6 +383,7 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
 
   const displayTitle = entry?.title || notebook?.title;
   const displayStatus = entry?.status || notebook?.status;
+  const displayOrganization = entry?.organizationName || null;
 
   return (
     <div className="notebook-workflow-container tb-workflow">
@@ -393,6 +394,9 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
             <div className="workflow-meta">
               <Tag type="purple">TB</Tag>
               <Tag type="blue">{displayStatus}</Tag>
+              {displayOrganization && (
+                <Tag type="teal">{displayOrganization}</Tag>
+              )}
               <span className="sample-count">
                 <FormattedMessage
                   id="notebook.workflow.sampleCount"

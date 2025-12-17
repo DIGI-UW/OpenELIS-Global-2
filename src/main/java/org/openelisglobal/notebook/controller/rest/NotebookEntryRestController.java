@@ -4,15 +4,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.service.NoteBookService;
 import org.openelisglobal.notebook.service.NotebookEntryService;
+import org.openelisglobal.notebook.service.NotebookSecurityService;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookEntry.EntryStatus;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +46,12 @@ public class NotebookEntryRestController extends BaseRestController {
     @Autowired
     private NoteBookService noteBookService;
 
+    @Autowired
+    private NotebookSecurityService notebookSecurityService;
+
+    @Autowired
+    private TestSectionService testSectionService;
+
     /**
      * Create a new notebook entry from a template.
      *
@@ -59,20 +70,60 @@ public class NotebookEntryRestController extends BaseRestController {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
         }
 
+        String loginLabUnit = getLoginLabUnit(request);
+
         try {
-            // Verify template exists
+            // Check if template exists first
             NoteBook template = noteBookService.get(notebookId);
             if (template == null) {
                 return ResponseEntity.notFound().build();
             }
 
-            NotebookEntry entry = notebookEntryService.createEntry(notebookId, title, sysUserId);
+            // Check if user can view the template
+            if (!notebookSecurityService.canViewTemplate(notebookId, sysUserId, loginLabUnit)) {
+                Map<String, Object> error = new HashMap<>();
+                if (loginLabUnit == null || loginLabUnit.isEmpty()) {
+                    error.put("error",
+                            "Access denied. No department selected. Please log in with a specific lab unit or ensure you have 'AllLabUnits' access.");
+                } else {
+                    error.put("error",
+                            "Access denied. This template is not assigned to your department: " + loginLabUnit);
+                }
+                error.put("loginLabUnit", loginLabUnit != null ? loginLabUnit : "none");
+                return ResponseEntity.status(403).body(error);
+            }
+
+            // Check if user can create entries for this template
+            if (!notebookSecurityService.canCreateEntry(notebookId, sysUserId, loginLabUnit)) {
+                // User can view but not create - must be role restriction
+                // Provide detailed info to help debug
+                Set<String> allowedRoles = noteBookService.getNoteBookAllowedRoles(notebookId);
+                Map<String, Object> error = new HashMap<>();
+                if (allowedRoles != null && !allowedRoles.isEmpty()) {
+                    error.put("error",
+                            "Access denied. You need one of the required roles to create entries for this template.");
+                    error.put("requiredRoles", allowedRoles);
+                } else {
+                    error.put("error", "Access denied. Unable to verify permissions for entry creation.");
+                }
+                error.put("loginLabUnit", loginLabUnit);
+                return ResponseEntity.status(403).body(error);
+            }
+
+            // Get organization from loginLabUnit
+            Organization organization = notebookSecurityService.getOrganizationForLoginLabUnit(loginLabUnit);
+
+            NotebookEntry entry = notebookEntryService.createEntry(notebookId, title, organization, sysUserId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("id", entry.getId());
             response.put("notebookId", notebookId);
             response.put("title", entry.getEffectiveTitle());
             response.put("status", entry.getStatus().name());
+            if (organization != null) {
+                response.put("organizationId", organization.getId());
+                response.put("organizationName", organization.getOrganizationName());
+            }
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -90,10 +141,18 @@ public class NotebookEntryRestController extends BaseRestController {
      */
     @GetMapping(value = "/{entryId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> getEntry(@PathVariable("entryId") Integer entryId) {
+    public ResponseEntity<?> getEntry(@PathVariable("entryId") Integer entryId, HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
         NotebookEntry entry = notebookEntryService.getWithRelationships(entryId);
         if (entry == null) {
             return ResponseEntity.notFound().build();
+        }
+
+        // Check if user can view this entry
+        if (!notebookSecurityService.canViewEntry(entry, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied to this entry"));
         }
 
         return ResponseEntity.ok(convertToMap(entry));
@@ -108,9 +167,15 @@ public class NotebookEntryRestController extends BaseRestController {
     @GetMapping(value = "/by-notebook/{notebookId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<List<Map<String, Object>>> getEntriesByNotebook(
-            @PathVariable("notebookId") Integer notebookId) {
+            @PathVariable("notebookId") Integer notebookId, HttpServletRequest request) {
 
-        List<NotebookEntry> entries = notebookEntryService.findByNotebookId(notebookId);
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Filter entries by user's accessible organizations
+        List<NotebookEntry> entries = notebookEntryService.findByNotebookId(notebookId).stream()
+                .filter(entry -> notebookSecurityService.canViewEntry(entry, sysUserId, loginLabUnit))
+                .collect(Collectors.toList());
         List<Map<String, Object>> result = entries.stream().map(this::convertToMap).collect(Collectors.toList());
 
         return ResponseEntity.ok(result);
@@ -124,9 +189,16 @@ public class NotebookEntryRestController extends BaseRestController {
      */
     @GetMapping(value = "/by-status/{status}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<Map<String, Object>>> getEntriesByStatus(@PathVariable("status") EntryStatus status) {
+    public ResponseEntity<List<Map<String, Object>>> getEntriesByStatus(@PathVariable("status") EntryStatus status,
+            HttpServletRequest request) {
 
-        List<NotebookEntry> entries = notebookEntryService.findByStatus(status);
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Filter entries by user's accessible organizations
+        List<NotebookEntry> entries = notebookEntryService.findByStatus(status).stream()
+                .filter(entry -> notebookSecurityService.canViewEntry(entry, sysUserId, loginLabUnit))
+                .collect(Collectors.toList());
         List<Map<String, Object>> result = entries.stream().map(this::convertToMap).collect(Collectors.toList());
 
         return ResponseEntity.ok(result);
@@ -148,6 +220,14 @@ public class NotebookEntryRestController extends BaseRestController {
         String sysUserId = getSysUserId(request);
         if (sysUserId == null) {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Check if user can edit this entry
+        if (!notebookSecurityService.canEditEntry(entryId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Access denied. You need the required role to edit this entry."));
         }
 
         notebookEntryService.updateStatus(entryId, status, sysUserId);
@@ -316,6 +396,14 @@ public class NotebookEntryRestController extends BaseRestController {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
         }
 
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Check if user can edit this entry
+        if (!notebookSecurityService.canEditEntry(entryId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Access denied. You need the required role to edit this entry."));
+        }
+
         // Get the sample item
         org.openelisglobal.sampleitem.service.SampleItemService sampleItemService = org.openelisglobal.spring.util.SpringContext
                 .getBean(org.openelisglobal.sampleitem.service.SampleItemService.class);
@@ -350,6 +438,14 @@ public class NotebookEntryRestController extends BaseRestController {
         String sysUserId = getSysUserId(request);
         if (sysUserId == null) {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Check if user can edit this entry
+        if (!notebookSecurityService.canEditEntry(entryId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Access denied. You need the required role to edit this entry."));
         }
 
         notebookEntryService.removeSample(entryId, sampleId, sysUserId);
@@ -407,6 +503,14 @@ public class NotebookEntryRestController extends BaseRestController {
         String sysUserId = getSysUserId(request);
         if (sysUserId == null) {
             return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Check if user can edit this entry (adding comment is an edit action)
+        if (!notebookSecurityService.canEditEntry(entryId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Access denied. You need the required role to add comments."));
         }
 
         String text = body.get("text");
@@ -539,6 +643,12 @@ public class NotebookEntryRestController extends BaseRestController {
             map.put("creator", creatorMap);
         }
 
+        // Add organization info for access control display
+        if (entry.getOrganization() != null) {
+            map.put("organizationId", entry.getOrganization().getId());
+            map.put("organizationName", entry.getOrganization().getOrganizationName());
+        }
+
         return map;
     }
 
@@ -549,5 +659,27 @@ public class NotebookEntryRestController extends BaseRestController {
             return null;
         }
         return String.valueOf(usd.getSystemUserId());
+    }
+
+    /**
+     * Get the login lab unit name for the current user from session.
+     *
+     * @param request the HTTP request
+     * @return the login lab unit name, or null if not set
+     */
+    private String getLoginLabUnit(HttpServletRequest request) {
+        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+        if (usd == null) {
+            return null;
+        }
+        int loginLabUnitId = usd.getLoginLabUnit();
+        if (loginLabUnitId == 0) {
+            return null;
+        }
+        TestSection testSection = testSectionService.getTestSectionById(String.valueOf(loginLabUnitId));
+        if (testSection != null) {
+            return testSection.getLocalizedName();
+        }
+        return null;
     }
 }

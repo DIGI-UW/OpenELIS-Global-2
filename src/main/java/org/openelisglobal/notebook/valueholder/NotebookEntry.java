@@ -18,8 +18,11 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
@@ -82,6 +85,14 @@ public class NotebookEntry extends BaseObject<Integer> {
 
     @OneToMany(mappedBy = "notebookEntry", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<NotebookEntryComment> comments = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_id", updatable = false)
+    private Organization organization;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "notebook_entry_organizations", joinColumns = @JoinColumn(name = "notebook_entry_id"), inverseJoinColumns = @JoinColumn(name = "organization_id"))
+    private Set<Organization> accessibleOrganizations = new HashSet<>();
 
     public NotebookEntry() {
         this.dateCreated = new Date();
@@ -214,5 +225,24 @@ public class NotebookEntry extends BaseObject<Integer> {
     public void addComment(NotebookEntryComment comment) {
         comment.setNotebookEntry(this);
         getComments().add(comment);
+    }
+
+    public Organization getOrganization() {
+        return organization;
+    }
+
+    public void setOrganization(Organization organization) {
+        this.organization = organization;
+    }
+
+    public Set<Organization> getAccessibleOrganizations() {
+        if (accessibleOrganizations == null) {
+            accessibleOrganizations = new HashSet<>();
+        }
+        return accessibleOrganizations;
+    }
+
+    public void setAccessibleOrganizations(Set<Organization> accessibleOrganizations) {
+        this.accessibleOrganizations = accessibleOrganizations;
     }
 }
