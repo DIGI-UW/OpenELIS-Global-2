@@ -758,10 +758,24 @@ public class PathologyWorkflowController extends BaseRestController {
      * Includes data from all workflow pages: - Sample Creation & Metadata - Quality
      * Control - Processing & Aliquoting - Testing, Staining & Microscopy - Storage
      * & Inventory - Reporting Metrics - Disposal & Archiving
+     *
+     * Supports filter parameters: - startDate, endDate: Date range for filtering
+     * samples - includeMetrics, includeSampleDetails, includeQcData,
+     * includeProcessingData, includeTestingData, includeStorageData,
+     * includeDisposalData, includeSopData: Section toggles
      */
     @GetMapping(value = "/report/export-csv", produces = "text/csv")
     public ResponseEntity<byte[]> exportReportCsv(@RequestParam Integer entryId,
             @RequestParam(required = false) String reportType, @RequestParam(required = false) String reportPeriod,
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            @RequestParam(required = false, defaultValue = "true") boolean includeMetrics,
+            @RequestParam(required = false, defaultValue = "true") boolean includeSampleDetails,
+            @RequestParam(required = false, defaultValue = "true") boolean includeQcData,
+            @RequestParam(required = false, defaultValue = "true") boolean includeProcessingData,
+            @RequestParam(required = false, defaultValue = "true") boolean includeTestingData,
+            @RequestParam(required = false, defaultValue = "true") boolean includeStorageData,
+            @RequestParam(required = false, defaultValue = "true") boolean includeDisposalData,
+            @RequestParam(required = false, defaultValue = "true") boolean includeSopData,
             HttpServletRequest request) {
 
         try {
@@ -782,6 +796,7 @@ public class PathologyWorkflowController extends BaseRestController {
             // Build CSV content
             StringWriter writer = new StringWriter();
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            SimpleDateFormat dateOnlyFormat = new SimpleDateFormat("yyyy-MM-dd");
             String generatedDate = dateFormat.format(new Date());
 
             // CSV Header Section
@@ -789,47 +804,159 @@ public class PathologyWorkflowController extends BaseRestController {
             writer.append("Generated Date," + generatedDate + "\n");
             writer.append("Report Type," + (reportType != null ? escapeCsv(reportType) : "Comprehensive") + "\n");
             writer.append("Report Period," + (reportPeriod != null ? escapeCsv(reportPeriod) : "All Time") + "\n");
+            if (startDate != null && !startDate.isEmpty()) {
+                writer.append("Start Date," + escapeCsv(startDate) + "\n");
+            }
+            if (endDate != null && !endDate.isEmpty()) {
+                writer.append("End Date," + escapeCsv(endDate) + "\n");
+            }
             writer.append("Entry ID," + entryId + "\n");
             writer.append("Entry Title," + escapeCsv(entry.getEffectiveTitle()) + "\n");
             writer.append("Entry Status," + entry.getStatus() + "\n");
             writer.append("\n");
 
+            // Calculate actual metrics from sample data
+            int totalSamples = samples.size();
+            int qcPassCount = 0;
+            int qcFailCount = 0;
+            int assaySuccessCount = 0;
+            int assayTotalCount = 0;
+            double totalTatHours = 0;
+            int tatSampleCount = 0;
+
+            // Collect metrics from all page sample data
+            for (SampleItem sample : samples) {
+                String sampleIdStr = String.valueOf(sample.getId());
+                for (NoteBookPage page : pages) {
+                    NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleIdStr,
+                            page.getId());
+                    if (pageSample != null && pageSample.getData() != null) {
+                        Map<String, Object> data = pageSample.getData();
+
+                        // Count QC pass/fail
+                        String qcStatus = getStringValue(data, "qcStatus");
+                        if ("Pass".equalsIgnoreCase(qcStatus)) {
+                            qcPassCount++;
+                        } else if ("Fail".equalsIgnoreCase(qcStatus)) {
+                            qcFailCount++;
+                        }
+
+                        // Count assay success
+                        String assayAccepted = getStringValue(data, "assayAccepted");
+                        if (assayAccepted != null && !assayAccepted.isEmpty()) {
+                            assayTotalCount++;
+                            if ("true".equalsIgnoreCase(assayAccepted)) {
+                                assaySuccessCount++;
+                            }
+                        }
+
+                        // Calculate TAT if we have both reception and completion timestamps
+                        if (pageSample.getCompletedAt() != null && sample.getLastupdated() != null) {
+                            long tatMs = pageSample.getCompletedAt().getTime() - sample.getLastupdated().getTime();
+                            if (tatMs > 0) {
+                                totalTatHours += tatMs / (1000.0 * 60 * 60);
+                                tatSampleCount++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Calculate derived metrics
+            double specimenRejectionRate = totalSamples > 0
+                    ? (qcFailCount * 100.0) / (qcPassCount + qcFailCount > 0 ? qcPassCount + qcFailCount : 1)
+                    : 0;
+            double assaySuccessRate = assayTotalCount > 0 ? (assaySuccessCount * 100.0) / assayTotalCount : 100;
+            double averageTat = tatSampleCount > 0 ? totalTatHours / tatSampleCount : 0;
+
             // Key Performance Metrics Section
-            writer.append("KEY PERFORMANCE METRICS\n");
-            writer.append("Metric,Value,Unit\n");
-            writer.append("Specimen Rejection Rate,2.5,%\n");
-            writer.append("Assay Success Rate,97.8,%\n");
-            writer.append("Average Turnaround Time (TAT),24,hours\n");
-            writer.append("Equipment Downtime,4,hours\n");
-            writer.append("Monthly Specimen Volume," + samples.size() + ",samples\n");
-            writer.append("QC Incidents,3,count\n");
-            writer.append("\n");
+            if (includeMetrics) {
+                writer.append("KEY PERFORMANCE METRICS\n");
+                writer.append("Metric,Value,Unit,Description\n");
+                writer.append(String.format("Specimen Rejection Rate,%.2f,%%,QC failures / total QC'd samples\n",
+                        specimenRejectionRate));
+                writer.append(String.format("Assay Success Rate,%.2f,%%,Accepted assays / total assays\n",
+                        assaySuccessRate));
+                writer.append(String.format(
+                        "Average Turnaround Time (TAT),%.1f,hours,Average time from reception to completion\n",
+                        averageTat));
+                writer.append("Equipment Downtime,0,hours,Total equipment downtime in period\n");
+                writer.append(String.format("Total Specimen Volume,%d,samples,Total samples in this entry\n",
+                        totalSamples));
+                writer.append(String.format("QC Pass Count,%d,samples,Samples that passed QC\n", qcPassCount));
+                writer.append(String.format("QC Fail Count,%d,samples,Samples that failed QC\n", qcFailCount));
+                writer.append(String.format("Assays Completed,%d,assays,Total assays with results\n", assayTotalCount));
+                writer.append("\n");
+            }
 
             // Sample Summary Section
-            writer.append("SAMPLE SUMMARY\n");
-            writer.append("Total Samples," + samples.size() + "\n");
-            writer.append("\n");
+            if (includeSampleDetails) {
+                writer.append("SAMPLE SUMMARY\n");
+                writer.append("Total Samples," + samples.size() + "\n");
+                writer.append("\n");
+            }
 
             // Detailed Sample Data Section
-            if (!samples.isEmpty()) {
+            if (!samples.isEmpty() && includeSampleDetails) {
                 writer.append("DETAILED SAMPLE DATA\n");
-                // Define comprehensive CSV headers based on all data points from the notebook
-                // template
-                writer.append(
-                        "Sample ID,Lab Number,Sample Category,Source Facility,Received Date,Received By,Specimen Type,");
-                writer.append("Patient ID,Requesting Clinician,Collection Date,Specimen Site,Clinical Details,");
-                writer.append("Study ID,PI Name,Participant/Animal ID,Ethical Approval Ref,");
-                writer.append("QC Status,QC Remarks,QC Staff,QC Date,");
-                writer.append("Processing Action,Gross Exam Done,Gross Description,Sectioning Done,");
-                writer.append("Embedding Done,Microtomy Thickness,Centrifugation Done,Smear Types,Stain Used,");
-                writer.append("Wedge Smear Done,Blood Stain,SOP Followed,Processing Methods,Processing Date,");
-                writer.append("Test Name,Result,Block/Slide ID,Technician Signature,Pathologist Verification,");
-                writer.append("Routine Stains,Special Stains,Advanced Techniques,IHC Markers,");
-                writer.append("Positive Control,Negative Control,Assay Accepted,");
-                writer.append(
-                        "Storage Type,Storage Unit,Rack,Box,Position,Date Stored,Stored By,Date Retrieved,Retrieved By,");
-                writer.append("Disposal Reason,Disposal Method,Disposal Date,Staff Signature,Unit Head Approval,");
-                writer.append("Sample Status,Completed At\n");
+
+                // Build dynamic CSV headers based on included sections
+                StringBuilder headerBuilder = new StringBuilder();
+                headerBuilder.append("Sample ID,Lab Number");
+
+                // Sample identity & metadata columns (always included with sample details)
+                headerBuilder.append(",Sample Category,Source Facility,Received Date,Received By,Specimen Type");
+                headerBuilder.append(",Patient ID,Requesting Clinician,Collection Date,Specimen Site,Clinical Details");
+                headerBuilder.append(",Study ID,PI Name,Participant/Animal ID,Ethical Approval Ref");
+
+                // QC columns
+                if (includeQcData) {
+                    headerBuilder.append(",QC Status,QC Remarks,QC Staff,QC Date,QC Action Taken");
+                    // Histology-specific QC
+                    headerBuilder.append(",Fixative Used,Fixative Ratio,Fixation Duration,Tissue Integrity");
+                    // Cytology-specific QC
+                    headerBuilder.append(",Container Integrity,Preservative Type,Volume (mL),Clot Presence");
+                    // Blood-specific QC
+                    headerBuilder.append(",Clot Check EDTA");
+                    // Research-specific QC
+                    headerBuilder.append(",Consent Verified,Storage Medium,Sample Type Matches Protocol");
+                    // Block QC
+                    headerBuilder.append(",Block Surface Quality,Block Depth/Orientation,Paraffin Overflow");
+                }
+
+                // Processing columns
+                if (includeProcessingData) {
+                    headerBuilder.append(",Processing Action,Gross Exam Done,Gross Description,Sectioning Done");
+                    headerBuilder.append(",Embedding Done,Microtomy Thickness,Centrifugation Done,Smear Types,Stain Used");
+                    headerBuilder.append(",Wedge Smear Done,Blood Stain,SOP Followed,Processing Methods,Processing Date");
+                }
+
+                // Testing columns
+                if (includeTestingData) {
+                    headerBuilder.append(",Test Name,Result,Block/Slide ID,Technician Signature,Pathologist Verification");
+                    headerBuilder.append(",Routine Stains,Special Stains,Advanced Techniques,IHC Markers,Research Assays");
+                    headerBuilder.append(",Positive Control Run,Positive Control Result,Negative Control Run,Negative Control Result,Assay Accepted");
+                }
+
+                // Storage columns
+                if (includeStorageData) {
+                    headerBuilder.append(",Storage Type,Expected Duration,Storage Unit,Rack,Box,Position");
+                    headerBuilder.append(",Date Stored,Stored By,Date Retrieved,Retrieved By,Recipient Signature");
+                    headerBuilder.append(",Temperature Check AM,Temperature Check PM,Temp Checked By,Temp Check Date");
+                }
+
+                // Disposal columns
+                if (includeDisposalData) {
+                    headerBuilder.append(",Disposal Reason,Retention Policy,Disposal Method,Disposal Date");
+                    headerBuilder.append(",Staff Signature,Unit Head Approval,Disposal Status");
+                    headerBuilder.append(",Archive Types,Archive Location,Digital Backup Location,Archive Date");
+                }
+
+                // Status columns
+                headerBuilder.append(",Sample Status,Completed At");
+                headerBuilder.append("\n");
+
+                writer.append(headerBuilder.toString());
 
                 // Collect all page sample data for each sample
                 for (SampleItem sample : samples) {
@@ -852,100 +979,162 @@ public class PathologyWorkflowController extends BaseRestController {
                         }
                     }
 
-                    // Write sample row
-                    writer.append(escapeCsv(sampleIdStr) + ",");
-                    writer.append(
-                            escapeCsv(sample.getSortOrder() != null ? sample.getSortOrder().toString() : "") + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "sampleCategory")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "sourceFacility")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "receivedDateTime")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "receivedBy")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "specimenType")) + ",");
+                    // Build sample row dynamically based on included sections
+                    StringBuilder rowBuilder = new StringBuilder();
+
+                    // Sample ID and Lab Number (always included)
+                    rowBuilder.append(escapeCsv(sampleIdStr)).append(",");
+                    rowBuilder.append(escapeCsv(sample.getSortOrder() != null ? sample.getSortOrder().toString() : ""));
+
+                    // Sample identity & metadata (always included with sample details)
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "sampleCategory")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "sourceFacility")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "receivedDateTime")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "receivedBy")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "specimenType")));
                     // Clinical metadata
-                    writer.append(escapeCsv(getStringValue(combinedData, "patientId")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "requestingClinician")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "collectionDateTime")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "specimenSite")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "clinicalDetails")) + ",");
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "patientId")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "requestingClinician")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "collectionDateTime")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "specimenSite")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "clinicalDetails")));
                     // Research metadata
-                    writer.append(escapeCsv(getStringValue(combinedData, "studyId")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "piName")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "participantAnimalId")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "ethicalApprovalRef")) + ",");
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "studyId")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "piName")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "participantAnimalId")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "ethicalApprovalRef")));
+
                     // QC data
-                    writer.append(escapeCsv(getStringValue(combinedData, "qcStatus")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "qcRemarks")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "staffInitials")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "qcDate")) + ",");
+                    if (includeQcData) {
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "qcStatus")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "qcRemarks")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "staffInitials")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "qcDate")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "actionTaken")));
+                        // Histology-specific QC
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "fixativeUsed")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "fixativeRatio")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "fixationDuration")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "tissueIntegrity")));
+                        // Cytology-specific QC
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "containerIntegrity")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "preservativeType")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "volume")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "clotPresence")));
+                        // Blood-specific QC
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "clotCheck")));
+                        // Research-specific QC
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "consentVerified")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "storageMedium")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "sampleTypeMatchesProtocol")));
+                        // Block QC
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "surfaceQuality")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "depthOrientation")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "paraffinOverflow")));
+                    }
+
                     // Processing data
-                    writer.append(escapeCsv(getStringValue(combinedData, "processingAction")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "grossExamDone")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "grossDescription")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "sectioningDone")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "embeddingDone")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "microtomyThickness")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "centrifugationDone")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "smearTypes")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "stainUsed")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "wedgeSmearDone")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "bloodStain")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "sopFollowed")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "processingMethods")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "processingDate")) + ",");
+                    if (includeProcessingData) {
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "processingAction")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "grossExamDone")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "grossDescription")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "sectioningDone")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "embeddingDone")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "microtomyThickness")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "centrifugationDone")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "smearTypes")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "stainUsed")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "wedgeSmearDone")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "bloodStain")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "sopFollowed")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "processingMethods")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "processingDate")));
+                    }
+
                     // Testing data
-                    writer.append(escapeCsv(getStringValue(combinedData, "testName")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "result")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "blockSlideId")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "technicianSignature")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "pathologistVerification")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "stainType")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "specialStainType")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "advancedType")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "ihcMarkers")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "positiveControlResult")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "negativeControlResult")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "assayAccepted")) + ",");
+                    if (includeTestingData) {
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "testName")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "result")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "blockSlideId")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "technicianSignature")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "pathologistVerification")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "routineStains")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "specialStains")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "advancedTechniques")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "ihcMarkers")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "researchAssays")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "positiveControlRun")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "positiveControlResult")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "negativeControlRun")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "negativeControlResult")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "assayAccepted")));
+                    }
+
                     // Storage data
-                    writer.append(escapeCsv(getStringValue(combinedData, "storageType")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "storageUnit")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "rack")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "box")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "position")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "dateStored")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "storedBy")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "dateRetrieved")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "retrievedBy")) + ",");
+                    if (includeStorageData) {
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "storageType")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "expectedDuration")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "storageUnit")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "rack")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "box")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "position")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "dateStored")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "storedBy")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "dateRetrieved")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "retrievedBy")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "recipientSignature")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "temperatureCheckAM")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "temperatureCheckPM")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "checkedBy")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "checkDate")));
+                    }
+
                     // Disposal data
-                    writer.append(escapeCsv(getStringValue(combinedData, "disposalReason")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "disposalMethod")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "disposalDate")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "staffSignature")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "unitHeadApproval")) + ",");
-                    // Status
-                    writer.append(escapeCsv(getStringValue(combinedData, "sampleStatus")) + ",");
-                    writer.append(escapeCsv(getStringValue(combinedData, "completedAt")));
-                    writer.append("\n");
+                    if (includeDisposalData) {
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "disposalReason")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "retentionPolicy")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "disposalMethod")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "disposalDate")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "staffSignature")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "unitHeadApproval")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "disposalStatus")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "archiveTypes")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "archiveLocation")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "digitalBackupLocation")));
+                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "archiveDate")));
+                    }
+
+                    // Status (always included)
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "sampleStatus")));
+                    rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "completedAt")));
+                    rowBuilder.append("\n");
+
+                    writer.append(rowBuilder.toString());
                 }
             }
 
             writer.append("\n");
 
             // SOP Summary Section
-            List<PathologySop> sops = pathologySopService.getByNotebookId(entryId);
-            if (!sops.isEmpty()) {
-                writer.append("STANDARD OPERATING PROCEDURES (SOPs)\n");
-                writer.append("SOP Title,Category,Version,Status,Effective Date,Review Date,Approved By\n");
-                for (PathologySop sop : sops) {
-                    writer.append(escapeCsv(sop.getSopTitle()) + ",");
-                    writer.append(escapeCsv(sop.getSopCategory()) + ",");
-                    writer.append(escapeCsv(sop.getVersion()) + ",");
-                    writer.append(escapeCsv(sop.getStatus()) + ",");
-                    writer.append(
-                            escapeCsv(sop.getEffectiveDate() != null ? dateFormat.format(sop.getEffectiveDate()) : "")
-                                    + ",");
-                    writer.append(
-                            escapeCsv(sop.getReviewDate() != null ? dateFormat.format(sop.getReviewDate()) : "") + ",");
-                    writer.append(escapeCsv(sop.getApprovedBy()));
+            if (includeSopData) {
+                List<PathologySop> sops = pathologySopService.getByNotebookId(entryId);
+                if (!sops.isEmpty()) {
+                    writer.append("STANDARD OPERATING PROCEDURES (SOPs)\n");
+                    writer.append("SOP Title,Category,Version,Status,Effective Date,Review Date,Approved By,Changes Summary\n");
+                    for (PathologySop sop : sops) {
+                        writer.append(escapeCsv(sop.getSopTitle()) + ",");
+                        writer.append(escapeCsv(sop.getSopCategory()) + ",");
+                        writer.append(escapeCsv(sop.getVersion()) + ",");
+                        writer.append(escapeCsv(sop.getStatus()) + ",");
+                        writer.append(
+                                escapeCsv(sop.getEffectiveDate() != null ? dateOnlyFormat.format(sop.getEffectiveDate()) : "")
+                                        + ",");
+                        writer.append(
+                                escapeCsv(sop.getReviewDate() != null ? dateOnlyFormat.format(sop.getReviewDate()) : "") + ",");
+                        writer.append(escapeCsv(sop.getApprovedBy()) + ",");
+                        writer.append(escapeCsv(sop.getChangesSummary()));
+                        writer.append("\n");
+                    }
                     writer.append("\n");
                 }
             }

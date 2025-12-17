@@ -1,43 +1,44 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Grid,
   Column,
   Button,
   Tile,
-  Tag,
   InlineNotification,
-  Loading,
-  TextInput,
-  TextArea,
-  Select,
-  SelectItem,
-  DatePicker,
-  DatePickerInput,
-  Checkbox,
   Modal,
-  DataTable,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
-  TableSelectAll,
-  TableSelectRow,
+  Dropdown,
+  TextInput,
+  Tag,
+  Loading,
+  ProgressBar,
+  Checkbox,
+  StructuredListWrapper,
+  StructuredListHead,
+  StructuredListBody,
+  StructuredListRow,
+  StructuredListCell,
 } from "@carbon/react";
-import { TrashCan, Archive, DocumentBlank, Locked } from "@carbon/react/icons";
+import { Archive, CheckmarkFilled, DocumentExport } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
+  postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import TraceabilityChecklist from "../../workflow/TraceabilityChecklist";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
  * PathologyDisposalArchivingPage - Page 7 of the pathology workflow.
+ * Handles end-of-project archiving, biorepository transfer, and notebook finalization.
+ *
  * Purpose: Close the sample lifecycle in compliance with policy.
  * Who uses it: Lab manager / quality officer
+ *
+ * @param {Object} props
+ * @param {number} props.entryId - The notebook entry ID
+ * @param {Object} props.pageData - The notebook page data
+ * @param {Object} props.progress - Page progress
+ * @param {function} props.onProgressUpdate - Callback when progress changes
  */
 function PathologyDisposalArchivingPage({
   entryId,
@@ -48,534 +49,709 @@ function PathologyDisposalArchivingPage({
   const intl = useIntl();
   const componentMounted = useRef(false);
 
+  // State
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
-  const [disposalModalOpen, setDisposalModalOpen] = useState(false);
-  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const [disposalData, setDisposalData] = useState({
-    disposalReason: "",
-    retentionPolicy: "",
-    disposalMethod: "",
-    disposalDate: "",
-    staffSignature: "",
-    unitHeadApproval: "",
+  // Archiving progress state
+  const [archivingProgress, setArchivingProgress] = useState(null);
+  const [archivableSamples, setArchivableSamples] = useState({
+    tissue: [],
+    fluid: [],
   });
 
-  const [archiveData, setArchiveData] = useState({
-    archiveTypes: [],
-    archiveLocation: "",
-    digitalBackupLocation: "",
-    archiveDate: "",
-  });
+  // Traceability state
+  const [traceabilityResult, setTraceabilityResult] = useState(null);
+  const [verifyingTraceability, setVerifyingTraceability] = useState(false);
 
+  // Transfer modal state
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+
+  // Finalization modal state
+  const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+  const [confirmFinalize, setConfirmFinalize] = useState(false);
+
+  // Storage location selection (for biorepository)
+  const [rooms, setRooms] = useState([]);
+  const [devices, setDevices] = useState([]);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [transferNotes, setTransferNotes] = useState("");
+
+  const hasRealPageId =
+    pageData?.id && !String(pageData.id).startsWith("default-");
+
+  // Load data on mount
   useEffect(() => {
     componentMounted.current = true;
-    loadPageSamples();
+    loadPageData();
+    loadRooms();
+
     return () => {
       componentMounted.current = false;
     };
   }, [entryId, pageData?.id]);
 
-  const loadPageSamples = useCallback(() => {
-    if (!pageData?.id || String(pageData.id).startsWith("default-")) {
+  const loadPageData = useCallback(() => {
+    if (!entryId) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
+
+    // Load archiving progress
     getFromOpenElisServer(
-      `/rest/notebook/page/${pageData.id}/samples`,
+      `/rest/notebook/${entryId}/archive/progress`,
       (response) => {
         if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setSamples(
-              response.map((sample) => ({
-                id: String(sample.id || sample.sampleItemId),
-                accessionNumber: sample.accessionNumber,
-                specimenType:
-                  sample.sampleType || sample.typeOfSample?.description,
-                sampleCategory: sample.sampleCategory || "Clinical diagnostic",
-                status: sample.pageStatus || "PENDING",
-                disposalStatus: sample.disposalStatus,
-                archiveStatus: sample.archiveStatus,
-              })),
-            );
-          } else {
-            setSamples([]);
-          }
+          setArchivingProgress(response);
+        }
+      },
+    );
+
+    // Load archivable samples
+    getFromOpenElisServer(
+      `/rest/notebook/${entryId}/archive/samples`,
+      (response) => {
+        if (componentMounted.current) {
+          setArchivableSamples(response || { tissue: [], fluid: [] });
+          // Build sample list for display
+          const allSamples = [
+            ...(response?.tissue || []).map((id) => ({
+              sampleItemId: id,
+              type: "tissue",
+            })),
+            ...(response?.fluid || []).map((id) => ({
+              sampleItemId: id,
+              type: "fluid",
+            })),
+          ];
+          setSamples(allSamples);
           setLoading(false);
         }
       },
     );
-  }, [pageData?.id]);
+  }, [entryId]);
 
-  const handleInputChange = (e, setState) => {
-    const { name, value } = e.target;
-    setState((prev) => ({ ...prev, [name]: value }));
+  const loadRooms = () => {
+    getFromOpenElisServer("/rest/storage/rooms", (response) => {
+      if (componentMounted.current) {
+        const roomOptions =
+          response?.map((room) => ({
+            id: room.id.toString(),
+            label: room.name,
+          })) || [];
+        setRooms(roomOptions);
+      }
+    });
   };
 
-  const handleDateChange = (dates, fieldName, setState) => {
-    if (dates?.[0]) {
-      setState((prev) => ({
-        ...prev,
-        [fieldName]: dates[0].toISOString().split("T")[0],
-      }));
-    }
-  };
-
-  const handleCheckboxChange = (value, checked) => {
-    setArchiveData((prev) => ({
-      ...prev,
-      archiveTypes: checked
-        ? [...prev.archiveTypes, value]
-        : prev.archiveTypes.filter((v) => v !== value),
-    }));
-  };
-
-  const openDisposalModal = () => {
-    if (selectedSampleIds.length === 0) {
-      setError("Please select samples for disposal");
+  const loadDevices = (roomId) => {
+    if (!roomId) {
+      setDevices([]);
       return;
     }
-    setDisposalData({
-      disposalReason: "",
-      retentionPolicy: "",
-      disposalMethod: "",
-      disposalDate: new Date().toISOString().split("T")[0],
-      staffSignature: "",
-      unitHeadApproval: "",
-    });
-    setDisposalModalOpen(true);
-  };
-
-  const openArchiveModal = () => {
-    setArchiveData({
-      archiveTypes: [],
-      archiveLocation: "",
-      digitalBackupLocation: "",
-      archiveDate: new Date().toISOString().split("T")[0],
-    });
-    setArchiveModalOpen(true);
-  };
-
-  const handleSubmitDisposal = () => {
-    if (submitting) return;
-    if (
-      !disposalData.disposalReason ||
-      !disposalData.disposalMethod ||
-      !disposalData.staffSignature ||
-      !disposalData.unitHeadApproval
-    ) {
-      setError("Please fill in all required disposal fields");
-      return;
-    }
-
-    setSubmitting(true);
-    postToOpenElisServer(
-      `/rest/notebook/pathology/disposal/submit`,
-      JSON.stringify({
-        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-        pageId: pageData?.id,
-        ...disposalData,
-      }),
-      (status) => {
-        setSubmitting(false);
-        if (status === 200) {
-          setDisposalModalOpen(false);
-          setSelectedSampleIds([]);
-          loadPageSamples();
-          onProgressUpdate?.();
-        } else {
-          setError("Failed to record disposal. Please try again.");
+    getFromOpenElisServer(
+      `/rest/storage/devices?roomId=${roomId}`,
+      (response) => {
+        if (componentMounted.current) {
+          const deviceOptions =
+            response?.map((device) => ({
+              id: device.id.toString(),
+              label: device.name,
+            })) || [];
+          setDevices(deviceOptions);
         }
       },
     );
   };
 
-  const handleSubmitArchive = () => {
-    if (submitting) return;
-    setSubmitting(true);
-    postToOpenElisServer(
-      `/rest/notebook/pathology/archive/submit`,
-      JSON.stringify({
-        entryId,
-        pageId: pageData?.id,
-        ...archiveData,
-      }),
-      (status) => {
-        setSubmitting(false);
-        if (status === 200) {
-          setArchiveModalOpen(false);
-          onProgressUpdate?.();
-        } else {
-          setError("Failed to record archive. Please try again.");
+  const handleRoomChange = ({ selectedItem }) => {
+    setSelectedRoom(selectedItem);
+    setSelectedDevice(null);
+    if (selectedItem) {
+      loadDevices(selectedItem.id);
+    } else {
+      setDevices([]);
+    }
+  };
+
+  const handleVerifyTraceability = async () => {
+    setVerifyingTraceability(true);
+    setError(null);
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/${entryId}/archive/verify-traceability`,
+      {},
+      (response) => {
+        if (componentMounted.current) {
+          setTraceabilityResult(response);
+          setVerifyingTraceability(false);
+        }
+      },
+      () => {
+        if (componentMounted.current) {
+          setError(
+            intl.formatMessage({
+              id: "notebook.archive.verifyError",
+              defaultMessage: "Failed to verify traceability",
+            }),
+          );
+          setVerifyingTraceability(false);
         }
       },
     );
   };
 
-  const disposedCount = samples.filter(
-    (s) => s.disposalStatus === "DISPOSED",
-  ).length;
-  const archivedCount = samples.filter(
-    (s) => s.archiveStatus === "ARCHIVED",
-  ).length;
-  const activeCount = samples.filter((s) => s.status === "PENDING").length;
+  const handleTransferToBiorepository = async () => {
+    if (!selectedDevice) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.archive.selectLocation",
+          defaultMessage: "Please select a biorepository location",
+        }),
+      );
+      return;
+    }
 
-  const headers = [
-    { key: "accessionNumber", header: "Accession Number" },
-    { key: "specimenType", header: "Specimen Type" },
-    { key: "sampleCategory", header: "Category" },
-    { key: "disposalStatus", header: "Disposal Status" },
-    { key: "status", header: "Status" },
-  ];
+    setTransferring(true);
+    setError(null);
 
-  const disposalReasonOptions = [
-    { id: "retention_expired", text: "Retention period expired" },
-    { id: "sample_depleted", text: "Sample depleted" },
-    { id: "quality_degradation", text: "Quality degradation" },
-    { id: "study_completion", text: "Study completion" },
-    { id: "other", text: "Other" },
-  ];
+    const sampleIds =
+      selectedSampleIds.length > 0
+        ? selectedSampleIds
+        : [...archivableSamples.tissue, ...archivableSamples.fluid];
 
-  const retentionPolicyOptions = [
-    { id: "national_clinical", text: "National clinical guidelines" },
-    { id: "research_protocol", text: "Research protocol" },
-    { id: "institutional", text: "Institutional policy" },
-  ];
+    const requestBody = {
+      sampleItemIds: sampleIds,
+      locationId: selectedDevice.id,
+      locationType: "device",
+      notes: transferNotes || "End of project transfer to biorepository",
+    };
 
-  const disposalMethodOptions = [
-    { id: "incineration", text: "Incineration" },
-    { id: "autoclaving", text: "Autoclaving" },
-    { id: "chemical", text: "Chemical treatment" },
-    { id: "other", text: "Other" },
-  ];
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/${entryId}/archive/transfer`,
+      JSON.stringify(requestBody),
+      (response) => {
+        if (componentMounted.current) {
+          if (response.success) {
+            setSuccess(
+              intl.formatMessage(
+                {
+                  id: "notebook.archive.transferSuccess",
+                  defaultMessage:
+                    "{count} samples transferred to biorepository",
+                },
+                { count: response.transferredCount },
+              ),
+            );
+            setTransferModalOpen(false);
+            loadPageData(); // Reload to update progress
+            if (onProgressUpdate) onProgressUpdate();
+          } else {
+            setError(response.error || "Transfer failed");
+          }
+          setTransferring(false);
+        }
+      },
+      () => {
+        if (componentMounted.current) {
+          setError(
+            intl.formatMessage({
+              id: "notebook.archive.transferError",
+              defaultMessage: "Failed to transfer samples",
+            }),
+          );
+          setTransferring(false);
+        }
+      },
+    );
+  };
 
-  const archiveTypeOptions = [
-    { id: "physical_logbooks", label: "Physical - Logbooks" },
-    { id: "physical_ledgers", label: "Physical - Ledgers" },
-    { id: "physical_reports", label: "Physical - Reports" },
-    { id: "digital_backup", label: "Digital backup" },
-  ];
+  const handleFinalize = async () => {
+    if (!confirmFinalize) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.archive.confirmRequired",
+          defaultMessage:
+            "Please confirm that you want to finalize this notebook",
+        }),
+      );
+      return;
+    }
 
-  return (
-    <div className="pathology-disposal-page">
-      <div className="page-section-header">
-        <h4>
+    setFinalizing(true);
+    setError(null);
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/${entryId}/archive/finalize`,
+      {},
+      (response) => {
+        if (componentMounted.current) {
+          if (response.success) {
+            setSuccess(
+              intl.formatMessage({
+                id: "notebook.archive.finalizeSuccess",
+                defaultMessage: "Notebook has been finalized successfully",
+              }),
+            );
+            setFinalizeModalOpen(false);
+            if (onProgressUpdate) onProgressUpdate();
+          } else {
+            setError(response.error || "Finalization failed");
+          }
+          setFinalizing(false);
+        }
+      },
+      () => {
+        if (componentMounted.current) {
+          setError(
+            intl.formatMessage({
+              id: "notebook.archive.finalizeError",
+              defaultMessage: "Failed to finalize notebook",
+            }),
+          );
+          setFinalizing(false);
+        }
+      },
+    );
+  };
+
+  const canFinalize =
+    traceabilityResult?.passed && archivingProgress?.readyForFinalization;
+
+  // Render loading state
+  if (loading) {
+    return (
+      <div className="page-loading">
+        <Loading withOverlay={false} />
+        <p>
           <FormattedMessage
-            id="pathology.page.disposal.title"
-            defaultMessage="Disposal & Archiving"
-          />
-        </h4>
-        <p className="page-description">
-          <FormattedMessage
-            id="pathology.page.disposal.description"
-            defaultMessage="Close the sample lifecycle in compliance with policy. Record disposal and archive documentation."
+            id="notebook.page.loading"
+            defaultMessage="Loading page data..."
           />
         </p>
       </div>
+    );
+  }
 
-      <Grid fullWidth className="progress-section">
+  return (
+    <div className="notebook-page archiving-page">
+      <Grid>
+        {/* Header */}
         <Column lg={16} md={8} sm={4}>
-          <div className="progress-tiles">
-            <Tile className="progress-tile">
-              <span className="progress-label">Total Samples</span>
-              <span className="progress-value">{samples.length}</span>
-            </Tile>
-            <Tile
-              className="progress-tile"
-              style={{ backgroundColor: "#fff1f1" }}
-            >
-              <span className="progress-label">Disposed</span>
-              <span className="progress-value">{disposedCount}</span>
-            </Tile>
-            <Tile className="progress-tile verified">
-              <span className="progress-label">Archived</span>
-              <span className="progress-value">{archivedCount}</span>
-            </Tile>
-            <Tile className="progress-tile pending">
-              <span className="progress-label">Active</span>
-              <span className="progress-value">{activeCount}</span>
-            </Tile>
+          <div className="page-header">
+            <h3>
+              <Archive size={24} />
+              <FormattedMessage
+                id="pathology.archive.title"
+                defaultMessage="Disposal & Archiving"
+              />
+            </h3>
+            <p className="page-description">
+              <FormattedMessage
+                id="pathology.archive.description"
+                defaultMessage="Transfer samples to biorepository and finalize the notebook with complete traceability verification."
+              />
+            </p>
           </div>
+        </Column>
+
+        {/* Notifications */}
+        {error && (
+          <Column lg={16} md={8} sm={4}>
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({
+                id: "error",
+                defaultMessage: "Error",
+              })}
+              subtitle={error}
+              onCloseButtonClick={() => setError(null)}
+            />
+          </Column>
+        )}
+
+        {success && (
+          <Column lg={16} md={8} sm={4}>
+            <InlineNotification
+              kind="success"
+              title={intl.formatMessage({
+                id: "success",
+                defaultMessage: "Success",
+              })}
+              subtitle={success}
+              onCloseButtonClick={() => setSuccess(null)}
+            />
+          </Column>
+        )}
+
+        {/* Progress Summary */}
+        <Column lg={8} md={4} sm={4}>
+          <Tile className="archiving-progress-tile">
+            <h4>
+              <FormattedMessage
+                id="pathology.archive.progress"
+                defaultMessage="Archiving Progress"
+              />
+            </h4>
+            {archivingProgress && (
+              <>
+                <ProgressBar
+                  value={archivingProgress.percentComplete || 0}
+                  max={100}
+                  label={`${Math.round(archivingProgress.percentComplete || 0)}%`}
+                  helperText={intl.formatMessage(
+                    {
+                      id: "pathology.archive.progressHelper",
+                      defaultMessage: "{archived} of {total} samples archived",
+                    },
+                    {
+                      archived: archivingProgress.archivedSamples || 0,
+                      total: archivingProgress.totalSamples || 0,
+                    },
+                  )}
+                />
+                <div className="progress-details">
+                  <div className="progress-item">
+                    <Tag type="purple">
+                      <FormattedMessage
+                        id="pathology.archive.tissueSamples"
+                        defaultMessage="Tissue Samples"
+                      />
+                    </Tag>
+                    <span>
+                      {archivingProgress.archivedTissue || 0} /{" "}
+                      {archivingProgress.tissueSamples || 0}
+                    </span>
+                  </div>
+                  <div className="progress-item">
+                    <Tag type="cyan">
+                      <FormattedMessage
+                        id="pathology.archive.fluidSamples"
+                        defaultMessage="Fluid Samples"
+                      />
+                    </Tag>
+                    <span>
+                      {archivingProgress.archivedFluid || 0} /{" "}
+                      {archivingProgress.fluidSamples || 0}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </Tile>
+        </Column>
+
+        {/* Actions */}
+        <Column lg={8} md={4} sm={4}>
+          <Tile className="archiving-actions-tile">
+            <h4>
+              <FormattedMessage
+                id="pathology.archive.actions"
+                defaultMessage="Actions"
+              />
+            </h4>
+            <div className="action-buttons">
+              <Button
+                kind="secondary"
+                onClick={handleVerifyTraceability}
+                disabled={verifyingTraceability}
+                renderIcon={CheckmarkFilled}
+              >
+                <FormattedMessage
+                  id="pathology.archive.verifyTraceability"
+                  defaultMessage="Verify Traceability"
+                />
+              </Button>
+              <Button
+                kind="primary"
+                onClick={() => setTransferModalOpen(true)}
+                disabled={
+                  archivableSamples.tissue.length === 0 &&
+                  archivableSamples.fluid.length === 0
+                }
+                renderIcon={Archive}
+              >
+                <FormattedMessage
+                  id="pathology.archive.transferToBiorepository"
+                  defaultMessage="Transfer to Biorepository"
+                />
+              </Button>
+              <Button
+                kind="danger"
+                onClick={() => setFinalizeModalOpen(true)}
+                disabled={!canFinalize}
+                renderIcon={DocumentExport}
+              >
+                <FormattedMessage
+                  id="pathology.archive.finalize"
+                  defaultMessage="Finalize Notebook"
+                />
+              </Button>
+            </div>
+            {!canFinalize && traceabilityResult && (
+              <p className="action-helper-text">
+                <FormattedMessage
+                  id="pathology.archive.cannotFinalize"
+                  defaultMessage="Resolve traceability issues before finalizing."
+                />
+              </p>
+            )}
+          </Tile>
+        </Column>
+
+        {/* Traceability Checklist */}
+        <Column lg={16} md={8} sm={4}>
+          <TraceabilityChecklist
+            traceabilityResult={traceabilityResult}
+            loading={verifyingTraceability}
+          />
+        </Column>
+
+        {/* Sample List */}
+        <Column lg={16} md={8} sm={4}>
+          <Tile className="samples-tile">
+            <h4>
+              <FormattedMessage
+                id="pathology.archive.samplesList"
+                defaultMessage="Samples Pending Archive"
+              />
+            </h4>
+            {samples.length > 0 ? (
+              <StructuredListWrapper>
+                <StructuredListHead>
+                  <StructuredListRow head>
+                    <StructuredListCell head>
+                      <FormattedMessage
+                        id="notebook.sample.id"
+                        defaultMessage="Sample ID"
+                      />
+                    </StructuredListCell>
+                    <StructuredListCell head>
+                      <FormattedMessage
+                        id="notebook.sample.type"
+                        defaultMessage="Type"
+                      />
+                    </StructuredListCell>
+                  </StructuredListRow>
+                </StructuredListHead>
+                <StructuredListBody>
+                  {samples.slice(0, 20).map((sample, index) => (
+                    <StructuredListRow key={index}>
+                      <StructuredListCell>
+                        {sample.sampleItemId}
+                      </StructuredListCell>
+                      <StructuredListCell>
+                        <Tag
+                          type={sample.type === "tissue" ? "purple" : "cyan"}
+                        >
+                          {sample.type === "tissue" ? "Tissue" : "Fluid"}
+                        </Tag>
+                      </StructuredListCell>
+                    </StructuredListRow>
+                  ))}
+                </StructuredListBody>
+              </StructuredListWrapper>
+            ) : (
+              <p className="no-samples-message">
+                <FormattedMessage
+                  id="pathology.archive.noSamplesPending"
+                  defaultMessage="All samples have been archived."
+                />
+              </p>
+            )}
+            {samples.length > 20 && (
+              <p className="samples-truncated">
+                <FormattedMessage
+                  id="pathology.archive.moreSamples"
+                  defaultMessage="... and {count} more samples"
+                  values={{ count: samples.length - 20 }}
+                />
+              </p>
+            )}
+          </Tile>
         </Column>
       </Grid>
 
-      <div className="page-actions-bar">
-        <Button
-          kind="danger--tertiary"
-          size="sm"
-          renderIcon={TrashCan}
-          onClick={openDisposalModal}
-          disabled={selectedSampleIds.length === 0}
-        >
-          Dispose Selected ({selectedSampleIds.length})
-        </Button>
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Archive}
-          onClick={openArchiveModal}
-        >
-          Archive Records
-        </Button>
-      </div>
-
-      {error && (
-        <InlineNotification
-          kind="error"
-          title={error}
-          onCloseButtonClick={() => setError(null)}
-          lowContrast
-        />
-      )}
-
-      <div className="sample-grid-container">
-        {loading ? (
-          <Loading withOverlay={false} description="Loading samples..." />
-        ) : samples.length === 0 ? (
-          <div className="empty-state">
-            <p>No samples available for disposal or archiving.</p>
-          </div>
-        ) : (
-          <DataTable
-            rows={samples}
-            headers={headers}
-            isSortable
-            render={({
-              rows,
-              headers,
-              getTableProps,
-              getHeaderProps,
-              getRowProps,
-              getSelectionProps,
-            }) => (
-              <TableContainer>
-                <Table {...getTableProps()}>
-                  <TableHead>
-                    <TableRow>
-                      <TableSelectAll {...getSelectionProps()} />
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.id} {...getRowProps({ row })}>
-                        <TableSelectRow
-                          {...getSelectionProps({ row })}
-                          onChange={() => {
-                            const isSelected = selectedSampleIds.includes(
-                              row.id,
-                            );
-                            if (isSelected) {
-                              setSelectedSampleIds(
-                                selectedSampleIds.filter((id) => id !== row.id),
-                              );
-                            } else {
-                              setSelectedSampleIds([
-                                ...selectedSampleIds,
-                                row.id,
-                              ]);
-                            }
-                          }}
-                        />
-                        {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>
-                            {cell.info.header === "status" ||
-                            cell.info.header === "disposalStatus" ? (
-                              <Tag
-                                type={
-                                  cell.value === "COMPLETED" ||
-                                  cell.value === "DISPOSED"
-                                    ? "red"
-                                    : cell.value === "ARCHIVED"
-                                      ? "green"
-                                      : "gray"
-                                }
-                                size="sm"
-                              >
-                                {cell.value || "Active"}
-                              </Tag>
-                            ) : (
-                              cell.value
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          />
-        )}
-      </div>
-
-      {/* Disposal Modal */}
+      {/* Transfer Modal */}
       <Modal
-        open={disposalModalOpen}
-        modalHeading={`Dispose Samples (${selectedSampleIds.length})`}
-        primaryButtonText="Confirm Disposal"
-        secondaryButtonText="Cancel"
-        onRequestClose={() => setDisposalModalOpen(false)}
-        onRequestSubmit={handleSubmitDisposal}
-        primaryButtonDisabled={submitting}
-        danger
-        size="lg"
+        open={transferModalOpen}
+        onRequestClose={() => setTransferModalOpen(false)}
+        modalHeading={intl.formatMessage({
+          id: "pathology.archive.transferModal.title",
+          defaultMessage: "Transfer to Biorepository",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "pathology.archive.transfer",
+          defaultMessage: "Transfer",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "cancel",
+          defaultMessage: "Cancel",
+        })}
+        onRequestSubmit={handleTransferToBiorepository}
+        primaryButtonDisabled={!selectedDevice || transferring}
       >
-        <Grid fullWidth>
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="disposalReason"
-              name="disposalReason"
-              labelText="Disposal Reason *"
-              value={disposalData.disposalReason}
-              onChange={(e) => handleInputChange(e, setDisposalData)}
-            >
-              <SelectItem value="" text="" />
-              {disposalReasonOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} text={opt.text} />
-              ))}
-            </Select>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="retentionPolicy"
-              name="retentionPolicy"
-              labelText="Retention Policy Applied"
-              value={disposalData.retentionPolicy}
-              onChange={(e) => handleInputChange(e, setDisposalData)}
-            >
-              <SelectItem value="" text="" />
-              {retentionPolicyOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} text={opt.text} />
-              ))}
-            </Select>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="disposalMethod"
-              name="disposalMethod"
-              labelText="Disposal Method *"
-              value={disposalData.disposalMethod}
-              onChange={(e) => handleInputChange(e, setDisposalData)}
-            >
-              <SelectItem value="" text="" />
-              {disposalMethodOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} text={opt.text} />
-              ))}
-            </Select>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
-              onChange={(dates) =>
-                handleDateChange(dates, "disposalDate", setDisposalData)
-              }
-            >
-              <DatePickerInput
-                id="disposalDate"
-                labelText="Disposal Date *"
-                placeholder="mm/dd/yyyy"
-              />
-            </DatePicker>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="staffSignature"
-              name="staffSignature"
-              labelText="Staff Signature *"
-              value={disposalData.staffSignature}
-              onChange={(e) => handleInputChange(e, setDisposalData)}
+        {transferring && <Loading withOverlay />}
+        <div className="transfer-form">
+          <p>
+            <FormattedMessage
+              id="pathology.archive.transferModal.description"
+              defaultMessage="Select the biorepository location for permanent sample storage."
             />
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="unitHeadApproval"
-              name="unitHeadApproval"
-              labelText="Unit Head Approval *"
-              value={disposalData.unitHeadApproval}
-              onChange={(e) => handleInputChange(e, setDisposalData)}
+          </p>
+          <Dropdown
+            id="room-select"
+            titleText={intl.formatMessage({
+              id: "notebook.storage.room",
+              defaultMessage: "Room",
+            })}
+            label={intl.formatMessage({
+              id: "notebook.storage.selectRoom",
+              defaultMessage: "Select a room",
+            })}
+            items={rooms}
+            itemToString={(item) => (item ? item.label : "")}
+            selectedItem={selectedRoom}
+            onChange={handleRoomChange}
+          />
+          <Dropdown
+            id="device-select"
+            titleText={intl.formatMessage({
+              id: "notebook.storage.device",
+              defaultMessage: "Device / Unit",
+            })}
+            label={intl.formatMessage({
+              id: "notebook.storage.selectDevice",
+              defaultMessage: "Select a device",
+            })}
+            items={devices}
+            itemToString={(item) => (item ? item.label : "")}
+            selectedItem={selectedDevice}
+            onChange={({ selectedItem }) => setSelectedDevice(selectedItem)}
+            disabled={!selectedRoom}
+          />
+          <TextInput
+            id="transfer-notes"
+            labelText={intl.formatMessage({
+              id: "pathology.archive.transferNotes",
+              defaultMessage: "Transfer Notes",
+            })}
+            placeholder={intl.formatMessage({
+              id: "pathology.archive.transferNotesPlaceholder",
+              defaultMessage: "Optional notes about this transfer",
+            })}
+            value={transferNotes}
+            onChange={(e) => setTransferNotes(e.target.value)}
+          />
+          <p className="transfer-count">
+            <FormattedMessage
+              id="pathology.archive.transferCount"
+              defaultMessage="{count} samples will be transferred"
+              values={{
+                count:
+                  selectedSampleIds.length > 0
+                    ? selectedSampleIds.length
+                    : archivableSamples.tissue.length +
+                      archivableSamples.fluid.length,
+              }}
             />
-          </Column>
-        </Grid>
+          </p>
+        </div>
       </Modal>
 
-      {/* Archive Modal */}
+      {/* Finalize Modal */}
       <Modal
-        open={archiveModalOpen}
-        modalHeading="Archive Records"
-        primaryButtonText="Save"
-        secondaryButtonText="Cancel"
-        onRequestClose={() => setArchiveModalOpen(false)}
-        onRequestSubmit={handleSubmitArchive}
-        primaryButtonDisabled={submitting}
-        size="lg"
+        open={finalizeModalOpen}
+        onRequestClose={() => {
+          setFinalizeModalOpen(false);
+          setConfirmFinalize(false);
+        }}
+        modalHeading={intl.formatMessage({
+          id: "pathology.archive.finalizeModal.title",
+          defaultMessage: "Finalize Notebook",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "pathology.archive.finalize",
+          defaultMessage: "Finalize",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "cancel",
+          defaultMessage: "Cancel",
+        })}
+        onRequestSubmit={handleFinalize}
+        primaryButtonDisabled={!confirmFinalize || finalizing}
+        danger
       >
-        <Grid fullWidth>
-          <Column lg={16} md={8} sm={4}>
-            <h5 style={{ marginBottom: "1rem" }}>Archive Type</h5>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
-              {archiveTypeOptions.map((opt) => (
-                <Checkbox
-                  key={opt.id}
-                  id={opt.id}
-                  labelText={opt.label}
-                  checked={archiveData.archiveTypes.includes(opt.id)}
-                  onChange={(e) =>
-                    handleCheckboxChange(opt.id, e.target.checked)
-                  }
-                />
-              ))}
-            </div>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="archiveLocation"
-              name="archiveLocation"
-              labelText="Physical Archive Location"
-              placeholder="e.g., Fire-proof cabinet A3"
-              value={archiveData.archiveLocation}
-              onChange={(e) => handleInputChange(e, setArchiveData)}
-            />
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="digitalBackupLocation"
-              name="digitalBackupLocation"
-              labelText="Digital Backup Location"
-              placeholder="e.g., Secure server /archives/2025"
-              value={archiveData.digitalBackupLocation}
-              onChange={(e) => handleInputChange(e, setArchiveData)}
-            />
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
-              onChange={(dates) =>
-                handleDateChange(dates, "archiveDate", setArchiveData)
-              }
-            >
-              <DatePickerInput
-                id="archiveDate"
-                labelText="Archive Date"
-                placeholder="mm/dd/yyyy"
+        {finalizing && <Loading withOverlay />}
+        <div className="finalize-form">
+          <InlineNotification
+            kind="warning"
+            title={intl.formatMessage({
+              id: "pathology.archive.finalizeWarning.title",
+              defaultMessage: "This action is irreversible",
+            })}
+            subtitle={intl.formatMessage({
+              id: "pathology.archive.finalizeWarning.subtitle",
+              defaultMessage:
+                "Once finalized, the notebook cannot be modified. All samples must be archived and traceability verified.",
+            })}
+            hideCloseButton
+            lowContrast
+          />
+          <div className="finalize-summary">
+            <h5>
+              <FormattedMessage
+                id="pathology.archive.finalizeSummary"
+                defaultMessage="Finalization Summary"
               />
-            </DatePicker>
-          </Column>
-        </Grid>
+            </h5>
+            <ul>
+              <li>
+                <FormattedMessage
+                  id="pathology.archive.totalSamples"
+                  defaultMessage="Total Samples: {count}"
+                  values={{ count: archivingProgress?.totalSamples || 0 }}
+                />
+              </li>
+              <li>
+                <FormattedMessage
+                  id="pathology.archive.archivedSamples"
+                  defaultMessage="Archived Samples: {count}"
+                  values={{ count: archivingProgress?.archivedSamples || 0 }}
+                />
+              </li>
+              <li>
+                <FormattedMessage
+                  id="pathology.archive.traceabilityStatus"
+                  defaultMessage="Traceability: {status}"
+                  values={{
+                    status: traceabilityResult?.passed
+                      ? "Verified"
+                      : "Not Verified",
+                  }}
+                />
+              </li>
+            </ul>
+          </div>
+          <Checkbox
+            id="confirm-finalize"
+            labelText={intl.formatMessage({
+              id: "pathology.archive.confirmFinalize",
+              defaultMessage:
+                "I confirm that all samples have been properly archived and traceability has been verified. I understand this action cannot be undone.",
+            })}
+            checked={confirmFinalize}
+            onChange={(_, { checked }) => setConfirmFinalize(checked)}
+          />
+        </div>
       </Modal>
     </div>
   );

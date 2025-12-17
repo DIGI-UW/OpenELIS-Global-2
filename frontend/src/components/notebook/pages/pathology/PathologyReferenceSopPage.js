@@ -98,28 +98,71 @@ function PathologyReferenceSopPage({
 
   // Function to view/preview a document in a new window
   const handleViewDocument = (sop) => {
-    if (sop.fileData && sop.fileType) {
-      const win = window.open();
-      win.document.write(
-        '<iframe src="data:' +
-          sop.fileType +
-          ";base64," +
-          sop.fileData +
-          '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-      );
+    if (sop?.fileData && sop?.fileType) {
+      // Convert base64 to blob for better browser support
+      try {
+        const byteCharacters = atob(sop.fileData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: sop.fileType });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank");
+      } catch (e) {
+        // Fallback to data URI if blob creation fails
+        const win = window.open();
+        if (win) {
+          win.document.write(
+            '<iframe src="data:' +
+              sop.fileType +
+              ";base64," +
+              sop.fileData +
+              '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
+          );
+        }
+      }
+    } else {
+      setError("No document available to view.");
     }
   };
 
   // Function to download a document
   const handleDownloadDocument = (sop) => {
-    if (sop.fileData && sop.fileType && sop.fileName) {
-      // Create a download link
-      const link = document.createElement("a");
-      link.href = "data:" + sop.fileType + ";base64," + sop.fileData;
-      link.download = sop.fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    if (sop?.fileData && sop?.fileType) {
+      try {
+        // Convert base64 to blob for download
+        const byteCharacters = atob(sop.fileData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: sop.fileType });
+        const blobUrl = URL.createObjectURL(blob);
+
+        // Create a download link
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = sop.fileName || "sop-document";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up blob URL
+        URL.revokeObjectURL(blobUrl);
+      } catch (e) {
+        // Fallback to data URI download
+        const link = document.createElement("a");
+        link.href = "data:" + sop.fileType + ";base64," + sop.fileData;
+        link.download = sop.fileName || "sop-document";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } else {
+      setError("No document available to download.");
     }
   };
 
@@ -210,6 +253,7 @@ function PathologyReferenceSopPage({
     { key: "version", header: "Version" },
     { key: "effectiveDate", header: "Effective Date" },
     { key: "status", header: "Status" },
+    { key: "fileName", header: "Document" },
     { key: "actions", header: "Actions" },
   ];
 
@@ -325,7 +369,9 @@ function PathologyReferenceSopPage({
                   </TableHead>
                   <TableBody>
                     {rows.map((row) => {
-                      const sop = sops.find((s) => s.id === row.id);
+                      const sop = sops.find(
+                        (s) => String(s.id) === String(row.id),
+                      );
                       return (
                         <TableRow key={row.id} {...getRowProps({ row })}>
                           {row.cells.map((cell) => (
@@ -339,6 +385,16 @@ function PathologyReferenceSopPage({
                                 >
                                   {cell.value}
                                 </Tag>
+                              ) : cell.info.header === "fileName" ? (
+                                sop?.fileData ? (
+                                  <Tag type="blue" size="sm">
+                                    {cell.value || "Attached"}
+                                  </Tag>
+                                ) : (
+                                  <Tag type="gray" size="sm">
+                                    No file
+                                  </Tag>
+                                )
                               ) : cell.info.header === "actions" ? (
                                 <div style={{ display: "flex", gap: "0.5rem" }}>
                                   <Button
@@ -581,6 +637,43 @@ function PathologyReferenceSopPage({
                     <p style={{ color: "#525252", marginBottom: "1rem" }}>
                       Type: {selectedSop.fileType}
                     </p>
+                    {/* Inline preview for PDF files */}
+                    {selectedSop.fileType === "application/pdf" && (
+                      <div
+                        style={{
+                          marginBottom: "1rem",
+                          border: "1px solid #e0e0e0",
+                          borderRadius: "4px",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <iframe
+                          src={`data:${selectedSop.fileType};base64,${selectedSop.fileData}`}
+                          style={{
+                            width: "100%",
+                            height: "400px",
+                            border: "none",
+                          }}
+                          title={selectedSop.fileName}
+                        />
+                      </div>
+                    )}
+                    {/* Preview for images */}
+                    {selectedSop.fileType &&
+                      selectedSop.fileType.startsWith("image/") && (
+                        <div style={{ marginBottom: "1rem" }}>
+                          <img
+                            src={`data:${selectedSop.fileType};base64,${selectedSop.fileData}`}
+                            alt={selectedSop.fileName}
+                            style={{
+                              maxWidth: "100%",
+                              maxHeight: "400px",
+                              border: "1px solid #e0e0e0",
+                              borderRadius: "4px",
+                            }}
+                          />
+                        </div>
+                      )}
                     <div
                       style={{
                         display: "flex",
@@ -595,8 +688,8 @@ function PathologyReferenceSopPage({
                         onClick={() => handleViewDocument(selectedSop)}
                       >
                         <FormattedMessage
-                          id="pathology.label.view"
-                          defaultMessage="View"
+                          id="pathology.sop.openNewTab"
+                          defaultMessage="Open in New Tab"
                         />
                       </Button>
                       <Button
