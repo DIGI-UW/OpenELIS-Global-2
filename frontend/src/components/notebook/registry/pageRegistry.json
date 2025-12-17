@@ -346,6 +346,146 @@
         "notebook-finalization",
         "metadata-archiving"
       ]
+    },
+    "medlab-sample-routing": {
+      "id": "medlab-sample-routing",
+      "componentKey": "MedLabSampleRoutingPage",
+      "titleKey": "medlab.page.sampleRouting.title",
+      "defaultTitle": "Sample Routing",
+      "descriptionKey": "medlab.page.sampleRouting.description",
+      "defaultDescription": "Route samples to internal analysis, external labs, or storage.",
+      "category": "sample-management",
+      "capabilities": [
+        "destination-routing",
+        "workflow-assignment",
+        "storage-routing"
+      ]
+    },
+    "medlab-sample-processing": {
+      "id": "medlab-sample-processing",
+      "componentKey": "MedLabSampleProcessingPage",
+      "titleKey": "medlab.page.sampleProcessing.title",
+      "defaultTitle": "Sample Processing",
+      "descriptionKey": "medlab.page.sampleProcessing.description",
+      "defaultDescription": "Process samples for testing, record derived materials, and create aliquots.",
+      "category": "processing",
+      "capabilities": [
+        "processing-type",
+        "derived-material",
+        "aliquot-creation",
+        "child-sample-tracking"
+      ]
+    },
+    "medlab-quality-check": {
+      "id": "medlab-quality-check",
+      "componentKey": "MedLabQualityCheckPage",
+      "titleKey": "medlab.page.qualityCheck.title",
+      "defaultTitle": "Sample Receipt & Quality Assessment",
+      "descriptionKey": "medlab.page.qualityCheck.description",
+      "defaultDescription": "Accept or reject samples based on defined quality rules.",
+      "category": "quality",
+      "capabilities": [
+        "labeling-check",
+        "container-check",
+        "order-matching",
+        "acceptance-decision"
+      ]
+    },
+    "medlab-child-sample-creation": {
+      "id": "medlab-child-sample-creation",
+      "componentKey": "MedLabChildSampleCreationPage",
+      "titleKey": "medlab.page.childSampleCreation.title",
+      "defaultTitle": "Child Sample Creation",
+      "descriptionKey": "medlab.page.childSampleCreation.description",
+      "defaultDescription": "Create child samples (aliquots) from parent samples.",
+      "category": "sample-management",
+      "capabilities": ["aliquot-creation", "child-sample-tracking"]
+    },
+    "medlab-testing-analyzer": {
+      "id": "medlab-testing-analyzer",
+      "componentKey": "TestingAnalyzerPage",
+      "titleKey": "medlab.page.testingAnalyzer.title",
+      "defaultTitle": "Testing & Analyzer Integration",
+      "descriptionKey": "medlab.page.testingAnalyzer.description",
+      "defaultDescription": "Execute tests on analyzers, record QC results, track technology used, and manage deviations with root cause analysis.",
+      "category": "testing",
+      "capabilities": [
+        "analyzer-selection",
+        "worklist-generation",
+        "manual-automated-testing",
+        "technology-tracking",
+        "daily-qc",
+        "calibration-status",
+        "levey-jennings",
+        "eqa-participation",
+        "deviation-handling",
+        "root-cause-analysis",
+        "abnormal-flagging",
+        "qc-lock"
+      ]
+    },
+    "medlab-result-entry": {
+      "id": "medlab-result-entry",
+      "componentKey": "ResultEntryPage",
+      "titleKey": "medlab.page.resultEntry.title",
+      "defaultTitle": "Result Entry",
+      "descriptionKey": "medlab.page.resultEntry.description",
+      "defaultDescription": "Enter and validate test results.",
+      "category": "testing",
+      "capabilities": ["result-entry", "validation", "auto-import"]
+    },
+    "medlab-validation-reporting": {
+      "id": "medlab-validation-reporting",
+      "componentKey": "ValidationReportingPage",
+      "titleKey": "medlab.page.validationReporting.title",
+      "defaultTitle": "Validation, Reporting & Performance Monitoring",
+      "descriptionKey": "medlab.page.validationReporting.description",
+      "defaultDescription": "Authorize results, generate patient reports, monitor lab performance including QC trends, TAT, acceptance rates, equipment usage, and corrective actions.",
+      "category": "validation",
+      "capabilities": [
+        "result-validation",
+        "supervisor-approval",
+        "reference-range-modification",
+        "patient-reporting",
+        "report-delivery",
+        "sample-utilization",
+        "turnaround-time",
+        "equipment-usage-reports",
+        "qc-performance-summaries",
+        "qc-pass-fail-trends",
+        "sample-acceptance-rate",
+        "instrument-uptime",
+        "corrective-actions-frequency",
+        "temperature-excursion-reports",
+        "lab-section-access-control"
+      ]
+    },
+    "medlab-disposal-archiving": {
+      "id": "medlab-disposal-archiving",
+      "componentKey": "EndOfProjectArchivingPage",
+      "titleKey": "medlab.page.disposalArchiving.title",
+      "defaultTitle": "Disposal, Archiving & Accreditation",
+      "descriptionKey": "medlab.page.disposalArchiving.description",
+      "defaultDescription": "Close the lifecycle of samples with proper disposal/archiving and ensure accreditation compliance. Supports incineration, autoclaving, chemical treatment, biobank transfer, and audit trails.",
+      "category": "archiving",
+      "capabilities": [
+        "sample-disposal",
+        "disposal-reason-tracking",
+        "disposal-method-selection",
+        "incineration",
+        "autoclaving",
+        "chemical-treatment",
+        "responsible-person-tracking",
+        "disposal-facility-logging",
+        "retention-management",
+        "bioequivalence-retention",
+        "biobank-transfer",
+        "audit-trail",
+        "sop-compliance",
+        "iso-regulatory-mapping",
+        "notebook-finalization",
+        "metadata-archiving"
+      ]
     }
   }
 }

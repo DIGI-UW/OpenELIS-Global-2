@@ -39,6 +39,14 @@ import SampleProcessingPage from "../pages/SampleProcessingPage";
 import TestingAnalyzerPage from "../pages/TestingAnalyzerPage";
 import ValidationReportingPage from "../pages/ValidationReportingPage";
 
+// Import MedLab-specific page components
+import {
+  MedLabSampleRoutingPage,
+  MedLabSampleProcessingPage,
+  MedLabQualityCheckPage,
+  MedLabChildSampleCreationPage,
+} from "../pages/medlab";
+
 // Import registry data
 import pageRegistry from "./pageRegistry.json";
 import workflowDefinitions from "./workflowDefinitions.json";
@@ -73,6 +81,11 @@ const componentRegistry = {
   TestingAnalyzerPage,
   // ValidationReportingPage for MedLab workflow with validation, reporting, and performance monitoring
   ValidationReportingPage,
+  // MedLab-specific page components (duplicated from shared pages)
+  MedLabSampleRoutingPage,
+  MedLabSampleProcessingPage,
+  MedLabQualityCheckPage,
+  MedLabChildSampleCreationPage,
   // Placeholder components for pages not yet implemented
   CentrifugationPage: createPlaceholderPage("Centrifugation"),
   AliquotingPage: createPlaceholderPage("Aliquoting"),

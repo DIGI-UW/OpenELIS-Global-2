@@ -96,19 +96,19 @@
           "titleOverride": "Transport & Packaging"
         },
         {
-          "pageId": "quality-check",
+          "pageId": "medlab-quality-check",
           "order": 4,
           "required": true,
           "titleOverride": "Sample Receipt & Quality Assessment"
         },
         {
-          "pageId": "sample-routing",
+          "pageId": "medlab-sample-routing",
           "order": 5,
           "required": true,
           "titleOverride": "Sample Routing"
         },
         {
-          "pageId": "sample-processing",
+          "pageId": "medlab-sample-processing",
           "order": 6,
           "required": true,
           "titleOverride": "Sample Processing"
@@ -120,19 +120,19 @@
           "titleOverride": "Testing & Analyzer"
         },
         {
-          "pageId": "result-entry",
+          "pageId": "medlab-result-entry",
           "order": 8,
           "required": true,
           "titleOverride": "Result Entry"
         },
         {
-          "pageId": "validation-reporting",
+          "pageId": "medlab-validation-reporting",
           "order": 9,
           "required": true,
           "titleOverride": "Validation, Reporting & Performance Monitoring"
         },
         {
-          "pageId": "disposal-archiving",
+          "pageId": "medlab-disposal-archiving",
           "order": 10,
           "required": false,
           "titleOverride": "Disposal, Archiving & Accreditation"

@@ -78,6 +78,8 @@ function TestingAnalyzerPage({
   // State
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
+  // Use a ref to track selection synchronously (avoids setTimeout race conditions)
+  const selectedSampleIdsRef = useRef([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -435,7 +437,9 @@ function TestingAnalyzerPage({
 
   // Handle open test execution modal
   const handleOpenTestExecutionModal = useCallback(() => {
-    if (selectedSampleIds.length === 0) {
+    // Use ref for immediate access to current selection
+    const currentSelection = selectedSampleIdsRef.current;
+    if (currentSelection.length === 0) {
       setError("Please select at least one sample to run tests.");
       return;
     }
@@ -444,7 +448,7 @@ function TestingAnalyzerPage({
     setIsManualTest(false);
     setTechnologyUsed("");
     setTestExecutionModalOpen(true);
-  }, [selectedSampleIds]);
+  }, []);
 
   // Handle execute tests
   const handleExecuteTests = useCallback(() => {
@@ -453,11 +457,14 @@ function TestingAnalyzerPage({
       return;
     }
 
+    // Use ref for immediate access to current selection
+    const currentSelection = selectedSampleIdsRef.current;
+
     setExecuting(true);
     setError(null);
 
     const requestBody = {
-      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+      sampleIds: currentSelection.map((id) => parseInt(id, 10)),
       analyzerId: selectedAnalyzer?.id || null,
       analyzerName: selectedAnalyzer?.label || "Manual",
       worklistGenerated: worklistGenerated,
@@ -476,9 +483,10 @@ function TestingAnalyzerPage({
 
         if (response && response.success) {
           setSuccess(
-            `Successfully initiated testing for ${response.processedCount || selectedSampleIds.length} sample(s).`,
+            `Successfully initiated testing for ${response.processedCount || currentSelection.length} sample(s).`,
           );
           setSelectedSampleIds([]);
+          selectedSampleIdsRef.current = [];
           loadSamplesForTesting();
           if (onProgressUpdate) {
             onProgressUpdate();
@@ -489,7 +497,6 @@ function TestingAnalyzerPage({
       },
     );
   }, [
-    selectedSampleIds,
     selectedAnalyzer,
     worklistGenerated,
     isManualTest,
@@ -559,11 +566,14 @@ function TestingAnalyzerPage({
       return;
     }
 
+    // Use ref for immediate access to current selection
+    const currentSelection = selectedSampleIdsRef.current;
+
     setSavingDeviation(true);
     setError(null);
 
     const requestBody = {
-      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+      sampleIds: currentSelection.map((id) => parseInt(id, 10)),
       deviationType: deviationType,
       actionTaken: deviationAction,
       rootCauseAnalysis: rootCauseAnalysis,
@@ -581,6 +591,7 @@ function TestingAnalyzerPage({
         if (response && response.success) {
           setSuccess("Deviation recorded successfully.");
           setSelectedSampleIds([]);
+          selectedSampleIdsRef.current = [];
           loadDeviations();
           loadSamplesForTesting();
         } else {
@@ -589,7 +600,6 @@ function TestingAnalyzerPage({
       },
     );
   }, [
-    selectedSampleIds,
     deviationType,
     deviationAction,
     rootCauseAnalysis,
@@ -602,13 +612,15 @@ function TestingAnalyzerPage({
 
   // Handle bulk entry
   const handleOpenBulkEntryModal = useCallback(() => {
-    if (selectedSampleIds.length === 0) {
+    // Use ref for immediate access to current selection
+    const currentSelection = selectedSampleIdsRef.current;
+    if (currentSelection.length === 0) {
       setError("Please select samples for bulk result entry.");
       return;
     }
 
     // Initialize bulk results with selected samples
-    const initialBulkResults = selectedSampleIds.map((id) => {
+    const initialBulkResults = currentSelection.map((id) => {
       const sample = samples.find((s) => String(s.sampleItemId) === id);
       return {
         sampleItemId: id,
@@ -620,7 +632,7 @@ function TestingAnalyzerPage({
     });
     setBulkResults(initialBulkResults);
     setBulkEntryModalOpen(true);
-  }, [selectedSampleIds, samples]);
+  }, [samples]);
 
   // Load available tests for assignment
   const loadAvailableTests = useCallback(() => {
@@ -642,7 +654,9 @@ function TestingAnalyzerPage({
 
   // Handle open assign tests modal
   const handleOpenAssignTestsModal = useCallback(() => {
-    const samplesWithNoTests = selectedSampleIds.filter((id) => {
+    // Use ref for immediate access to current selection
+    const currentSelection = selectedSampleIdsRef.current;
+    const samplesWithNoTests = currentSelection.filter((id) => {
       const sample = samples.find((s) => String(s.sampleItemId) === id);
       return (
         sample &&
@@ -659,7 +673,7 @@ function TestingAnalyzerPage({
     setTestSearchText("");
     loadAvailableTests();
     setAssignTestsModalOpen(true);
-  }, [selectedSampleIds, samples, loadAvailableTests]);
+  }, [samples, loadAvailableTests]);
 
   // Handle test selection toggle
   const handleTestSelectionChange = (testId, isSelected) => {
@@ -684,8 +698,11 @@ function TestingAnalyzerPage({
       return;
     }
 
+    // Use ref for immediate access to current selection
+    const currentSelection = selectedSampleIdsRef.current;
+
     // Get only samples with 0 tests from the selected samples
-    const samplesWithNoTests = selectedSampleIds.filter((id) => {
+    const samplesWithNoTests = currentSelection.filter((id) => {
       const sample = samples.find((s) => String(s.sampleItemId) === id);
       return (
         sample &&
@@ -719,6 +736,7 @@ function TestingAnalyzerPage({
           );
           setAssignTestsModalOpen(false);
           setSelectedSampleIds([]);
+          selectedSampleIdsRef.current = [];
           setSelectedTestIds([]);
           loadSamplesForTesting();
           if (onProgressUpdate) {
@@ -730,7 +748,6 @@ function TestingAnalyzerPage({
       },
     );
   }, [
-    selectedSampleIds,
     selectedTestIds,
     samples,
     pageData?.id,
@@ -943,7 +960,9 @@ function TestingAnalyzerPage({
           size="sm"
           renderIcon={WarningAlt}
           onClick={() => {
-            if (selectedSampleIds.length === 0) {
+            // Use ref for immediate access to current selection
+            const currentSelection = selectedSampleIdsRef.current;
+            if (currentSelection.length === 0) {
               setError("Please select samples to record deviation.");
               return;
             }
@@ -1078,12 +1097,20 @@ function TestingAnalyzerPage({
                   getTableProps,
                   selectedRows,
                 }) => {
+                  // Synchronously update ref for immediate access in handlers
                   const newSelectedIds = selectedRows.map((r) => r.id);
+                  selectedSampleIdsRef.current = newSelectedIds;
+                  // Also update state for UI reactivity (using useEffect pattern)
                   if (
                     JSON.stringify(newSelectedIds) !==
                     JSON.stringify(selectedSampleIds)
                   ) {
-                    setTimeout(() => setSelectedSampleIds(newSelectedIds), 0);
+                    // Use Promise.resolve for microtask timing (faster than setTimeout)
+                    Promise.resolve().then(() => {
+                      if (componentMounted.current) {
+                        setSelectedSampleIds(newSelectedIds);
+                      }
+                    });
                   }
 
                   return (
@@ -1877,7 +1904,7 @@ function TestingAnalyzerPage({
               id="medlab.page.testingAnalyzer.assignTestsModal.description"
               defaultMessage="Select tests to assign to {count} sample(s) without tests."
               values={{
-                count: selectedSampleIds.filter((id) => {
+                count: selectedSampleIdsRef.current.filter((id) => {
                   const sample = samples.find(
                     (s) => String(s.sampleItemId) === id,
                   );

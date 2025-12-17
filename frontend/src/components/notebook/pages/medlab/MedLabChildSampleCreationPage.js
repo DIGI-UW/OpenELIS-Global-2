@@ -26,9 +26,9 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
-import SampleGrid from "../workflow/SampleGrid";
-import "../workflow/NotebookWorkflow.css";
+} from "../../../utils/Utils";
+import SampleGrid from "../../workflow/SampleGrid";
+import "../../workflow/NotebookWorkflow.css";
 
 /**
  * ChildSampleCreationPage - Page 4 of the immunology workflow.
@@ -36,12 +36,14 @@ import "../workflow/NotebookWorkflow.css";
  *
  * @param {Object} props
  * @param {number} props.entryId - The notebook entry ID
+ * @param {number} props.notebookId - The notebook ID (used for API calls)
  * @param {Object} props.pageData - The notebook page data
  * @param {Object} props.progress - Page progress
  * @param {function} props.onProgressUpdate - Callback when progress changes
  */
-function ChildSampleCreationPage({
+function MedLabChildSampleCreationPage({
   entryId,
+  notebookId,
   pageData,
   progress,
   onProgressUpdate,
@@ -70,16 +72,7 @@ function ChildSampleCreationPage({
   const [parentChildren, setParentChildren] = useState([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
 
-  // Load samples for this page
-  useEffect(() => {
-    componentMounted.current = true;
-    loadPageSamples();
-
-    return () => {
-      componentMounted.current = false;
-    };
-  }, [entryId, pageData?.id]);
-
+  // Define loadPageSamples before the useEffect that uses it
   const loadPageSamples = useCallback(() => {
     if (!pageData?.id) {
       setLoading(false);
@@ -108,7 +101,9 @@ function ChildSampleCreationPage({
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
               status: sample.pageStatus || "PENDING",
-              patientName: sample.patientName,
+              // Patient info - extract from data field (linked patient) or direct field
+              patientName: sample.data?.patientName || sample.patientName || "",
+              patientId: sample.data?.patientId || "",
               volume: sample.volume,
               // Hierarchy information from backend
               hasChildren: sample.hasChildren || false,
@@ -117,6 +112,7 @@ function ChildSampleCreationPage({
               nestingLevel: sample.nestingLevel || 0,
               parentSampleItemId: sample.parentSampleItemId,
               parentExternalId: sample.parentExternalId,
+              data: sample.data,
             }));
             setSamples(transformedSamples);
           } else {
@@ -127,6 +123,16 @@ function ChildSampleCreationPage({
       },
     );
   }, [pageData?.id]);
+
+  // Load samples for this page
+  useEffect(() => {
+    componentMounted.current = true;
+    loadPageSamples();
+
+    return () => {
+      componentMounted.current = false;
+    };
+  }, [entryId, pageData?.id, loadPageSamples]);
 
   // Check if page has a real database ID
   const hasRealPageId =
@@ -145,11 +151,16 @@ function ChildSampleCreationPage({
   const handleCreateChildren = useCallback(() => {
     if (selectedParentIds.length === 0 || !hasRealPageId) return;
 
+    if (!notebookId) {
+      setError("Notebook ID is required to create child samples.");
+      return;
+    }
+
     setCreating(true);
     setError(null);
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/${entryId}/samples/create-children`,
+      `/rest/notebook/${notebookId}/samples/create-children`,
       JSON.stringify({
         parentSampleIds: selectedParentIds.map((id) => parseInt(id, 10)),
         childCountPerParent: childCount,
@@ -157,6 +168,7 @@ function ChildSampleCreationPage({
         pageId: pageData?.id, // Link child samples to this page for SampleRoutingPage
       }),
       (response) => {
+        if (!componentMounted.current) return;
         setCreating(false);
         setCreateModalOpen(false);
 
@@ -177,9 +189,10 @@ function ChildSampleCreationPage({
   }, [
     selectedParentIds,
     hasRealPageId,
-    entryId,
+    notebookId,
     childCount,
     externalIdPrefix,
+    pageData?.id,
     loadPageSamples,
     onProgressUpdate,
   ]);
@@ -193,6 +206,7 @@ function ChildSampleCreationPage({
     getFromOpenElisServer(
       `/rest/notebook/samples/${parentSampleId}/children`,
       (response) => {
+        if (!componentMounted.current) return;
         setLoadingChildren(false);
         if (response && Array.isArray(response)) {
           setParentChildren(response);
@@ -220,6 +234,7 @@ function ChildSampleCreationPage({
           status: newStatus,
         }),
         (status) => {
+          if (!componentMounted.current) return;
           if (status === 200) {
             loadPageSamples();
             if (onProgressUpdate) {
@@ -252,6 +267,7 @@ function ChildSampleCreationPage({
         status: "COMPLETED",
       }),
       (status) => {
+        if (!componentMounted.current) return;
         if (status === 200) {
           loadPageSamples();
           setSelectedParentIds([]);
@@ -421,6 +437,7 @@ function ChildSampleCreationPage({
           onStatusFilterChange={setStatusFilter}
           showSelection={true}
           showHierarchy={true}
+          showPatient={true}
           loading={loading}
           additionalColumns={[
             {
@@ -610,4 +627,4 @@ function ChildSampleCreationPage({
   );
 }
 
-export default ChildSampleCreationPage;
+export default MedLabChildSampleCreationPage;

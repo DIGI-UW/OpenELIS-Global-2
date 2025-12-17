@@ -242,26 +242,29 @@ public class ManifestImportServiceImpl implements ManifestImportService {
                 continue;
             }
 
-            // Create a parent Sample record for this batch using the system's accession
-            // number generator
-            String accessionNumber = accessionGenerator != null ? accessionGenerator.getNextAccessionNumber(null, true)
-                    : String.valueOf(System.currentTimeMillis());
-
-            Sample parentSample = new Sample();
-            parentSample.setSysUserId(sysUserId);
-            parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
-            parentSample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
-            parentSample.setAccessionNumber(accessionNumber);
-            String sampleId = sampleService.insert(parentSample);
-            parentSample.setId(sampleId);
-
-            // Create individual SampleItem records
+            // Create individual Sample and SampleItem records - each with its own unique
+            // accession number
+            // This ensures each sample has a unique Lab Number for proper tracking through
+            // the workflow
             for (int seq = 1; seq <= row.numOfSamples(); seq++) {
+                // Generate a UNIQUE accession number for EACH sample
+                String accessionNumber = accessionGenerator != null
+                        ? accessionGenerator.getNextAccessionNumber(null, true)
+                        : String.valueOf(System.currentTimeMillis()) + "-" + seq;
+
+                Sample sample = new Sample();
+                sample.setSysUserId(sysUserId);
+                sample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
+                sample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
+                sample.setAccessionNumber(accessionNumber);
+                String sampleId = sampleService.insert(sample);
+                sample.setId(sampleId);
+
                 SampleItem item = new SampleItem();
-                item.setSample(parentSample);
+                item.setSample(sample);
                 item.setTypeOfSample(sampleType);
                 item.setExternalId(generateExternalId(row.groupId(), seq));
-                item.setSortOrder(Integer.toString(seq));
+                item.setSortOrder("1"); // Each sample has only one item now
                 item.setStatusId(sampleEnteredStatusId);
                 item.setSysUserId(sysUserId);
 

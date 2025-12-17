@@ -60,48 +60,51 @@ function NotebookWorkflowTab({
 
   /**
    * Determine effective workflow type from props, notebook, or default.
+   * Used for fallback to workflow definitions when notebook has no pages.
    */
   const effectiveWorkflowType = useMemo(() => {
     if (propWorkflowType) return propWorkflowType;
-    if (notebook?.type) {
-      // Map notebook type to workflow ID
-      // Handle both string types and object types with dictEntry
+
+    // Check for typeName field (string like "Medical Lab", "Immunology")
+    if (notebook?.typeName) {
       const typeMap = {
         IMMUNOLOGY: "immunology",
         MEDLAB: "medlab",
+        "MEDICAL LAB": "medlab",
         HEMATOLOGY: "hematology",
         CHEMISTRY: "chemistry",
       };
-      // Extract type value - could be string, object with dictEntry, or object with value
-      const typeValue =
-        typeof notebook.type === "string"
-          ? notebook.type
-          : notebook.type?.dictEntry || notebook.type?.value || null;
-      if (typeValue) {
-        const normalizedType = typeValue.toUpperCase();
-        return typeMap[normalizedType] || DEFAULT_WORKFLOW_TYPE;
-      }
+      const normalizedType = notebook.typeName.toUpperCase();
+      const result = typeMap[normalizedType];
+      if (result) return result;
     }
+
     return workflowType || DEFAULT_WORKFLOW_TYPE;
   }, [propWorkflowType, notebook, workflowType]);
 
   /**
-   * Build effective pages from workflow definition and page registry.
-   * Falls back to notebook-defined pages if available.
+   * Build effective pages from notebook pages or workflow definition fallback.
+   * The pageId stored in the database is the source of truth for component selection.
    */
   const effectivePages = useMemo(() => {
     // If notebook has explicit pages, use those with registry enhancement
     if (pages && pages.length > 0) {
-      const enhancedPages = pages.map((page, index) => ({
-        ...page,
-        order: page.order || index + 1,
-        pageId: page.pageId || guessPageIdFromTitle(page.title),
-      }));
+      const enhancedPages = pages.map((page, index) => {
+        // Use pageId from database, or guess from title as fallback
+        const pageId = page.pageId || guessPageIdFromTitle(page.title);
+
+        return {
+          ...page,
+          order: page.order || index + 1,
+          pageId,
+        };
+      });
       // Sort by order to maintain correct page sequence
       return enhancedPages.sort((a, b) => (a.order || 0) - (b.order || 0));
     }
 
     // Otherwise, build from workflow definition
+    console.log("[DEBUG] No pages from DB, using workflow definition");
     const workflowPages = buildWorkflowPages(effectiveWorkflowType);
     if (workflowPages.length > 0) {
       return workflowPages;
@@ -113,19 +116,19 @@ function NotebookWorkflowTab({
 
   /**
    * Guess page ID from title for backwards compatibility with
-   * notebooks that don't have pageId set.
+   * notebooks that don't have pageId set. The pageId in the database
+   * is the source of truth - this is only a fallback.
    */
   function guessPageIdFromTitle(title) {
     if (!title) return null;
     const titleLower = title.toLowerCase();
+
     const mappings = {
       "sample reception": "sample-reception",
       reception: "sample-reception",
       "initial processing": "initial-processing",
-      processing: "initial-processing",
       assays: "assays",
       "child sample": "child-sample-creation",
-      "child samples": "child-sample-creation",
       routing: "sample-routing",
       prep: "prep",
       preparation: "prep",
@@ -137,12 +140,8 @@ function NotebookWorkflowTab({
       archiving: "end-of-project-archiving",
       patient: "patient-order-entry",
       "order entry": "patient-order-entry",
-      "lab order": "patient-order-entry",
       "sample collection": "sample-collection",
-      collection: "sample-collection",
       "quality check": "quality-check",
-      "quality control": "quality-check",
-      "sample quality": "quality-check",
       centrifugation: "centrifugation",
       aliquot: "aliquoting",
       analyzer: "analyzer-loading",

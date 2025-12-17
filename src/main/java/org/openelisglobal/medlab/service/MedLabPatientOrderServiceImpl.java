@@ -563,7 +563,8 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                     transportPageId = page.getId();
                     LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForQC",
                             "Found transport-packaging page with id: " + transportPageId);
-                } else if ("quality-check".equals(page.getPageId())) {
+                } else if ("quality-check".equals(page.getPageId())
+                        || "medlab-quality-check".equals(page.getPageId())) {
                     qcPageId = page.getId();
                     LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForQC",
                             "Found QC page with id: " + qcPageId);
@@ -979,13 +980,18 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
     public List<Map<String, Object>> getSamplesForRouting(Integer entryId) {
         List<Map<String, Object>> samples = new ArrayList<>();
 
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForRouting", "Called with entryId: " + entryId);
+
         if (entryId == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getSamplesForRouting", "entryId is null");
             return samples;
         }
 
         try {
             NotebookEntry entry = notebookEntryService.get(entryId);
             if (entry == null || entry.getNotebook() == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getSamplesForRouting",
+                        "Entry or notebook is null for entryId: " + entryId);
                 return samples;
             }
 
@@ -1002,12 +1008,17 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             Integer routingPageId = null;
 
             for (NoteBookPage page : pages) {
-                if ("quality-check".equals(page.getPageId())) {
+                // Check for both standard and MedLab-specific page IDs
+                String pageId = page.getPageId();
+                if ("quality-check".equals(pageId) || "medlab-quality-check".equals(pageId)) {
                     qcPageId = page.getId();
-                } else if ("sample-routing".equals(page.getPageId())) {
+                } else if ("sample-routing".equals(pageId) || "medlab-sample-routing".equals(pageId)) {
                     routingPageId = page.getId();
                 }
             }
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForRouting",
+                    "Found QC page ID: " + qcPageId + ", Routing page ID: " + routingPageId);
 
             if (qcPageId == null) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "getSamplesForRouting",
@@ -1017,6 +1028,9 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
 
             // Get samples from the QC page that have COMPLETED status (passed QC)
             List<NotebookPageSample> qcPageSamples = notebookPageSampleService.getByPageId(qcPageId);
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForRouting",
+                    "Found " + (qcPageSamples != null ? qcPageSamples.size() : 0) + " samples on QC page");
 
             for (NotebookPageSample qcSample : qcPageSamples) {
                 try {
@@ -1270,7 +1284,8 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                                     }
                                 } else {
                                     LogEvent.logWarn(this.getClass().getSimpleName(), "routeSamples",
-                                            "Unknown location type: " + locationType + " - skipping storage assignment");
+                                            "Unknown location type: " + locationType
+                                                    + " - skipping storage assignment");
                                 }
                             }
                         } catch (Exception storageEx) {
@@ -1414,7 +1429,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             for (NoteBookPage page : pages) {
                 LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForResultEntry", "Checking page: id="
                         + page.getId() + ", pageId=" + page.getPageId() + ", title=" + page.getTitle());
-                if ("quality-check".equals(page.getPageId())) {
+                if ("quality-check".equals(page.getPageId()) || "medlab-quality-check".equals(page.getPageId())) {
                     qcPageId = page.getId();
                     LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForResultEntry",
                             "Found QC page with id: " + qcPageId);
@@ -1472,8 +1487,10 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                         processedSampleIds.add(sample.getId());
 
                         // Check if sample passed QC (has COMPLETED status on QC page)
+                        // For child samples, also check if their parent passed QC
                         boolean passedQC = false;
                         if (qcPageId != null) {
+                            // First check this sample's QC status
                             List<NotebookPageSample> qcPageSamples = notebookPageSampleService
                                     .getBySampleItemId(Integer.valueOf(sampleItem.getId()));
                             LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForResultEntry", "Found "
@@ -1486,6 +1503,26 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                                         && qcPs.getStatus() == NotebookPageSample.Status.COMPLETED) {
                                     passedQC = true;
                                     break;
+                                }
+                            }
+
+                            // If not found, check parent sample's QC status (for child/aliquot samples)
+                            if (!passedQC && sampleItem.getParentSampleItem() != null) {
+                                LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForResultEntry",
+                                        "Sample " + sampleItem.getId() + " has parent "
+                                                + sampleItem.getParentSampleItem().getId()
+                                                + ", checking parent QC status");
+                                List<NotebookPageSample> parentQcSamples = notebookPageSampleService
+                                        .getBySampleItemId(Integer.valueOf(sampleItem.getParentSampleItem().getId()));
+                                for (NotebookPageSample parentQcPs : parentQcSamples) {
+                                    if (qcPageId.equals(parentQcPs.getNotebookPageId())
+                                            && parentQcPs.getStatus() == NotebookPageSample.Status.COMPLETED) {
+                                        passedQC = true;
+                                        LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForResultEntry",
+                                                "Parent sample " + sampleItem.getParentSampleItem().getId()
+                                                        + " passed QC");
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -1682,7 +1719,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             for (NoteBookPage page : pages) {
                 LogEvent.logInfo(this.getClass().getSimpleName(), "getResultsForVerification", "Checking page: id="
                         + page.getId() + ", pageId=" + page.getPageId() + ", title=" + page.getTitle());
-                if ("result-entry".equals(page.getPageId())) {
+                if ("result-entry".equals(page.getPageId()) || "medlab-result-entry".equals(page.getPageId())) {
                     resultEntryPageId = page.getId();
                     LogEvent.logInfo(this.getClass().getSimpleName(), "getResultsForVerification",
                             "Found Result Entry page with id: " + resultEntryPageId);
@@ -2005,7 +2042,8 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                     LogEvent.logInfo(this.getClass().getSimpleName(), "getResultsForReporting",
                             "Found Result Verification page with id: " + verificationPageId);
                     break;
-                } else if ("validation-reporting".equals(page.getPageId())) {
+                } else if ("validation-reporting".equals(page.getPageId())
+                        || "medlab-validation-reporting".equals(page.getPageId())) {
                     // For validation-reporting (combined page), verification happens within the
                     // same page
                     verificationPageId = page.getId();
@@ -2300,7 +2338,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             Integer qcPageId = null;
             Integer storagePageId = null;
             for (NoteBookPage page : pages) {
-                if ("quality-check".equals(page.getPageId())) {
+                if ("quality-check".equals(page.getPageId()) || "medlab-quality-check".equals(page.getPageId())) {
                     qcPageId = page.getId();
                 } else if ("sample-storage".equals(page.getPageId())) {
                     storagePageId = page.getId();
@@ -2671,11 +2709,13 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             Integer processingPageId = null;
 
             for (NoteBookPage page : pages) {
-                if ("quality-check".equals(page.getPageId())) {
+                if ("quality-check".equals(page.getPageId()) || "medlab-quality-check".equals(page.getPageId())) {
                     qcPageId = page.getId();
-                } else if ("sample-routing".equals(page.getPageId())) {
+                } else if ("sample-routing".equals(page.getPageId())
+                        || "medlab-sample-routing".equals(page.getPageId())) {
                     routingPageId = page.getId();
-                } else if ("sample-processing".equals(page.getPageId())) {
+                } else if ("sample-processing".equals(page.getPageId())
+                        || "medlab-sample-processing".equals(page.getPageId())) {
                     processingPageId = page.getId();
                 }
             }
@@ -3056,14 +3096,16 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 return samples;
             }
 
-            // Find the processing page (samples must be processed before testing) and testing page
+            // Find the processing page (samples must be processed before testing) and
+            // testing page
             Integer processingPageId = null;
             Integer testingPageId = null;
 
             for (NoteBookPage page : pages) {
-                if ("sample-processing".equals(page.getPageId())) {
+                String pageId = page.getPageId();
+                if ("sample-processing".equals(pageId) || "medlab-sample-processing".equals(pageId)) {
                     processingPageId = page.getId();
-                } else if ("testing-analyzer".equals(page.getPageId())) {
+                } else if ("testing-analyzer".equals(pageId) || "medlab-testing-analyzer".equals(pageId)) {
                     testingPageId = page.getId();
                 }
             }
@@ -4036,7 +4078,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             // Find QC page
             Integer qcPageId = null;
             for (NoteBookPage page : pages) {
-                if ("quality-check".equals(page.getPageId())) {
+                if ("quality-check".equals(page.getPageId()) || "medlab-quality-check".equals(page.getPageId())) {
                     qcPageId = page.getId();
                     break;
                 }
@@ -4421,14 +4463,17 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 return results;
             }
 
-            // Find the validation-reporting page (samples must be validated before disposal)
+            // Find the validation-reporting page (samples must be validated before
+            // disposal)
             Integer validationPageId = null;
             Integer disposalPageId = null;
 
             for (NoteBookPage page : pages) {
-                if ("validation-reporting".equals(page.getPageId())) {
+                if ("validation-reporting".equals(page.getPageId())
+                        || "medlab-validation-reporting".equals(page.getPageId())) {
                     validationPageId = page.getId();
-                } else if ("disposal-archiving".equals(page.getPageId())) {
+                } else if ("disposal-archiving".equals(page.getPageId())
+                        || "medlab-disposal-archiving".equals(page.getPageId())) {
                     disposalPageId = page.getId();
                 }
             }
@@ -4497,8 +4542,8 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                     Patient patient = sampleHumanService.getPatientForSample(sample);
                     if (patient != null && patient.getPerson() != null) {
                         org.openelisglobal.person.valueholder.Person person = patient.getPerson();
-                        sampleData.put("patientName", (person.getFirstName() != null ? person.getFirstName() : "")
-                                + " " + (person.getLastName() != null ? person.getLastName() : ""));
+                        sampleData.put("patientName", (person.getFirstName() != null ? person.getFirstName() : "") + " "
+                                + (person.getLastName() != null ? person.getLastName() : ""));
                     }
 
                     results.add(sampleData);
