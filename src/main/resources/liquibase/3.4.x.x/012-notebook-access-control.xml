@@ -255,4 +255,106 @@
         </createIndex>
     </changeSet>
 
+    <!-- ======================================================== -->
+    <!-- 6. Backfill existing templates with all active organizations -->
+    <!-- This ensures existing templates remain accessible to all users -->
+    <!-- ======================================================== -->
+    <changeSet id="backfill-notebook-organizations" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <tableExists tableName="organization" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Backfill existing notebook templates with all active organizations for backward compatibility.</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.organization o
+            WHERE n.is_template = true
+              AND o.is_active = 'Y'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.notebook_organizations no
+                  WHERE no.notebook_id = n.id AND no.organization_id = o.id
+              );
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 7. Ensure MNTD notebook template has all active organizations -->
+    <!-- Handles case where MNTD template was added after initial backfill -->
+    <!-- ======================================================== -->
+    <changeSet id="backfill-mntd-notebook-organizations" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <tableExists tableName="organization" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Ensure MNTD Laboratory notebook has all active organizations assigned.</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.organization o
+            WHERE n.title = 'MNTD Laboratory'
+              AND n.is_template = true
+              AND o.is_active = 'Y'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.notebook_organizations no
+                  WHERE no.notebook_id = n.id AND no.organization_id = o.id
+              );
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 8. Ensure Immunology notebook template has all active organizations -->
+    <!-- Handles case where Immunology template was added after initial backfill -->
+    <!-- ======================================================== -->
+    <changeSet id="backfill-immunology-notebook-organizations" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <tableExists tableName="organization" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Ensure Immunology Laboratory notebook has all active organizations assigned.</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.organization o
+            WHERE n.title = 'Immunology Laboratory'
+              AND n.is_template = true
+              AND o.is_active = 'Y'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.notebook_organizations no
+                  WHERE no.notebook_id = n.id AND no.organization_id = o.id
+              );
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 9. FINAL CATCH-ALL: Backfill ALL remaining templates organizations -->
+    <!-- This ensures ANY notebook template gets organizations assigned -->
+    <!-- ======================================================== -->
+    <changeSet id="backfill-all-notebook-organizations-final" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <tableExists tableName="organization" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Final catch-all: Ensure ALL notebook templates have organizations assigned.</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.organization o
+            WHERE n.is_template = true
+              AND o.is_active = 'Y'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.notebook_organizations no
+                  WHERE no.notebook_id = n.id AND no.organization_id = o.id
+              );
+        </sql>
+    </changeSet>
+
 </databaseChangeLog>
