@@ -42,10 +42,10 @@ describe("Storage Search - Sample ID Search (P2A)", function () {
     cy.visit("/Storage/samples");
 
     // Wait for samples to load using intercept (not arbitrary wait)
-    cy.wait("@getSampleItems", { timeout: 10000 });
+    cy.wait("@getSampleItems", { timeout: 3000 });
 
     // Verify dashboard is loaded (element readiness check)
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
   });
@@ -55,7 +55,7 @@ describe("Storage Search - Sample ID Search (P2A)", function () {
     cy.url().should("include", "/Storage");
 
     // Verify dashboard is loaded (use test ID, not class selector)
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -88,10 +88,10 @@ describe("Storage Search - Sample ID Search (P2A)", function () {
         .type("101"); // Using fixture sample ID
 
       // Wait for search API call (intercept timing, not arbitrary wait)
-      cy.wait("@searchSampleItems", { timeout: 5000 });
+      cy.wait("@searchSampleItems", { timeout: 3000 });
 
       // Verify sample found and location displayed in table (retry-ability)
-      cy.get('[data-testid="sample-row"]', { timeout: 5000 })
+      cy.get('[data-testid="sample-row"]', { timeout: 3000 })
         .first()
         .within(() => {
           cy.get('[data-testid="sample-location"]')
@@ -103,7 +103,7 @@ describe("Storage Search - Sample ID Search (P2A)", function () {
 
   it("Should display hierarchical location path for found sample", function () {
     // Wait for sample list (element readiness check)
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -125,7 +125,7 @@ describe("Storage Search - Sample ID Search (P2A)", function () {
         .type("101");
 
       // Wait for search API call (intercept timing)
-      cy.wait("@searchSampleItems", { timeout: 5000 });
+      cy.wait("@searchSampleItems", { timeout: 3000 });
 
       // Verify the path shows room > device > shelf > rack > position (retry-ability)
       cy.get('[data-testid="sample-row"]')
@@ -144,28 +144,28 @@ describe("Storage Search - Filter by Room (P2A)", function () {
     cy.intercept("GET", "**/rest/storage/rooms**").as("getRooms");
 
     cy.visit("/Storage/samples");
-    cy.wait("@getSampleItems", { timeout: 10000 });
+    cy.wait("@getSampleItems", { timeout: 3000 });
 
     // Verify sample list is visible (element readiness check)
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
   });
 
   it("Should filter samples by room", function () {
     // Verify we're on the samples tab (retry-ability)
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
     // Select room filter - scope to samples tab (element readiness check)
-    cy.get('[data-testid="room-filter"]', { timeout: 10000 })
+    cy.get('[data-testid="room-filter"]', { timeout: 3000 })
       .should("be.visible")
       .first()
       .click();
 
     // Wait for rooms API call (intercept timing)
-    cy.wait("@getRooms", { timeout: 5000 });
+    cy.wait("@getRooms", { timeout: 3000 });
 
     // Check if "Main Laboratory" option exists (retry-ability)
     cy.get("body").then(($body) => {
@@ -173,7 +173,7 @@ describe("Storage Search - Filter by Room (P2A)", function () {
         cy.contains("Main Laboratory").should("be.visible").click();
 
         // Wait for filtered results (use intercept if available, otherwise use retry-ability)
-        cy.get('[data-testid="sample-list"]', { timeout: 5000 }).should(
+        cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
           "be.visible",
         );
 
@@ -215,53 +215,53 @@ describe("Storage Search - Filter by Multiple Criteria (P2A)", function () {
     cy.intercept("GET", "**/rest/storage/devices**").as("getDevices");
 
     cy.visit("/Storage/samples");
-    cy.wait("@getSampleItems", { timeout: 10000 });
+    cy.wait("@getSampleItems", { timeout: 3000 });
 
     // Verify sample list is visible (element readiness check)
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
   });
 
   it("Should filter samples by room and device", function () {
     // Verify we're on the samples tab (retry-ability)
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
     // Select room filter (element readiness check)
-    cy.get('[data-testid="room-filter"]', { timeout: 10000 })
+    cy.get('[data-testid="room-filter"]', { timeout: 3000 })
       .should("be.visible")
       .first()
       .click();
 
     // Wait for rooms API call (intercept timing)
-    cy.wait("@getRooms", { timeout: 5000 });
+    cy.wait("@getRooms", { timeout: 3000 });
 
     cy.get("body").then(($body) => {
       if ($body.text().includes("Main Laboratory")) {
         cy.contains("Main Laboratory").should("be.visible").click();
 
         // Wait for filter to apply (retry-ability, not arbitrary wait)
-        cy.get('[data-testid="sample-list"]', { timeout: 5000 }).should(
+        cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
           "be.visible",
         );
 
         // Select device filter (element readiness check)
-        cy.get('[data-testid="device-filter"]', { timeout: 10000 })
+        cy.get('[data-testid="device-filter"]', { timeout: 3000 })
           .should("be.visible")
           .first()
           .click();
 
         // Wait for devices API call (intercept timing)
-        cy.wait("@getDevices", { timeout: 5000 });
+        cy.wait("@getDevices", { timeout: 3000 });
 
         cy.get("body").then(($body2) => {
           if ($body2.text().includes("Freezer 01")) {
             cy.contains("Freezer 01").should("be.visible").click();
 
             // Wait for filtered results (retry-ability)
-            cy.get('[data-testid="sample-list"]', { timeout: 5000 }).should(
+            cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
               "be.visible",
             );
 
@@ -298,7 +298,7 @@ describe("Storage Search - Filter by Multiple Criteria (P2A)", function () {
 
   it("Should clear filters and show all samples", function () {
     // Verify sample list is visible (element readiness check)
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -308,25 +308,25 @@ describe("Storage Search - Filter by Multiple Criteria (P2A)", function () {
         cy.wrap($filter).first().should("be.visible").click();
 
         // Wait for rooms API call (intercept timing)
-        cy.wait("@getRooms", { timeout: 5000 });
+        cy.wait("@getRooms", { timeout: 3000 });
 
         cy.get("body").then(($body) => {
           if ($body.text().includes("Main Laboratory")) {
             cy.contains("Main Laboratory").should("be.visible").click();
 
             // Wait for filter to apply (retry-ability)
-            cy.get('[data-testid="sample-list"]', { timeout: 5000 }).should(
+            cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
               "be.visible",
             );
 
             // Clear filters button should be visible now (element readiness check)
-            cy.get('[data-testid="clear-filters-button"]', { timeout: 10000 })
+            cy.get('[data-testid="clear-filters-button"]', { timeout: 3000 })
               .should("be.visible")
               .first()
               .click();
 
             // Wait for filters to clear (retry-ability)
-            cy.get('[data-testid="sample-list"]', { timeout: 5000 }).should(
+            cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
               "be.visible",
             );
           } else {
@@ -358,17 +358,17 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
     cy.intercept("GET", "**/rest/storage/racks**").as("getRacks");
 
     cy.visit("/Storage/samples");
-    cy.wait("@getSampleItems", { timeout: 10000 });
+    cy.wait("@getSampleItems", { timeout: 3000 });
 
     // Verify dashboard is loaded (element readiness check)
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
   });
 
   describe("Samples Tab Search", function () {
     it("testSamplesSearch_BySampleId - Search by sample ID, verify results", function () {
-      cy.get('[data-testid="sample-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="sample-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("101");
@@ -381,7 +381,7 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
     });
 
     it("testSamplesSearch_ByAccessionPrefix - Search by accession prefix, verify results", function () {
-      cy.get('[data-testid="sample-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="sample-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("TEST-SAMPLE");
@@ -397,7 +397,7 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
     });
 
     it("testSamplesSearch_ByLocationPath - Search by location path, verify results", function () {
-      cy.get('[data-testid="sample-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="sample-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("Freezer");
@@ -413,7 +413,7 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
     });
 
     it("testSamplesSearch_Debounced - Verify debounced search (300-500ms delay)", function () {
-      cy.get('[data-testid="sample-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="sample-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("TEST");
@@ -430,7 +430,7 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
     });
 
     it("testSamplesSearch_CaseInsensitive - Verify case-insensitive matching", function () {
-      cy.get('[data-testid="sample-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="sample-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("freezer"); // lowercase
@@ -446,7 +446,7 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
     });
 
     it("testSamplesSearch_PartialMatch - Verify partial substring matching", function () {
-      cy.get('[data-testid="sample-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="sample-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("TEST-SAMP"); // Partial match for "TEST-SAMPLE-001"
@@ -465,16 +465,16 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
   describe("Rooms Tab Search", function () {
     beforeEach(() => {
       // Switch to rooms tab (element readiness check)
-      cy.get('[data-testid="tab-rooms"]', { timeout: 10000 })
+      cy.get('[data-testid="tab-rooms"]', { timeout: 3000 })
         .should("be.visible")
         .click();
 
       // Wait for rooms to load (intercept timing)
-      cy.wait("@getRooms", { timeout: 10000 });
+      cy.wait("@getRooms", { timeout: 3000 });
     });
 
     it("testRoomsSearch_ByName - Search rooms by name", function () {
-      cy.get('[data-testid="room-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="room-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("Main");
@@ -484,7 +484,7 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
     });
 
     it("testRoomsSearch_ByCode - Search rooms by code", function () {
-      cy.get('[data-testid="room-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="room-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("MAIN-LAB");
@@ -500,16 +500,16 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
   describe("Devices Tab Search", function () {
     beforeEach(() => {
       // Switch to devices tab (element readiness check)
-      cy.get('[data-testid="tab-devices"]', { timeout: 10000 })
+      cy.get('[data-testid="tab-devices"]', { timeout: 3000 })
         .should("be.visible")
         .click();
 
       // Wait for devices to load (intercept timing)
-      cy.wait("@getDevices", { timeout: 10000 });
+      cy.wait("@getDevices", { timeout: 3000 });
     });
 
     it("testDevicesSearch_ByName - Search devices by name", function () {
-      cy.get('[data-testid="device-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="device-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("Freezer");
@@ -522,7 +522,7 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
     });
 
     it("testDevicesSearch_ByCode - Search devices by code", function () {
-      cy.get('[data-testid="device-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="device-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("FRZ01");
@@ -535,7 +535,7 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
     });
 
     it("testDevicesSearch_ByType - Search devices by type", function () {
-      cy.get('[data-testid="device-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="device-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("freezer");
@@ -551,16 +551,16 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
   describe("Shelves Tab Search", function () {
     beforeEach(() => {
       // Switch to shelves tab (element readiness check)
-      cy.get('[data-testid="tab-shelves"]', { timeout: 10000 })
+      cy.get('[data-testid="tab-shelves"]', { timeout: 3000 })
         .should("be.visible")
         .click();
 
       // Wait for shelves to load (intercept timing)
-      cy.wait("@getShelves", { timeout: 10000 });
+      cy.wait("@getShelves", { timeout: 3000 });
     });
 
     it("testShelvesSearch_ByLabel - Search shelves by label", function () {
-      cy.get('[data-testid="shelf-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="shelf-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("Shelf-A");
@@ -576,16 +576,16 @@ describe("Dashboard Tab-Specific Search (FR-064, FR-064a)", function () {
   describe("Racks Tab Search", function () {
     beforeEach(() => {
       // Switch to racks tab (element readiness check)
-      cy.get('[data-testid="tab-racks"]', { timeout: 10000 })
+      cy.get('[data-testid="tab-racks"]', { timeout: 3000 })
         .should("be.visible")
         .click();
 
       // Wait for racks to load (intercept timing)
-      cy.wait("@getRacks", { timeout: 10000 });
+      cy.wait("@getRacks", { timeout: 3000 });
     });
 
     it("testRacksSearch_ByLabel - Search racks by label", function () {
-      cy.get('[data-testid="rack-search-input"]', { timeout: 10000 })
+      cy.get('[data-testid="rack-search-input"]', { timeout: 3000 })
         .should("be.visible")
         .clear()
         .type("Rack R1");

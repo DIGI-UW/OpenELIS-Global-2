@@ -280,6 +280,10 @@ const EditBoxModal = ({ open, mode, box, parentRack, onClose, onSave }) => {
         <Dropdown
           id="box-type"
           data-testid="box-type"
+          label={intl.formatMessage({
+            id: "storage.box.type",
+            defaultMessage: "Type",
+          })}
           titleText={intl.formatMessage({
             id: "storage.box.type",
             defaultMessage: "Type",
@@ -328,6 +332,10 @@ const EditBoxModal = ({ open, mode, box, parentRack, onClose, onSave }) => {
         <Dropdown
           id="box-position-schema"
           data-testid="box-position-schema"
+          label={intl.formatMessage({
+            id: "storage.box.positionSchemaHint",
+            defaultMessage: "Position schema",
+          })}
           titleText={intl.formatMessage({
             id: "storage.box.positionSchemaHint",
             defaultMessage: "Position schema",

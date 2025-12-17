@@ -36,13 +36,13 @@ describe("Storage Dashboard", function () {
     cy.visit("/Storage");
 
     // Wait for dashboard to load (retry-ability)
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
 
     // Verify we're on the Storage page
     cy.url().should("include", "/Storage");
 
     // Verify metric cards are visible (check for Tile components)
-    cy.get(".cds--tile", { timeout: 10000 }).should("have.length.at.least", 4);
+    cy.get(".cds--tile", { timeout: 3000 }).should("have.length.at.least", 4);
 
     // CRITICAL: Verify labels are translated, not showing raw keys
     // Check that metric cards show actual translated text, not "storage.metrics.total.samples"
@@ -89,10 +89,10 @@ describe("Storage Dashboard", function () {
       });
 
     // Verify tabs are visible (Carbon Tabs component)
-    cy.get('[role="tablist"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[role="tablist"]', { timeout: 3000 }).should("be.visible");
 
     // Verify tab buttons exist (check for tab text or button elements)
-    cy.get('button[role="tab"]', { timeout: 10000 }).should(
+    cy.get('button[role="tab"]', { timeout: 3000 }).should(
       "have.length.at.least",
       5,
     );
@@ -115,7 +115,7 @@ describe("Storage Dashboard", function () {
     cy.wait(3000);
 
     // Verify dashboard is loaded
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
 
     // CRITICAL: Verify dropdowns don't have duplicate labels
     // Check that filter dropdowns don't have both a label element AND the same text in the dropdown
@@ -139,13 +139,13 @@ describe("Storage Dashboard", function () {
     cy.wait(5000); // Wait longer for API calls to complete
 
     // Verify dashboard is loaded
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
 
     // Wait for API calls to complete
     cy.wait(3000);
 
     // Verify we can switch between tabs
-    cy.get('button[role="tab"]', { timeout: 10000 }).should(
+    cy.get('button[role="tab"]', { timeout: 3000 }).should(
       "have.length.at.least",
       5,
     );
@@ -173,7 +173,7 @@ describe("Storage Dashboard", function () {
 
       // CRITICAL: Verify table is visible and has structure
       cy.get('.cds--data-table, table, [role="table"], .cds--table-container', {
-        timeout: 5000,
+        timeout: 3000,
       })
         .filter(":visible")
         .first()
@@ -193,7 +193,7 @@ describe("Storage Dashboard", function () {
 
       // CRITICAL: Verify fixture data is present in tables
       cy.get(".cds--data-table tbody tr, table tbody tr", {
-        timeout: 5000,
+        timeout: 3000,
       }).then(($rows) => {
         const rowCount = $rows.length;
 
@@ -240,10 +240,10 @@ describe("Storage Dashboard", function () {
     cy.wait(3000);
 
     // Verify dashboard is loaded
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
 
     // Verify search input is visible (Carbon Search component)
-    cy.get('.cds--search input, input[type="text"]', { timeout: 10000 })
+    cy.get('.cds--search input, input[type="text"]', { timeout: 3000 })
       .first()
       .should("be.visible");
 
@@ -259,7 +259,7 @@ describe("Storage Dashboard", function () {
       });
 
     // Verify dashboard structure exists
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("exist");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("exist");
   });
 
   it("Should handle missing fixture data gracefully and show empty states", function () {
@@ -271,7 +271,7 @@ describe("Storage Dashboard", function () {
     cy.wait(3000);
 
     // Verify dashboard is loaded
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
 
     // Check each tab to ensure tables render structure even with empty data
     const tabs = ["Samples", "Rooms", "Devices", "Shelves", "Racks"];
@@ -286,7 +286,7 @@ describe("Storage Dashboard", function () {
 
       // CRITICAL: Verify table structure exists even if empty
       cy.get('.cds--data-table, table, [role="table"], .cds--table-container', {
-        timeout: 5000,
+        timeout: 3000,
       })
         .filter(":visible")
         .first()

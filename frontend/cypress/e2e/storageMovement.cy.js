@@ -8,7 +8,7 @@ import StorageAssignmentPage from "../pages/StorageAssignmentPage";
  * - Video disabled by default (cypress.config.js)
  * - Screenshots enabled on failure (cypress.config.js)
  * - Intercepts set up BEFORE actions that trigger them
- * - Uses .should() assertions for retry-ability (no arbitrary cy.wait())
+ * - Uses .should() assertions for retry-ability (cy.wait() only for intercept aliases)
  * - Element readiness checks before all interactions
  * - Focused on happy paths (user workflows, not implementation details)
  * - Run individually during development: npm run cy:run -- --spec "cypress/e2e/storageMovement.cy.js"
@@ -34,14 +34,14 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
 
     cy.visit("/Storage/samples");
     // Wait for samples to load (with timeout in case it's slow)
-    cy.wait("@getSamples", { timeout: 10000 }).then(() => {
+    cy.wait("@getSamples", { timeout: 3000 }).then(() => {
       storageAssignmentPage = new StorageAssignmentPage();
     });
   });
 
   it("Should move sample between locations and create audit trail", function () {
     // Verify we're on the samples tab and samples exist
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -55,16 +55,14 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
         cy.get('[data-testid="sample-actions-overflow-menu"]').click();
       });
 
-    // Wait for menu to open (Carbon OverflowMenu renders in portal)
-    cy.wait(500);
-
+    // Wait for menu to open - Cypress retries automatically
     // Click Move option outside .within() block (menu items render in portal)
     cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
       .should("be.visible")
       .click();
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+    cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -105,7 +103,7 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
 
   it("Should prevent move to occupied position", function () {
     // Verify we're on the samples tab and samples exist
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -125,7 +123,7 @@ describe("Storage Movement - Single Sample Move (P2B)", function () {
       .should("be.visible")
       .click();
 
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+    cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -169,7 +167,7 @@ describe("Storage Movement - Bulk Move (P2B)", function () {
 
   it("Should perform bulk move with auto-assigned positions", function () {
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -214,7 +212,7 @@ describe("Storage Movement - Bulk Move (P2B)", function () {
           cy.contains("Bulk Move").click();
 
           // Wait for bulk move modal
-          cy.get('[data-testid="bulk-move-modal"]', { timeout: 5000 }).should(
+          cy.get('[data-testid="bulk-move-modal"]', { timeout: 3000 }).should(
             "be.visible",
           );
 
@@ -247,10 +245,10 @@ describe("Storage Movement - Bulk Move (P2B)", function () {
           cy.get('[data-testid="confirm-bulk-move-button"]').click();
 
           // Wait for bulk move API call (intercept timing, not arbitrary wait)
-          cy.wait("@bulkMove", { timeout: 10000 });
+          cy.wait("@bulkMove", { timeout: 3000 });
 
           // Verify success (retry-ability)
-          cy.get('div[role="status"]', { timeout: 5000 })
+          cy.get('div[role="status"]', { timeout: 3000 })
             .should("be.visible")
             .and("contain.text", "success");
         } else {
@@ -264,7 +262,7 @@ describe("Storage Movement - Bulk Move (P2B)", function () {
 
   it("Should allow manual editing of position assignments", function () {
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -294,7 +292,7 @@ describe("Storage Movement - Bulk Move (P2B)", function () {
       cy.get('[data-testid="bulk-actions-menu"]').click();
       cy.contains("Bulk Move").click();
 
-      cy.get('[data-testid="bulk-move-modal"]', { timeout: 5000 }).should(
+      cy.get('[data-testid="bulk-move-modal"]', { timeout: 3000 }).should(
         "be.visible",
       );
 
@@ -311,7 +309,7 @@ describe("Storage Movement - Bulk Move (P2B)", function () {
 
       // Wait for position assignments to load (retry-ability, not arbitrary wait)
       cy.get('[data-testid="position-assignment-preview"]', {
-        timeout: 5000,
+        timeout: 3000,
       }).should("be.visible");
 
       // Edit first position assignment (if editable)
@@ -332,10 +330,10 @@ describe("Storage Movement - Bulk Move (P2B)", function () {
           cy.get('[data-testid="confirm-bulk-move-button"]').click();
 
           // Wait for bulk move API call (intercept timing)
-          cy.wait("@bulkMove", { timeout: 10000 });
+          cy.wait("@bulkMove", { timeout: 3000 });
 
           // Verify success (retry-ability)
-          cy.get('div[role="status"]', { timeout: 5000 }).should("be.visible");
+          cy.get('div[role="status"]', { timeout: 3000 }).should("be.visible");
         } else {
           cy.log(
             "Position assignment editing not yet implemented - skipping manual editing test",
@@ -358,10 +356,10 @@ describe("Storage Movement - Previous Position Freed (P2B)", function () {
     cy.visit("/Storage/samples");
 
     // Wait for samples to load using intercept (not arbitrary wait)
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
 
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -403,7 +401,7 @@ describe("Storage Movement - Previous Position Freed (P2B)", function () {
                     .click();
 
                   cy.get('[data-testid="move-modal"]', {
-                    timeout: 5000,
+                    timeout: 3000,
                   }).should("be.visible");
 
                   // Select new location
@@ -421,18 +419,12 @@ describe("Storage Movement - Previous Position Freed (P2B)", function () {
                   cy.contains("Confirm Move").click();
                   cy.wait("@moveSample");
 
-                      // Verify success notification
-                      cy.get('div[role="status"]').should("be.visible");
+                  // Verify success notification
+                  cy.get('div[role="status"]').should("be.visible");
 
-                      cy.log(
-                        "Move completed - position freed verification would require checking position availability, which may not be implemented in POC scope",
-                      );
-                    } else {
-                      cy.log(
-                        "Move functionality not yet implemented - skipping position freed test. This is expected for POC scope.",
-                      );
-                    }
-                  });
+                  cy.log(
+                    "Move completed - position freed verification would require checking position availability, which may not be implemented in POC scope",
+                  );
                 });
             } else {
               // Position data not available in table, but we can still test move functionality
@@ -466,7 +458,7 @@ describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
   });
 
   it("Should display all four menu items in overflow menu", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -485,7 +477,6 @@ describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
             .click();
         });
 
-      // Wait for menu to open - Cypress retries automatically
       // Verify all four menu items are present
       cy.get("body").should("contain.text", "Move");
       cy.get("body").should("contain.text", "Dispose");
@@ -495,7 +486,7 @@ describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
   });
 
   it("Should show View Audit as disabled", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -511,7 +502,6 @@ describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      // Wait for menu to open - Cypress retries automatically
       // Verify View Audit menu item is disabled
       cy.get('[data-testid="view-audit-menu-item"]')
         .should("be.visible")
@@ -520,7 +510,7 @@ describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
   });
 
   it("Should open Move modal when Move clicked", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -536,12 +526,11 @@ describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      // Wait for menu to open - Cypress retries automatically
       // Click Move menu item
       cy.get('[data-testid="move-menu-item"]').click();
 
       // Verify Move modal opens
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 })
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 })
         .should("be.visible")
         .within(() => {
           cy.contains("Move Sample").should("be.visible");
@@ -550,7 +539,7 @@ describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
   });
 
   it("Should open Dispose modal when Dispose clicked", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -566,12 +555,11 @@ describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      // Wait for menu to open - Cypress retries automatically
       // Click Dispose menu item
       cy.get('[data-testid="dispose-menu-item"]').click();
 
       // Verify Dispose modal opens
-      cy.get('[data-testid="dispose-modal"]', { timeout: 5000 })
+      cy.get('[data-testid="dispose-modal"]', { timeout: 3000 })
         .should("be.visible")
         .within(() => {
           cy.contains("Dispose Sample").should("be.visible");
@@ -580,7 +568,7 @@ describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
   });
 
   it("Should open View Storage modal when View Storage clicked", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -596,12 +584,11 @@ describe("Storage Overflow Menu - Sample Actions (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      // Wait for menu to open - Cypress retries automatically
       // Click View Storage menu item
       cy.get('[data-testid="view-storage-menu-item"]').click();
 
       // Verify View Storage modal opens
-      cy.get('[data-testid="view-storage-modal"]', { timeout: 5000 })
+      cy.get('[data-testid="view-storage-modal"]', { timeout: 3000 })
         .should("be.visible")
         .within(() => {
           cy.contains("Storage Location Assignment").should("be.visible");
@@ -622,7 +609,7 @@ describe("Storage Move Modal - UI Components (P2B)", function () {
   });
 
   it("Should display current location in gray box", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -639,13 +626,12 @@ describe("Storage Move Modal - UI Components (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      // Wait for menu to open - Cypress retries automatically
       cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
         .should("be.visible")
         .click();
 
       // Verify current location section is displayed
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 })
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 })
         .should("be.visible")
         .within(() => {
           cy.get('[data-testid="current-location-section"]')
@@ -656,7 +642,7 @@ describe("Storage Move Modal - UI Components (P2B)", function () {
   });
 
   it("Should display downward arrow icon", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -672,12 +658,11 @@ describe("Storage Move Modal - UI Components (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      // Wait for menu to open - Cypress retries automatically
       cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
         .should("be.visible")
         .click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 })
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 })
         .should("be.visible")
         .within(() => {
           // Verify downward arrow is present (check for ArrowDown icon or similar)
@@ -687,7 +672,7 @@ describe("Storage Move Modal - UI Components (P2B)", function () {
   });
 
   it("Should update Selected Location preview when location selected", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -703,12 +688,11 @@ describe("Storage Move Modal - UI Components (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      // Wait for menu to open - Cypress retries automatically
       cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
         .should("be.visible")
         .click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 })
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 })
         .should("be.visible")
         .within(() => {
           // Verify preview box exists
@@ -740,7 +724,7 @@ describe("Storage Move Modal - UI Components (P2B)", function () {
   });
 
   it("Should validate new location is different from current location", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -756,12 +740,11 @@ describe("Storage Move Modal - UI Components (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      // Wait for menu to open - Cypress retries automatically
       cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
         .should("be.visible")
         .click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 })
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 })
         .should("be.visible")
         .within(() => {
           // Get current location path
@@ -801,7 +784,7 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
   });
 
   it("Should show create form when Add Location button is clicked", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -818,12 +801,11 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      // Wait for menu to open - Cypress retries automatically
       cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
         .should("be.visible")
         .click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
         "be.visible",
       );
 
@@ -848,7 +830,7 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
   });
 
   it("Should allow typing to create new location entries", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -865,10 +847,12 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      cy.wait(500);
-      cy.get('[data-testid="move-menu-item"]').click();
+      // Wait for menu to open - Cypress retries automatically
+      cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
+        .should("be.visible")
+        .click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
         "be.visible",
       );
 
@@ -906,7 +890,7 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
   });
 
   it("Should enable lower hierarchy levels after parent selection", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -923,10 +907,12 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      cy.wait(500);
-      cy.get('[data-testid="move-menu-item"]').click();
+      // Wait for menu to open - Cypress retries automatically
+      cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
+        .should("be.visible")
+        .click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
         "be.visible",
       );
 
@@ -988,7 +974,7 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
   });
 
   it("Should update selected location preview when location is created", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -1005,10 +991,12 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      cy.wait(500);
-      cy.get('[data-testid="move-menu-item"]').click();
+      // Wait for menu to open - Cypress retries automatically
+      cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
+        .should("be.visible")
+        .click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
         "be.visible",
       );
 
@@ -1044,7 +1032,7 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
   });
 
   it("Should allow selecting existing location from dropdown (search mode)", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -1066,7 +1054,7 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
         .should("be.visible")
         .click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
         "be.visible",
       );
 
@@ -1105,7 +1093,7 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
   });
 
   it("Should show (add new room) link when typing non-existent room", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -1122,10 +1110,12 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      cy.wait(500);
-      cy.get('[data-testid="move-menu-item"]').click();
+      // Wait for menu to open - Cypress retries automatically
+      cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
+        .should("be.visible")
+        .click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
         "be.visible",
       );
 
@@ -1142,9 +1132,6 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
         .should("be.visible")
         .and("not.be.disabled")
         .type("New Test Room E2E");
-
-      // Wait for link to appear (debounced check)
-      cy.wait(500);
 
       // Verify "(add new room)" link appears
       cy.get('[data-testid="add-new-room-link"]', { timeout: 2000 })
@@ -1163,9 +1150,6 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
       // Type a new device name
       cy.get('[data-testid="device-combobox"]').type("New Test Device E2E");
 
-      // Wait for device link to appear (may need debounce)
-      cy.wait(500);
-
       // Verify "(add new device)" link appears
       cy.get('[data-testid="add-new-device-link"]', { timeout: 2000 })
         .should("be.visible")
@@ -1183,7 +1167,7 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
   });
 
   it("Should not show (add new room) link when typing existing room", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -1200,10 +1184,12 @@ describe("Storage Move Modal - Add Location Bug Fix (P2B)", function () {
           cy.get('[data-testid="sample-actions-overflow-menu"]').click();
         });
 
-      cy.wait(500);
-      cy.get('[data-testid="move-menu-item"]').click();
+      // Wait for menu to open - Cypress retries automatically
+      cy.get('[data-testid="move-menu-item"]', { timeout: 3000 })
+        .should("be.visible")
+        .click();
 
-      cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+      cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
         "be.visible",
       );
 

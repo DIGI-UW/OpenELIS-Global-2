@@ -98,19 +98,19 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
           .click();
 
         // Wait for PUT API call to complete
-        cy.wait("@anyStoragePut", { timeout: 10000 });
+        cy.wait("@anyStoragePut", { timeout: 3000 });
 
         // Wait for GET API call (modal fetches updated location before closing)
-        cy.wait("@anyStorageGet", { timeout: 10000 });
+        cy.wait("@anyStorageGet", { timeout: 3000 });
 
         // Verify: modal closes (Carbon has ~200-300ms close animation)
         // Use Cypress retry-ability - query for modal and assert it doesn't exist
-        cy.get('[data-testid="edit-location-modal"]', { timeout: 5000 }).should(
+        cy.get('[data-testid="edit-location-modal"]', { timeout: 3000 }).should(
           "not.exist",
         );
 
         // Wait for table to refresh and verify new name appears in the same row
-        cy.get(`[data-testid="room-row-${roomId}"]`, { timeout: 10000 })
+        cy.get(`[data-testid="room-row-${roomId}"]`, { timeout: 3000 })
           .should("be.visible")
           .and("contain.text", newName);
       });
@@ -152,15 +152,15 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
       });
 
     // Wait for PUT API call to complete
-    cy.wait("@anyStoragePut", { timeout: 10000 });
+    cy.wait("@anyStoragePut", { timeout: 3000 });
 
     // Modal makes a GET call to fetch updated location, then closes
     // Wait for GET (should occur after successful PUT)
-    cy.wait("@anyStorageGet", { timeout: 10000 });
+    cy.wait("@anyStorageGet", { timeout: 3000 });
 
     // Wait for modal to close (Carbon has ~200-300ms close animation + React re-render)
     // Use query pattern with retry - check if modal exists, wait for it to close
-    cy.get("body", { timeout: 10000 }).should(($body) => {
+    cy.get("body", { timeout: 3000 }).should(($body) => {
       const modal = $body.find('[data-testid="edit-location-modal"]');
       // Modal should either not exist, or be invisible (during animation)
       if (modal.length > 0) {
@@ -196,7 +196,7 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
     });
     // Wait for modal to close (Carbon has ~200-300ms close animation + React re-render)
     // Retry until modal is completely removed from DOM (with longer timeout for animation)
-    cy.get("body", { timeout: 10000 }).should(($body) => {
+    cy.get("body", { timeout: 3000 }).should(($body) => {
       const modal = $body.find('[data-testid="edit-location-modal"]');
       expect(modal.length).to.equal(0);
     });
@@ -239,23 +239,23 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
       });
 
     // Wait for PUT API call to complete
-    cy.wait("@anyStoragePut", { timeout: 10000 }).then((interception) => {
+    cy.wait("@anyStoragePut", { timeout: 3000 }).then((interception) => {
       // If validation error (400), modal should stay open with error message
       if (interception.response.statusCode >= 400) {
         // Modal should show error and stay open
-        cy.get('[data-testid="edit-location-modal"]', { timeout: 5000 }).should(
+        cy.get('[data-testid="edit-location-modal"]', { timeout: 3000 }).should(
           "be.visible",
         );
         // Check for error notification - Carbon InlineNotification may not have role="alert"
         // Look for error notification by class (more reliable than contains which matches page title)
-        cy.get('[data-testid="edit-location-modal"]', { timeout: 5000 }).should(
+        cy.get('[data-testid="edit-location-modal"]', { timeout: 3000 }).should(
           "be.visible",
         );
         // Wait for error to render, then check for notification
         cy.get('[data-testid="edit-location-modal"]')
           .find(
             '.cds--inline-notification--error, [class*="inline-notification"]',
-            { timeout: 5000 },
+            { timeout: 3000 },
           )
           .should("exist")
           .and("be.visible");
@@ -273,7 +273,7 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
         });
         // Wait for modal to close (Carbon has ~200-300ms close animation + React re-render)
         // Retry until modal is completely removed from DOM (with longer timeout for manual close)
-        cy.get("body", { timeout: 10000 }).should(($body) => {
+        cy.get("body", { timeout: 3000 }).should(($body) => {
           const modal = $body.find('[data-testid="edit-location-modal"]');
           expect(modal.length).to.equal(0);
         });
@@ -283,11 +283,11 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
 
     // Only continue if PUT was successful (200/201)
     // Wait for GET call (modal fetches updated location before closing)
-    cy.wait("@anyStorageGet", { timeout: 10000 });
+    cy.wait("@anyStorageGet", { timeout: 3000 });
 
     // Wait for modal to close (Carbon has ~200-300ms close animation)
     // Use queryBy pattern - doesn't fail if element doesn't exist
-    cy.get("body", { timeout: 10000 }).should(($body) => {
+    cy.get("body", { timeout: 3000 }).should(($body) => {
       const modal = $body.find('[data-testid="edit-location-modal"]');
       expect(modal.length).to.equal(0);
     });
@@ -305,7 +305,7 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
     cy.get("body").type("{esc}", { force: true });
     // Wait for modal to close (Carbon has ~200-300ms close animation + React re-render)
     // Retry until modal is completely removed from DOM (with longer timeout for manual close)
-    cy.get("body", { timeout: 10000 }).should(($body) => {
+    cy.get("body", { timeout: 3000 }).should(($body) => {
       const modal = $body.find('[data-testid="edit-location-modal"]');
       expect(modal.length).to.equal(0);
     });
@@ -364,12 +364,12 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
       .click();
 
     // Wait for PUT request to complete
-    cy.wait("@anyStoragePut", { timeout: 10000 });
+    cy.wait("@anyStoragePut", { timeout: 3000 });
 
     // Verify error message is displayed (user-visible behavior)
     cy.get('[data-testid="edit-location-modal"]').within(() => {
       // Check for error text (more reliable than role="alert")
-      cy.contains(/temperature|invalid|range/i, { timeout: 5000 }).should(
+      cy.contains(/temperature|invalid|range/i, { timeout: 3000 }).should(
         "be.visible",
       );
     });

@@ -17,7 +17,7 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
   before(() => {
     cy.setupStorageTests();
     cy.visit("/Storage");
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
   });
 
   beforeEach(() => {
@@ -56,7 +56,7 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
       }
       cy.exec("docker logs --tail 200 openelisglobal-webapp", {
         failOnNonZeroExit: false,
-        timeout: 30000,
+        timeout: 3000,
       });
     }
   });
@@ -68,13 +68,13 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
       .should("have.attr", "aria-selected", "true");
 
     // Rack dropdown is a Carbon Dropdown with testid rack-selector.
-    cy.get('[data-testid="rack-selector"]', { timeout: 15000 }).should(
+    cy.get('[data-testid="rack-selector"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
     // Open dropdown and select first non-empty option.
     // Carbon Dropdown: click the button to open, then wait for menu
-    cy.get('[data-testid="rack-selector"] button', { timeout: 10000 })
+    cy.get('[data-testid="rack-selector"] button', { timeout: 3000 })
       .should("be.visible")
       .click({ force: true });
 
@@ -85,21 +85,19 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
 
       if (listbox.length > 0) {
         // Carbon v1.15 - use role="option"
-        cy.get('[role="listbox"] [role="option"]', { timeout: 10000 })
+        cy.get('[role="listbox"] [role="option"]', { timeout: 3000 })
           .should("have.length.at.least", 1)
           .first()
           .click({ force: true });
       } else if (menuItems.length > 0) {
         // Carbon v10 - use .cds--list-box__menu-item
-        cy.get(".cds--list-box__menu-item", { timeout: 10000 })
+        cy.get(".cds--list-box__menu-item", { timeout: 3000 })
           .should("have.length.at.least", 2) // includes "Select"
           .eq(1)
           .click({ force: true });
       } else {
-        // Fallback: wait for menu to appear using Cypress retry-ability
-        // Cypress automatically retries .should() assertions - no arbitrary waits needed
         cy.get('[role="listbox"], .cds--list-box__menu-item', {
-          timeout: 15000,
+          timeout: 3000,
         })
           .should("be.visible")
           .first()
@@ -110,7 +108,7 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
 
   it("disables Add Box until rack is selected", () => {
     cy.get('[data-testid="tab-boxes"]').click();
-    cy.get('[data-testid="add-box-button"]', { timeout: 10000 })
+    cy.get('[data-testid="add-box-button"]', { timeout: 3000 })
       .should("be.visible")
       .should("be.disabled");
   });
@@ -124,7 +122,7 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
     cy.get('[data-testid="add-box-button"]').should("not.be.disabled").click();
 
     // Modal fields
-    cy.get('[data-testid="box-label"]', { timeout: 10000 })
+    cy.get('[data-testid="box-label"]', { timeout: 3000 })
       .should("be.visible")
       .type(newLabel);
     cy.get('[data-testid="box-code"]').should("be.visible").type(newCode);
@@ -135,11 +133,11 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
       .type("12");
 
     // Save (Carbon button text)
-    cy.contains("button", "Save", { timeout: 10000 })
+    cy.contains("button", "Save", { timeout: 3000 })
       .should("not.be.disabled")
       .click();
 
-    cy.wait("@createBox", { timeout: 20000 }).then((interception) => {
+    cy.wait("@createBox", { timeout: 3000 }).then((interception) => {
       expect(interception.response.statusCode).to.be.oneOf([200, 201]);
       expect(interception.request.body).to.have.property("label", newLabel);
       expect(interception.request.body).to.have.property("code", newCode);
@@ -147,7 +145,7 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
     });
 
     // Verify box selector contains the new label (real backend refresh)
-    cy.get('[data-testid="box-selector"]', { timeout: 15000 }).should(
+    cy.get('[data-testid="box-selector"]', { timeout: 3000 }).should(
       "be.visible",
     );
     cy.get('[data-testid="box-selector"]').click({ force: true });
@@ -157,11 +155,11 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
       const menuItems = $body.find(".cds--list-box__menu-item");
       if (listbox.length > 0) {
         cy.get('[role="listbox"] [role="option"]')
-          .contains(newLabel, { timeout: 15000 })
+          .contains(newLabel, { timeout: 3000 })
           .should("be.visible");
       } else if (menuItems.length > 0) {
         cy.contains(".cds--list-box__menu-item", newLabel, {
-          timeout: 15000,
+          timeout: 3000,
         }).should("be.visible");
       }
     });
@@ -176,27 +174,27 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
     cy.get('[data-testid="box-selector"]')
       .should("be.visible")
       .click({ force: true });
-    cy.get(".cds--list-box__menu-item", { timeout: 10000 })
+    cy.get(".cds--list-box__menu-item", { timeout: 3000 })
       .should("have.length.at.least", 2)
       .eq(1)
       .click({ force: true });
 
     // Open overflow menu and click Edit
-    cy.get('[data-testid="location-actions-overflow-menu"]', { timeout: 10000 })
+    cy.get('[data-testid="location-actions-overflow-menu"]', { timeout: 3000 })
       .should("be.visible")
       .click({ force: true });
     cy.get('[data-testid="edit-location-menu-item"]')
       .should("be.visible")
       .click({ force: true });
 
-    cy.get('[data-testid="box-label"]', { timeout: 10000 })
+    cy.get('[data-testid="box-label"]', { timeout: 3000 })
       .should("be.visible")
       .clear()
       .type(updatedLabel);
 
-    cy.contains("button", "Save", { timeout: 10000 }).click();
+    cy.contains("button", "Save", { timeout: 3000 }).click();
 
-    cy.wait("@updateBox", { timeout: 20000 }).then((interception) => {
+    cy.wait("@updateBox", { timeout: 3000 }).then((interception) => {
       expect(interception.response.statusCode).to.be.oneOf([200, 201]);
       expect(interception.request.body).to.have.property("label", updatedLabel);
       expect(interception.request.body).to.have.property("active");
@@ -246,7 +244,7 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
 
         // Select the box by label in dropdown
         cy.get('[data-testid="box-selector"]').click({ force: true });
-        cy.contains(".cds--list-box__menu-item", box.label, { timeout: 15000 })
+        cy.contains(".cds--list-box__menu-item", box.label, { timeout: 3000 })
           .should("be.visible")
           .click({ force: true });
 
@@ -257,11 +255,11 @@ describe("Storage Box CRUD - Real Backend Integration", () => {
           .should("be.visible")
           .click({ force: true });
 
-        cy.wait("@canDeleteBox", { timeout: 15000 }).then((interception) => {
+        cy.wait("@canDeleteBox", { timeout: 3000 }).then((interception) => {
           expect(interception.response.statusCode).to.be.oneOf([200, 409]);
         });
 
-        cy.contains("button", "Delete", { timeout: 10000 }).should(
+        cy.contains("button", "Delete", { timeout: 3000 }).should(
           "be.disabled",
         );
       });

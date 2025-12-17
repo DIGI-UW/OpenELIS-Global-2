@@ -33,7 +33,7 @@ describe("Box/Plate CRUD Operations", function () {
   before(function () {
     // Navigate to Storage Dashboard ONCE for all tests
     cy.visit("/Storage");
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
   });
 
   beforeEach(function () {
@@ -78,7 +78,7 @@ describe("Box/Plate CRUD Operations", function () {
 
       cy.exec("docker logs --tail 250 openelisglobal-webapp", {
         failOnNonZeroExit: false,
-        timeout: 30000,
+        timeout: 3000,
       });
     }
 
@@ -103,7 +103,7 @@ describe("Box/Plate CRUD Operations", function () {
         .should("have.attr", "aria-selected", "true");
 
       // Add Box button should be disabled initially (no rack selected)
-      cy.get('[data-testid="add-box-button"]', { timeout: 10000 })
+      cy.get('[data-testid="add-box-button"]', { timeout: 3000 })
         .should("be.visible")
         .should("be.disabled");
     });
@@ -120,7 +120,7 @@ describe("Box/Plate CRUD Operations", function () {
       cy.get('[data-testid="tab-boxes"]').click();
 
       // Wait for page to fully load
-      cy.get('[data-testid="add-box-button"]', { timeout: 10000 }).should(
+      cy.get('[data-testid="add-box-button"]', { timeout: 3000 }).should(
         "be.visible",
       );
 
@@ -207,7 +207,7 @@ describe("Box/Plate CRUD Operations", function () {
           cy.wrap($btn).click();
 
           // Wait for modal
-          cy.get('[role="dialog"]', { timeout: 10000 }).should("be.visible");
+          cy.get('[role="dialog"]', { timeout: 3000 }).should("be.visible");
 
           // Fill form
           cy.get('[data-testid="box-label"]')
@@ -234,12 +234,12 @@ describe("Box/Plate CRUD Operations", function () {
           cy.get('button:contains("Save")').should("not.be.disabled").click();
 
           // Wait for API
-          cy.wait("@createBox", { timeout: 10000 }).then((interception) => {
+          cy.wait("@createBox", { timeout: 3000 }).then((interception) => {
             expect(interception.response.statusCode).to.be.oneOf([200, 201]);
           });
 
           // Modal should close
-          cy.get('[role="dialog"]', { timeout: 10000 }).should("not.exist");
+          cy.get('[role="dialog"]', { timeout: 3000 }).should("not.exist");
         });
       });
     });
@@ -249,7 +249,7 @@ describe("Box/Plate CRUD Operations", function () {
       cy.get('[data-testid="tab-boxes"]').click();
 
       // Wait for page to load
-      cy.get('[data-testid="add-box-button"]', { timeout: 10000 }).should(
+      cy.get('[data-testid="add-box-button"]', { timeout: 3000 }).should(
         "be.visible",
       );
 
@@ -273,7 +273,7 @@ describe("Box/Plate CRUD Operations", function () {
 
               // After selecting a box, overflow menu should appear
               cy.get('[data-testid="location-actions-overflow-menu"]', {
-                timeout: 10000,
+                timeout: 3000,
               }).should("be.visible");
             } else {
               cy.log("No boxes available in dropdown - skipping menu test");
@@ -340,7 +340,7 @@ describe("Box/Plate CRUD Operations", function () {
             .click({ force: true });
 
           // Wait for edit modal
-          cy.get('[role="dialog"]', { timeout: 10000 }).should("be.visible");
+          cy.get('[role="dialog"]', { timeout: 3000 }).should("be.visible");
 
           // Update label
           cy.get('[data-testid="box-label"]')
@@ -352,12 +352,12 @@ describe("Box/Plate CRUD Operations", function () {
           cy.get('button:contains("Save")').should("not.be.disabled").click();
 
           // Wait for API
-          cy.wait("@updateBox", { timeout: 10000 }).then((interception) => {
+          cy.wait("@updateBox", { timeout: 3000 }).then((interception) => {
             expect(interception.response.statusCode).to.be.oneOf([200, 201]);
           });
 
           // Modal should close
-          cy.get('[role="dialog"]', { timeout: 10000 }).should("not.exist");
+          cy.get('[role="dialog"]', { timeout: 3000 }).should("not.exist");
         } else {
           cy.log("No box selected - edit test requires box selection");
         }
@@ -396,19 +396,19 @@ describe("Box/Plate CRUD Operations", function () {
             .click({ force: true });
 
           // Wait for delete modal
-          cy.get('[role="dialog"]', { timeout: 10000 }).should("be.visible");
+          cy.get('[role="dialog"]', { timeout: 3000 }).should("be.visible");
 
           // Wait for can-delete check
-          cy.wait("@canDeleteBox", { timeout: 10000 });
+          cy.wait("@canDeleteBox", { timeout: 3000 });
 
           // Delete button should be enabled (canDelete: true)
           cy.get('button:contains("Delete")').should("not.be.disabled").click();
 
           // Wait for delete API
-          cy.wait("@deleteBox", { timeout: 10000 });
+          cy.wait("@deleteBox", { timeout: 3000 });
 
           // Modal should close
-          cy.get('[role="dialog"]', { timeout: 10000 }).should("not.exist");
+          cy.get('[role="dialog"]', { timeout: 3000 }).should("not.exist");
         } else {
           cy.log("No box selected - delete test requires box selection");
         }
@@ -446,16 +446,16 @@ describe("Box/Plate CRUD Operations", function () {
             .click({ force: true });
 
           // Wait for delete modal
-          cy.get('[role="dialog"]', { timeout: 10000 }).should("be.visible");
+          cy.get('[role="dialog"]', { timeout: 3000 }).should("be.visible");
 
           // Wait for can-delete check
-          cy.wait("@canDeleteBoxBlocked", { timeout: 10000 });
+          cy.wait("@canDeleteBoxBlocked", { timeout: 3000 });
 
           // Delete button should be disabled due to constraint
           cy.get('button:contains("Delete")').should("be.disabled");
 
           // Error message should be visible
-          cy.get(".cds--inline-notification--error", { timeout: 10000 }).should(
+          cy.get(".cds--inline-notification--error", { timeout: 3000 }).should(
             "be.visible",
           );
 
@@ -463,7 +463,7 @@ describe("Box/Plate CRUD Operations", function () {
           cy.get('button:contains("Cancel")').click();
 
           // Modal should close
-          cy.get('[role="dialog"]', { timeout: 10000 }).should("not.exist");
+          cy.get('[role="dialog"]', { timeout: 3000 }).should("not.exist");
         } else {
           cy.log("No box selected - constraint test requires box selection");
         }

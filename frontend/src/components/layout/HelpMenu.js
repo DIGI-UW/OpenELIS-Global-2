@@ -17,7 +17,11 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
 
   // Fetch help URLs on mount
   useEffect(() => {
+    let isMounted = true;
+
     getFromOpenElisServer("/rest/properties", (properties) => {
+      if (!isMounted) return;
+
       // The API helper calls the callback with `undefined` when the response is
       // not JSON (e.g., auth redirect HTML). Treat that as "no configured help
       // URLs" rather than crashing the entire app.
@@ -34,6 +38,10 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
           properties["org.openelisglobal.help.release-notes.url"] || "",
       });
     });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {

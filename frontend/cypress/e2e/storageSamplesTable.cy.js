@@ -27,7 +27,7 @@ describe("Samples Table - Must Display Assigned Samples", function () {
     cy.wait(5000); // Wait for API calls to complete
 
     // Verify dashboard is loaded
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
 
     // Verify we're on the Samples tab
     cy.get('button[role="tab"]')
@@ -35,13 +35,13 @@ describe("Samples Table - Must Display Assigned Samples", function () {
       .should("have.attr", "aria-selected", "true");
 
     // Wait for sample list container to be visible
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
     // CRITICAL: Verify table structure exists
     cy.get('.cds--data-table, table, [role="table"], .cds--table-container', {
-      timeout: 5000,
+      timeout: 3000,
     })
       .filter(":visible")
       .first()
@@ -49,7 +49,7 @@ describe("Samples Table - Must Display Assigned Samples", function () {
 
     // CRITICAL: Check if samples table has rows
     cy.get(".cds--data-table tbody tr, table tbody tr", {
-      timeout: 5000,
+      timeout: 3000,
     }).then(($rows) => {
       const rowCount = $rows.length;
 
@@ -144,7 +144,7 @@ describe("Samples Table - Must Display Assigned Samples", function () {
     cy.visit("/Storage/samples");
 
     // Wait for API call to complete
-    cy.wait("@getSamples", { timeout: 15000 }).then((interception) => {
+    cy.wait("@getSamples", { timeout: 3000 }).then((interception) => {
       const response = interception.response;
 
       // Verify API call succeeded

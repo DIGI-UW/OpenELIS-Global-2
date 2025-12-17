@@ -6,9 +6,9 @@ const path = require("path");
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 
 module.exports = defineConfig({
-  defaultCommandTimeout: 30000, // Increased timeout for slow operations
-  viewportWidth: 1200,
-  viewportHeight: 700,
+  defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
+  viewportWidth: 1920, // Large desktop for full modal visibility (including warnings/checkboxes)
+  viewportHeight: 1080,
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
@@ -42,7 +42,20 @@ module.exports = defineConfig({
         if (results.stats.failures > 0) {
           console.log(`\n❌ Spec failed: ${spec.relative}`);
           console.log(`Stopping further spec execution (fail-fast enabled)\n`);
-          process.exit(1); // Standard exit code, stops remaining specs
+          // Force immediate exit - set exit code and exit
+          process.exitCode = 1;
+          // Try to kill child processes, but don't fail if process group doesn't exist
+          if (process.platform !== "win32") {
+            try {
+              process.kill(-process.pid, "SIGTERM");
+            } catch (err) {
+              // Process group might not exist, that's okay
+            }
+          }
+          // Exit after brief delay to allow screenshot capture
+          setTimeout(() => {
+            process.exit(1);
+          }, 100);
         }
       });
 

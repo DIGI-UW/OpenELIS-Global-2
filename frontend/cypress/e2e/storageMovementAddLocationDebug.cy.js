@@ -17,7 +17,7 @@ describe("Add Location Button Crash Debug", function () {
     cy.setupStorageIntercepts();
 
     cy.visit("/Storage/samples");
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
   });
 
   it("Should not crash when clicking Add Location button", function () {
@@ -49,7 +49,7 @@ describe("Add Location Button Crash Debug", function () {
     });
 
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -71,7 +71,7 @@ describe("Add Location Button Crash Debug", function () {
       .click();
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+    cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
       "be.visible",
     );
 

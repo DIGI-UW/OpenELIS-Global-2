@@ -28,8 +28,8 @@ describe("Storage Locations Metric Card", function () {
       "getLocationCounts",
     );
     cy.visit("/Storage");
-    cy.wait("@getLocationCounts", { timeout: 10000 });
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.wait("@getLocationCounts", { timeout: 3000 });
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
   });
 
   beforeEach(() => {
@@ -43,14 +43,14 @@ describe("Storage Locations Metric Card", function () {
    */
   it("testMetricCard_DisplaysFormattedBreakdown", function () {
     // Find the Storage Locations metric card (4th tile)
-    cy.get(".cds--tile", { timeout: 10000 })
+    cy.get(".cds--tile", { timeout: 3000 })
       .eq(3)
       .within(() => {
         // Verify the metric card title
         cy.get("h3").should("contain.text", "Storage Locations");
 
         // Verify formatted breakdown with pills exists
-        cy.get(".location-counts-breakdown", { timeout: 5000 }).should(
+        cy.get(".location-counts-breakdown", { timeout: 3000 }).should(
           "be.visible",
         );
 
@@ -79,12 +79,12 @@ describe("Storage Locations Metric Card", function () {
    */
   it("testMetricCard_ColorCodesByType", function () {
     // Find the Storage Locations metric card
-    cy.get(".cds--tile", { timeout: 10000 })
+    cy.get(".cds--tile", { timeout: 3000 })
       .eq(3)
       .within(() => {
         // Verify pill elements exist with color classes
         cy.get(".location-count-pill.location-count-rooms", {
-          timeout: 5000,
+          timeout: 3000,
         }).should("be.visible");
         cy.get(".location-count-pill.location-count-devices").should(
           "be.visible",
@@ -147,13 +147,13 @@ describe("Storage Locations Metric Card", function () {
    */
   it("testMetricCard_ShowsOnlyActiveLocations", function () {
     // Wait for metric card to load (API call happens during page load in beforeEach)
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
 
     // Verify metric card displays formatted counts
-    cy.get(".cds--tile", { timeout: 10000 })
+    cy.get(".cds--tile", { timeout: 3000 })
       .eq(3)
       .within(() => {
-        cy.get(".location-counts-breakdown", { timeout: 10000 })
+        cy.get(".location-counts-breakdown", { timeout: 3000 })
           .should("be.visible")
           .then(($div) => {
             const text = $div.text();
@@ -207,7 +207,7 @@ describe("Storage Locations Metric Card", function () {
    */
   it("testTabs_HaveMatchingSubtleAccentColors", function () {
     // Verify tab elements exist
-    cy.get('button[role="tab"]', { timeout: 10000 }).should(
+    cy.get('button[role="tab"]', { timeout: 3000 }).should(
       "have.length.at.least",
       5,
     );
@@ -268,7 +268,7 @@ describe("Storage Locations Metric Card", function () {
    */
   it("testMetricCard_ColorblindAccessible", function () {
     // Find the Storage Locations metric card
-    cy.get(".cds--tile", { timeout: 10000 })
+    cy.get(".cds--tile", { timeout: 3000 })
       .eq(3)
       .within(() => {
         // Verify all location types have distinct color classes in pill format

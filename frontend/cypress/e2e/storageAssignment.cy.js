@@ -62,7 +62,7 @@ describe("Storage Assignment - Cascading Dropdowns (P1)", function () {
   it("Should navigate through order entry workflow to sample entry step", () => {
     // Navigation already done in before() - just verify we're on the right page
     cy.get('[data-testid="storage-location-selector"]', {
-      timeout: 10000,
+      timeout: 3000,
     }).should("be.visible");
   });
 
@@ -73,25 +73,25 @@ describe("Storage Assignment - Cascading Dropdowns (P1)", function () {
 
     // With workflow="orders", StorageLocationSelector shows CompactLocationView
     // Need to click "Expand" button to open modal with cascading dropdowns
-    cy.get('[data-testid="expand-button"]', { timeout: 10000 })
+    cy.get('[data-testid="expand-button"]', { timeout: 3000 })
       .should("be.visible")
       .click();
 
     // Wait for modal to open - LocationManagementModal contains LocationSearchAndCreate
     // Modal uses ComposedModal from Carbon, wait for it to be visible
-    cy.get('[role="dialog"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[role="dialog"]', { timeout: 3000 }).should("be.visible");
 
     // LocationSearchAndCreate starts in search mode - need to click "Add Location" to show create form
     // The create form contains EnhancedCascadingMode with comboboxes
     cy.get(
       'button:contains("Add Location"), [data-testid="add-location-button"]',
-      { timeout: 10000 },
+      { timeout: 3000 },
     )
       .should("be.visible")
       .click();
 
     // Wait for create form to show EnhancedCascadingMode with comboboxes
-    cy.get('[data-testid="room-combobox"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="room-combobox"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -114,35 +114,35 @@ describe("Storage Assignment - Cascading Dropdowns (P1)", function () {
       .should("be.visible");
 
     // Select shelf - wait for shelves API call first
-    cy.wait("@getShelves", { timeout: 10000 });
+    cy.wait("@getShelves", { timeout: 3000 });
     storageAssignmentPage.selectShelf("SHA");
 
     // Select rack - wait for racks API call first
-    cy.wait("@getRacks", { timeout: 10000 });
+    cy.wait("@getRacks", { timeout: 3000 });
     storageAssignmentPage.selectRack("RKR1");
 
     // Position is a text input in LocationManagementModal, not a dropdown
     // Enter position coordinate directly
-    cy.get("#position-input", { timeout: 10000 })
+    cy.get("#position-input", { timeout: 3000 })
       .should("be.visible")
       .clear()
       .type("A5");
 
     // Click "Add" button to confirm location selection in create form
     // This adds the location to selectedLocation state
-    cy.get('[data-testid="add-location-create-button"]', { timeout: 5000 })
+    cy.get('[data-testid="add-location-create-button"]', { timeout: 3000 })
       .should("be.visible")
       .should("not.be.disabled")
       .click();
 
     // Wait for location to be selected (selectedLocationPath should appear)
     cy.get('[data-testid="selected-location-section"]', {
-      timeout: 10000,
+      timeout: 3000,
     }).should("be.visible");
 
     // Now LocationManagementModal's "Confirm" button should be enabled
     // Use test ID from modal footer
-    cy.get('[data-testid="assign-button"]', { timeout: 10000 })
+    cy.get('[data-testid="assign-button"]', { timeout: 3000 })
       .should("be.visible")
       .should("not.be.disabled")
       .click();
@@ -152,7 +152,7 @@ describe("Storage Assignment - Cascading Dropdowns (P1)", function () {
     // Verify the location was selected - path shows full hierarchical path
     cy.get(
       '[data-testid="location-path-text"], [data-testid="location-path"]',
-      { timeout: 10000 },
+      { timeout: 3000 },
     )
       .should("be.visible")
       .should("contain.text", "Main"); // Case-insensitive match for "Main Laboratory" or "MAIN"
@@ -173,24 +173,24 @@ describe("Storage Assignment - Type-Ahead Autocomplete (P1)", function () {
 
     // Wait for storage location selector (element readiness check)
     cy.get('[data-testid="storage-location-selector"]', {
-      timeout: 10000,
+      timeout: 3000,
     }).should("be.visible");
 
     // With workflow="orders", need to expand to access search
-    cy.get('[data-testid="expand-button"]', { timeout: 10000 })
+    cy.get('[data-testid="expand-button"]', { timeout: 3000 })
       .should("be.visible")
       .click();
 
     // Wait for modal to open and search input to be visible
     // LocationManagementModal uses LocationSearchAndCreate which has data-testid="location-search-and-create"
     cy.get('[data-testid="location-search-and-create"], #location-search', {
-      timeout: 10000,
+      timeout: 3000,
     }).should("be.visible");
 
     // Type in search (LocationFilterDropdown inside LocationSearchAndCreate)
     cy.get(
       '#location-search, [data-testid="location-search-and-create"] input',
-      { timeout: 5000 },
+      { timeout: 3000 },
     )
       .should("be.visible")
       .clear()
@@ -200,12 +200,12 @@ describe("Storage Assignment - Type-Ahead Autocomplete (P1)", function () {
     cy.wait("@searchLocations");
 
     // Select from dropdown results if available (retry-ability)
-    cy.contains("MAIN", { timeout: 5000 })
+    cy.contains("MAIN", { timeout: 3000 })
       .should("be.visible")
       .click({ force: true });
 
     // Verify location path displays (retry-ability)
-    cy.get('[data-testid="location-path"]', { timeout: 5000 }).should(
+    cy.get('[data-testid="location-path"]', { timeout: 3000 }).should(
       "be.visible",
     );
   });
@@ -225,30 +225,30 @@ describe("Storage Assignment - Barcode Scan (P1)", function () {
 
     // Wait for storage location selector (element readiness check)
     cy.get('[data-testid="storage-location-selector"]', {
-      timeout: 10000,
+      timeout: 3000,
     }).should("be.visible");
 
     // With workflow="orders", need to expand to access barcode input
-    cy.get('[data-testid="expand-button"]', { timeout: 10000 })
+    cy.get('[data-testid="expand-button"]', { timeout: 3000 })
       .should("be.visible")
       .click();
 
     // Wait for modal to open and barcode input to be visible
     cy.get(
       '[data-testid="barcode-input"], [data-testid="unified-barcode-input"]',
-      { timeout: 10000 },
+      { timeout: 3000 },
     ).should("be.visible");
 
     // Type barcode (simulating scanner input)
-    cy.get('[data-testid="barcode-input"], #barcode-input', { timeout: 5000 })
+    cy.get('[data-testid="barcode-input"], #barcode-input', { timeout: 3000 })
       .should("be.visible")
       .type("MAIN-FRZ01-SHA-RKR1-A5{enter}");
 
     // Wait for barcode validation API call (intercept timing)
-    cy.wait("@validateBarcode", { timeout: 10000 });
+    cy.wait("@validateBarcode", { timeout: 3000 });
 
     // Verify location parsed and displayed (retry-ability)
-    cy.get('[data-testid="location-path"]', { timeout: 5000 })
+    cy.get('[data-testid="location-path"]', { timeout: 3000 })
       .should("be.visible")
       .should("contain.text", "MAIN");
   });
@@ -269,30 +269,30 @@ describe("Storage Assignment - Capacity Warning (P1)", function () {
 
     // Wait for storage location selector (element readiness check)
     cy.get('[data-testid="storage-location-selector"]', {
-      timeout: 10000,
+      timeout: 3000,
     }).should("be.visible");
 
     // With workflow="orders", StorageLocationSelector shows CompactLocationView
     // Need to click "Expand" button to open modal with cascading dropdowns
-    cy.get('[data-testid="expand-button"]', { timeout: 10000 })
+    cy.get('[data-testid="expand-button"]', { timeout: 3000 })
       .should("be.visible")
       .click();
 
     // Wait for modal to open - LocationManagementModal contains LocationSearchAndCreate
     // Modal uses ComposedModal from Carbon, wait for it to be visible
-    cy.get('[role="dialog"]', { timeout: 10000 }).should("be.visible");
+    cy.get('[role="dialog"]', { timeout: 3000 }).should("be.visible");
 
     // LocationSearchAndCreate starts in search mode - need to click "Add Location" to show create form
     // The create form contains EnhancedCascadingMode with comboboxes
     cy.get(
       'button:contains("Add Location"), [data-testid="add-location-button"]',
-      { timeout: 10000 },
+      { timeout: 3000 },
     )
       .should("be.visible")
       .click();
 
     // Wait for create form to show EnhancedCascadingMode with comboboxes
-    cy.get('[data-testid="room-combobox"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="room-combobox"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -310,7 +310,7 @@ describe("Storage Assignment - Capacity Warning (P1)", function () {
     cy.wait("@getRacks");
 
     // Verify capacity warning displays (retry-ability)
-    cy.get('[data-testid="capacity-warning"]', { timeout: 5000 })
+    cy.get('[data-testid="capacity-warning"]', { timeout: 3000 })
       .should("be.visible")
       .should("contain.text", "%");
   });

@@ -24,7 +24,7 @@ describe("Move Modal Form Behavior", function () {
     // Console logs will appear in Electron console with ELECTRON_ENABLE_LOGGING=1
     // No need to override - they'll show up automatically in the terminal
     cy.visit("/Storage/samples");
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
   });
 
   it("Should open create form and stay open when selecting room", function () {
@@ -38,7 +38,7 @@ describe("Move Modal Form Behavior", function () {
     });
 
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -62,7 +62,7 @@ describe("Move Modal Form Behavior", function () {
       .click();
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+    cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -218,7 +218,7 @@ describe("Move Modal Form Behavior", function () {
 
     // Step 20: Wait for button to become enabled (validation passes)
     // The button becomes enabled when selectedLocationForValidation has room+device
-    cy.get('[data-testid="confirm-move-button"]', { timeout: 5000 })
+    cy.get('[data-testid="confirm-move-button"]', { timeout: 3000 })
       .should("be.visible")
       .should("not.be.disabled")
       .then(($btn) => {
@@ -230,7 +230,7 @@ describe("Move Modal Form Behavior", function () {
     cy.get('[data-testid="confirm-move-button"]').click();
 
     // Step 21: Wait for move API call to complete
-    cy.wait("@moveSample", { timeout: 5000 });
+    cy.wait("@moveSample", { timeout: 3000 });
 
     // Step 22: Verify modal closes
     cy.get('[data-testid="move-modal"]').should("not.exist");
@@ -241,7 +241,7 @@ describe("Move Modal Form Behavior", function () {
       .should("contain.text", "success");
 
     // Step 24: Wait for samples table to reload after move
-    cy.wait("@getSamples", { timeout: 5000 });
+    cy.wait("@getSamples", { timeout: 3000 });
 
     // Step 25: Verify the sample's location was updated in the table
     cy.get('[data-testid="sample-list"]')
@@ -264,7 +264,7 @@ describe("Move Modal Form Behavior", function () {
     });
 
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -285,7 +285,7 @@ describe("Move Modal Form Behavior", function () {
       .click();
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+    cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -377,7 +377,7 @@ describe("Move Modal Form Behavior", function () {
       .should("not.be.empty");
 
     // Click "Confirm Move" button to complete the move
-    cy.get('[data-testid="confirm-move-button"]', { timeout: 5000 })
+    cy.get('[data-testid="confirm-move-button"]', { timeout: 3000 })
       .should("be.visible")
       .should("not.be.disabled")
       .then(($btn) => {
@@ -387,7 +387,7 @@ describe("Move Modal Form Behavior", function () {
       .click();
 
     // Wait for move API call to complete
-    cy.wait("@moveSample", { timeout: 5000 });
+    cy.wait("@moveSample", { timeout: 3000 });
 
     // Verify modal closes
     cy.get('[data-testid="move-modal"]').should("not.exist");
@@ -398,7 +398,7 @@ describe("Move Modal Form Behavior", function () {
       .should("contain.text", "success");
 
     // Wait for samples table to reload after move
-    cy.wait("@getSamples", { timeout: 5000 });
+    cy.wait("@getSamples", { timeout: 3000 });
 
     // Verify the sample's location was updated in the table
     cy.get('[data-testid="sample-list"]')
@@ -413,7 +413,7 @@ describe("Move Modal Form Behavior", function () {
     // It verifies that hierarchical_path from search results is displayed correctly
 
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -434,7 +434,7 @@ describe("Move Modal Form Behavior", function () {
       .click();
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+    cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -494,7 +494,7 @@ describe("Move Modal Form Behavior", function () {
       });
 
     // Step 3: Verify Confirm Move button is enabled
-    cy.get('[data-testid="confirm-move-button"]', { timeout: 5000 })
+    cy.get('[data-testid="confirm-move-button"]', { timeout: 3000 })
       .should("be.visible")
       .should("not.be.disabled");
 
@@ -502,7 +502,7 @@ describe("Move Modal Form Behavior", function () {
     cy.get('[data-testid="confirm-move-button"]').click();
 
     // Step 5: Wait for move API call to complete
-    cy.wait("@moveSample", { timeout: 5000 });
+    cy.wait("@moveSample", { timeout: 3000 });
 
     // Step 6: Verify modal closes
     cy.get('[data-testid="move-modal"]').should("not.exist");
@@ -513,7 +513,7 @@ describe("Move Modal Form Behavior", function () {
       .should("contain.text", "success");
 
     // Step 8: Wait for samples table to reload
-    cy.wait("@getSamples", { timeout: 5000 });
+    cy.wait("@getSamples", { timeout: 3000 });
 
     // Step 9: Verify the sample's location was actually updated in the table
     // This verifies the move actually persisted
@@ -545,7 +545,7 @@ describe("Move Modal Form Behavior", function () {
     // It covers the bug where clicking Confirm Move doesn't actually persist the location
 
     // Verify we're on the samples tab
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -580,7 +580,7 @@ describe("Move Modal Form Behavior", function () {
       .click();
 
     // Wait for move modal to open
-    cy.get('[data-testid="move-modal"]', { timeout: 5000 }).should(
+    cy.get('[data-testid="move-modal"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -623,13 +623,13 @@ describe("Move Modal Form Behavior", function () {
     }).should("be.visible");
 
     // Click Confirm Move
-    cy.get('[data-testid="confirm-move-button"]', { timeout: 5000 })
+    cy.get('[data-testid="confirm-move-button"]', { timeout: 3000 })
       .should("be.visible")
       .should("not.be.disabled")
       .click();
 
     // CRITICAL: Verify the move API call is actually made
-    cy.wait("@moveSample", { timeout: 5000 }).then((interception) => {
+    cy.wait("@moveSample", { timeout: 3000 }).then((interception) => {
       // Verify the request body contains the correct data
       expect(interception.request.body).to.have.property("sampleId");
       expect(interception.request.body).to.have.property("targetPositionId");
@@ -645,7 +645,7 @@ describe("Move Modal Form Behavior", function () {
       .should("contain.text", "success");
 
     // Wait for table reload
-    cy.wait("@getSamples", { timeout: 5000 });
+    cy.wait("@getSamples", { timeout: 3000 });
 
     // CRITICAL: Verify the location actually changed in the table
     cy.get('[data-testid="sample-list"]')

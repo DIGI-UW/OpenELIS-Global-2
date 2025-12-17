@@ -15,7 +15,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
-  getFromOpenElisServer,
+  getFromOpenElisServerV2,
 } from "../utils/Utils";
 import "./StorageLocationModal.css";
 
@@ -131,61 +131,89 @@ const StorageLocationModal = ({
 
   // Load parent options when modal opens
   useEffect(() => {
-    if (open) {
-      // Load rooms for device parent selection
-      if (locationType === "device") {
-        getFromOpenElisServer("/rest/storage/rooms", (response) => {
-          if (response && Array.isArray(response)) {
-            const activeRooms = response.filter(
-              (room) => room.active !== false,
-            );
-            setAvailableRooms(activeRooms);
-            // Initialize selected parent from prop or first room
-            if (parentRoom) {
-              setSelectedParentRoomId(String(parentRoom.id));
-            } else if (activeRooms.length > 0) {
-              setSelectedParentRoomId(String(activeRooms[0].id));
+    if (!open) return;
+
+    let isMounted = true;
+
+    // Load rooms for device parent selection
+    if (locationType === "device") {
+      const promise = getFromOpenElisServerV2("/rest/storage/rooms");
+      if (promise && typeof promise.then === "function") {
+        promise
+          .then((response) => {
+            if (!isMounted) return;
+            if (response && Array.isArray(response)) {
+              const activeRooms = response.filter(
+                (room) => room.active !== false,
+              );
+              setAvailableRooms(activeRooms);
+              // Initialize selected parent from prop or first room
+              if (parentRoom) {
+                setSelectedParentRoomId(String(parentRoom.id));
+              } else if (activeRooms.length > 0) {
+                setSelectedParentRoomId(String(activeRooms[0].id));
+              }
             }
-          }
-        }).catch(() => {
-          // Silently fail - parent options are optional
-        });
-      }
-      // Load devices for shelf parent selection
-      if (locationType === "shelf") {
-        getFromOpenElisServer("/rest/storage/devices", (response) => {
-          if (response && Array.isArray(response)) {
-            const activeDevices = response.filter(
-              (device) => device.active !== false,
-            );
-            setAvailableDevices(activeDevices);
-            // Initialize selected parent from prop or first device
-            if (parentDevice) {
-              setSelectedParentDeviceId(String(parentDevice.id));
-            } else if (activeDevices.length > 0) {
-              setSelectedParentDeviceId(String(activeDevices[0].id));
-            }
-          }
-        });
-      }
-      // Load shelves for rack parent selection
-      if (locationType === "rack") {
-        getFromOpenElisServer("/rest/storage/shelves", (response) => {
-          if (response && Array.isArray(response)) {
-            const activeShelves = response.filter(
-              (shelf) => shelf.active !== false,
-            );
-            setAvailableShelves(activeShelves);
-            // Initialize selected parent from prop or first shelf
-            if (parentShelf) {
-              setSelectedParentShelfId(String(parentShelf.id));
-            } else if (activeShelves.length > 0) {
-              setSelectedParentShelfId(String(activeShelves[0].id));
-            }
-          }
-        });
+          })
+          .catch(() => {
+            // Silently fail - parent options are optional
+          });
       }
     }
+    // Load devices for shelf parent selection
+    if (locationType === "shelf") {
+      const promise = getFromOpenElisServerV2("/rest/storage/devices");
+      if (promise && typeof promise.then === "function") {
+        promise
+          .then((response) => {
+            if (!isMounted) return;
+            if (response && Array.isArray(response)) {
+              const activeDevices = response.filter(
+                (device) => device.active !== false,
+              );
+              setAvailableDevices(activeDevices);
+              // Initialize selected parent from prop or first device
+              if (parentDevice) {
+                setSelectedParentDeviceId(String(parentDevice.id));
+              } else if (activeDevices.length > 0) {
+                setSelectedParentDeviceId(String(activeDevices[0].id));
+              }
+            }
+          })
+          .catch(() => {
+            // Silently fail - parent options are optional
+          });
+      }
+    }
+    // Load shelves for rack parent selection
+    if (locationType === "rack") {
+      const promise = getFromOpenElisServerV2("/rest/storage/shelves");
+      if (promise && typeof promise.then === "function") {
+        promise
+          .then((response) => {
+            if (!isMounted) return;
+            if (response && Array.isArray(response)) {
+              const activeShelves = response.filter(
+                (shelf) => shelf.active !== false,
+              );
+              setAvailableShelves(activeShelves);
+              // Initialize selected parent from prop or first shelf
+              if (parentShelf) {
+                setSelectedParentShelfId(String(parentShelf.id));
+              } else if (activeShelves.length > 0) {
+                setSelectedParentShelfId(String(activeShelves[0].id));
+              }
+            }
+          })
+          .catch(() => {
+            // Silently fail - parent options are optional
+          });
+      }
+    }
+
+    return () => {
+      isMounted = false;
+    };
   }, [open, locationType, parentRoom, parentDevice, parentShelf]);
 
   // Reset form when modal closes
@@ -326,10 +354,6 @@ const StorageLocationModal = ({
       } else if (locationType === "rack") {
         payload.label = formData.label.trim();
         payload.code = formData.code?.trim() || null;
-        payload.rows = parseInt(formData.rows, 10) || 0;
-        payload.columns = parseInt(formData.columns, 10) || 0;
-        payload.positionSchemaHint =
-          formData.positionSchemaHint?.trim() || null;
         payload.active = formData.active;
         if (mode === "create" && selectedParentShelfId) {
           payload.parentShelfId = selectedParentShelfId;
@@ -337,6 +361,30 @@ const StorageLocationModal = ({
       }
 
       if (mode === "create") {
+        // #region agent log (debug)
+        fetch("http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: "debug-session",
+            runId: "pre-fix",
+            hypothesisId: "H1",
+            location: "StorageLocationModal.jsx:handleSave:create",
+            message: "Create location submit",
+            data: {
+              locationType,
+              endpoint,
+              payloadKeys: Object.keys(payload),
+              labelLen: typeof payload.label === "string" ? payload.label.length : null,
+              nameLen: typeof payload.name === "string" ? payload.name.length : null,
+              hasParentRoomId: Object.prototype.hasOwnProperty.call(payload, "parentRoomId"),
+              hasParentDeviceId: Object.prototype.hasOwnProperty.call(payload, "parentDeviceId"),
+              hasParentShelfId: Object.prototype.hasOwnProperty.call(payload, "parentShelfId"),
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
         postToOpenElisServerJsonResponse(
           endpoint,
           JSON.stringify(payload),
@@ -345,6 +393,31 @@ const StorageLocationModal = ({
 
             // postToOpenElisServerJsonResponse returns an error-shaped JSON with status/statusCode on failure
             const status = json?.status ?? json?.statusCode;
+            // #region agent log (debug)
+            fetch("http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sessionId: "debug-session",
+                runId: "pre-fix",
+                hypothesisId: "H1",
+                location: "StorageLocationModal.jsx:handleSave:create:response",
+                message: "Create location response",
+                data: {
+                  locationType,
+                  endpoint,
+                  status: status ?? null,
+                  returnedId: json?.id ?? null,
+                  returnedLabelLen:
+                    typeof json?.label === "string" ? json.label.length : null,
+                  returnedNameLen:
+                    typeof json?.name === "string" ? json.name.length : null,
+                  error: json?.error ?? null,
+                },
+                timestamp: Date.now(),
+              }),
+            }).catch(() => {});
+            // #endregion
             if (status === 409) {
               const errorMessage =
                 json?.error ||
@@ -462,11 +535,6 @@ const StorageLocationModal = ({
       { type: locationType },
     );
   };
-
-  // Prevent hidden-but-mounted modal DOM from causing duplicate IDs
-  if (!open) {
-    return null;
-  }
 
   return (
     <ComposedModal
@@ -838,45 +906,7 @@ const StorageLocationModal = ({
                   required
                 />
               )}
-              <TextInput
-                id="rack-rows"
-                labelText={intl.formatMessage({
-                  id: "storage.rack.rows",
-                  defaultMessage: "Rows",
-                })}
-                value={formData.rows || ""}
-                onChange={(e) =>
-                  handleFieldChange("rows", parseInt(e.target.value) || 0)
-                }
-                type="number"
-                min="0"
-                required
-              />
-              <TextInput
-                id="rack-columns"
-                labelText={intl.formatMessage({
-                  id: "storage.rack.columns",
-                  defaultMessage: "Columns",
-                })}
-                value={formData.columns || ""}
-                onChange={(e) =>
-                  handleFieldChange("columns", parseInt(e.target.value) || 0)
-                }
-                type="number"
-                min="0"
-                required
-              />
-              <TextInput
-                id="rack-position-schema-hint"
-                labelText={intl.formatMessage({
-                  id: "storage.expanded.positionSchemaHint",
-                  defaultMessage: "Position Schema Hint",
-                })}
-                value={formData.positionSchemaHint || ""}
-                onChange={(e) =>
-                  handleFieldChange("positionSchemaHint", e.target.value)
-                }
-              />
+              {/* Rack grid details live on StorageBox (Box/Plate), not on Rack */}
               <TextInput
                 id="rack-code"
                 labelText={intl.formatMessage({

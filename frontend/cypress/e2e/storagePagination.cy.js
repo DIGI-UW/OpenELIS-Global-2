@@ -72,15 +72,15 @@ describe("Sample Storage Pagination (OGC-150)", () => {
 
     cy.visit("/Storage/samples");
 
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
 
     // Assert: Verify pagination controls visible
-    cy.get('nav[aria-label*="pagination" i]', { timeout: 5000 }).should(
+    cy.get('nav[aria-label*="pagination" i]', { timeout: 3000 }).should(
       "be.visible",
     );
 
     // Verify samples table visible with data
-    cy.get('[data-testid="sample-row"]', { timeout: 5000 }).should(
+    cy.get('[data-testid="sample-row"]', { timeout: 3000 }).should(
       "have.length.at.most",
       25,
     );
@@ -100,10 +100,10 @@ describe("Sample Storage Pagination (OGC-150)", () => {
 
     cy.visit("/Storage/samples");
 
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
 
     // Find and click Next button
-    cy.get('button[aria-label*="next page" i]', { timeout: 5000 })
+    cy.get('button[aria-label*="next page" i]', { timeout: 3000 })
       .should("be.visible")
       .should("not.be.disabled")
       .click();
@@ -126,10 +126,10 @@ describe("Sample Storage Pagination (OGC-150)", () => {
 
     cy.visit("/Storage/samples");
 
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
 
     // Navigate to page 2 first
-    cy.get('button[aria-label*="next page" i]', { timeout: 5000 })
+    cy.get('button[aria-label*="next page" i]', { timeout: 3000 })
       .should("be.visible")
       .should("not.be.disabled")
       .click();
@@ -137,7 +137,7 @@ describe("Sample Storage Pagination (OGC-150)", () => {
     cy.wait("@getSamples");
 
     // Click Previous button
-    cy.get('button[aria-label*="previous page" i]', { timeout: 5000 })
+    cy.get('button[aria-label*="previous page" i]', { timeout: 3000 })
       .should("be.visible")
       .should("not.be.disabled")
       .click();
@@ -160,10 +160,10 @@ describe("Sample Storage Pagination (OGC-150)", () => {
 
     cy.visit("/Storage/samples");
 
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
 
     // Find and change page size selector
-    cy.get('select[aria-label*="items per page" i]', { timeout: 5000 })
+    cy.get('select[aria-label*="items per page" i]', { timeout: 3000 })
       .should("be.visible")
       .select("50");
 
@@ -189,10 +189,10 @@ describe("Sample Storage Pagination (OGC-150)", () => {
 
     cy.visit("/Storage/samples");
 
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
 
     // Navigate to page 2
-    cy.get('button[aria-label*="next page" i]', { timeout: 5000 })
+    cy.get('button[aria-label*="next page" i]', { timeout: 3000 })
       .should("be.visible")
       .should("not.be.disabled")
       .click();
@@ -200,21 +200,21 @@ describe("Sample Storage Pagination (OGC-150)", () => {
     cy.wait("@getSamples");
 
     // Switch to Rooms tab
-    cy.get('[data-testid="tab-rooms"]', { timeout: 5000 })
+    cy.get('[data-testid="tab-rooms"]', { timeout: 3000 })
       .should("be.visible")
       .click();
 
-    cy.wait("@getRooms", { timeout: 10000 });
+    cy.wait("@getRooms", { timeout: 3000 });
 
     // Switch back to Samples tab
-    cy.get('[data-testid="tab-samples"]', { timeout: 5000 })
+    cy.get('[data-testid="tab-samples"]', { timeout: 3000 })
       .should("be.visible")
       .click();
 
     // Assert: Samples should reload, pagination component visible
     cy.wait("@getSamples");
 
-    cy.get('nav[aria-label*="pagination" i]', { timeout: 5000 }).should(
+    cy.get('nav[aria-label*="pagination" i]', { timeout: 3000 }).should(
       "be.visible",
     );
   });
@@ -229,7 +229,7 @@ describe("Sample Storage Pagination (OGC-150)", () => {
 
     cy.visit("/Storage/samples");
 
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
     cy.get('[data-testid="sample-row"]').should("have.length", 0);
     cy.get('button[aria-label*="next page" i]').should("be.disabled");
     cy.get('button[aria-label*="previous page" i]').should("be.disabled");
@@ -248,7 +248,7 @@ describe("Sample Storage Pagination (OGC-150)", () => {
 
     cy.visit("/Storage/samples");
 
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
     cy.get('[data-testid="sample-row"]').should("have.length", 10);
     cy.get('button[aria-label*="next page" i]').should("be.disabled");
     cy.get('button[aria-label*="previous page" i]').should("be.disabled");

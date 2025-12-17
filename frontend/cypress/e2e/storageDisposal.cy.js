@@ -36,10 +36,10 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
     cy.intercept("GET", "**/rest/storage/samples/search**").as("searchSamples");
 
     // Wait for dashboard to load
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
 
     // Wait for samples to load
-    cy.wait("@getSamples", { timeout: 10000 })
+    cy.wait("@getSamples", { timeout: 3000 })
       .its("response.statusCode")
       .should("eq", 200);
 
@@ -47,7 +47,7 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
     cy.url().should("include", "/Storage/samples");
 
     // Wait for sample list to be visible (confirms we're on Samples tab)
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
   });
@@ -58,7 +58,7 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
   });
 
   it("Should display red warning alert at top of modal", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -80,19 +80,19 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
 
       // Wait for overflow menu to appear - Carbon OverflowMenu renders items in a menu
       // Try finding by text first, then by test ID
-      cy.contains("Dispose", { timeout: 5000 }).should("be.visible").click();
+      cy.contains("Dispose", { timeout: 3000 }).should("be.visible").click();
 
       // Verify modal opens - wait for modal content to exist and be accessible
       // Carbon ComposedModal may take a moment for React state update + CSS transition
       // Check for modal content - use exist() first, then check text content
-      cy.get('[data-testid="warning-alert"]', { timeout: 10000 })
+      cy.get('[data-testid="warning-alert"]', { timeout: 3000 })
         .should("exist")
         .should("contain.text", "cannot be undone");
     });
   });
 
   it("Should require confirmation checkbox to be checked", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -112,10 +112,10 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
         });
 
       // Wait for overflow menu to appear - Carbon OverflowMenu renders items in a menu
-      cy.contains("Dispose", { timeout: 5000 }).should("be.visible").click();
+      cy.contains("Dispose", { timeout: 3000 }).should("be.visible").click();
 
       // Wait for modal content to exist (check for confirmation checkbox)
-      cy.get('[id="disposal-confirmation"]', { timeout: 10000 })
+      cy.get('[id="disposal-confirmation"]', { timeout: 3000 })
         .should("exist")
         .and("not.be.checked");
 
@@ -127,7 +127,7 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
   });
 
   it("Should enable confirm button only when checkbox is checked and required fields filled", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -147,12 +147,12 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
         });
 
       // Wait for overflow menu to appear - Carbon OverflowMenu renders items in a menu
-      cy.contains("Dispose", { timeout: 5000 }).should("be.visible").click();
+      cy.contains("Dispose", { timeout: 3000 }).should("be.visible").click();
 
       // Wait for modal content to exist (check for confirmation checkbox)
       // Note: Using force: true for check() because checkbox may not be "visible" due to CSS transitions
       // but it exists and is interactable
-      cy.get('[id="disposal-confirmation"]', { timeout: 10000 })
+      cy.get('[id="disposal-confirmation"]', { timeout: 3000 })
         .should("exist")
         .check({ force: true });
 
@@ -200,7 +200,7 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
   });
 
   it("Should display destructive/red button styling for confirm button", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -220,10 +220,10 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
         });
 
       // Wait for overflow menu to appear - Carbon OverflowMenu renders items in a menu
-      cy.contains("Dispose", { timeout: 5000 }).should("be.visible").click();
+      cy.contains("Dispose", { timeout: 3000 }).should("be.visible").click();
 
       // Wait for modal content to exist (check for confirm button)
-      cy.contains("Confirm Disposal", { timeout: 10000 })
+      cy.contains("Confirm Disposal", { timeout: 3000 })
         .should("exist")
         .closest("button")
         .should("exist")
@@ -236,7 +236,7 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
    * (specs/001-sample-storage/spec.md FR-057b, FR-057c)
    */
   it("Should increment Disposed counter immediately after disposal without page refresh", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -246,7 +246,7 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
     cy.get("body").then(($body) => {
       // Get initial Disposed count from metric card
       let initialDisposedCount;
-      cy.get('[data-testid="metric-disposed"]', { timeout: 10000 })
+      cy.get('[data-testid="metric-disposed"]', { timeout: 3000 })
         .should("be.visible")
         .invoke("text")
         .then((text) => {
@@ -275,52 +275,52 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
         });
 
       // Click Dispose action
-      cy.contains("Dispose", { timeout: 5000 }).should("be.visible").click();
+      cy.contains("Dispose", { timeout: 3000 }).should("be.visible").click();
 
       // Wait for modal to open
-      cy.contains("Dispose Sample", { timeout: 10000 }).should("be.visible");
+      cy.contains("Dispose Sample", { timeout: 3000 }).should("be.visible");
 
       // Fill out disposal form
       // Select Reason dropdown
-      cy.get('[data-testid="disposal-reason-dropdown"]', { timeout: 5000 })
+      cy.get('[data-testid="disposal-reason-dropdown"]', { timeout: 3000 })
         .should("be.visible")
         .click();
-      cy.contains("Expired", { timeout: 5000 }).should("be.visible").click();
+      cy.contains("Expired", { timeout: 3000 }).should("be.visible").click();
 
       // Select Method dropdown
-      cy.get('[data-testid="disposal-method-dropdown"]', { timeout: 5000 })
+      cy.get('[data-testid="disposal-method-dropdown"]', { timeout: 3000 })
         .should("be.visible")
         .click();
-      cy.contains("Biohazard Autoclave", { timeout: 5000 })
+      cy.contains("Biohazard Autoclave", { timeout: 3000 })
         .should("be.visible")
         .click();
 
       // Check confirmation checkbox
       cy.get('[data-testid="disposal-confirmation-checkbox"]', {
-        timeout: 5000,
+        timeout: 3000,
       })
         .should("be.visible")
         .check({ force: true }); // Force needed for Carbon checkbox styling
 
       // Click Confirm Disposal button
-      cy.contains("Confirm Disposal", { timeout: 5000 })
+      cy.contains("Confirm Disposal", { timeout: 3000 })
         .should("be.visible")
         .closest("button")
         .should("not.be.disabled")
         .click();
 
       // Wait for disposal API call to complete
-      cy.wait("@disposeRequest", { timeout: 10000 })
+      cy.wait("@disposeRequest", { timeout: 3000 })
         .its("response.statusCode")
         .should("eq", 200);
 
       // Wait for metrics refresh API call
-      cy.wait("@metricsRefresh", { timeout: 10000 })
+      cy.wait("@metricsRefresh", { timeout: 3000 })
         .its("response.statusCode")
         .should("eq", 200);
 
       // Verify Disposed counter incremented by 1 WITHOUT page refresh
-      cy.get('[data-testid="metric-disposed"]', { timeout: 10000 })
+      cy.get('[data-testid="metric-disposed"]', { timeout: 3000 })
         .should("be.visible")
         .invoke("text")
         .then((text) => {

@@ -184,17 +184,41 @@ const EditLocationModal = ({
             // Store original code from full data
             setOriginalCode(fullLocation.code || "");
             // Store original parent IDs
-            if (locationType === "device" && fullLocation.parentRoomId) {
-              setOriginalParentRoomId(String(fullLocation.parentRoomId));
-              setSelectedParentRoomId(String(fullLocation.parentRoomId));
+            if (locationType === "device") {
+              const parentRoomId = fullLocation.parentRoomId || fullLocation.parentRoom?.id;
+              if (parentRoomId) {
+                setOriginalParentRoomId(String(parentRoomId));
+                setSelectedParentRoomId(String(parentRoomId));
+              }
             }
-            if (locationType === "shelf" && fullLocation.parentDeviceId) {
-              setOriginalParentDeviceId(String(fullLocation.parentDeviceId));
-              setSelectedParentDeviceId(String(fullLocation.parentDeviceId));
+            if (locationType === "shelf") {
+              const parentDeviceId = fullLocation.parentDeviceId || fullLocation.parentDevice?.id;
+              if (parentDeviceId) {
+                setOriginalParentDeviceId(String(parentDeviceId));
+                setSelectedParentDeviceId(String(parentDeviceId));
+              }
             }
-            if (locationType === "rack" && fullLocation.parentShelfId) {
-              setOriginalParentShelfId(String(fullLocation.parentShelfId));
-              setSelectedParentShelfId(String(fullLocation.parentShelfId));
+            if (locationType === "rack") {
+              // Try multiple sources for parentShelfId (API response, nested object, or location prop)
+              // parentShelfId is REQUIRED for racks - backend validation will fail without it
+              const parentShelfId =
+                fullLocation.parentShelfId ||
+                fullLocation.parentShelf?.id ||
+                location?.parentShelfId ||
+                location?.parentShelf?.id;
+              
+              if (parentShelfId != null && parentShelfId !== undefined && parentShelfId !== "") {
+                setOriginalParentShelfId(String(parentShelfId));
+                setSelectedParentShelfId(String(parentShelfId));
+              } else {
+                // This should never happen - racks must have a parent shelf
+                console.error("EditLocationModal: parentShelfId missing from API response for rack", {
+                  rackId: location.id,
+                  fullLocation,
+                  locationProp: location,
+                });
+                setError("Cannot edit rack: parent shelf information is missing. This may indicate a data integrity issue.");
+              }
             }
             setError(null);
             setIsLoading(false);
@@ -407,10 +431,7 @@ const EditLocationModal = ({
         (locationType === "room" && formData.name) ||
         (locationType === "device" && formData.name) ||
         (locationType === "shelf" && formData.label) ||
-        (locationType === "rack" &&
-          formData.label &&
-          formData.rows &&
-          formData.columns);
+        (locationType === "rack" && formData.label);
       if (isValid && !isSubmitting && !isSaveDisabled()) {
         handleSave();
       }
@@ -476,14 +497,25 @@ const EditLocationModal = ({
       } else if (locationType === "rack") {
         payload.label = latest.label;
         payload.code = latest.code || null;
-        payload.rows = parseInt(latest.rows, 10) || 0;
-        payload.columns = parseInt(latest.columns, 10) || 0;
-        payload.positionSchemaHint = latest.positionSchemaHint || null;
         payload.active = latest.active;
-        // Always include parent shelf ID if selected (backend will handle if unchanged)
-        if (selectedParentShelfId) {
-          payload.parentShelfId = selectedParentShelfId;
+        // ALWAYS include parent shelf ID (required by backend @NotBlank validation)
+        // Try multiple sources: selectedParentShelfId, originalParentShelfId, or location prop
+        const parentShelfIdToUse =
+          selectedParentShelfId ||
+          originalParentShelfId ||
+          location?.parentShelfId ||
+          location?.parentShelf?.id;
+        
+        if (!parentShelfIdToUse || parentShelfIdToUse === "" || parentShelfIdToUse === "null" || parentShelfIdToUse === "undefined") {
+          // This should never happen - racks must have a parent shelf
+          // But if it does, we need to fetch it from the existing rack
+          throw new Error(
+            `Cannot edit rack ${location.id}: parentShelfId is required but not found. ` +
+            `This indicates a data integrity issue or the API response is missing parentShelfId.`
+          );
         }
+        
+        payload.parentShelfId = String(parentShelfIdToUse);
       }
 
       // Use fetch directly to get response body for error details
@@ -599,7 +631,6 @@ const EditLocationModal = ({
   const modalSize =
     locationType === "device" || locationType === "rack" ? "lg" : "md";
 
-  // Prevent hidden-but-mounted modal DOM from causing duplicate IDs across modals
   if (!open) {
     return null;
   }
@@ -1185,8 +1216,7 @@ const EditLocationModal = ({
             (locationType === "room" && !formData.name) ||
             (locationType === "device" && !formData.name) ||
             (locationType === "shelf" && !formData.label) ||
-            (locationType === "rack" &&
-              (!formData.label || !formData.rows || !formData.columns))
+            (locationType === "rack" && !formData.label)
           }
           data-testid="edit-location-save-button"
         >

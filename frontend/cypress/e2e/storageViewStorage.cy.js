@@ -34,11 +34,11 @@ describe("View Storage Modal - UI Components (P2B)", function () {
     cy.intercept("GET", "**/rest/storage/sample-items**").as("getSamples");
     cy.visit("/Storage/samples");
     // Wait for page to be ready first, then wait for API call
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
     // Now wait for the API call (it may happen after page renders)
-    cy.wait("@getSamples", { timeout: 10000 });
+    cy.wait("@getSamples", { timeout: 3000 });
     storageAssignmentPage = new StorageAssignmentPage();
   });
 
@@ -81,14 +81,14 @@ describe("View Storage Modal - UI Components (P2B)", function () {
     });
 
     // Ensure we're back on the samples list and it's ready
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
     cy.get('[data-testid="sample-row"]').first().should("be.visible");
   });
 
   it("Should display sample information section", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -109,13 +109,13 @@ describe("View Storage Modal - UI Components (P2B)", function () {
         });
 
       // Wait for overflow menu to appear and click Manage Location
-      cy.contains("Manage Location", { timeout: 5000 })
+      cy.contains("Manage Location", { timeout: 3000 })
         .should("be.visible")
         .click({ force: true });
 
       // Verify modal opens - wait for modal content to exist and be accessible
       // Carbon ComposedModal may have visibility: hidden during transitions
-      cy.get('[data-testid="sample-info-section"]', { timeout: 10000 })
+      cy.get('[data-testid="sample-info-section"]', { timeout: 3000 })
         .should("exist")
         .should("contain.text", "Sample ID");
       cy.contains("Type").should("exist");
@@ -124,7 +124,7 @@ describe("View Storage Modal - UI Components (P2B)", function () {
   });
 
   it("Should display current location section in gray box", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -144,22 +144,22 @@ describe("View Storage Modal - UI Components (P2B)", function () {
         });
 
       // Wait for overflow menu to appear and click Manage Location
-      cy.contains("Manage Location", { timeout: 5000 })
+      cy.contains("Manage Location", { timeout: 3000 })
         .should("be.visible")
         .click({ force: true });
 
       // Verify modal opens - wait for modal content to exist and be accessible
-      cy.get('[data-testid="sample-info-section"]', { timeout: 10000 }).should(
+      cy.get('[data-testid="sample-info-section"]', { timeout: 3000 }).should(
         "exist",
       );
-      cy.get('[data-testid="current-location-section"]', { timeout: 10000 })
+      cy.get('[data-testid="current-location-section"]', { timeout: 3000 })
         .should("exist")
         .should("contain.text", "Current Location");
     });
   });
 
   it("Should allow editing location assignment", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -179,23 +179,23 @@ describe("View Storage Modal - UI Components (P2B)", function () {
         });
 
       // Wait for overflow menu to appear and click Manage Location
-      cy.contains("Manage Location", { timeout: 5000 })
+      cy.contains("Manage Location", { timeout: 3000 })
         .should("be.visible")
         .click({ force: true });
 
       // Verify modal opens - wait for modal content to exist and be accessible
-      cy.get('[data-testid="sample-info-section"]', { timeout: 10000 }).should(
+      cy.get('[data-testid="sample-info-section"]', { timeout: 3000 }).should(
         "exist",
       );
       // Verify new location section is visible and editable
-      cy.get('[data-testid="new-location-section"]', { timeout: 10000 }).should(
+      cy.get('[data-testid="new-location-section"]', { timeout: 3000 }).should(
         "exist",
       );
     });
   });
 
   it("Should save changes when Assign Storage Location button clicked", function () {
-    cy.get('[data-testid="sample-list"]', { timeout: 10000 }).should(
+    cy.get('[data-testid="sample-list"]', { timeout: 3000 }).should(
       "be.visible",
     );
 
@@ -217,21 +217,21 @@ describe("View Storage Modal - UI Components (P2B)", function () {
 
       // Wait for overflow menu to appear - Carbon OverflowMenu renders items in a menu
       // Use text matching like storageDisposal.cy.js does
-      cy.contains("Manage Location", { timeout: 5000 })
+      cy.contains("Manage Location", { timeout: 3000 })
         .should("be.visible")
         .click({ force: true });
 
       // Verify modal opens - wait for modal content to exist and be accessible
-      cy.get('[data-testid="sample-info-section"]', { timeout: 10000 }).should(
+      cy.get('[data-testid="sample-info-section"]', { timeout: 3000 }).should(
         "exist",
       );
 
       // Verify new location section exists with LocationSearchAndCreate component
-      cy.get('[data-testid="new-location-section"]', { timeout: 10000 }).should(
+      cy.get('[data-testid="new-location-section"]', { timeout: 3000 }).should(
         "exist",
       );
       cy.get('[data-testid="location-search-and-create"]', {
-        timeout: 10000,
+        timeout: 3000,
       }).should("exist");
 
       // Set up intercepts BEFORE actions (Constitution V.5)
@@ -248,7 +248,7 @@ describe("View Storage Modal - UI Components (P2B)", function () {
         .first()
         .should("exist")
         .within(() => {
-          cy.get('[data-testid="add-location-button"]', { timeout: 10000 })
+          cy.get('[data-testid="add-location-button"]', { timeout: 3000 })
             .should("exist")
             .first()
             .click({ force: true });
@@ -256,9 +256,9 @@ describe("View Storage Modal - UI Components (P2B)", function () {
 
       // Wait for create form to show EnhancedCascadingMode with comboboxes
       cy.get('[data-testid="location-create-container"]', {
-        timeout: 10000,
+        timeout: 3000,
       }).should("exist");
-      cy.get('[data-testid="room-combobox"]', { timeout: 10000 }).should(
+      cy.get('[data-testid="room-combobox"]', { timeout: 3000 }).should(
         "be.visible",
       );
 
@@ -268,31 +268,31 @@ describe("View Storage Modal - UI Components (P2B)", function () {
         .should("be.visible")
         .should("not.be.disabled");
       storageAssignmentPage.selectRoom("MAIN");
-      cy.wait("@getRooms", { timeout: 10000 });
-      cy.wait("@getDevices", { timeout: 10000 });
+      cy.wait("@getRooms", { timeout: 3000 });
+      cy.wait("@getDevices", { timeout: 3000 });
       storageAssignmentPage.selectDevice("FRZ01");
-      cy.wait("@getShelves", { timeout: 10000 });
+      cy.wait("@getShelves", { timeout: 3000 });
       storageAssignmentPage.selectShelf("SHA");
-      cy.wait("@getRacks", { timeout: 10000 });
+      cy.wait("@getRacks", { timeout: 3000 });
       storageAssignmentPage.selectRack("RKR2");
       storageAssignmentPage.selectPosition("B4");
 
       // Click "Add" button in create form to confirm location selection
-      cy.get('[data-testid="add-location-create-button"]', { timeout: 10000 })
+      cy.get('[data-testid="add-location-create-button"]', { timeout: 3000 })
         .should("exist")
         .should("not.be.disabled")
         .click();
 
       // Verify we're back to search mode and location is selected
       cy.get('[data-testid="location-search-and-create"]', {
-        timeout: 10000,
+        timeout: 3000,
       }).should("exist");
 
       // Click assign button to save
-      cy.get('[data-testid="assign-button"]', { timeout: 10000 })
+      cy.get('[data-testid="assign-button"]', { timeout: 3000 })
         .should("exist")
         .click();
-      cy.wait("@assignStorage", { timeout: 10000 });
+      cy.wait("@assignStorage", { timeout: 3000 });
 
       // Verify success notification (if save is implemented)
       cy.get("body").then(($body2) => {
