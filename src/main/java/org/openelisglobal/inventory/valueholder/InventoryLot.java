@@ -96,8 +96,6 @@ public class InventoryLot extends BaseObject<Long> {
     @Column(name = "version", nullable = false)
     private Integer version = 0;
 
-    // Business logic helper methods
-
     /**
      * Get the effective expiration date (earlier of manufacturer expiration or
      * expiry after opening)

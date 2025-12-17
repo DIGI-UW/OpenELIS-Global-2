@@ -13,6 +13,7 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import InventoryDashboard from "./InventoryDashboard";
 import InventoryCatalog from "./InventoryCatalog";
 import InventoryReports from "./InventoryReports";
+import UnifiedAuditHistory from "./UnifiedAuditHistory";
 import "./InventoryList.css";
 
 const breadcrumbs = [
@@ -51,6 +52,9 @@ const InventoryManagement = () => {
                 <Tab>
                   <FormattedMessage id="inventory.tab.reports" />
                 </Tab>
+                <Tab>
+                  <FormattedMessage id="inventory.tab.auditHistory" />
+                </Tab>
               </TabList>
 
               <TabPanels>
@@ -67,6 +71,11 @@ const InventoryManagement = () => {
                 {/* Reports Tab - Generate Reports */}
                 <TabPanel>
                   <InventoryReports />
+                </TabPanel>
+
+                {/* Audit History Tab - Unified Audit Logs */}
+                <TabPanel>
+                  <UnifiedAuditHistory />
                 </TabPanel>
               </TabPanels>
             </Tabs>

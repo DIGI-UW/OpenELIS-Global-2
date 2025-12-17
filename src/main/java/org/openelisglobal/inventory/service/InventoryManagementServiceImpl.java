@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
@@ -21,6 +22,9 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Autowired
     private InventoryLotService inventoryLotService;
+
+    @Autowired
+    private InventoryLotDAO inventoryLotDAO;
 
     @Autowired
     private InventoryStorageLocationService storageLocationService;
@@ -66,6 +70,9 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
             Double lotQuantity = lot.getCurrentQuantity();
             Double quantityFromThisLot = Math.min(lotQuantity, remainingToConsume);
+
+            // Detach from session so audit can compare properly
+            inventoryLotDAO.evict(lot);
 
             Double newQuantity = lotQuantity - quantityFromThisLot;
             lot.setCurrentQuantity(newQuantity);

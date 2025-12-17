@@ -48,11 +48,12 @@ const AuditLogViewer = ({
         logs = await InventoryAuditLogAPI.getItemAuditTrail(entityId);
       } else if (entityType === "LOT") {
         logs = await InventoryAuditLogAPI.getLotAuditTrail(entityId);
+      } else if (entityType === "LOCATION") {
+        logs = await InventoryAuditLogAPI.getLocationAuditTrail(entityId);
       } else {
-        logs = await InventoryAuditLogAPI.getEntityAuditTrail(
-          entityType,
-          entityId,
-        );
+        console.error("Unknown entity type:", entityType);
+        setError("Unsupported entity type: " + entityType);
+        return;
       }
       setAuditLogs(logs || []);
     } catch (err) {
@@ -63,28 +64,16 @@ const AuditLogViewer = ({
     }
   };
 
-  const getOperationTypeTag = (operationType) => {
+  const getActivityTag = (activity) => {
     const tagMap = {
-      ITEM_CREATE: { type: "green", label: "Created" },
-      ITEM_UPDATE: { type: "blue", label: "Updated" },
-      ITEM_DEACTIVATE: { type: "red", label: "Deactivated" },
-      ITEM_REACTIVATE: { type: "green", label: "Reactivated" },
-      LOT_RECEIVE: { type: "green", label: "Received" },
-      LOT_OPEN: { type: "blue", label: "Opened" },
-      LOT_QC_UPDATE: { type: "purple", label: "QC Updated" },
-      LOT_STATUS_UPDATE: { type: "blue", label: "Status Updated" },
-      LOT_ADJUST: { type: "cyan", label: "Adjusted" },
-      LOT_DISPOSE: { type: "red", label: "Disposed" },
-      LOT_UPDATE: { type: "blue", label: "Updated" },
-      USAGE_RECORD: { type: "teal", label: "Used" },
-      LOCATION_CREATE: { type: "green", label: "Created" },
-      LOCATION_UPDATE: { type: "blue", label: "Updated" },
-      LOCATION_DEACTIVATE: { type: "red", label: "Deactivated" },
+      INSERT: { type: "green", label: "Created" },
+      UPDATE: { type: "blue", label: "Updated" },
+      DELETE: { type: "red", label: "Deleted" },
     };
 
-    const config = tagMap[operationType] || {
+    const config = tagMap[activity] || {
       type: "gray",
-      label: operationType,
+      label: activity || "Unknown",
     };
     return <Tag type={config.type}>{config.label}</Tag>;
   };
@@ -98,106 +87,35 @@ const AuditLogViewer = ({
     }
   };
 
-  const parseOperationDetails = (detailsJson) => {
-    if (!detailsJson) return null;
-    try {
-      return JSON.parse(detailsJson);
-    } catch (e) {
-      return { raw: detailsJson };
-    }
-  };
+  const renderChanges = (log) => {
+    const changes = log.changes || {};
 
-  const formatValue = (key, value) => {
-    // Check if value looks like a timestamp (large number)
-    if (
-      typeof value === "number" &&
-      value > 1000000000 &&
-      value < 9999999999999
-    ) {
-      return new Date(value).toLocaleString();
-    }
-    // Check for common date field names
-    if (
-      typeof value === "number" &&
-      (key.toLowerCase().includes("date") ||
-        key.toLowerCase().includes("time") ||
-        key === "lastupdated")
-    ) {
-      return new Date(value).toLocaleString();
-    }
-    if (typeof value === "object" && value !== null) {
-      return JSON.stringify(value);
-    }
-    return String(value);
-  };
-
-  const renderOperationDetails = (log) => {
-    const details = parseOperationDetails(log.operationDetails);
-    if (!details) return <p>No additional details</p>;
-
-    return (
-      <div className="operation-details">
-        {Object.entries(details).map(([key, value]) => (
-          <div key={key} className="detail-row">
-            <strong>{key.replace(/_/g, " ").toUpperCase()}:</strong>{" "}
-            {formatValue(key, value)}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const formatStateForDisplay = (state) => {
-    if (!state || typeof state !== "object") return state;
-
-    const formattedState = {};
-    for (const [key, value] of Object.entries(state)) {
-      // Format timestamp values
-      if (
-        typeof value === "number" &&
-        (key.toLowerCase().includes("date") ||
-          key.toLowerCase().includes("time") ||
-          key === "lastupdated")
-      ) {
-        formattedState[key] = `${value} (${new Date(value).toLocaleString()})`;
-      } else {
-        formattedState[key] = value;
-      }
-    }
-    return formattedState;
-  };
-
-  const renderStateComparison = (log) => {
-    let beforeState, afterState;
-    try {
-      beforeState = log.beforeState ? JSON.parse(log.beforeState) : null;
-      afterState = log.afterState ? JSON.parse(log.afterState) : null;
-    } catch (e) {
-      return <p>Unable to parse state data</p>;
-    }
-
-    if (!beforeState && !afterState) {
-      return <p>No state change recorded</p>;
+    if (Object.keys(changes).length === 0) {
+      return <p>No field changes recorded</p>;
     }
 
     return (
-      <div className="state-comparison">
-        {beforeState && (
-          <div className="state-column">
-            <h5>Before:</h5>
-            <pre>
-              {JSON.stringify(formatStateForDisplay(beforeState), null, 2)}
-            </pre>
-          </div>
-        )}
-        {afterState && (
-          <div className="state-column">
-            <h5>After:</h5>
-            <pre>
-              {JSON.stringify(formatStateForDisplay(afterState), null, 2)}
-            </pre>
-          </div>
-        )}
+      <div className="field-changes">
+        <table className="changes-table">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Old Value</th>
+              <th>New Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(changes).map(([field, values]) => (
+              <tr key={field}>
+                <td>
+                  <strong>{field}</strong>
+                </td>
+                <td>{values.old || <em>—</em>}</td>
+                <td>{values.new || <em>—</em>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   };
@@ -211,10 +129,10 @@ const AuditLogViewer = ({
       }),
     },
     {
-      key: "operationType",
+      key: "activity",
       header: intl.formatMessage({
-        id: "audit.operation",
-        defaultMessage: "Operation",
+        id: "audit.activity",
+        defaultMessage: "Activity",
       }),
     },
     {
@@ -225,7 +143,7 @@ const AuditLogViewer = ({
       }),
     },
     {
-      key: "details",
+      key: "summary",
       header: intl.formatMessage({
         id: "audit.summary",
         defaultMessage: "Summary",
@@ -236,9 +154,9 @@ const AuditLogViewer = ({
   const rows = auditLogs.map((log, index) => ({
     id: `${log.id}-${index}`,
     timestamp: formatTimestamp(log.timestamp),
-    operationType: log.operationType,
+    activity: log.activity,
     performedByUser: log.performedByUser,
-    details: log.operationDetails || "—",
+    summary: log.summary || "—",
     _log: log, // Store full log for expanded row
   }));
 
@@ -321,22 +239,12 @@ const AuditLogViewer = ({
                       <React.Fragment key={row.id}>
                         <TableExpandRow {...getRowProps({ row })}>
                           {row.cells.map((cell) => {
-                            if (cell.info.header === "operationType") {
+                            if (cell.info.header === "activity") {
                               return (
                                 <TableCell key={cell.id}>
-                                  {getOperationTypeTag(cell.value)}
+                                  {getActivityTag(cell.value)}
                                 </TableCell>
                               );
-                            }
-                            if (cell.info.header === "details") {
-                              const details = parseOperationDetails(cell.value);
-                              if (details && details.action) {
-                                return (
-                                  <TableCell key={cell.id}>
-                                    {details.action}
-                                  </TableCell>
-                                );
-                              }
                             }
                             return (
                               <TableCell key={cell.id}>{cell.value}</TableCell>
@@ -347,19 +255,11 @@ const AuditLogViewer = ({
                           <div className="expanded-audit-details">
                             <h5>
                               <FormattedMessage
-                                id="audit.details.operation"
-                                defaultMessage="Operation Details"
-                              />
-                            </h5>
-                            {renderOperationDetails(log)}
-
-                            <h5>
-                              <FormattedMessage
                                 id="audit.details.changes"
-                                defaultMessage="State Changes"
+                                defaultMessage="Field Changes"
                               />
                             </h5>
-                            {renderStateComparison(log)}
+                            {renderChanges(log)}
                           </div>
                         </TableExpandedRow>
                       </React.Fragment>

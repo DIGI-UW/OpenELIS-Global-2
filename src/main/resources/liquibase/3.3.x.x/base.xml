@@ -34,6 +34,7 @@
   <include relativeToChangelogFile="true" file="019-fix-inventory-menu-order.xml"/>
   <include relativeToChangelogFile="true" file="019-fix-assignment-location-type-check.xml"/>
   <include relativeToChangelogFile="true" file="020-storage-box-use-code-not-short-code.xml"/>
+  <include relativeToChangelogFile="true" file="020-register-inventory-audit-trail.xml"/>
 
   <!-- Seed inventory reagents and instruments for MNTD workflow -->
   <include relativeToChangelogFile="true" file="020-seed-inventory-reagents.xml"/>

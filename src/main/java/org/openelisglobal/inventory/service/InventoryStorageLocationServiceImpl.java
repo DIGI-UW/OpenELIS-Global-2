@@ -24,11 +24,9 @@ public class InventoryStorageLocationServiceImpl extends AuditableBaseObjectServ
     @Autowired
     private InventoryLotDAO inventoryLotDAO;
 
-    @Autowired
-    private InventoryAuditService auditService;
-
     public InventoryStorageLocationServiceImpl() {
         super(InventoryStorageLocation.class);
+        this.auditTrailLog = true; // Enable generic audit trail
     }
 
     @Override
@@ -43,23 +41,15 @@ public class InventoryStorageLocationServiceImpl extends AuditableBaseObjectServ
         if (location.getFhirUuid() == null) {
             location.setFhirUuid(UUID.randomUUID());
         }
-        Long result = super.insert(location);
-        // Log location creation
-        auditService.logLocationCreate(location, location.getSysUserId());
-        return result;
+        // Audit logging is automatic via auditTrailLog = true in constructor
+        return super.insert(location);
     }
 
     @Override
     @Transactional
     public InventoryStorageLocation update(InventoryStorageLocation location) {
-        // Get the before state for audit logging
-        InventoryStorageLocation before = get(location.getId());
-        InventoryStorageLocation result = super.update(location);
-        // Log location update
-        if (before != null) {
-            auditService.logLocationUpdate(before, result, location.getSysUserId());
-        }
-        return result;
+        // Audit logging is automatic via auditTrailLog = true in constructor
+        return super.update(location);
     }
 
     @Override
