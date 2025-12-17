@@ -2,6 +2,7 @@ package org.openelisglobal.notebook.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,7 @@ import org.openelisglobal.notebook.service.NotebookPageSampleService;
 import org.openelisglobal.notebook.service.ResultCompilationService;
 import org.openelisglobal.notebook.service.ResultCompilationService.ExportOptions;
 import org.openelisglobal.notebook.service.ResultCompilationService.ValidationSummary;
+import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
 import org.openelisglobal.notebook.valueholder.ValidationStatus;
@@ -48,6 +50,9 @@ public class NotebookBulkOperationController extends BaseRestController {
 
     @Autowired
     private NoteBookPageService noteBookPageService;
+
+    @Autowired
+    private NotebookPageSampleService notebookPageSampleService;
 
     /**
      * Bulk apply values to multiple samples on a page. POST
@@ -163,6 +168,58 @@ public class NotebookBulkOperationController extends BaseRestController {
             LogEvent.logError(this.getClass().getName(), "updatePageContent",
                     "Error updating page content: " + e.getMessage());
             return ResponseEntity.status(500).body(Map.of("error", "Failed to update page content"));
+        }
+    }
+
+    /**
+     * Get content change history for a notebook page. GET
+     * /notebook/bulk/page/{pageId}/content/history
+     *
+     * Returns the audit trail of all content changes (including QC parameters)
+     * for the specified page.
+     *
+     * @param pageId the notebook page ID
+     * @return list of history records with timestamps, users, and content changes
+     */
+    @GetMapping(value = "/page/{pageId}/content/history", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getPageContentHistory(@PathVariable("pageId") Integer pageId) {
+        try {
+            NoteBookPage page = noteBookPageService.get(pageId);
+            if (page == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "Page not found"));
+            }
+
+            org.openelisglobal.common.services.historyservices.NoteBookPageHistoryService historyService = new org.openelisglobal.common.services.historyservices.NoteBookPageHistoryService(
+                    page);
+
+            List<org.openelisglobal.audittrail.action.workers.AuditTrailItem> historyItems = historyService
+                    .getContentHistoryItems();
+
+            // Convert to response format
+            List<Map<String, Object>> historyList = new ArrayList<>();
+            for (org.openelisglobal.audittrail.action.workers.AuditTrailItem item : historyItems) {
+                Map<String, Object> historyEntry = new HashMap<>();
+                historyEntry.put("timestamp", item.getDate() + " " + item.getTime());
+                historyEntry.put("user", item.getUser());
+                historyEntry.put("action", item.getAction());
+                historyEntry.put("attribute", item.getAttribute());
+                historyEntry.put("oldValue", item.getOldValue());
+                historyEntry.put("newValue", item.getNewValue());
+                historyList.add(historyEntry);
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("pageId", pageId);
+            result.put("pageName", page.getTitle());
+            result.put("history", historyList);
+            result.put("totalRecords", historyList.size());
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "getPageContentHistory",
+                    "Error retrieving page content history: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to retrieve content history"));
         }
     }
 
@@ -1052,6 +1109,77 @@ public class NotebookBulkOperationController extends BaseRestController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Add existing samples to a page (for advancing workflow). POST
+     * /notebook/bulk/page/{pageId}/samples/add
+     *
+     * Creates NotebookPageSample records for samples that already exist in the
+     * system (from a previous workflow page). Used to advance samples to the next
+     * workflow step.
+     *
+     * @param pageId      the target notebook page ID
+     * @param request     contains sampleIds to add
+     * @param httpRequest for getting user session
+     * @return result with added count
+     */
+    @PostMapping(value = "/page/{pageId}/samples/add", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> addSamplesToPage(@PathVariable("pageId") Integer pageId,
+            @RequestBody AddSamplesRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Sample IDs are required");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        try {
+            NoteBookPage page = noteBookPageService.get(pageId);
+            if (page == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Page not found");
+                return ResponseEntity.status(404).body(error);
+            }
+
+            int addedCount = 0;
+            for (Integer sampleItemId : request.getSampleIds()) {
+                // Check if sample already exists on this page
+                String sampleItemIdStr = sampleItemId.toString();
+                NotebookPageSample existing = notebookPageSampleService.getBySampleItemIdAndPageId(sampleItemIdStr,
+                        pageId);
+                if (existing == null) {
+                    // Create new page sample record
+                    NotebookPageSample nps = new NotebookPageSample();
+                    nps.setNotebookPage(page);
+                    nps.setSampleItemId(sampleItemIdStr);
+                    nps.setStatus(NotebookPageSample.Status.PENDING);
+                    nps.setSysUserId(sysUserId);
+                    notebookPageSampleService.save(nps);
+                    addedCount++;
+                }
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("addedCount", addedCount);
+            result.put("pageId", pageId);
+            result.put("success", true);
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "addSamplesToPage", e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to add samples to page: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+
     // Request DTOs
 
     /**
@@ -1291,6 +1419,21 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setStatus(String status) {
             this.status = status;
+        }
+    }
+
+    /**
+     * Request body for adding samples to a page (workflow advancement).
+     */
+    public static class AddSamplesRequest {
+        private List<Integer> sampleIds;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
         }
     }
 

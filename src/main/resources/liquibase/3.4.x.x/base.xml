@@ -32,5 +32,6 @@
     <include file="liquibase/3.4.x.x/014-pharmaceuticals-additional-pages.xml"/>
     <include file="liquibase/3.4.x.x/012-notebook-access-control.xml"/>
     <include file="liquibase/3.4.x.x/019-pharma-department-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/020-notebook-inventory-instruments.xml"/>
 
 </databaseChangeLog>

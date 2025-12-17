@@ -16,6 +16,7 @@ import {
   SelectItem,
   RadioButtonGroup,
   RadioButton,
+  MultiSelect,
 } from "@carbon/react";
 import {
   Archive,
@@ -25,6 +26,7 @@ import {
   Location,
   Automatic,
   Warning,
+  InventoryManagement,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -67,6 +69,7 @@ function PharmaceuticalStoragePage({
   pageData,
   progress,
   onProgressUpdate,
+  templateInstruments,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -78,6 +81,10 @@ function PharmaceuticalStoragePage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  // Instruments from inventory (storage equipment like freezers, refrigerators)
+  const [instruments, setInstruments] = useState([]);
+  const [loadingInstruments, setLoadingInstruments] = useState(false);
 
   // Storage hierarchy state (using StorageHierarchySelector)
   const [storageSelection, setStorageSelection] = useState({
@@ -93,16 +100,6 @@ function PharmaceuticalStoragePage({
   const [storageModalOpen, setStorageModalOpen] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [selectedWell, setSelectedWell] = useState(null);
-
-  // Auto-assign modal state
-  const [autoAssignModalOpen, setAutoAssignModalOpen] = useState(false);
-  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
-  const [autoAssignValues, setAutoAssignValues] = useState({
-    storageType: "",
-    assignedBy: "",
-    assignedDateTime: new Date().toISOString().slice(0, 16),
-    notes: "",
-  });
 
   // Reassignment confirmation modal state
   const [confirmReassignModalOpen, setConfirmReassignModalOpen] =
@@ -132,6 +129,7 @@ function PharmaceuticalStoragePage({
     assignedBy: "",
     assignedDateTime: new Date().toISOString().slice(0, 16),
     notes: "",
+    selectedInstruments: [],
   });
   const [wellAssignments, setWellAssignments] = useState({});
 
@@ -229,11 +227,50 @@ function PharmaceuticalStoragePage({
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
+  // Load instruments from template or inventory
+  const loadInstruments = useCallback(() => {
+    // If template has configured instruments, use those exclusively
+    if (templateInstruments && templateInstruments.length > 0) {
+      setInstruments(
+        templateInstruments.map((analyzer) => ({
+          id: analyzer.id,
+          label: analyzer.value,
+          name: analyzer.value,
+        })),
+      );
+      setLoadingInstruments(false);
+      return;
+    }
+
+    // Fallback: load from inventory if no template instruments configured
+    setLoadingInstruments(true);
+    getFromOpenElisServer(
+      "/rest/inventory/instruments?status=active",
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            setInstruments(
+              response.map((i) => ({
+                id: i.id,
+                label: `${i.name} (${i.serialNumber || "N/A"})`,
+                name: i.name,
+                serialNumber: i.serialNumber,
+                ...i,
+              })),
+            );
+          }
+          setLoadingInstruments(false);
+        }
+      },
+    );
+  }, [templateInstruments]);
+
   // Load samples and temperature logs
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
     loadTemperatureLogs();
+    loadInstruments();
 
     return () => {
       componentMounted.current = false;
@@ -265,12 +302,14 @@ function PharmaceuticalStoragePage({
       if (componentMounted.current) {
         const routingMap = {};
         routingData.forEach((routing) => {
+          // Include all STORAGE routing records, regardless of whether they have box info
           if (routing.destinationType === "STORAGE" && routing.sampleItemId) {
             routingMap[String(routing.sampleItemId)] = {
               boxId: routing.boxId,
               boxName: routing.boxName,
               wellCoordinate: routing.wellCoordinate,
               routedAt: routing.routedAt,
+              hasRouting: true, // Flag that routing exists even if box info is missing
             };
           }
         });
@@ -279,7 +318,26 @@ function PharmaceuticalStoragePage({
           const sampleId = String(sample.id || sample.sampleItemId);
           const routing = routingMap[sampleId];
 
+          // Get storage fields from sample data or routing
+          const storageBox =
+            sample.data?.storageBox || routing?.boxName || null;
+          const storageWell =
+            sample.data?.storageWell ||
+            sample.data?.wellCoordinate ||
+            routing?.wellCoordinate ||
+            null;
+          const storagePath = sample.data?.storagePath || null;
+          const storageRoom = sample.data?.storageRoom || null;
+          const storageRack = sample.data?.storageRack || null;
+          const storageFreezer = sample.data?.storageFreezer || null;
+
+          // Build storageLocation for display
           let storageLocation = sample.data?.storageLocation || null;
+          if (!storageLocation && (storageBox || storageWell)) {
+            storageLocation = storageBox
+              ? `${storageBox} - ${storageWell || ""}`
+              : storageWell;
+          }
           if (!storageLocation && routing) {
             storageLocation = routing.boxName
               ? `${routing.boxName} - ${routing.wellCoordinate}`
@@ -288,8 +346,18 @@ function PharmaceuticalStoragePage({
 
           const storageCondition = sample.data?.storageCondition || null;
 
+          // Determine if sample has storage assignment
+          // Check multiple sources: page sample data, routing records, or just the hasRouting flag
+          const hasStorageAssignment = !!(
+            storageLocation ||
+            storagePath ||
+            storageBox ||
+            storageWell ||
+            routing?.hasRouting // Fallback: routing record exists even if box details aren't loaded
+          );
+
           let status = sample.pageStatus || "PENDING";
-          if (storageLocation && status === "PENDING") {
+          if (hasStorageAssignment && status === "PENDING") {
             status = "IN_PROGRESS";
           }
 
@@ -306,11 +374,17 @@ function PharmaceuticalStoragePage({
             chemicalName: sample.data?.chemicalName,
             grade: sample.data?.grade,
             storageLocation: storageLocation,
+            storagePath: storagePath,
+            storageBox: storageBox,
+            storageWell: storageWell,
+            storageRoom: storageRoom,
+            storageRack: storageRack,
+            storageFreezer: storageFreezer,
             storageCondition: storageCondition,
             retentionExpiry: sample.data?.retentionExpiry || null,
             boxId: sample.data?.boxId || routing?.boxId || null,
-            wellCoordinate:
-              sample.data?.wellCoordinate || routing?.wellCoordinate || null,
+            wellCoordinate: storageWell,
+            hasStorageAssignment: hasStorageAssignment,
             data: sample.data,
           };
         });
@@ -318,7 +392,7 @@ function PharmaceuticalStoragePage({
         setSamples(transformedSamples);
 
         const assigned = transformedSamples.filter(
-          (s) => s.storageLocation,
+          (s) => s.hasStorageAssignment,
         ).length;
         const completed = transformedSamples.filter(
           (s) => s.status === "COMPLETED",
@@ -360,17 +434,18 @@ function PharmaceuticalStoragePage({
   }, [pageData?.id, entryId, notebookId]);
 
   const loadTemperatureLogs = useCallback(() => {
-    if (!entryId) return;
+    const effectiveEntryId = notebookId || entryId;
+    if (!effectiveEntryId) return;
 
     getFromOpenElisServer(
-      `/rest/notebook-entry/${entryId}/temperature-logs`,
+      `/rest/notebook-entry/${effectiveEntryId}/temperature-logs`,
       (response) => {
         if (componentMounted.current && response && Array.isArray(response)) {
           setTemperatureLogs(response);
         }
       },
     );
-  }, [entryId]);
+  }, [entryId, notebookId]);
 
   // Handle storage hierarchy selection change
   const handleStorageSelectionChange = useCallback((selection) => {
@@ -474,6 +549,7 @@ function PharmaceuticalStoragePage({
       assignedBy: "",
       assignedDateTime: new Date().toISOString().slice(0, 16),
       notes: "",
+      selectedInstruments: [],
     });
   };
 
@@ -608,7 +684,8 @@ function PharmaceuticalStoragePage({
       condition: selectedCondition.id,
       retentionYears: retentionYears,
       reassign: isReassignment,
-      pageId: pageData?.id,
+      // Note: NOT including pageId so samples are marked IN_PROGRESS, not COMPLETED
+      // Mark Complete button should be used to complete samples after storage assignment
     };
 
     postToOpenElisServerJsonResponse(
@@ -666,144 +743,6 @@ function PharmaceuticalStoragePage({
     );
   };
 
-  // Handle auto-assign (MNTD-style)
-  const handleAutoAssign = useCallback(() => {
-    if (selectedSampleIds.length === 0) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.pharma.storage.noSamplesSelected",
-          defaultMessage: "Please select samples to auto-assign.",
-        }),
-      );
-      return;
-    }
-
-    if (!storageSelection.box) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.pharma.storage.selectBoxFirst",
-          defaultMessage: "Please select a storage box first.",
-        }),
-      );
-      return;
-    }
-
-    if (!hasRealPageId) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.pharma.storage.pageNotInit",
-          defaultMessage:
-            "Cannot update samples: Page not properly initialized.",
-        }),
-      );
-      return;
-    }
-
-    setIsAutoAssigning(true);
-    setError(null);
-
-    // Build storage path
-    const storagePath = [
-      storageSelection.room?.label,
-      storageSelection.device?.label,
-      storageSelection.shelf?.label,
-      storageSelection.rack?.label,
-      storageSelection.box?.label,
-    ]
-      .filter(Boolean)
-      .join(" > ");
-
-    // Get list of occupied wells from current box layout
-    const occupiedWells = Object.keys(boxLayout);
-
-    const autoAssignData = {
-      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-      data: {
-        storageRoom: storageSelection.room?.label,
-        storageFreezer: storageSelection.device?.label,
-        storageType: autoAssignValues.storageType,
-        storageRack: storageSelection.rack?.label,
-        storageBox: storageSelection.box?.label,
-        storagePath: storagePath,
-        assignedBy: autoAssignValues.assignedBy,
-        assignedDateTime: autoAssignValues.assignedDateTime,
-        notes: autoAssignValues.notes,
-      },
-      boxId: storageSelection.box?.id,
-      rows: storageSelection.box?.rows || 8,
-      columns: storageSelection.box?.columns || 12,
-      occupiedWells: occupiedWells,
-    };
-
-    postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/storage/auto-assign`,
-      JSON.stringify(autoAssignData),
-      (status, response) => {
-        setIsAutoAssigning(false);
-        if (status === 200) {
-          const responseData =
-            typeof response === "string" ? JSON.parse(response) : response;
-          const assignmentCount = responseData?.updatedCount || 0;
-
-          setSuccess(
-            intl.formatMessage(
-              {
-                id: "notebook.pharma.storage.autoAssignSuccess",
-                defaultMessage:
-                  "Auto-assigned {count} sample(s) to storage in {box}.",
-              },
-              {
-                count: assignmentCount,
-                box: storageSelection.box?.label,
-              },
-            ),
-          );
-          setAutoAssignModalOpen(false);
-          loadPageSamples();
-          setSelectedSampleIds([]);
-          // Reload box layout
-          const nbId = notebookId || entryId;
-          if (storageSelection.box && nbId) {
-            getFromOpenElisServer(
-              `/rest/notebook/${nbId}/box/${storageSelection.box.id}/layout`,
-              (layoutResponse) => {
-                if (componentMounted.current && layoutResponse) {
-                  setBoxLayout(layoutResponse.wells || {});
-                }
-              },
-            );
-          }
-          if (onProgressUpdate) {
-            onProgressUpdate();
-          }
-        } else {
-          const errorData =
-            typeof response === "string" ? JSON.parse(response) : response;
-          setError(
-            errorData?.error ||
-              intl.formatMessage({
-                id: "notebook.pharma.storage.autoAssignError",
-                defaultMessage:
-                  "Failed to auto-assign storage. Please try again.",
-              }),
-          );
-        }
-      },
-    );
-  }, [
-    selectedSampleIds,
-    pageData?.id,
-    storageSelection,
-    autoAssignValues,
-    boxLayout,
-    entryId,
-    notebookId,
-    hasRealPageId,
-    intl,
-    loadPageSamples,
-    onProgressUpdate,
-  ]);
-
   // Handle temperature logging
   const handleLogTemperature = useCallback(() => {
     if (!temperatureLog.deviceId || !temperatureLog.temperatureValue) {
@@ -816,30 +755,38 @@ function PharmaceuticalStoragePage({
       return;
     }
 
+    // Use notebookId as the entry reference for temperature logs
+    const effectiveEntryId = notebookId || entryId;
+    if (!effectiveEntryId) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.pharma.storage.noEntryId",
+          defaultMessage:
+            "Cannot log temperature: Notebook entry not available.",
+        }),
+      );
+      return;
+    }
+
     setIsLoggingTemp(true);
     setError(null);
 
     const logData = {
-      entryId: entryId,
       freezerId: temperatureLog.deviceId, // Using freezerId field for device ID
-      deviceType: temperatureLog.deviceType,
       checkTime: temperatureLog.checkTime,
       temperatureValue: parseFloat(temperatureLog.temperatureValue),
       temperatureUnit: temperatureLog.temperatureUnit,
-      humidityValue: temperatureLog.humidityValue
-        ? parseFloat(temperatureLog.humidityValue)
-        : null,
       checkedBy: temperatureLog.checkedBy,
       checkedDateTime: temperatureLog.checkedDateTime,
       notes: temperatureLog.notes,
     };
 
-    postToOpenElisServer(
-      `/rest/notebook-entry/${entryId}/temperature-logs`,
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook-entry/${effectiveEntryId}/temperature-logs`,
       JSON.stringify(logData),
-      (status) => {
+      (response) => {
         setIsLoggingTemp(false);
-        if (status === 200 || status === 201) {
+        if (response && response.success) {
           setSuccess(
             intl.formatMessage({
               id: "notebook.pharma.storage.tempLogSuccess",
@@ -862,60 +809,210 @@ function PharmaceuticalStoragePage({
           }));
         } else {
           setError(
-            intl.formatMessage({
-              id: "notebook.pharma.storage.tempLogError",
-              defaultMessage: "Failed to log temperature. Please try again.",
-            }),
+            response?.error ||
+              intl.formatMessage({
+                id: "notebook.pharma.storage.tempLogError",
+                defaultMessage: "Failed to log temperature. Please try again.",
+              }),
           );
         }
       },
     );
-  }, [temperatureLog, entryId, intl, loadTemperatureLogs]);
+  }, [temperatureLog, entryId, notebookId, intl, loadTemperatureLogs]);
 
-  // Handle mark samples complete
+  // Handle mark samples complete - works with selected samples
   const handleMarkComplete = () => {
-    const storedSamples = samples.filter(
-      (s) => s.status !== "COMPLETED" && s.storageLocation,
-    );
+    // If samples are selected, use those; otherwise use all samples with storage
+    let samplesToComplete;
 
-    if (storedSamples.length === 0) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.pharma.storage.noStoredSamples",
-          defaultMessage:
-            "No stored samples to mark complete. Assign storage first.",
-        }),
+    if (selectedSampleIds.length > 0) {
+      // Use selected samples - filter for those with storage and not already completed
+      samplesToComplete = samples.filter(
+        (s) =>
+          selectedSampleIds.includes(s.id) &&
+          s.status !== "COMPLETED" &&
+          s.hasStorageAssignment,
       );
-      return;
+
+      if (samplesToComplete.length === 0) {
+        // Check why no samples are eligible
+        const selectedSamples = samples.filter((s) => selectedSampleIds.includes(s.id));
+        const withoutStorage = selectedSamples.filter((s) => !s.hasStorageAssignment);
+        const alreadyComplete = selectedSamples.filter((s) => s.status === "COMPLETED");
+
+        if (withoutStorage.length === selectedSamples.length) {
+          setError(
+            intl.formatMessage({
+              id: "notebook.pharma.storage.selectedNoStorage",
+              defaultMessage:
+                "Selected samples have no storage assigned. Assign storage first.",
+            }),
+          );
+        } else if (alreadyComplete.length === selectedSamples.length) {
+          setError(
+            intl.formatMessage({
+              id: "notebook.pharma.storage.selectedAlreadyComplete",
+              defaultMessage:
+                "Selected samples are already marked complete.",
+            }),
+          );
+        } else {
+          setError(
+            intl.formatMessage({
+              id: "notebook.pharma.storage.selectedNotEligible",
+              defaultMessage:
+                "Selected samples are not eligible for completion. They must have storage assigned and not already be complete.",
+            }),
+          );
+        }
+        return;
+      }
+    } else {
+      // No selection - use all samples with storage that aren't completed
+      samplesToComplete = samples.filter(
+        (s) => s.status !== "COMPLETED" && s.hasStorageAssignment,
+      );
+
+      if (samplesToComplete.length === 0) {
+        const samplesWithStorage = samples.filter((s) => s.hasStorageAssignment);
+
+        if (samplesWithStorage.length === 0) {
+          setError(
+            intl.formatMessage({
+              id: "notebook.pharma.storage.noStoredSamples",
+              defaultMessage:
+                "No stored samples to mark complete. Assign storage first.",
+            }),
+          );
+        } else {
+          setError(
+            intl.formatMessage({
+              id: "notebook.pharma.storage.allAlreadyComplete",
+              defaultMessage:
+                "All samples with storage assignments are already marked complete.",
+            }),
+          );
+        }
+        return;
+      }
     }
 
     setAssigning(true);
     setError(null);
 
-    const sampleIds = storedSamples.map((s) => parseInt(s.id, 10));
+    const sampleIds = samplesToComplete.map((s) => parseInt(s.id, 10));
 
     postToOpenElisServerJsonResponse(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
       JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
       (response) => {
-        setAssigning(false);
-
         if (response && response.success) {
-          setSuccess(
-            intl.formatMessage(
-              {
-                id: "notebook.pharma.storage.completeSuccess",
-                defaultMessage:
-                  "Successfully marked {count} samples as complete.",
-              },
-              { count: response.updatedCount },
-            ),
-          );
-          loadPageSamples();
-          if (onProgressUpdate) {
-            onProgressUpdate();
+          // Now advance samples to the next workflow page (Disposal & Archiving - page 7)
+          // Get the notebook ID and find the next page
+          const nbId = notebookId || entryId;
+          if (nbId) {
+            getFromOpenElisServer(`/rest/notebook/view/${nbId}`, (nbResponse) => {
+              if (nbResponse && nbResponse.pages) {
+                // Find Disposal page (order 7)
+                const disposalPage = nbResponse.pages.find(
+                  (p) => (p.pageOrder || p.order) === 7,
+                );
+                if (disposalPage && disposalPage.id) {
+                  // Add samples to the Disposal page
+                  postToOpenElisServerJsonResponse(
+                    `/rest/notebook/bulk/page/${disposalPage.id}/samples/add`,
+                    JSON.stringify({ sampleIds: sampleIds }),
+                    (addResponse) => {
+                      setAssigning(false);
+                      if (addResponse && addResponse.success) {
+                        setSuccess(
+                          intl.formatMessage(
+                            {
+                              id: "notebook.pharma.storage.completeAndAdvanceSuccess",
+                              defaultMessage:
+                                "Successfully completed {count} samples and advanced to Disposal & Archiving.",
+                            },
+                            { count: response.updatedCount || sampleIds.length },
+                          ),
+                        );
+                      } else {
+                        // Samples marked complete but not added to next page
+                        setSuccess(
+                          intl.formatMessage(
+                            {
+                              id: "notebook.pharma.storage.completeSuccess",
+                              defaultMessage:
+                                "Successfully marked {count} samples as complete.",
+                            },
+                            { count: response.updatedCount || sampleIds.length },
+                          ),
+                        );
+                      }
+                      setSelectedSampleIds([]);
+                      loadPageSamples();
+                      if (onProgressUpdate) {
+                        onProgressUpdate();
+                      }
+                    },
+                  );
+                } else {
+                  // No disposal page found, just complete
+                  setAssigning(false);
+                  setSuccess(
+                    intl.formatMessage(
+                      {
+                        id: "notebook.pharma.storage.completeSuccess",
+                        defaultMessage:
+                          "Successfully marked {count} samples as complete.",
+                      },
+                      { count: response.updatedCount || sampleIds.length },
+                    ),
+                  );
+                  setSelectedSampleIds([]);
+                  loadPageSamples();
+                  if (onProgressUpdate) {
+                    onProgressUpdate();
+                  }
+                }
+              } else {
+                setAssigning(false);
+                setSuccess(
+                  intl.formatMessage(
+                    {
+                      id: "notebook.pharma.storage.completeSuccess",
+                      defaultMessage:
+                        "Successfully marked {count} samples as complete.",
+                    },
+                    { count: response.updatedCount || sampleIds.length },
+                  ),
+                );
+                setSelectedSampleIds([]);
+                loadPageSamples();
+                if (onProgressUpdate) {
+                  onProgressUpdate();
+                }
+              }
+            });
+          } else {
+            setAssigning(false);
+            setSuccess(
+              intl.formatMessage(
+                {
+                  id: "notebook.pharma.storage.completeSuccess",
+                  defaultMessage:
+                    "Successfully marked {count} samples as complete.",
+                },
+                { count: response.updatedCount || sampleIds.length },
+              ),
+            );
+            setSelectedSampleIds([]);
+            loadPageSamples();
+            if (onProgressUpdate) {
+              onProgressUpdate();
+            }
           }
         } else {
+          setAssigning(false);
           setError(response?.error || "Failed to mark samples complete.");
         }
       },
@@ -1010,6 +1107,41 @@ function PharmaceuticalStoragePage({
   };
 
   // Grid columns
+  // Render status tag
+  const renderStatusTag = (sample) => {
+    const status = sample.status || "PENDING";
+    switch (status) {
+      case "COMPLETED":
+        return (
+          <Tag type="green" size="sm">
+            {intl.formatMessage({
+              id: "notebook.status.completed",
+              defaultMessage: "Complete",
+            })}
+          </Tag>
+        );
+      case "IN_PROGRESS":
+        return (
+          <Tag type="blue" size="sm">
+            {intl.formatMessage({
+              id: "notebook.status.inProgress",
+              defaultMessage: "In Progress",
+            })}
+          </Tag>
+        );
+      case "PENDING":
+      default:
+        return (
+          <Tag type="gray" size="sm">
+            {intl.formatMessage({
+              id: "notebook.status.pending",
+              defaultMessage: "Pending",
+            })}
+          </Tag>
+        );
+    }
+  };
+
   const columns = [
     {
       key: "externalId",
@@ -1033,10 +1165,18 @@ function PharmaceuticalStoragePage({
       }),
     },
     {
+      key: "status",
+      header: intl.formatMessage({
+        id: "notebook.column.status",
+        defaultMessage: "Status",
+      }),
+      render: (value, sample) => renderStatusTag(sample),
+    },
+    {
       key: "storage",
       header: intl.formatMessage({
         id: "notebook.column.storage",
-        defaultMessage: "Storage Status",
+        defaultMessage: "Storage Location",
       }),
       render: (value, sample) => (
         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
@@ -1145,34 +1285,7 @@ function PharmaceuticalStoragePage({
       {/* Action Buttons */}
       <div className="page-actions-bar">
         <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Temperature}
-          onClick={() => setTempMonitoringModalOpen(true)}
-        >
-          <FormattedMessage
-            id="notebook.pharma.storage.logTemperature"
-            defaultMessage="Log Temperature"
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && storageSelection.box && (
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Automatic}
-            onClick={() => setAutoAssignModalOpen(true)}
-          >
-            <FormattedMessage
-              id="notebook.pharma.storage.autoAssign"
-              defaultMessage="Auto-Assign ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
-        )}
-
-        <Button
-          kind="secondary"
+          kind="primary"
           size="sm"
           renderIcon={Archive}
           onClick={handleOpenStorageModal}
@@ -1201,6 +1314,18 @@ function PharmaceuticalStoragePage({
         </Button>
 
         <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Temperature}
+          onClick={() => setTempMonitoringModalOpen(true)}
+        >
+          <FormattedMessage
+            id="notebook.pharma.storage.logTemperature"
+            defaultMessage="Log Temperature"
+          />
+        </Button>
+
+        <Button
           kind="ghost"
           size="sm"
           renderIcon={Renew}
@@ -1212,66 +1337,6 @@ function PharmaceuticalStoragePage({
           />
         </Button>
       </div>
-
-      {/* Storage Location & Box Layout */}
-      <Grid fullWidth style={{ marginTop: "1rem" }}>
-        <Column lg={8} md={4} sm={4}>
-          <Tile>
-            <h5 style={{ marginBottom: "1rem" }}>
-              <Location size={16} style={{ marginRight: "0.5rem" }} />
-              <FormattedMessage
-                id="notebook.pharma.storage.storageLocation"
-                defaultMessage="Storage Location"
-              />
-            </h5>
-            <StorageHierarchySelector
-              onSelectionChange={handleStorageSelectionChange}
-              entryId={notebookId || entryId}
-              onBoxLayoutLoaded={handleBoxLayoutLoaded}
-              boxRequired={true}
-              showPath={true}
-            />
-          </Tile>
-        </Column>
-
-        <Column lg={8} md={4} sm={4}>
-          {storageSelection.box ? (
-            <Tile>
-              <h5 style={{ marginBottom: "1rem" }}>
-                <Archive size={16} style={{ marginRight: "0.5rem" }} />
-                <FormattedMessage
-                  id="notebook.pharma.storage.boxLayout"
-                  defaultMessage="Box Layout"
-                />
-                {selectedSampleIds.length > 0 && (
-                  <Tag type="blue" style={{ marginLeft: "0.5rem" }}>
-                    {selectedSampleIds.length} selected - Click well to assign
-                  </Tag>
-                )}
-              </h5>
-              <BoxLayoutViewer
-                boxId={storageSelection.box.id}
-                layout={boxLayout}
-                rows={storageSelection.box.rows || 8}
-                columns={storageSelection.box.columns || 12}
-                onWellClick={handleWellClick}
-              />
-            </Tile>
-          ) : (
-            <Tile className="empty-box-tile">
-              <div className="empty-state" style={{ textAlign: "center" }}>
-                <Archive size={48} />
-                <p style={{ marginTop: "1rem" }}>
-                  <FormattedMessage
-                    id="notebook.pharma.storage.selectBoxPrompt"
-                    defaultMessage="Select a storage location to view box layout"
-                  />
-                </p>
-              </div>
-            </Tile>
-          )}
-        </Column>
-      </Grid>
 
       {/* Temperature Logs Summary */}
       {temperatureLogs.length > 0 && (
@@ -1368,260 +1433,208 @@ function PharmaceuticalStoragePage({
         }
         size="lg"
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <p>
-            <FormattedMessage
-              id="notebook.pharma.storage.modal.description"
-              defaultMessage="Assign {count} selected samples to storage."
-              values={{ count: selectedSampleIds.length }}
-            />
-          </p>
-
-          {/* Hierarchical Path Display */}
-          {getHierarchicalPath() && (
-            <div
-              style={{
-                backgroundColor: "#f4f4f4",
-                padding: "0.75rem 1rem",
-                borderRadius: "4px",
-              }}
-            >
-              <strong>
-                <FormattedMessage
-                  id="notebook.pharma.storage.path"
-                  defaultMessage="Storage Path:"
-                />
-              </strong>{" "}
-              {getHierarchicalPath()}
-            </div>
-          )}
-
-          {/* Box Layout in Modal */}
-          {storageSelection.box && (
-            <div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                <h5>
-                  <FormattedMessage
-                    id="notebook.pharma.storage.boxLayout"
-                    defaultMessage="Box Layout"
-                  />
-                </h5>
-                <Button
-                  kind="tertiary"
-                  size="sm"
-                  renderIcon={Automatic}
-                  onClick={handleAutoPopulate}
-                  disabled={selectedSampleIds.length === 0}
-                >
-                  <FormattedMessage
-                    id="notebook.pharma.storage.autoPopulate"
-                    defaultMessage="Auto-Populate"
-                  />
-                </Button>
-              </div>
-
-              <BoxLayoutViewer
-                boxId={storageSelection.box.id}
-                layout={getCombinedLayout()}
-                rows={storageSelection.box.rows || 8}
-                columns={storageSelection.box.columns || 12}
-                onWellClick={handleWellClick}
-              />
-
-              <div
-                style={{
-                  marginTop: "0.5rem",
-                  fontSize: "0.875rem",
-                  color: "#525252",
-                }}
-              >
-                <FormattedMessage
-                  id="notebook.pharma.storage.assignmentSummary"
-                  defaultMessage="{assigned} of {total} samples assigned to wells"
-                  values={{
-                    assigned: Object.keys(wellAssignments).length,
-                    total: selectedSampleIds.length,
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Storage Condition Selector */}
-          <Dropdown
-            id="storage-condition-dropdown"
-            titleText={intl.formatMessage({
-              id: "notebook.pharma.storage.condition",
-              defaultMessage: "Storage Condition *",
-            })}
-            label={intl.formatMessage({
-              id: "notebook.pharma.storage.selectCondition",
-              defaultMessage: "Select condition...",
-            })}
-            items={storageConditionOptions}
-            itemToString={(item) => (item ? item.label : "")}
-            selectedItem={selectedCondition}
-            onChange={({ selectedItem }) => setSelectedCondition(selectedItem)}
-          />
-
-          {/* Retention Period */}
-          <NumberInput
-            id="retention-years"
-            label={intl.formatMessage({
-              id: "notebook.pharma.storage.retentionYears",
-              defaultMessage: "Retention Period (Years)",
-            })}
-            value={retentionYears}
-            min={1}
-            max={30}
-            step={1}
-            onChange={(e, { value }) => setRetentionYears(value)}
-            helperText={intl.formatMessage(
-              {
-                id: "notebook.pharma.storage.expiryDate",
-                defaultMessage: "Expiry date will be: {date}",
-              },
-              {
-                date: new Date(
-                  Date.now() + retentionYears * 365 * 24 * 60 * 60 * 1000,
-                ).toLocaleDateString(),
-              },
-            )}
-          />
-
-          {/* Notes */}
-          <TextArea
-            id="storage-notes"
-            labelText={intl.formatMessage({
-              id: "notebook.pharma.storage.notes",
-              defaultMessage: "Notes",
-            })}
-            value={bulkAssignValues.notes}
-            onChange={(e) =>
-              setBulkAssignValues((prev) => ({
-                ...prev,
-                notes: e.target.value,
-              }))
-            }
-            placeholder="Optional notes about storage assignment..."
-          />
-        </div>
-      </Modal>
-
-      {/* Auto-Assign Modal */}
-      <Modal
-        open={autoAssignModalOpen}
-        onRequestClose={() => setAutoAssignModalOpen(false)}
-        modalHeading={intl.formatMessage({
-          id: "notebook.pharma.storage.autoAssign.title",
-          defaultMessage: "Auto-Assign Storage Locations",
-        })}
-        primaryButtonText={
-          isAutoAssigning
-            ? intl.formatMessage({
-                id: "label.assigning",
-                defaultMessage: "Assigning...",
-              })
-            : intl.formatMessage({
-                id: "label.autoAssign",
-                defaultMessage: "Auto-Assign",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleAutoAssign}
-        onSecondarySubmit={() => setAutoAssignModalOpen(false)}
-        size="md"
-        primaryButtonDisabled={isAutoAssigning}
-      >
         <p className="modal-description">
           <FormattedMessage
-            id="notebook.pharma.storage.autoAssign.description"
-            defaultMessage="Automatically assign {count} sample(s) to the next available wells in {box}, starting from position A1."
-            values={{
-              count: selectedSampleIds.length,
-              box: storageSelection.box?.label || "selected box",
-            }}
+            id="notebook.pharma.storage.modal.description"
+            defaultMessage="Assign {count} selected samples to storage. Select a storage location, then samples will be auto-assigned to available wells."
+            values={{ count: selectedSampleIds.length }}
           />
         </p>
 
         <Grid fullWidth>
-          <Column lg={16} md={8} sm={4}>
-            <div
-              style={{
-                backgroundColor: "#f4f4f4",
-                padding: "1rem",
-                borderRadius: "4px",
-                marginBottom: "1rem",
-              }}
-            >
-              <strong>
+          {/* Storage Location Selection */}
+          <Column lg={8} md={4} sm={4}>
+            <div style={{ marginBottom: "1rem" }}>
+              <h5 style={{ marginBottom: "0.5rem" }}>
+                <Location size={16} style={{ marginRight: "0.5rem" }} />
                 <FormattedMessage
-                  id="notebook.pharma.storage.path"
-                  defaultMessage="Storage Path:"
+                  id="notebook.pharma.storage.storageLocation"
+                  defaultMessage="Storage Location"
                 />
-              </strong>{" "}
-              {getHierarchicalPath()}
-              <div style={{ marginTop: "0.5rem" }}>
-                <Tag type="blue">
-                  <FormattedMessage
-                    id="notebook.pharma.storage.availableWells"
-                    defaultMessage="{available} wells available"
-                    values={{
-                      available:
-                        (storageSelection.box?.rows || 8) *
-                          (storageSelection.box?.columns || 12) -
-                        Object.keys(boxLayout).length,
-                    }}
-                  />
-                </Tag>
-              </div>
+              </h5>
+              <StorageHierarchySelector
+                onSelectionChange={handleStorageSelectionChange}
+                entryId={notebookId || entryId}
+                onBoxLayoutLoaded={handleBoxLayoutLoaded}
+                boxRequired={true}
+                showPath={true}
+              />
             </div>
           </Column>
 
+          {/* Box Layout Preview */}
           <Column lg={8} md={4} sm={4}>
-            <Select
-              id="autoAssignStorageType"
-              labelText={intl.formatMessage({
-                id: "notebook.pharma.storage.storageType",
-                defaultMessage: "Storage Type",
+            {storageSelection.box ? (
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  <h5>
+                    <Archive size={16} style={{ marginRight: "0.5rem" }} />
+                    <FormattedMessage
+                      id="notebook.pharma.storage.boxLayout"
+                      defaultMessage="Box Layout"
+                    />
+                  </h5>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={Automatic}
+                    onClick={handleAutoPopulate}
+                    disabled={selectedSampleIds.length === 0}
+                  >
+                    <FormattedMessage
+                      id="notebook.pharma.storage.autoPopulate"
+                      defaultMessage="Auto-Populate"
+                    />
+                  </Button>
+                </div>
+
+                <BoxLayoutViewer
+                  boxId={storageSelection.box.id}
+                  layout={getCombinedLayout()}
+                  rows={storageSelection.box.rows || 8}
+                  columns={storageSelection.box.columns || 12}
+                  onWellClick={handleWellClick}
+                />
+
+                <div
+                  style={{
+                    marginTop: "0.5rem",
+                    fontSize: "0.875rem",
+                    color: "#525252",
+                  }}
+                >
+                  <FormattedMessage
+                    id="notebook.pharma.storage.assignmentSummary"
+                    defaultMessage="{assigned} of {total} samples assigned to wells"
+                    values={{
+                      assigned: Object.keys(wellAssignments).length,
+                      total: selectedSampleIds.length,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "2rem",
+                  textAlign: "center",
+                  backgroundColor: "#f4f4f4",
+                  borderRadius: "4px",
+                }}
+              >
+                <Archive size={32} />
+                <p style={{ marginTop: "0.5rem", color: "#525252" }}>
+                  <FormattedMessage
+                    id="notebook.pharma.storage.selectBoxFirst"
+                    defaultMessage="Select a storage location to preview box layout"
+                  />
+                </p>
+              </div>
+            )}
+          </Column>
+
+          {/* Storage Settings */}
+          <Column lg={16} md={8} sm={4}>
+            <h5 style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
+              <FormattedMessage
+                id="notebook.pharma.storage.storageSettings"
+                defaultMessage="Storage Settings"
+              />
+            </h5>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            {/* Storage Condition Selector */}
+            <Dropdown
+              id="storage-condition-dropdown"
+              titleText={intl.formatMessage({
+                id: "notebook.pharma.storage.condition",
+                defaultMessage: "Storage Condition *",
               })}
-              value={autoAssignValues.storageType}
-              onChange={(e) =>
-                setAutoAssignValues((prev) => ({
+              label={intl.formatMessage({
+                id: "notebook.pharma.storage.selectCondition",
+                defaultMessage: "Select condition...",
+              })}
+              items={storageConditionOptions}
+              itemToString={(item) => (item ? item.label : "")}
+              selectedItem={selectedCondition}
+              onChange={({ selectedItem }) =>
+                setSelectedCondition(selectedItem)
+              }
+            />
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            {/* Retention Period */}
+            <NumberInput
+              id="retention-years"
+              label={intl.formatMessage({
+                id: "notebook.pharma.storage.retentionYears",
+                defaultMessage: "Retention Period (Years)",
+              })}
+              value={retentionYears}
+              min={1}
+              max={30}
+              step={1}
+              onChange={(e, { value }) => setRetentionYears(value)}
+              helperText={intl.formatMessage(
+                {
+                  id: "notebook.pharma.storage.expiryDate",
+                  defaultMessage: "Expiry date will be: {date}",
+                },
+                {
+                  date: new Date(
+                    Date.now() + retentionYears * 365 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString(),
+                },
+              )}
+            />
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            {/* Storage Equipment / Instruments */}
+            <MultiSelect
+              id="selectedInstruments"
+              titleText={intl.formatMessage({
+                id: "notebook.pharma.storage.instrumentsUsed",
+                defaultMessage: "Equipment Used",
+              })}
+              label={intl.formatMessage({
+                id: "notebook.pharma.storage.instruments.placeholder",
+                defaultMessage: "Select storage equipment...",
+              })}
+              items={instruments}
+              itemToString={(item) => (item ? item.label : "")}
+              selectedItems={instruments.filter((i) =>
+                bulkAssignValues.selectedInstruments.includes(i.id),
+              )}
+              onChange={({ selectedItems }) =>
+                setBulkAssignValues((prev) => ({
                   ...prev,
-                  storageType: e.target.value,
+                  selectedInstruments: selectedItems.map((i) => i.id),
                 }))
               }
-            >
-              <SelectItem value="" text="Select type..." />
-              <SelectItem value="Raw" text="Raw Material" />
-              <SelectItem value="API" text="Active Pharmaceutical Ingredient" />
-              <SelectItem value="Finished" text="Finished Product" />
-              <SelectItem value="Stability" text="Stability Sample" />
-              <SelectItem value="Retention" text="Retention Sample" />
-            </Select>
+              disabled={loadingInstruments}
+            />
           </Column>
 
           <Column lg={8} md={4} sm={4}>
             <TextInput
-              id="autoAssignAssignedBy"
+              id="storage-assigned-by"
               labelText={intl.formatMessage({
                 id: "notebook.pharma.storage.assignedBy",
                 defaultMessage: "Assigned By",
               })}
-              value={autoAssignValues.assignedBy}
+              value={bulkAssignValues.assignedBy}
               onChange={(e) =>
-                setAutoAssignValues((prev) => ({
+                setBulkAssignValues((prev) => ({
                   ...prev,
                   assignedBy: e.target.value,
                 }))
@@ -1631,20 +1644,22 @@ function PharmaceuticalStoragePage({
           </Column>
 
           <Column lg={16} md={8} sm={4}>
+            {/* Notes */}
             <TextArea
-              id="autoAssignNotes"
+              id="storage-notes"
               labelText={intl.formatMessage({
                 id: "notebook.pharma.storage.notes",
                 defaultMessage: "Notes",
               })}
-              value={autoAssignValues.notes}
+              value={bulkAssignValues.notes}
               onChange={(e) =>
-                setAutoAssignValues((prev) => ({
+                setBulkAssignValues((prev) => ({
                   ...prev,
                   notes: e.target.value,
                 }))
               }
-              placeholder="Optional notes..."
+              placeholder="Optional notes about storage assignment..."
+              rows={2}
             />
           </Column>
         </Grid>

@@ -205,7 +205,7 @@ const NoteBookEntryForm = () => {
       : [];
     noteBookForm.pages = noteBookData.pages;
     noteBookForm.files = noteBookData.files;
-    noteBookForm.analyzerIds = noteBookData.analyzers.map((entry) =>
+    noteBookForm.inventoryInstrumentIds = noteBookData.analyzers.map((entry) =>
       Number(entry.id),
     );
     noteBookForm.tags = noteBookData.tags;
@@ -747,7 +747,32 @@ const NoteBookEntryForm = () => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_STATUS", setStatuses);
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
-    getFromOpenElisServer("/rest/displayList/ANALYZER_LIST", setAnalyzerList);
+    getFromOpenElisServer(
+      "/rest/inventory/instruments?status=active",
+      (response) => {
+        if (response && Array.isArray(response) && response.length > 0) {
+          // Transform inventory instruments to IdValuePair format for FilterableMultiSelect
+          setAnalyzerList(
+            response.map((instrument) => ({
+              id: instrument.id,
+              value: instrument.name,
+            })),
+          );
+        } else {
+          // Mock data if no instruments available in inventory
+          setAnalyzerList([
+            { id: "1", value: "Analytical Balance" },
+            { id: "2", value: "HPLC System" },
+            { id: "3", value: "UV-Vis Spectrophotometer" },
+            { id: "4", value: "Dissolution Apparatus" },
+            { id: "5", value: "Centrifuge" },
+            { id: "6", value: "Karl Fischer Titrator" },
+            { id: "7", value: "GC-MS System" },
+            { id: "8", value: "pH Meter" },
+          ]);
+        }
+      },
+    );
     getFromOpenElisServer("/rest/displayList/ALL_TESTS", setAllTests);
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/user-sample-types", setSampleTypes);
@@ -1125,13 +1150,17 @@ const NoteBookEntryForm = () => {
               <Column lg={4} md={8} sm={4}>
                 {(initialMount || mode === MODES.CREATE) && (
                   <FilterableMultiSelect
+                    key={`instruments-${analyzerList.length}-${noteBookData.analyzers?.length || 0}-${initialMount}`}
                     id="instruments"
                     titleText={
                       <FormattedMessage id="notebook.instruments.title" />
                     }
                     items={analyzerList}
                     itemToString={(item) => (item ? item.value : "")}
-                    initialSelectedItems={noteBookData.analyzers}
+                    initialSelectedItems={noteBookData.analyzers || []}
+                    compareItems={(a, b) =>
+                      String(a.id) === String(b.id) ? 0 : 1
+                    }
                     onChange={(changes) => {
                       setNoteBookData({
                         ...noteBookData,

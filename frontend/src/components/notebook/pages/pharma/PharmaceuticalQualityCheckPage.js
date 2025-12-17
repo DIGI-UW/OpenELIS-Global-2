@@ -14,8 +14,9 @@ import {
   Tag,
   Checkbox,
   TextInput,
+  MultiSelect,
 } from "@carbon/react";
-import { Checkmark, Edit } from "@carbon/react/icons";
+import { Checkmark, Edit, InventoryManagement } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -60,6 +61,7 @@ function PharmaceuticalQualityCheckPage({
   pageData,
   progress,
   onProgressUpdate,
+  templateInstruments,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -75,6 +77,10 @@ function PharmaceuticalQualityCheckPage({
   const [bulkApplyModalOpen, setBulkApplyModalOpen] = useState(false);
   const [isBulkApplying, setIsBulkApplying] = useState(false);
   const [sampleType, setSampleType] = useState("pharmaceutical");
+
+  // Instruments from inventory
+  const [instruments, setInstruments] = useState([]);
+  const [loadingInstruments, setLoadingInstruments] = useState(false);
 
   // Pharmaceutical Sample Checks
   const [bulkApplyValues, setBulkApplyValues] = useState({
@@ -105,11 +111,52 @@ function PharmaceuticalQualityCheckPage({
     rejectionReason: "",
     notifySubmitter: false,
     requestReplacement: false,
+    // Instruments used for QC
+    selectedInstruments: [],
   });
+
+  // Load instruments from template or inventory
+  const loadInstruments = useCallback(() => {
+    // If template has configured instruments, use those exclusively
+    if (templateInstruments && templateInstruments.length > 0) {
+      setInstruments(
+        templateInstruments.map((analyzer) => ({
+          id: analyzer.id,
+          label: analyzer.value,
+          name: analyzer.value,
+        })),
+      );
+      setLoadingInstruments(false);
+      return;
+    }
+
+    // Fallback: load from inventory if no template instruments configured
+    setLoadingInstruments(true);
+    getFromOpenElisServer(
+      "/rest/inventory/instruments?status=active",
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            setInstruments(
+              response.map((i) => ({
+                id: i.id,
+                label: `${i.name} (${i.serialNumber || "N/A"})`,
+                name: i.name,
+                serialNumber: i.serialNumber,
+                ...i,
+              })),
+            );
+          }
+          setLoadingInstruments(false);
+        }
+      },
+    );
+  }, [templateInstruments]);
 
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
+    loadInstruments();
     return () => {
       componentMounted.current = false;
     };
@@ -193,6 +240,8 @@ function PharmaceuticalQualityCheckPage({
       rejectionReason: "",
       notifySubmitter: false,
       requestReplacement: false,
+      // Instruments used for QC
+      selectedInstruments: [],
     });
   };
 
@@ -349,6 +398,10 @@ function PharmaceuticalQualityCheckPage({
       data.notifySubmitter = bulkApplyValues.notifySubmitter;
     if (bulkApplyValues.requestReplacement)
       data.requestReplacement = bulkApplyValues.requestReplacement;
+
+    // Add selected instruments
+    if (bulkApplyValues.selectedInstruments.length > 0)
+      data.selectedInstruments = bulkApplyValues.selectedInstruments;
 
     // Check if any QC checks were actually performed
     const hasAnyCheck =
@@ -1854,6 +1907,47 @@ function PharmaceuticalQualityCheckPage({
               </Grid>
             </div>
           )}
+
+          {/* QC Equipment / Instruments */}
+          <div className="qc-section">
+            <h5 className="qc-section-header">
+              <InventoryManagement
+                size={16}
+                style={{ marginRight: "0.5rem" }}
+              />
+              <FormattedMessage
+                id="notebook.pharma.qc.section.instruments"
+                defaultMessage="QC Equipment Used"
+              />
+            </h5>
+            <Grid fullWidth>
+              <Column lg={8} md={4} sm={4}>
+                <MultiSelect
+                  id="selectedInstruments"
+                  titleText={intl.formatMessage({
+                    id: "notebook.pharma.qc.instruments",
+                    defaultMessage: "Instruments",
+                  })}
+                  label={intl.formatMessage({
+                    id: "notebook.pharma.qc.instruments.placeholder",
+                    defaultMessage: "Select QC instruments used...",
+                  })}
+                  items={instruments}
+                  itemToString={(item) => (item ? item.label : "")}
+                  selectedItems={instruments.filter((i) =>
+                    bulkApplyValues.selectedInstruments.includes(i.id),
+                  )}
+                  onChange={({ selectedItems }) =>
+                    setBulkApplyValues((prev) => ({
+                      ...prev,
+                      selectedInstruments: selectedItems.map((i) => i.id),
+                    }))
+                  }
+                  disabled={loadingInstruments}
+                />
+              </Column>
+            </Grid>
+          </div>
 
           {/* Remarks (for both Pass and Fail) */}
           <div className="qc-section">

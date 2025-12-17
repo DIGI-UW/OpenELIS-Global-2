@@ -29,6 +29,7 @@ public class NoteBookForm {
     private List<NoteBookFileForm> files;
     private List<NoteBookCommentForm> comments;
     private List<Integer> analyzerIds;
+    private List<Long> inventoryInstrumentIds;
     private Integer templateId;
     private Boolean isTemplate;
     private java.util.UUID questionnaireFhirUuid;
@@ -138,6 +139,14 @@ public class NoteBookForm {
 
     public void setAnalyzerIds(List<Integer> analyzerIds) {
         this.analyzerIds = analyzerIds;
+    }
+
+    public List<Long> getInventoryInstrumentIds() {
+        return inventoryInstrumentIds;
+    }
+
+    public void setInventoryInstrumentIds(List<Long> inventoryInstrumentIds) {
+        this.inventoryInstrumentIds = inventoryInstrumentIds;
     }
 
     public NoteBookStatus getStatus() {
