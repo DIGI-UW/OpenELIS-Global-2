@@ -800,9 +800,10 @@ const EditLocationModal = ({
                   })}
                   items={availableRooms}
                   selectedItem={(() => {
-                    const found = availableRooms.find(
-                      (r) => String(r.id) === selectedParentRoomId,
-                    ) || null;
+                    const found =
+                      availableRooms.find(
+                        (r) => String(r.id) === selectedParentRoomId,
+                      ) || null;
                     return found;
                   })()}
                   onChange={({ selectedItem }) => {
