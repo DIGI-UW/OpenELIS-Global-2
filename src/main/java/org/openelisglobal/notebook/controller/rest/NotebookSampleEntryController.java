@@ -1150,6 +1150,234 @@ public class NotebookSampleEntryController extends BaseRestController {
     }
 
     /**
+     * Create a new sample for a specific entry and page. POST
+     * /notebook/entry/{entryId}/page/{pageId}/sample
+     *
+     * Creates a new sample item and links it to both the notebook entry and the
+     * specific page. This is used by workflow pages like Viral & Vaccine Sample
+     * Registration to create samples with page-specific data.
+     *
+     * @param entryId     the notebook entry ID
+     * @param pageId      the notebook page ID
+     * @param body        request body with sample details (externalId, sampleTypeId,
+     *                    data)
+     * @param httpRequest for getting user session
+     * @return success response with created sample details
+     */
+    @PostMapping(value = "/entry/{entryId}/page/{pageId}/sample", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> createSampleForPage(@PathVariable("entryId") Integer entryId,
+            @PathVariable("pageId") Integer pageId, @RequestBody Map<String, Object> body,
+            HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        // Validate required fields
+        String externalId = (String) body.get("externalId");
+        Object sampleTypeIdObj = body.get("sampleTypeId");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) body.get("data");
+
+        if (externalId == null || externalId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Sample ID (externalId) is required"));
+        }
+
+        String sampleTypeId = sampleTypeIdObj != null ? sampleTypeIdObj.toString() : null;
+        if (sampleTypeId == null || sampleTypeId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Sample type is required"));
+        }
+
+        try {
+            // Get the entry
+            org.openelisglobal.notebook.service.NotebookEntryService entryService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.notebook.service.NotebookEntryService.class);
+            org.openelisglobal.notebook.valueholder.NotebookEntry entry = entryService.getWithRelationships(entryId);
+            if (entry == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Entry not found: " + entryId));
+            }
+
+            // Get the page
+            NoteBookPage page = noteBookService.getPage(pageId);
+            if (page == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Page not found: " + pageId));
+            }
+
+            // Get sample type
+            org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.typeofsample.service.TypeOfSampleService.class);
+            org.openelisglobal.typeofsample.valueholder.TypeOfSample typeObj = typeOfSampleService.get(sampleTypeId);
+            if (typeObj == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Sample type not found: " + sampleTypeId));
+            }
+
+            // Get sample item service
+            org.openelisglobal.sampleitem.service.SampleItemService sampleItemService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.sampleitem.service.SampleItemService.class);
+            org.openelisglobal.sample.service.SampleService sampleService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.sample.service.SampleService.class);
+
+            // Find or create a parent sample for this entry
+            org.openelisglobal.sample.valueholder.Sample parentSample = null;
+            List<SampleItem> existingSamples = entryService.getSamples(entryId);
+            if (!existingSamples.isEmpty()) {
+                parentSample = existingSamples.get(0).getSample();
+            } else {
+                // Create a new parent sample with generated accession number
+                parentSample = new org.openelisglobal.sample.valueholder.Sample();
+                parentSample.setSysUserId(sysUserId);
+                parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
+                parentSample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
+                String sampleIdDb = sampleService.generateAccessionNumberAndInsert(parentSample);
+                parentSample.setId(sampleIdDb);
+            }
+
+            // Create new sample item
+            SampleItem newSampleItem = new SampleItem();
+            newSampleItem.setSample(parentSample);
+            newSampleItem.setExternalId(externalId.trim());
+            newSampleItem.setTypeOfSample(typeObj);
+            newSampleItem.setSortOrder(String.valueOf(existingSamples.size() + 1));
+            newSampleItem.setSysUserId(sysUserId);
+
+            // Get status ID for SampleEntered
+            org.openelisglobal.common.services.IStatusService statusService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.common.services.IStatusService.class);
+            String sampleEnteredStatusId = statusService
+                    .getStatusID(org.openelisglobal.common.services.StatusService.SampleStatus.Entered);
+            if (sampleEnteredStatusId == null || "-1".equals(sampleEnteredStatusId)) {
+                sampleEnteredStatusId = "20";
+            }
+            newSampleItem.setStatusId(sampleEnteredStatusId);
+
+            // Save the sample item
+            String newSampleItemId = sampleItemService.insert(newSampleItem);
+            newSampleItem = sampleItemService.get(newSampleItemId);
+
+            // Add sample to entry
+            entryService.addSample(entryId, newSampleItem, sysUserId);
+
+            // Create NotebookPageSample record for this page
+            org.openelisglobal.notebook.valueholder.NotebookPageSample pageSample = new org.openelisglobal.notebook.valueholder.NotebookPageSample();
+            pageSample.setNotebookPage(page);
+            pageSample.setSampleItemId(newSampleItem.getId());
+            pageSample.setStatus(org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.PENDING);
+            pageSample.setSysUserId(sysUserId);
+
+            // Store workflow-specific data in data JSON
+            if (data != null) {
+                pageSample.setData(data);
+            }
+
+            notebookPageSampleService.save(pageSample);
+
+            // Build success response
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("entryId", entryId);
+            response.put("pageId", pageId);
+            response.put("sampleId", newSampleItem.getId());
+            response.put("externalId", externalId);
+            response.put("sampleType", typeObj.getDescription());
+            response.put("accessionNumber", parentSample.getAccessionNumber());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to create sample: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+
+    /**
+     * Bulk update sample data for a page. POST
+     * /notebook/bulk/page/{pageId}/samples/data
+     *
+     * Updates the data JSON for multiple samples on a page. Used by generic workflow
+     * pages to record form data for multiple samples at once.
+     *
+     * @param pageId      the notebook page ID
+     * @param body        request body with sampleIds, data, and optional status
+     * @param httpRequest for getting user session
+     * @return success response with update count
+     */
+    @PostMapping(value = "/bulk/page/{pageId}/samples/data", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkUpdateSampleData(@PathVariable("pageId") Integer pageId,
+            @RequestBody Map<String, Object> body, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Integer> sampleIds = (List<Integer>) body.get("sampleIds");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) body.get("data");
+        String statusStr = (String) body.get("status");
+
+        if (sampleIds == null || sampleIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No sample IDs provided"));
+        }
+
+        org.openelisglobal.notebook.valueholder.NotebookPageSample.Status status = null;
+        if (statusStr != null && !statusStr.isEmpty()) {
+            try {
+                status = org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.valueOf(statusStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid status: " + statusStr));
+            }
+        }
+
+        int updatedCount = 0;
+        for (Integer sampleId : sampleIds) {
+            try {
+                org.openelisglobal.notebook.valueholder.NotebookPageSample nps = notebookPageSampleService
+                        .getByPageIdAndSampleItemId(pageId, sampleId);
+                if (nps != null) {
+                    // Merge new data with existing data
+                    Map<String, Object> existingData = nps.getData() != null ? new HashMap<>(nps.getData())
+                            : new HashMap<>();
+                    if (data != null) {
+                        existingData.putAll(data);
+                    }
+                    nps.setData(existingData);
+
+                    // Update status if provided
+                    if (status != null) {
+                        nps.setStatus(status);
+                        if (status == org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.COMPLETED) {
+                            nps.setCompletedAt(new java.sql.Timestamp(System.currentTimeMillis()));
+                        }
+                    }
+
+                    nps.setSysUserId(sysUserId);
+                    notebookPageSampleService.update(nps);
+                    updatedCount++;
+                }
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getName(), "bulkUpdateSampleData",
+                        "Error updating sample " + sampleId + ": " + e.getMessage());
+            }
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", updatedCount > 0);
+        response.put("pageId", pageId);
+        response.put("updatedCount", updatedCount);
+        response.put("totalRequested", sampleIds.size());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Request body for linking samples.
      */
     public static class LinkSamplesRequest {
