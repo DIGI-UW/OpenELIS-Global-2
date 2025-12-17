@@ -5,7 +5,6 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
   <!-- Analyzer integration (011-madagascar-analyzer-integration). 2-table model. -->
-
   <include relativeToChangelogFile="true" file="001-create-standalone-tables.xml"/>
   <include relativeToChangelogFile="true" file="002-modify-analyzer-table.xml"/>
   <include relativeToChangelogFile="true" file="003-create-field-tables.xml"/>
@@ -24,4 +23,8 @@
   <include relativeToChangelogFile="true" file="016-add-collection-conditions-column.xml"/>
   <include relativeToChangelogFile="true" file="017-add-received-date-to-sample-item.xml"/>
   <include relativeToChangelogFile="true" file="018-uom-type-mapping-table.xml"/>
+
+  <!-- Panel management enhancements -->
+  <include relativeToChangelogFile="true" file="01-panel-management.xml"/>
+
 </databaseChangeLog>
