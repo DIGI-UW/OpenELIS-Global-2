@@ -20,7 +20,7 @@
             </column>
             <column name="code" type="VARCHAR(50)"/>
             <column name="description" type="VARCHAR(500)"/>
-            <column name="organization_id" type="VARCHAR(36)"/>
+            <column name="organization_id" type="numeric(10,0)"/>
             <column name="parent_lab_unit_id" type="VARCHAR(36)"/>
             <column name="sort_order" type="numeric(10,0)"/>
             <column name="is_active" type="VARCHAR(1)" defaultValue="Y">
