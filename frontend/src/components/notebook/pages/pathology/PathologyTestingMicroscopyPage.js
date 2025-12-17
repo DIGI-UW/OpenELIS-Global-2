@@ -279,88 +279,76 @@ function PathologyTestingMicroscopyPage({
     setSubmitting(true);
     setError(null);
 
-    if (isBulkMode) {
-      // Bulk submission
-      const payload = {
-        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-        pageId: pageData?.id,
-        entryId: entryId,
-        ...testData,
-      };
+    // Get the sample IDs to process
+    const sampleIdsToProcess = isBulkMode
+      ? selectedSampleIds.map((id) => parseInt(id, 10))
+      : [parseInt(selectedSample?.id, 10)];
 
-      postToOpenElisServerJsonResponse(
-        `/rest/notebook/pathology/testing/bulk-submit`,
-        JSON.stringify(payload),
-        (response) => {
+    // Step 1: Save test data using the standard bulk apply endpoint
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/bulk/page/${pageData?.id}/samples/apply`,
+      JSON.stringify({
+        sampleIds: sampleIdsToProcess,
+        data: testData,
+      }),
+      (applyResponse) => {
+        if (applyResponse && applyResponse.success) {
+          // Step 2: Update status to COMPLETED using standard endpoint
+          // This triggers T150 propagation to next page (Storage)
+          postToOpenElisServerJsonResponse(
+            `/rest/notebook/bulk/page/${pageData?.id}/samples/status`,
+            JSON.stringify({
+              sampleIds: sampleIdsToProcess,
+              status: "COMPLETED",
+            }),
+            (statusResponse) => {
+              setSubmitting(false);
+              if (statusResponse && statusResponse.success) {
+                setTestingModalOpen(false);
+                if (isBulkMode) {
+                  setSelectedSampleIds([]);
+                } else {
+                  setSelectedSample(null);
+                }
+                setSuccessMessage(
+                  intl.formatMessage(
+                    {
+                      id: "pathology.testing.success.bulkSubmit",
+                      defaultMessage:
+                        "Successfully submitted test results for {count} samples.",
+                    },
+                    { count: sampleIdsToProcess.length },
+                  ),
+                );
+                loadPageSamples();
+                if (onProgressUpdate) {
+                  onProgressUpdate();
+                }
+              } else {
+                setError(
+                  statusResponse?.error ||
+                    intl.formatMessage({
+                      id: "pathology.testing.error.statusUpdateFailed",
+                      defaultMessage:
+                        "Failed to update sample status. Please try again.",
+                    }),
+                );
+              }
+            },
+          );
+        } else {
           setSubmitting(false);
-          if (response && response.success) {
-            setTestingModalOpen(false);
-            setSelectedSampleIds([]);
-            setSuccessMessage(
-              intl.formatMessage(
-                {
-                  id: "pathology.testing.success.bulkSubmit",
-                  defaultMessage:
-                    "Successfully submitted test results for {count} samples.",
-                },
-                { count: response.processedCount || selectedSampleIds.length },
-              ),
-            );
-            loadPageSamples();
-            if (onProgressUpdate) {
-              onProgressUpdate();
-            }
-          } else {
-            setError(
-              response?.error ||
-                intl.formatMessage({
-                  id: "pathology.testing.error.bulkSubmitFailed",
-                  defaultMessage:
-                    "Failed to submit bulk test results. Please try again.",
-                }),
-            );
-          }
-        },
-      );
-    } else {
-      // Single sample submission
-      const payload = {
-        sampleId: selectedSample?.id,
-        pageId: pageData?.id,
-        entryId: entryId,
-        ...testData,
-      };
-
-      postToOpenElisServer(
-        `/rest/notebook/pathology/testing/submit`,
-        JSON.stringify(payload),
-        (status) => {
-          setSubmitting(false);
-          if (status === 200) {
-            setTestingModalOpen(false);
-            setSelectedSample(null);
-            setSuccessMessage(
+          setError(
+            applyResponse?.error ||
               intl.formatMessage({
-                id: "pathology.testing.success.submit",
-                defaultMessage: "Test results submitted successfully.",
-              }),
-            );
-            loadPageSamples();
-            if (onProgressUpdate) {
-              onProgressUpdate();
-            }
-          } else {
-            setError(
-              intl.formatMessage({
-                id: "pathology.testing.error.submitFailed",
+                id: "pathology.testing.error.bulkSubmitFailed",
                 defaultMessage:
-                  "Failed to submit test results. Please try again.",
+                  "Failed to submit bulk test results. Please try again.",
               }),
-            );
-          }
-        },
-      );
-    }
+          );
+        }
+      },
+    );
   };
 
   // Calculate stats

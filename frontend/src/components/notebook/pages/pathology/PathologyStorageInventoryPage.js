@@ -6,13 +6,15 @@ import {
   Tile,
   Tag,
   InlineNotification,
-  Loading,
   TextInput,
+  TextArea,
   DatePicker,
   DatePickerInput,
   Modal,
   NumberInput,
   Dropdown,
+  Select,
+  SelectItem,
 } from "@carbon/react";
 import {
   Archive,
@@ -20,6 +22,9 @@ import {
   Undo,
   Checkmark,
   Renew,
+  Location,
+  Automatic,
+  Warning,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -28,6 +33,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -42,9 +48,17 @@ import "../../workflow/NotebookWorkflow.css";
  * - Storage condition and retention period tracking
  * - Temperature monitoring (AM/PM checks)
  * - Sample retrieval with signature tracking
+ *
+ * @param {Object} props
+ * @param {number} props.entryId - The notebook entry ID
+ * @param {number} props.notebookId - The notebook ID
+ * @param {Object} props.pageData - The notebook page data
+ * @param {Object} props.progress - Page progress
+ * @param {function} props.onProgressUpdate - Callback when progress changes
  */
 function PathologyStorageInventoryPage({
   entryId,
+  notebookId,
   pageData,
   progress,
   onProgressUpdate,
@@ -70,20 +84,27 @@ function PathologyStorageInventoryPage({
   const [samplesToReassign, setSamplesToReassign] = useState([]);
   const [isReassignment, setIsReassignment] = useState(false);
 
-  // Hierarchical storage selection state
-  const [rooms, setRooms] = useState([]);
-  const [devices, setDevices] = useState([]);
-  const [shelves, setShelves] = useState([]);
-  const [racks, setRacks] = useState([]);
-  const [boxes, setBoxes] = useState([]);
+  // Auto-assign modal state
+  const [autoAssignModalOpen, setAutoAssignModalOpen] = useState(false);
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+  const [autoAssignValues, setAutoAssignValues] = useState({
+    storageType: "",
+    assignedBy: "",
+    assignedDateTime: new Date().toISOString().slice(0, 16),
+    notes: "",
+  });
 
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [selectedDevice, setSelectedDevice] = useState(null);
-  const [selectedShelf, setSelectedShelf] = useState(null);
-  const [selectedRack, setSelectedRack] = useState(null);
-  const [selectedBox, setSelectedBox] = useState(null);
+  // Storage hierarchy using StorageHierarchySelector
+  const [storageSelection, setStorageSelection] = useState({
+    room: null,
+    device: null,
+    shelf: null,
+    rack: null,
+    box: null,
+  });
 
-  const [loadingHierarchy, setLoadingHierarchy] = useState(false);
+  // Temperature logs state
+  const [temperatureLogs, setTemperatureLogs] = useState([]);
 
   // Box layout state
   const [boxLayout, setBoxLayout] = useState({});
@@ -171,20 +192,16 @@ function PathologyStorageInventoryPage({
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
-  // Load samples
+  // Load samples and temperature logs
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
+    loadTemperatureLogs();
 
     return () => {
       componentMounted.current = false;
     };
   }, [entryId, pageData?.id]);
-
-  // Load rooms on mount
-  useEffect(() => {
-    loadRooms();
-  }, []);
 
   const loadPageSamples = useCallback(() => {
     if (!pageData?.id) {
@@ -258,167 +275,30 @@ function PathologyStorageInventoryPage({
     );
   }, [pageData?.id]);
 
-  // Load rooms
-  const loadRooms = () => {
-    getFromOpenElisServer("/rest/storage/rooms?status=active", (response) => {
-      if (componentMounted.current && response && Array.isArray(response)) {
-        setRooms(
-          response.map((r) => ({
-            id: r.id,
-            label: r.name,
-            ...r,
-          })),
-        );
-      }
-    });
-  };
+  // Load temperature logs
+  const loadTemperatureLogs = useCallback(() => {
+    if (!entryId) return;
 
-  // Load devices when room changes
-  const handleRoomChange = ({ selectedItem }) => {
-    setSelectedRoom(selectedItem);
-    setSelectedDevice(null);
-    setSelectedShelf(null);
-    setSelectedRack(null);
-    setSelectedBox(null);
-    setDevices([]);
-    setShelves([]);
-    setRacks([]);
-    setBoxes([]);
-    setBoxLayout({});
+    getFromOpenElisServer(
+      `/rest/notebook-entry/${entryId}/temperature-logs`,
+      (response) => {
+        if (componentMounted.current && response && Array.isArray(response)) {
+          setTemperatureLogs(response);
+        }
+      },
+    );
+  }, [entryId]);
+
+  // Handle storage hierarchy selection change
+  const handleStorageSelectionChange = useCallback((selection) => {
+    setStorageSelection(selection);
     setWellAssignments({});
+  }, []);
 
-    if (selectedItem) {
-      setLoadingHierarchy(true);
-      getFromOpenElisServer(
-        `/rest/storage/devices?roomId=${selectedItem.id}&active=true`,
-        (response) => {
-          setLoadingHierarchy(false);
-          if (componentMounted.current && response && Array.isArray(response)) {
-            setDevices(
-              response.map((d) => ({
-                id: d.id,
-                label: d.name,
-                ...d,
-              })),
-            );
-          }
-        },
-      );
-    }
-  };
-
-  // Load shelves when device changes
-  const handleDeviceChange = ({ selectedItem }) => {
-    setSelectedDevice(selectedItem);
-    setSelectedShelf(null);
-    setSelectedRack(null);
-    setSelectedBox(null);
-    setShelves([]);
-    setRacks([]);
-    setBoxes([]);
-    setBoxLayout({});
-    setWellAssignments({});
-
-    if (selectedItem) {
-      setLoadingHierarchy(true);
-      getFromOpenElisServer(
-        `/rest/storage/shelves?deviceId=${selectedItem.id}&active=true`,
-        (response) => {
-          setLoadingHierarchy(false);
-          if (componentMounted.current && response && Array.isArray(response)) {
-            setShelves(
-              response.map((s) => ({
-                id: s.id,
-                label: s.label || s.name,
-                ...s,
-              })),
-            );
-          }
-        },
-      );
-    }
-  };
-
-  // Load racks when shelf changes
-  const handleShelfChange = ({ selectedItem }) => {
-    setSelectedShelf(selectedItem);
-    setSelectedRack(null);
-    setSelectedBox(null);
-    setRacks([]);
-    setBoxes([]);
-    setBoxLayout({});
-    setWellAssignments({});
-
-    if (selectedItem) {
-      setLoadingHierarchy(true);
-      getFromOpenElisServer(
-        `/rest/storage/racks?shelfId=${selectedItem.id}&active=true`,
-        (response) => {
-          setLoadingHierarchy(false);
-          if (componentMounted.current && response && Array.isArray(response)) {
-            setRacks(
-              response.map((r) => ({
-                id: r.id,
-                label: r.label || r.name,
-                ...r,
-              })),
-            );
-          }
-        },
-      );
-    }
-  };
-
-  // Load boxes when rack changes
-  const handleRackChange = ({ selectedItem }) => {
-    setSelectedRack(selectedItem);
-    setSelectedBox(null);
-    setBoxes([]);
-    setBoxLayout({});
-    setWellAssignments({});
-
-    if (selectedItem) {
-      setLoadingHierarchy(true);
-      getFromOpenElisServer(
-        `/rest/storage/boxes?rackId=${selectedItem.id}&active=true`,
-        (response) => {
-          setLoadingHierarchy(false);
-          if (componentMounted.current && response && Array.isArray(response)) {
-            setBoxes(
-              response.map((b) => ({
-                id: b.id,
-                label: b.label || b.name,
-                rows: b.rows || 8,
-                columns: b.columns || 12,
-                ...b,
-              })),
-            );
-          }
-        },
-      );
-    }
-  };
-
-  // Load box layout when box changes
-  const handleBoxChange = ({ selectedItem }) => {
-    setSelectedBox(selectedItem);
-    setBoxLayout({});
-    setWellAssignments({});
-
-    if (selectedItem && entryId) {
-      setLoadingHierarchy(true);
-      getFromOpenElisServer(
-        `/rest/notebook/${entryId}/box/${selectedItem.id}/layout`,
-        (response) => {
-          setLoadingHierarchy(false);
-          if (componentMounted.current && response) {
-            const layoutData = response.wells || {};
-            setBoxLayout(layoutData);
-          }
-        },
-      );
-    }
-  };
+  // Handle box layout loaded from StorageHierarchySelector
+  const handleBoxLayoutLoaded = useCallback((wells) => {
+    setBoxLayout(wells || {});
+  }, []);
 
   // Handle selection change
   const handleSelectionChange = useCallback((selectedIds) => {
@@ -456,16 +336,7 @@ function PathologyStorageInventoryPage({
     setIsReassignment(reassigning);
     setStorageModalOpen(true);
     setError(null);
-    setSelectedRoom(null);
-    setSelectedDevice(null);
-    setSelectedShelf(null);
-    setSelectedRack(null);
-    setSelectedBox(null);
-    setDevices([]);
-    setShelves([]);
-    setRacks([]);
-    setBoxes([]);
-    setBoxLayout({});
+    // Keep storage selection from main page
     setWellAssignments({});
     setSelectedCondition(null);
     setRetentionYears(5);
@@ -480,10 +351,18 @@ function PathologyStorageInventoryPage({
 
   // Auto-populate wells
   const handleAutoPopulate = () => {
-    if (!selectedBox) return;
+    if (!storageSelection.box) {
+      setError(
+        intl.formatMessage({
+          id: "pathology.storage.selectBoxFirst",
+          defaultMessage: "Please select a storage box first.",
+        }),
+      );
+      return;
+    }
 
-    const rows = selectedBox.rows || 8;
-    const columns = selectedBox.columns || 12;
+    const rows = storageSelection.box.rows || 8;
+    const columns = storageSelection.box.columns || 12;
     const rowLetters = Array.from({ length: rows }, (_, i) =>
       String.fromCharCode("A".charCodeAt(0) + i),
     );
@@ -531,22 +410,52 @@ function PathologyStorageInventoryPage({
     }
   };
 
-  // Handle well click
-  const handleWellClick = (wellCoord, wellInfo) => {
-    if (wellInfo) {
-      return;
-    }
+  // Handle well click from BoxLayoutViewer
+  const handleWellClick = useCallback(
+    (wellCoord, wellInfo) => {
+      if (wellInfo && !wellInfo.pending) {
+        // Well is occupied by existing sample
+        setError(
+          intl.formatMessage(
+            {
+              id: "pathology.storage.wellOccupied",
+              defaultMessage:
+                "Well {well} is already occupied by {sample}. Choose another position.",
+            },
+            { well: wellCoord, sample: wellInfo.externalId || "a sample" },
+          ),
+        );
+        return;
+      }
 
-    const unassignedSamples = selectedSampleIds.filter(
-      (id) => !wellAssignments[id],
-    );
-    if (unassignedSamples.length > 0) {
-      setWellAssignments((prev) => ({
-        ...prev,
-        [unassignedSamples[0]]: wellCoord,
-      }));
-    }
-  };
+      if (storageModalOpen) {
+        // Single well assignment during modal
+        const unassignedSamples = selectedSampleIds.filter(
+          (id) => !wellAssignments[id],
+        );
+        if (unassignedSamples.length > 0) {
+          setWellAssignments((prev) => ({
+            ...prev,
+            [unassignedSamples[0]]: wellCoord,
+          }));
+        }
+      } else {
+        // Quick assignment outside modal - open modal if samples selected
+        if (selectedSampleIds.length === 0) {
+          setError(
+            intl.formatMessage({
+              id: "pathology.storage.selectSamplesFirst",
+              defaultMessage:
+                "Please select samples to assign to storage first.",
+            }),
+          );
+          return;
+        }
+        setStorageModalOpen(true);
+      }
+    },
+    [selectedSampleIds, wellAssignments, storageModalOpen, intl],
+  );
 
   // Build combined layout for visualization
   const getCombinedLayout = () => {
@@ -568,7 +477,7 @@ function PathologyStorageInventoryPage({
 
   // Handle storage assignment
   const handleAssignStorage = () => {
-    if (!selectedBox) {
+    if (!storageSelection.box) {
       setError(
         intl.formatMessage({
           id: "pathology.storage.selectBox",
@@ -600,23 +509,25 @@ function PathologyStorageInventoryPage({
     setAssigning(true);
     setError(null);
 
+    // Build well assignments with string keys (backend expects Map<String, String>)
     const wellAssignmentsForBackend = {};
     Object.entries(wellAssignments).forEach(([sampleId, wellCoord]) => {
-      wellAssignmentsForBackend[parseInt(sampleId, 10)] = wellCoord;
+      wellAssignmentsForBackend[sampleId] = wellCoord;
     });
 
+    const nbId = notebookId || entryId;
     const payload = {
       sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
-      boxId: selectedBox.id,
+      boxId: storageSelection.box.id,
       wellAssignments: wellAssignmentsForBackend,
       condition: selectedCondition.id,
       retentionYears: retentionYears,
-      expectedDuration: expectedDuration,
       reassign: isReassignment,
+      pageId: pageData?.id,
     };
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/${entryId}/samples/assign-storage`,
+      `/rest/notebook/${nbId}/samples/assign-storage`,
       JSON.stringify(payload),
       (response) => {
         setAssigning(false);
@@ -646,6 +557,17 @@ function PathologyStorageInventoryPage({
           setSelectedSampleIds([]);
           setWellAssignments({});
           loadPageSamples();
+          // Reload box layout
+          if (storageSelection.box && nbId) {
+            getFromOpenElisServer(
+              `/rest/notebook/${nbId}/box/${storageSelection.box.id}/layout`,
+              (layoutResponse) => {
+                if (componentMounted.current && layoutResponse) {
+                  setBoxLayout(layoutResponse.wells || {});
+                }
+              },
+            );
+          }
           if (onProgressUpdate) {
             onProgressUpdate();
           }
@@ -841,14 +763,186 @@ function PathologyStorageInventoryPage({
     );
   };
 
+  // Handle auto-assign
+  const handleAutoAssign = useCallback(() => {
+    if (selectedSampleIds.length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "pathology.storage.noSamplesSelected",
+          defaultMessage: "Please select samples to auto-assign.",
+        }),
+      );
+      return;
+    }
+
+    if (!storageSelection.box) {
+      setError(
+        intl.formatMessage({
+          id: "pathology.storage.selectBoxFirst",
+          defaultMessage: "Please select a storage box first.",
+        }),
+      );
+      return;
+    }
+
+    if (!hasRealPageId) {
+      setError(
+        intl.formatMessage({
+          id: "pathology.storage.pageNotInit",
+          defaultMessage:
+            "Cannot update samples: Page not properly initialized.",
+        }),
+      );
+      return;
+    }
+
+    setIsAutoAssigning(true);
+    setError(null);
+
+    // Build storage path
+    const storagePath = [
+      storageSelection.room?.label,
+      storageSelection.device?.label,
+      storageSelection.shelf?.label,
+      storageSelection.rack?.label,
+      storageSelection.box?.label,
+    ]
+      .filter(Boolean)
+      .join(" > ");
+
+    // Get list of occupied wells from current box layout
+    const occupiedWells = Object.keys(boxLayout);
+
+    const autoAssignData = {
+      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+      data: {
+        storageRoom: storageSelection.room?.label,
+        storageDevice: storageSelection.device?.label,
+        storageType: autoAssignValues.storageType,
+        storageRack: storageSelection.rack?.label,
+        storageBox: storageSelection.box?.label,
+        storagePath: storagePath,
+        assignedBy: autoAssignValues.assignedBy,
+        assignedDateTime: autoAssignValues.assignedDateTime,
+        notes: autoAssignValues.notes,
+      },
+      boxId: storageSelection.box?.id,
+      rows: storageSelection.box?.rows || 8,
+      columns: storageSelection.box?.columns || 12,
+      occupiedWells: occupiedWells,
+    };
+
+    postToOpenElisServer(
+      `/rest/notebook/bulk/page/${pageData.id}/samples/storage/auto-assign`,
+      JSON.stringify(autoAssignData),
+      (status, response) => {
+        setIsAutoAssigning(false);
+        if (status === 200) {
+          const responseData =
+            typeof response === "string" ? JSON.parse(response) : response;
+          const assignmentCount = responseData?.updatedCount || 0;
+
+          setSuccess(
+            intl.formatMessage(
+              {
+                id: "pathology.storage.autoAssignSuccess",
+                defaultMessage:
+                  "Auto-assigned {count} sample(s) to storage in {box}.",
+              },
+              {
+                count: assignmentCount,
+                box: storageSelection.box?.label,
+              },
+            ),
+          );
+          setAutoAssignModalOpen(false);
+          loadPageSamples();
+          setSelectedSampleIds([]);
+          // Reload box layout
+          const nbId = notebookId || entryId;
+          if (storageSelection.box && nbId) {
+            getFromOpenElisServer(
+              `/rest/notebook/${nbId}/box/${storageSelection.box.id}/layout`,
+              (layoutResponse) => {
+                if (componentMounted.current && layoutResponse) {
+                  setBoxLayout(layoutResponse.wells || {});
+                }
+              },
+            );
+          }
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          const errorData =
+            typeof response === "string" ? JSON.parse(response) : response;
+          setError(
+            errorData?.error ||
+              intl.formatMessage({
+                id: "pathology.storage.autoAssignError",
+                defaultMessage:
+                  "Failed to auto-assign storage. Please try again.",
+              }),
+          );
+        }
+      },
+    );
+  }, [
+    selectedSampleIds,
+    pageData?.id,
+    storageSelection,
+    autoAssignValues,
+    boxLayout,
+    entryId,
+    hasRealPageId,
+    intl,
+    loadPageSamples,
+    onProgressUpdate,
+  ]);
+
+  // Get temperature status tag for logs
+  const getTemperatureStatusTag = (log) => {
+    // Define acceptable ranges per device type
+    const ranges = {
+      Refrigerator: { min: 2, max: 8 },
+      "Freezer-20": { min: -25, max: -15 },
+      "Freezer-80": { min: -85, max: -75 },
+      LN2Tank: { min: -200, max: -180 },
+      Incubator: { min: 35, max: 38 },
+      StabilityRoom: { min: 20, max: 25 },
+      ColdRoom: { min: 2, max: 8 },
+      ROOM_TEMP: { min: 15, max: 25 },
+      REFRIGERATED: { min: 2, max: 8 },
+      FROZEN_MINUS20: { min: -25, max: -15 },
+      FROZEN_MINUS80: { min: -85, max: -75 },
+      LIQUID_NITROGEN: { min: -200, max: -180 },
+    };
+
+    const range = ranges[log.deviceType] ||
+      ranges[log.storageCondition] || { min: -999, max: 999 };
+    const temp =
+      log.temperatureValue || log.temperatureCheckAM || log.temperatureCheckPM;
+    const inRange = temp >= range.min && temp <= range.max;
+
+    return inRange ? (
+      <Tag type="green" size="sm">
+        {temp}°{log.temperatureUnit || "C"}
+      </Tag>
+    ) : (
+      <Tag type="red" size="sm" renderIcon={Warning}>
+        {temp}°{log.temperatureUnit || "C"} - OUT OF RANGE
+      </Tag>
+    );
+  };
+
   // Build hierarchical path
   const getHierarchicalPath = () => {
     const parts = [];
-    if (selectedRoom) parts.push(selectedRoom.label);
-    if (selectedDevice) parts.push(selectedDevice.label);
-    if (selectedShelf) parts.push(selectedShelf.label);
-    if (selectedRack) parts.push(selectedRack.label);
-    if (selectedBox) parts.push(selectedBox.label);
+    if (storageSelection.room) parts.push(storageSelection.room.label);
+    if (storageSelection.device) parts.push(storageSelection.device.label);
+    if (storageSelection.shelf) parts.push(storageSelection.shelf.label);
+    if (storageSelection.rack) parts.push(storageSelection.rack.label);
+    if (storageSelection.box) parts.push(storageSelection.box.label);
     return parts.join(" > ");
   };
 
@@ -1002,7 +1096,34 @@ function PathologyStorageInventoryPage({
       {/* Action Buttons */}
       <div className="page-actions-bar">
         <Button
-          kind="primary"
+          kind="tertiary"
+          size="sm"
+          renderIcon={Temperature}
+          onClick={() => setTempLogModalOpen(true)}
+        >
+          <FormattedMessage
+            id="pathology.storage.logTemperature"
+            defaultMessage="Log Temperature"
+          />
+        </Button>
+
+        {selectedSampleIds.length > 0 && storageSelection.box && (
+          <Button
+            kind="primary"
+            size="sm"
+            renderIcon={Automatic}
+            onClick={() => setAutoAssignModalOpen(true)}
+          >
+            <FormattedMessage
+              id="pathology.storage.autoAssign"
+              defaultMessage="Auto-Assign ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        )}
+
+        <Button
+          kind="secondary"
           size="sm"
           renderIcon={Archive}
           onClick={handleOpenStorageModal}
@@ -1016,7 +1137,7 @@ function PathologyStorageInventoryPage({
         </Button>
 
         <Button
-          kind="secondary"
+          kind="tertiary"
           size="sm"
           renderIcon={Checkmark}
           onClick={handleMarkComplete}
@@ -1024,37 +1145,146 @@ function PathologyStorageInventoryPage({
         >
           <FormattedMessage
             id="pathology.storage.markComplete"
-            defaultMessage="Mark Stored Samples Complete"
+            defaultMessage="Mark Complete"
           />
         </Button>
 
         <Button
-          kind="tertiary"
+          kind="ghost"
           size="sm"
-          renderIcon={Temperature}
-          onClick={() => setTempLogModalOpen(true)}
+          renderIcon={Renew}
+          onClick={loadPageSamples}
         >
           <FormattedMessage
-            id="pathology.storage.logTemperature"
-            defaultMessage="Log Temperature"
+            id="pathology.storage.refresh"
+            defaultMessage="Refresh"
           />
         </Button>
       </div>
 
+      {/* Storage Location & Box Layout */}
+      <Grid fullWidth style={{ marginTop: "1rem" }}>
+        <Column lg={8} md={4} sm={4}>
+          <Tile>
+            <h5 style={{ marginBottom: "1rem" }}>
+              <Location size={16} style={{ marginRight: "0.5rem" }} />
+              <FormattedMessage
+                id="pathology.storage.storageLocation"
+                defaultMessage="Storage Location"
+              />
+            </h5>
+            <StorageHierarchySelector
+              onSelectionChange={handleStorageSelectionChange}
+              entryId={notebookId || entryId}
+              onBoxLayoutLoaded={handleBoxLayoutLoaded}
+              boxRequired={true}
+              showPath={true}
+            />
+          </Tile>
+        </Column>
+
+        <Column lg={8} md={4} sm={4}>
+          {storageSelection.box ? (
+            <Tile>
+              <h5 style={{ marginBottom: "1rem" }}>
+                <Archive size={16} style={{ marginRight: "0.5rem" }} />
+                <FormattedMessage
+                  id="pathology.storage.boxLayout"
+                  defaultMessage="Box Layout"
+                />
+                {selectedSampleIds.length > 0 && (
+                  <Tag type="blue" style={{ marginLeft: "0.5rem" }}>
+                    {selectedSampleIds.length} selected - Click well to assign
+                  </Tag>
+                )}
+              </h5>
+              <BoxLayoutViewer
+                boxId={storageSelection.box.id}
+                layout={boxLayout}
+                rows={storageSelection.box.rows || 8}
+                columns={storageSelection.box.columns || 12}
+                onWellClick={handleWellClick}
+              />
+            </Tile>
+          ) : (
+            <Tile className="empty-box-tile">
+              <div className="empty-state" style={{ textAlign: "center" }}>
+                <Archive size={48} />
+                <p style={{ marginTop: "1rem" }}>
+                  <FormattedMessage
+                    id="pathology.storage.selectBoxPrompt"
+                    defaultMessage="Select a storage location to view box layout"
+                  />
+                </p>
+              </div>
+            </Tile>
+          )}
+        </Column>
+      </Grid>
+
+      {/* Temperature Logs Summary */}
+      {temperatureLogs.length > 0 && (
+        <div style={{ marginTop: "1.5rem" }}>
+          <h5>
+            <Temperature size={16} style={{ marginRight: "0.5rem" }} />
+            <FormattedMessage
+              id="pathology.storage.recentTempLogs"
+              defaultMessage="Recent Temperature Logs"
+            />
+          </h5>
+          <div
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              flexWrap: "wrap",
+              marginTop: "0.5rem",
+            }}
+          >
+            {temperatureLogs.slice(0, 6).map((log, index) => (
+              <Tile
+                key={index}
+                style={{
+                  padding: "0.5rem 1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <strong>
+                  {log.storageUnit || log.freezerId || log.deviceId}:
+                </strong>
+                {getTemperatureStatusTag(log)}
+                <span style={{ fontSize: "0.75rem", color: "#525252" }}>
+                  ({log.checkTime || "Check"})
+                </span>
+              </Tile>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Sample Grid */}
-      <SampleGrid
-        samples={samples}
-        loading={loading}
-        columns={columns}
-        onSelectionChange={handleSelectionChange}
-        selectedIds={selectedSampleIds}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        emptyStateMessage={intl.formatMessage({
-          id: "pathology.storage.noSamples",
-          defaultMessage: "No samples available for storage assignment.",
-        })}
-      />
+      <div className="sample-grid-container" style={{ marginTop: "1.5rem" }}>
+        <h5 style={{ marginBottom: "0.5rem" }}>
+          <FormattedMessage
+            id="pathology.storage.sampleList"
+            defaultMessage="Sample List"
+          />
+        </h5>
+        <SampleGrid
+          samples={samples}
+          loading={loading}
+          columns={columns}
+          onSelectionChange={handleSelectionChange}
+          selectedIds={selectedSampleIds}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          emptyStateMessage={intl.formatMessage({
+            id: "pathology.storage.noSamples",
+            defaultMessage: "No samples available for storage assignment.",
+          })}
+        />
+      </div>
 
       {/* Storage Assignment Modal */}
       <Modal
@@ -1064,17 +1294,24 @@ function PathologyStorageInventoryPage({
           id: "pathology.storage.modal.title",
           defaultMessage: "Assign to Storage",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "pathology.storage.modal.assign",
-          defaultMessage: "Assign",
-        })}
+        primaryButtonText={
+          assigning
+            ? intl.formatMessage({
+                id: "label.assigning",
+                defaultMessage: "Assigning...",
+              })
+            : intl.formatMessage({
+                id: "pathology.storage.modal.assign",
+                defaultMessage: "Assign",
+              })
+        }
         secondaryButtonText={intl.formatMessage({
           id: "common.cancel",
           defaultMessage: "Cancel",
         })}
         onRequestSubmit={handleAssignStorage}
         primaryButtonDisabled={
-          !selectedBox ||
+          !storageSelection.box ||
           !selectedCondition ||
           Object.keys(wellAssignments).length === 0 ||
           assigning
@@ -1090,129 +1327,28 @@ function PathologyStorageInventoryPage({
             />
           </p>
 
-          {/* Hierarchical Storage Selection */}
-          <div className="storage-hierarchy-selection">
-            <Grid fullWidth narrow>
-              <Column lg={8} md={4} sm={4}>
-                <Dropdown
-                  id="room-dropdown"
-                  titleText={intl.formatMessage({
-                    id: "pathology.storage.room",
-                    defaultMessage: "Room",
-                  })}
-                  label={intl.formatMessage({
-                    id: "pathology.storage.selectRoom",
-                    defaultMessage: "Select room...",
-                  })}
-                  items={rooms}
-                  itemToString={(item) => (item ? item.label : "")}
-                  selectedItem={selectedRoom}
-                  onChange={handleRoomChange}
+          {/* Hierarchical Path Display */}
+          {getHierarchicalPath() && (
+            <div
+              style={{
+                backgroundColor: "#f4f4f4",
+                padding: "0.75rem 1rem",
+                borderRadius: "4px",
+              }}
+            >
+              <strong>
+                <FormattedMessage
+                  id="pathology.storage.path"
+                  defaultMessage="Storage Path:"
                 />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Dropdown
-                  id="device-dropdown"
-                  titleText={intl.formatMessage({
-                    id: "pathology.storage.device",
-                    defaultMessage: "Device/Cabinet",
-                  })}
-                  label={intl.formatMessage({
-                    id: "pathology.storage.selectDevice",
-                    defaultMessage: "Select device...",
-                  })}
-                  items={devices}
-                  itemToString={(item) => (item ? item.label : "")}
-                  selectedItem={selectedDevice}
-                  onChange={handleDeviceChange}
-                  disabled={!selectedRoom}
-                />
-              </Column>
-            </Grid>
-
-            <Grid fullWidth narrow style={{ marginTop: "0.5rem" }}>
-              <Column lg={5} md={3} sm={4}>
-                <Dropdown
-                  id="shelf-dropdown"
-                  titleText={intl.formatMessage({
-                    id: "pathology.storage.shelf",
-                    defaultMessage: "Shelf",
-                  })}
-                  label={intl.formatMessage({
-                    id: "pathology.storage.selectShelf",
-                    defaultMessage: "Select shelf...",
-                  })}
-                  items={shelves}
-                  itemToString={(item) => (item ? item.label : "")}
-                  selectedItem={selectedShelf}
-                  onChange={handleShelfChange}
-                  disabled={!selectedDevice}
-                />
-              </Column>
-              <Column lg={5} md={3} sm={4}>
-                <Dropdown
-                  id="rack-dropdown"
-                  titleText={intl.formatMessage({
-                    id: "pathology.storage.rack",
-                    defaultMessage: "Rack",
-                  })}
-                  label={intl.formatMessage({
-                    id: "pathology.storage.selectRack",
-                    defaultMessage: "Select rack...",
-                  })}
-                  items={racks}
-                  itemToString={(item) => (item ? item.label : "")}
-                  selectedItem={selectedRack}
-                  onChange={handleRackChange}
-                  disabled={!selectedShelf}
-                />
-              </Column>
-              <Column lg={6} md={2} sm={4}>
-                <Dropdown
-                  id="box-dropdown"
-                  titleText={intl.formatMessage({
-                    id: "pathology.storage.box",
-                    defaultMessage: "Box",
-                  })}
-                  label={intl.formatMessage({
-                    id: "pathology.storage.selectBox",
-                    defaultMessage: "Select box...",
-                  })}
-                  items={boxes}
-                  itemToString={(item) => (item ? item.label : "")}
-                  selectedItem={selectedBox}
-                  onChange={handleBoxChange}
-                  disabled={!selectedRack}
-                />
-              </Column>
-            </Grid>
-
-            {/* Hierarchical Path Display */}
-            {getHierarchicalPath() && (
-              <div
-                style={{
-                  marginTop: "0.5rem",
-                  fontSize: "0.875rem",
-                  color: "#525252",
-                  backgroundColor: "#f4f4f4",
-                  padding: "0.5rem",
-                  borderRadius: "4px",
-                }}
-              >
-                <strong>
-                  <FormattedMessage
-                    id="pathology.storage.path"
-                    defaultMessage="Path:"
-                  />
-                </strong>{" "}
-                {getHierarchicalPath()}
-              </div>
-            )}
-          </div>
+              </strong>{" "}
+              {getHierarchicalPath()}
+            </div>
+          )}
 
           {/* Box Layout Viewer */}
-          {selectedBox && (
-            <div style={{ marginTop: "1rem" }}>
+          {storageSelection.box && (
+            <div>
               <div
                 style={{
                   display: "flex",
@@ -1230,7 +1366,7 @@ function PathologyStorageInventoryPage({
                 <Button
                   kind="tertiary"
                   size="sm"
-                  renderIcon={Renew}
+                  renderIcon={Automatic}
                   onClick={handleAutoPopulate}
                   disabled={selectedSampleIds.length === 0}
                 >
@@ -1241,17 +1377,13 @@ function PathologyStorageInventoryPage({
                 </Button>
               </div>
 
-              {loadingHierarchy ? (
-                <Loading withOverlay={false} small />
-              ) : (
-                <BoxLayoutViewer
-                  boxId={selectedBox.id}
-                  layout={getCombinedLayout()}
-                  rows={selectedBox.rows || 8}
-                  columns={selectedBox.columns || 12}
-                  onWellClick={handleWellClick}
-                />
-              )}
+              <BoxLayoutViewer
+                boxId={storageSelection.box.id}
+                layout={getCombinedLayout()}
+                rows={storageSelection.box.rows || 8}
+                columns={storageSelection.box.columns || 12}
+                onWellClick={handleWellClick}
+              />
 
               {/* Assignment Summary */}
               <div
@@ -1378,9 +1510,7 @@ function PathologyStorageInventoryPage({
             <ul style={{ marginTop: "0.5rem", paddingLeft: "1.5rem" }}>
               {samplesToReassign.map((sample) => (
                 <li key={sample.id} style={{ fontSize: "0.875rem" }}>
-                  <strong>
-                    {sample.accessionNumber || sample.externalId}
-                  </strong>
+                  <strong>{sample.accessionNumber || sample.externalId}</strong>
                   : {sample.storageLocation}
                   {sample.storageCondition && ` (${sample.storageCondition})`}
                 </li>
@@ -1495,6 +1625,141 @@ function PathologyStorageInventoryPage({
                 placeholder="mm/dd/yyyy"
               />
             </DatePicker>
+          </Column>
+        </Grid>
+      </Modal>
+
+      {/* Auto-Assign Modal */}
+      <Modal
+        open={autoAssignModalOpen}
+        onRequestClose={() => setAutoAssignModalOpen(false)}
+        modalHeading={intl.formatMessage({
+          id: "pathology.storage.autoAssign.title",
+          defaultMessage: "Auto-Assign Storage Locations",
+        })}
+        primaryButtonText={
+          isAutoAssigning
+            ? intl.formatMessage({
+                id: "label.assigning",
+                defaultMessage: "Assigning...",
+              })
+            : intl.formatMessage({
+                id: "label.autoAssign",
+                defaultMessage: "Auto-Assign",
+              })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "label.cancel",
+          defaultMessage: "Cancel",
+        })}
+        onRequestSubmit={handleAutoAssign}
+        onSecondarySubmit={() => setAutoAssignModalOpen(false)}
+        size="md"
+        primaryButtonDisabled={isAutoAssigning}
+      >
+        <p className="modal-description">
+          <FormattedMessage
+            id="pathology.storage.autoAssign.description"
+            defaultMessage="Automatically assign {count} sample(s) to the next available wells in {box}, starting from position A1."
+            values={{
+              count: selectedSampleIds.length,
+              box: storageSelection.box?.label || "selected box",
+            }}
+          />
+        </p>
+
+        <Grid fullWidth>
+          <Column lg={16} md={8} sm={4}>
+            <div
+              style={{
+                backgroundColor: "#f4f4f4",
+                padding: "1rem",
+                borderRadius: "4px",
+                marginBottom: "1rem",
+              }}
+            >
+              <strong>
+                <FormattedMessage
+                  id="pathology.storage.path"
+                  defaultMessage="Storage Path:"
+                />
+              </strong>{" "}
+              {getHierarchicalPath()}
+              <div style={{ marginTop: "0.5rem" }}>
+                <Tag type="blue">
+                  <FormattedMessage
+                    id="pathology.storage.availableWells"
+                    defaultMessage="{available} wells available"
+                    values={{
+                      available:
+                        (storageSelection.box?.rows || 8) *
+                          (storageSelection.box?.columns || 12) -
+                        Object.keys(boxLayout).length,
+                    }}
+                  />
+                </Tag>
+              </div>
+            </div>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="autoAssignStorageType"
+              labelText={intl.formatMessage({
+                id: "pathology.storage.storageType",
+                defaultMessage: "Storage Type",
+              })}
+              value={autoAssignValues.storageType}
+              onChange={(e) =>
+                setAutoAssignValues((prev) => ({
+                  ...prev,
+                  storageType: e.target.value,
+                }))
+              }
+            >
+              <SelectItem value="" text="Select type..." />
+              <SelectItem value="Block" text="Tissue Block" />
+              <SelectItem value="Slide" text="Slide" />
+              <SelectItem value="Cassette" text="Cassette" />
+              <SelectItem value="Sample" text="Sample" />
+              <SelectItem value="Archive" text="Archive" />
+            </Select>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="autoAssignAssignedBy"
+              labelText={intl.formatMessage({
+                id: "pathology.storage.assignedBy",
+                defaultMessage: "Assigned By",
+              })}
+              value={autoAssignValues.assignedBy}
+              onChange={(e) =>
+                setAutoAssignValues((prev) => ({
+                  ...prev,
+                  assignedBy: e.target.value,
+                }))
+              }
+              placeholder="Enter staff name"
+            />
+          </Column>
+
+          <Column lg={16} md={8} sm={4}>
+            <TextArea
+              id="autoAssignNotes"
+              labelText={intl.formatMessage({
+                id: "pathology.storage.notes",
+                defaultMessage: "Notes",
+              })}
+              value={autoAssignValues.notes}
+              onChange={(e) =>
+                setAutoAssignValues((prev) => ({
+                  ...prev,
+                  notes: e.target.value,
+                }))
+              }
+              placeholder="Optional notes..."
+            />
           </Column>
         </Grid>
       </Modal>

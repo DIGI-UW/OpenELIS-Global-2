@@ -19,6 +19,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
+import config from "../../../../config.json";
 import SampleGrid from "../../workflow/SampleGrid";
 import PathologyManifestImportModal from "../../workflow/PathologyManifestImportModal";
 import "../../workflow/NotebookWorkflow.css";
@@ -348,6 +349,26 @@ function PathologySampleCreationPage({
     onProgressUpdate,
   ]);
 
+  // Handle print labels for selected samples
+  const handlePrintLabels = useCallback(() => {
+    if (selectedSampleIds.length === 0) return;
+
+    // Get the selected samples to print labels for
+    const selectedSamples = samples.filter((s) =>
+      selectedSampleIds.includes(s.id),
+    );
+
+    // For each selected sample, open a print label window
+    selectedSamples.forEach((sample) => {
+      // Use the accession number or external ID for the label
+      const labelCode =
+        sample.accessionNumber || sample.externalId || sample.id;
+      // Open the LabelMakerServlet endpoint for pathology block/slide labels
+      const printUrl = `${config.serverBaseUrl}/LabelMakerServlet?labelType=block&code=${encodeURIComponent(labelCode)}`;
+      window.open(printUrl, "_blank", "width=800,height=600");
+    });
+  }, [selectedSampleIds, samples]);
+
   // Calculate stats
   const verifiedCount = samples.filter((s) => s.status === "COMPLETED").length;
   const pendingCount = samples.filter((s) => s.status === "PENDING").length;
@@ -449,9 +470,7 @@ function PathologySampleCreationPage({
               kind="ghost"
               size="sm"
               renderIcon={Print}
-              onClick={() => {
-                /* Print labels */
-              }}
+              onClick={handlePrintLabels}
             >
               <FormattedMessage
                 id="pathology.page.sampleCreation.printLabels"

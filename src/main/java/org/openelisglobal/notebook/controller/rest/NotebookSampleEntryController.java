@@ -1227,7 +1227,7 @@ public class NotebookSampleEntryController extends BaseRestController {
             }
 
             if (targetPage != null) {
-                // Update NotebookPageSample records with storage info and status
+                // Update NotebookPageSample records with storage info
                 for (Integer sampleId : request.getSampleIds()) {
                     try {
                         org.openelisglobal.notebook.valueholder.NotebookPageSample nps = notebookPageSampleService
@@ -1251,6 +1251,7 @@ public class NotebookSampleEntryController extends BaseRestController {
                             }
 
                             // Store storage info in data field
+                            // Store storage info in data field (status update handled separately below)
                             Map<String, Object> data = nps.getData() != null ? new HashMap<>(nps.getData())
                                     : new HashMap<>();
                             data.put("storageCondition", condition.name());
@@ -1337,12 +1338,31 @@ public class NotebookSampleEntryController extends BaseRestController {
                             }
 
                             nps.setData(data);
+
+                            // If NOT marking as COMPLETED (no pageId), set IN_PROGRESS status directly
+                            if (request.getPageId() == null && nps
+                                    .getStatus() == org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.PENDING) {
+                                nps.setStatus(
+                                        org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS);
+                            }
+
                             notebookPageSampleService.update(nps);
                         }
                     } catch (Exception e) {
                         LogEvent.logWarn(this.getClass().getName(), "assignSamplesToStorage",
                                 "Error updating NotebookPageSample for sample " + sampleId + ": " + e.getMessage());
                     }
+                }
+
+                // T150: Use bulkUpdateStatus to trigger propagation to next page when marking
+                // COMPLETED
+                // This is critical - direct update() calls do NOT trigger T150 propagation
+                if (request.getPageId() != null && !request.getSampleIds().isEmpty()) {
+                    notebookPageSampleService.bulkUpdateStatus(targetPage.getId(), request.getSampleIds(),
+                            org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.COMPLETED, sysUserId);
+                    LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
+                            "T150: Triggered propagation for " + request.getSampleIds().size() + " samples from page "
+                                    + targetPage.getId() + " to next page");
                 }
             }
 

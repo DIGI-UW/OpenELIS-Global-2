@@ -399,8 +399,6 @@ public class PathologyWorkflowController extends BaseRestController {
                         : new HashMap<>();
                 data.putAll(requestData);
                 pageSample.setData(data);
-                pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                pageSample.setCompletedAt(new Timestamp(System.currentTimeMillis()));
                 pageSample.setSysUserId(sysUserId);
                 notebookPageSampleService.update(pageSample);
             } else {
@@ -415,11 +413,15 @@ public class PathologyWorkflowController extends BaseRestController {
                 newPageSample.setNotebookPage(page);
                 newPageSample.setSampleItemId(sampleId);
                 newPageSample.setData(new HashMap<>(requestData));
-                newPageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                newPageSample.setCompletedAt(new Timestamp(System.currentTimeMillis()));
+                newPageSample.setStatus(NotebookPageSample.Status.PENDING);
                 newPageSample.setSysUserId(sysUserId);
                 notebookPageSampleService.insert(newPageSample);
             }
+
+            // Use bulkUpdateStatus which has built-in propagation to next page (T150)
+            Integer sampleIdInt = Integer.parseInt(sampleId);
+            notebookPageSampleService.bulkUpdateStatus(pageId, java.util.List.of(sampleIdInt),
+                    NotebookPageSample.Status.COMPLETED, sysUserId);
 
             response.put("success", true);
             response.put("message", "Testing results saved successfully");
@@ -432,12 +434,12 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Submit bulk testing/microscopy results for multiple samples.
-     * POST /rest/notebook/pathology/testing/bulk-submit
+     * Submit bulk testing/microscopy results for multiple samples. POST
+     * /rest/notebook/pathology/testing/bulk-submit
      *
      * UI sends: sampleIds (array), pageId, entryId, and all test data fields
-     * (testName, result, stains, controls, technicianSignature, etc.)
-     * that will be applied to all selected samples.
+     * (testName, result, stains, controls, technicianSignature, etc.) that will be
+     * applied to all selected samples.
      */
     @PostMapping(value = "/testing/bulk-submit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -483,7 +485,7 @@ public class PathologyWorkflowController extends BaseRestController {
             testData.put("negativeControlResult", requestData.get("negativeControlResult"));
             testData.put("assayAccepted", requestData.get("assayAccepted"));
 
-            // Process each sample
+            // Process each sample - update data first
             int processedCount = 0;
             for (Integer sampleId : sampleIds) {
                 String sampleIdStr = String.valueOf(sampleId);
@@ -495,8 +497,6 @@ public class PathologyWorkflowController extends BaseRestController {
                             : new HashMap<>();
                     data.putAll(testData);
                     pageSample.setData(data);
-                    pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                    pageSample.setCompletedAt(new Timestamp(System.currentTimeMillis()));
                     pageSample.setSysUserId(sysUserId);
                     notebookPageSampleService.update(pageSample);
                     processedCount++;
@@ -508,14 +508,17 @@ public class PathologyWorkflowController extends BaseRestController {
                         newPageSample.setNotebookPage(page);
                         newPageSample.setSampleItemId(sampleIdStr);
                         newPageSample.setData(new HashMap<>(testData));
-                        newPageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                        newPageSample.setCompletedAt(new Timestamp(System.currentTimeMillis()));
+                        newPageSample.setStatus(NotebookPageSample.Status.PENDING);
                         newPageSample.setSysUserId(sysUserId);
                         notebookPageSampleService.insert(newPageSample);
                         processedCount++;
                     }
                 }
             }
+
+            // Use bulkUpdateStatus which has built-in propagation to next page (T150)
+            notebookPageSampleService.bulkUpdateStatus(pageId, sampleIds, NotebookPageSample.Status.COMPLETED,
+                    sysUserId);
 
             response.put("success", true);
             response.put("message", String.format("Testing results saved for %d samples", processedCount));
@@ -775,8 +778,7 @@ public class PathologyWorkflowController extends BaseRestController {
             @RequestParam(required = false, defaultValue = "true") boolean includeTestingData,
             @RequestParam(required = false, defaultValue = "true") boolean includeStorageData,
             @RequestParam(required = false, defaultValue = "true") boolean includeDisposalData,
-            @RequestParam(required = false, defaultValue = "true") boolean includeSopData,
-            HttpServletRequest request) {
+            @RequestParam(required = false, defaultValue = "true") boolean includeSopData, HttpServletRequest request) {
 
         try {
             // Get the notebook entry to find related data
@@ -875,14 +877,14 @@ public class PathologyWorkflowController extends BaseRestController {
                 writer.append("Metric,Value,Unit,Description\n");
                 writer.append(String.format("Specimen Rejection Rate,%.2f,%%,QC failures / total QC'd samples\n",
                         specimenRejectionRate));
-                writer.append(String.format("Assay Success Rate,%.2f,%%,Accepted assays / total assays\n",
-                        assaySuccessRate));
+                writer.append(
+                        String.format("Assay Success Rate,%.2f,%%,Accepted assays / total assays\n", assaySuccessRate));
                 writer.append(String.format(
                         "Average Turnaround Time (TAT),%.1f,hours,Average time from reception to completion\n",
                         averageTat));
                 writer.append("Equipment Downtime,0,hours,Total equipment downtime in period\n");
-                writer.append(String.format("Total Specimen Volume,%d,samples,Total samples in this entry\n",
-                        totalSamples));
+                writer.append(
+                        String.format("Total Specimen Volume,%d,samples,Total samples in this entry\n", totalSamples));
                 writer.append(String.format("QC Pass Count,%d,samples,Samples that passed QC\n", qcPassCount));
                 writer.append(String.format("QC Fail Count,%d,samples,Samples that failed QC\n", qcFailCount));
                 writer.append(String.format("Assays Completed,%d,assays,Total assays with results\n", assayTotalCount));
@@ -927,15 +929,20 @@ public class PathologyWorkflowController extends BaseRestController {
                 // Processing columns
                 if (includeProcessingData) {
                     headerBuilder.append(",Processing Action,Gross Exam Done,Gross Description,Sectioning Done");
-                    headerBuilder.append(",Embedding Done,Microtomy Thickness,Centrifugation Done,Smear Types,Stain Used");
-                    headerBuilder.append(",Wedge Smear Done,Blood Stain,SOP Followed,Processing Methods,Processing Date");
+                    headerBuilder
+                            .append(",Embedding Done,Microtomy Thickness,Centrifugation Done,Smear Types,Stain Used");
+                    headerBuilder
+                            .append(",Wedge Smear Done,Blood Stain,SOP Followed,Processing Methods,Processing Date");
                 }
 
                 // Testing columns
                 if (includeTestingData) {
-                    headerBuilder.append(",Test Name,Result,Block/Slide ID,Technician Signature,Pathologist Verification");
-                    headerBuilder.append(",Routine Stains,Special Stains,Advanced Techniques,IHC Markers,Research Assays");
-                    headerBuilder.append(",Positive Control Run,Positive Control Result,Negative Control Run,Negative Control Result,Assay Accepted");
+                    headerBuilder
+                            .append(",Test Name,Result,Block/Slide ID,Technician Signature,Pathologist Verification");
+                    headerBuilder
+                            .append(",Routine Stains,Special Stains,Advanced Techniques,IHC Markers,Research Assays");
+                    headerBuilder.append(
+                            ",Positive Control Run,Positive Control Result,Negative Control Run,Negative Control Result,Assay Accepted");
                 }
 
                 // Storage columns
@@ -1026,7 +1033,8 @@ public class PathologyWorkflowController extends BaseRestController {
                         // Research-specific QC
                         rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "consentVerified")));
                         rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "storageMedium")));
-                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "sampleTypeMatchesProtocol")));
+                        rowBuilder.append(",")
+                                .append(escapeCsv(getStringValue(combinedData, "sampleTypeMatchesProtocol")));
                         // Block QC
                         rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "surfaceQuality")));
                         rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "depthOrientation")));
@@ -1057,7 +1065,8 @@ public class PathologyWorkflowController extends BaseRestController {
                         rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "result")));
                         rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "blockSlideId")));
                         rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "technicianSignature")));
-                        rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "pathologistVerification")));
+                        rowBuilder.append(",")
+                                .append(escapeCsv(getStringValue(combinedData, "pathologistVerification")));
                         rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "routineStains")));
                         rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "specialStains")));
                         rowBuilder.append(",").append(escapeCsv(getStringValue(combinedData, "advancedTechniques")));
@@ -1120,17 +1129,19 @@ public class PathologyWorkflowController extends BaseRestController {
                 List<PathologySop> sops = pathologySopService.getByNotebookId(entryId);
                 if (!sops.isEmpty()) {
                     writer.append("STANDARD OPERATING PROCEDURES (SOPs)\n");
-                    writer.append("SOP Title,Category,Version,Status,Effective Date,Review Date,Approved By,Changes Summary\n");
+                    writer.append(
+                            "SOP Title,Category,Version,Status,Effective Date,Review Date,Approved By,Changes Summary\n");
                     for (PathologySop sop : sops) {
                         writer.append(escapeCsv(sop.getSopTitle()) + ",");
                         writer.append(escapeCsv(sop.getSopCategory()) + ",");
                         writer.append(escapeCsv(sop.getVersion()) + ",");
                         writer.append(escapeCsv(sop.getStatus()) + ",");
+                        writer.append(escapeCsv(
+                                sop.getEffectiveDate() != null ? dateOnlyFormat.format(sop.getEffectiveDate()) : "")
+                                + ",");
                         writer.append(
-                                escapeCsv(sop.getEffectiveDate() != null ? dateOnlyFormat.format(sop.getEffectiveDate()) : "")
+                                escapeCsv(sop.getReviewDate() != null ? dateOnlyFormat.format(sop.getReviewDate()) : "")
                                         + ",");
-                        writer.append(
-                                escapeCsv(sop.getReviewDate() != null ? dateOnlyFormat.format(sop.getReviewDate()) : "") + ",");
                         writer.append(escapeCsv(sop.getApprovedBy()) + ",");
                         writer.append(escapeCsv(sop.getChangesSummary()));
                         writer.append("\n");
@@ -1366,4 +1377,5 @@ public class PathologyWorkflowController extends BaseRestController {
         }
         return String.valueOf(value);
     }
+
 }

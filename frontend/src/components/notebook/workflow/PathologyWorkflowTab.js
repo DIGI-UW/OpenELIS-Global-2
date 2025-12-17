@@ -75,9 +75,14 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
   const [errorMessage, setErrorMessage] = useState(null);
 
   // Use actual pages if available, otherwise use default Pathology workflow pages
+  // Sort by pageOrder or order to ensure correct display sequence
   const effectivePages = useMemo(() => {
     if (pages && pages.length > 0) {
-      return pages;
+      return [...pages].sort((a, b) => {
+        const orderA = a.pageOrder ?? a.order ?? 0;
+        const orderB = b.pageOrder ?? b.order ?? 0;
+        return orderA - orderB;
+      });
     }
     return DEFAULT_PATHOLOGY_WORKFLOW_PAGES;
   }, [pages]);
