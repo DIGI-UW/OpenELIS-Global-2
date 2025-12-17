@@ -1,6 +1,8 @@
 package org.openelisglobal.notebook.service;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import org.hibernate.Hibernate;
@@ -11,6 +13,7 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookEntry.EntryStatus;
 import org.openelisglobal.notebook.valueholder.NotebookEntryComment;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -52,6 +55,12 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
     @Override
     @Transactional
     public NotebookEntry createEntry(Integer notebookId, String title, String sysUserId) {
+        return createEntry(notebookId, title, null, sysUserId);
+    }
+
+    @Override
+    @Transactional
+    public NotebookEntry createEntry(Integer notebookId, String title, Organization organization, String sysUserId) {
         NoteBook notebook = noteBookService.get(notebookId);
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
@@ -62,6 +71,16 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
         entry.setTitle(title);
         entry.setStatus(EntryStatus.DRAFT);
         entry.setDateCreated(new Date());
+
+        // Set primary organization (immutable after creation)
+        if (organization != null) {
+            entry.setOrganization(organization);
+        }
+
+        // Inherit accessible organizations from template
+        if (notebook.getOrganizations() != null && !notebook.getOrganizations().isEmpty()) {
+            entry.setAccessibleOrganizations(new HashSet<>(notebook.getOrganizations()));
+        }
 
         if (sysUserId != null) {
             entry.setSysUserId(sysUserId);
@@ -114,6 +133,8 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
             Hibernate.initialize(entry.getNotebook());
             Hibernate.initialize(entry.getTechnician());
             Hibernate.initialize(entry.getCreator());
+            Hibernate.initialize(entry.getOrganization());
+            Hibernate.initialize(entry.getAccessibleOrganizations());
         }
     }
 
@@ -246,5 +267,73 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
             return entry;
         }
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotebookEntry> findByNotebookIdAndOrganization(Integer notebookId, Organization organization) {
+        List<NotebookEntry> entries = notebookEntryDAO.findByNotebookId(notebookId);
+        List<NotebookEntry> filteredEntries = new ArrayList<>();
+
+        for (NotebookEntry entry : entries) {
+            initializeLazyRelationships(entry);
+            if (isAccessibleToOrganization(entry, organization)) {
+                filteredEntries.add(entry);
+            }
+        }
+
+        return filteredEntries;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotebookEntry> findByStatusAndOrganization(EntryStatus status, Organization organization) {
+        List<NotebookEntry> entries = notebookEntryDAO.findByStatus(status);
+        List<NotebookEntry> filteredEntries = new ArrayList<>();
+
+        for (NotebookEntry entry : entries) {
+            initializeLazyRelationships(entry);
+            if (isAccessibleToOrganization(entry, organization)) {
+                filteredEntries.add(entry);
+            }
+        }
+
+        return filteredEntries;
+    }
+
+    /**
+     * Check if an entry is accessible to the given organization.
+     *
+     * @param entry        the notebook entry to check
+     * @param organization the organization to check access for
+     * @return true if the entry is accessible to the organization
+     */
+    private boolean isAccessibleToOrganization(NotebookEntry entry, Organization organization) {
+        if (organization == null) {
+            // No organization filter - return all entries (admin case)
+            return true;
+        }
+
+        // Check if entry's accessible organizations include the target organization
+        if (entry.getAccessibleOrganizations() != null && !entry.getAccessibleOrganizations().isEmpty()) {
+            for (Organization accessibleOrg : entry.getAccessibleOrganizations()) {
+                if (accessibleOrg.getId().equals(organization.getId())) {
+                    return true;
+                }
+            }
+        }
+
+        // Also check primary organization
+        if (entry.getOrganization() != null && entry.getOrganization().getId().equals(organization.getId())) {
+            return true;
+        }
+
+        // If no organizations set at all, allow access (backward compatibility)
+        if ((entry.getAccessibleOrganizations() == null || entry.getAccessibleOrganizations().isEmpty())
+                && entry.getOrganization() == null) {
+            return true;
+        }
+
+        return false;
     }
 }

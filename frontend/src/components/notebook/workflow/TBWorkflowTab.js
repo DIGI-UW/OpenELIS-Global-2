@@ -25,11 +25,19 @@ import "./NotebookWorkflow.css";
  * Page 6: Sample-Linked Test Execution
  */
 const DEFAULT_TB_WORKFLOW_PAGES = [
-  { id: "default-1", order: 1, title: "Sample Creation & Full Metadata Capture" },
+  {
+    id: "default-1",
+    order: 1,
+    title: "Sample Creation & Full Metadata Capture",
+  },
   { id: "default-2", order: 2, title: "Raw Sample Quality Check (QC)" },
   { id: "default-3", order: 3, title: "Sample Storage Assignment" },
   { id: "default-4", order: 4, title: "Initial Sample Processing" },
-  { id: "default-5", order: 5, title: "Culture Inoculation & Weekly Monitoring" },
+  {
+    id: "default-5",
+    order: 5,
+    title: "Culture Inoculation & Weekly Monitoring",
+  },
   { id: "default-6", order: 6, title: "Sample-Linked Test Execution" },
 ];
 
@@ -375,6 +383,7 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
 
   const displayTitle = entry?.title || notebook?.title;
   const displayStatus = entry?.status || notebook?.status;
+  const displayOrganization = entry?.organizationName || null;
 
   return (
     <div className="notebook-workflow-container tb-workflow">
@@ -385,6 +394,9 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
             <div className="workflow-meta">
               <Tag type="purple">TB</Tag>
               <Tag type="blue">{displayStatus}</Tag>
+              {displayOrganization && (
+                <Tag type="teal">{displayOrganization}</Tag>
+              )}
               <span className="sample-count">
                 <FormattedMessage
                   id="notebook.workflow.sampleCount"
@@ -448,4 +460,3 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
 }
 
 export default TBWorkflowTab;
-

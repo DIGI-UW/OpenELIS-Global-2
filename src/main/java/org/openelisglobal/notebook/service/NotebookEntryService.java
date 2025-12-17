@@ -4,6 +4,7 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookEntry.EntryStatus;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
@@ -20,6 +21,18 @@ public interface NotebookEntryService extends BaseObjectService<NotebookEntry, I
      * @return the created entry
      */
     NotebookEntry createEntry(Integer notebookId, String title, String sysUserId);
+
+    /**
+     * Create a new entry for a notebook (template) with organization.
+     *
+     * @param notebookId   the template notebook ID
+     * @param title        optional title for the entry (uses notebook title if
+     *                     null)
+     * @param organization the primary organization for this entry (immutable)
+     * @param sysUserId    the creating user ID
+     * @return the created entry
+     */
+    NotebookEntry createEntry(Integer notebookId, String title, Organization organization, String sysUserId);
 
     /**
      * Find all entries for a notebook template.
@@ -81,4 +94,24 @@ public interface NotebookEntryService extends BaseObjectService<NotebookEntry, I
      * entry needs to be accessed outside the transaction context.
      */
     NotebookEntry getWithRelationships(Integer entryId);
+
+    /**
+     * Find entries by notebook template ID filtered by organization. Only returns
+     * entries that are accessible to the given organization.
+     *
+     * @param notebookId   the template notebook ID
+     * @param organization the organization to filter by
+     * @return list of entries accessible to the organization
+     */
+    List<NotebookEntry> findByNotebookIdAndOrganization(Integer notebookId, Organization organization);
+
+    /**
+     * Find entries by status filtered by organization. Only returns entries that
+     * are accessible to the given organization.
+     *
+     * @param status       the entry status to filter by
+     * @param organization the organization to filter by
+     * @return list of entries accessible to the organization
+     */
+    List<NotebookEntry> findByStatusAndOrganization(EntryStatus status, Organization organization);
 }

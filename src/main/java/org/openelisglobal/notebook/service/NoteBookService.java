@@ -3,6 +3,7 @@ package org.openelisglobal.notebook.service;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
 import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
@@ -11,7 +12,9 @@ import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.valueholder.TestSection;
 
 public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
 
@@ -121,13 +124,78 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
     List<org.openelisglobal.notebook.valueholder.NoteBookFile> getFiles(Integer notebookId);
 
     /**
-     * Sync pages from template to an instance notebook.
-     * Adds any pages that exist in the template but are missing from the instance.
-     * This is useful when new pages are added to a template after instances were created.
+     * Sync pages from template to an instance notebook. Adds any pages that exist
+     * in the template but are missing from the instance. This is useful when new
+     * pages are added to a template after instances were created.
      *
      * @param instanceId the notebook instance ID
      * @param sysUserId  the user performing the sync
      * @return number of pages added to the instance
      */
     int syncPagesFromTemplate(Integer instanceId, String sysUserId);
+
+    /**
+     * Update the organizations assigned to a notebook template. This controls which
+     * locations/labs can see and create entries from this template.
+     *
+     * @param notebookId      the template notebook ID
+     * @param organizationIds list of organization IDs to assign
+     * @param sysUserId       the user making the change
+     */
+    void updateTemplateOrganizations(Integer notebookId, List<String> organizationIds, String sysUserId);
+
+    /**
+     * Update the allowed roles for a notebook template. These roles can create
+     * entries from this template.
+     *
+     * @param notebookId   the template notebook ID
+     * @param allowedRoles list of role names to allow
+     * @param sysUserId    the user making the change
+     */
+    void updateTemplateAllowedRoles(Integer notebookId, List<String> allowedRoles, String sysUserId);
+
+    /**
+     * Update the departments (test sections) assigned to a notebook template. This
+     * controls which departments can see and create entries from this template.
+     *
+     * @param notebookId    the template notebook ID
+     * @param departmentIds list of test section IDs to assign
+     * @param sysUserId     the user making the change
+     */
+    void updateTemplateDepartments(Integer notebookId, List<String> departmentIds, String sysUserId);
+
+    /**
+     * Get the departments (test sections) assigned to a notebook template.
+     * Initializes the lazy collection within a transaction.
+     *
+     * @param notebookId the notebook ID
+     * @return set of TestSection or empty set
+     */
+    Set<TestSection> getNoteBookDepartments(Integer notebookId);
+
+    /**
+     * Get the organizations assigned to a notebook template. Initializes the lazy
+     * collection within a transaction.
+     *
+     * @param notebookId the notebook ID
+     * @return set of Organization or empty set
+     */
+    Set<Organization> getNoteBookOrganizations(Integer notebookId);
+
+    /**
+     * Get the allowed roles assigned to a notebook template. Initializes the lazy
+     * collection within a transaction.
+     *
+     * @param notebookId the notebook ID
+     * @return set of roles (Strings) or empty set
+     */
+    Set<String> getNoteBookAllowedRoles(Integer notebookId);
+
+    /**
+     * Find the parent template for a given entry ID.
+     *
+     * @param entryId the entry ID
+     * @return the parent NoteBook template or null if not found
+     */
+    NoteBook getParentTemplate(Integer entryId);
 }

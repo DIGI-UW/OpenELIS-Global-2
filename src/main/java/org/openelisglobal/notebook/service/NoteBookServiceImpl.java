@@ -3,8 +3,10 @@ package org.openelisglobal.notebook.service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -30,6 +32,8 @@ import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.openelisglobal.notebook.valueholder.NoteBookComment;
 import org.openelisglobal.notebook.valueholder.NoteBookFile;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
@@ -37,6 +41,8 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -74,6 +80,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Autowired
     private DictionaryService dictionaryService;
+
+    @Autowired
+    private OrganizationService organizationService;
+
+    @Autowired
+    private TestSectionService testSectionService;
 
     public NoteBookServiceImpl() {
         super(NoteBook.class);
@@ -127,7 +139,15 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         NoteBook noteBook = new NoteBook();
         noteBook = createNoteBookFromForm(noteBook, form);
         noteBook = save(noteBook);
-        if (!noteBook.getIsTemplate()) {
+
+        // If creating a new TEMPLATE, automatically assign all active departments
+        // This ensures the template is accessible to all users by default
+        if (noteBook.getIsTemplate()) {
+            assignAllActiveDepartments(noteBook);
+            assignAllActiveOrganizations(noteBook);
+            update(noteBook);
+        } else {
+            // Creating an entry from a template
             NoteBook templateNoteBook = get(form.getTemplateId());
             if (templateNoteBook != null && templateNoteBook.getIsTemplate()) {
                 templateNoteBook.getEntries().add(noteBook);
@@ -141,6 +161,30 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
 
         return noteBook;
+    }
+
+    /**
+     * Assign all active departments (test sections) to a notebook template. This
+     * makes the template accessible to all departments by default.
+     */
+    private void assignAllActiveDepartments(NoteBook noteBook) {
+        List<TestSection> allDepartments = testSectionService.getAllActiveTestSections();
+        if (noteBook.getDepartments() == null) {
+            noteBook.setDepartments(new HashSet<>());
+        }
+        noteBook.getDepartments().addAll(allDepartments);
+    }
+
+    /**
+     * Assign all active organizations to a notebook template. This makes the
+     * template accessible to all organizations by default.
+     */
+    private void assignAllActiveOrganizations(NoteBook noteBook) {
+        List<Organization> allOrganizations = organizationService.getActiveOrganizations();
+        if (noteBook.getOrganizations() == null) {
+            noteBook.setOrganizations(new HashSet<>());
+        }
+        noteBook.getOrganizations().addAll(allOrganizations);
     }
 
     @Override
@@ -201,6 +245,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         Hibernate.initialize(noteBook.getFiles());
         Hibernate.initialize(noteBook.getComments());
         Hibernate.initialize(noteBook.getEntries());
+        Hibernate.initialize(noteBook.getOrganizations());
+        Hibernate.initialize(noteBook.getDepartments());
+        Hibernate.initialize(noteBook.getAllowedRoles());
         if (noteBook.getTechnician() != null) {
             Hibernate.initialize(noteBook.getTechnician());
         }
@@ -339,6 +386,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 sampleDisplayBeans.add(displayBean);
             }
             fullDisplayBean.setSamples(sampleDisplayBeans);
+
+            fullDisplayBean.setSamples(sampleDisplayBeans);
+
+            Hibernate.initialize(noteBook.getOrganizations());
+            fullDisplayBean.setOrganizations(noteBook.getOrganizations());
+
+            Hibernate.initialize(noteBook.getDepartments());
+            fullDisplayBean.setDepartments(noteBook.getDepartments());
+
+            Hibernate.initialize(noteBook.getAllowedRoles());
+            fullDisplayBean.setAllowedRoles(noteBook.getAllowedRoles());
 
         }
         return fullDisplayBean;
@@ -482,6 +540,40 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             }
         }
 
+        // Handle organizations (for templates - defines which locations can use this
+        // template)
+        // Check if the form included this field (it might be empty list, which implies
+        // clearing)
+        if (form.getOrganizationIds() != null) {
+            // Use clear/add on existing collection to ensure persistence
+            noteBook.getOrganizations().clear();
+            for (String orgId : form.getOrganizationIds()) {
+                Organization org = organizationService.get(orgId);
+                if (org != null) {
+                    noteBook.getOrganizations().add(org);
+                }
+            }
+        }
+
+        // Handle departments (for templates - defines which departments can use this
+        // template)
+        // Only update departments if explicitly provided in the form (not null)
+        if (form.getDepartmentIds() != null) {
+            noteBook.getDepartments().clear();
+            for (String deptId : form.getDepartmentIds()) {
+                TestSection ts = testSectionService.get(deptId);
+                if (ts != null) {
+                    noteBook.getDepartments().add(ts);
+                }
+            }
+        }
+
+        // Handle allowed roles (for templates - defines which roles can create entries)
+        if (form.getAllowedRoles() != null) {
+            noteBook.getAllowedRoles().clear();
+            noteBook.getAllowedRoles().addAll(form.getAllowedRoles());
+        }
+
         return noteBook;
     }
 
@@ -518,7 +610,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Override
     @Transactional
     public List<NoteBook> getAllTemplateNoteBooks() {
-        return baseObjectDAO.getAllMatching("isTemplate", true);
+        List<NoteBook> noteBooks = baseObjectDAO.getAllMatching("isTemplate", true);
+        noteBooks.forEach(nb -> {
+            Hibernate.initialize(nb.getDepartments());
+            Hibernate.initialize(nb.getOrganizations());
+            Hibernate.initialize(nb.getAllowedRoles());
+        });
+        return noteBooks;
     }
 
     @Override
@@ -535,10 +633,16 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Override
     @Transactional(readOnly = true)
     public List<NoteBook> getAllActiveNotebooks() {
-        // Get all notebooks that are not archived
+        // Get all notebooks that are not chilled
         List<NoteBookStatus> activeStatuses = List.of(NoteBookStatus.DRAFT, NoteBookStatus.SUBMITTED,
                 NoteBookStatus.FINALIZED, NoteBookStatus.LOCKED);
-        return filterNoteBooks(activeStatuses, null, null, null, null);
+        List<NoteBook> noteBooks = filterNoteBooks(activeStatuses, null, null, null, null);
+        noteBooks.forEach(nb -> {
+            Hibernate.initialize(nb.getDepartments());
+            Hibernate.initialize(nb.getOrganizations());
+            Hibernate.initialize(nb.getAllowedRoles());
+        });
+        return noteBooks;
     }
 
     @Override
@@ -685,9 +789,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 .min((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(null);
 
         if (nextPage != null) {
-            LogEvent.logInfo(this.getClass().getName(), "getNextPage",
-                    "Found next page: id=" + nextPage.getId() + " order=" + nextPage.getOrder() + " title='"
-                            + nextPage.getTitle() + "'");
+            LogEvent.logInfo(this.getClass().getName(), "getNextPage", "Found next page: id=" + nextPage.getId()
+                    + " order=" + nextPage.getOrder() + " title='" + nextPage.getTitle() + "'");
         } else {
             LogEvent.logInfo(this.getClass().getName(), "getNextPage",
                     "No next page found for currentOrder=" + currentOrder + " (this might be the last page)");
@@ -781,7 +884,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Check by page order - order 4 is the Child Samples page where routing
         // happens, but ONLY for Immunology workflow (not MNTD)
-        // MNTD has "Sample Processing Preparation" at order 4 which is NOT a routing page
+        // MNTD has "Sample Processing Preparation" at order 4 which is NOT a routing
+        // page
         if (page.getOrder() != null && page.getOrder() == 4) {
             // Check if this is an Immunology notebook (not MNTD)
             NoteBook notebook = page.getNotebook();
@@ -935,9 +1039,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 instance.getPages().add(newPage);
                 addedCount++;
 
-                LogEvent.logInfo(this.getClass().getName(), "syncPagesFromTemplate",
-                        "Added page '" + templatePage.getTitle() + "' (order=" + templateOrder
-                                + ") to instance " + instanceId);
+                LogEvent.logInfo(this.getClass().getName(), "syncPagesFromTemplate", "Added page '"
+                        + templatePage.getTitle() + "' (order=" + templateOrder + ") to instance " + instanceId);
             }
         }
 
@@ -952,4 +1055,148 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         return addedCount;
     }
 
+    @Override
+    @Transactional
+    public void updateTemplateOrganizations(Integer notebookId, List<String> organizationIds, String sysUserId) {
+        if (notebookId == null) {
+            return;
+        }
+
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            return;
+        }
+
+        // Initialize lazy collections
+        initializeLazyCollections(notebook);
+
+        // Clear existing organizations and add new ones to the EXISTING collection
+        notebook.getOrganizations().clear();
+        if (organizationIds != null) {
+            for (String orgId : organizationIds) {
+                Organization org = organizationService.get(orgId);
+                if (org != null) {
+                    notebook.getOrganizations().add(org);
+                }
+            }
+        }
+
+        if (sysUserId != null) {
+            notebook.setSysUserId(sysUserId);
+        }
+
+        update(notebook);
+    }
+
+    @Override
+    @Transactional
+    public void updateTemplateAllowedRoles(Integer notebookId, List<String> allowedRoles, String sysUserId) {
+        if (notebookId == null) {
+            return;
+        }
+
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            return;
+        }
+
+        // Initialize lazy collections
+        initializeLazyCollections(notebook);
+
+        // Clear existing roles and add new ones to the EXISTING collection
+        notebook.getAllowedRoles().clear();
+        if (allowedRoles != null) {
+            notebook.getAllowedRoles().addAll(allowedRoles);
+        }
+
+        if (sysUserId != null) {
+            notebook.setSysUserId(sysUserId);
+        }
+
+        update(notebook);
+    }
+
+    @Override
+    @Transactional
+    public void updateTemplateDepartments(Integer notebookId, List<String> departmentIds, String sysUserId) {
+        if (notebookId == null) {
+            return;
+        }
+
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            return;
+        }
+
+        // Initialize lazy collections
+        initializeLazyCollections(notebook);
+
+        // Clear existing departments and add new ones to the EXISTING collection
+        notebook.getDepartments().clear();
+        if (departmentIds != null) {
+            for (String deptId : departmentIds) {
+                TestSection ts = testSectionService.get(deptId);
+                if (ts != null) {
+                    notebook.getDepartments().add(ts);
+                }
+            }
+        }
+
+        if (sysUserId != null) {
+            notebook.setSysUserId(sysUserId);
+        }
+
+        update(notebook);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<TestSection> getNoteBookDepartments(Integer notebookId) {
+        if (notebookId == null) {
+            return new HashSet<>();
+        }
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            return new HashSet<>();
+        }
+        Hibernate.initialize(notebook.getDepartments());
+        return notebook.getDepartments();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<Organization> getNoteBookOrganizations(Integer notebookId) {
+        if (notebookId == null) {
+            return new HashSet<>();
+        }
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            return new HashSet<>();
+        }
+        Hibernate.initialize(notebook.getOrganizations());
+        return notebook.getOrganizations();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getNoteBookAllowedRoles(Integer notebookId) {
+        if (notebookId == null) {
+            return new HashSet<>();
+        }
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            return new HashSet<>();
+        }
+        Hibernate.initialize(notebook.getAllowedRoles());
+        return notebook.getAllowedRoles();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NoteBook getParentTemplate(Integer entryId) {
+        if (entryId == null) {
+            return null;
+        }
+        return baseObjectDAO.findParentTemplate(entryId);
+    }
 }

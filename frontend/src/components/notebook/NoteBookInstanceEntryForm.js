@@ -62,6 +62,7 @@ import {
 import NotebookWorkflowTab from "./workflow/NotebookWorkflowTab";
 import MNTDWorkflowTab from "./workflow/MNTDWorkflowTab";
 import TBWorkflowTab from "./workflow/TBWorkflowTab";
+import PharmaceuticalWorkflowTab from "./workflow/PharmaceuticalWorkflowTab";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -163,7 +164,7 @@ const NoteBookInstanceEntryForm = () => {
 
   const handleSubmited = async (response) => {
     var body = await response.json();
-    console.log(body);
+    console.log("Response status:", response.status, "Body:", body);
     var status = response.status;
     setIsSubmitting(false);
     setNotificationVisible(true);
@@ -173,18 +174,28 @@ const NoteBookInstanceEntryForm = () => {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
-      // Reload data to get comments with proper id and author from backend
-      getFromOpenElisServer("/rest/notebook/view/" + body.id, loadInitialData);
-      // Reload audit trail after save
-      loadAuditTrail(body.id);
+      // Only redirect if we have a valid id
+      if (body.id) {
+        // Reload data to get comments with proper id and author from backend
+        getFromOpenElisServer(
+          "/rest/notebook/view/" + body.id,
+          loadInitialData,
+        );
+        // Reload audit trail after save
+        loadAuditTrail(body.id);
+        window.location.href = "/NoteBookInstanceEditForm/" + body.id;
+      }
     } else {
+      // Show error message from backend if available
+      const errorMessage =
+        body.error || intl.formatMessage({ id: "error.save.msg" });
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.save.msg" }),
+        message: errorMessage,
       });
+      // Do NOT redirect on error - stay on the page
     }
-    window.location.href = "/NoteBookInstanceEditForm/" + body.id;
   };
 
   const showAlertMessage = (msg, kind) => {
@@ -1057,9 +1068,12 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
-              noteBookData?.title
-                ?.toLowerCase()
-                .includes("tuberculosis") &&
+              noteBookData?.title?.toLowerCase().includes("pharmaceutical") && (
+                <PharmaceuticalWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("tuberculosis") &&
               !noteBookData?.title
                 ?.toLowerCase()
                 .includes("malaria and neglected tropical disease") && (
@@ -1067,12 +1081,13 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
+              !noteBookData?.title?.toLowerCase().includes("tuberculosis") &&
               !noteBookData?.title
                 ?.toLowerCase()
-                .includes("tuberculosis") &&
+                .includes("malaria and neglected tropical disease") &&
               !noteBookData?.title
                 ?.toLowerCase()
-                .includes("malaria and neglected tropical disease") && (
+                .includes("pharmaceutical") && (
                 <NotebookWorkflowTab notebookId={noteBookData.id} />
               )}
             {/* Use accordion view for templates or when no ID is available */}
