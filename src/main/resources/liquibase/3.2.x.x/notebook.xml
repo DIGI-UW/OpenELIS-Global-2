@@ -348,4 +348,42 @@
         </createTable>
         <createSequence sequenceName="notebook_samples_seq" startValue="1" incrementBy="1"/>
     </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PATHOLOGY_SOP TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pathology-sop-table" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="pathology_sop" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating PATHOLOGY_SOP table to store Standard Operating Procedure documents for pathology workflows.</comment>
+        <createTable tableName="pathology_sop">
+            <column name="id" type="INTEGER" valueSequenceNext="pathology_sop_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_pathology_sop"/>
+            </column>
+            <column name="sop_title" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sop_category" type="VARCHAR(100)"/>
+            <column name="version" type="VARCHAR(50)"/>
+            <column name="effective_date" type="DATE"/>
+            <column name="review_date" type="DATE"/>
+            <column name="previous_version" type="VARCHAR(50)"/>
+            <column name="changes_summary" type="TEXT"/>
+            <column name="approved_by" type="VARCHAR(255)"/>
+            <column name="approval_date" type="DATE"/>
+            <column name="status" type="VARCHAR(50)" defaultValue="Active"/>
+            <column name="file_data" type="bytea"/>
+            <column name="file_type" type="VARCHAR(255)"/>
+            <column name="file_name" type="VARCHAR(255)"/>
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="true" foreignKeyName="fk_sop_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+            <column name="last_updated" type="datetime" valueComputed="${now}"/>
+        </createTable>
+        <createSequence sequenceName="pathology_sop_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
 </databaseChangeLog>

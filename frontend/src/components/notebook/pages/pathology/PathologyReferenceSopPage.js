@@ -88,55 +88,40 @@ function PathologyReferenceSopPage({
           if (response && Array.isArray(response)) {
             setSops(response);
           } else {
-            // Demo data for display
-            setSops([
-              {
-                id: "1",
-                sopTitle: "Tissue Processing SOP",
-                sopCategory: "Processing",
-                version: "2.1",
-                effectiveDate: "2025-01-01",
-                status: "Active",
-              },
-              {
-                id: "2",
-                sopTitle: "H&E Staining Protocol",
-                sopCategory: "Testing",
-                version: "1.5",
-                effectiveDate: "2024-11-15",
-                status: "Active",
-              },
-              {
-                id: "3",
-                sopTitle: "IHC Procedure",
-                sopCategory: "Testing",
-                version: "3.0",
-                effectiveDate: "2025-02-01",
-                status: "Active",
-              },
-              {
-                id: "4",
-                sopTitle: "Sample Reception Guidelines",
-                sopCategory: "Sample Reception",
-                version: "1.2",
-                effectiveDate: "2024-08-01",
-                status: "Active",
-              },
-              {
-                id: "5",
-                sopTitle: "Quality Control Procedures",
-                sopCategory: "Quality Control",
-                version: "2.0",
-                effectiveDate: "2024-10-01",
-                status: "Active",
-              },
-            ]);
+            setSops([]);
           }
           setLoading(false);
         }
       },
     );
   }, [entryId]);
+
+  // Function to view/preview a document in a new window
+  const handleViewDocument = (sop) => {
+    if (sop.fileData && sop.fileType) {
+      const win = window.open();
+      win.document.write(
+        '<iframe src="data:' +
+          sop.fileType +
+          ";base64," +
+          sop.fileData +
+          '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
+      );
+    }
+  };
+
+  // Function to download a document
+  const handleDownloadDocument = (sop) => {
+    if (sop.fileData && sop.fileType && sop.fileName) {
+      // Create a download link
+      const link = document.createElement("a");
+      link.href = "data:" + sop.fileType + ";base64," + sop.fileData;
+      link.download = sop.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -370,9 +355,8 @@ function PathologyReferenceSopPage({
                                     hasIconOnly
                                     renderIcon={Download}
                                     iconDescription="Download"
-                                    onClick={() => {
-                                      /* Download logic */
-                                    }}
+                                    disabled={!sop?.fileData}
+                                    onClick={() => handleDownloadDocument(sop)}
                                   />
                                 </div>
                               ) : (
@@ -551,6 +535,36 @@ function PathologyReferenceSopPage({
                 </Tag>
               </p>
             </Column>
+            {selectedSop.reviewDate && (
+              <Column lg={8} md={4} sm={4}>
+                <p>
+                  <strong>Review Date:</strong> {selectedSop.reviewDate}
+                </p>
+              </Column>
+            )}
+            {selectedSop.approvedBy && (
+              <Column lg={8} md={4} sm={4}>
+                <p>
+                  <strong>Approved By:</strong> {selectedSop.approvedBy}
+                </p>
+              </Column>
+            )}
+            {selectedSop.previousVersion && (
+              <Column lg={8} md={4} sm={4}>
+                <p>
+                  <strong>Previous Version:</strong>{" "}
+                  {selectedSop.previousVersion}
+                </p>
+              </Column>
+            )}
+            {selectedSop.changesSummary && (
+              <Column lg={16} md={8} sm={4}>
+                <p style={{ marginTop: "1rem" }}>
+                  <strong>Summary of Changes:</strong>
+                </p>
+                <p>{selectedSop.changesSummary}</p>
+              </Column>
+            )}
             <Column lg={16} md={8} sm={4}>
               <Tile
                 style={{
@@ -559,15 +573,53 @@ function PathologyReferenceSopPage({
                   textAlign: "center",
                 }}
               >
-                <p>Document preview would be displayed here.</p>
-                <Button
-                  kind="primary"
-                  size="sm"
-                  renderIcon={Download}
-                  style={{ marginTop: "1rem" }}
-                >
-                  Download Document
-                </Button>
+                {selectedSop.fileData ? (
+                  <>
+                    <p>
+                      <strong>Attached Document:</strong> {selectedSop.fileName}
+                    </p>
+                    <p style={{ color: "#525252", marginBottom: "1rem" }}>
+                      Type: {selectedSop.fileType}
+                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "1rem",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Button
+                        kind="secondary"
+                        size="sm"
+                        renderIcon={View}
+                        onClick={() => handleViewDocument(selectedSop)}
+                      >
+                        <FormattedMessage
+                          id="pathology.label.view"
+                          defaultMessage="View"
+                        />
+                      </Button>
+                      <Button
+                        kind="primary"
+                        size="sm"
+                        renderIcon={Download}
+                        onClick={() => handleDownloadDocument(selectedSop)}
+                      >
+                        <FormattedMessage
+                          id="pathology.sop.download"
+                          defaultMessage="Download"
+                        />
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p style={{ color: "#525252" }}>
+                    <FormattedMessage
+                      id="pathology.sop.noDocument"
+                      defaultMessage="No document attached to this SOP."
+                    />
+                  </p>
+                )}
               </Tile>
             </Column>
           </Grid>

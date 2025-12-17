@@ -161,6 +161,20 @@ function PathologyReportingPage({
     { id: "equipment_downtime", text: "Equipment downtime" },
   ];
 
+  const handleDownloadCsv = () => {
+    const reportType = reportData.reportType || "comprehensive";
+    const reportPeriod = reportData.reportPeriod || "";
+    const url = `/rest/notebook/pathology/report/export-csv?entryId=${entryId}&reportType=${encodeURIComponent(reportType)}&reportPeriod=${encodeURIComponent(reportPeriod)}`;
+
+    // Create a temporary link to trigger the download
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pathology_report_${entryId}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="pathology-reporting-page">
       <div className="page-section-header">
@@ -246,6 +260,17 @@ function PathologyReportingPage({
           <FormattedMessage
             id="pathology.reporting.generateReport"
             defaultMessage="Generate Report"
+          />
+        </Button>
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Download}
+          onClick={handleDownloadCsv}
+        >
+          <FormattedMessage
+            id="pathology.reporting.downloadCsv"
+            defaultMessage="Download CSV"
           />
         </Button>
         <Button
