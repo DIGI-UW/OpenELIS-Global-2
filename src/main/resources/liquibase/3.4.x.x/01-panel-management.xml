@@ -7,7 +7,7 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!-- ========================================================= -->
-    <!-- Panel LOINC Code (verify / add if missing)                -->
+    <!-- Panel LOINC Code                                         -->
     <!-- ========================================================= -->
     <changeSet id="panel-001-add-loinc-code" author="Agaba-Derrick">
         <preConditions onFail="MARK_RAN">
@@ -15,16 +15,18 @@
                 <columnExists tableName="panel" columnName="loinc"/>
             </not>
         </preConditions>
+
         <addColumn tableName="panel">
             <column name="loinc" type="varchar(20)"/>
         </addColumn>
+
         <rollback>
             <dropColumn tableName="panel" columnName="loinc"/>
         </rollback>
     </changeSet>
 
     <!-- ========================================================= -->
-    <!-- Panel ↔ Lab Unit Mapping Table                            -->
+    <!-- Panel ↔ Lab Unit (Unit of Measure) Mapping Table          -->
     <!-- ========================================================= -->
     <changeSet id="panel-002-create-panel-lab-unit" author="Agaba-Derrick">
         <preConditions onFail="MARK_RAN">
@@ -32,23 +34,34 @@
                 <tableExists tableName="panel_lab_unit"/>
             </not>
         </preConditions>
+
         <createTable tableName="panel_lab_unit">
             <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
+
             <column name="panel_id" type="numeric(10,0)">
-                <constraints nullable="false"
-                             referencedTableName="panel"
-                             referencedColumnNames="id"
-                             foreignKeyName="fk_panel_lab_unit_panel"/>
+                <constraints nullable="false"/>
             </column>
+
             <column name="lab_unit_id" type="numeric(10,0)">
-                <constraints nullable="false"
-                             referencedTableName="lab_unit"
-                             referencedColumnNames="id"
-                             foreignKeyName="fk_panel_lab_unit_lab_unit"/>
+                <constraints nullable="false"/>
             </column>
         </createTable>
+
+        <addForeignKeyConstraint
+                baseTableName="panel_lab_unit"
+                baseColumnNames="panel_id"
+                referencedTableName="panel"
+                referencedColumnNames="id"
+                constraintName="fk_panel_lab_unit_panel"/>
+
+        <addForeignKeyConstraint
+                baseTableName="panel_lab_unit"
+                baseColumnNames="lab_unit_id"
+                referencedTableName="unit_of_measure"
+                referencedColumnNames="id"
+                constraintName="fk_panel_lab_unit_uom"/>
 
         <addUniqueConstraint
                 tableName="panel_lab_unit"
@@ -61,13 +74,14 @@
     </changeSet>
 
     <!-- ========================================================= -->
-    <!-- Panel ↔ Sample Type Mapping (existing table hardening)    -->
+    <!-- Panel ↔ Sample Type Mapping                               -->
     <!-- ========================================================= -->
     <changeSet id="panel-003-add-unique-sampletype-panel" author="Agaba-Derrick">
         <addUniqueConstraint
                 tableName="sampletype_panel"
                 columnNames="panel_id, sample_type_id"
                 constraintName="uq_sampletype_panel"/>
+
         <rollback>
             <dropUniqueConstraint
                     tableName="sampletype_panel"
@@ -84,16 +98,18 @@
                 <columnExists tableName="panel_item" columnName="panel_loinc_code"/>
             </not>
         </preConditions>
+
         <addColumn tableName="panel_item">
             <column name="panel_loinc_code" type="varchar(20)"/>
         </addColumn>
+
         <rollback>
             <dropColumn tableName="panel_item" columnName="panel_loinc_code"/>
         </rollback>
     </changeSet>
 
     <!-- ========================================================= -->
-    <!-- Panel Import Log                                          -->
+    <!-- Panel Import Log                                         -->
     <!-- ========================================================= -->
     <changeSet id="panel-005-create-import-log" author="Agaba-Derrick">
         <preConditions onFail="MARK_RAN">
@@ -101,17 +117,22 @@
                 <tableExists tableName="panel_import_log"/>
             </not>
         </preConditions>
+
         <createTable tableName="panel_import_log">
             <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="import_date" type="timestamp"
+
+            <column name="import_date"
+                    type="timestamp"
                     defaultValueComputed="CURRENT_TIMESTAMP"/>
+
             <column name="imported_by" type="numeric(10,0)">
                 <constraints referencedTableName="system_user"
                              referencedColumnNames="id"
                              foreignKeyName="fk_panel_import_user"/>
             </column>
+
             <column name="file_name" type="varchar(255)"/>
             <column name="panels_created" type="integer" defaultValueNumeric="0"/>
             <column name="panels_updated" type="integer" defaultValueNumeric="0"/>
@@ -119,6 +140,7 @@
             <column name="warnings" type="text"/>
             <column name="import_data" type="jsonb"/>
         </createTable>
+
         <rollback>
             <dropTable tableName="panel_import_log"/>
         </rollback>
@@ -128,12 +150,6 @@
     <!-- Indexes                                                   -->
     <!-- ========================================================= -->
     <changeSet id="panel-006-create-indexes" author="Agaba-Derrick">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <indexExists indexName="idx_panel_lab_unit_panel"/>
-            </not>
-        </preConditions>
-
         <createIndex indexName="idx_panel_lab_unit_panel" tableName="panel_lab_unit">
             <column name="panel_id"/>
         </createIndex>
