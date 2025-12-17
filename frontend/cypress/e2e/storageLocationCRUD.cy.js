@@ -170,8 +170,12 @@ describe("Location CRUD Operations", function () {
           const newDescription = "Updated description for E2E test";
 
           // E2E: do NOT stub writes/reads. Spy only so we can wait on it.
-          cy.intercept("GET", `**/rest/storage/rooms/${roomId}**`).as("getRoom");
-          cy.intercept("PUT", `**/rest/storage/rooms/${roomId}**`).as("updateRoom");
+          cy.intercept("GET", `**/rest/storage/rooms/${roomId}**`).as(
+            "getRoom",
+          );
+          cy.intercept("PUT", `**/rest/storage/rooms/${roomId}**`).as(
+            "updateRoom",
+          );
           cy.intercept("GET", "**/rest/storage/rooms**").as("refreshRooms");
 
           // Open edit modal
@@ -259,8 +263,12 @@ describe("Location CRUD Operations", function () {
           const deviceId = testId.replace("device-row-", "");
 
           // E2E: do NOT stub writes/reads. Spy only so we can wait on it.
-          cy.intercept("GET", `**/rest/storage/devices/${deviceId}**`).as("getDevice");
-          cy.intercept("PUT", `**/rest/storage/devices/${deviceId}**`).as("updateDevice");
+          cy.intercept("GET", `**/rest/storage/devices/${deviceId}**`).as(
+            "getDevice",
+          );
+          cy.intercept("PUT", `**/rest/storage/devices/${deviceId}**`).as(
+            "updateDevice",
+          );
           cy.intercept("GET", "**/rest/storage/devices**").as("refreshDevices");
 
           // Open edit modal
@@ -345,8 +353,12 @@ describe("Location CRUD Operations", function () {
           const newLabel = `Updated Shelf ${Date.now()}`;
 
           // E2E: do NOT stub writes/reads. Spy only so we can wait on it.
-          cy.intercept("GET", `**/rest/storage/shelves/${shelfId}**`).as("getShelf");
-          cy.intercept("PUT", `**/rest/storage/shelves/${shelfId}**`).as("updateShelf");
+          cy.intercept("GET", `**/rest/storage/shelves/${shelfId}**`).as(
+            "getShelf",
+          );
+          cy.intercept("PUT", `**/rest/storage/shelves/${shelfId}**`).as(
+            "updateShelf",
+          );
           cy.intercept("GET", "**/rest/storage/shelves**").as("refreshShelves");
 
           // Open edit modal
@@ -440,8 +452,12 @@ describe("Location CRUD Operations", function () {
           const rackId = testId.replace("rack-row-", "");
 
           // E2E: do NOT stub writes/reads. Spy only so we can wait on it.
-          cy.intercept("GET", `**/rest/storage/racks/${rackId}**`).as("getRack");
-          cy.intercept("PUT", `**/rest/storage/racks/${rackId}**`).as("updateRack");
+          cy.intercept("GET", `**/rest/storage/racks/${rackId}**`).as(
+            "getRack",
+          );
+          cy.intercept("PUT", `**/rest/storage/racks/${rackId}**`).as(
+            "updateRack",
+          );
           cy.intercept("GET", "**/rest/storage/racks**").as("refreshRacks");
 
           // Open edit modal
@@ -661,7 +677,7 @@ describe("Location CRUD Operations", function () {
 
           cy.wait("@deleteRoom", { timeout: 3000 });
           cy.wait("@refreshRoomsAfterDelete", { timeout: 3000 });
-          
+
           // Modal should unmount after delete
           cy.get('[data-testid="delete-location-modal"]', {
             timeout: 3000,
@@ -890,7 +906,6 @@ describe("Location CRUD Operations", function () {
       cy.intercept("POST", "**/rest/storage/racks**").as("createRack");
       cy.intercept("GET", "**/rest/storage/racks**").as("refreshRacks");
 
-
       // Click Add Rack button
       cy.get('[data-testid="add-rack-button"]', { timeout: 3000 })
         .should("be.visible")
@@ -956,8 +971,12 @@ describe("Location CRUD Operations", function () {
           const updatedCode = `RK${Date.now().toString().slice(-6)}`;
 
           // E2E: do NOT stub reads/writes for persistence checks. Spy only.
-          cy.intercept("GET", `**/rest/storage/racks/${rackId}**`).as("getRack");
-          cy.intercept("PUT", `**/rest/storage/racks/${rackId}**`).as("updateRack");
+          cy.intercept("GET", `**/rest/storage/racks/${rackId}**`).as(
+            "getRack",
+          );
+          cy.intercept("PUT", `**/rest/storage/racks/${rackId}**`).as(
+            "updateRack",
+          );
           cy.intercept("GET", "**/rest/storage/racks**").as("refreshRacks");
 
           // Open edit modal
@@ -1030,7 +1049,9 @@ describe("Location CRUD Operations", function () {
 
           // Verify table shows updated label after refresh
           cy.wait("@refreshRacks", { timeout: 3000 });
-          cy.contains("td", updatedLabel, { timeout: 3000 }).should("be.visible");
+          cy.contains("td", updatedLabel, { timeout: 3000 }).should(
+            "be.visible",
+          );
         });
     });
   });
@@ -1059,8 +1080,12 @@ describe("Location CRUD Operations", function () {
           const roomId = testId.replace("room-row-", "");
 
           // E2E: do NOT stub writes/reads. Spy only so we can wait on it.
-          cy.intercept("GET", `**/rest/storage/rooms/${roomId}**`).as("getRoom");
-          cy.intercept("PUT", `**/rest/storage/rooms/${roomId}**`).as("updateRoomActive");
+          cy.intercept("GET", `**/rest/storage/rooms/${roomId}**`).as(
+            "getRoom",
+          );
+          cy.intercept("PUT", `**/rest/storage/rooms/${roomId}**`).as(
+            "updateRoomActive",
+          );
           cy.intercept("GET", "**/rest/storage/rooms**").as("refreshRooms");
 
           // Open edit modal
@@ -1120,8 +1145,12 @@ describe("Location CRUD Operations", function () {
 
           // E2E: do NOT stub writes/reads. Spy only so we can wait on it.
           // Setup intercepts BEFORE opening modal
-          cy.intercept("GET", `**/rest/storage/devices/${deviceId}**`).as("getDevice");
-          cy.intercept("PUT", `**/rest/storage/devices/${deviceId}**`).as("updateDevice");
+          cy.intercept("GET", `**/rest/storage/devices/${deviceId}**`).as(
+            "getDevice",
+          );
+          cy.intercept("PUT", `**/rest/storage/devices/${deviceId}**`).as(
+            "updateDevice",
+          );
 
           // Ensure no modals are blocking before opening overflow menu
           cy.get("body").then(($body) => {
@@ -1130,9 +1159,9 @@ describe("Location CRUD Operations", function () {
               cy.get('[data-testid="edit-location-modal"]')
                 .find('button[aria-label="Close"]')
                 .click({ force: true });
-              cy.get('[data-testid="edit-location-modal"]', { timeout: 3000 }).should(
-                "not.exist",
-              );
+              cy.get('[data-testid="edit-location-modal"]', {
+                timeout: 3000,
+              }).should("not.exist");
             }
           });
 
@@ -1183,29 +1212,33 @@ describe("Location CRUD Operations", function () {
                 .click();
 
               // Wait for API call
-              cy.wait("@updateDevice", { timeout: 3000 }).then((interception) => {
-                if (interception.response.statusCode >= 400) {
-                  // Validation error - device has active samples or other constraint
-                  // Check if error is displayed (may not always be shown)
-                  cy.get("body").then(($body) => {
-                    const errorElement = $body.find('[data-testid="edit-location-error"]');
-                    if (errorElement.length > 0) {
-                      cy.get('[data-testid="edit-location-error"]')
-                        .should("be.visible")
-                        .should("contain.text", /samples|constraint|cannot/i);
-                    }
-                  });
-                  // Close modal manually
-                  cy.get('[data-testid="edit-location-modal"]')
-                    .find('button[aria-label="Close"]')
-                    .click({ force: true });
-                } else {
-                  // Success - modal should close
-                  cy.get('[data-testid="edit-location-modal"]', { timeout: 3000 }).should(
-                    "not.exist",
-                  );
-                }
-              });
+              cy.wait("@updateDevice", { timeout: 3000 }).then(
+                (interception) => {
+                  if (interception.response.statusCode >= 400) {
+                    // Validation error - device has active samples or other constraint
+                    // Check if error is displayed (may not always be shown)
+                    cy.get("body").then(($body) => {
+                      const errorElement = $body.find(
+                        '[data-testid="edit-location-error"]',
+                      );
+                      if (errorElement.length > 0) {
+                        cy.get('[data-testid="edit-location-error"]')
+                          .should("be.visible")
+                          .should("contain.text", /samples|constraint|cannot/i);
+                      }
+                    });
+                    // Close modal manually
+                    cy.get('[data-testid="edit-location-modal"]')
+                      .find('button[aria-label="Close"]')
+                      .click({ force: true });
+                  } else {
+                    // Success - modal should close
+                    cy.get('[data-testid="edit-location-modal"]', {
+                      timeout: 3000,
+                    }).should("not.exist");
+                  }
+                },
+              );
             } else {
               // Device is inactive - toggle to active (should always succeed)
               cy.get("#device-active").click({ force: true });
@@ -1216,14 +1249,18 @@ describe("Location CRUD Operations", function () {
                 .click();
 
               // Wait for API call
-              cy.wait("@updateDevice", { timeout: 3000 }).then((interception) => {
-                expect(interception.response.statusCode).to.be.oneOf([200, 201]);
-              });
+              cy.wait("@updateDevice", { timeout: 3000 }).then(
+                (interception) => {
+                  expect(interception.response.statusCode).to.be.oneOf([
+                    200, 201,
+                  ]);
+                },
+              );
 
               // Modal should close on success
-              cy.get('[data-testid="edit-location-modal"]', { timeout: 3000 }).should(
-                "not.exist",
-              );
+              cy.get('[data-testid="edit-location-modal"]', {
+                timeout: 3000,
+              }).should("not.exist");
             }
           });
         });
@@ -1248,8 +1285,12 @@ describe("Location CRUD Operations", function () {
           const shelfId = testId.replace("shelf-row-", "");
 
           // E2E: do NOT stub writes/reads. Spy only so we can wait on it.
-          cy.intercept("GET", `**/rest/storage/shelves/${shelfId}**`).as("getShelf");
-          cy.intercept("PUT", `**/rest/storage/shelves/${shelfId}**`).as("updateShelfActive");
+          cy.intercept("GET", `**/rest/storage/shelves/${shelfId}**`).as(
+            "getShelf",
+          );
+          cy.intercept("PUT", `**/rest/storage/shelves/${shelfId}**`).as(
+            "updateShelfActive",
+          );
 
           // Open edit modal
           cy.get('[data-testid^="shelf-row-"]')
@@ -1308,8 +1349,12 @@ describe("Location CRUD Operations", function () {
           const rackId = testId.replace("rack-row-", "");
 
           // E2E: do NOT stub writes/reads. Spy only so we can wait on it.
-          cy.intercept("GET", `**/rest/storage/racks/${rackId}**`).as("getRack");
-          cy.intercept("PUT", `**/rest/storage/racks/${rackId}**`).as("updateRackActive");
+          cy.intercept("GET", `**/rest/storage/racks/${rackId}**`).as(
+            "getRack",
+          );
+          cy.intercept("PUT", `**/rest/storage/racks/${rackId}**`).as(
+            "updateRackActive",
+          );
 
           // Open edit modal
           cy.get('[data-testid^="rack-row-"]')
@@ -1348,9 +1393,11 @@ describe("Location CRUD Operations", function () {
             .click();
 
           // Wait for API call
-          cy.wait("@updateRackActive", { timeout: 3000 }).then((interception) => {
-            expect(interception.response.statusCode).to.be.oneOf([200, 201]);
-          });
+          cy.wait("@updateRackActive", { timeout: 3000 }).then(
+            (interception) => {
+              expect(interception.response.statusCode).to.be.oneOf([200, 201]);
+            },
+          );
 
           // Modal should unmount (not exist) when closed
           cy.get('[data-testid="edit-location-modal"]', {

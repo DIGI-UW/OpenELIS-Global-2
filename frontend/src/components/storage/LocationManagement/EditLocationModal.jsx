@@ -185,14 +185,16 @@ const EditLocationModal = ({
             setOriginalCode(fullLocation.code || "");
             // Store original parent IDs
             if (locationType === "device") {
-              const parentRoomId = fullLocation.parentRoomId || fullLocation.parentRoom?.id;
+              const parentRoomId =
+                fullLocation.parentRoomId || fullLocation.parentRoom?.id;
               if (parentRoomId) {
                 setOriginalParentRoomId(String(parentRoomId));
                 setSelectedParentRoomId(String(parentRoomId));
               }
             }
             if (locationType === "shelf") {
-              const parentDeviceId = fullLocation.parentDeviceId || fullLocation.parentDevice?.id;
+              const parentDeviceId =
+                fullLocation.parentDeviceId || fullLocation.parentDevice?.id;
               if (parentDeviceId) {
                 setOriginalParentDeviceId(String(parentDeviceId));
                 setSelectedParentDeviceId(String(parentDeviceId));
@@ -206,18 +208,27 @@ const EditLocationModal = ({
                 fullLocation.parentShelf?.id ||
                 location?.parentShelfId ||
                 location?.parentShelf?.id;
-              
-              if (parentShelfId != null && parentShelfId !== undefined && parentShelfId !== "") {
+
+              if (
+                parentShelfId != null &&
+                parentShelfId !== undefined &&
+                parentShelfId !== ""
+              ) {
                 setOriginalParentShelfId(String(parentShelfId));
                 setSelectedParentShelfId(String(parentShelfId));
               } else {
                 // This should never happen - racks must have a parent shelf
-                console.error("EditLocationModal: parentShelfId missing from API response for rack", {
-                  rackId: location.id,
-                  fullLocation,
-                  locationProp: location,
-                });
-                setError("Cannot edit rack: parent shelf information is missing. This may indicate a data integrity issue.");
+                console.error(
+                  "EditLocationModal: parentShelfId missing from API response for rack",
+                  {
+                    rackId: location.id,
+                    fullLocation,
+                    locationProp: location,
+                  },
+                );
+                setError(
+                  "Cannot edit rack: parent shelf information is missing. This may indicate a data integrity issue.",
+                );
               }
             }
             setError(null);
@@ -505,16 +516,21 @@ const EditLocationModal = ({
           originalParentShelfId ||
           location?.parentShelfId ||
           location?.parentShelf?.id;
-        
-        if (!parentShelfIdToUse || parentShelfIdToUse === "" || parentShelfIdToUse === "null" || parentShelfIdToUse === "undefined") {
+
+        if (
+          !parentShelfIdToUse ||
+          parentShelfIdToUse === "" ||
+          parentShelfIdToUse === "null" ||
+          parentShelfIdToUse === "undefined"
+        ) {
           // This should never happen - racks must have a parent shelf
           // But if it does, we need to fetch it from the existing rack
           throw new Error(
             `Cannot edit rack ${location.id}: parentShelfId is required but not found. ` +
-            `This indicates a data integrity issue or the API response is missing parentShelfId.`
+              `This indicates a data integrity issue or the API response is missing parentShelfId.`,
           );
         }
-        
+
         payload.parentShelfId = String(parentShelfIdToUse);
       }
 
