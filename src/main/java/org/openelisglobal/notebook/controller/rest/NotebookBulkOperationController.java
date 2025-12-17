@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.notebook.service.NoteBookPageService;
 import org.openelisglobal.notebook.service.NotebookBulkOperationService;
 import org.openelisglobal.notebook.service.NotebookPageSampleService;
 import org.openelisglobal.notebook.service.ResultCompilationService;
@@ -44,6 +45,9 @@ public class NotebookBulkOperationController extends BaseRestController {
 
     @Autowired
     private ResultCompilationService resultCompilationService;
+
+    @Autowired
+    private NoteBookPageService noteBookPageService;
 
     /**
      * Bulk apply values to multiple samples on a page. POST
@@ -116,6 +120,50 @@ public class NotebookBulkOperationController extends BaseRestController {
         result.put("percentage", progress.percentage());
 
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Update the content (configuration) of a notebook page. POST
+     * /notebook/bulk/page/{pageId}/content
+     *
+     * This endpoint allows updating page-level configuration such as QC parameters,
+     * workflow settings, etc. The new content is merged with existing content.
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains the content JSON to merge
+     * @param httpRequest for getting user session
+     * @return result with updated page content
+     */
+    @PostMapping(value = "/page/{pageId}/content", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> updatePageContent(@PathVariable("pageId") Integer pageId,
+            @RequestBody PageContentUpdateRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Content is required"));
+        }
+
+        try {
+            noteBookPageService.updatePageContent(pageId, request.getContent(), sysUserId);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("pageId", pageId);
+            result.put("success", true);
+            result.put("message", "Page content updated successfully");
+
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "updatePageContent",
+                    "Error updating page content: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to update page content"));
+        }
     }
 
     /**
@@ -1578,6 +1626,21 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setInstrumentName(String instrumentName) {
             this.instrumentName = instrumentName;
+        }
+    }
+
+    /**
+     * Request body for page content update operation.
+     */
+    public static class PageContentUpdateRequest {
+        private String content;
+
+        public String getContent() {
+            return content;
+        }
+
+        public void setContent(String content) {
+            this.content = content;
         }
     }
 }
