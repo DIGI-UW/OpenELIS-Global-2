@@ -4,7 +4,7 @@ import java.util.Date;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 
-public class ProgramSampleDisplayItem {
+public class OrderProgramDisplayItem {
 
     private Integer programSampleId;
     private String programName;

@@ -10,15 +10,15 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.program.valueholder.OrderProgramDisplayItem;
 import org.openelisglobal.program.valueholder.ProgramSample;
-import org.openelisglobal.program.valueholder.ProgramSampleDisplayItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class GenericProgramDisplayServiceImpl implements GenericProgramDisplayService {
+public class OrderProgramsDisplayServiceImpl implements OrderProgramsDisplayService {
 
     @Autowired
     private ProgramSampleService programSampleService;
@@ -34,14 +34,14 @@ public class GenericProgramDisplayServiceImpl implements GenericProgramDisplaySe
 
     @Override
     @Transactional
-    public ProgramSampleDisplayItem getProgramSampleById(Integer programSampleId) {
+    public OrderProgramDisplayItem getOrderProgramById(Integer programSampleId) {
         ProgramSample ps = programSampleService.get(programSampleId);
         return convert(ps);
     }
 
-    private ProgramSampleDisplayItem convert(ProgramSample ps) {
+    private OrderProgramDisplayItem convert(ProgramSample ps) {
 
-        ProgramSampleDisplayItem display = new ProgramSampleDisplayItem();
+        OrderProgramDisplayItem display = new OrderProgramDisplayItem();
         display.setProgramSampleId(ps.getId());
         display.setProgramName(ps.getProgram().getProgramName());
         display.setProgramCode(ps.getProgram().getCode());

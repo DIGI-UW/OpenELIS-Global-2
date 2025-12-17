@@ -3,13 +3,13 @@ package org.openelisglobal.common.rest.provider.form;
 import java.util.List;
 import org.openelisglobal.common.form.IPagingForm;
 import org.openelisglobal.common.paging.PagingBean;
-import org.openelisglobal.common.rest.provider.bean.ViewItems;
+import org.openelisglobal.common.rest.provider.bean.OrderPrograms;
 
-public class GenericProgramDashboardForm implements IPagingForm {
+public class OrderProgramsDashboardForm implements IPagingForm {
 
     private PagingBean pagingBean;
 
-    private List<ViewItems> viewItems;
+    private List<OrderPrograms> orderPrograms;
 
     @Override
     public void setPaging(PagingBean pagingBean) {
@@ -23,12 +23,12 @@ public class GenericProgramDashboardForm implements IPagingForm {
 
     }
 
-    public List<ViewItems> getViewItems() {
-        return viewItems;
+    public List<OrderPrograms> getOrderPrograms() {
+        return orderPrograms;
     }
 
-    public void setViewItems(List<ViewItems> viewItems) {
-        this.viewItems = viewItems;
+    public void setOrderPrograms(List<OrderPrograms> orderPrograms) {
+        this.orderPrograms = orderPrograms;
     }
 
 }

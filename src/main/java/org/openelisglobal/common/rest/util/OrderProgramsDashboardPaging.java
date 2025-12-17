@@ -10,32 +10,31 @@ import org.openelisglobal.common.paging.IPageFlattener;
 import org.openelisglobal.common.paging.IPageUpdater;
 import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.common.paging.PagingUtility;
-import org.openelisglobal.common.rest.provider.bean.ViewItems;
-import org.openelisglobal.common.rest.provider.form.GenericProgramDashboardForm;
+import org.openelisglobal.common.rest.provider.bean.OrderPrograms;
+import org.openelisglobal.common.rest.provider.form.OrderProgramsDashboardForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.spring.util.SpringContext;
 
-public class GenericProgramDashboardPaging {
+public class OrderProgramsDashboardPaging {
 
-    private final PagingUtility<List<ViewItems>> paging = new PagingUtility<>();
+    private final PagingUtility<List<OrderPrograms>> paging = new PagingUtility<>();
 
-    private static final GenericProgramDashboardPageHelper pagingHelper = new GenericProgramDashboardPageHelper(); // Implement
-                                                                                                                   // helper
-    // class
+    private static final OrderProgramsDashboardPageHelper pagingHelper = new OrderProgramsDashboardPageHelper();
 
-    public void setDatabaseResults(HttpServletRequest request, GenericProgramDashboardForm form, List<ViewItems> orders)
+    public void setDatabaseOrderPrograms(HttpServletRequest request, OrderProgramsDashboardForm form,
+            List<OrderPrograms> orders)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         paging.setDatabaseResults(request.getSession(), orders, pagingHelper);
 
-        List<ViewItems> resultPage = paging.getPage(1, request.getSession());
-        if (resultPage != null) {
-            form.setViewItems(resultPage);
+        List<OrderPrograms> orderProgramsPage = paging.getPage(1, request.getSession());
+        if (orderProgramsPage != null) {
+            form.setOrderPrograms(orderProgramsPage);
             form.setPaging(paging.getPagingBeanWithSearchMapping(1, request.getSession()));
         }
     }
 
-    public void page(HttpServletRequest request, GenericProgramDashboardForm form, int newPage)
+    public void page(HttpServletRequest request, OrderProgramsDashboardForm form, int newPage)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         request.getSession().setAttribute(IActionConstants.SAVE_DISABLED, IActionConstants.FALSE);
@@ -43,29 +42,29 @@ public class GenericProgramDashboardPaging {
         if (newPage < 0) {
             newPage = 0;
         }
-        List<ViewItems> resultPage = paging.getPage(newPage, request.getSession());
-        if (resultPage != null) {
-            form.setViewItems(resultPage);
+        List<OrderPrograms> orderProgramsPage = paging.getPage(newPage, request.getSession());
+        if (orderProgramsPage != null) {
+            form.setOrderPrograms(orderProgramsPage);
             form.setPaging(paging.getPagingBeanWithSearchMapping(newPage, request.getSession()));
         }
     }
 
-    public List<ViewItems> getResults(HttpServletRequest request) {
+    public List<OrderPrograms> getOrderPrograms(HttpServletRequest request) {
         return paging.getAllResults(request.getSession(), pagingHelper);
     }
 
-    private static class GenericProgramDashboardPageHelper
-            implements IPageDivider<List<ViewItems>>, IPageUpdater<List<ViewItems>>, IPageFlattener<List<ViewItems>> {
+    private static class OrderProgramsDashboardPageHelper implements IPageDivider<List<OrderPrograms>>,
+            IPageUpdater<List<OrderPrograms>>, IPageFlattener<List<OrderPrograms>> {
 
         @Override
-        public void createPages(List<ViewItems> orders, List<List<ViewItems>> pagedResults) {
+        public void createPages(List<OrderPrograms> orders, List<List<OrderPrograms>> pagedResults) {
 
-            int pageSize = SpringContext.getBean(PagingProperties.class).getGenericPageSize();
+            int pageSize = SpringContext.getBean(PagingProperties.class).getOrderProgramsPageSize();
 
-            List<ViewItems> page = new ArrayList<>();
+            List<OrderPrograms> page = new ArrayList<>();
             int count = 0;
 
-            for (ViewItems item : orders) {
+            for (OrderPrograms item : orders) {
 
                 if (count == pageSize) {
                     pagedResults.add(page);
@@ -83,18 +82,18 @@ public class GenericProgramDashboardPaging {
         }
 
         @Override
-        public void updateCache(List<ViewItems> cacheItems, List<ViewItems> clientItems) {
+        public void updateCache(List<OrderPrograms> cacheItems, List<OrderPrograms> clientItems) {
             for (int i = 0; i < clientItems.size(); i++) {
                 cacheItems.set(i, clientItems.get(i));
             }
         }
 
         @Override
-        public List<ViewItems> flattenPages(List<List<ViewItems>> pages) {
+        public List<OrderPrograms> flattenPages(List<List<OrderPrograms>> pages) {
 
-            List<ViewItems> allResults = new ArrayList<>();
-            for (List<ViewItems> page : pages) {
-                for (ViewItems item : page) {
+            List<OrderPrograms> allResults = new ArrayList<>();
+            for (List<OrderPrograms> page : pages) {
+                for (OrderPrograms item : page) {
                     allResults.add(item);
                 }
             }
@@ -103,17 +102,17 @@ public class GenericProgramDashboardPaging {
         }
 
         @Override
-        public List<IdValuePair> createSearchToPageMapping(List<List<ViewItems>> allPages) {
+        public List<IdValuePair> createSearchToPageMapping(List<List<OrderPrograms>> allPages) {
             List<IdValuePair> mappingList = new ArrayList<>();
 
             int page = 0;
-            for (List<ViewItems> resultList : allPages) {
+            for (List<OrderPrograms> resultList : allPages) {
                 page++;
                 String pageString = String.valueOf(page);
 
                 String orderID = null;
 
-                for (ViewItems resultItem : resultList) {
+                for (OrderPrograms resultItem : resultList) {
                     if (!resultItem.getProgramSampleId().equals(orderID)) {
                         orderID = resultItem.getProgramSampleId();
                         mappingList.add(new IdValuePair(orderID, pageString));

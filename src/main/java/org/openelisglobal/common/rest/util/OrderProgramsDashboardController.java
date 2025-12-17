@@ -1,18 +1,17 @@
-package org.openelisglobal.program.controller;
+package org.openelisglobal.common.rest.util;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.common.rest.provider.bean.ViewItems;
-import org.openelisglobal.common.rest.provider.form.GenericProgramDashboardForm;
-import org.openelisglobal.common.rest.util.GenericProgramDashboardPaging;
+import org.openelisglobal.common.rest.provider.bean.OrderPrograms;
+import org.openelisglobal.common.rest.provider.form.OrderProgramsDashboardForm;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.bean.DashboardSummary;
-import org.openelisglobal.program.service.GenericProgramDisplayService;
+import org.openelisglobal.program.service.OrderProgramsDisplayService;
 import org.openelisglobal.program.service.ProgramSampleService;
+import org.openelisglobal.program.valueholder.OrderProgramDisplayItem;
 import org.openelisglobal.program.valueholder.ProgramSample;
-import org.openelisglobal.program.valueholder.ProgramSampleDisplayItem;
 import org.openelisglobal.sample.service.SampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -21,10 +20,10 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/rest")
-public class ProgramDashboardController extends BaseRestController {
+public class OrderProgramsDashboardController extends BaseRestController {
 
     @Autowired
-    private GenericProgramDisplayService genericProgramDisplayService;
+    private OrderProgramsDisplayService orderProgramsDisplayService;
 
     @Autowired
     private ProgramSampleService programSampleService;
@@ -32,15 +31,15 @@ public class ProgramDashboardController extends BaseRestController {
     @Autowired
     private SampleService sampleService;
 
-    private final GenericProgramDashboardPaging paging = new GenericProgramDashboardPaging();
+    private final OrderProgramsDashboardPaging paging = new OrderProgramsDashboardPaging();
 
     @GetMapping(value = "/programSamplesList", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<DashboardSummary> getPaginatedProgramSamples(HttpServletRequest request,
             @RequestParam(required = false) String filter)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
-        GenericProgramDashboardForm form = new GenericProgramDashboardForm();
-        List<ViewItems> viewItems;
+        OrderProgramsDashboardForm form = new OrderProgramsDashboardForm();
+        List<OrderPrograms> orderPrograms;
 
         String requestedPage = request.getParameter("page");
 
@@ -50,9 +49,9 @@ public class ProgramDashboardController extends BaseRestController {
                     ? programSampleService.getProgramSamplesByAccessionNumberOrProgramName(filter)
                     : programSampleService.getAll();
 
-            viewItems = samples.stream().map(this::convertToViewItem).toList();
+            orderPrograms = samples.stream().map(this::convertToOrderPrograms).toList();
 
-            paging.setDatabaseResults(request, form, viewItems);
+            paging.setDatabaseOrderPrograms(request, form, orderPrograms);
 
             paging.page(request, form, 1);
 
@@ -61,25 +60,25 @@ public class ProgramDashboardController extends BaseRestController {
             int pageNumber = Integer.parseInt(requestedPage);
             paging.page(request, form, pageNumber);
 
-            viewItems = paging.getResults(request);
+            orderPrograms = paging.getOrderPrograms(request);
         }
 
         DashboardSummary summary = new DashboardSummary();
-        summary.setGenericProgramDashboardForm(form);
-        summary.setTotalEntries(viewItems.size());
+        summary.setOrderProgramsDashboardForm(form);
+        summary.setTotalEntries(orderPrograms.size());
 
         return ResponseEntity.ok(summary);
     }
 
     @GetMapping(value = "/programSample/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ProgramSampleDisplayItem> getProgramSampleDisplayItem(@PathVariable int id) {
-        ProgramSampleDisplayItem psdi = genericProgramDisplayService.getProgramSampleById(id);
+    public ResponseEntity<OrderProgramDisplayItem> getProgramSampleDisplayItem(@PathVariable int id) {
+        OrderProgramDisplayItem psdi = orderProgramsDisplayService.getOrderProgramById(id);
         return ResponseEntity.ok(psdi);
     }
 
-    private ViewItems convertToViewItem(ProgramSample ps) {
+    private OrderPrograms convertToOrderPrograms(ProgramSample ps) {
         Patient patient = sampleService.getPatient(ps.getSample());
-        ViewItems item = new ViewItems();
+        OrderPrograms item = new OrderPrograms();
         item.setProgramSampleId(ps.getId().toString());
         item.setFirstName(patient.getPerson().getFirstName());
         item.setLastName(patient.getPerson().getLastName());

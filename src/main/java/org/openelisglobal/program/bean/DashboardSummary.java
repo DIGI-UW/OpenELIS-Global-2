@@ -1,11 +1,11 @@
 package org.openelisglobal.program.bean;
 
-import org.openelisglobal.common.rest.provider.form.GenericProgramDashboardForm;
+import org.openelisglobal.common.rest.provider.form.OrderProgramsDashboardForm;
 
 public class DashboardSummary {
 
     private int totalEntries;
-    private GenericProgramDashboardForm genericProgramDashboardForm;
+    private OrderProgramsDashboardForm orderProgramsDashboardForm;
 
     public int getTotalEntries() {
         return totalEntries;
@@ -15,12 +15,12 @@ public class DashboardSummary {
         this.totalEntries = totalEntries;
     }
 
-    public GenericProgramDashboardForm getGenericProgramDashboardForm() {
-        return genericProgramDashboardForm;
+    public OrderProgramsDashboardForm getOrderProgramsDashboardForm() {
+        return orderProgramsDashboardForm;
     }
 
-    public void setGenericProgramDashboardForm(GenericProgramDashboardForm genericProgramDashboardForm) {
-        this.genericProgramDashboardForm = genericProgramDashboardForm;
+    public void setOrderProgramsDashboardForm(OrderProgramsDashboardForm orderProgramsDashboardForm) {
+        this.orderProgramsDashboardForm = orderProgramsDashboardForm;
     }
 
 }

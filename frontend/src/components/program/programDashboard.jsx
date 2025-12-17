@@ -16,6 +16,8 @@ import {
   Search,
   Button,
   Link,
+  Heading,
+  Section,
 } from "@carbon/react";
 
 import "./programCaseView.css";
@@ -50,9 +52,9 @@ const ProgramDashboard = () => {
           : `?filter=${encodeURIComponent(filter)}`;
 
     getFromOpenElisServer(url, (response) => {
-      if (!response || !response.genericProgramDashboardForm) return;
+      if (!response || !response.orderProgramsDashboardForm) return;
 
-      const form = response.genericProgramDashboardForm;
+      const form = response.orderProgramsDashboardForm;
 
       const paging = form.paging || {};
 
@@ -65,7 +67,7 @@ const ProgramDashboard = () => {
         currentPage,
       });
 
-      const formatted = form.viewItems.map((item) => ({
+      const formatted = form.orderPrograms.map((item) => ({
         id: String(item.programSampleId),
         patientId: item.patientPK,
         patientName: `${item.firstName || ""} ${item.lastName || ""}`,
@@ -132,10 +134,20 @@ const ProgramDashboard = () => {
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid>
-        <Column sm={4} md={8} lg={16} className="dashboard-container1">
+        <Column lg={16} md={8} sm={4}>
+          <Section>
+            <Heading>
+              <FormattedMessage
+                id="banner.menu.results.order.programmes"
+                defaultMessage="Order Programmes"
+              />
+            </Heading>
+          </Section>
+        </Column>
+        <Column sm={4} md={8} lg={16} className="dashboard-containar">
           {tileList.map((tile, idx) => (
-            <Tile className="dashboard-tile1" key={idx}>
-              <h3 className="tile-title-Program1">{tile.title}</h3>
+            <Tile className="dashboard-div" key={idx}>
+              <h3 className="tile-title-Programe">{tile.title}</h3>
               <p className="tile-value">{tile.count}</p>
             </Tile>
           ))}
@@ -143,53 +155,55 @@ const ProgramDashboard = () => {
 
         <Column sm={4} md={8} lg={16} className="table-container">
           <div className="table-item">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                alignItems: "center",
-                marginRight: "3rem",
-                gap: "1rem",
-                fontSize: "1rem",
-              }}
-            >
-              <Link>
-                {summary.currentPage}/{summary.totalPages}
-              </Link>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                alignItems: "center",
-                marginBottom: "1rem",
-                gap: "1rem",
-              }}
-            >
-              {summary.totalPages > 1 && (
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <Button
-                    onClick={() => {
-                      if (summary.currentPage > 1)
-                        fetchDashBoard(summary.currentPage - 1, searchTerm);
-                    }}
-                    renderIcon={ArrowLeft}
-                    hasIconOnly
-                    iconDescription="previous"
-                  />
-                  <Button
-                    onClick={() => {
-                      if (summary.currentPage < summary.totalPages)
-                        fetchDashBoard(summary.currentPage + 1, searchTerm);
-                    }}
-                    renderIcon={ArrowRight}
-                    hasIconOnly
-                    iconDescription="next"
-                    disabled={summary.currentPage === summary.totalPages}
-                  />
+            {summary.totalPages > 1 && (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    alignItems: "center",
+                    marginRight: "3rem",
+                    gap: "1rem",
+                    fontSize: "1rem",
+                  }}
+                >
+                  <Link>
+                    {summary.currentPage}/{summary.totalPages}
+                  </Link>
                 </div>
-              )}
-            </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    alignItems: "center",
+                    marginBottom: "1rem",
+                    gap: "1rem",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <Button
+                      onClick={() => {
+                        if (summary.currentPage > 1)
+                          fetchDashBoard(summary.currentPage - 1, searchTerm);
+                      }}
+                      renderIcon={ArrowLeft}
+                      hasIconOnly
+                      iconDescription="previous"
+                    />
+                    <Button
+                      onClick={() => {
+                        if (summary.currentPage < summary.totalPages)
+                          fetchDashBoard(summary.currentPage + 1, searchTerm);
+                      }}
+                      renderIcon={ArrowRight}
+                      hasIconOnly
+                      iconDescription="next"
+                      disabled={summary.currentPage === summary.totalPages}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <Search
               size="lg"

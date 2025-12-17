@@ -3,7 +3,7 @@ package org.openelisglobal.common.rest.provider.bean;
 import java.sql.Date;
 import java.util.UUID;
 
-public class ViewItems {
+public class OrderPrograms {
     private String programSampleId;
     private String firstName;
     private String lastName;
