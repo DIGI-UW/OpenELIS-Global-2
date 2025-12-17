@@ -123,7 +123,7 @@ services:
         tty: true
 
     proxy:
-        image: nginx:1.15-alpine
+        image: nginx:alpine
         # build:
         #     context: ./nginx-proxy
         #     dockerfile: Dockerfile

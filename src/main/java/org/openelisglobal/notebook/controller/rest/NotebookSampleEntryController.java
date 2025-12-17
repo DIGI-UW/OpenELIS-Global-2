@@ -399,15 +399,15 @@ public class NotebookSampleEntryController extends BaseRestController {
     }
 
     /**
-     * Bulk update sample status for a notebook page. POST
-     * /notebook/bulk/page/{pageId}/samples/status
+     * Bulk update sample collection status for a notebook page. POST
+     * /notebook/bulk/page/{pageId}/samples/collection-status
      *
      * @param pageId      the notebook page ID
-     * @param request     contains sampleIds and status
+     * @param request     contains sampleIds, status, and collection data
      * @param httpRequest for getting user session
      * @return update result
      */
-    @PostMapping(value = "/bulk/page/{pageId}/samples/status", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/bulk/page/{pageId}/samples/collection-status", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> bulkUpdateSampleStatus(@PathVariable("pageId") Integer pageId,
             @RequestBody BulkStatusUpdateRequest request, HttpServletRequest httpRequest) {

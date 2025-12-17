@@ -53,6 +53,10 @@ This implementation follows a **reuse-first approach**:
       frontend/src/languages/en.json (~200 keys)
 - [ ] T005 [P] Create base i18n keys structure for medlab in
       frontend/src/languages/fr.json (~200 keys)
+- [ ] T005a [P] Create Liquibase migration to add "Medical Lab" experiment type
+      to dictionary table in
+      src/main/resources/liquibase/3.5.x.x/007-notebook-experiment-types.xml
+      (currently added directly to DB, needs migration for deployments)
 
 ---
 

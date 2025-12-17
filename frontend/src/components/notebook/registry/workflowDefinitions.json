@@ -74,7 +74,7 @@
       "titleKey": "notebook.workflow.medlab.title",
       "defaultTitle": "Medical Laboratory Workflow",
       "descriptionKey": "notebook.workflow.medlab.description",
-      "defaultDescription": "16-page workflow for medical laboratory testing from patient registration to reporting.",
+      "defaultDescription": "9-page workflow for medical laboratory testing from patient registration to reporting.",
       "category": "MEDLAB",
       "pages": [
         {
@@ -102,16 +102,16 @@
           "titleOverride": "Sample Receipt & Quality Assessment"
         },
         {
-          "pageId": "sample-processing",
+          "pageId": "sample-routing",
           "order": 5,
-          "required": false,
-          "titleOverride": "Sample Processing"
+          "required": true,
+          "titleOverride": "Sample Routing"
         },
         {
-          "pageId": "sample-storage",
+          "pageId": "sample-processing",
           "order": 6,
-          "required": false,
-          "titleOverride": "Storage Assignment"
+          "required": true,
+          "titleOverride": "Sample Processing"
         },
         {
           "pageId": "testing-analyzer",

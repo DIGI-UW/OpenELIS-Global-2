@@ -5,7 +5,6 @@ import {
   FileUploaderItem,
   Select,
   SelectItem,
-  Button,
   InlineNotification,
   DataTable,
   Table,
@@ -14,21 +13,12 @@ import {
   TableHeader,
   TableBody,
   TableCell,
-  TableSelectAll,
-  TableSelectRow,
-  TableToolbar,
-  TableToolbarSearch,
-  TableContainer,
   Loading,
   Tag,
-  Checkbox,
 } from "@carbon/react";
 import { Upload, Warning, Checkmark } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  postToOpenElisServerFormData,
-  getFromOpenElisServer,
-} from "../../utils/Utils";
+import { postToOpenElisServerFormData } from "../../utils/Utils";
 import config from "../../../config.json";
 import "../workflow/NotebookWorkflow.css";
 
@@ -75,13 +65,7 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
-  // State for test selection (Step 4)
-  const [availableTests, setAvailableTests] = useState([]);
-  const [selectedTestIds, setSelectedTestIds] = useState([]);
-  const [isLoadingTests, setIsLoadingTests] = useState(false);
-  const [testSearchText, setTestSearchText] = useState("");
-
-  // Steps: 1 = Upload, 2 = Map Columns, 3 = Preview, 4 = Select Tests, 5 = Success
+  // Steps: 1 = Upload, 2 = Map Columns, 3 = Preview, 4 = Success
   const [step, setStep] = useState(1);
 
   const handleFileAdded = useCallback(
@@ -134,46 +118,8 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
     });
     setPreviewData(null);
     setPreviewErrors([]);
-    setAvailableTests([]);
-    setSelectedTestIds([]);
-    setTestSearchText("");
     setStep(1);
   };
-
-  // Load available tests when entering step 4
-  const loadAvailableTests = useCallback(() => {
-    setIsLoadingTests(true);
-    getFromOpenElisServer("/rest/test-list", (response) => {
-      if (componentMounted.current) {
-        if (response && Array.isArray(response)) {
-          // Transform tests for the table
-          const tests = response.map((test) => ({
-            id: String(test.id),
-            name: test.value || test.name || test.localizedName,
-            description: test.description || "",
-          }));
-          setAvailableTests(tests);
-        }
-        setIsLoadingTests(false);
-      }
-    });
-  }, []);
-
-  // Handle test selection toggle
-  const handleTestSelectionChange = (testId, isSelected) => {
-    if (isSelected) {
-      setSelectedTestIds((prev) => [...prev, testId]);
-    } else {
-      setSelectedTestIds((prev) => prev.filter((id) => id !== testId));
-    }
-  };
-
-  // Filter tests based on search
-  const filteredTests = availableTests.filter(
-    (test) =>
-      test.name.toLowerCase().includes(testSearchText.toLowerCase()) ||
-      test.description.toLowerCase().includes(testSearchText.toLowerCase()),
-  );
 
   const handleMappingChange = (field, value) => {
     setColumnMapping((prev) => ({
@@ -257,17 +203,11 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
 
     setIsImporting(true);
 
-    // Include selected test IDs in the mapping
-    const mappingWithTests = {
-      ...columnMapping,
-      selectedTestIds: selectedTestIds,
-    };
-
     const formData = new FormData();
     formData.append("file", file);
     formData.append(
       "mapping",
-      new Blob([JSON.stringify(mappingWithTests)], {
+      new Blob([JSON.stringify(columnMapping)], {
         type: "application/json",
       }),
     );
@@ -287,7 +227,7 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setStep(5); // Go to success step
+        setStep(4); // Go to success step
         if (onImportSuccess) {
           onImportSuccess(data);
         }
@@ -350,26 +290,18 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
           : step === 2
             ? intl.formatMessage({ id: "notebook.manifest.preview" })
             : step === 3
-              ? intl.formatMessage({
-                  id: "notebook.manifest.selectTests",
-                  defaultMessage: "Select Tests",
-                })
-              : step === 4
-                ? intl.formatMessage({ id: "notebook.manifest.import" })
-                : intl.formatMessage({ id: "label.button.close" })
+              ? intl.formatMessage({ id: "notebook.manifest.import" })
+              : intl.formatMessage({ id: "label.button.close" })
       }
       secondaryButtonText={
-        step > 1 && step < 5
+        step > 1 && step < 4
           ? intl.formatMessage({ id: "label.button.back" })
           : null
       }
       onRequestSubmit={() => {
         if (step === 1 && file) setStep(2);
         else if (step === 2) handlePreview();
-        else if (step === 3) {
-          loadAvailableTests();
-          setStep(4);
-        } else if (step === 4) handleImport();
+        else if (step === 3) handleImport();
         else handleClose();
       }}
       onSecondarySubmit={() => setStep(step - 1)}
@@ -377,10 +309,8 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
         (step === 1 && !file) ||
         (step === 2 && !requiredColumnsMapped) ||
         (step === 3 && previewErrors.length > 0) ||
-        (step === 4 && selectedTestIds.length === 0) ||
         isPreviewLoading ||
-        isImporting ||
-        isLoadingTests
+        isImporting
       }
       size="lg"
     >
@@ -635,102 +565,21 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
                 </DataTable>
               </>
             )}
-          </div>
-        )}
-
-        {/* Step 4: Select Tests */}
-        {step === 4 && (
-          <div className="test-selection-step">
-            <p className="step-description">
-              <FormattedMessage
-                id="notebook.manifest.testSelectionDescription"
-                defaultMessage="Select the tests to be performed on each sample. At least one test must be selected."
-              />
-            </p>
-
-            {isLoadingTests ? (
-              <Loading
-                withOverlay={false}
-                description={intl.formatMessage({
-                  id: "notebook.manifest.loadingTests",
-                  defaultMessage: "Loading available tests...",
-                })}
-              />
-            ) : (
-              <>
-                <div className="test-selection-summary">
-                  <Tag type="blue">
-                    <FormattedMessage
-                      id="notebook.manifest.testsSelected"
-                      defaultMessage="{count} test(s) selected"
-                      values={{ count: selectedTestIds.length }}
-                    />
-                  </Tag>
-                  <Tag type="green">
-                    <FormattedMessage
-                      id="notebook.manifest.analysesToCreate"
-                      defaultMessage="{count} analysis records will be created"
-                      values={{
-                        count:
-                          selectedTestIds.length *
-                          (previewData?.totalSamples || 0),
-                      }}
-                    />
-                  </Tag>
-                </div>
-
-                <div className="test-search">
-                  <TableToolbarSearch
-                    placeholder={intl.formatMessage({
-                      id: "notebook.manifest.searchTests",
-                      defaultMessage: "Search tests...",
-                    })}
-                    onChange={(e) => setTestSearchText(e.target.value)}
-                    value={testSearchText}
-                  />
-                </div>
-
-                <div
-                  className="test-list"
-                  style={{ maxHeight: "300px", overflowY: "auto" }}
-                >
-                  {filteredTests.map((test) => (
-                    <Checkbox
-                      key={test.id}
-                      id={`test-${test.id}`}
-                      labelText={test.name}
-                      checked={selectedTestIds.includes(test.id)}
-                      onChange={(_, { checked }) =>
-                        handleTestSelectionChange(test.id, checked)
-                      }
-                    />
-                  ))}
-                  {filteredTests.length === 0 && (
-                    <p className="no-tests-message">
-                      <FormattedMessage
-                        id="notebook.manifest.noTestsFound"
-                        defaultMessage="No tests found matching your search."
-                      />
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
 
             {isImporting && (
               <Loading
                 withOverlay={false}
                 description={intl.formatMessage({
                   id: "notebook.manifest.importing",
-                  defaultMessage: "Creating samples and analysis records...",
+                  defaultMessage: "Creating samples...",
                 })}
               />
             )}
           </div>
         )}
 
-        {/* Step 5: Success */}
-        {step === 5 && (
+        {/* Step 4: Success */}
+        {step === 4 && (
           <div className="success-step">
             <Checkmark size={48} className="success-icon" />
             <h3>

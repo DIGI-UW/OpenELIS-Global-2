@@ -1,5 +1,6 @@
 package org.openelisglobal.notebook.controller.rest;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
@@ -1110,6 +1111,32 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         int updatedCount = bulkOperationService.bulkUpdateStatus(pageId, request.getSampleIds(), status, sysUserId);
 
+        // Also persist any additional data fields (containerType, collectionDate, etc.)
+        Map<String, Object> additionalData = new HashMap<>();
+        if (request.getContainerType() != null && !request.getContainerType().isBlank()) {
+            additionalData.put("containerType", request.getContainerType());
+        }
+        if (request.getCollectionDate() != null && !request.getCollectionDate().isBlank()) {
+            additionalData.put("collectionDate", request.getCollectionDate());
+        }
+        if (request.getCollectionTime() != null && !request.getCollectionTime().isBlank()) {
+            additionalData.put("collectionTime", request.getCollectionTime());
+        }
+        if (request.getCollectorId() != null && !request.getCollectorId().isBlank()) {
+            additionalData.put("collectorId", request.getCollectorId());
+        }
+        if (request.getVolume() != null && !request.getVolume().isBlank()) {
+            additionalData.put("volume", request.getVolume());
+        }
+        if (request.getNotes() != null && !request.getNotes().isBlank()) {
+            additionalData.put("notes", request.getNotes());
+        }
+
+        // If there's additional data, apply it to the samples
+        if (!additionalData.isEmpty()) {
+            bulkOperationService.bulkApplyValues(pageId, request.getSampleIds(), additionalData, sysUserId);
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("updatedCount", updatedCount);
         result.put("pageId", pageId);
@@ -1403,9 +1430,16 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Request body for status update operation.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class StatusUpdateRequest {
         private List<Integer> sampleIds;
         private String status;
+        private String containerType;
+        private String collectionDate;
+        private String collectionTime;
+        private String collectorId;
+        private String volume;
+        private String notes;
 
         public List<Integer> getSampleIds() {
             return sampleIds;
@@ -1421,6 +1455,54 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setStatus(String status) {
             this.status = status;
+        }
+
+        public String getContainerType() {
+            return containerType;
+        }
+
+        public void setContainerType(String containerType) {
+            this.containerType = containerType;
+        }
+
+        public String getCollectionDate() {
+            return collectionDate;
+        }
+
+        public void setCollectionDate(String collectionDate) {
+            this.collectionDate = collectionDate;
+        }
+
+        public String getCollectionTime() {
+            return collectionTime;
+        }
+
+        public void setCollectionTime(String collectionTime) {
+            this.collectionTime = collectionTime;
+        }
+
+        public String getCollectorId() {
+            return collectorId;
+        }
+
+        public void setCollectorId(String collectorId) {
+            this.collectorId = collectorId;
+        }
+
+        public String getVolume() {
+            return volume;
+        }
+
+        public void setVolume(String volume) {
+            this.volume = volume;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
         }
     }
 

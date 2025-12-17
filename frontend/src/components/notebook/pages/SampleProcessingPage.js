@@ -176,16 +176,7 @@ function SampleProcessingPage({
     { id: "culture-tube", label: "Culture Tube" },
   ];
 
-  // Load samples for processing
-  useEffect(() => {
-    componentMounted.current = true;
-    loadSamplesForProcessing();
-
-    return () => {
-      componentMounted.current = false;
-    };
-  }, [entryId]);
-
+  // Define loadSamplesForProcessing before useEffect that uses it
   const loadSamplesForProcessing = useCallback(() => {
     if (!entryId) {
       setLoading(false);
@@ -212,6 +203,16 @@ function SampleProcessingPage({
       },
     );
   }, [entryId]);
+
+  // Load samples on mount and when entryId changes
+  useEffect(() => {
+    componentMounted.current = true;
+    loadSamplesForProcessing();
+
+    return () => {
+      componentMounted.current = false;
+    };
+  }, [entryId, loadSamplesForProcessing]);
 
   // Check if page has a real database ID
   const hasRealPageId =

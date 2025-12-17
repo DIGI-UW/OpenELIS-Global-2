@@ -364,6 +364,109 @@ public class MedLabPatientOrderRestController extends BaseRestController {
         }
     }
 
+    // ==================== Sample Routing Endpoints ====================
+
+    /**
+     * Gets QC-accepted samples ready for routing decision for a notebook entry.
+     *
+     * @param entryId the notebook entry ID
+     * @return list of samples ready for routing
+     */
+    @GetMapping(value = "/entry/{entryId}/samples-for-routing", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getSamplesForRouting(@PathVariable("entryId") Integer entryId) {
+        List<Map<String, Object>> samples = medLabPatientOrderService.getSamplesForRouting(entryId);
+        return ResponseEntity.ok(samples);
+    }
+
+    /**
+     * Gets routing summary statistics for a notebook entry.
+     *
+     * @param entryId the notebook entry ID
+     * @return summary with counts by destination type
+     */
+    @GetMapping(value = "/entry/{entryId}/routing-summary", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getRoutingSummary(@PathVariable("entryId") Integer entryId) {
+        Map<String, Object> summary = medLabPatientOrderService.getRoutingSummary(entryId);
+        return ResponseEntity.ok(summary);
+    }
+
+    /**
+     * Routes samples to a destination (INTERNAL_ANALYSIS, EXTERNAL_LAB, or
+     * STORAGE).
+     *
+     * @param body    request body containing routing details
+     * @param request HTTP request for user session
+     * @return response with routing result
+     */
+    @PostMapping(value = "/route-samples", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> routeSamples(@RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        try {
+            @SuppressWarnings("unchecked")
+            List<Integer> sampleIds = (List<Integer>) body.get("sampleIds");
+            String destinationType = (String) body.get("destinationType");
+            Integer notebookPageId = body.get("pageId") != null ? ((Number) body.get("pageId")).intValue() : null;
+
+            // Extract metadata (external lab name, storage box, etc.)
+            Map<String, Object> metadata = new java.util.HashMap<>();
+            if (body.get("externalLabName") != null) {
+                metadata.put("externalLabName", body.get("externalLabName"));
+            }
+            if (body.get("shipmentDate") != null) {
+                metadata.put("shipmentDate", body.get("shipmentDate"));
+            }
+            if (body.get("assayPlate") != null) {
+                metadata.put("assayPlate", body.get("assayPlate"));
+            }
+            // Storage-specific metadata
+            if (body.get("storageBoxId") != null) {
+                metadata.put("storageBoxId", body.get("storageBoxId"));
+            }
+            if (body.get("positionCoordinate") != null) {
+                metadata.put("positionCoordinate", body.get("positionCoordinate"));
+            }
+            if (body.get("locationType") != null) {
+                metadata.put("locationType", body.get("locationType"));
+            }
+            if (body.get("storageNotes") != null) {
+                metadata.put("storageNotes", body.get("storageNotes"));
+            }
+            // Well assignments map (sampleId -> wellPosition)
+            if (body.get("storageWellAssignments") != null) {
+                metadata.put("storageWellAssignments", body.get("storageWellAssignments"));
+            }
+
+            if (sampleIds == null || sampleIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Sample IDs are required"));
+            }
+
+            if (destinationType == null || destinationType.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Destination type is required"));
+            }
+
+            Map<String, Object> result = medLabPatientOrderService.routeSamples(sampleIds, destinationType,
+                    notebookPageId, metadata, sysUserId);
+
+            if (Boolean.TRUE.equals(result.get("success"))) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.badRequest().body(result);
+            }
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Error routing samples: " + e.getMessage()));
+        }
+    }
+
     // ==================== Result Entry Endpoints ====================
 
     /**
@@ -914,16 +1017,27 @@ public class MedLabPatientOrderRestController extends BaseRestController {
         }
 
         try {
-            @SuppressWarnings("unchecked")
-            List<Integer> parentSampleIds = (List<Integer>) body.get("parentSampleIds");
+            // Convert parentSampleIds - may be Strings or Numbers from JSON
+            List<?> rawIds = (List<?>) body.get("parentSampleIds");
+            List<Integer> parentSampleIds = null;
+            if (rawIds != null) {
+                parentSampleIds = rawIds.stream()
+                        .map(id -> id instanceof Number ? ((Number) id).intValue() : Integer.parseInt(id.toString()))
+                        .collect(java.util.stream.Collectors.toList());
+            }
             int childCountPerParent = body.get("childCountPerParent") != null
-                    ? ((Number) body.get("childCountPerParent")).intValue()
+                    ? (body.get("childCountPerParent") instanceof Number
+                            ? ((Number) body.get("childCountPerParent")).intValue()
+                            : Integer.parseInt(body.get("childCountPerParent").toString()))
                     : 1;
             String externalIdPrefix = (String) body.get("externalIdPrefix");
             String containerType = (String) body.get("containerType");
-            Integer notebookPageId = body.get("notebookPageId") != null
-                    ? ((Number) body.get("notebookPageId")).intValue()
-                    : null;
+            Integer notebookPageId = null;
+            if (body.get("notebookPageId") != null) {
+                Object pageIdObj = body.get("notebookPageId");
+                notebookPageId = pageIdObj instanceof Number ? ((Number) pageIdObj).intValue()
+                        : Integer.parseInt(pageIdObj.toString());
+            }
 
             if (parentSampleIds == null || parentSampleIds.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Parent sample IDs are required"));

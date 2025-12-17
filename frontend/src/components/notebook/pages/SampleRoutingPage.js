@@ -128,24 +128,9 @@ function SampleRoutingPage({
     },
   ];
 
-  // Load samples and routing summary
-  useEffect(() => {
-    componentMounted.current = true;
-    loadPageSamples();
-    loadRoutingSummary();
-
-    return () => {
-      componentMounted.current = false;
-    };
-  }, [entryId, pageData?.id, loadPageSamples, loadRoutingSummary]);
-
+  // Define loadPageSamples before the useEffect that uses it
   const loadPageSamples = useCallback(() => {
-    if (!pageData?.id) {
-      setLoading(false);
-      return;
-    }
-
-    if (String(pageData.id).startsWith("default-")) {
+    if (!entryId) {
       setLoading(false);
       return;
     }
@@ -153,9 +138,10 @@ function SampleRoutingPage({
     setLoading(true);
     setError(null);
 
-    // Load only COMPLETED samples - these are samples that finished aliquoting on ChildSampleCreationPage
+    // Load QC-ACCEPTED samples that are ready for routing decision
+    // These are samples that passed Quality Check (page 4)
     getFromOpenElisServer(
-      `/rest/notebook/page/${pageData.id}/samples?status=COMPLETED`,
+      `/rest/medlab/entry/${entryId}/samples-for-routing`,
       (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
@@ -163,16 +149,21 @@ function SampleRoutingPage({
             const transformedSamples = response.map((sample) => ({
               id: String(sample.id || sample.sampleItemId),
               externalId: sample.externalId,
+              labNo: sample.labNo || sample.accessionNumber,
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
               patientName: sample.data?.patientName || sample.patientName || "",
               patientId: sample.data?.patientId || "",
-              // Use routing status for display - COMPLETED means routed, PENDING means awaiting routing
+              patientNationalId: sample.data?.patientNationalId || "",
+              // Routing status - samples start as PENDING (unrouted)
               status: sample.destinationType ? "COMPLETED" : "PENDING",
               routingStatus: sample.destinationType ? "ROUTED" : "UNROUTED",
               destinationType: sample.destinationType,
               wellCoordinate: sample.wellCoordinate,
+              // QC info from previous page
+              qcStatus: sample.qcStatus,
+              qcAcceptedDate: sample.qcAcceptedDate,
               data: sample.data, // Preserve full data for other uses
             }));
             setSamples(transformedSamples);
@@ -183,13 +174,14 @@ function SampleRoutingPage({
         }
       },
     );
-  }, [pageData?.id]);
+  }, [entryId]);
 
+  // Define loadRoutingSummary before the useEffect that uses it
   const loadRoutingSummary = useCallback(() => {
-    if (!notebookId) return;
+    if (!entryId) return;
 
     getFromOpenElisServer(
-      `/rest/notebook/${notebookId}/samples/routing`,
+      `/rest/medlab/entry/${entryId}/routing-summary`,
       (response) => {
         if (componentMounted.current && response) {
           setRoutingSummary({
@@ -202,7 +194,18 @@ function SampleRoutingPage({
         }
       },
     );
-  }, [notebookId]);
+  }, [entryId]);
+
+  // Load samples and routing summary
+  useEffect(() => {
+    componentMounted.current = true;
+    loadPageSamples();
+    loadRoutingSummary();
+
+    return () => {
+      componentMounted.current = false;
+    };
+  }, [entryId, loadPageSamples, loadRoutingSummary]);
 
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
@@ -285,43 +288,23 @@ function SampleRoutingPage({
         return;
       }
 
-      const storagePayload = {
-        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-        boxId: selectedBox.id,
-        wellAssignments: storageWellAssignments,
-        condition: "REFRIGERATED", // Default condition for routing page
-        retentionYears: 5, // Default retention
-        pageId: pageData?.id,
-      };
+      // Add storage metadata to route request
+      // For each sample, we send the first well assignment as the primary position
+      // The full well assignments can be used for batch processing
+      routeRequest.storageBoxId = selectedBox.id;
+      routeRequest.locationType = "rack"; // Storage boxes are at rack level
+      routeRequest.storageWellAssignments = storageWellAssignments;
 
-      postToOpenElisServerJsonResponse(
-        `/rest/notebook/${notebookId}/samples/assign-storage`,
-        JSON.stringify(storagePayload),
-        (response) => {
-          if (!componentMounted.current) return;
-          setRouting(false);
-          setRouteModalOpen(false);
-
-          if (response && response.success) {
-            setSuccess(
-              `Successfully assigned ${response.assignedCount || selectedSampleIds.length} samples to storage.`,
-            );
-            setSelectedSampleIds([]);
-            loadPageSamples();
-            loadRoutingSummary();
-            if (onProgressUpdate) {
-              onProgressUpdate();
-            }
-          } else {
-            setError(response?.error || "Failed to assign samples to storage.");
-          }
-        },
-      );
-      return; // Exit early - don't use the generic route endpoint
+      // Get first sample's position as primary coordinate (for single-sample case)
+      const firstSampleId = selectedSampleIds[0];
+      const firstWellPosition = storageWellAssignments[firstSampleId];
+      if (firstWellPosition) {
+        routeRequest.positionCoordinate = firstWellPosition;
+      }
     }
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/${notebookId}/samples/route`,
+      `/rest/medlab/route-samples`,
       JSON.stringify(routeRequest),
       (response) => {
         if (!componentMounted.current) return;
@@ -350,7 +333,6 @@ function SampleRoutingPage({
     selectedBox,
     externalLabName,
     shipmentDate,
-    notebookId,
     pageData?.id,
     assayPlates,
     selectedAssayPlateId,

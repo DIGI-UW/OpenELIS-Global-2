@@ -11,6 +11,19 @@
     <!-- From patient registration through disposal/archiving -->
     <!-- ======================================================== -->
 
+    <!-- Sync sequence with max existing ID to avoid conflicts with explicit IDs -->
+    <changeSet id="sync-workflow-page-template-seq" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Ensure sequence is past any explicitly inserted IDs</comment>
+        <sql>
+            SELECT setval('clinlims.workflow_page_template_seq',
+                COALESCE((SELECT MAX(id) FROM clinlims.workflow_page_template), 0) + 1,
+                false);
+        </sql>
+    </changeSet>
+
     <changeSet id="insert-medlab-workflow-page-templates" author="openelis-medlab">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="workflow_page_template" schemaName="clinlims"/>

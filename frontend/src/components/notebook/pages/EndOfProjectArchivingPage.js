@@ -239,33 +239,6 @@ function EndOfProjectArchivingPage({
     { value: "Room Temperature", label: "Room Temperature" },
   ];
 
-  // Load data on mount
-  useEffect(() => {
-    componentMounted.current = true;
-    loadPageData();
-    loadRooms();
-
-    return () => {
-      componentMounted.current = false;
-    };
-  }, [entryId, pageData?.id, loadPageData]);
-
-  const loadPageData = useCallback(() => {
-    if (!entryId) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-
-    // Check if this is MedLab workflow - use MedLab endpoints
-    if (isMedLabWorkflow) {
-      loadMedLabData();
-    } else {
-      loadImmunologyData();
-    }
-  }, [entryId, isMedLabWorkflow]);
-
   // Load Immunology-specific data
   const loadImmunologyData = useCallback(() => {
     // Load archiving progress
@@ -365,6 +338,34 @@ function EndOfProjectArchivingPage({
       },
     );
   }, [entryId]);
+
+  // Define loadPageData before the useEffect that uses it
+  const loadPageData = useCallback(() => {
+    if (!entryId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // Check if this is MedLab workflow - use MedLab endpoints
+    if (isMedLabWorkflow) {
+      loadMedLabData();
+    } else {
+      loadImmunologyData();
+    }
+  }, [entryId, isMedLabWorkflow, loadMedLabData, loadImmunologyData]);
+
+  // Load data on mount
+  useEffect(() => {
+    componentMounted.current = true;
+    loadPageData();
+    loadRooms();
+
+    return () => {
+      componentMounted.current = false;
+    };
+  }, [entryId, pageData?.id, loadPageData]);
 
   const loadRooms = () => {
     getFromOpenElisServer("/rest/storage/rooms", (response) => {

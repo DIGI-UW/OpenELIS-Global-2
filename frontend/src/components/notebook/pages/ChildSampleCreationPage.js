@@ -72,16 +72,7 @@ function ChildSampleCreationPage({
   const [parentChildren, setParentChildren] = useState([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
 
-  // Load samples for this page
-  useEffect(() => {
-    componentMounted.current = true;
-    loadPageSamples();
-
-    return () => {
-      componentMounted.current = false;
-    };
-  }, [entryId, pageData?.id, loadPageSamples]);
-
+  // Define loadPageSamples before the useEffect that uses it
   const loadPageSamples = useCallback(() => {
     if (!pageData?.id) {
       setLoading(false);
@@ -132,6 +123,16 @@ function ChildSampleCreationPage({
       },
     );
   }, [pageData?.id]);
+
+  // Load samples for this page
+  useEffect(() => {
+    componentMounted.current = true;
+    loadPageSamples();
+
+    return () => {
+      componentMounted.current = false;
+    };
+  }, [entryId, pageData?.id, loadPageSamples]);
 
   // Check if page has a real database ID
   const hasRealPageId =

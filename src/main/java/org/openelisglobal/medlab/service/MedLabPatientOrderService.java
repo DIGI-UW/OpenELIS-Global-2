@@ -112,6 +112,41 @@ public interface MedLabPatientOrderService {
     Map<String, Object> recordBulkQCDecision(List<String> labNumbers, boolean accepted, String rejectionReason,
             Integer notebookPageId, String sysUserId);
 
+    // ==================== Sample Routing Methods ====================
+
+    /**
+     * Gets QC-accepted samples ready for routing decision. Returns samples that
+     * passed QC and are awaiting routing to: INTERNAL_ANALYSIS, EXTERNAL_LAB, or
+     * STORAGE.
+     *
+     * @param entryId the notebook entry ID
+     * @return list of samples ready for routing
+     */
+    List<Map<String, Object>> getSamplesForRouting(Integer entryId);
+
+    /**
+     * Gets routing summary statistics for a notebook entry.
+     *
+     * @param entryId the notebook entry ID
+     * @return summary with counts by destination type
+     */
+    Map<String, Object> getRoutingSummary(Integer entryId);
+
+    /**
+     * Routes samples to a destination (INTERNAL_ANALYSIS, EXTERNAL_LAB, or
+     * STORAGE).
+     *
+     * @param sampleIds       list of sample item IDs to route
+     * @param destinationType the routing destination type
+     * @param notebookPageId  the routing page ID
+     * @param metadata        additional routing metadata (e.g., external lab name,
+     *                        storage box)
+     * @param sysUserId       the system user ID
+     * @return result of the operation with count of routed samples
+     */
+    Map<String, Object> routeSamples(List<Integer> sampleIds, String destinationType, Integer notebookPageId,
+            Map<String, Object> metadata, String sysUserId);
+
     // ==================== Result Entry Methods ====================
 
     /**

@@ -83,6 +83,12 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
     @Autowired
     private NoteBookPageService noteBookPageService;
 
+    @Autowired
+    private org.openelisglobal.storage.service.SampleStorageService sampleStorageService;
+
+    @Autowired
+    private org.openelisglobal.storage.service.StorageLocationService storageLocationService;
+
     @Override
     @Transactional
     public Map<String, Object> createPatientOrder(String patientId, String labNo, String requestDate,
@@ -962,6 +968,333 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             LogEvent.logError(e);
             result.put("success", false);
             result.put("error", "Error recording bulk QC decision: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    // ==================== Sample Routing Methods ====================
+
+    @Override
+    public List<Map<String, Object>> getSamplesForRouting(Integer entryId) {
+        List<Map<String, Object>> samples = new ArrayList<>();
+
+        if (entryId == null) {
+            return samples;
+        }
+
+        try {
+            NotebookEntry entry = notebookEntryService.get(entryId);
+            if (entry == null || entry.getNotebook() == null) {
+                return samples;
+            }
+
+            // Get notebook pages for this entry
+            NoteBook notebook = entry.getNotebook();
+            List<NoteBookPage> pages = noteBookPageService.getByNotebookId(notebook.getId());
+
+            if (pages == null || pages.isEmpty()) {
+                return samples;
+            }
+
+            // Find the QC page and routing page
+            Integer qcPageId = null;
+            Integer routingPageId = null;
+
+            for (NoteBookPage page : pages) {
+                if ("quality-check".equals(page.getPageId())) {
+                    qcPageId = page.getId();
+                } else if ("sample-routing".equals(page.getPageId())) {
+                    routingPageId = page.getId();
+                }
+            }
+
+            if (qcPageId == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getSamplesForRouting",
+                        "QC page not found for entry: " + entryId);
+                return samples;
+            }
+
+            // Get samples from the QC page that have COMPLETED status (passed QC)
+            List<NotebookPageSample> qcPageSamples = notebookPageSampleService.getByPageId(qcPageId);
+
+            for (NotebookPageSample qcSample : qcPageSamples) {
+                try {
+                    // Only include samples that have passed QC (COMPLETED on QC page)
+                    if (qcSample.getStatus() != NotebookPageSample.Status.COMPLETED) {
+                        continue;
+                    }
+
+                    SampleItem sampleItem = sampleItemService.get(qcSample.getSampleItemId());
+                    if (sampleItem == null) {
+                        continue;
+                    }
+
+                    Sample sample = sampleItem.getSample();
+                    if (sample == null) {
+                        continue;
+                    }
+
+                    // Build sample data
+                    Map<String, Object> sampleData = new HashMap<>();
+                    sampleData.put("id", sampleItem.getId());
+                    sampleData.put("sampleItemId", sampleItem.getId());
+                    sampleData.put("labNo", sample.getAccessionNumber());
+                    sampleData.put("accessionNumber", sample.getAccessionNumber());
+
+                    // Include external ID to distinguish sample items with same accession
+                    if (sampleItem.getExternalId() != null) {
+                        sampleData.put("externalId", sampleItem.getExternalId());
+                    }
+
+                    // Get patient info
+                    Patient patient = sampleHumanService.getPatientForSample(sample);
+                    if (patient != null) {
+                        String firstName = patient.getPerson() != null ? patient.getPerson().getFirstName() : "";
+                        String lastName = patient.getPerson() != null ? patient.getPerson().getLastName() : "";
+                        sampleData.put("patientName", (firstName + " " + lastName).trim());
+                        sampleData.put("patientId", patient.getId());
+                    }
+
+                    // Get sample type
+                    TypeOfSample typeOfSample = sampleItem.getTypeOfSample();
+                    if (typeOfSample != null) {
+                        sampleData.put("sampleType", typeOfSample.getDescription());
+                    }
+
+                    // Check routing status on routing page
+                    String destinationType = null;
+                    String qcStatus = "QC_ACCEPTED";
+
+                    if (routingPageId != null) {
+                        List<NotebookPageSample> routingPageSamples = notebookPageSampleService
+                                .getBySampleItemId(Integer.valueOf(sampleItem.getId()));
+                        for (NotebookPageSample rps : routingPageSamples) {
+                            if (rps.getNotebookPageId().equals(routingPageId)) {
+                                Map<String, Object> routingData = rps.getData();
+                                if (routingData != null) {
+                                    destinationType = (String) routingData.get("destinationType");
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    sampleData.put("destinationType", destinationType);
+                    sampleData.put("qcStatus", qcStatus);
+                    sampleData.put("data", qcSample.getData());
+
+                    samples.add(sampleData);
+
+                } catch (Exception e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "getSamplesForRouting",
+                            "Error processing sample: " + e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+        }
+
+        return samples;
+    }
+
+    @Override
+    public Map<String, Object> getRoutingSummary(Integer entryId) {
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("internalAnalysis", 0);
+        summary.put("externalLab", 0);
+        summary.put("storage", 0);
+        summary.put("unrouted", 0);
+        summary.put("total", 0);
+
+        if (entryId == null) {
+            return summary;
+        }
+
+        try {
+            List<Map<String, Object>> samples = getSamplesForRouting(entryId);
+            int total = samples.size();
+            int internalAnalysis = 0;
+            int externalLab = 0;
+            int storage = 0;
+            int unrouted = 0;
+
+            for (Map<String, Object> sample : samples) {
+                String destinationType = (String) sample.get("destinationType");
+                if (destinationType == null) {
+                    unrouted++;
+                } else if ("INTERNAL_ANALYSIS".equals(destinationType)) {
+                    internalAnalysis++;
+                } else if ("EXTERNAL_LAB".equals(destinationType)) {
+                    externalLab++;
+                } else if ("STORAGE".equals(destinationType)) {
+                    storage++;
+                } else {
+                    unrouted++;
+                }
+            }
+
+            summary.put("internalAnalysis", internalAnalysis);
+            summary.put("externalLab", externalLab);
+            summary.put("storage", storage);
+            summary.put("unrouted", unrouted);
+            summary.put("total", total);
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+        }
+
+        return summary;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> routeSamples(List<Integer> sampleIds, String destinationType, Integer notebookPageId,
+            Map<String, Object> metadata, String sysUserId) {
+
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            if (sampleIds == null || sampleIds.isEmpty()) {
+                result.put("success", false);
+                result.put("error", "No sample IDs provided");
+                return result;
+            }
+
+            if (StringUtils.isBlank(destinationType)) {
+                result.put("success", false);
+                result.put("error", "Destination type is required");
+                return result;
+            }
+
+            int routedCount = 0;
+
+            for (Integer sampleId : sampleIds) {
+                try {
+                    SampleItem sampleItem = sampleItemService.get(String.valueOf(sampleId));
+                    if (sampleItem == null) {
+                        continue;
+                    }
+
+                    // Build routing data
+                    Map<String, Object> routingData = new HashMap<>();
+                    routingData.put("destinationType", destinationType);
+                    routingData.put("routedAt", java.time.LocalDateTime.now().toString());
+                    routingData.put("routedBy", sysUserId);
+
+                    // Add metadata if provided
+                    if (metadata != null) {
+                        routingData.putAll(metadata);
+                    }
+
+                    // Find or create routing page sample record
+                    if (notebookPageId != null) {
+                        List<NotebookPageSample> existingRecords = notebookPageSampleService
+                                .getBySampleItemId(sampleId);
+                        NotebookPageSample routingRecord = null;
+
+                        for (NotebookPageSample nps : existingRecords) {
+                            if (nps.getNotebookPageId().equals(notebookPageId)) {
+                                routingRecord = nps;
+                                break;
+                            }
+                        }
+
+                        if (routingRecord != null) {
+                            // Update existing record
+                            routingRecord.setStatus(NotebookPageSample.Status.COMPLETED);
+                            routingRecord.setData(routingData);
+                            notebookPageSampleService.update(routingRecord);
+                        } else {
+                            // Create new record and then update with routing data
+                            notebookPageSampleService.createPageSampleForPage(notebookPageId, sampleId,
+                                    NotebookPageSample.Status.COMPLETED);
+                            // Retrieve the newly created record to set data
+                            List<NotebookPageSample> newRecords = notebookPageSampleService.getBySampleItemId(sampleId);
+                            for (NotebookPageSample nps : newRecords) {
+                                if (nps.getNotebookPageId().equals(notebookPageId)) {
+                                    nps.setData(routingData);
+                                    notebookPageSampleService.update(nps);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // If routing to STORAGE, sync with storage tables
+                    if ("STORAGE".equals(destinationType) && metadata != null) {
+                        try {
+                            // Handle storageBoxId as either Integer or String
+                            Object storageBoxIdObj = metadata.get("storageBoxId");
+                            String locationId = storageBoxIdObj != null ? String.valueOf(storageBoxIdObj) : null;
+                            String notes = (String) metadata.get("storageNotes");
+
+                            // Default to 'box' level since storageBoxId refers to storage_box table
+                            String locationType = "box";
+                            if (metadata.get("locationType") != null) {
+                                locationType = (String) metadata.get("locationType");
+                            }
+
+                            // Get well position from storageWellAssignments if available
+                            String positionCoordinate = null;
+                            @SuppressWarnings("unchecked")
+                            Map<String, String> wellAssignments = (Map<String, String>) metadata
+                                    .get("storageWellAssignments");
+                            if (wellAssignments != null) {
+                                // Well assignments can be keyed by sampleId as string
+                                positionCoordinate = wellAssignments.get(String.valueOf(sampleId));
+                            }
+                            // Fallback to single positionCoordinate if not in map
+                            if (positionCoordinate == null) {
+                                positionCoordinate = (String) metadata.get("positionCoordinate");
+                            }
+
+                            if (locationId != null && !locationId.isEmpty()) {
+                                // Validate storage location exists before calling service to avoid
+                                // transaction rollback from nested @Transactional exception
+                                Class<?> entityClass = getStorageEntityClass(locationType);
+                                if (entityClass != null) {
+                                    Object location = storageLocationService.get(Integer.parseInt(locationId),
+                                            entityClass);
+                                    if (location == null) {
+                                        LogEvent.logWarn(this.getClass().getSimpleName(), "routeSamples",
+                                                "Storage location not found: " + locationType + " " + locationId
+                                                        + " - skipping storage assignment for sample " + sampleId);
+                                    } else {
+                                        sampleStorageService.assignSampleItemWithLocation(String.valueOf(sampleId),
+                                                locationId, locationType, positionCoordinate, notes);
+                                        LogEvent.logInfo(this.getClass().getSimpleName(), "routeSamples",
+                                                "Assigned sample " + sampleId + " to storage location " + locationId
+                                                        + " at position " + positionCoordinate);
+                                    }
+                                } else {
+                                    LogEvent.logWarn(this.getClass().getSimpleName(), "routeSamples",
+                                            "Unknown location type: " + locationType + " - skipping storage assignment");
+                                }
+                            }
+                        } catch (Exception storageEx) {
+                            LogEvent.logWarn(this.getClass().getSimpleName(), "routeSamples",
+                                    "Failed to assign sample " + sampleId + " to storage: " + storageEx.getMessage());
+                            // Continue even if storage assignment fails - routing record is still saved
+                        }
+                    }
+
+                    routedCount++;
+
+                } catch (Exception e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "routeSamples",
+                            "Error routing sample " + sampleId + ": " + e.getMessage());
+                }
+            }
+
+            result.put("success", routedCount > 0);
+            result.put("routedCount", routedCount);
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            result.put("success", false);
+            result.put("error", "Error routing samples: " + e.getMessage());
         }
 
         return result;
@@ -2332,20 +2665,23 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 return samples;
             }
 
-            // Find the QC page and processing page
+            // Find the QC page, routing page, and processing page
             Integer qcPageId = null;
+            Integer routingPageId = null;
             Integer processingPageId = null;
 
             for (NoteBookPage page : pages) {
                 if ("quality-check".equals(page.getPageId())) {
                     qcPageId = page.getId();
+                } else if ("sample-routing".equals(page.getPageId())) {
+                    routingPageId = page.getId();
                 } else if ("sample-processing".equals(page.getPageId())) {
                     processingPageId = page.getId();
                 }
             }
 
-            LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForProcessing",
-                    "QC page ID: " + qcPageId + ", Processing page ID: " + processingPageId);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForProcessing", "QC page ID: " + qcPageId
+                    + ", Routing page ID: " + routingPageId + ", Processing page ID: " + processingPageId);
 
             if (qcPageId == null) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "getSamplesForProcessing",
@@ -2363,6 +2699,27 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                     // Only include samples that have passed QC (COMPLETED on QC page)
                     if (qcSample.getStatus() != NotebookPageSample.Status.COMPLETED) {
                         continue;
+                    }
+
+                    // Check routing destination - only include INTERNAL_ANALYSIS samples
+                    if (routingPageId != null) {
+                        List<NotebookPageSample> routingRecords = notebookPageSampleService
+                                .getBySampleItemId(Integer.valueOf(qcSample.getSampleItemId()));
+                        boolean isInternalAnalysis = false;
+                        for (NotebookPageSample rps : routingRecords) {
+                            if (rps.getNotebookPageId().equals(routingPageId)) {
+                                Map<String, Object> routingData = rps.getData();
+                                if (routingData != null
+                                        && "INTERNAL_ANALYSIS".equals(routingData.get("destinationType"))) {
+                                    isInternalAnalysis = true;
+                                }
+                                break;
+                            }
+                        }
+                        // Skip samples not routed to INTERNAL_ANALYSIS
+                        if (!isInternalAnalysis) {
+                            continue;
+                        }
                     }
 
                     SampleItem sampleItem = sampleItemService.get(qcSample.getSampleItemId());
@@ -2699,40 +3056,40 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 return samples;
             }
 
-            // Find the QC page (samples must pass QC before testing) and testing page
-            Integer qcPageId = null;
+            // Find the processing page (samples must be processed before testing) and testing page
+            Integer processingPageId = null;
             Integer testingPageId = null;
 
             for (NoteBookPage page : pages) {
-                if ("quality-check".equals(page.getPageId())) {
-                    qcPageId = page.getId();
+                if ("sample-processing".equals(page.getPageId())) {
+                    processingPageId = page.getId();
                 } else if ("testing-analyzer".equals(page.getPageId())) {
                     testingPageId = page.getId();
                 }
             }
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForTesting",
-                    "QC page ID: " + qcPageId + ", Testing page ID: " + testingPageId);
+                    "Processing page ID: " + processingPageId + ", Testing page ID: " + testingPageId);
 
-            if (qcPageId == null) {
+            if (processingPageId == null) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "getSamplesForTesting",
-                        "QC page not found for entry: " + entryId);
+                        "Processing page not found for entry: " + entryId);
                 return samples;
             }
 
-            // Get samples from the QC page that have COMPLETED status (passed QC)
-            List<NotebookPageSample> qcPageSamples = notebookPageSampleService.getByPageId(qcPageId);
+            // Get samples from the Processing page that have COMPLETED status (processed)
+            List<NotebookPageSample> processingPageSamples = notebookPageSampleService.getByPageId(processingPageId);
             LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForTesting",
-                    "Found " + qcPageSamples.size() + " samples on QC page");
+                    "Found " + processingPageSamples.size() + " samples on Processing page");
 
-            for (NotebookPageSample qcSample : qcPageSamples) {
+            for (NotebookPageSample processedSample : processingPageSamples) {
                 try {
-                    // Only include samples that have passed QC (COMPLETED on QC page)
-                    if (qcSample.getStatus() != NotebookPageSample.Status.COMPLETED) {
+                    // Only include samples that have been processed (COMPLETED on processing page)
+                    if (processedSample.getStatus() != NotebookPageSample.Status.COMPLETED) {
                         continue;
                     }
 
-                    SampleItem sampleItem = sampleItemService.get(qcSample.getSampleItemId());
+                    SampleItem sampleItem = sampleItemService.get(processedSample.getSampleItemId());
                     if (sampleItem == null) {
                         continue;
                     }
@@ -4064,65 +4421,91 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 return results;
             }
 
-            // Track samples we've already processed
-            java.util.Set<String> processedSampleIds = new java.util.HashSet<>();
+            // Find the validation-reporting page (samples must be validated before disposal)
+            Integer validationPageId = null;
+            Integer disposalPageId = null;
 
-            // Find samples that have completed the reporting/validation phase
             for (NoteBookPage page : pages) {
-                List<NotebookPageSample> pageSamples = notebookPageSampleService.getByPageId(page.getId());
+                if ("validation-reporting".equals(page.getPageId())) {
+                    validationPageId = page.getId();
+                } else if ("disposal-archiving".equals(page.getPageId())) {
+                    disposalPageId = page.getId();
+                }
+            }
 
-                for (NotebookPageSample pageSample : pageSamples) {
-                    try {
-                        SampleItem sampleItem = sampleItemService.get(pageSample.getSampleItemId());
-                        if (sampleItem == null || sampleItem.getSample() == null) {
-                            continue;
-                        }
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForDisposal",
+                    "Validation page ID: " + validationPageId + ", Disposal page ID: " + disposalPageId);
 
-                        Sample sample = sampleItem.getSample();
+            if (validationPageId == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getSamplesForDisposal",
+                        "Validation page not found for entry: " + entryId);
+                return results;
+            }
 
-                        // Skip if already processed
-                        if (processedSampleIds.contains(sample.getId())) {
-                            continue;
-                        }
-                        processedSampleIds.add(sample.getId());
+            // Get samples from the Validation page that have COMPLETED status
+            List<NotebookPageSample> validationPageSamples = notebookPageSampleService.getByPageId(validationPageId);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getSamplesForDisposal",
+                    "Found " + validationPageSamples.size() + " samples on Validation page");
 
-                        // Determine disposal status based on sample type
-                        String recommendedMethod = determineDisposalMethod(sampleItem.getTypeOfSample());
-                        String disposalStatus = "PENDING";
-
-                        // Check if already disposed (stored in page sample data)
-                        Map<String, Object> pageData = pageSample.getData();
-                        if (pageData != null && pageData.get("disposed") != null
-                                && Boolean.TRUE.equals(pageData.get("disposed"))) {
-                            disposalStatus = "DISPOSED";
-                        }
-
-                        Map<String, Object> sampleData = new HashMap<>();
-                        sampleData.put("id", sample.getId());
-                        sampleData.put("sampleItemId", sampleItem.getId());
-                        sampleData.put("labNo", sample.getAccessionNumber());
-                        sampleData.put("sampleType",
-                                sampleItem.getTypeOfSample() != null ? sampleItem.getTypeOfSample().getLocalizedName()
-                                        : "Unknown");
-                        sampleData.put("recommendedMethod", recommendedMethod);
-                        sampleData.put("disposalStatus", disposalStatus);
-                        sampleData.put("collectionDate", sample.getCollectionDate());
-                        sampleData.put("receivedDate", sample.getReceivedTimestamp());
-
-                        // Get patient info
-                        Patient patient = sampleHumanService.getPatientForSample(sample);
-                        if (patient != null && patient.getPerson() != null) {
-                            org.openelisglobal.person.valueholder.Person person = patient.getPerson();
-                            sampleData.put("patientName", (person.getFirstName() != null ? person.getFirstName() : "")
-                                    + " " + (person.getLastName() != null ? person.getLastName() : ""));
-                        }
-
-                        results.add(sampleData);
-                    } catch (Exception e) {
-                        LogEvent.logWarn(this.getClass().getSimpleName(), "getSamplesForDisposal",
-                                "Error processing sample item: " + pageSample.getSampleItemId() + " - "
-                                        + e.getMessage());
+            for (NotebookPageSample validatedSample : validationPageSamples) {
+                try {
+                    // Only include samples that have been validated (COMPLETED on validation page)
+                    if (validatedSample.getStatus() != NotebookPageSample.Status.COMPLETED) {
+                        continue;
                     }
+
+                    SampleItem sampleItem = sampleItemService.get(validatedSample.getSampleItemId());
+                    if (sampleItem == null || sampleItem.getSample() == null) {
+                        continue;
+                    }
+
+                    Sample sample = sampleItem.getSample();
+
+                    // Determine disposal status based on sample type
+                    String recommendedMethod = determineDisposalMethod(sampleItem.getTypeOfSample());
+                    String disposalStatus = "PENDING";
+
+                    // Check if already disposed (stored in page sample data on disposal page)
+                    if (disposalPageId != null) {
+                        List<NotebookPageSample> disposalPageSamples = notebookPageSampleService
+                                .getBySampleItemId(Integer.valueOf(sampleItem.getId()));
+                        for (NotebookPageSample dps : disposalPageSamples) {
+                            if (disposalPageId.equals(dps.getNotebookPageId())) {
+                                Map<String, Object> pageData = dps.getData();
+                                if (pageData != null && pageData.get("disposed") != null
+                                        && Boolean.TRUE.equals(pageData.get("disposed"))) {
+                                    disposalStatus = "DISPOSED";
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    Map<String, Object> sampleData = new HashMap<>();
+                    sampleData.put("id", sample.getId());
+                    sampleData.put("sampleItemId", sampleItem.getId());
+                    sampleData.put("labNo", sample.getAccessionNumber());
+                    sampleData.put("sampleType",
+                            sampleItem.getTypeOfSample() != null ? sampleItem.getTypeOfSample().getLocalizedName()
+                                    : "Unknown");
+                    sampleData.put("recommendedMethod", recommendedMethod);
+                    sampleData.put("disposalStatus", disposalStatus);
+                    sampleData.put("collectionDate", sample.getCollectionDate());
+                    sampleData.put("receivedDate", sample.getReceivedTimestamp());
+
+                    // Get patient info
+                    Patient patient = sampleHumanService.getPatientForSample(sample);
+                    if (patient != null && patient.getPerson() != null) {
+                        org.openelisglobal.person.valueholder.Person person = patient.getPerson();
+                        sampleData.put("patientName", (person.getFirstName() != null ? person.getFirstName() : "")
+                                + " " + (person.getLastName() != null ? person.getLastName() : ""));
+                    }
+
+                    results.add(sampleData);
+                } catch (Exception e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "getSamplesForDisposal",
+                            "Error processing sample item: " + validatedSample.getSampleItemId() + " - "
+                                    + e.getMessage());
                 }
             }
         } catch (Exception e) {
@@ -4693,5 +5076,29 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
         }
 
         return result;
+    }
+
+    /**
+     * Get the entity class for a storage location type.
+     *
+     * @param locationType the location type string (box, rack, shelf, device)
+     * @return the corresponding entity class, or null if unknown
+     */
+    private Class<?> getStorageEntityClass(String locationType) {
+        if (locationType == null) {
+            return null;
+        }
+        switch (locationType) {
+        case "box":
+            return org.openelisglobal.storage.valueholder.StorageBox.class;
+        case "rack":
+            return org.openelisglobal.storage.valueholder.StorageRack.class;
+        case "shelf":
+            return org.openelisglobal.storage.valueholder.StorageShelf.class;
+        case "device":
+            return org.openelisglobal.storage.valueholder.StorageDevice.class;
+        default:
+            return null;
+        }
     }
 }
