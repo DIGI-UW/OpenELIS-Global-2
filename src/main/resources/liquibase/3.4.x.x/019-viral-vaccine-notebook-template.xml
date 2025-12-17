@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- VIRAL & VACCINE UNIT LABORATORY -->
+    <!-- NOTEBOOK TEMPLATE -->
+    <!-- Creates a predefined notebook template with workflow pages -->
+    <!-- for the Viral & Vaccine Unit Laboratory workflow -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-viral-vaccine-notebook-template" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Viral &amp; Vaccine Unit Laboratory notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Viral &amp; Vaccine Unit Laboratory"/>
+            <column name="objective" value="Complete Viral &amp; Vaccine workflow from sample registration to culture"/>
+            <column name="protocol" value="Standard Viral &amp; Vaccine Unit Laboratory Protocol"/>
+            <column name="content" value="Viral and Vaccine Unit Laboratory notebook template with workflow pages for sample registration, media preparation, sterilization, and viral culture."/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE CREATION & REGISTRATION -->
+    <!-- Purpose: Create the sample and assign it to the correct testing stream -->
+    <!-- Who uses it: Reception / unit staff -->
+    <!-- Data Points: -->
+    <!--   - Sample Identity: Sample ID, Barcode (Yes/No), Batch association -->
+    <!--   - Sample Metadata: Source, Type, Date & time received, Received by -->
+    <!--   - Testing Intent: Test category (Viral/Bacterial), Intended workflow -->
+    <!--   - Priority / project (optional) -->
+    <!-- System Actions: Sample record created, routed to appropriate workflow -->
+    <!-- ======================================================== -->
+    <changeSet id="create-viral-vaccine-page-1-sample-registration" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Creation &amp; Registration page for Viral &amp; Vaccine Unit Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Creation &amp; Registration"/>
+            <column name="instructions" value="Create the sample and assign it to the correct testing stream. Capture sample identity (Sample ID, Barcode, Batch association), sample metadata (Source - human/animal/environmental/lab-derived, Sample type, Date &amp; time received, Received by), and testing intent (Test category - Viral/Bacterial, Intended workflow - Virus culture/Vaccine development/Bacteriology, Priority/project). System creates sample record, sets status to Registered, and routes to appropriate workflow."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Creation &amp; Registration&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;sampleIdentity&quot;: {
+      &quot;sampleId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Sample ID&quot;, &quot;example&quot;: &quot;VV-2024-001&quot;, &quot;required&quot;: true},
+      &quot;hasBarcode&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Barcode&quot;, &quot;options&quot;: [&quot;Yes&quot;, &quot;No&quot;], &quot;required&quot;: true},
+      &quot;batchAssociation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Batch Association&quot;, &quot;required&quot;: false}
+    },
+    &quot;sampleMetadata&quot;: {
+      &quot;sampleSource&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample Source&quot;, &quot;options&quot;: [&quot;Human&quot;, &quot;Animal&quot;, &quot;Environmental&quot;, &quot;Lab-derived&quot;], &quot;required&quot;: true},
+      &quot;sampleType&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Sample Type&quot;, &quot;source&quot;: &quot;type_of_sample&quot;, &quot;required&quot;: true},
+      &quot;receivedDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Date &amp; Time Received&quot;, &quot;required&quot;: true},
+      &quot;receivedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Received By&quot;, &quot;required&quot;: true}
+    },
+    &quot;testingIntent&quot;: {
+      &quot;testCategory&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Test Category&quot;, &quot;options&quot;: [&quot;Viral&quot;, &quot;Bacterial&quot;], &quot;required&quot;: true},
+      &quot;intendedWorkflow&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Intended Workflow&quot;, &quot;options&quot;: [&quot;Virus culture&quot;, &quot;Vaccine development&quot;, &quot;Bacteriology&quot;], &quot;required&quot;: true},
+      &quot;priority&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Priority&quot;, &quot;options&quot;: [&quot;Routine&quot;, &quot;Urgent&quot;, &quot;STAT&quot;], &quot;required&quot;: false},
+      &quot;projectName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Project Name&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Create sample record&quot;, &quot;Set status: Registered&quot;, &quot;Route to Viral testing workflow&quot;, &quot;Route to Bacteriological testing workflow&quot;],
+  &quot;nextPage&quot;: &quot;Viral Media Preparation&quot;
+}"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2A: VIRAL MEDIA PREPARATION -->
+    <!-- Purpose: Prepare culture media for virus growth linked to the sample -->
+    <!-- Data Points: -->
+    <!--   - Media type -->
+    <!--   - Reagents selected -->
+    <!--   - Equipment used -->
+    <!--   - Prepared by -->
+    <!--   - Preparation date -->
+    <!-- System Actions: Materials logged, Media batch linked to sample -->
+    <!-- ======================================================== -->
+    <changeSet id="create-viral-vaccine-page-2-media-preparation" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Viral Media Preparation page for Viral &amp; Vaccine Unit Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Viral Media Preparation"/>
+            <column name="instructions" value="Prepare culture media for virus growth linked to the sample. Record media type, select reagents from inventory, specify equipment used, record preparer name and preparation date. System logs materials used and links media batch to sample for traceability."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Viral Media Preparation&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;mediaDetails&quot;: {
+      &quot;mediaType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Media Type&quot;, &quot;options&quot;: [&quot;Cell culture media&quot;, &quot;Viral transport media&quot;, &quot;Enrichment media&quot;, &quot;Selective media&quot;, &quot;Maintenance media&quot;], &quot;required&quot;: true},
+      &quot;mediaBatchNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Media Batch Number&quot;, &quot;required&quot;: true}
+    },
+    &quot;reagentSelection&quot;: {
+      &quot;reagents&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Reagents Selected&quot;, &quot;source&quot;: &quot;reagent_inventory&quot;, &quot;required&quot;: true},
+      &quot;reagentLotNumbers&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Reagent Lot Numbers&quot;, &quot;required&quot;: false}
+    },
+    &quot;equipmentDetails&quot;: {
+      &quot;equipmentUsed&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Equipment Used&quot;, &quot;options&quot;: [&quot;Biosafety cabinet&quot;, &quot;Autoclave&quot;, &quot;Incubator&quot;, &quot;Water bath&quot;, &quot;pH meter&quot;, &quot;Balance&quot;, &quot;Magnetic stirrer&quot;], &quot;required&quot;: true}
+    },
+    &quot;preparationMetadata&quot;: {
+      &quot;preparedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Prepared By&quot;, &quot;required&quot;: true},
+      &quot;preparationDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Preparation Date&quot;, &quot;required&quot;: true},
+      &quot;expirationDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Expiration Date&quot;, &quot;required&quot;: false},
+      &quot;storageConditions&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Storage Conditions&quot;, &quot;options&quot;: [&quot;Room temperature&quot;, &quot;2-8°C&quot;, &quot;-20°C&quot;, &quot;-80°C&quot;], &quot;required&quot;: false}
+    },
+    &quot;qualityControl&quot;: {
+      &quot;sterilityCheck&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sterility Check&quot;, &quot;options&quot;: [&quot;Pending&quot;, &quot;Passed&quot;, &quot;Failed&quot;], &quot;required&quot;: false},
+      &quot;phValue&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;pH Value&quot;, &quot;required&quot;: false},
+      &quot;notes&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Notes&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Log materials used&quot;, &quot;Link media batch to sample&quot;, &quot;Update inventory&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;mediaType&quot;, &quot;reagents&quot;, &quot;equipmentUsed&quot;, &quot;preparedBy&quot;, &quot;preparationDate&quot;]
+  },
+  &quot;nextPage&quot;: &quot;Sterilization&quot;
+}"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- VIRAL & VACCINE UNIT WORKFLOW PAGE TEMPLATES -->
+    <!-- Similar to MNTD and Immunology workflow_page_template entries -->
+    <!-- ======================================================== -->
+    <changeSet id="insert-viral-vaccine-workflow-page-templates" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'VIRAL_VACCINE'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert predefined Viral &amp; Vaccine Unit workflow page templates</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="201"/>
+            <column name="name" value="Sample Creation &amp; Registration"/>
+            <column name="display_key" value="workflow.page.viralvaccine.sampleRegistration"/>
+            <column name="description" value="Create the sample and assign it to the correct testing stream"/>
+            <column name="default_instructions" value="Capture sample identity (Sample ID, Barcode, Batch), sample metadata (Source, Type, Received date/time, Received by), and testing intent (Test category, Intended workflow, Priority/project). System creates sample record and routes to appropriate workflow."/>
+            <column name="default_content" value="Sample Creation &amp; Registration - Entry point for Viral &amp; Vaccine Unit samples"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="202"/>
+            <column name="name" value="Viral Media Preparation"/>
+            <column name="display_key" value="workflow.page.viralvaccine.mediaPreparation"/>
+            <column name="description" value="Prepare culture media for virus growth linked to the sample"/>
+            <column name="default_instructions" value="Record media type, select reagents from inventory, specify equipment used, record preparer and date. System logs materials and links media batch to sample."/>
+            <column name="default_content" value="Viral Media Preparation - Culture media preparation for virus growth"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'VIRAL_VACCINE'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

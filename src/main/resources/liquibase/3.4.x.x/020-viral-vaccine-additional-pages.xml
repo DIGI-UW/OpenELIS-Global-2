@@ -1,0 +1,684 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- VIRAL &amp; VACCINE UNIT LABORATORY - ADDITIONAL PAGES -->
+    <!-- Pages 3-13 for complete workflow -->
+    <!-- ======================================================== -->
+
+    <!-- PAGE 3: STERILIZATION -->
+    <changeSet id="create-viral-vaccine-page-3-sterilization" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sterilization page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sterilization"/>
+            <column name="instructions" value="Ensure sterility of prepared materials. Record sterilization method (autoclave, filtration), parameters (time, temperature, pressure), operator, and date/time. System links sterilization record to sample/media batch."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sterilization&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;sterilizationDetails&quot;: {
+      &quot;method&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sterilization Method&quot;, &quot;options&quot;: [&quot;Autoclave&quot;, &quot;Filtration&quot;, &quot;UV irradiation&quot;, &quot;Chemical&quot;], &quot;required&quot;: true},
+      &quot;temperature&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Temperature (C)&quot;, &quot;required&quot;: false},
+      &quot;pressure&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Pressure (psi)&quot;, &quot;required&quot;: false},
+      &quot;duration&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Duration (minutes)&quot;, &quot;required&quot;: true}
+    },
+    &quot;operatorDetails&quot;: {
+      &quot;operator&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Operator&quot;, &quot;required&quot;: true},
+      &quot;dateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Date/Time&quot;, &quot;required&quot;: true},
+      &quot;equipmentId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Equipment ID&quot;, &quot;required&quot;: false}
+    },
+    &quot;verification&quot;: {
+      &quot;indicatorResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Indicator Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;, &quot;Pending&quot;], &quot;required&quot;: true},
+      &quot;notes&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Notes&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Link sterilization record to sample/media batch&quot;],
+  &quot;nextPage&quot;: &quot;Cell Culture&quot;
+}"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 4: CELL CULTURE (HOST CELL PREPARATION) -->
+    <changeSet id="create-viral-vaccine-page-4-cell-culture" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Cell Culture page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Cell Culture (Host Cell Preparation)"/>
+            <column name="instructions" value="Grow host cells for viral inoculation. Record cell line, growth conditions, incubator ID, and start date. System creates cell culture batch and links to sample."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Cell Culture (Host Cell Preparation)&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;cellDetails&quot;: {
+      &quot;cellLine&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Cell Line&quot;, &quot;options&quot;: [&quot;Vero&quot;, &quot;HEK293&quot;, &quot;MDCK&quot;, &quot;BHK-21&quot;, &quot;CHO&quot;, &quot;HeLa&quot;, &quot;Other&quot;], &quot;required&quot;: true},
+      &quot;cellLineOther&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Other Cell Line&quot;, &quot;required&quot;: false},
+      &quot;passageNumber&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Passage Number&quot;, &quot;required&quot;: true}
+    },
+    &quot;growthConditions&quot;: {
+      &quot;mediaUsed&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Media Used&quot;, &quot;required&quot;: true},
+      &quot;temperature&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Temperature (C)&quot;, &quot;required&quot;: true},
+      &quot;co2Percentage&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;CO2 (%)&quot;, &quot;required&quot;: false},
+      &quot;incubatorId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Incubator ID&quot;, &quot;required&quot;: true}
+    },
+    &quot;cultureMetadata&quot;: {
+      &quot;startDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Start Date&quot;, &quot;required&quot;: true},
+      &quot;seedingDensity&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Seeding Density&quot;, &quot;required&quot;: false},
+      &quot;flaskType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Flask/Plate Type&quot;, &quot;options&quot;: [&quot;T25&quot;, &quot;T75&quot;, &quot;T175&quot;, &quot;6-well&quot;, &quot;12-well&quot;, &quot;24-well&quot;, &quot;96-well&quot;], &quot;required&quot;: true},
+      &quot;operator&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Operator&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Create cell culture batch&quot;, &quot;Link to sample&quot;],
+  &quot;nextPage&quot;: &quot;Cell Culture QC&quot;
+}"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 5: CELL CULTURE QUALITY CONTROL -->
+    <changeSet id="create-viral-vaccine-page-5-cell-culture-qc" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Cell Culture QC page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Cell Culture Quality Control"/>
+            <column name="instructions" value="Confirm viability and sterility before inoculation. Record viability check result, sterility check result, QC status (Pass/Fail), and remarks. System logs QC and blocks progression if failed."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Cell Culture Quality Control&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;viabilityCheck&quot;: {
+      &quot;viabilityMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Viability Method&quot;, &quot;options&quot;: [&quot;Trypan Blue&quot;, &quot;MTT Assay&quot;, &quot;Flow Cytometry&quot;, &quot;Visual&quot;], &quot;required&quot;: true},
+      &quot;viabilityPercentage&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Viability (%)&quot;, &quot;required&quot;: true},
+      &quot;cellCount&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Cell Count&quot;, &quot;required&quot;: false}
+    },
+    &quot;sterilityCheck&quot;: {
+      &quot;sterilityResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sterility Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;, &quot;Pending&quot;], &quot;required&quot;: true},
+      &quot;contaminationType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Contamination Type (if any)&quot;, &quot;options&quot;: [&quot;None&quot;, &quot;Bacterial&quot;, &quot;Fungal&quot;, &quot;Mycoplasma&quot;, &quot;Unknown&quot;], &quot;required&quot;: false}
+    },
+    &quot;qcDecision&quot;: {
+      &quot;qcStatus&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;QC Status&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;, &quot;Conditional Pass&quot;], &quot;required&quot;: true},
+      &quot;qcDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;QC Date&quot;, &quot;required&quot;: true},
+      &quot;qcOperator&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;QC Operator&quot;, &quot;required&quot;: true},
+      &quot;remarks&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Remarks&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Log QC results&quot;, &quot;Block progression if failed&quot;],
+  &quot;nextPage&quot;: &quot;Virus Culture Inoculation&quot;
+}"/>
+            <column name="page_order" value="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 6: VIRUS CULTURE INOCULATION -->
+    <changeSet id="create-viral-vaccine-page-6-inoculation" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Virus Culture Inoculation page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Virus Culture Inoculation"/>
+            <column name="instructions" value="Introduce virus into host cells. Record virus strain, inoculation date, culture conditions, and operator. System creates virus culture batch and links to original sample."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Virus Culture Inoculation&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;virusDetails&quot;: {
+      &quot;virusStrain&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Virus Strain&quot;, &quot;required&quot;: true},
+      &quot;virusSource&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Virus Source&quot;, &quot;options&quot;: [&quot;Clinical isolate&quot;, &quot;Reference strain&quot;, &quot;Seed stock&quot;], &quot;required&quot;: true},
+      &quot;moi&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;MOI (Multiplicity of Infection)&quot;, &quot;required&quot;: false}
+    },
+    &quot;inoculationDetails&quot;: {
+      &quot;inoculationDate&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Inoculation Date/Time&quot;, &quot;required&quot;: true},
+      &quot;inoculationVolume&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Inoculation Volume&quot;, &quot;required&quot;: false},
+      &quot;adsorptionTime&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Adsorption Time (min)&quot;, &quot;required&quot;: false}
+    },
+    &quot;cultureConditions&quot;: {
+      &quot;temperature&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Incubation Temp (C)&quot;, &quot;required&quot;: true},
+      &quot;co2Percentage&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;CO2 (%)&quot;, &quot;required&quot;: false},
+      &quot;incubatorId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Incubator ID&quot;, &quot;required&quot;: true},
+      &quot;operator&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Operator&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Create virus culture batch&quot;, &quot;Link to original sample&quot;],
+  &quot;nextPage&quot;: &quot;Imaging / Analysis&quot;
+}"/>
+            <column name="page_order" value="6"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 7: IMAGING / ANALYSIS -->
+    <changeSet id="create-viral-vaccine-page-7-imaging" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Imaging / Analysis page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Imaging / Analysis"/>
+            <column name="instructions" value="Monitor viral growth visually. Record imaging method, imaging date, observations, and upload images. System stores image data and links to culture batch."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Imaging / Analysis (Dark Room / Fluorescence)&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;imagingDetails&quot;: {
+      &quot;imagingMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Imaging Method&quot;, &quot;options&quot;: [&quot;Light microscopy&quot;, &quot;Fluorescence&quot;, &quot;Phase contrast&quot;, &quot;Confocal&quot;, &quot;Electron microscopy&quot;], &quot;required&quot;: true},
+      &quot;magnification&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Magnification&quot;, &quot;options&quot;: [&quot;4x&quot;, &quot;10x&quot;, &quot;20x&quot;, &quot;40x&quot;, &quot;100x&quot;], &quot;required&quot;: false},
+      &quot;imagingDate&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Imaging Date/Time&quot;, &quot;required&quot;: true}
+    },
+    &quot;observations&quot;: {
+      &quot;cpeObserved&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;CPE Observed&quot;, &quot;options&quot;: [&quot;None&quot;, &quot;Minimal (1+)&quot;, &quot;Moderate (2+)&quot;, &quot;Significant (3+)&quot;, &quot;Complete (4+)&quot;], &quot;required&quot;: true},
+      &quot;confluency&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Confluency (%)&quot;, &quot;required&quot;: false},
+      &quot;observations&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Observations&quot;, &quot;required&quot;: false}
+    },
+    &quot;imageUpload&quot;: {
+      &quot;images&quot;: {&quot;type&quot;: &quot;file&quot;, &quot;label&quot;: &quot;Upload Images&quot;, &quot;accept&quot;: &quot;image/*&quot;, &quot;multiple&quot;: true, &quot;required&quot;: false},
+      &quot;operator&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Operator&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Store image data&quot;, &quot;Link to culture batch&quot;],
+  &quot;nextPage&quot;: &quot;Culture Maintenance&quot;
+}"/>
+            <column name="page_order" value="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 8: CULTURE FEEDING & MAINTENANCE -->
+    <changeSet id="create-viral-vaccine-page-8-maintenance" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 8
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Culture Maintenance page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Culture Feeding &amp; Maintenance"/>
+            <column name="instructions" value="Maintain active viral culture. Record feeding schedule, reagents used, date/time, and technician. System creates maintenance log."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Culture Feeding &amp; Maintenance&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;maintenanceAction&quot;: {
+      &quot;actionType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Action Type&quot;, &quot;options&quot;: [&quot;Media change&quot;, &quot;Feeding&quot;, &quot;Passage&quot;, &quot;Harvest&quot;, &quot;Other&quot;], &quot;required&quot;: true},
+      &quot;mediaVolume&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Media Volume&quot;, &quot;required&quot;: false}
+    },
+    &quot;reagentsUsed&quot;: {
+      &quot;reagents&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Reagents Used&quot;, &quot;required&quot;: false},
+      &quot;lotNumbers&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Lot Numbers&quot;, &quot;required&quot;: false}
+    },
+    &quot;scheduleDetails&quot;: {
+      &quot;dateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Date/Time&quot;, &quot;required&quot;: true},
+      &quot;nextScheduled&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Next Scheduled&quot;, &quot;required&quot;: false},
+      &quot;technician&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Technician&quot;, &quot;required&quot;: true},
+      &quot;notes&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Notes&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Create maintenance log&quot;],
+  &quot;nextPage&quot;: &quot;Formulation &amp; Packaging&quot;
+}"/>
+            <column name="page_order" value="8"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 9: VIRAL FORMULATION & PACKAGING -->
+    <changeSet id="create-viral-vaccine-page-9-formulation" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 9
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Formulation &amp; Packaging page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Formulation &amp; Packaging"/>
+            <column name="instructions" value="Prepare and package viral product. Record formulation details, final product description, packaging specifications, and batch ID. System links final product batch to sample and sets status to Viral Processing Completed."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Viral Formulation &amp; Packaging&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;formulationDetails&quot;: {
+      &quot;formulationType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Formulation Type&quot;, &quot;options&quot;: [&quot;Liquid&quot;, &quot;Lyophilized&quot;, &quot;Frozen&quot;], &quot;required&quot;: true},
+      &quot;excipients&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Excipients/Stabilizers&quot;, &quot;required&quot;: false},
+      &quot;concentration&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Final Concentration&quot;, &quot;required&quot;: false}
+    },
+    &quot;productDetails&quot;: {
+      &quot;productDescription&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Product Description&quot;, &quot;required&quot;: true},
+      &quot;batchId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Batch ID&quot;, &quot;required&quot;: true},
+      &quot;totalVolume&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Total Volume/Quantity&quot;, &quot;required&quot;: true}
+    },
+    &quot;packagingDetails&quot;: {
+      &quot;containerType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Container Type&quot;, &quot;options&quot;: [&quot;Vial&quot;, &quot;Ampule&quot;, &quot;Cryovial&quot;, &quot;Tube&quot;], &quot;required&quot;: true},
+      &quot;fillVolume&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Fill Volume&quot;, &quot;required&quot;: true},
+      &quot;numberOfUnits&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Number of Units&quot;, &quot;required&quot;: true},
+      &quot;storageCondition&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Storage Condition&quot;, &quot;options&quot;: [&quot;2-8C&quot;, &quot;-20C&quot;, &quot;-80C&quot;, &quot;-196C (LN2)&quot;], &quot;required&quot;: true},
+      &quot;packagingDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Packaging Date&quot;, &quot;required&quot;: true},
+      &quot;operator&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Operator&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Link final product batch to sample&quot;, &quot;Set status: Viral Processing Completed&quot;],
+  &quot;nextPage&quot;: &quot;Virus Isolation &amp; Titer&quot;
+}"/>
+            <column name="page_order" value="9"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 10: VIRUS ISOLATION & TITER MEASUREMENT -->
+    <changeSet id="create-viral-vaccine-page-10-titer" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 10
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Virus Isolation &amp; Titer page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Virus Isolation &amp; Titer Measurement"/>
+            <column name="instructions" value="Record culture batch reference, viral titer values, measurement method, and date. System links quantitative data to sample."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Virus Isolation &amp; Titer Measurement&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;cultureBatch&quot;: {
+      &quot;batchReference&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Culture Batch Reference&quot;, &quot;required&quot;: true},
+      &quot;harvestDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Harvest Date&quot;, &quot;required&quot;: true}
+    },
+    &quot;titerMeasurement&quot;: {
+      &quot;measurementMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Measurement Method&quot;, &quot;options&quot;: [&quot;TCID50&quot;, &quot;Plaque assay&quot;, &quot;qPCR&quot;, &quot;ELISA&quot;, &quot;HAU&quot;], &quot;required&quot;: true},
+      &quot;titerValue&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Titer Value&quot;, &quot;required&quot;: true},
+      &quot;titerUnit&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Titer Unit&quot;, &quot;options&quot;: [&quot;TCID50/mL&quot;, &quot;PFU/mL&quot;, &quot;copies/mL&quot;, &quot;HAU&quot;], &quot;required&quot;: true}
+    },
+    &quot;measurementDetails&quot;: {
+      &quot;measurementDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Measurement Date&quot;, &quot;required&quot;: true},
+      &quot;operator&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Operator&quot;, &quot;required&quot;: true},
+      &quot;notes&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Notes&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Link quantitative data to sample&quot;],
+  &quot;nextPage&quot;: &quot;Genome Sequencing&quot;
+}"/>
+            <column name="page_order" value="10"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 11: VIRAL GENOME SEQUENCING -->
+    <changeSet id="create-viral-vaccine-page-11-sequencing" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 11
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Genome Sequencing page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Genome Sequencing"/>
+            <column name="instructions" value="Record sequencing platform, upload sequence files, and QC metrics. System stores genome data and links to sample/culture batch."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Viral Genome Sequencing&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;sequencingDetails&quot;: {
+      &quot;platform&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sequencing Platform&quot;, &quot;options&quot;: [&quot;Illumina&quot;, &quot;Oxford Nanopore&quot;, &quot;PacBio&quot;, &quot;Sanger&quot;, &quot;Ion Torrent&quot;], &quot;required&quot;: true},
+      &quot;libraryPrepMethod&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Library Prep Method&quot;, &quot;required&quot;: false},
+      &quot;sequencingDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Sequencing Date&quot;, &quot;required&quot;: true}
+    },
+    &quot;sequenceFiles&quot;: {
+      &quot;files&quot;: {&quot;type&quot;: &quot;file&quot;, &quot;label&quot;: &quot;Sequence Files&quot;, &quot;accept&quot;: &quot;.fasta,.fastq,.fa,.fq,.ab1&quot;, &quot;multiple&quot;: true, &quot;required&quot;: false},
+      &quot;accessionNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;GenBank Accession (if submitted)&quot;, &quot;required&quot;: false}
+    },
+    &quot;qcMetrics&quot;: {
+      &quot;coverage&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Coverage&quot;, &quot;required&quot;: false},
+      &quot;quality&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Quality Score&quot;, &quot;required&quot;: false},
+      &quot;completeness&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Genome Completeness&quot;, &quot;options&quot;: [&quot;Complete&quot;, &quot;Near-complete&quot;, &quot;Partial&quot;], &quot;required&quot;: true},
+      &quot;operator&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Operator&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Store genome data&quot;, &quot;Link to sample/culture batch&quot;],
+  &quot;nextPage&quot;: &quot;Seed Virus Production&quot;
+}"/>
+            <column name="page_order" value="11"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 12: SEED VIRUS PRODUCTION -->
+    <changeSet id="create-viral-vaccine-page-12-seed-virus" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 12
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Seed Virus Production page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Seed Virus Production"/>
+            <column name="instructions" value="Record selected strain, selection criteria, and approval details. System creates seed virus record and links to sample."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Seed Virus Production&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;strainSelection&quot;: {
+      &quot;selectedStrain&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Selected Strain&quot;, &quot;required&quot;: true},
+      &quot;strainOrigin&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Strain Origin&quot;, &quot;required&quot;: true},
+      &quot;passageHistory&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Passage History&quot;, &quot;required&quot;: false}
+    },
+    &quot;selectionCriteria&quot;: {
+      &quot;criteria&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Selection Criteria&quot;, &quot;required&quot;: true},
+      &quot;geneticStability&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Genetic Stability Confirmed&quot;, &quot;options&quot;: [&quot;Yes&quot;, &quot;No&quot;, &quot;Pending&quot;], &quot;required&quot;: true},
+      &quot;antigenicProfile&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Antigenic Profile&quot;, &quot;required&quot;: false}
+    },
+    &quot;approvalDetails&quot;: {
+      &quot;approvedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Approved By&quot;, &quot;required&quot;: true},
+      &quot;approvalDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Approval Date&quot;, &quot;required&quot;: true},
+      &quot;seedLotNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Seed Lot Number&quot;, &quot;required&quot;: true},
+      &quot;storageLocation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Storage Location&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Create seed virus record&quot;, &quot;Link to sample&quot;],
+  &quot;nextPage&quot;: &quot;Trial Reference&quot;
+}"/>
+            <column name="page_order" value="12"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 13: PRECLINICAL & CLINICAL TRIAL REFERENCE -->
+    <changeSet id="create-viral-vaccine-page-13-trial-reference" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Viral &amp; Vaccine Unit Laboratory' AND n.is_template = true AND np.page_order = 13
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Trial Reference page for Viral &amp; Vaccine Unit Laboratory</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Preclinical &amp; Clinical Trial Reference"/>
+            <column name="instructions" value="Maintain traceability without executing trials. Record trial phase (Preclinical/Clinical), external institution, start/end dates, and outcome summary. System links external reference to seed virus/sample."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Preclinical &amp; Clinical Trial Reference&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;trialPhase&quot;: {
+      &quot;phase&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Trial Phase&quot;, &quot;options&quot;: [&quot;Preclinical - In vitro&quot;, &quot;Preclinical - In vivo&quot;, &quot;Clinical Phase I&quot;, &quot;Clinical Phase II&quot;, &quot;Clinical Phase III&quot;, &quot;Clinical Phase IV&quot;], &quot;required&quot;: true},
+      &quot;trialIdentifier&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Trial Identifier/Number&quot;, &quot;required&quot;: false}
+    },
+    &quot;externalDetails&quot;: {
+      &quot;institution&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;External Institution&quot;, &quot;required&quot;: true},
+      &quot;principalInvestigator&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Principal Investigator&quot;, &quot;required&quot;: false},
+      &quot;contactInfo&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Contact Information&quot;, &quot;required&quot;: false}
+    },
+    &quot;timeline&quot;: {
+      &quot;startDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Start Date&quot;, &quot;required&quot;: true},
+      &quot;endDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;End Date&quot;, &quot;required&quot;: false},
+      &quot;status&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Status&quot;, &quot;options&quot;: [&quot;Planned&quot;, &quot;In Progress&quot;, &quot;Completed&quot;, &quot;Terminated&quot;, &quot;On Hold&quot;], &quot;required&quot;: true}
+    },
+    &quot;outcome&quot;: {
+      &quot;outcomeSummary&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Outcome Summary&quot;, &quot;required&quot;: false},
+      &quot;documentReference&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Document Reference&quot;, &quot;required&quot;: false},
+      &quot;recordedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Recorded By&quot;, &quot;required&quot;: true},
+      &quot;recordDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Record Date&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Link external reference to seed virus/sample&quot;],
+  &quot;nextPage&quot;: null
+}"/>
+            <column name="page_order" value="13"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Viral &amp; Vaccine Unit Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- Additional workflow page templates for pages 3-13 -->
+    <changeSet id="insert-viral-vaccine-workflow-page-templates-3-13" author="openelis-viral-vaccine">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="2">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'VIRAL_VACCINE'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert additional Viral &amp; Vaccine Unit workflow page templates (pages 3-13)</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="203"/>
+            <column name="name" value="Sterilization"/>
+            <column name="display_key" value="workflow.page.viralvaccine.sterilization"/>
+            <column name="description" value="Ensure sterility of prepared materials"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="204"/>
+            <column name="name" value="Cell Culture (Host Cell Preparation)"/>
+            <column name="display_key" value="workflow.page.viralvaccine.cellCulture"/>
+            <column name="description" value="Grow host cells for viral inoculation"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="205"/>
+            <column name="name" value="Cell Culture Quality Control"/>
+            <column name="display_key" value="workflow.page.viralvaccine.cellCultureQC"/>
+            <column name="description" value="Confirm viability and sterility before inoculation"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="5"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="206"/>
+            <column name="name" value="Virus Culture Inoculation"/>
+            <column name="display_key" value="workflow.page.viralvaccine.inoculation"/>
+            <column name="description" value="Introduce virus into host cells"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="6"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="207"/>
+            <column name="name" value="Imaging / Analysis"/>
+            <column name="display_key" value="workflow.page.viralvaccine.imaging"/>
+            <column name="description" value="Monitor viral growth visually"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="7"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="208"/>
+            <column name="name" value="Culture Feeding &amp; Maintenance"/>
+            <column name="display_key" value="workflow.page.viralvaccine.maintenance"/>
+            <column name="description" value="Maintain active viral culture"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="8"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="209"/>
+            <column name="name" value="Formulation &amp; Packaging"/>
+            <column name="display_key" value="workflow.page.viralvaccine.formulation"/>
+            <column name="description" value="Prepare and package viral product"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="9"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="210"/>
+            <column name="name" value="Virus Isolation &amp; Titer Measurement"/>
+            <column name="display_key" value="workflow.page.viralvaccine.titer"/>
+            <column name="description" value="Measure viral titer"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="10"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="211"/>
+            <column name="name" value="Genome Sequencing"/>
+            <column name="display_key" value="workflow.page.viralvaccine.sequencing"/>
+            <column name="description" value="Viral genome sequencing and analysis"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="11"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="212"/>
+            <column name="name" value="Seed Virus Production"/>
+            <column name="display_key" value="workflow.page.viralvaccine.seedVirus"/>
+            <column name="description" value="Seed virus selection and production"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="12"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="213"/>
+            <column name="name" value="Preclinical &amp; Clinical Trial Reference"/>
+            <column name="display_key" value="workflow.page.viralvaccine.trialReference"/>
+            <column name="description" value="External trial traceability"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="13"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="VIRAL_VACCINE"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
