@@ -1024,6 +1024,10 @@ public class StorageLocationRestController extends BaseRestController {
                     }
                     rackToUpdate.setParentShelf(newParentShelf);
                     parentShelfId = newParentShelfId; // Use new parent for validation
+                } else {
+                    // Parent unchanged - still need to set it on rackToUpdate for service layer
+                    // validation
+                    rackToUpdate.setParentShelf(existingRack.getParentShelf());
                 }
             } else {
                 // Preserve existing parent if not provided
