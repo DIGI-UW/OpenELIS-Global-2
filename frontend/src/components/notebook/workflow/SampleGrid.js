@@ -43,6 +43,7 @@ import "../workflow/NotebookWorkflow.css";
  * @param {boolean} props.loading - Whether data is loading
  * @param {boolean} props.showHierarchy - Whether to show hierarchy column
  * @param {Array} props.additionalColumns - Additional columns to render [{key, header, render}]
+ * @param {Array} props.columns - Custom columns to override default headers [{key, header, render}]. If provided, replaces default columns.
  */
 function SampleGrid({
   gridId = "default",
@@ -57,6 +58,7 @@ function SampleGrid({
   loading = false,
   showHierarchy = false,
   additionalColumns = [],
+  columns = null,
 }) {
   const intl = useIntl();
 
@@ -221,67 +223,74 @@ function SampleGrid({
     }
   };
 
-  // Table headers
-  const baseHeaders = [
-    ...(showHierarchy
-      ? [
-          {
-            key: "hierarchy",
-            header: intl.formatMessage({
-              id: "notebook.sample.hierarchy",
-              defaultMessage: "Hierarchy",
-            }),
-          },
-        ]
-      : []),
-    {
-      key: "externalId",
-      header: intl.formatMessage({
-        id: "notebook.sample.externalId",
-        defaultMessage: "External ID",
-      }),
-    },
-    {
-      key: "accessionNumber",
-      header: intl.formatMessage({
-        id: "notebook.sample.accessionNumber",
-        defaultMessage: "Accession #",
-      }),
-    },
-    {
-      key: "sampleType",
-      header: intl.formatMessage({
-        id: "notebook.sample.type",
-        defaultMessage: "Sample Type",
-      }),
-    },
-    {
-      key: "collectionDate",
-      header: intl.formatMessage({
-        id: "notebook.sample.collectionDate",
-        defaultMessage: "Collection Date",
-      }),
-    },
-    {
-      key: "status",
-      header: intl.formatMessage({
-        id: "notebook.sample.status",
-        defaultMessage: "Status",
-      }),
-    },
-  ];
+  // Table headers - use custom columns if provided, otherwise use defaults
+  const baseHeaders = columns
+    ? columns
+    : [
+        ...(showHierarchy
+          ? [
+              {
+                key: "hierarchy",
+                header: intl.formatMessage({
+                  id: "notebook.sample.hierarchy",
+                  defaultMessage: "Hierarchy",
+                }),
+              },
+            ]
+          : []),
+        {
+          key: "externalId",
+          header: intl.formatMessage({
+            id: "notebook.sample.externalId",
+            defaultMessage: "External ID",
+          }),
+        },
+        {
+          key: "accessionNumber",
+          header: intl.formatMessage({
+            id: "notebook.sample.accessionNumber",
+            defaultMessage: "Accession #",
+          }),
+        },
+        {
+          key: "sampleType",
+          header: intl.formatMessage({
+            id: "notebook.sample.type",
+            defaultMessage: "Sample Type",
+          }),
+        },
+        {
+          key: "collectionDate",
+          header: intl.formatMessage({
+            id: "notebook.sample.collectionDate",
+            defaultMessage: "Collection Date",
+          }),
+        },
+        {
+          key: "status",
+          header: intl.formatMessage({
+            id: "notebook.sample.status",
+            defaultMessage: "Status",
+          }),
+        },
+      ];
 
-  // Add additional column headers
-  const additionalHeaders = additionalColumns.map((col) => ({
-    key: col.key,
-    header: col.header,
-  }));
+  // Add additional column headers (only when not using custom columns)
+  const additionalHeaders = columns
+    ? []
+    : additionalColumns.map((col) => ({
+        key: col.key,
+        header: col.header,
+      }));
 
   const headers = [
     ...baseHeaders,
     ...additionalHeaders,
     { key: "actions", header: "" },
   ];
+
+  // Store custom columns for rendering
+  const customColumns = columns || [];
 
   // Render hierarchy cell with tree indicators
   const renderHierarchyCell = (sample) => {
@@ -433,21 +442,37 @@ function SampleGrid({
                       />
                     </TableCell>
                   )}
-                  {showHierarchy && (
-                    <TableCell>{renderHierarchyCell(row._original)}</TableCell>
+                  {/* Render custom columns if provided */}
+                  {customColumns.length > 0 ? (
+                    customColumns.map((col) => (
+                      <TableCell key={col.key}>
+                        {col.render
+                          ? col.render(row._original[col.key], row._original)
+                          : row._original[col.key] || row[col.key] || "-"}
+                      </TableCell>
+                    ))
+                  ) : (
+                    /* Default column rendering */
+                    <>
+                      {showHierarchy && (
+                        <TableCell>
+                          {renderHierarchyCell(row._original)}
+                        </TableCell>
+                      )}
+                      <TableCell>{row.externalId}</TableCell>
+                      <TableCell>{row.accessionNumber}</TableCell>
+                      <TableCell>{row.sampleType}</TableCell>
+                      <TableCell>{row.collectionDate}</TableCell>
+                      <TableCell>{getStatusTag(row.status)}</TableCell>
+                      {additionalColumns.map((col) => (
+                        <TableCell key={col.key}>
+                          {col.render
+                            ? col.render(row._original)
+                            : row._original[col.key]}
+                        </TableCell>
+                      ))}
+                    </>
                   )}
-                  <TableCell>{row.externalId}</TableCell>
-                  <TableCell>{row.accessionNumber}</TableCell>
-                  <TableCell>{row.sampleType}</TableCell>
-                  <TableCell>{row.collectionDate}</TableCell>
-                  <TableCell>{getStatusTag(row.status)}</TableCell>
-                  {additionalColumns.map((col) => (
-                    <TableCell key={col.key}>
-                      {col.render
-                        ? col.render(row._original)
-                        : row._original[col.key]}
-                    </TableCell>
-                  ))}
                   <TableCell>
                     <OverflowMenu flipped size="sm">
                       <OverflowMenuItem

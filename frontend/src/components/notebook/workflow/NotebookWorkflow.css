@@ -311,6 +311,106 @@
   margin-bottom: 1rem;
 }
 
+/* Expected Data Points Accordion Styles */
+.manifest-import-modal .expected-datapoints-accordion {
+  margin-bottom: 1.5rem;
+}
+
+.manifest-import-modal .accordion-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.manifest-import-modal .datapoints-container {
+  padding: 0.5rem 0;
+}
+
+.manifest-import-modal .datapoints-section {
+  margin-bottom: 1.5rem;
+}
+
+.manifest-import-modal .datapoints-section:last-child {
+  margin-bottom: 0;
+}
+
+.manifest-import-modal .section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.manifest-import-modal .section-title.required-title {
+  color: var(--cds-support-error);
+}
+
+.manifest-import-modal .section-title.optional-title {
+  color: var(--cds-support-info);
+}
+
+.manifest-import-modal .section-title.auto-title {
+  color: var(--cds-support-success);
+}
+
+.manifest-import-modal .section-title.sampletype-title {
+  color: var(--cds-support-purple, #8a3ffc);
+}
+
+.manifest-import-modal .valid-values-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  max-width: 400px;
+}
+
+.manifest-import-modal .valid-values-list .cds--tag {
+  margin: 0;
+}
+
+.manifest-import-modal .mapping-section-info {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.manifest-import-modal .column-key {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  padding: 0.125rem 0.375rem;
+  border-radius: 2px;
+}
+
+.manifest-import-modal .file-upload-section {
+  margin-top: 1rem;
+}
+
+/* Mapping Section Styles */
+.manifest-import-modal .mapping-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+
+.manifest-import-modal .mapping-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.manifest-import-modal .mapping-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
 /* Sample Reception Page Styles */
 .sample-reception-page {
   padding: 1rem 0;
@@ -730,4 +830,484 @@
 .result-compilation-page .delivery-history h6 {
   margin-bottom: 0.5rem;
   color: var(--cds-text-secondary);
+}
+
+/* Pharmaceutical Quality Check Page Styles */
+.pharma-quality-check-page {
+  padding: 1rem 0;
+}
+
+.pharma-quality-check-page .progress-tile.verified .progress-value {
+  color: var(--cds-support-success);
+}
+
+.pharma-quality-check-page .progress-tile.error .progress-value {
+  color: var(--cds-support-error);
+}
+
+.pharma-quality-check-page .progress-tile.pending .progress-value {
+  color: var(--cds-support-warning);
+}
+
+/* Sample Table Section Styles for QC Page */
+.pharma-quality-check-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.pharma-quality-check-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.pharma-quality-check-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.pharma-quality-check-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.pharma-quality-check-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.pharma-quality-check-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.pharma-quality-check-page .sample-grid-container {
+  margin-top: 0.5rem;
+}
+
+.pharma-quality-check-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+.pharma-quality-check-page .empty-table-state p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.pharma-quality-check-page .empty-state.global-empty {
+  display: none;
+}
+
+/* QC Bulk Apply Modal Styles */
+.qc-bulk-apply-modal {
+  padding: 0.5rem 0;
+}
+
+.qc-bulk-apply-modal .modal-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.qc-bulk-apply-modal .qc-section {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01);
+}
+
+.qc-bulk-apply-modal .qc-section:first-of-type {
+  margin-top: 1rem;
+  border-top: none;
+  padding-top: 0;
+}
+
+.qc-bulk-apply-modal .qc-section-header {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qc-bulk-apply-modal .qc-checklist {
+  background: var(--cds-layer-02);
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.qc-bulk-apply-modal .qc-checklist .cds--radio-button-group {
+  margin-bottom: 1rem;
+}
+
+.qc-bulk-apply-modal .qc-checklist .cds--radio-button-group:last-child {
+  margin-bottom: 0;
+}
+
+.qc-bulk-apply-modal .qc-checklist .cds--label {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Horizontal radio button styling for Pass/Fail */
+.qc-bulk-apply-modal .cds--radio-button-group[orientation="horizontal"] {
+  flex-direction: row;
+  gap: 1rem;
+}
+
+.qc-bulk-apply-modal
+  .cds--radio-button-group[orientation="horizontal"]
+  .cds--radio-button-wrapper {
+  margin-bottom: 0;
+}
+
+/* QC Result Section */
+.qc-bulk-apply-modal .qc-result-section {
+  background: var(--cds-layer-02);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 1.5rem;
+}
+
+.qc-bulk-apply-modal .qc-result-display {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
+.qc-bulk-apply-modal .qc-result-display .cds--tag {
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+}
+
+/* QC Fail Actions Section */
+.qc-bulk-apply-modal .qc-fail-actions {
+  background: var(--cds-support-error-container, rgba(218, 30, 40, 0.1));
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--cds-support-error);
+}
+
+.qc-bulk-apply-modal .qc-fail-actions .qc-section-header {
+  color: var(--cds-support-error);
+}
+
+.qc-bulk-apply-modal .qc-fail-actions .cds--inline-notification {
+  margin-bottom: 1rem;
+}
+
+.qc-bulk-apply-modal .qc-fail-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.qc-bulk-apply-modal .qc-fail-checkboxes .cds--checkbox-wrapper {
+  margin-bottom: 0;
+}
+
+/* QC Remarks Section */
+.qc-bulk-apply-modal .qc-remarks-section {
+  margin-top: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 672px) {
+  .qc-bulk-apply-modal .qc-checklist {
+    padding: 0.75rem;
+  }
+
+  .qc-bulk-apply-modal .cds--radio-button-group[orientation="horizontal"] {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* Pharmaceutical Sample Creation Page Styles */
+.pharma-sample-creation-page {
+  padding: 1rem 0;
+}
+
+.pharma-sample-creation-page .page-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.pharma-sample-creation-page .page-section-header h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.pharma-sample-creation-page .page-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.pharma-sample-creation-page .progress-section {
+  margin-bottom: 1.5rem;
+}
+
+.pharma-sample-creation-page .progress-tiles {
+  display: flex;
+  gap: 1rem;
+}
+
+.pharma-sample-creation-page .progress-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.pharma-sample-creation-page .progress-tile .progress-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.pharma-sample-creation-page .progress-tile .progress-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.pharma-sample-creation-page .progress-tile.verified .progress-value {
+  color: var(--cds-support-success);
+}
+
+.pharma-sample-creation-page .progress-tile.pending .progress-value {
+  color: var(--cds-support-warning);
+}
+
+.pharma-sample-creation-page .page-actions-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Sample Table Section Styles */
+.pharma-sample-creation-page .sample-table-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.pharma-sample-creation-page .sample-table-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.pharma-sample-creation-page .table-section-header {
+  margin-bottom: 1rem;
+}
+
+.pharma-sample-creation-page .table-section-header h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.pharma-sample-creation-page .table-section-header .count-tag {
+  margin-left: 0.25rem;
+}
+
+.pharma-sample-creation-page .table-section-description {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.pharma-sample-creation-page .sample-grid-container {
+  margin-top: 0.5rem;
+}
+
+.pharma-sample-creation-page .empty-table-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+.pharma-sample-creation-page .empty-table-state p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.pharma-sample-creation-page .empty-state.global-empty {
+  display: none;
+}
+
+/* Hide global empty when there are samples in any table */
+.pharma-sample-creation-page
+  .sample-table-section
+  + .sample-table-section
+  + .empty-state.global-empty {
+  display: block;
+}
+
+/* Responsive adjustments for pharma sample creation */
+@media (max-width: 672px) {
+  .pharma-sample-creation-page .progress-tiles {
+    flex-direction: column;
+  }
+
+  .pharma-sample-creation-page .page-actions-bar {
+    flex-direction: column;
+  }
+
+  .pharma-sample-creation-page .sample-table-section {
+    padding: 0.75rem;
+  }
+}
+
+/* Quality Control Parameters Section Styles */
+.qc-parameters-section {
+  margin-top: 1.5rem;
+}
+
+.qc-parameters-section .cds--accordion__title {
+  font-weight: 600;
+}
+
+.qc-param-tile {
+  height: 100%;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 4px;
+}
+
+.qc-param-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+
+.qc-param-header h5 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary);
+}
+
+.qc-param-header svg {
+  color: var(--cds-icon-secondary);
+}
+
+.qc-param-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qc-param-list .cds--list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--cds-border-subtle-02);
+  font-size: 0.875rem;
+}
+
+.qc-param-list .cds--list__item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.qc-param-list .cds--tag {
+  flex-shrink: 0;
+}
+
+.qc-param-description {
+  width: 100%;
+  margin: 0.25rem 0 0 0;
+  padding-left: 1.75rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  line-height: 1.4;
+}
+
+.qc-param-tags {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding-left: 1.75rem;
+}
+
+.qc-param-sub-items {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  padding-left: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.qc-param-sub-items span {
+  color: var(--cds-text-secondary);
+}
+
+.qc-param-timeline {
+  width: 100%;
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.75rem;
+}
+
+.qc-param-workflow {
+  width: 100%;
+  margin: 0.25rem 0 0 0;
+  padding-left: 1.75rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* Responsive adjustments for QC Parameters */
+@media (max-width: 1056px) {
+  .qc-parameters-section .cds--grid .cds--col {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 672px) {
+  .qc-param-tile {
+    padding: 0.75rem;
+  }
+
+  .qc-param-header h5 {
+    font-size: 0.8125rem;
+  }
+
+  .qc-param-list .cds--list__item {
+    font-size: 0.8125rem;
+  }
 }

@@ -335,4 +335,143 @@
         </rollback>
     </changeSet>
 
+    <!-- ======================================================== -->
+    <!-- UPDATE PAGE 6: ADD QUALITY CONTROL PARAMETERS            -->
+    <!-- Adds QC parameters for Controls, Acceptance Criteria,    -->
+    <!-- and Deviation Management at the notebook/department level-->
+    <!-- ======================================================== -->
+    <changeSet id="update-pharmaceuticals-page-6-add-qc-parameters" author="openelis-pharma">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pharmaceuticals Laboratory' AND n.is_template = true AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Update Reporting page with Quality Control Parameters for Controls, Acceptance Criteria, and Deviation Management</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Reporting &amp; Performance Monitoring&quot;,
+  &quot;routineReports&quot;: {
+    &quot;sampleIntake&quot;: &quot;Daily/weekly intake logs&quot;,
+    &quot;utilization&quot;: &quot;Sample and reagent utilization&quot;,
+    &quot;tat&quot;: &quot;Turnaround time reports&quot;
+  },
+  &quot;performanceMetrics&quot;: {
+    &quot;qcPassRates&quot;: true,
+    &quot;assaySuccessRates&quot;: true,
+    &quot;deviationTrends&quot;: true
+  },
+  &quot;dashboards&quot;: {
+    &quot;realTimeKPIs&quot;: true,
+    &quot;complianceMetrics&quot;: true
+  },
+  &quot;externalReporting&quot;: {
+    &quot;collaborators&quot;: true,
+    &quot;regulatoryAgencies&quot;: true,
+    &quot;surveillanceNetworks&quot;: true
+  },
+  &quot;qualityControlParameters&quot;: {
+    &quot;controlsRequired&quot;: {
+      &quot;positiveControls&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;description&quot;: &quot;Known positive samples to verify assay sensitivity&quot;
+      },
+      &quot;negativeControls&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;description&quot;: &quot;Blank/negative samples to verify specificity&quot;
+      },
+      &quot;internalStandards&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;description&quot;: &quot;Required for HPLC, GC, and LC-MS/MS analyses&quot;,
+        &quot;applicableMethods&quot;: [&quot;HPLC&quot;, &quot;GC&quot;, &quot;LC-MS/MS&quot;]
+      }
+    },
+    &quot;acceptanceCriteria&quot;: {
+      &quot;replicates&quot;: {
+        &quot;minimum&quot;: &quot;Duplicates&quot;,
+        &quot;preferred&quot;: &quot;Triplicates&quot;,
+        &quot;description&quot;: &quot;Minimum duplicate analyses required; triplicates preferred for critical assays&quot;
+      },
+      &quot;rsdLimit&quot;: {
+        &quot;relatedSubstances&quot;: &quot;≤ 2.0%&quot;,
+        &quot;assay&quot;: &quot;≤ 1.0%&quot;,
+        &quot;description&quot;: &quot;Relative Standard Deviation limits per USP/ICH guidelines&quot;
+      },
+      &quot;cvLimit&quot;: {
+        &quot;value&quot;: &quot;≤ 2.0%&quot;,
+        &quot;description&quot;: &quot;Coefficient of Variation limit for replicate measurements&quot;
+      },
+      &quot;precisionRequirements&quot;: {
+        &quot;guideline&quot;: &quot;USP/ICH Q2(R1)&quot;,
+        &quot;repeatability&quot;: &quot;6 determinations at 100% test concentration&quot;,
+        &quot;intermediaPrecision&quot;: &quot;Different days, analysts, equipment&quot;
+      },
+      &quot;referenceStandardsComparison&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;description&quot;: &quot;Compare against certified reference standards&quot;
+      },
+      &quot;pharmacopeialSpecifications&quot;: {
+        &quot;standards&quot;: [&quot;USP&quot;, &quot;BP&quot;, &quot;EP&quot;, &quot;IP&quot;, &quot;JP&quot;],
+        &quot;description&quot;: &quot;Results evaluated against applicable pharmacopeial specifications&quot;
+      }
+    },
+    &quot;deviationManagement&quot;: {
+      &quot;logInLmis&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;description&quot;: &quot;All deviations must be logged in LMIS with unique identifier&quot;
+      },
+      &quot;documentReason&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;description&quot;: &quot;Root cause analysis required for all deviations&quot;
+      },
+      &quot;capa&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;description&quot;: &quot;Corrective and Preventive Action (CAPA) required for significant deviations&quot;,
+        &quot;timeline&quot;: &quot;CAPA must be initiated within 30 days of deviation identification&quot;
+      },
+      &quot;oosFlagging&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;description&quot;: &quot;Out of Specification results automatically flagged for investigation&quot;,
+        &quot;workflow&quot;: &quot;OOS triggers Phase I (lab investigation) followed by Phase II (full-scale) if needed&quot;
+      }
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Generate reports&quot;, &quot;Export to PDF/Excel&quot;, &quot;Schedule automated reports&quot;]
+}"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true) AND page_order = 6</where>
+        </update>
+
+        <rollback>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Reporting &amp; Performance Monitoring&quot;,
+  &quot;routineReports&quot;: {
+    &quot;sampleIntake&quot;: &quot;Daily/weekly intake logs&quot;,
+    &quot;utilization&quot;: &quot;Sample and reagent utilization&quot;,
+    &quot;tat&quot;: &quot;Turnaround time reports&quot;
+  },
+  &quot;performanceMetrics&quot;: {
+    &quot;qcPassRates&quot;: true,
+    &quot;assaySuccessRates&quot;: true,
+    &quot;deviationTrends&quot;: true
+  },
+  &quot;dashboards&quot;: {
+    &quot;realTimeKPIs&quot;: true,
+    &quot;complianceMetrics&quot;: true
+  },
+  &quot;externalReporting&quot;: {
+    &quot;collaborators&quot;: true,
+    &quot;regulatoryAgencies&quot;: true,
+    &quot;surveillanceNetworks&quot;: true
+  },
+  &quot;systemActions&quot;: [&quot;Generate reports&quot;, &quot;Export to PDF/Excel&quot;, &quot;Schedule automated reports&quot;]
+}"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pharmaceuticals Laboratory' AND is_template = true) AND page_order = 6</where>
+            </update>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

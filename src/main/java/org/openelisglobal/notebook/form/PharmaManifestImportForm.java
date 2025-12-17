@@ -4,41 +4,55 @@ import org.openelisglobal.validation.annotations.SafeHtml;
 
 /**
  * Form bean for Pharmaceuticals manifest CSV import. Allows column mapping for
- * pharma-specific data points.
+ * pharma-specific data points aligned with the updated dataPoints schema.
+ *
+ * Required fields: sampleName, lotBatchNumber, dateOfManufacture,
+ * expiryRetestDate, storageCondition, ownerRequester
+ *
+ * Optional fields: alphanumericCode, chemicalIupacName, gradeSpecification,
+ * chainOfCustodyDetails, patientId, clinicalTrialNumber, consentStatus
+ *
+ * Auto-generated (not in CSV): uniqueSampleId, barcodeQrCode
  */
 public class PharmaManifestImportForm {
 
     private Integer notebookId;
 
+    // Required fields
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String groupIdColumn;
+    private String sampleNameColumn;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String sampleTypeColumn;
-
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String numOfSamplesColumn;
-
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String chemicalNameColumn;
-
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String gradeColumn;
-
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String lotNumberColumn;
+    private String lotBatchNumberColumn;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String dateOfManufactureColumn;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String expiryOrRetestDateColumn;
+    private String expiryRetestDateColumn;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String storageConditionColumn;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String ownerColumn;
+    private String ownerRequesterColumn;
+
+    // Sample type field (validated against Pharmaceutical lab types)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String sampleTypeColumn;
+
+    // Optional fields
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String alphanumericCodeColumn;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String chemicalIupacNameColumn;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String gradeSpecificationColumn;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String chainOfCustodyDetailsColumn;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String patientIdColumn;
@@ -49,9 +63,6 @@ public class PharmaManifestImportForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String consentStatusColumn;
 
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String notesColumn;
-
     public Integer getNotebookId() {
         return notebookId;
     }
@@ -60,52 +71,21 @@ public class PharmaManifestImportForm {
         this.notebookId = notebookId;
     }
 
-    public String getGroupIdColumn() {
-        return groupIdColumn;
+    // Required field getters/setters
+    public String getSampleNameColumn() {
+        return sampleNameColumn;
     }
 
-    public void setGroupIdColumn(String groupIdColumn) {
-        this.groupIdColumn = groupIdColumn;
+    public void setSampleNameColumn(String sampleNameColumn) {
+        this.sampleNameColumn = sampleNameColumn;
     }
 
-    public String getSampleTypeColumn() {
-        return sampleTypeColumn;
+    public String getLotBatchNumberColumn() {
+        return lotBatchNumberColumn;
     }
 
-    public void setSampleTypeColumn(String sampleTypeColumn) {
-        this.sampleTypeColumn = sampleTypeColumn;
-    }
-
-    public String getNumOfSamplesColumn() {
-        return numOfSamplesColumn;
-    }
-
-    public void setNumOfSamplesColumn(String numOfSamplesColumn) {
-        this.numOfSamplesColumn = numOfSamplesColumn;
-    }
-
-    public String getChemicalNameColumn() {
-        return chemicalNameColumn;
-    }
-
-    public void setChemicalNameColumn(String chemicalNameColumn) {
-        this.chemicalNameColumn = chemicalNameColumn;
-    }
-
-    public String getGradeColumn() {
-        return gradeColumn;
-    }
-
-    public void setGradeColumn(String gradeColumn) {
-        this.gradeColumn = gradeColumn;
-    }
-
-    public String getLotNumberColumn() {
-        return lotNumberColumn;
-    }
-
-    public void setLotNumberColumn(String lotNumberColumn) {
-        this.lotNumberColumn = lotNumberColumn;
+    public void setLotBatchNumberColumn(String lotBatchNumberColumn) {
+        this.lotBatchNumberColumn = lotBatchNumberColumn;
     }
 
     public String getDateOfManufactureColumn() {
@@ -116,12 +96,12 @@ public class PharmaManifestImportForm {
         this.dateOfManufactureColumn = dateOfManufactureColumn;
     }
 
-    public String getExpiryOrRetestDateColumn() {
-        return expiryOrRetestDateColumn;
+    public String getExpiryRetestDateColumn() {
+        return expiryRetestDateColumn;
     }
 
-    public void setExpiryOrRetestDateColumn(String expiryOrRetestDateColumn) {
-        this.expiryOrRetestDateColumn = expiryOrRetestDateColumn;
+    public void setExpiryRetestDateColumn(String expiryRetestDateColumn) {
+        this.expiryRetestDateColumn = expiryRetestDateColumn;
     }
 
     public String getStorageConditionColumn() {
@@ -132,12 +112,53 @@ public class PharmaManifestImportForm {
         this.storageConditionColumn = storageConditionColumn;
     }
 
-    public String getOwnerColumn() {
-        return ownerColumn;
+    public String getOwnerRequesterColumn() {
+        return ownerRequesterColumn;
     }
 
-    public void setOwnerColumn(String ownerColumn) {
-        this.ownerColumn = ownerColumn;
+    public void setOwnerRequesterColumn(String ownerRequesterColumn) {
+        this.ownerRequesterColumn = ownerRequesterColumn;
+    }
+
+    public String getSampleTypeColumn() {
+        return sampleTypeColumn;
+    }
+
+    public void setSampleTypeColumn(String sampleTypeColumn) {
+        this.sampleTypeColumn = sampleTypeColumn;
+    }
+
+    // Optional field getters/setters
+    public String getAlphanumericCodeColumn() {
+        return alphanumericCodeColumn;
+    }
+
+    public void setAlphanumericCodeColumn(String alphanumericCodeColumn) {
+        this.alphanumericCodeColumn = alphanumericCodeColumn;
+    }
+
+    public String getChemicalIupacNameColumn() {
+        return chemicalIupacNameColumn;
+    }
+
+    public void setChemicalIupacNameColumn(String chemicalIupacNameColumn) {
+        this.chemicalIupacNameColumn = chemicalIupacNameColumn;
+    }
+
+    public String getGradeSpecificationColumn() {
+        return gradeSpecificationColumn;
+    }
+
+    public void setGradeSpecificationColumn(String gradeSpecificationColumn) {
+        this.gradeSpecificationColumn = gradeSpecificationColumn;
+    }
+
+    public String getChainOfCustodyDetailsColumn() {
+        return chainOfCustodyDetailsColumn;
+    }
+
+    public void setChainOfCustodyDetailsColumn(String chainOfCustodyDetailsColumn) {
+        this.chainOfCustodyDetailsColumn = chainOfCustodyDetailsColumn;
     }
 
     public String getPatientIdColumn() {
@@ -162,13 +183,5 @@ public class PharmaManifestImportForm {
 
     public void setConsentStatusColumn(String consentStatusColumn) {
         this.consentStatusColumn = consentStatusColumn;
-    }
-
-    public String getNotesColumn() {
-        return notesColumn;
-    }
-
-    public void setNotesColumn(String notesColumn) {
-        this.notesColumn = notesColumn;
     }
 }

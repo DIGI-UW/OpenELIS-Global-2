@@ -17,4 +17,15 @@ public interface NoteBookPageService extends BaseObjectService<NoteBookPage, Int
      * @return list of pages for the notebook
      */
     List<NoteBookPage> getByNotebookId(Integer notebookId);
+
+    /**
+     * Update the content of a notebook page. This method merges new content with
+     * existing content JSON, allowing partial updates.
+     *
+     * @param pageId    the page ID
+     * @param content   the new content JSON string to merge
+     * @param sysUserId the user making the update
+     * @return the updated page
+     */
+    NoteBookPage updatePageContent(Integer pageId, String content, String sysUserId);
 }
