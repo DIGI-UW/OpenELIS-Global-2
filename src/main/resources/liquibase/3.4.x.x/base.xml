@@ -23,12 +23,14 @@
     <include file="liquibase/3.4.x.x/012-mntd-processing-qc-page.xml"/>
     <include file="liquibase/3.4.x.x/013-mntd-test-assignment-page.xml"/>
     <include file="liquibase/3.4.x.x/014-mntd-test-execution-page.xml"/>
-    <include file="liquibase/3.4.x.x/016-mntd-data-analysis-page.xml"/>
     <include file="liquibase/3.4.x.x/015-mntd-reporting-redcap-page.xml"/>
+    <include file="liquibase/3.4.x.x/016-mntd-data-analysis-page.xml"/>
     <include file="liquibase/3.4.x.x/017-fix-mntd-page-order.xml"/>
     <include file="liquibase/3.4.x.x/018-notebook-page-reference-table.xml"/>
     <include file="liquibase/3.4.x.x/012-pharmaceuticals-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/013-pharma-sample-types.xml"/>
     <include file="liquibase/3.4.x.x/014-pharmaceuticals-additional-pages.xml"/>
+    <include file="liquibase/3.4.x.x/011-tuberculosis-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/012-notebook-access-control.xml"/>
 
 </databaseChangeLog>

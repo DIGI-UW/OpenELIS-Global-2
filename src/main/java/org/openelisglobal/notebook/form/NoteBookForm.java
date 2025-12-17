@@ -2,6 +2,7 @@ package org.openelisglobal.notebook.form;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.openelisglobal.notebook.valueholder.NoteBookFile;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
@@ -31,6 +32,9 @@ public class NoteBookForm {
     private Integer templateId;
     private Boolean isTemplate;
     private java.util.UUID questionnaireFhirUuid;
+    private Set<String> organizationIds;
+    private Set<String> departmentIds;
+    private Set<String> allowedRoles;
 
     public String getTitle() {
         return title;
@@ -174,6 +178,30 @@ public class NoteBookForm {
 
     public void setQuestionnaireFhirUuid(java.util.UUID questionnaireFhirUuid) {
         this.questionnaireFhirUuid = questionnaireFhirUuid;
+    }
+
+    public Set<String> getOrganizationIds() {
+        return organizationIds;
+    }
+
+    public void setOrganizationIds(Set<String> organizationIds) {
+        this.organizationIds = organizationIds;
+    }
+
+    public Set<String> getDepartmentIds() {
+        return departmentIds;
+    }
+
+    public void setDepartmentIds(Set<String> departmentIds) {
+        this.departmentIds = departmentIds;
+    }
+
+    public Set<String> getAllowedRoles() {
+        return allowedRoles;
+    }
+
+    public void setAllowedRoles(Set<String> allowedRoles) {
+        this.allowedRoles = allowedRoles;
     }
 
     public static class NoteBookFileForm extends NoteBookFile {

@@ -149,9 +149,37 @@ public interface SampleRoutingService extends BaseObjectService<SampleRouting, I
     boolean isWellAvailable(Integer notebookId, Integer boxId, String wellCoordinate);
 
     /**
-     * Summary record for routing statistics.
+     * Summary class for routing statistics.
      */
-    record RoutingSummary(long internalAnalysis, long externalLab, long storage, long unrouted) {
+    class RoutingSummary {
+        private final long internalAnalysis;
+        private final long externalLab;
+        private final long storage;
+        private final long unrouted;
+
+        public RoutingSummary(long internalAnalysis, long externalLab, long storage, long unrouted) {
+            this.internalAnalysis = internalAnalysis;
+            this.externalLab = externalLab;
+            this.storage = storage;
+            this.unrouted = unrouted;
+        }
+
+        public long internalAnalysis() {
+            return internalAnalysis;
+        }
+
+        public long externalLab() {
+            return externalLab;
+        }
+
+        public long storage() {
+            return storage;
+        }
+
+        public long unrouted() {
+            return unrouted;
+        }
+
         public long total() {
             return internalAnalysis + externalLab + storage;
         }
