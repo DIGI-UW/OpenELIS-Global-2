@@ -799,11 +799,12 @@ const EditLocationModal = ({
                     defaultMessage: "Parent Room",
                   })}
                   items={availableRooms}
-                  selectedItem={
-                    availableRooms.find(
+                  selectedItem={(() => {
+                    const found = availableRooms.find(
                       (r) => String(r.id) === selectedParentRoomId,
-                    ) || null
-                  }
+                    ) || null;
+                    return found;
+                  })()}
                   onChange={({ selectedItem }) => {
                     if (selectedItem) {
                       const newParentId = String(selectedItem.id);

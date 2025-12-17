@@ -267,28 +267,6 @@ const StorageDashboard = () => {
 
   // Handle Create modal save
   const handleCreateModalSave = (newLocation) => {
-    // #region agent log (debug)
-    fetch("http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId: "debug-session",
-        runId: "pre-fix",
-        hypothesisId: "H1",
-        location: "StorageDashboard.jsx:handleCreateModalSave",
-        message: "Create modal saved - triggering refresh",
-        data: {
-          selectedTab,
-          tabName: TAB_ROUTES[selectedTab] || null,
-          selectedLocationType,
-          newLocationId: newLocation?.id ?? null,
-          newLocationType: newLocation?.type ?? null,
-          newLocationKeys: newLocation ? Object.keys(newLocation) : null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     // Refresh the appropriate table based on location type
     const tabName = TAB_ROUTES[selectedTab] || "rooms";
     switch (tabName) {
@@ -322,26 +300,6 @@ const StorageDashboard = () => {
 
   // Handle Edit location
   const handleEditLocation = (location) => {
-    // #region agent log (debug)
-    fetch("http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId: "debug-session",
-        runId: "pre-fix",
-        hypothesisId: "H3",
-        location: "StorageDashboard.jsx:handleEditLocation",
-        message: "Edit action requested",
-        data: {
-          selectedTab,
-          tabName: TAB_ROUTES[selectedTab] || null,
-          locationId: location?.id ?? null,
-          locationType: location?.type ?? null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     setSelectedLocation(location);
     // Determine location type from current tab (rooms -> room, devices -> device, etc.)
     const tabName = TAB_ROUTES[selectedTab] || "rooms";
@@ -1328,31 +1286,6 @@ const StorageDashboard = () => {
     if (searchTerm && searchTerm.trim()) {
       // Call search endpoint (FR-064: Racks tab - search by label)
       const url = `/rest/storage/racks/search?q=${encodeURIComponent(searchTerm.trim())}`;
-      // #region agent log (debug)
-      fetch(
-        "http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: "debug-session",
-            runId: "pre-fix",
-            hypothesisId: "H2",
-            location: "StorageDashboard.jsx:loadRacks:search",
-            message: "Loading racks (search branch)",
-            data: {
-              url,
-              searchLen: searchTerm ? searchTerm.trim().length : 0,
-              filterRoom,
-              filterDevice,
-              filterStatus,
-              visibleFilters,
-            },
-            timestamp: Date.now(),
-          }),
-        },
-      ).catch(() => {});
-      // #endregion
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current && response) {
           // Apply filters client-side on search results (AND logic)
@@ -1402,36 +1335,6 @@ const StorageDashboard = () => {
           }
 
           setRacks(filtered);
-          // #region agent log (debug)
-          fetch(
-            "http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                sessionId: "debug-session",
-                runId: "pre-fix",
-                hypothesisId: "H1",
-                location: "StorageDashboard.jsx:loadRacks:search:response",
-                message: "Racks loaded (search) - filtered list set",
-                data: {
-                  responseCount: Array.isArray(response)
-                    ? response.length
-                    : null,
-                  filteredCount: Array.isArray(filtered)
-                    ? filtered.length
-                    : null,
-                  sampleLabels: Array.isArray(filtered)
-                    ? filtered
-                        .slice(0, 5)
-                        .map((r) => r?.label || r?.name || r?.code || null)
-                    : null,
-                },
-                timestamp: Date.now(),
-              }),
-            },
-          ).catch(() => {});
-          // #endregion
         }
       });
     } else {
@@ -1474,63 +1377,10 @@ const StorageDashboard = () => {
 
       const queryString = params.toString();
       const url = `/rest/storage/racks${queryString ? "?" + queryString : ""}`;
-      // #region agent log (debug)
-      fetch(
-        "http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: "debug-session",
-            runId: "pre-fix",
-            hypothesisId: "H2",
-            location: "StorageDashboard.jsx:loadRacks:filter",
-            message: "Loading racks (filter branch)",
-            data: {
-              url,
-              queryString,
-              searchLen: searchTerm ? searchTerm.trim().length : 0,
-              filterRoom,
-              filterDevice,
-              filterStatus,
-              visibleFilters,
-            },
-            timestamp: Date.now(),
-          }),
-        },
-      ).catch(() => {});
-      // #endregion
 
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current && response) {
           setRacks(response || []);
-          // #region agent log (debug)
-          fetch(
-            "http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                sessionId: "debug-session",
-                runId: "pre-fix",
-                hypothesisId: "H1",
-                location: "StorageDashboard.jsx:loadRacks:filter:response",
-                message: "Racks loaded (filter) - list set",
-                data: {
-                  responseCount: Array.isArray(response)
-                    ? response.length
-                    : null,
-                  sampleLabels: Array.isArray(response)
-                    ? response
-                        .slice(0, 5)
-                        .map((r) => r?.label || r?.name || r?.code || null)
-                    : null,
-                },
-                timestamp: Date.now(),
-              }),
-            },
-          ).catch(() => {});
-          // #endregion
         }
       });
     }

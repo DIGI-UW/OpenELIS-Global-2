@@ -35,27 +35,6 @@ const LocationActionsOverflowMenu = ({
         event.preventDefault?.();
         event.stopPropagation?.();
       }
-      // #region agent log (debug)
-      fetch(
-        "http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: "debug-session",
-            runId: "pre-fix",
-            hypothesisId: "H3",
-            location: "LocationActionsOverflowMenu.jsx:handleEdit",
-            message: "Overflow menu Edit clicked",
-            data: {
-              locationId: location?.id ?? null,
-              locationType: location?.type ?? null,
-            },
-            timestamp: Date.now(),
-          }),
-        },
-      ).catch(() => {});
-      // #endregion
       if (onEdit) {
         onEdit(location);
       }

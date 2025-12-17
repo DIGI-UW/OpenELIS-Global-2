@@ -11,6 +11,7 @@ import * as Utils from "../utils/Utils";
 // Mock utilities BEFORE imports (Jest hoisting)
 jest.mock("../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),
+  getFromOpenElisServerV2: jest.fn(),
   postToOpenElisServer: jest.fn(),
   postToOpenElisServerJsonResponse: jest.fn(),
   putToOpenElisServer: jest.fn(),
@@ -38,6 +39,7 @@ describe("StorageLocationModal", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    Utils.getFromOpenElisServerV2.mockResolvedValue([]);
     Utils.postToOpenElisServerJsonResponse.mockImplementation(
       (url, data, callback) => {
         callback({ id: "new-id", ...JSON.parse(data) });

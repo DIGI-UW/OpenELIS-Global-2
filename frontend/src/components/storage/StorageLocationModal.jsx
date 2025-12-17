@@ -361,46 +361,6 @@ const StorageLocationModal = ({
       }
 
       if (mode === "create") {
-        // #region agent log (debug)
-        fetch(
-          "http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sessionId: "debug-session",
-              runId: "pre-fix",
-              hypothesisId: "H1",
-              location: "StorageLocationModal.jsx:handleSave:create",
-              message: "Create location submit",
-              data: {
-                locationType,
-                endpoint,
-                payloadKeys: Object.keys(payload),
-                labelLen:
-                  typeof payload.label === "string"
-                    ? payload.label.length
-                    : null,
-                nameLen:
-                  typeof payload.name === "string" ? payload.name.length : null,
-                hasParentRoomId: Object.prototype.hasOwnProperty.call(
-                  payload,
-                  "parentRoomId",
-                ),
-                hasParentDeviceId: Object.prototype.hasOwnProperty.call(
-                  payload,
-                  "parentDeviceId",
-                ),
-                hasParentShelfId: Object.prototype.hasOwnProperty.call(
-                  payload,
-                  "parentShelfId",
-                ),
-              },
-              timestamp: Date.now(),
-            }),
-          },
-        ).catch(() => {});
-        // #endregion
         postToOpenElisServerJsonResponse(
           endpoint,
           JSON.stringify(payload),
@@ -409,37 +369,6 @@ const StorageLocationModal = ({
 
             // postToOpenElisServerJsonResponse returns an error-shaped JSON with status/statusCode on failure
             const status = json?.status ?? json?.statusCode;
-            // #region agent log (debug)
-            fetch(
-              "http://localhost:7242/ingest/44bc6f1b-2900-45be-b3b4-de1741589a3e",
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  sessionId: "debug-session",
-                  runId: "pre-fix",
-                  hypothesisId: "H1",
-                  location:
-                    "StorageLocationModal.jsx:handleSave:create:response",
-                  message: "Create location response",
-                  data: {
-                    locationType,
-                    endpoint,
-                    status: status ?? null,
-                    returnedId: json?.id ?? null,
-                    returnedLabelLen:
-                      typeof json?.label === "string"
-                        ? json.label.length
-                        : null,
-                    returnedNameLen:
-                      typeof json?.name === "string" ? json.name.length : null,
-                    error: json?.error ?? null,
-                  },
-                  timestamp: Date.now(),
-                }),
-              },
-            ).catch(() => {});
-            // #endregion
             if (status === 409) {
               const errorMessage =
                 json?.error ||

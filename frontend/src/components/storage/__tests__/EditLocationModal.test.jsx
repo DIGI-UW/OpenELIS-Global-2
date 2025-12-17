@@ -66,26 +66,55 @@ describe("EditLocationModal", () => {
   const mockOnClose = jest.fn();
   const mockOnSave = jest.fn();
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    // Mock getFromOpenElisServerV2 to resolve immediately with location data
-    // Using mockResolvedValue ensures promises resolve in the same tick
-    Utils.getFromOpenElisServerV2.mockImplementation((endpoint) => {
-      const match = endpoint.match(/\/rest\/storage\/(\w+)s\/(\d+)/);
-      if (match) {
-        const [, type, id] = match;
-        if (type === "room") {
-          return Promise.resolve({ ...mockRoom, id });
-        } else if (type === "device") {
-          return Promise.resolve({ ...mockDevice, id });
-        } else if (type === "shelf" || type === "shelves") {
-          return Promise.resolve({ ...mockShelf, id });
-        } else if (type === "rack" || type === "racks") {
-          return Promise.resolve({ ...mockRack, id });
-        }
+  // Default mock implementation function
+  const defaultMockImplementation = (endpoint) => {
+    // Handle rooms list endpoint (returns array)
+    if (endpoint === "/rest/storage/rooms") {
+      return Promise.resolve([
+        { id: 1, name: "Main Laboratory", active: true },
+        { id: 2, name: "Secondary Lab", active: true },
+      ]);
+    }
+    // Handle devices list endpoint (returns array)
+    if (endpoint === "/rest/storage/devices") {
+      return Promise.resolve([
+        { id: 1, name: "Freezer 1", active: true },
+        { id: 2, name: "Refrigerator 1", active: true },
+      ]);
+    }
+    // Handle shelves list endpoint (returns array)
+    if (endpoint === "/rest/storage/shelves") {
+      return Promise.resolve([
+        { id: 1, label: "Shelf A", active: true },
+        { id: 2, label: "Shelf B", active: true },
+      ]);
+    }
+    // Handle individual location endpoints (returns object)
+    const match = endpoint.match(/\/rest\/storage\/(\w+)s\/(\d+)/);
+    if (match) {
+      const [, type, id] = match;
+      if (type === "room") {
+        return Promise.resolve({ ...mockRoom, id });
+      } else if (type === "device") {
+        return Promise.resolve({ ...mockDevice, id });
+      } else if (type === "shelf" || type === "shelves") {
+        return Promise.resolve({ ...mockShelf, id });
+      } else if (type === "rack" || type === "racks") {
+        return Promise.resolve({ ...mockRack, id });
       }
-      return Promise.resolve(mockRoom);
-    });
+    }
+    return Promise.resolve(mockRoom);
+  };
+
+  beforeEach(() => {
+    // CRITICAL: mockReset() clears EVERYTHING including mockImplementationOnce queues
+    // This is necessary because mockImplementationOnce creates a queue that persists
+    // across tests if not fully consumed, causing "undefined" returns
+    Utils.getFromOpenElisServerV2.mockReset();
+    // Restore default implementation after reset
+    Utils.getFromOpenElisServerV2.mockImplementation(defaultMockImplementation);
+    // Clear call history (but keep the implementation we just set)
+    jest.clearAllMocks();
   });
 
   /**
@@ -209,13 +238,21 @@ describe("EditLocationModal", () => {
     });
     global.fetch = mockFetch;
 
-    // Mock rooms list and full location fetch with parentRoomId
+    // Override default implementation for specific calls, then fall back to default
     Utils.getFromOpenElisServerV2
-      .mockResolvedValueOnce([
-        { id: 1, name: "Main Laboratory", active: true },
-        { id: 2, name: "Secondary Lab", active: true },
-      ])
-      .mockResolvedValueOnce({ ...mockDevice, parentRoomId: 1 }); // Full location fetch
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          ...mockDevice,
+          id: "2",
+          parentRoomId: "1", // String format as component expects
+        }),
+      ) // Full location fetch (called FIRST)
+      .mockImplementationOnce(() =>
+        Promise.resolve([
+          { id: 1, name: "Main Laboratory", active: true },
+          { id: 2, name: "Secondary Lab", active: true },
+        ]),
+      ); // Rooms list for dropdown (called SECOND)
 
     renderWithIntl(
       <EditLocationModal
@@ -227,14 +264,10 @@ describe("EditLocationModal", () => {
       />,
     );
 
-    // Wait for modal to load and parent dropdown to be initialized
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("edit-location-device-parent-room"),
-      ).toBeTruthy();
-    });
+    // Wait for room name to appear in dropdown (indicates both API calls completed)
+    await screen.findByText("Main Laboratory");
 
-    // Wait for form to be fully loaded and save button to be enabled
+    // Wait for save button to be enabled
     await waitFor(() => {
       const saveButton = screen.getByTestId("edit-location-save-button");
       expect(saveButton).toBeTruthy();
@@ -285,10 +318,12 @@ describe("EditLocationModal", () => {
    * Test that getFromOpenElisServerV2 errors don't crash the component
    */
   test("testEditModal_HandlesParentOptionsLoadError", async () => {
-    // Mock getFromOpenElisServerV2 to return undefined (simulating error)
+    // Override default implementation for specific calls, then fall back to default
     Utils.getFromOpenElisServerV2
-      .mockResolvedValueOnce(undefined) // Rooms fetch fails
-      .mockResolvedValueOnce({ ...mockDevice, parentRoomId: 1 }); // Full location fetch
+      .mockImplementationOnce(() =>
+        Promise.resolve({ ...mockDevice, parentRoomId: 1 }),
+      ) // Full location fetch (called FIRST)
+      .mockImplementationOnce(() => Promise.resolve(undefined)); // Rooms fetch fails (called SECOND)
 
     // Should not throw
     expect(() => {
@@ -320,9 +355,12 @@ describe("EditLocationModal", () => {
       { id: 3, name: "Inactive Lab", active: false },
     ];
 
+    // Override default implementation for specific calls, then fall back to default
     Utils.getFromOpenElisServerV2
-      .mockResolvedValueOnce(mockRooms) // Rooms list
-      .mockResolvedValueOnce({ ...mockDevice, parentRoomId: 1 }); // Full location
+      .mockImplementationOnce(() =>
+        Promise.resolve({ ...mockDevice, parentRoomId: 1 }),
+      ) // Full location (called FIRST)
+      .mockImplementationOnce(() => Promise.resolve(mockRooms)); // Rooms list (called SECOND)
 
     renderWithIntl(
       <EditLocationModal
