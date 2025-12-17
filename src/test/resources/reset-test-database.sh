@@ -17,7 +17,8 @@ echo "Reset Test Database"
 echo "======================================"
 echo ""
 echo "This will reset test data ranges:"
-echo "  - Storage: IDs 1-999 (fixtures), 1000+ (test-created)"
+echo "  - Storage: test-created rows only (IDs >= 1000 or TEST-* prefixes)"
+echo "    (storage hierarchy + boxes are loaded by Liquibase with context=\"test\")"
 echo "  - Samples: E2E-* and TEST-* accession numbers"
 echo "  - Patients: E2E-PAT-* external IDs"
 echo "  - Sample items: IDs 10000-20000 (fixtures), 20000+ (test-created)"
@@ -80,24 +81,25 @@ DELETE FROM sample_human WHERE samp_id IN (
 
 DELETE FROM sample WHERE accession_number LIKE 'E2E-%' OR accession_number LIKE 'TEST-%';
 
+-- Capture E2E person IDs before deleting patient rows (patient -> person FK)
+CREATE TEMP TABLE tmp_e2e_person_ids AS
+SELECT DISTINCT person_id FROM patient WHERE external_id LIKE 'E2E-%';
+
 DELETE FROM patient_identity WHERE patient_id IN (
   SELECT id FROM patient WHERE external_id LIKE 'E2E-%'
 );
 
 DELETE FROM patient WHERE external_id LIKE 'E2E-%';
 
-DELETE FROM person WHERE id IN (
-  SELECT person_id FROM patient WHERE external_id LIKE 'E2E-%'
-  UNION
-  SELECT id FROM person WHERE last_name LIKE 'E2E-%'
-);
+DELETE FROM person WHERE id IN (SELECT person_id FROM tmp_e2e_person_ids);
+DROP TABLE tmp_e2e_person_ids;
 
--- Storage hierarchy test data
-DELETE FROM storage_position WHERE id BETWEEN 100 AND 10000;
-DELETE FROM storage_rack WHERE id BETWEEN 30 AND 100;
-DELETE FROM storage_shelf WHERE id BETWEEN 20 AND 100;
-DELETE FROM storage_device WHERE id BETWEEN 10 AND 100;
-DELETE FROM storage_room WHERE id BETWEEN 1 AND 100;
+-- Storage test-created data (preserve Liquibase foundation rows)
+DELETE FROM storage_box WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%';
+DELETE FROM storage_rack WHERE id::integer >= 1000 OR label LIKE 'TEST-%' OR short_code LIKE 'TEST-%';
+DELETE FROM storage_shelf WHERE id::integer >= 1000 OR label LIKE 'TEST-%';
+DELETE FROM storage_device WHERE id::integer >= 1000 OR code LIKE 'TEST-%';
+DELETE FROM storage_room WHERE id::integer >= 1000 OR code LIKE 'TEST-%';
 
 -- Reset sequences to avoid conflicts with test data
 -- Use MAX(id) + 1 to ensure sequences are always ahead of existing data
@@ -106,7 +108,7 @@ SELECT setval('storage_room_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM 
 SELECT setval('storage_device_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_device) AS BIGINT), false);
 SELECT setval('storage_shelf_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_shelf) AS BIGINT), false);
 SELECT setval('storage_rack_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_rack) AS BIGINT), false);
-SELECT setval('storage_position_seq', CAST((SELECT COALESCE(MAX(id), 10000) + 1 FROM storage_position) AS BIGINT), false);
+SELECT setval('storage_box_seq', CAST((SELECT COALESCE(MAX(id), 10000) + 1 FROM storage_box) AS BIGINT), false);
 SELECT setval('sample_storage_assignment_seq', CAST((SELECT COALESCE(MAX(id), 10000) + 1 FROM sample_storage_assignment) AS BIGINT), false);
 SELECT setval('sample_storage_movement_seq', CAST((SELECT COALESCE(MAX(id), 10000) + 1 FROM sample_storage_movement) AS BIGINT), false);
 SELECT setval('person_seq', CAST((SELECT COALESCE(MAX(id), 2000) + 1 FROM person) AS BIGINT), false);

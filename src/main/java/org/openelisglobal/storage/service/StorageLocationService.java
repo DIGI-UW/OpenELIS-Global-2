@@ -130,4 +130,49 @@ public interface StorageLocationService {
      *                      StorageShelf, or StorageRack)
      */
     void deleteLocationWithCascade(Integer id, Class<?> locationClass);
+
+    // Deletion Validation Methods
+
+    /**
+     * Check if a Room can be deleted (no child devices).
+     *
+     * @param roomId Room ID to check
+     * @return DeletionValidationResult with success/error details
+     */
+    DeletionValidationResult canDeleteRoom(Integer roomId);
+
+    /**
+     * Check if a Device can be deleted (no child shelves).
+     *
+     * @param deviceId Device ID to check
+     * @return DeletionValidationResult with success/error details
+     */
+    DeletionValidationResult canDeleteDevice(Integer deviceId);
+
+    /**
+     * Check if a Shelf can be deleted (no child racks).
+     *
+     * @param shelfId Shelf ID to check
+     * @return DeletionValidationResult with success/error details
+     */
+    DeletionValidationResult canDeleteShelf(Integer shelfId);
+
+    /**
+     * Check if a Rack can be deleted (no assigned samples).
+     *
+     * @param rackId Rack ID to check
+     * @return DeletionValidationResult with success/error details
+     */
+    DeletionValidationResult canDeleteRack(Integer rackId);
+
+    /**
+     * Validate location name uniqueness within parent scope
+     *
+     * @param name         Location name to validate
+     * @param parentId     Parent ID (null for rooms)
+     * @param locationType One of: "room", "device", "shelf", "rack"
+     * @param excludeId    Existing ID to exclude (for updates)
+     * @return true if unique within scope, false otherwise
+     */
+    boolean isNameUniqueWithinParent(String name, Integer parentId, String locationType, Integer excludeId);
 }

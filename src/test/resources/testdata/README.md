@@ -7,8 +7,8 @@ integration tests.
 
 Test data is organized into a **layered architecture**:
 
-1. **Layer 1 (Foundation)**: Liquibase - Schema + reference data + storage
-   hierarchy (shared across all tests)
+1. **Layer 1 (Foundation)**: Liquibase - Schema migrations + baseline reference
+   data needed for the application context to start in tests
 2. **Layer 2 (Feature-Specific)**: DBUnit XML - E2E test data (patients,
    samples, analyses, results)
 3. **Layer 3 (Test-Specific)**: Test builders - Dynamic data created in tests
@@ -60,8 +60,8 @@ Test data is organized into a **layered architecture**:
 
 ### 1. Determine the Layer
 
-- **Foundation data** (reference data, storage hierarchy): Add to Liquibase
-  changeset
+- **Foundation data** (schema + long-lived baseline reference data): Add to
+  Liquibase changeset
 - **Feature-specific data** (E2E fixtures): Add to appropriate DBUnit XML file
 - **Test-specific data**: Create in test using builders/factories
 
@@ -104,7 +104,9 @@ Test data is organized into a **layered architecture**:
 
 - E2E data is automatically loaded via
   `executeDataSetWithStateManagement("testdata/storage-e2e.xml")`
-- Foundation data is loaded by Liquibase with `context="test"`
+- Liquibase runs for the test profile via `BaseTestConfig`, but DBUnit datasets
+  are the authoritative source of truth for table contents used by a test (the
+  loader truncates and refreshes tables included in the dataset)
 
 **For other tests**:
 
@@ -122,9 +124,9 @@ public void setUp() throws Exception {
 
 Storage E2E test data depends on:
 
-- Storage hierarchy (rooms, devices, shelves, racks, positions) - loaded by
-  Liquibase
-- Reference data (`type_of_sample`, `status_of_sample`) - loaded by Liquibase
+- Schema + baseline reference data (Liquibase)
+- Any additional reference rows required by a test should be included in the
+  DBUnit dataset that uses them (so the test is self-contained and repeatable)
 
 ### Placeholder Values
 
@@ -166,7 +168,9 @@ Storage E2E test data was migrated from SQL (`storage-test-data.sql`) to DBUnit
 XML (`storage-e2e.xml`) as part of the test data strategy remediation:
 
 - **Before**: SQL script loaded both storage hierarchy and E2E data
-- **After**: Liquibase loads storage hierarchy, DBUnit XML loads E2E data
+- **Current repository default for backend tests**: DBUnit XML datasets provide
+  the DB-backed fixtures a test needs (including any reference rows required for
+  repeatability). Liquibase remains responsible for schema migrations.
 - **Benefits**:
   - Single source of truth for foundation data (Liquibase)
   - Integration with existing DBUnit system

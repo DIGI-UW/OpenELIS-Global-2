@@ -197,6 +197,18 @@
             <column name="sys_user_id" value="1"/>
             <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
         </insert>
+
+        <!-- Rack 5 in Shelf-1 (Cabinet) -->
+        <insert tableName="storage_rack">
+            <column name="id" value="34"/>
+            <column name="fhir_uuid" valueComputed="gen_random_uuid()"/>
+            <column name="label" value="Rack R1"/>
+            <column name="short_code" value="R1"/>
+            <column name="active" valueBoolean="true"/>
+            <column name="parent_shelf_id" value="23"/>
+            <column name="sys_user_id" value="1"/>
+            <column name="last_updated" valueDate="CURRENT_TIMESTAMP"/>
+        </insert>
     </changeSet>
 
     <changeSet id="storage-test-005-insert-test-boxes" author="sample-storage-feature" context="test">

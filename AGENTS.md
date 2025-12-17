@@ -33,7 +33,7 @@ reporting, serving 30+ countries worldwide.
 
 **Governance:**
 
-- **Constitution Authority**: `.specify/memory/constitution.md` (v1.8.0) is the
+- **Constitution Authority**: `.specify/memory/constitution.md` (v1.8.1) is the
   authoritative governance document
 - **All code changes MUST comply with constitutional principles**
 - **Constitution supersedes all other documentation in case of conflict**
@@ -42,7 +42,8 @@ reporting, serving 30+ countries worldwide.
 
 - GitHub: `DIGI-UW/OpenELIS-Global-2`
 - Branch strategy: `develop` (main development), `main` (production releases)
-- Feature branches: `{###-feature-name}` or `issue-{###}-{feature-name}`
+- Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}`
+  (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
 
 **Tech Stack:** Java 21 + Spring Framework 6.2.2 (Traditional Spring MVC)
 backend, React 17 + Carbon Design System frontend, PostgreSQL 14+ database, HAPI
@@ -216,7 +217,7 @@ jakarta.persistence (Jakarta EE 9)
 
 ## Constitution Principles Summary
 
-> **Full Document:** `.specify/memory/constitution.md` (v1.8.0)
+> **Full Document:** `.specify/memory/constitution.md` (v1.8.1)
 
 The constitution defines 9 core principles that ALL code changes MUST follow:
 
@@ -446,20 +447,19 @@ delay feedback. Milestone-based delivery enables manageable code reviews.
 
 **How:**
 
-- Spec PR created first on `spec/{issue-id}-{name}` branch
-- Each milestone gets own branch: `feat/{issue-id}-{name}/m{N}-{desc}`
+- Spec PR created first on `spec/{NNN}[-{jira}]-{name}` branch
+- Each milestone gets its own branch: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
 - Parallel milestones marked with `[P]` can be developed simultaneously
 - Sequential milestones must complete in order
 
 **Branch Naming Convention:**
 
-| Branch Type      | Pattern                              | Example                           |
-| ---------------- | ------------------------------------ | --------------------------------- |
-| Spec Branch      | `spec/{issue-id}-{name}`             | `spec/OGC-009-sidenav`            |
-| Feature Branch   | `feat/{issue-id}-{name}`             | `feat/OGC-009-sidenav`            |
-| Milestone Branch | `feat/{issue-id}-{name}/m{N}-{desc}` | `feat/OGC-009-sidenav/m1-backend` |
-| Hotfix           | `hotfix/{issue-id}-{desc}`           | `hotfix/OGC-123-fix-login`        |
-| Bugfix           | `fix/{issue-id}-{desc}`              | `fix/OGC-456-null-check`          |
+| Branch Type      | Pattern                                                    | Example                                               |
+| ---------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| Spec Branch      | `spec/{NNN}[-{jira}]-{name}`                               | `spec/004-ogc-49-astm-analyzer-mapping`               |
+| Milestone Branch | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m1-backend-db` |
+| Hotfix           | `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`) | `hotfix/004-ogc-49-fix-login`                         |
+| Bugfix           | `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)       | `fix/004-ogc-49-null-check`                           |
 
 **Reference:**
 [GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
@@ -636,11 +636,12 @@ docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
 
 **Feature Development (Principle IX):**
 
-- **Spec branches:** `spec/{issue-id}-{name}` - Specification PRs
-- **Feature branches:** `feat/{issue-id}-{name}` - Integration target
-- **Milestone branches:** `feat/{issue-id}-{name}/m{N}-{desc}` - Individual PRs
-- **Hotfix branches:** `hotfix/{issue-id}-{desc}` (merged to develop + main)
-- **Bugfix branches:** `fix/{issue-id}-{desc}` (merged to develop)
+- **Spec branches:** `spec/{NNN}[-{jira}]-{name}` - Specification PRs
+- **Milestone branches:** `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` - Individual
+  PRs
+- **Hotfix branches:** `hotfix/{NNN}[-{jira}]-{desc}` (or
+  `hotfix/{jira}-{desc}`)
+- **Bugfix branches:** `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
 
 **Issue ID Format:** Jira ticket (`OGC-{###}`) preferred, or GitHub issue number
 (`{###}`)
@@ -651,13 +652,11 @@ docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
 # 1. Start with spec branch
 git checkout develop
 git pull --rebase upstream develop
-git checkout -b spec/OGC-009-sidenav
+git checkout -b spec/009-sidenav
 
-# 2. After spec PR approved, create feature branch
-git checkout -b feat/OGC-009-sidenav
-
-# 3. For each milestone, create milestone branch
-git checkout -b feat/OGC-009-sidenav/m1-backend
+# 2. Create milestone branches (avoid Git ref prefix collisions by not nesting)
+git checkout -b feat/009-sidenav-m1-backend
+git checkout -b feat/009-sidenav-m2-frontend
 ```
 
 ### Pre-Commit Checklist
@@ -877,6 +876,14 @@ for comprehensive guide.
   `load-test-fixtures.sh`
 - **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
 - **Manual Testing**: Direct execution of `load-test-fixtures.sh`
+
+**DBUnit datasets (MANDATORY for DB-backed tests):**
+
+- **Where**: `src/test/resources/testdata/*.xml`
+- **How**: Load via
+  `BaseWebContextSensitiveTest.executeDataSetWithStateManagement("testdata/<file>.xml")`
+- **Rule**: Prefer DBUnit datasets over inline SQL setup/cleanup to prevent test
+  data pollution and keep tests maintainable.
 
 **For detailed information**, see:
 
@@ -1711,7 +1718,8 @@ Before creating PR, verify ALL items:
 
 2. **Branch Naming:**
 
-   - Branch name matches: `issue-{###}-{feature-name}` or `{###-feature-name}`
+   - Branch name follows Constitution Principle IX (e.g.,
+     `spec/{NNN}[-{jira}]-{name}` or `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`)
 
 3. **Target Branch:**
 
