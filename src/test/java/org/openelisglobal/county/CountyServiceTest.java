@@ -4,15 +4,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.sql.DataSource;
-import org.dbunit.DatabaseUnitException;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -20,43 +16,26 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.county.service.CountyService;
 import org.openelisglobal.county.valueholder.County;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 public class CountyServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private CountyService countyService;
 
-    private JdbcTemplate jdbcTemplate;
     private List<County> countyList;
     private static int NUMBER_OF_PAGES = 0;
     private Map<String, Object> propertyValues;
     private List<String> orderProperties;
 
-    @Autowired
-    public void setDataSource(DataSource dataSource) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
-    }
-
     @Before
-    public void setUp() {
-        jdbcTemplate.update("INSERT INTO region(id, region) VALUES (1001, 'Northern Province');");
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS county (id NUMERIC(10) PRIMARY KEY, "
-                + "lastupdated TIMESTAMP, region_id VARCHAR(10),county VARCHAR(75) NOT NULL)");
-        jdbcTemplate.update("INSERT INTO county (id, lastupdated, region_id, county)"
-                + "VALUES (2001, CURRENT_TIMESTAMP, '1001', 'Greenfield');");
-        jdbcTemplate.update("INSERT INTO county (id, lastupdated, region_id, county)"
-                + "VALUES (2002, '2024-06-10 11:45:00', '1001', 'Marryland');");
+    public void setUp() throws Exception {
+        executeDataSetWithStateManagement("testdata/region.xml");
+        executeDataSetWithStateManagement("testdata/county.xml");
 
         propertyValues = new HashMap<>();
-        propertyValues.put("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00"));
+        propertyValues.put("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00.000"));
         orderProperties = new ArrayList<>();
         orderProperties.add("county");
-    }
-
-    @After
-    public void cleanUp() throws SQLException, DatabaseUnitException {
-        cleanRowsInCurrentConnection(new String[] { "county", "region" });
     }
 
     @Test
@@ -69,7 +48,7 @@ public class CountyServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllMatching_ShouldReturnAllMatchingCounties_UsingPropertyNameAndValue() {
-        countyList = countyService.getAllMatching("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00"));
+        countyList = countyService.getAllMatching("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00.000"));
         assertNotNull(countyList);
         assertEquals(1, countyList.size());
         assertEquals("2002", countyList.get(0).getId());
@@ -101,7 +80,7 @@ public class CountyServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedCounties_UsingPropertyNameAndValueAndAnOrderProperty() {
-        countyList = countyService.getAllMatchingOrdered("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00"),
+        countyList = countyService.getAllMatchingOrdered("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00.000"),
                 "lastupdated", true);
         assertNotNull(countyList);
         assertEquals(1, countyList.size());
@@ -110,7 +89,7 @@ public class CountyServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedCounties_UsingPropertyNameAndValueAndAList() {
-        countyList = countyService.getAllMatchingOrdered("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00"),
+        countyList = countyService.getAllMatchingOrdered("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00.000"),
                 orderProperties, true);
         assertNotNull(countyList);
         assertEquals(1, countyList.size());
@@ -145,7 +124,7 @@ public class CountyServiceTest extends BaseWebContextSensitiveTest {
     public void getMatchingPage_ShouldReturnAPageOfCounties_UsingAPropertyNameAndValue() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-        countyList = countyService.getMatchingPage("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00"), 1);
+        countyList = countyService.getMatchingPage("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00.000"), 1);
         assertTrue(NUMBER_OF_PAGES >= countyList.size());
     }
 
@@ -177,7 +156,7 @@ public class CountyServiceTest extends BaseWebContextSensitiveTest {
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCounties_UsingAPropertyNameAndValueAndAnOrderProperty() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-        countyList = countyService.getMatchingOrderedPage("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00"),
+        countyList = countyService.getMatchingOrderedPage("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00.000"),
                 "lastupdated", true, 1);
         assertTrue(NUMBER_OF_PAGES >= countyList.size());
     }
@@ -186,7 +165,7 @@ public class CountyServiceTest extends BaseWebContextSensitiveTest {
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfCounties_UsingAPropertyNameAndValueAndAList() {
         NUMBER_OF_PAGES = Integer
                 .parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-        countyList = countyService.getMatchingOrderedPage("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00"),
+        countyList = countyService.getMatchingOrderedPage("lastupdated", Timestamp.valueOf("2024-06-10 11:45:00.000"),
                 orderProperties, true, 1);
         assertTrue(NUMBER_OF_PAGES >= countyList.size());
     }

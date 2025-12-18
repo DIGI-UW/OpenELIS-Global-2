@@ -11,10 +11,12 @@ development principles.
 
 **OpenELIS Global Stack**:
 
-- Backend: Java 21 + Spring Boot 3.x + Hibernate 6.x + JPA + PostgreSQL 14+
+- Backend: Java 21 + Spring Framework 6.2.x (Traditional Spring MVC) +
+  Hibernate + JPA + PostgreSQL 14+
 - Frontend: React 17 + **Carbon Design System v1.15** (OFFICIAL UI framework)
 - FHIR: HAPI FHIR R4 v6.6.2 + IHE mCSD profile
-- Testing: JUnit 5 + Mockito (backend), Jest + RTL + Cypress (frontend)
+- Testing: JUnit 4 + Mockito (backend), Jest + React Testing Library (frontend
+  unit), Cypress (frontend E2E)
 - Build: Maven 3.8+ (backend), npm (frontend), Docker Compose (deployment)
 
 ## Project Structure
@@ -45,7 +47,7 @@ cd frontend && npm run format && npm start
 cd frontend && npm run cy:run
 
 # Hot reload backend (rebuild + restart container)
-mvn clean install -DskipTests && docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+mvn clean install -DskipTests -Dmaven.test.skip=true && docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 ```
 
 ## Code Style
@@ -61,8 +63,8 @@ mvn clean install -DskipTests && docker compose -f dev.docker-compose.yml up -d 
 - **FHIR**: Extend `FhirTransformService` for entity↔FHIR conversion, sync via
   `FhirPersistanceService`
 - **Database**: Liquibase changesets ONLY (NO direct DDL/DML)
-- **Tests**: JUnit 5 for backend, Jest + Cypress for frontend, >70% coverage
-  goal
+- **Tests**: JUnit 4 for backend, Jest + Cypress for frontend, >80% backend
+  coverage goal, >70% frontend coverage goal
 
 ## Recent Changes
 

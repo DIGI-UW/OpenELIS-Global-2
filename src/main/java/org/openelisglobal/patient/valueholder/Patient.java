@@ -86,6 +86,12 @@ public class Patient extends BaseObject<String> {
 
     private UUID fhirUuid;
 
+    private String mergedIntoPatientId;
+
+    private Boolean isMerged = false;
+
+    private Timestamp mergeDate;
+
     public String getChartNumber() {
         return chartNumber;
     }
@@ -304,5 +310,29 @@ public class Patient extends BaseObject<String> {
 
     public void setUpidCode(String upidCode) {
         this.upidCode = upidCode;
+    }
+
+    public String getMergedIntoPatientId() {
+        return mergedIntoPatientId;
+    }
+
+    public void setMergedIntoPatientId(String mergedIntoPatientId) {
+        this.mergedIntoPatientId = mergedIntoPatientId;
+    }
+
+    public Boolean getIsMerged() {
+        return isMerged;
+    }
+
+    public void setIsMerged(Boolean isMerged) {
+        this.isMerged = isMerged;
+    }
+
+    public Timestamp getMergeDate() {
+        return mergeDate;
+    }
+
+    public void setMergeDate(Timestamp mergeDate) {
+        this.mergeDate = mergeDate;
     }
 }
