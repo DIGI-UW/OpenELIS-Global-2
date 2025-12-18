@@ -838,10 +838,14 @@ describe("Location CRUD Operations", function () {
       // Wait for API call
       cy.wait("@createDevice", { timeout: 5000 }).then((interception) => {
         // Log request and response for debugging
-        cy.log(`Device creation request: ${JSON.stringify(interception.request.body)}`);
+        cy.log(
+          `Device creation request: ${JSON.stringify(interception.request.body)}`,
+        );
         cy.log(`Device creation response: ${interception.response.statusCode}`);
         if (interception.response.statusCode >= 400) {
-          cy.log(`Error response: ${JSON.stringify(interception.response.body)}`);
+          cy.log(
+            `Error response: ${JSON.stringify(interception.response.body)}`,
+          );
         }
         expect(interception.response.statusCode).to.be.oneOf([200, 201]);
       });
