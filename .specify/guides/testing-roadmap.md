@@ -39,6 +39,50 @@ controller/DAO/integration tests.
 - **Clean State**: Tests must be isolated and use builders/factories for data
 - **Checkpoint Validation**: Tests must pass at each SDD phase checkpoint
 
+### Test Type Contracts (What each test MUST prove)
+
+This project uses “E2E” to mean **real browser + real backend + real database**.
+If the backend is stubbed, the test is **not** end-to-end (it is a
+mocked-backend UI test).
+
+- **Unit tests (mocked collaborators allowed)**:
+
+  - Prove **business logic** (branching, validation, transformations).
+  - Should fail if you delete/short-circuit the core logic.
+  - **Anti-pattern**: “returns what the mock returned” without verifying any
+    logic.
+
+- **Controller HTTP tests (service mocked)**:
+
+  - Prove **request/response mapping**: routing, validation, status codes, JSON
+    shape.
+  - Do **not** prove persistence (service is mocked by design).
+
+- **Backend integration tests (real service + DAO + DB)**:
+
+  - Prove **persistence and transactions**: read-after-write, constraints,
+    rollback behavior.
+  - Must include at least one “real-effect assertion” (database state changed as
+    expected).
+
+- **Cypress E2E tests (`frontend/cypress/e2e/`)**:
+  - Prove the full chain: **UI action → real HTTP → backend logic → DB update →
+    UI reflects result**.
+  - Must include at least one “real-effect assertion” after mutations (see
+    Cypress section).
+
+### Mocking and Stubbing Rules (project-wide)
+
+- **Default rule**: do not stub the part you are trying to validate.
+- **Acceptable mocking**:
+  - Unit tests: mock external collaborators (DAOs, FHIR services, etc.) to
+    isolate business logic.
+  - Controller tests: mock the service layer to isolate HTTP mapping/validation.
+- **Not acceptable**:
+  - Calling a test “integration” or “E2E” while stubbing the system under test.
+  - Stubbing success responses for the mutation you are validating in a Cypress
+    E2E test.
+
 ### For AI Agents
 
 This roadmap provides explicit rules, patterns, and code examples. Follow the
@@ -1677,6 +1721,16 @@ cy.visit("/storage");
 cy.wait("@getRooms");
 ```
 
+**Important clarification**:
+
+- Fixture-backed intercepts are acceptable for **read-only page bootstrapping**
+  when you are not validating backend behavior.
+- If you stub responses that your user story is meant to validate (especially
+  mutation success), the test is **not** an E2E test and must not live in
+  `frontend/cypress/e2e/`.
+- For real E2E environments, prefer the unified fixture loader (see
+  `src/test/resources/FIXTURE_LOADER_README.md`).
+
 **Smart Fixture Management**: Check if fixtures exist before loading, skip
 loading if fixtures already present, use environment variables for control
 (`CYPRESS_SKIP_FIXTURES`, `CYPRESS_FORCE_FIXTURES`).
@@ -1768,6 +1822,43 @@ cy.intercept("GET", "/rest/storage/rooms", { fixture: "rooms.json" }).as(
 );
 cy.visit("/storage");
 cy.wait("@getRooms");
+```
+
+#### Cypress Network Policy (Spy-first; no stubbing the operation under test)
+
+**Rule for `frontend/cypress/e2e/`**:
+
+- `cy.intercept()` is **spy-first**: use it to alias and assert
+  requests/responses.
+- **DO NOT** stub the primary mutation endpoint under test
+  (`PUT|POST|PATCH|DELETE`) with a fabricated success response.
+- If you must stub backend responses to validate UI-only behavior, that belongs
+  in a **mocked-backend UI** test suite (not `frontend/cypress/e2e/`) and must
+  be labeled accordingly.
+
+**Spy-only mutation example** (valid E2E):
+
+```javascript
+cy.intercept("PUT", "**/rest/storage/rooms/**").as("updateRoom");
+cy.get('[data-testid="edit-location-save-button"]').click();
+cy.wait("@updateRoom").its("response.statusCode").should("eq", 200);
+```
+
+#### “Real-effect assertions” (required for E2E mutations)
+
+After a successful mutation, prove it was real by doing **at least one**:
+
+- Reload/revisit and verify the updated state is still present.
+- `cy.request()` a read endpoint and verify the updated field
+  (read-after-write).
+
+Example:
+
+```javascript
+cy.request("GET", `/rest/storage/rooms/${roomId}`)
+  .its("body")
+  .its("name")
+  .should("eq", newName);
 ```
 
 #### Test Simplification (Happy Path Focus)

@@ -20,6 +20,7 @@ import "./index.scss";
 import RedirectOldUI from "./RedirectOldUI";
 import PatientManagement from "./components/patient/PatientManagement";
 import PatientHistory from "./components/patient/PatientHistory";
+import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
 import AddOrder from "./components/addOrder/Index";
@@ -497,6 +498,12 @@ export default function App() {
                   exact
                   component={() => <PatientHistory />}
                   role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/PatientMerge"
+                  exact
+                  component={() => <PatientMerge />}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/Aliquot"
