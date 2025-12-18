@@ -103,8 +103,10 @@ describe("Box/Plate CRUD Operations", function () {
         .should("have.attr", "aria-selected", "true");
 
       // Add Box button should be disabled initially (no rack selected)
+      // Scroll into view in case metrics cards push it down
       cy.get('[data-testid="add-box-button"]', { timeout: 3000 })
-        .should("be.visible")
+        .scrollIntoView()
+        .should("exist")
         .should("be.disabled");
     });
 

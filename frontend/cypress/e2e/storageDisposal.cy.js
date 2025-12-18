@@ -307,7 +307,9 @@ describe("Dispose Sample Modal - UI Components (P2B)", function () {
       );
 
       // Get initial Disposed count and chain all subsequent operations
+      // Scroll to top first since sample list may push metrics out of view
       cy.get('[data-testid="metric-disposed"]', { timeout: 3000 })
+        .scrollIntoView()
         .should("be.visible")
         .invoke("text")
         .then((text) => {
