@@ -66,7 +66,7 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
         jdbcTemplate.update(
                 "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testRoomId, "Test Room", "TEST-ROOM", true, 1);
+                testRoomId, "Test Room", "TSTRM-RACK", true, 1);
         testRoom = storageRoomDAO.get(testRoomId).orElse(null);
 
         // Create test device
@@ -113,7 +113,7 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
             jdbcTemplate.execute("DELETE FROM storage_rack WHERE code IN ('RACK-1', 'RACK-2') OR id IN (2203, 2204)");
             jdbcTemplate.execute("DELETE FROM storage_shelf WHERE code = 'TEST-SHELF' OR id = 2202");
             jdbcTemplate.execute("DELETE FROM storage_device WHERE code = 'TEST-DEV' OR id = 2201");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE code = 'TEST-ROOM' OR id = 2200");
+            jdbcTemplate.execute("DELETE FROM storage_room WHERE code = 'TSTRM-RACK' OR id = 2200");
         } catch (Exception e) {
             // Ignore cleanup errors
         }
