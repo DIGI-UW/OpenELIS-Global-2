@@ -70,7 +70,6 @@ export default function App() {
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
     useState(false);
-  const [locale, setLocale] = useState("en");
 
   useEffect(() => {
     getUserSessionDetails();
@@ -192,14 +191,17 @@ export default function App() {
     i18nConfig.messages = languages[lang].messages;
     i18nConfig.locale = lang;
     localStorage.setItem("locale", lang);
-    setLocale(lang);
   };
 
   const changeLanguageBackend = async (lang) => {
     if (userSessionDetails.authenticated) {
-      getFromOpenElisServer("/Home?lang=" + lang, () => {});
+      getFromOpenElisServer("/Home?lang=" + lang, () => {
+        // Language changed on backend
+      });
     } else {
-      getFromOpenElisServer("/LoginPage?lang=" + lang, () => {});
+      getFromOpenElisServer("/LoginPage?lang=" + lang, () => {
+        // Language changed on backend
+      });
     }
   };
 
