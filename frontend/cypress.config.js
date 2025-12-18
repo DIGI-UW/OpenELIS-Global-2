@@ -9,7 +9,7 @@ module.exports = defineConfig({
   defaultCommandTimeout: 30000, // Increased timeout for slow operations
   viewportWidth: 1200,
   viewportHeight: 700,
-  video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
+  video: true, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
   env: {
