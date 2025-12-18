@@ -1523,6 +1523,7 @@ public class StorageLocationRestController extends BaseRestController {
             parentRoom.getName();
             response.setRoomId(parentRoom.getId());
             response.setRoomName(parentRoom.getName());
+            response.setParentRoomId(parentRoom.getId());
             response.setParentRoomName(parentRoom.getName());
         }
         return response;
