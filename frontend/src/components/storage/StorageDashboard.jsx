@@ -803,7 +803,12 @@ const StorageDashboard = () => {
           },
           credentials: "include",
           body: JSON.stringify({
-            sampleItemId: sample?.id || sample?.sampleItemId,
+            // Prefer external ID for API lookup (backend resolves by external ID or accession)
+            // Fall back to numeric ID if external ID not available
+            sampleItemId:
+              sample?.sampleItemExternalId ||
+              sample?.id ||
+              sample?.sampleItemId,
             reason,
             method,
             notes,
@@ -1390,9 +1395,7 @@ const StorageDashboard = () => {
     // Use search endpoint if searchTerm is present, otherwise use filter endpoint
     if (searchTerm && searchTerm.trim()) {
       // Call search endpoint (FR-064: Sample Items tab - search by SampleItem ID/External ID, parent Sample accession, location path)
-      // Note: Backend search endpoint is at /rest/storage/samples/search (StorageLocationRestController)
-      // but should ideally be at /rest/storage/sample-items/search for consistency
-      const url = `/rest/storage/samples/search?q=${encodeURIComponent(searchTerm.trim())}`;
+      const url = `/rest/storage/sample-items/search?q=${encodeURIComponent(searchTerm.trim())}`;
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
@@ -3012,7 +3015,7 @@ const StorageDashboard = () => {
           </Tile>
         </Column>
         <Column lg={4} md={4} sm={4}>
-          <Tile>
+          <Tile data-testid="metric-disposed">
             <h3>
               <FormattedMessage id="storage.metrics.disposed" />
             </h3>

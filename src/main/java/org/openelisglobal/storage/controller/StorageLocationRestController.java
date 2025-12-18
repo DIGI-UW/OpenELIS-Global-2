@@ -1687,22 +1687,35 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Search Endpoints (FR-064, FR-064a - Phase 3.1) ==========
 
     /**
-     * Search samples by sample ID, accession number type/prefix, and assigned
-     * location (full hierarchical path). Matches ANY of these fields (OR logic).
-     * GET /rest/storage/samples/search?q={searchTerm}
+     * Search sample items by sample item ID, external ID, parent sample accession
+     * number, and assigned location (full hierarchical path). Matches ANY of these
+     * fields (OR logic). GET /rest/storage/sample-items/search?q={searchTerm}
+     *
+     * Note: This is the canonical endpoint. /samples/search is kept for backwards
+     * compatibility.
      */
-    @GetMapping("/samples/search")
-    public ResponseEntity<List<Map<String, Object>>> searchSamples(@RequestParam(required = false) String q) {
+    @GetMapping("/sample-items/search")
+    public ResponseEntity<List<Map<String, Object>>> searchSampleItems(@RequestParam(required = false) String q) {
         try {
             List<Map<String, Object>> results = storageSearchService.searchSamples(q);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
-            logger.error("Error searching samples with query: " + q, e);
+            logger.error("Error searching sample items with query: " + q, e);
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             error.put("type", e.getClass().getName());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
         }
+    }
+
+    /**
+     * @deprecated Use /sample-items/search instead. This endpoint returns
+     *             SampleItems, not Samples. Kept for backwards compatibility.
+     */
+    @Deprecated
+    @GetMapping("/samples/search")
+    public ResponseEntity<List<Map<String, Object>>> searchSamples(@RequestParam(required = false) String q) {
+        return searchSampleItems(q);
     }
 
     /**

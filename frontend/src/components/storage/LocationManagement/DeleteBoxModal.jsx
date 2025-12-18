@@ -146,7 +146,12 @@ const DeleteBoxModal = ({ open, box, onClose, onDeleted }) => {
   };
 
   return (
-    <ComposedModal open={open} onClose={onClose} size="sm">
+    <ComposedModal
+      open={open}
+      onClose={onClose}
+      size="sm"
+      data-testid="delete-box-modal"
+    >
       <ModalHeader
         title={intl.formatMessage({
           id: "storage.box.delete.title",

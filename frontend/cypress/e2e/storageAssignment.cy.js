@@ -97,7 +97,7 @@ describe("Storage Assignment - Cascading Dropdowns (P1)", function () {
   // TODO: Carbon ComboBox interactions are complex - typing doesn't properly trigger React state
   // The component uses onInputChange which fires but exact name matching fails because spaces are dropped
   // Need to investigate Carbon ComboBox testing patterns or use React Testing Library instead
-  it.skip("Should assign sample to storage location using cascading dropdowns", function () {
+  it("Should assign sample to storage location using cascading dropdowns", function () {
     storageAssignmentPage = new StorageAssignmentPage();
 
     // Navigation already done in before() - we're already on sample entry step
@@ -202,7 +202,7 @@ describe("Storage Assignment - Type-Ahead Autocomplete (P1)", function () {
   });
 
   // TODO: Search API not being called - investigate LocationSearchAndCreate component
-  it.skip("Should assign sample using type-ahead search", function () {
+  it("Should assign sample using type-ahead search", function () {
     storageAssignmentPage = new StorageAssignmentPage();
 
     // Wait for storage location selector (element readiness check)
@@ -255,7 +255,7 @@ describe("Storage Assignment - Barcode Scan (P1)", function () {
   });
 
   // TODO: Barcode validation API not found - verify endpoint exists and is implemented
-  it.skip("Should assign sample using barcode scanner", function () {
+  it("Should assign sample using barcode scanner", function () {
     storageAssignmentPage = new StorageAssignmentPage();
 
     // Wait for storage location selector (element readiness check)
@@ -301,7 +301,7 @@ describe("Storage Assignment - Capacity Warning (P1)", function () {
   });
 
   // TODO: Same Carbon ComboBox interaction issues as cascading dropdowns test
-  it.skip("Should display capacity warning when rack is 80% full", function () {
+  it("Should display capacity warning when rack is 80% full", function () {
     storageAssignmentPage = new StorageAssignmentPage();
 
     // Wait for storage location selector (element readiness check)

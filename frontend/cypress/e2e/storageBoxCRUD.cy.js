@@ -108,6 +108,7 @@ describe("Box/Plate CRUD Operations", function () {
         .should("be.disabled");
     });
 
+    // TODO: Carbon ComboBox dropdown interactions are flaky. See storageBoxCRUD-integration.cy.js for working tests.
     it("should enable Add Box button after selecting a rack", function () {
       // Navigate to Boxes tab
       cy.get('[data-testid="tab-boxes"]').click();
@@ -287,6 +288,7 @@ describe("Box/Plate CRUD Operations", function () {
       });
     });
 
+    // TODO: Carbon ComboBox dropdown interactions are flaky. See storageBoxCRUD-integration.cy.js for working tests.
     it("should edit selected box via Edit menu action", function () {
       const updatedLabel = `Updated Box ${Date.now()}`;
 
@@ -364,6 +366,7 @@ describe("Box/Plate CRUD Operations", function () {
       });
     });
 
+    // TODO: Carbon ComboBox dropdown interactions are flaky. See storageBoxCRUD-integration.cy.js for working tests.
     it("should delete selected box via Delete menu action with constraint check", function () {
       // Setup intercepts
       cy.intercept("GET", "**/rest/storage/boxes/*/can-delete", {
@@ -415,6 +418,7 @@ describe("Box/Plate CRUD Operations", function () {
       });
     });
 
+    // TODO: Carbon ComboBox dropdown interactions are flaky. See storageBoxCRUD-integration.cy.js for working tests.
     it("should show constraint error when deleting box with samples", function () {
       // Setup intercepts - constraint violation
       cy.intercept("GET", "**/rest/storage/boxes/*/can-delete", {
@@ -472,6 +476,7 @@ describe("Box/Plate CRUD Operations", function () {
   });
 
   describe("Grid Assignment Workflow Integrity", function () {
+    // TODO: Carbon ComboBox dropdown interactions are flaky. See storageBoxCRUD-integration.cy.js for working tests.
     it("should maintain grid assignment workflow after box CRUD operations", function () {
       // Navigate to Boxes tab
       cy.get('[data-testid="tab-boxes"]').click();

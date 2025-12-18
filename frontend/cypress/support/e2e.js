@@ -102,6 +102,10 @@ Cypress.on("uncaught:exception", (err, runnable) => {
   return false;
 });
 
-// Note: No custom fail-fast hook needed
-// Cypress naturally exits with code 1 on test failures
-// CI (GitHub Actions) will see the failure and stop the workflow
+// Fail-fast: Stop test run on first failure using official Cypress.stop() API
+// https://docs.cypress.io/api/cypress-api/stop
+afterEach(function () {
+  if (this.currentTest?.state === "failed") {
+    Cypress.stop();
+  }
+});

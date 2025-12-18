@@ -281,8 +281,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // Resolve SampleItem (handles internal ID, accession number, or external ID)
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
 
-            // Check if already disposed (status_id = 24 for disposed)
-            if (sampleItem.getStatusId() != null && "24".equals(sampleItem.getStatusId())) {
+            // Check if already disposed (status_id = 28 for SampleDisposed)
+            if (sampleItem.getStatusId() != null && "28".equals(sampleItem.getStatusId())) {
                 throw new LIMSRuntimeException("SampleItem is already disposed");
             }
 
@@ -329,8 +329,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 sampleStorageAssignmentDAO.update(existingAssignment);
             }
 
-            // Update SampleItem status to "disposed" (status_id = 24)
-            sampleItem.setStatusId("24");
+            // Update SampleItem status to "SampleDisposed" (status_id = 28)
+            sampleItem.setStatusId("28");
             sampleItemDAO.update(sampleItem);
 
             // Create audit movement record for disposal
@@ -1187,6 +1187,23 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
 
         String trimmedId = identifier.trim();
+
+        // Step 0: Try numeric ID lookup (direct SampleItem by internal ID)
+        // This handles cases where frontend sends the database ID
+        try {
+            SampleItem sampleItemById = sampleItemService.get(trimmedId);
+            if (sampleItemById != null) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Found SampleItem by numeric ID: {}", trimmedId);
+                }
+                return sampleItemById;
+            }
+        } catch (Exception e) {
+            // Not a valid numeric ID or not found, continue to other lookup methods
+            if (logger.isDebugEnabled()) {
+                logger.debug("SampleItem not found by numeric ID '{}', trying other methods", trimmedId);
+            }
+        }
 
         // Step 1: Try accession number lookup (Sample → SampleItems)
         Sample sample = sampleService.getSampleByAccessionNumber(trimmedId);

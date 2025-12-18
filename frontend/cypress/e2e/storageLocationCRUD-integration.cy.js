@@ -327,13 +327,14 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
     cy.get('[data-testid="edit-location-modal"]').should("be.visible");
     cy.get('[data-testid="edit-location-device-name"]').should("be.visible");
 
-    // Verify parent room field is populated
+    // Verify parent room field is populated (Carbon Dropdown shows selected text)
     cy.get('[data-testid="edit-location-device-parent-room"]')
       .should("be.visible")
       .then(($field) => {
-        const inputElement = $field.find("input")[0] || $field[0];
-        expect(inputElement.value).to.not.be.empty;
-        expect(inputElement.value).to.match(/[A-Za-z]/);
+        // Carbon Dropdown displays selected value in a span, not input.value
+        const text = $field.text().trim();
+        expect(text).to.not.be.empty;
+        expect(text).to.match(/[A-Za-z]/);
       });
   });
 

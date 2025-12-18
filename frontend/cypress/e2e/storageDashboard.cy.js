@@ -104,7 +104,7 @@ describe("Storage Dashboard", function () {
     });
 
     // Verify specific tab labels are translated
-    cy.get('button[role="tab"]').contains("Samples").should("exist");
+    cy.get('button[role="tab"]').contains("Sample Items").should("exist");
     cy.get('button[role="tab"]').contains("Rooms").should("exist");
     cy.get('button[role="tab"]').contains("Devices").should("exist");
   });
@@ -157,7 +157,7 @@ describe("Storage Dashboard", function () {
       Devices: 0,
       Shelves: 0,
       Racks: 0,
-      Samples: 0, // No sample assignments by default (requires assignment workflow)
+      "Sample Items": 0, // No sample assignments by default (requires assignment workflow)
     };
 
     // Click through each tab and verify tables are visible with data
@@ -274,7 +274,7 @@ describe("Storage Dashboard", function () {
     cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
 
     // Check each tab to ensure tables render structure even with empty data
-    const tabs = ["Samples", "Rooms", "Devices", "Shelves", "Racks"];
+    const tabs = ["Sample Items", "Rooms", "Devices", "Shelves", "Racks"];
 
     tabs.forEach((tabName) => {
       // Click on the tab

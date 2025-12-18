@@ -597,8 +597,10 @@ describe("Location CRUD Operations", function () {
         .should("have.attr", "aria-selected", "true");
 
       // Create a fresh room (self-contained test) then delete it.
-      const newRoomName = `Delete Me ${Date.now()}`;
-      const newRoomCode = `DL${Date.now().toString().slice(-8)}`.toUpperCase();
+      // Use more unique identifiers to avoid constraint violations
+      const uniqueId = `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+      const newRoomName = `Delete Me ${uniqueId}`;
+      const newRoomCode = `DL${uniqueId.slice(-6)}`.toUpperCase();
 
       cy.intercept("POST", "**/rest/storage/rooms**").as("createRoomForDelete");
       cy.intercept("GET", "**/rest/storage/rooms**").as(
@@ -619,12 +621,22 @@ describe("Location CRUD Operations", function () {
         .should("not.be.disabled")
         .click();
 
+      // Wait for API response first
+      cy.wait("@createRoomForDelete", { timeout: 5000 }).then(
+        (interception) => {
+          expect(
+            interception.response.statusCode,
+            `Room creation failed: ${JSON.stringify(interception.response.body)}`,
+          ).to.be.oneOf([200, 201]);
+        },
+      );
+
+      // Modal should close on success
       cy.get('[data-testid="storage-location-modal"]', {
-        timeout: 3000,
+        timeout: 5000,
       }).should("not.exist");
 
-      cy.wait("@createRoomForDelete");
-      cy.wait("@refreshRoomsAfterCreate");
+      cy.wait("@refreshRoomsAfterCreate", { timeout: 5000 });
 
       // Find the created room row by its visible name
       cy.contains("td", newRoomName, { timeout: 3000 })
@@ -752,9 +764,11 @@ describe("Location CRUD Operations", function () {
 
     it("should create device with IP/Port configuration and verify connectivity fields", function () {
       // Navigate to Devices tab
-      const newDeviceName = `IoT Device ${Date.now()}`;
+      // Use UUID-style suffix for guaranteed uniqueness across test runs
+      const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+      const newDeviceName = `IoT Device ${uniqueId}`;
       const newDeviceCode =
-        `DV${Date.now().toString().slice(-8)}`.toUpperCase();
+        `DV${uniqueId.replace("-", "").slice(0, 10)}`.toUpperCase();
       const ipAddress = "192.168.1.100";
       const port = 502;
       const protocol = "BACnet";
@@ -762,6 +776,7 @@ describe("Location CRUD Operations", function () {
       // E2E: do NOT stub writes/reads. Spy only so we can wait on it.
       cy.intercept("POST", "**/rest/storage/devices**").as("createDevice");
       cy.intercept("GET", "**/rest/storage/devices**").as("refreshDevices");
+      cy.intercept("GET", "**/rest/storage/rooms**").as("getRooms");
 
       cy.get('[data-testid="tab-devices"]').click();
       cy.get('button[role="tab"]')
@@ -781,9 +796,22 @@ describe("Location CRUD Operations", function () {
         timeout: 3000,
       }).should("be.visible");
 
-      // Fill form
+      // Wait for rooms to load in parent room dropdown
+      cy.wait("@getRooms", { timeout: 5000 });
+
+      // Fill basic form fields FIRST (before dropdown interactions)
       cy.get("#device-name").should("be.visible").clear().type(newDeviceName);
       cy.get("#device-code").should("be.visible").clear().type(newDeviceCode);
+
+      // Select parent room (REQUIRED for devices) - click dropdown and select first option
+      cy.get("#device-parent-room").scrollIntoView().should("be.visible");
+      cy.get("#device-parent-room").within(() => {
+        cy.get("button").first().click({ force: true });
+      });
+      // Select first room option from dropdown
+      cy.get('[role="listbox"] [role="option"]', { timeout: 3000 })
+        .first()
+        .click({ force: true });
 
       // Fill connectivity fields
       cy.get("#device-ip-address")
@@ -808,7 +836,13 @@ describe("Location CRUD Operations", function () {
         .click();
 
       // Wait for API call
-      cy.wait("@createDevice", { timeout: 3000 }).then((interception) => {
+      cy.wait("@createDevice", { timeout: 5000 }).then((interception) => {
+        // Log request and response for debugging
+        cy.log(`Device creation request: ${JSON.stringify(interception.request.body)}`);
+        cy.log(`Device creation response: ${interception.response.statusCode}`);
+        if (interception.response.statusCode >= 400) {
+          cy.log(`Error response: ${JSON.stringify(interception.response.body)}`);
+        }
         expect(interception.response.statusCode).to.be.oneOf([200, 201]);
       });
 

@@ -158,11 +158,12 @@ describe("Storage Locations Metric Card", function () {
           .then(($div) => {
             const text = $div.text();
 
-            // Extract counts from displayed text (numbers and labels are in separate spans within pills)
-            const roomsMatch = text.match(/(\d+).*rooms?/i);
-            const devicesMatch = text.match(/(\d+).*devices?/i);
-            const shelvesMatch = text.match(/(\d+).*shelves?/i);
-            const racksMatch = text.match(/(\d+).*racks?/i);
+            // Extract counts from displayed text - use non-greedy match
+            // Text format is like "0rooms3devices2shelves5racks" or "0 rooms 3 devices..."
+            const roomsMatch = text.match(/(\d+)\s*rooms?/i);
+            const devicesMatch = text.match(/(\d+)\s*devices?/i);
+            const shelvesMatch = text.match(/(\d+)\s*shelves?/i);
+            const racksMatch = text.match(/(\d+)\s*racks?/i);
 
             // Verify all counts are present and are valid numbers
             expect(roomsMatch).to.not.be.null;
