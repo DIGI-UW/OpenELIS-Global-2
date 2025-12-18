@@ -1870,6 +1870,7 @@
   "sidenav.label.storage.coldstorage.tooltip": "Monitor temperature and humidity of freezers and refrigerators",
   "sidenav.label.storage.management": "Storage Management",
   "sidenav.label.storage.management.tooltip": "Manage storage locations and devices",
+  "banner.menu.results.order.programmes": "Order programmes",
   "sidenav.label.inventory": "Inventory",
   "sidenav.label.inventory.tooltip": "Inventory management for reagents, kits, and supplies",
   "sidenav.label.inventory.management": "Inventory Management",

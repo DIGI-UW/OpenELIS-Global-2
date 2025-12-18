@@ -23,6 +23,7 @@
   <include relativeToChangelogFile="true" file="013-remove-short-code-columns.xml"/>
   <include relativeToChangelogFile="true" file="014-rename-print-history-short-code-to-location-code.xml"/>
   <include relativeToChangelogFile="true" file="011-freezer-monitoring-schema.xml"/>
+  <include relativeToChangelogFile="true" file="generic-program-menu.xml"/>
   <include relativeToChangelogFile="true" file="012-register-freezer-audit-trail.xml"/>
   <include relativeToChangelogFile="true" file="015-add-sample-disposed-status.xml"/>
   <include relativeToChangelogFile="true" file="016-inventory-management-system.xml"/>
