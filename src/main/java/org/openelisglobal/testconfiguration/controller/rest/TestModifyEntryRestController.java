@@ -64,6 +64,7 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -101,16 +102,24 @@ public class TestModifyEntryRestController extends BaseController {
     }
 
     @GetMapping(value = "/TestModifyEntry")
-    public TestModifyEntryForm showTestModifyEntry(HttpServletRequest request) {
+    public TestModifyEntryForm showTestModifyEntry(
+            @RequestParam(value = "sampleType", required = false) String sampleTypeParam,
+            @RequestParam(value = "testSection", required = false) String testSectionParam,
+            HttpServletRequest request) {
 
         TestModifyEntryForm form = new TestModifyEntryForm();
-        setupDisplayItems(form);
+        setupDisplayItems(form, sampleTypeParam, testSectionParam);
 
         // return findForward(FWD_SUCCESS, form);
         return form;
+
     }
 
     private void setupDisplayItems(TestModifyEntryForm form) {
+        setupDisplayItems(form, null, null);
+    }
+
+    private void setupDisplayItems(TestModifyEntryForm form, String sampleTypeParam, String testSectionParam) {
 
         List<IdValuePair> allSampleTypesList = new ArrayList<>();
         allSampleTypesList.addAll(DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_ACTIVE));
@@ -126,20 +135,28 @@ public class TestModifyEntryRestController extends BaseController {
         form.setGroupedDictionaryList(createGroupedDictionaryList());
         form.setTestList(DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ALL_TESTS));
 
-        // gnr: ALL_TESTS calls getActiveTests, this could be a way to enable
-        // maintenance of inactive tests
-        // form.setTestListInactive( DisplayListService.getInstance().getList(
-        // DisplayListService.ListType.ALL_TESTS_INACTIVE )
-        // );
-
-        List<TestCatalogBean> testCatBeanList = createTestCatBeanList();
-        form.setTestCatBeanList(testCatBeanList);
+        // Only include testCatBeanList when a filter is applied to avoid returning the
+        // full catalogue on initial page load
+        if ((sampleTypeParam != null && !sampleTypeParam.trim().isEmpty())
+                || (testSectionParam != null && !testSectionParam.trim().isEmpty())) {
+            List<TestCatalogBean> testCatBeanList = createTestCatBeanList(sampleTypeParam, testSectionParam);
+            form.setTestCatBeanList(testCatBeanList);
+        }
     }
 
-    private List<TestCatalogBean> createTestCatBeanList() {
+    private List<TestCatalogBean> createTestCatBeanList(String sampleTypeParam, String testSectionParam) {
         List<TestCatalogBean> beanList = new ArrayList<>();
 
         List<Test> testList = testService.getAllTests(false);
+
+        // Apply server-side filtering if parameters are provided
+        if (sampleTypeParam != null && !sampleTypeParam.trim().isEmpty()) {
+            testList = filterTestsBySampleType(testList, sampleTypeParam);
+        }
+
+        if (testSectionParam != null && !testSectionParam.trim().isEmpty()) {
+            testList = filterTestsByTestSection(testList, testSectionParam);
+        }
 
         for (Test test : testList) {
 
@@ -446,6 +463,7 @@ public class TestModifyEntryRestController extends BaseController {
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
             // return form;
+
         }
         String currentUserId = getSysUserId(request);
         String changeList = form.getJsonWad();
@@ -455,7 +473,7 @@ public class TestModifyEntryRestController extends BaseController {
         try {
             obj = (JSONObject) parser.parse(changeList);
         } catch (ParseException e) {
-            LogEvent.logError(e.getMessage(), e);
+            LogEvent.logError(e);
         }
 
         TestAddParams testAddParams = extractTestAddParms(obj, parser);
@@ -469,13 +487,13 @@ public class TestModifyEntryRestController extends BaseController {
             testModifyService.updateTestSets(testSets, testAddParams, nameLocalization, reportingNameLocalization,
                     currentUserId);
         } catch (HibernateException e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError(e);
             result.reject("error.hibernate.exception");
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
             return form;
         } catch (Exception e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError(e);
             result.reject("error.exception");
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
@@ -707,7 +725,7 @@ public class TestModifyEntryRestController extends BaseController {
             }
 
         } catch (ParseException e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError(e);
         }
 
         return testAddParams;
@@ -775,6 +793,32 @@ public class TestModifyEntryRestController extends BaseController {
             }
             testAddParams.sampleList.add(sampleTypeTests);
         }
+    }
+
+    private List<Test> filterTestsBySampleType(List<Test> testList, String sampleTypeId) {
+        List<Test> filteredTests = new ArrayList<>();
+        for (Test test : testList) {
+            List<TypeOfSample> sampleTypesForTest = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+            if (sampleTypesForTest != null) {
+                boolean testMatchesSampleType = sampleTypesForTest.stream()
+                        .anyMatch(sampleType -> sampleTypeId.equals(sampleType.getId()));
+                if (testMatchesSampleType) {
+                    filteredTests.add(test);
+                }
+            }
+        }
+        return filteredTests;
+    }
+
+    private List<Test> filterTestsByTestSection(List<Test> testList, String testSectionId) {
+        List<Test> filteredTests = new ArrayList<>();
+        for (Test test : testList) {
+            TestSection testSection = test.getTestSection();
+            if (testSection != null && testSectionId.equals(testSection.getId())) {
+                filteredTests.add(test);
+            }
+        }
+        return filteredTests;
     }
 
     @Override

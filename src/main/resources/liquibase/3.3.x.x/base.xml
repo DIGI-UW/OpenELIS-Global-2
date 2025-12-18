@@ -23,6 +23,7 @@
   <include relativeToChangelogFile="true" file="013-remove-short-code-columns.xml"/>
   <include relativeToChangelogFile="true" file="014-rename-print-history-short-code-to-location-code.xml"/>
   <include relativeToChangelogFile="true" file="011-freezer-monitoring-schema.xml"/>
+  <include relativeToChangelogFile="true" file="generic-program-menu.xml"/>
   <include relativeToChangelogFile="true" file="012-register-freezer-audit-trail.xml"/>
   <include relativeToChangelogFile="true" file="015-add-sample-disposed-status.xml"/>
   <include relativeToChangelogFile="true" file="016-inventory-management-system.xml"/>
@@ -31,4 +32,10 @@
 
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="../storage/storage-device-connectivity.xml"/>
+
+  <!-- Patient Merge (008-patient-merge) -->
+  <include relativeToChangelogFile="true" file="019-patient-merge-create-audit-table.xml"/>
+  <include relativeToChangelogFile="true" file="020-patient-merge-alter-patient-table.xml"/>
+  <include relativeToChangelogFile="true" file="021-add-patient-merge-menu-item.xml"/>
+  <include relativeToChangelogFile="true" file="022-add-patient-merge-menu-localization.xml"/>
 </databaseChangeLog>
