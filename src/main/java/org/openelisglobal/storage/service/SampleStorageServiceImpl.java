@@ -281,8 +281,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // Resolve SampleItem (handles internal ID, accession number, or external ID)
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
 
-            // Check if already disposed (status_id = 28 for SampleDisposed)
-            if (sampleItem.getStatusId() != null && "28".equals(sampleItem.getStatusId())) {
+            // Check if already disposed
+            if (statusService.matches(sampleItem.getStatusId(),
+                    org.openelisglobal.common.services.StatusService.SampleStatus.Disposed)) {
                 throw new LIMSRuntimeException("SampleItem is already disposed");
             }
 
@@ -329,8 +330,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 sampleStorageAssignmentDAO.update(existingAssignment);
             }
 
-            // Update SampleItem status to "SampleDisposed" (status_id = 28)
-            sampleItem.setStatusId("28");
+            // Update SampleItem status to "SampleDisposed"
+            String disposedStatusId = statusService.getStatusID(
+                    org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
+            sampleItem.setStatusId(disposedStatusId);
             sampleItemDAO.update(sampleItem);
 
             // Create audit movement record for disposal
