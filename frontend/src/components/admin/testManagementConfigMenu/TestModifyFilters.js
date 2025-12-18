@@ -22,12 +22,12 @@ function TestModifyFilters({
 
   const handleSampleTypeChange = (e) => {
     const newValue = e.target.value;
-    onFilterChange(newValue, selectedTestSection);
+    onFilterChange(newValue, "");
   };
 
   const handleTestSectionChange = (e) => {
     const newValue = e.target.value;
-    onFilterChange(selectedSampleType, newValue);
+    onFilterChange("", newValue);
   };
 
   const clearFilters = () => {
