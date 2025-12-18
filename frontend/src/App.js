@@ -53,6 +53,8 @@ import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
+import ProgramDashboard from "./components/program/programDashboard.jsx";
+import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
 
 export default function App() {
@@ -334,7 +336,18 @@ export default function App() {
                   exact
                   component={() => <CytologyDashboard />}
                   role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/genericProgram"
+                  exact
+                  component={() => <ProgramDashboard />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/programView/:programSampleId"
+                  exact
+                  component={() => <ProgramCaseView />}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/FreezerMonitoring"
