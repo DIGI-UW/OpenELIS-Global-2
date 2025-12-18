@@ -71,6 +71,8 @@ import BioanalyticalWorkflowTab from "./workflow/BioanalyticalWorkflowTab";
 import BioequivalenceWorkflowTab from "./workflow/BioequivalenceWorkflowTab";
 import MedLabWorkflowTab from "./workflow/MedLabWorkflowTab";
 import BiorepositoryWorkflowTab from "./workflow/BiorepositoryWorkflowTab";
+import TraditionalMedicineWorkflowTab from "./workflow/TraditionalMedicineWorkflowTab";
+import NotebookAuditLogViewer from "./NotebookAuditLogViewer";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -135,10 +137,6 @@ const NoteBookInstanceEntryForm = () => {
   const [selectedTab, setSelectedTab] = useState(TABS.CONTENT);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
-  const [auditTrailItems, setAuditTrailItems] = useState([]);
-  const [auditTrailLoading, setAuditTrailLoading] = useState(false);
-  const [auditTrailPage, setAuditTrailPage] = useState(1);
-  const [auditTrailPageSize, setAuditTrailPageSize] = useState(10);
   const [questionnaires, setQuestionnaires] = useState([]);
   const [projectTags, setProjectTags] = useState([]); // Template tags (for display only)
   const [projectFiles, setProjectFiles] = useState([]); // Template files (for display only)
@@ -200,8 +198,6 @@ const NoteBookInstanceEntryForm = () => {
           "/rest/notebook/view/" + body.id,
           loadInitialData,
         );
-        // Reload audit trail after save
-        loadAuditTrail(body.id);
         window.location.href = "/NoteBookInstanceEditForm/" + body.id;
       }
     } else {
@@ -229,6 +225,10 @@ const NoteBookInstanceEntryForm = () => {
   const [showTagModal, setShowTagModal] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
+  const [auditTrailItems, setAuditTrailItems] = useState([]);
+  const [auditTrailLoading, setAuditTrailLoading] = useState(false);
+  const [auditTrailPage, setAuditTrailPage] = useState(1);
+  const [auditTrailPageSize, setAuditTrailPageSize] = useState(10);
 
   const openTagModal = () => {
     setNewTag("");
@@ -592,8 +592,6 @@ const NoteBookInstanceEntryForm = () => {
             })),
           );
         }
-        // Load audit trail
-        loadAuditTrail(data.id);
         setLoading(false);
         setInitialMount(true);
       }
@@ -1184,6 +1182,14 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
+              (noteBookData?.title?.toLowerCase().includes("traditional") ||
+                noteBookData?.title
+                  ?.toLowerCase()
+                  .includes("modern medicine")) && (
+                <TraditionalMedicineWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
               noteBookData?.title?.toLowerCase().includes("tuberculosis") &&
               !noteBookData?.title
                 ?.toLowerCase()
@@ -1233,6 +1239,8 @@ const NoteBookInstanceEntryForm = () => {
               !noteBookData?.title?.toLowerCase().includes("pathology") &&
               !noteBookData?.title?.toLowerCase().includes("bioanalytical") &&
               !noteBookData?.title?.toLowerCase().includes("bioequivalence") &&
+              !noteBookData?.title?.toLowerCase().includes("pharmaceutical") &&
+              !noteBookData?.title?.toLowerCase().includes("traditional") &&
               !noteBookData?.title
                 ?.toLowerCase()
                 .includes("medical laboratory") &&
@@ -1565,141 +1573,10 @@ const NoteBookInstanceEntryForm = () => {
           </Column>
         )}
         {selectedTab === TABS.AUDIT_TRAIL && (
-          <Column lg={16} md={8} sm={4}>
-            <Grid fullWidth={true} className="gridBoundary">
-              <Column lg={16} md={8} sm={4}>
-                <h5>
-                  <FormattedMessage id="notebook.auditTrail.title" />
-                </h5>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br />
-              </Column>
-              {auditTrailLoading ? (
-                <Column lg={16} md={8} sm={4}>
-                  <Loading />
-                </Column>
-              ) : auditTrailItems.length === 0 ? (
-                <Column lg={16} md={8} sm={4}>
-                  <InlineNotification
-                    kind="info"
-                    title={intl.formatMessage({
-                      id: "notebook.auditTrail.none.title",
-                    })}
-                    subtitle={intl.formatMessage({
-                      id: "notebook.auditTrail.none.subtitle",
-                    })}
-                  />
-                </Column>
-              ) : (
-                <Column lg={16} md={8} sm={4}>
-                  <DataTable
-                    rows={auditTrailItems}
-                    headers={[
-                      {
-                        key: "user",
-                        header: intl.formatMessage({
-                          id: "audittrail.table.heading.user",
-                        }),
-                      },
-                      {
-                        key: "action",
-                        header: intl.formatMessage({
-                          id: "audittrail.table.heading.action",
-                        }),
-                      },
-                      {
-                        key: "time",
-                        header: intl.formatMessage({
-                          id: "audittrail.table.heading.time",
-                        }),
-                      },
-                    ]}
-                    isSortable
-                  >
-                    {({ rows, headers, getHeaderProps, getTableProps }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              {headers.map((header) => (
-                                <TableHeader
-                                  key={header.key}
-                                  {...getHeaderProps({ header })}
-                                >
-                                  {header.header}
-                                </TableHeader>
-                              ))}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {rows
-                              .slice((auditTrailPage - 1) * auditTrailPageSize)
-                              .slice(0, auditTrailPageSize)
-                              .map((row) => (
-                                <TableRow key={row.id}>
-                                  {row.cells.map((cell) => {
-                                    let cellValue = cell.value || "-";
-                                    // Translate action if it's a message code
-                                    if (cell.info.header === "action") {
-                                      cellValue = intl.formatMessage({
-                                        id: cellValue,
-                                      });
-                                    }
-                                    return (
-                                      <TableCell key={cell.id}>
-                                        {cellValue}
-                                      </TableCell>
-                                    );
-                                  })}
-                                </TableRow>
-                              ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handleAuditTrailPageChange}
-                    page={auditTrailPage}
-                    pageSize={auditTrailPageSize}
-                    pageSizes={[10, 30, 50, 100]}
-                    totalItems={auditTrailItems.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                  />
-                </Column>
-              )}
-            </Grid>
-          </Column>
+          <NotebookAuditLogViewer
+            entityType="INSTANCE"
+            entityId={noteBookData.id}
+          />
         )}
       </Grid>
       <Modal

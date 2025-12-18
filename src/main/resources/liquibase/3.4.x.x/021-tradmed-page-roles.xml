@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- TMMRD NOTEBOOK PAGE ROLE RESTRICTIONS                    -->
+    <!-- Applies role-based access control to TMMRD workflow      -->
+    <!-- Per TMMRD SRS Section 11: USER ROLES &amp; PERMISSIONS   -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: Sample Arrival, Reception &amp; Registration      -->
+    <!-- STAGE 1                                                  -->
+    <!-- Access: Lab Technicians (Yes), Researchers (Yes),        -->
+    <!--         Pharmacognosists (View), Lab Manager (Full),     -->
+    <!--         Principal Investigator (View)                    -->
+    <!-- ======================================================== -->
+    <changeSet id="add-tradmed-page-1-roles" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles npar
+                JOIN clinlims.notebook_page np ON npar.notebook_page_id = np.id
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for PAGE 1 (Sample Arrival, Reception &amp; Registration) per TMMRD SRS Section 11</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 1)"/>
+            <column name="role" value="TMMRD Lab Technician"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 1)"/>
+            <column name="role" value="TMMRD Researcher"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 1)"/>
+            <column name="role" value="TMMRD Pharmacognosist"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 1)"/>
+            <column name="role" value="TMMRD Lab Manager"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 1)"/>
+            <column name="role" value="TMMRD Principal Investigator"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page_allowed_roles" schemaName="clinlims">
+                <where>notebook_page_id = (SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 1)</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: Authentication, Storage &amp; Herbarium Placement -->
+    <!-- STAGES 2-3                                               -->
+    <!-- Access: Lab Technicians (No), Researchers (No),          -->
+    <!--         Pharmacognosists (Yes), Lab Manager (Full),      -->
+    <!--         Principal Investigator (View)                    -->
+    <!-- ======================================================== -->
+    <changeSet id="add-tradmed-page-2-roles" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles npar
+                JOIN clinlims.notebook_page np ON npar.notebook_page_id = np.id
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for PAGE 2 (Authentication, Storage &amp; Herbarium) per TMMRD SRS Section 11</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 2)"/>
+            <column name="role" value="TMMRD Pharmacognosist"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 2)"/>
+            <column name="role" value="TMMRD Lab Manager"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 2)"/>
+            <column name="role" value="TMMRD Principal Investigator"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page_allowed_roles" schemaName="clinlims">
+                <where>notebook_page_id = (SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 2)</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: Sample Preparation for Analysis                  -->
+    <!-- STAGE 4                                                  -->
+    <!-- Access: Lab Technicians (Yes), Researchers (Yes),        -->
+    <!--         Pharmacognosists (View), Lab Manager (Full),     -->
+    <!--         Principal Investigator (View)                    -->
+    <!-- ======================================================== -->
+    <changeSet id="add-tradmed-page-3-roles" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles npar
+                JOIN clinlims.notebook_page np ON npar.notebook_page_id = np.id
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for PAGE 3 (Sample Preparation) per TMMRD SRS Section 11</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 3)"/>
+            <column name="role" value="TMMRD Lab Technician"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 3)"/>
+            <column name="role" value="TMMRD Researcher"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 3)"/>
+            <column name="role" value="TMMRD Pharmacognosist"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 3)"/>
+            <column name="role" value="TMMRD Lab Manager"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 3)"/>
+            <column name="role" value="TMMRD Principal Investigator"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page_allowed_roles" schemaName="clinlims">
+                <where>notebook_page_id = (SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 3)</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4-8: Similar pattern for remaining stages            -->
+    <!-- Each follows same structure per SRS Section 11 table      -->
+    <!-- ======================================================== -->
+
+    <!-- PAGE 4: Extraction (STAGE 5) -->
+    <changeSet id="add-tradmed-page-4-roles" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for PAGE 4 (Extraction) per TMMRD SRS Section 11</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 4)"/>
+            <column name="role" value="TMMRD Lab Technician"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 4)"/>
+            <column name="role" value="TMMRD Researcher"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 4)"/>
+            <column name="role" value="TMMRD Pharmacognosist"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 4)"/>
+            <column name="role" value="TMMRD Lab Manager"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 4)"/>
+            <column name="role" value="TMMRD Principal Investigator"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 5: Analytical Pathways (STAGE 6) -->
+    <changeSet id="add-tradmed-page-5-roles" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for PAGE 5 (Analytical Pathways) per TMMRD SRS Section 11</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 5)"/>
+            <column name="role" value="TMMRD Researcher"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 5)"/>
+            <column name="role" value="TMMRD Pharmacognosist"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 5)"/>
+            <column name="role" value="TMMRD Lab Manager"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 5)"/>
+            <column name="role" value="TMMRD Principal Investigator"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 6: Product Development &amp; Testing (STAGE 7) -->
+    <changeSet id="add-tradmed-page-6-roles" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for PAGE 6 (Product Development &amp; Testing) per TMMRD SRS Section 11</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 6)"/>
+            <column name="role" value="TMMRD Lab Technician"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 6)"/>
+            <column name="role" value="TMMRD Researcher"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 6)"/>
+            <column name="role" value="TMMRD Pharmacognosist"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 6)"/>
+            <column name="role" value="TMMRD Lab Manager"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 6)"/>
+            <column name="role" value="TMMRD Principal Investigator"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 7: Formulation (STAGE 8) -->
+    <changeSet id="add-tradmed-page-7-roles" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for PAGE 7 (Formulation) per TMMRD SRS Section 11</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 7)"/>
+            <column name="role" value="TMMRD Lab Technician"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 7)"/>
+            <column name="role" value="TMMRD Researcher"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 7)"/>
+            <column name="role" value="TMMRD Pharmacognosist"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 7)"/>
+            <column name="role" value="TMMRD Lab Manager"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 7)"/>
+            <column name="role" value="TMMRD Principal Investigator"/>
+        </insert>
+    </changeSet>
+
+    <!-- PAGE 8: Reporting &amp; Archival (Optional) -->
+    <changeSet id="add-tradmed-page-8-roles" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 8
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for PAGE 8 (Reporting &amp; Archival) per TMMRD SRS Section 11</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 8)"/>
+            <column name="role" value="TMMRD Lab Manager"/>
+        </insert>
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND n.is_template = true AND np.page_order = 8)"/>
+            <column name="role" value="TMMRD Principal Investigator"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

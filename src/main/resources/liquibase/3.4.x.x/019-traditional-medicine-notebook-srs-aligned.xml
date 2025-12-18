@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TRADITIONAL &amp; MODERN MEDICINE RESEARCH LAB NOTEBOOK TEMPLATE -->
+    <!-- SRS-Aligned Implementation: All 8 Stages/Pages            -->
+    <!-- Based on TMMRD SRS Document (trmmd.pdf)                  -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-tradmed-notebook-template-srs-complete" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Traditional &amp; Modern Medicine Research Lab notebook template (SRS-aligned - all 8 stages)</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Traditional &amp; Modern Medicine Research Lab"/>
+            <column name="objective" value="Complete sample-centric workflow for traditional and modern medicine research from initial sample intake through product formulation and archival"/>
+            <column name="protocol" value="TMMRD - Traditional &amp; Modern Medicine Research &amp; Development"/>
+            <column name="content" value="8-stage comprehensive workflow: (1) Sample Intake &amp; Registration, (2) Authentication, (3) Storage &amp; Herbarium, (4) Sample Preparation, (5) Extraction, (6) Analytical Pathways (dual-path), (7) Product Development &amp; Testing, (8) Formulation &amp; Archival per TMMRD SRS"/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE INTAKE, RECEPTION &amp; REGISTRATION        -->
+    <!-- STAGE 1: Sample Arrival &amp; Registration &amp; Labeling     -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tradmed-page-1-reception-registration" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>STAGE 1: Sample Intake, Reception &amp; Registration</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Intake, Reception &amp; Registration"/>
+            <column name="instructions" value="STAGE 1 (SRS) - Receive plant materials or traditional medicine samples. Record metadata: origin, species, collector, date/time, sample condition. Two-phase workflow: Sample Receipt → Registration &amp; Labeling."/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="page_order" valueNumeric="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="content" value="{&quot;stage&quot;:&quot;1&quot;,&quot;title&quot;:&quot;Sample Intake, Reception &amp; Registration&quot;,&quot;srsRequirements&quot;:{&quot;sampleArrival&quot;:[&quot;Plant materials or traditional medicine samples received&quot;,&quot;May arrive fresh or dried&quot;],&quot;registrationLabeling&quot;:[&quot;Assign unique sample ID&quot;,&quot;Record metadata (origin, species, collector, date/time)&quot;]}}"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: AUTHENTICATION                                   -->
+    <!-- STAGE 2: Authentication &amp; Verification                -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tradmed-page-2-authentication" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>STAGE 2: Authentication</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Authentication"/>
+            <column name="instructions" value="STAGE 2 (SRS) - Botanical verification or expert identification. Methods: Morphological examination, Microscopic analysis, Molecular identification (DNA barcoding: ITS, rbcL, matK genes). Document method used, result (species confirmed, uncertain, misidentified), authenticator name and date. Link to herbarium specimen if prepared."/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="page_order" valueNumeric="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="content" value="{&quot;stage&quot;:&quot;2&quot;,&quot;title&quot;:&quot;Authentication&quot;,&quot;srsRequirements&quot;:{&quot;process&quot;:[&quot;Botanical verification or expert identification&quot;,&quot;Morphological examination&quot;,&quot;Microscopic analysis&quot;,&quot;Molecular identification (DNA barcoding: ITS, rbcL, matK)&quot;],&quot;documentation&quot;:[&quot;Authentication method used&quot;,&quot;Result (species confirmed, uncertain, misidentified)&quot;,&quot;Authenticator name and date&quot;,&quot;Link to herbarium catalog number if applicable&quot;]}}"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: STORAGE &amp; HERBARIUM PLACEMENT                  -->
+    <!-- STAGE 3: Storage &amp; Herbarium Management                -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tradmed-page-3-storage-herbarium" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>STAGE 3: Storage &amp; Herbarium Placement</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Storage &amp; Herbarium Placement"/>
+            <column name="instructions" value="STAGE 3 (SRS) - Assign storage location based on sample condition. Fresh (2-8°C), Dried (room temp), Preserved (fixative/alcohol). Create herbarium specimen if needed: record specimen ID, species, collector, location, date, herbarium cabinet location. Link to LMIS sample record and ongoing projects."/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="page_order" valueNumeric="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="content" value="{&quot;stage&quot;:&quot;3&quot;,&quot;title&quot;:&quot;Storage &amp; Herbarium Placement&quot;,&quot;srsRequirements&quot;:{&quot;storageOptions&quot;:[&quot;Fresh samples: Refrigerated (2-8°C) short-term&quot;,&quot;Dried samples: Room temperature in sealed containers&quot;,&quot;Preserved samples: In fixative or alcohol&quot;],&quot;herbariumPlacement&quot;:[&quot;Mount, label, catalog specimen&quot;,&quot;Record: Specimen ID, Species, Collector, Location, Date&quot;,&quot;Herbarium cabinet location (hierarchical)&quot;,&quot;Link to LMIS sample record&quot;,&quot;Link to ongoing analytical or formulation projects&quot;]}}"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: SAMPLE PREPARATION FOR ANALYSIS                  -->
+    <!-- STAGE 4: Physical Processing &amp; Preparation            -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tradmed-page-4-preparation" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>STAGE 4: Sample Preparation for Analysis</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Preparation for Analysis"/>
+            <column name="instructions" value="STAGE 4 (SRS) - Physical processing of samples. Freshly processed or drying (air, oven, freeze). Preparation methods: Grinding, Chopping, Powdering. Document: Method, weight before/after, yield (%), date, operator. Create child/processed samples from original material."/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="page_order" valueNumeric="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="content" value="{&quot;stage&quot;:&quot;4&quot;,&quot;title&quot;:&quot;Sample Preparation for Analysis&quot;,&quot;srsRequirements&quot;:{&quot;physicalProcessing&quot;:[&quot;Freshly processed: used immediately&quot;,&quot;Air drying, Oven drying (controlled temp), Freeze drying&quot;],&quot;preparationMethods&quot;:[&quot;Grinding (to powder)&quot;,&quot;Chopping (coarse pieces)&quot;,&quot;Powdering (fine powder for extraction)&quot;],&quot;documentation&quot;:[&quot;Processing method&quot;,&quot;Weight before/after processing&quot;,&quot;Yield (% of starting material)&quot;,&quot;Date, operator&quot;]}}"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: EXTRACTION, FILTRATION &amp; CONCENTRATION         -->
+    <!-- STAGE 5: Extraction &amp; Processing                      -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tradmed-page-5-extraction" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>STAGE 5: Extraction, Filtration &amp; Concentration</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Extraction, Filtration &amp; Concentration"/>
+            <column name="instructions" value="STAGE 5 (SRS) - Extract compounds from prepared plant material. Solvents: Ethanol, methanol, water, hexane, chloroform. Techniques: Maceration, Soxhlet, Ultrasonic, Distillation. Remove impurities via filtration. Concentrate extract via evaporation or distillation. Document: Solvent, plant weight, technique, temp, duration, yields, operator. Create aliquots/child samples from extracts."/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="page_order" valueNumeric="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="content" value="{&quot;stage&quot;:&quot;5&quot;,&quot;title&quot;:&quot;Extraction, Filtration &amp; Concentration&quot;,&quot;srsRequirements&quot;:{&quot;extraction&quot;:[&quot;Solvents: Ethanol, methanol, water, hexane, chloroform&quot;,&quot;Techniques: Maceration, Soxhlet, Ultrasonic, Distillation&quot;],&quot;filtration&quot;:[&quot;Remove plant debris and impurities&quot;,&quot;Methods: Filter paper, vacuum, centrifugation&quot;],&quot;concentration&quot;:[&quot;Evaporation (rotary evaporator), Distillation&quot;],&quot;documentation&quot;:[&quot;Solvent type/volume, Plant weight, Technique, Temp, Duration&quot;,&quot;Yield (extract weight or volume), Final volume/weight&quot;,&quot;Yield (% extraction efficiency)&quot;,&quot;Operator, date&quot;]}}"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 6: ANALYTICAL PATHWAYS (DUAL-PATH)                  -->
+    <!-- STAGE 6: Analytical Analysis or Direct Production        -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tradmed-page-6-analytical-pathways" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>STAGE 6: Analytical Pathways (PATH A: Advanced Analysis OR PATH B: Direct to Production)</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Analytical Pathways"/>
+            <column name="instructions" value="STAGE 6 (SRS) - Dual-path decision point. PATH A: Advanced Analysis (Fractionation via chromatography, Identification/Isolation via TLC/HPLC/GC-MS/LC-MS, Purification via recrystallization/HPLC, Characterization via NMR/MS/IR-FTIR, store spectral data). PATH B: Direct to Production (skip analysis, proceed to formulation). User selects path based on research needs."/>
+            <column name="page_type" value="BRANCHING"/>
+            <column name="page_order" valueNumeric="6"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="content" value="{&quot;stage&quot;:&quot;6&quot;,&quot;title&quot;:&quot;Analytical Pathways (Dual-Path Decision)&quot;,&quot;pathA&quot;:{&quot;name&quot;:&quot;Advanced Analysis Path&quot;,&quot;fractionation&quot;:[&quot;Chromatography: column, HPLC prep&quot;,&quot;Record method and fractions collected&quot;],&quot;identification&quot;:[&quot;Detect active constituents&quot;,&quot;Techniques: TLC, HPLC, GC-MS, LC-MS&quot;,&quot;Link to compound database (if known)&quot;],&quot;purification&quot;:[&quot;Recrystallization, prep-HPLC, column chromatography&quot;,&quot;Record purity level (% by HPLC/NMR)&quot;],&quot;characterization&quot;:[&quot;NMR, Mass Spectrometry, IR/FTIR&quot;,&quot;Store spectral data (files linked to compound)&quot;]},&quot;pathB&quot;:{&quot;name&quot;:&quot;Direct to Production Path&quot;,&quot;description&quot;:[&quot;Skip advanced analysis&quot;,&quot;Proceed directly to product development&quot;]}}"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 7: PRODUCT DEVELOPMENT &amp; TESTING                 -->
+    <!-- STAGE 7: Phytochemical Screening, Safety, Efficacy       -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tradmed-page-7-product-testing" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>STAGE 7: Product Development &amp; Testing</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Product Development &amp; Testing"/>
+            <column name="instructions" value="STAGE 7 (SRS) - Preliminary phytochemical screening (Alkaloids, Flavonoids, Tannins, Saponins, Terpenoids, Glycosides, Others). Safety/Toxicity studies (in vitro, in vivo, LD50, NOAEL). Efficacy tests (antimicrobial, antioxidant, anti-inflammatory, anticancer). Document outcomes and protocols. Three-way approval: Approve, Further Testing, Reject."/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="page_order" valueNumeric="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="content" value="{&quot;stage&quot;:&quot;7&quot;,&quot;title&quot;:&quot;Product Development &amp; Testing&quot;,&quot;phytochemicalScreening&quot;:[&quot;Alkaloids, Flavonoids, Tannins, Saponins, Terpenoids, Glycosides, Others&quot;,&quot;Record: positive/negative for each class&quot;],&quot;safetyToxicity&quot;:[&quot;In vitro: Cell-based toxicity assays&quot;,&quot;In vivo: Animal models (if applicable)&quot;,&quot;Record: LD50, NOAEL, Safety classification&quot;,&quot;Link to external trial data if conducted elsewhere&quot;],&quot;efficacyTest&quot;:[&quot;Biological assays: Antimicrobial, Antioxidant, Anti-inflammatory, Anticancer&quot;,&quot;Document outcomes and protocols&quot;],&quot;approval&quot;:[&quot;Three-way decision: Approve / Further Testing Required / Reject&quot;]}}"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 8: FORMULATION OF MEDICAL PRODUCT                   -->
+    <!-- STAGE 8: Product Formulation &amp; QC                     -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tradmed-page-8-formulation" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Traditional &amp; Modern Medicine Research Lab' AND np.page_order = 8
+            </sqlCheck>
+        </preConditions>
+        <comment>STAGE 8: Formulation of Medical Product</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Formulation of Medical Product"/>
+            <column name="instructions" value="STAGE 8 (SRS) - Select formulation type (Capsules, Tinctures, Ointments/creams, Teas, Syrups, Others). Record: Ingredients with quantities/concentrations, Manufacturing steps, Batch number, Manufacturing date. Product QC: Stability testing, Microbial contamination, Heavy metals, Pesticide residues, Active constituent quantification. Document: Product specifications, Batch records, QC results."/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="page_order" valueNumeric="8"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="content" value="{&quot;stage&quot;:&quot;8&quot;,&quot;title&quot;:&quot;Formulation of Medical Product&quot;,&quot;formulationTypes&quot;:[&quot;Capsules, Tinctures, Ointments/creams, Teas, Syrups, Others&quot;],&quot;formulationProcess&quot;:[&quot;Select based on intended use and stability&quot;,&quot;Record: Ingredients (extract + excipients), Quantities/concentrations&quot;,&quot;Manufacturing steps, Batch number, Manufacturing date&quot;],&quot;productTesting&quot;:[&quot;Stability testing (accelerated and real-time)&quot;,&quot;Microbial contamination testing&quot;,&quot;Heavy metal testing&quot;,&quot;Pesticide residue testing (if applicable)&quot;,&quot;Active constituent quantification&quot;],&quot;documentation&quot;:[&quot;Product specifications, Batch records, QC results&quot;]}}"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

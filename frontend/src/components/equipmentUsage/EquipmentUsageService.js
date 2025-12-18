@@ -321,10 +321,11 @@ export const CartridgeUsageAPI = {
   /**
    * Get all items of CARTRIDGE type with available lots (enhanced DTO)
    * Similar to getCartridges but with aggregated lot data
+   * Uses reagent controller endpoint that aggregates cartridge items with lot information
    */
   getCartridgesWithLots: (callback, errorCallback = null, signal = null) => {
     getFromOpenElisServer(
-      "/rest/inventory/instruments",
+      "/rest/inventory/reagents/instruments",
       callback,
       errorCallback,
       signal,

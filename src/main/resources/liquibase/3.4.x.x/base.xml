@@ -92,6 +92,12 @@
     <include file="liquibase/3.4.x.x/045-bioanalytical-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/046-bioanalytical-supporting-tables.xml"/>
     <include file="liquibase/3.4.x.x/047-bioanalytical-page-roles.xml"/>
+    <include file="liquibase/3.4.x.x/019-traditional-medicine-notebook-srs-aligned.xml"/>
+    <include file="liquibase/3.4.x.x/020-tradmed-system-roles.xml"/>
+    <include file="liquibase/3.4.x.x/021-tradmed-page-roles.xml"/>
+    <include file="liquibase/3.4.x.x/022-tradmed-permission-levels.xml"/>
+    <include file="liquibase/3.4.x.x/023-create-tradmed-lab-unit.xml"/>
+    <include file="liquibase/3.4.x.x/024-add-tradmed-roles-to-alllabunits.xml"/>
     <include file="liquibase/3.4.x.x/035-add-genome-sequencing-page-to-virology-workflow.xml"/>
     <include file="liquibase/3.4.x.x/036-add-seed-virus-production-page-to-virology-workflow.xml"/>
     <include file="liquibase/3.4.x.x/048-add-trials-page-to-virology-workflow.xml"/>

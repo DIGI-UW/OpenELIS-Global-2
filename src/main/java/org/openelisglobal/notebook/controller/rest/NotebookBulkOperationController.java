@@ -1199,7 +1199,10 @@ public class NotebookBulkOperationController extends BaseRestController {
     @PostMapping(value = "/page/{pageId}/samples/status", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> bulkUpdateStatus(@PathVariable("pageId") Integer pageId,
-            @RequestBody StatusUpdateRequest request, HttpServletRequest httpRequest) {
+            @RequestBody StatusUpdateRequest request,
+            @RequestParam(value = "pathwayrouting", required = false, defaultValue = "false") Boolean pathwayrouting,
+            @RequestParam(value = "sourcepage", required = false) String sourcepage,
+            @RequestParam(value = "targetpage", required = false) String targetpage, HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -1229,10 +1232,21 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        // Check if skipAutoRouting is provided (defaults to false if not provided)
-        boolean skipAutoRouting = request.getSkipAutoRouting() != null && request.getSkipAutoRouting();
-        int updatedCount = bulkOperationService.bulkUpdateStatus(pageId, request.getSampleIds(), status, sysUserId,
-                skipAutoRouting);
+        // Route samples based on configured routing mode:
+        // 1. If pathway routing is enabled (pathwayrouting=true), use pathway-based routing
+        // 2. Else if skipAutoRouting is enabled, skip T150 auto-routing
+        // 3. Else use standard routing with T150 auto-routing (default)
+        int updatedCount;
+        if (pathwayrouting != null && pathwayrouting) {
+            // Use pathway-based routing (e.g., TMMRD path_a vs path_b)
+            updatedCount = bulkOperationService.bulkUpdateStatusWithPathwayRouting(pageId, request.getSampleIds(),
+                    status, sysUserId, pathwayrouting, sourcepage, targetpage);
+        } else {
+            // Use standard routing with optional skipAutoRouting flag
+            boolean skipAutoRouting = request.getSkipAutoRouting() != null && request.getSkipAutoRouting();
+            updatedCount = bulkOperationService.bulkUpdateStatus(pageId, request.getSampleIds(), status, sysUserId,
+                    skipAutoRouting);
+        }
 
         // Also persist any additional data fields (containerType, collectionDate, etc.)
         Map<String, Object> additionalData = new HashMap<>();
@@ -1284,7 +1298,10 @@ public class NotebookBulkOperationController extends BaseRestController {
     @PostMapping(value = "/page/{pageId}/samples/status-string", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> bulkUpdateStatusString(@PathVariable("pageId") Integer pageId,
-            @RequestBody StringStatusUpdateRequest request, HttpServletRequest httpRequest) {
+            @RequestBody StringStatusUpdateRequest request,
+            @RequestParam(value = "pathwayrouting", required = false, defaultValue = "false") Boolean pathwayrouting,
+            @RequestParam(value = "sourcepage", required = false) String sourcepage,
+            @RequestParam(value = "targetpage", required = false) String targetpage, HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -1314,8 +1331,8 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        int updatedCount = bulkOperationService.bulkUpdateStatusString(pageId, request.getSampleIds(), status,
-                sysUserId);
+        int updatedCount = bulkOperationService.bulkUpdateStatusStringWithPathwayRouting(pageId,
+                request.getSampleIds(), status, sysUserId, pathwayrouting, sourcepage, targetpage);
 
         Map<String, Object> result = new HashMap<>();
         result.put("updatedCount", updatedCount);
