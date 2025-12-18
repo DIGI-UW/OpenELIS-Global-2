@@ -331,8 +331,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             // Update SampleItem status to "SampleDisposed"
-            String disposedStatusId = statusService.getStatusID(
-                    org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
+            String disposedStatusId = statusService
+                    .getStatusID(org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
             sampleItem.setStatusId(disposedStatusId);
             sampleItemDAO.update(sampleItem);
 
