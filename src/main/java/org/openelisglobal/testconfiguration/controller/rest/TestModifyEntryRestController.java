@@ -134,7 +134,7 @@ public class TestModifyEntryRestController extends BaseController {
         form.setAgeRangeList(SpringContext.getBean(ResultLimitService.class).getPredefinedAgeRanges());
         form.setDictionaryList(DisplayListService.getInstance().getList(ListType.DICTIONARY_TEST_RESULTS));
         form.setGroupedDictionaryList(createGroupedDictionaryList());
-        // form.setTestList(DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ALL_TESTS));
+        //form.setTestList(DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ALL_TESTS));
 
         // Only include testCatBeanList when a filter is applied to avoid returning the
         // full catalogue on initial page load
@@ -473,6 +473,8 @@ public class TestModifyEntryRestController extends BaseController {
         JSONObject obj = null;
         try {
             obj = (JSONObject) parser.parse(changeList);
+            System.out.println(">>>>>>>>>>>>> JSON TEST");
+            System.out.println(obj.toJSONString());
         } catch (ParseException e) {
             LogEvent.logError(e);
         }
