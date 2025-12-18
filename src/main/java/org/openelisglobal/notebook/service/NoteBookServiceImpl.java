@@ -205,25 +205,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Override
     @Transactional
     protected NoteBook update(NoteBook noteBook, String auditTrailType) {
-        // CRITICAL: Evict the modified object from the session cache BEFORE loading the
-        // old object.
-        // This ensures that when we load the old object, we get a fresh copy from the
-        // database
-        // with the original values, not the modified instance from the session cache.
-        if (auditTrailLog && noteBook.getId() != null) {
-            // Evict the modified object so that get() will return a fresh copy from DB
-            baseObjectDAO.evict(noteBook);
-
-            // Now load the old object - this will get a fresh copy from the database
-            Optional<NoteBook> oldNoteBook = baseObjectDAO.get(noteBook.getId());
-            if (oldNoteBook.isPresent()) {
-                NoteBook oldObject = oldNoteBook.get();
-                // Initialize all lazy collections before the parent evicts the object
-                initializeLazyCollections(oldObject);
-            }
-        }
-        // Let the parent handle the audit trail logic normally
-        // The parent will re-attach the modified object and persist it
+        // Note: Do NOT evict the modified noteBook - it would cause
+        // "collection no longer referenced" errors with orphanRemoval collections.
+        // The parent class handles getting the old object for audit trail comparison.
+        // We just need to ensure lazy collections are initialized on the entity being
+        // saved.
+        initializeLazyCollections(noteBook);
         return super.update(noteBook, auditTrailType);
     }
 
@@ -285,6 +272,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
 
             // For non-template entries, find and set entry number and parent notebook name
+            // Also inherit allowedRoles from parent template
             if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
                 NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
                 if (parentTemplate != null) {
@@ -313,7 +301,14 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                             }
                         }
                     }
+                    // Entries inherit allowedRoles from their parent template
+                    Hibernate.initialize(parentTemplate.getAllowedRoles());
+                    displayBean.setAllowedRoles(new HashSet<>(parentTemplate.getAllowedRoles()));
                 }
+            } else {
+                // For templates, use their own allowedRoles
+                Hibernate.initialize(noteBook.getAllowedRoles());
+                displayBean.setAllowedRoles(new HashSet<>(noteBook.getAllowedRoles()));
             }
         }
         return displayBean;
@@ -330,12 +325,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getSamples());
             Hibernate.initialize(noteBook.getPages());
 
-            // Initialize panels and tests for each page (panels is LAZY to avoid
+            // Initialize panels, tests, and allowedRoles for each page (LAZY to avoid
             // MultipleBagFetchException)
+            // Also explicitly copy allowedRoles to ensure proper JSON serialization
             if (noteBook.getPages() != null) {
                 for (NoteBookPage page : noteBook.getPages()) {
                     Hibernate.initialize(page.getPanels());
                     Hibernate.initialize(page.getTests());
+                    Hibernate.initialize(page.getAllowedRoles());
+                    // Ensure allowedRoles is a regular HashSet (not Hibernate proxy) for JSON
+                    // serialization
+                    page.setAllowedRoles(new HashSet<>(page.getAllowedRoles()));
                 }
             }
             Hibernate.initialize(noteBook.getFiles());

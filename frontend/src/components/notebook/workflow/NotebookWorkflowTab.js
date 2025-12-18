@@ -20,6 +20,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
+import { usePermissions } from "../../../hooks/usePermissions";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import PageNavigation from "./PageNavigation";
@@ -72,6 +73,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible } =
     useContext(NotificationContext);
+  const { hasRoleForCurrentLabUnit } = usePermissions();
 
   const [loading, setLoading] = useState(true);
   const [notebook, setNotebook] = useState(null);
@@ -84,12 +86,31 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   const [errorMessage, setErrorMessage] = useState(null);
 
   // Use actual pages if available, otherwise use default workflow pages
+  // Filter pages based on user's role access (page-level RBAC)
   const effectivePages = useMemo(() => {
+    let pagesToUse = DEFAULT_WORKFLOW_PAGES;
     if (pages && pages.length > 0) {
-      return pages;
+      pagesToUse = pages;
     }
-    return DEFAULT_WORKFLOW_PAGES;
-  }, [pages]);
+
+    // Filter pages based on allowedRoles (page-level access control)
+    return pagesToUse.filter((page) => {
+      // Get allowedRoles, handling null/undefined and Set/Array types
+      const pageRoles = page.allowedRoles
+        ? Array.isArray(page.allowedRoles)
+          ? page.allowedRoles
+          : Array.from(page.allowedRoles)
+        : [];
+
+      // No roles defined = no restriction = show page to everyone
+      if (pageRoles.length === 0) {
+        return true;
+      }
+
+      // Check if user has any of the page's required roles
+      return hasRoleForCurrentLabUnit(pageRoles);
+    });
+  }, [pages, hasRoleForCurrentLabUnit]);
 
   useEffect(() => {
     componentMounted.current = true;

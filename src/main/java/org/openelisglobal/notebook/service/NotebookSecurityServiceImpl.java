@@ -5,6 +5,7 @@ import java.util.Set;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.notebook.valueholder.NoteBook;
+import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -45,13 +46,17 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
     private NotebookEntryService notebookEntryService;
 
     @Autowired
+    private NoteBookPageService noteBookPageService;
+
+    @Autowired
     private RoleService roleService;
 
     // ========== TEMPLATE ACCESS (Admin Only for Edit) ==========
 
     @Override
     public boolean canEditTemplate(String sysUserId) {
-        return hasGlobalAdminRole(sysUserId);
+        // Allow Global Administrator or Notebook Administrator to manage templates
+        return hasGlobalAdminRole(sysUserId) || userRoleService.userInRole(sysUserId, Constants.ROLE_NOTEBOOK_ADMIN);
     }
 
     @Override
@@ -334,6 +339,41 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
         return canEditEntry(entry, sysUserId, loginLabUnit);
     }
 
+    // ========== PAGE ACCESS (Role Based) ==========
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean canViewPage(NoteBookPage page, String sysUserId, String loginLabUnit) {
+        // Admin can view any page
+        if (hasGlobalAdminRole(sysUserId)) {
+            return true;
+        }
+
+        // Notebook Admin can view any page (for template management)
+        if (userRoleService.userInRole(sysUserId, Constants.ROLE_NOTEBOOK_ADMIN)) {
+            return true;
+        }
+
+        // If page has no role restrictions, anyone can view it
+        Set<String> allowedRoles = page.getAllowedRoles();
+        if (allowedRoles == null || allowedRoles.isEmpty()) {
+            return true;
+        }
+
+        // Check if user has one of the allowed roles for their lab unit
+        return hasRequiredRoleForLabUnit(sysUserId, loginLabUnit, allowedRoles);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean canViewPage(Integer pageId, String sysUserId, String loginLabUnit) {
+        NoteBookPage page = noteBookPageService.get(pageId);
+        if (page == null) {
+            return false;
+        }
+        return canViewPage(page, sysUserId, loginLabUnit);
+    }
+
     // ========== HELPER METHODS ==========
 
     @Override
@@ -419,6 +459,14 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
             return false;
         }
 
+        // First check global roles (not lab-unit specific)
+        if (userRoleService.userInRole(sysUserId, requiredRoles)) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "hasRequiredRoleForLabUnit",
+                    "User has global role matching requiredRoles=" + requiredRoles);
+            return true;
+        }
+
+        // Then check lab unit specific roles
         UserLabUnitRoles userLabRoles = userRoleService.getUserLabUnitRoles(sysUserId);
         if (userLabRoles == null || userLabRoles.getLabUnitRoleMap() == null) {
             LogEvent.logInfo(this.getClass().getSimpleName(), "hasRequiredRoleForLabUnit",
