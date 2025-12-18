@@ -1,0 +1,8 @@
+sample_id,sample_category,source_type,origin_location,collection_site,collection_date,collected_by,local_name,scientific_name,species,plant_part,sample_condition,intended_use,num_of_samples,notes
+TM-COMP-001,Whole Plant,Plant material,East Africa,Bale Mountains Ethiopia,2025-01-10 09:30,Dr. Abebe Kebede,Damakase,Ocimum lamiifolium,O. lamiifolium,Leaf,Fresh,Research only,5,Wild harvested endemic species
+TM-COMP-002,Plant Part,Plant material,South Asia,Himalayan region,2025-01-15 14:00,Prof. Rajesh Kumar,Tulsi,Ocimum sanctum,O. sanctum,Flower,Dried,Phytochemical analysis,3,Sacred plant traditional use
+TM-COMP-003,Plant Extract,Plant Extract,North Africa,Canary Islands Morocco,2025-01-20,Dr. Fatima Al-Rashid,Argan,Argania spinosa,A. spinosa,Seed,Processed,Product development,10,Cold-pressed oil for cosmetics
+TM-COMP-004,Fractionated Extract,Plant Extract,West Africa,Savanna region,2025-01-25 10:15,Field Officer Kofi,Baobab,Adansonia digitata,A. digitata,Bark,Dried,Efficacy testing,2,Antimicrobial research batch
+TM-COMP-005,Purified Compound,Other traditional medicine source,Central Africa,Congo Basin,2025-02-01,Dr. Ngoma,Ginger,Zingiber officinale,Z. officinale,Rhizome,Preserved,Analytical profiling,1,Isolated alkaloid reference standard
+TM-COMP-006,Formulated Product,Plant material,Island nation,Madagascar,2025-02-05 08:45,Ethnobotanist Sophie,Hainteny,Renealmia speciosa,R. speciosa,Root,Fresh,Reference/herbarium specimen,4,Preparation for traditional formulation
+TM-COMP-007,Reference Standard,Plant material,Highland region,Ethiopian highlands,2025-02-10,Lab Tech Almaz,Kosso,Hagenia abyssinica,H. abyssinica,Flower,Dried,Toxicity screening,2,Anthelmintic traditional remedy
