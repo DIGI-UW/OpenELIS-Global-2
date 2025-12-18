@@ -103,16 +103,16 @@ public class TestModifyEntryRestController extends BaseController {
 
     @GetMapping(value = "/TestModifyEntry")
     public TestModifyEntryForm showTestModifyEntry(
-        @RequestParam(value = "sampleType", required = false) String sampleTypeParam,
-        @RequestParam(value = "testSection", required = false) String testSectionParam,
-        HttpServletRequest request) {
+            @RequestParam(value = "sampleType", required = false) String sampleTypeParam,
+            @RequestParam(value = "testSection", required = false) String testSectionParam,
+            HttpServletRequest request) {
 
         TestModifyEntryForm form = new TestModifyEntryForm();
         setupDisplayItems(form, sampleTypeParam, testSectionParam);
 
         // return findForward(FWD_SUCCESS, form);
         return form;
-        
+
     }
 
     private void setupDisplayItems(TestModifyEntryForm form) {
@@ -463,7 +463,7 @@ public class TestModifyEntryRestController extends BaseController {
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
             // return form;
-            
+
         }
         String currentUserId = getSysUserId(request);
         String changeList = form.getJsonWad();
