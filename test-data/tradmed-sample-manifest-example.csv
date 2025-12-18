@@ -1,0 +1,7 @@
+sample_id,sample_category,source_type,origin_location,collection_site,collection_date,collected_by,local_name,scientific_name,species,plant_part,sample_condition,intended_use,num_of_samples,notes
+TM-001,Traditional medicine,Plant material,Oromia Region,GPS: 8.9806° N 38.7578° E,2025-01-15,Dr. Abebe Kebede,Damakase,Ocimum lamiifolium,O. lamiifolium,Leaf,Fresh,Research only,1,Wild harvested from highland forest
+TM-002,Traditional medicine,Plant material,Amhara Region,Gondar District,2025-01-18,Nurse Tigist Haile,Kosso,Hagenia abyssinica,H. abyssinica,Flower,Dried,Product development,2,Traditional anthelmintic preparation
+TM-003,Modern medicine,Plant material,SNNPR,Hawassa Agricultural Center,2025-02-01,Lab Tech Solomon,Moringa,Moringa oleifera,M. oleifera,Leaf,Fresh,Analytical profiling,1,Cultivated specimen for nutritional analysis
+TM-004,Hybrid research sample,Plant material,Tigray Region,Axum Heritage Site,2025-02-05,Dr. Yohannes Tesfay,Gesho,Rhamnus prinoides,R. prinoides,Stem,Preserved,Reference/herbarium specimen,1,Historical medicinal plant voucher
+TM-005,Traditional medicine,Plant material,Oromia Region,Bale Mountains,2025-02-10,Field Officer Feyisa,Endod,Phytolacca dodecandra,P. dodecandra,Root,Dried,Product development,3,Molluscicide research batch
+TM-006,Traditional medicine,Other traditional medicine source,Dire Dawa,Local Market Survey,2025-02-12,Ethnobotanist Meron,Tena Adam,Ruta chalepensis,R. chalepensis,Whole plant,Fresh,Research only,1,Aromatic herb sample for essential oil study

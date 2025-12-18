@@ -17,13 +17,7 @@ import {
   Checkbox,
   Dropdown,
 } from "@carbon/react";
-import {
-  CheckmarkFilled,
-  InProgress,
-  Pending,
-  Folder,
-  Document,
-} from "@carbon/react/icons";
+import { Folder, Document } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../workflow/NotebookWorkflow.css";
 
@@ -251,24 +245,6 @@ function SampleGrid({
       } else {
         onSelectionChange(filteredSamples.map((s) => String(s.id)));
       }
-    }
-  };
-
-  // Get status icon
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "COMPLETED":
-        return <CheckmarkFilled size={16} className="status-icon complete" />;
-      case "IN_PROGRESS":
-        return <InProgress size={16} className="status-icon in-progress" />;
-      case "SKIPPED":
-        return (
-          <Tag type="gray" size="sm">
-            Skipped
-          </Tag>
-        );
-      default:
-        return <Pending size={16} className="status-icon pending" />;
     }
   };
 

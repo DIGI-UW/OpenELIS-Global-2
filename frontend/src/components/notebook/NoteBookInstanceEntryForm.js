@@ -71,6 +71,7 @@ import BioanalyticalWorkflowTab from "./workflow/BioanalyticalWorkflowTab";
 import BioequivalenceWorkflowTab from "./workflow/BioequivalenceWorkflowTab";
 import MedLabWorkflowTab from "./workflow/MedLabWorkflowTab";
 import BiorepositoryWorkflowTab from "./workflow/BiorepositoryWorkflowTab";
+import TraditionalMedicineWorkflowTab from "./workflow/TraditionalMedicineWorkflowTab";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -1184,6 +1185,14 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
+              (noteBookData?.title?.toLowerCase().includes("traditional") ||
+                noteBookData?.title
+                  ?.toLowerCase()
+                  .includes("modern medicine")) && (
+                <TraditionalMedicineWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
               noteBookData?.title?.toLowerCase().includes("tuberculosis") &&
               !noteBookData?.title
                 ?.toLowerCase()
@@ -1233,10 +1242,14 @@ const NoteBookInstanceEntryForm = () => {
               !noteBookData?.title?.toLowerCase().includes("pathology") &&
               !noteBookData?.title?.toLowerCase().includes("bioanalytical") &&
               !noteBookData?.title?.toLowerCase().includes("bioequivalence") &&
+              !noteBookData?.title?.toLowerCase().includes("pharmaceutical") &&
+              !noteBookData?.title?.toLowerCase().includes("traditional") &&
               !noteBookData?.title
                 ?.toLowerCase()
                 .includes("medical laboratory") &&
               !noteBookData?.title?.toLowerCase().includes("biorepository") && (
+                .includes("medical laboratory") && (
+                .includes("modern medicine") && (
                 <NotebookWorkflowTab notebookId={noteBookData.id} />
               )}
             {/* Use accordion view for templates or when no ID is available */}
