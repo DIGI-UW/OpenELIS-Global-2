@@ -77,7 +77,7 @@ describe("Login Test Cases", function () {
     usersData.forEach((user) => {
       // Reloads the page
       cy.reload();
-
+      cy.wait(3000);
       login.enterUsername(user.username);
       login.enterPassword(user.password);
       login.signIn();
