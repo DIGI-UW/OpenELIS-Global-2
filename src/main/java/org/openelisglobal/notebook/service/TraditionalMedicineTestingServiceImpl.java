@@ -255,10 +255,11 @@ public class TraditionalMedicineTestingServiceImpl implements TraditionalMedicin
 
         String message = String.format("%d sample(s) approved and advanced to Formulation.", approvedCount);
         if (!incompleteReasons.isEmpty()) {
-            message += String.format(" %d sample(s) could not be approved.", incompleteReasons.size());
+            message += String.format(" %d sample(s) could not be approved: %s", incompleteReasons.size(),
+                    String.join("; ", incompleteReasons));
         }
 
-        return TestingResponse.success(0, approvedCount, 0, message);
+        return TestingResponse.success(0, approvedCount, incompleteReasons.size(), message);
     }
 
     @Override

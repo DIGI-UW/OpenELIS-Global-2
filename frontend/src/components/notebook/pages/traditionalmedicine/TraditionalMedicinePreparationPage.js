@@ -428,6 +428,14 @@ function TraditionalMedicinePreparationPage({
               { count: response.completedCount || selectedSampleIds.length },
             ),
           );
+          // Update the status of completed samples in the local state immediately
+          setSamples((prevSamples) =>
+            prevSamples.map((sample) =>
+              selectedSampleIds.includes(sample.id)
+                ? { ...sample, status: "COMPLETED" }
+                : sample,
+            ),
+          );
           setSelectedSampleIds([]);
           loadPageSamples();
           if (onProgressUpdate) {

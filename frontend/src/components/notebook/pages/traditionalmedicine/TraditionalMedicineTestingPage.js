@@ -573,6 +573,15 @@ function TraditionalMedicineTestingPage({
   ).length;
   const rejectedCount = samples.filter((s) => s.status === "REJECTED").length;
 
+  // Count samples without testing results (cannot be approved)
+  const incompleteTestingCount = samples.filter(
+    (s) =>
+      s.status !== "COMPLETED" &&
+      s.status !== "REJECTED" &&
+      (!s.toxicityOutcome || s.toxicityOutcome === "") &&
+      (!s.efficacyOutcome || s.efficacyOutcome === ""),
+  ).length;
+
   // Render testing info as tags
   const renderTestingInfo = (sample) => {
     const tags = [];
@@ -693,6 +702,25 @@ function TraditionalMedicineTestingPage({
               </span>
               <span className="progress-value">{rejectedCount}</span>
             </Tile>
+            {incompleteTestingCount > 0 && (
+              <Tile
+                className="progress-tile"
+                style={{
+                  backgroundColor: "#fff1f1",
+                  border: "1px solid #da1e28",
+                }}
+              >
+                <span className="progress-label" style={{ color: "#da1e28" }}>
+                  <FormattedMessage
+                    id="notebook.page.tradmed.incompleteTesting"
+                    defaultMessage="Missing Test Results"
+                  />
+                </span>
+                <span className="progress-value" style={{ color: "#da1e28" }}>
+                  {incompleteTestingCount}
+                </span>
+              </Tile>
+            )}
           </div>
         </Column>
       </Grid>

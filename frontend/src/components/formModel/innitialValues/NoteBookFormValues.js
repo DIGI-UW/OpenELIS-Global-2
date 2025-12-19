@@ -15,6 +15,7 @@ export const NoteBookFormValues = {
   sampleIds: [],
   tags: [],
   analyzerIds: [],
+  inventoryInstrumentIds: [],
   isTemplate: null,
   templateId: null,
   pages: [
