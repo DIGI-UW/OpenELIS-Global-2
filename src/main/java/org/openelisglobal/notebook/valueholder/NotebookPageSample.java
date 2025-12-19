@@ -43,7 +43,9 @@ public class NotebookPageSample extends BaseObject<Integer> {
         /** Successfully completed */
         COMPLETED,
         /** Intentionally skipped (e.g., routed elsewhere) */
-        SKIPPED
+        SKIPPED,
+        /** Rejected due to QC failure or other reasons */
+        REJECTED
     }
 
     @Id

@@ -179,6 +179,15 @@ public interface AnalyzerResultImportService extends BaseObjectService<AnalyzerR
      */
     String findSampleByExternalId(Integer notebookId, String externalId);
 
+    /**
+     * Find sample by external ID on a specific page.
+     *
+     * @param pageId   the notebook page ID
+     * @param searchId the external ID or accession number to search for
+     * @return sample item ID if found, null otherwise
+     */
+    String findSampleByExternalIdOnPage(Integer pageId, String searchId);
+
     // ========== Import Execution Methods (T099, T101-T104) ==========
 
     /**

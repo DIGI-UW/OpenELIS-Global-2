@@ -1,0 +1,42 @@
+Well,Sample_ID,OD_Value,Concentration,Result,Sample_Type
+A1,STD1,0.052,0,Standard,Standard
+A2,IMM-2024-001-A,0.118,10,Standard,Standard
+A3,STD3,0.245,25,Standard,Standard
+A4,STD4,0.489,50,Standard,Standard
+A5,STD5,0.752,100,Standard,Standard
+A6,IMM-2024-002-B,1.125,200,Standard,Standard
+A7,STD7,1.658,400,Standard,Standard
+A8,STD8,2.145,800,Standard,Standard
+B1,POS_CTRL,1.285,215.3,Positive Control,Control
+B2,NEG_CTRL,0.058,2.1,Negative Control,Control
+B3,BLANK,0.045,0,Blank,Control
+B4,BLANK_DUP,0.048,0,Blank,Control
+C1,IMM-2024-001-A,0.892,142.5,Positive,Patient Sample
+C2,IMM-2024-002-A,0.065,4.8,Negative,Patient Sample
+C3,IMM-2024-003-A,1.245,208.7,Positive,Patient Sample
+C4,IMM-2024-004-A,0.078,6.2,Negative,Patient Sample
+C5,IMM-2024-005-A,0.425,65.8,Positive,Patient Sample
+C6,IMM-2024-006-A,0.052,3.1,Negative,Patient Sample
+D1,IMM-2024-007-A,0.685,105.2,Positive,Patient Sample
+D2,IMM-2024-008-A,0.045,1.8,Negative,Patient Sample
+D3,IMM-2024-008-B,0.958,155.8,Positive,Patient Sample
+D4,IMM-2024-009-A,0.068,5.5,Negative,Patient Sample
+D5,IMM-2024-010-A,1.125,185.4,Positive,Patient Sample
+D6,IMM-2024-011-A,0.072,5.9,Negative,Patient Sample
+E1,IMM-2024-012-A,0.325,48.2,Borderline,Patient Sample
+E2,IMM-2024-013-A,0.298,43.5,Borderline,Patient Sample
+E3,IMM-2024-013-B,0.745,115.8,Positive,Patient Sample
+E4,IMM-2024-014-A,0.055,3.5,Negative,Patient Sample
+E5,IMM-2024-015-A,0.812,128.5,Positive,Patient Sample
+E6,IMM-2024-016-A,0.062,4.2,Negative,Patient Sample
+F1,IMM-2024-016-B,0.485,72.5,Positive,Patient Sample
+F2,IMM-2024-017-A,0.048,2.5,Negative,Patient Sample
+F3,IMM-2024-018-A,1.358,228.5,Positive,Patient Sample
+F4,IMM-2024-018-B,0.075,6.0,Negative,Patient Sample
+F5,IMM-2024-019-A,0.658,98.5,Positive,Patient Sample
+F6,IMM-2024-020-A,0.058,3.8,Negative,Patient Sample
+G1,QC_LOW,0.285,41.2,QC Low,QC Sample
+G2,QC_MED,0.625,94.5,QC Medium,QC Sample
+G3,QC_HIGH,1.185,195.2,QC High,QC Sample
+H1,IMM-2024-021-A,0.925,150.2,Positive,Patient Sample
+H2,IMM-2024-022-A,0.042,1.5,Negative,Patient Sample

@@ -20,12 +20,26 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import PharmaManifestImportModal from "../../workflow/PharmaManifestImportModal";
+import ImmunologyManifestImportModal from "../../workflow/ImmunologyManifestImportModal";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
- * PharmaceuticalSampleCreationPage - Page 1 of the Pharmaceuticals workflow.
- * Captures full metadata at sample creation and sets status to "Created - Pending QC".
+ * ImmunologySampleReceptionPage - Page 1 of the Immunology workflow.
+ * Captures full reception metadata and sets status to "Received - Pending Verification".
+ *
+ * Reception Metadata:
+ * - Unique Parent Sample Identifier (assigned at reception)
+ * - Project Name/ID
+ * - Delivery Manifest Reference
+ * - Sample Type (whole blood, PBMC, serum, plasma, etc.)
+ * - Sample Volume/Quantity
+ * - Collection Date & Time
+ * - Reception Date & Time
+ * - Source/Origin (facility, study site)
+ * - Storage Condition on Arrival
+ * - Transport Temperature
+ * - Receiving Personnel Name
+ * - Delivery Manifest Verification Status
  *
  * @param {Object} props
  * @param {number} props.entryId - The notebook entry ID
@@ -33,7 +47,7 @@ import "../../workflow/NotebookWorkflow.css";
  * @param {Object} props.progress - Page progress
  * @param {function} props.onProgressUpdate - Callback when progress changes
  */
-function PharmaceuticalSampleCreationPage({
+function ImmunologySampleReceptionPage({
   entryId,
   pageData,
   progress,
@@ -88,15 +102,19 @@ function PharmaceuticalSampleCreationPage({
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
               status: sample.pageStatus || sample.status || "PENDING",
-              sampleCategory: sample.data?.sampleCategory,
-              sampleMaterial: sample.data?.sampleMaterial,
-              chemicalName: sample.data?.chemicalName,
-              grade: sample.data?.grade,
-              lotNumber: sample.data?.lotNumber,
-              storageCondition: sample.data?.storageCondition,
-              owner: sample.data?.owner,
-              patientId: sample.data?.patientId,
-              consentStatus: sample.data?.consentStatus,
+              // Immunology-specific reception metadata from JSONB data
+              uniqueParentSampleId: sample.data?.uniqueParentSampleId,
+              projectNameId: sample.data?.projectNameId,
+              deliveryManifestReference: sample.data?.deliveryManifestReference,
+              sampleVolume: sample.data?.sampleVolume,
+              collectionDateTime: sample.data?.collectionDateTime,
+              receptionDateTime: sample.data?.receptionDateTime,
+              sourceOrigin: sample.data?.sourceOrigin,
+              storageConditionOnArrival: sample.data?.storageConditionOnArrival,
+              transportTemperature: sample.data?.transportTemperature,
+              receivingPersonnelName: sample.data?.receivingPersonnelName,
+              manifestVerificationStatus:
+                sample.data?.manifestVerificationStatus,
             }));
             setSamples(transformedSamples);
           } else {
@@ -119,11 +137,11 @@ function PharmaceuticalSampleCreationPage({
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
-  const markAsRegistered = useCallback(() => {
+  const markAsVerified = useCallback(() => {
     if (selectedSampleIds.length === 0) {
       setError(
         intl.formatMessage({
-          id: "notebook.page.pharma.error.noSelection",
+          id: "notebook.page.immunology.error.noSelection",
           defaultMessage: "Please select at least one sample.",
         }),
       );
@@ -133,7 +151,7 @@ function PharmaceuticalSampleCreationPage({
     if (!hasRealPageId) {
       setError(
         intl.formatMessage({
-          id: "notebook.page.pharma.error.noPage",
+          id: "notebook.page.immunology.error.noPage",
           defaultMessage:
             "Cannot update samples: Page not properly initialized.",
         }),
@@ -155,9 +173,9 @@ function PharmaceuticalSampleCreationPage({
           setSuccessMessage(
             intl.formatMessage(
               {
-                id: "notebook.page.pharma.success.registered",
+                id: "notebook.page.immunology.success.verified",
                 defaultMessage:
-                  "Marked {count} sample(s) as Registered. They will appear on the QC page.",
+                  "Marked {count} sample(s) as Verified. They will proceed to Processing.",
               },
               { count: selectedSampleIds.length },
             ),
@@ -170,8 +188,8 @@ function PharmaceuticalSampleCreationPage({
         } else {
           setError(
             intl.formatMessage({
-              id: "notebook.page.pharma.error.status",
-              defaultMessage: "Failed to register samples. Please try again.",
+              id: "notebook.page.immunology.error.status",
+              defaultMessage: "Failed to verify samples. Please try again.",
             }),
           );
         }
@@ -186,9 +204,12 @@ function PharmaceuticalSampleCreationPage({
     pageData?.id,
   ]);
 
-  // Split samples into pending and completed
+  // Split samples into pending/in-progress and completed
   const pendingSamples = useMemo(
-    () => samples.filter((s) => s.status === "PENDING"),
+    () =>
+      samples.filter(
+        (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+      ),
     [samples],
   );
   const completedSamples = useMemo(
@@ -199,20 +220,79 @@ function PharmaceuticalSampleCreationPage({
   const pendingCount = pendingSamples.length;
   const completedCount = completedSamples.length;
 
+  // Custom columns for immunology reception metadata
+  const getAdditionalColumns = (intl) => [
+    {
+      key: "sampleType",
+      header: intl.formatMessage({
+        id: "notebook.sample.sampleType",
+        defaultMessage: "Sample Type",
+      }),
+      render: (value, sample) => value || sample?.sampleType || "-",
+    },
+    {
+      key: "projectNameId",
+      header: intl.formatMessage({
+        id: "notebook.sample.projectNameId",
+        defaultMessage: "Project",
+      }),
+      render: (value, sample) => value || sample?.projectNameId || "-",
+    },
+    {
+      key: "sourceOrigin",
+      header: intl.formatMessage({
+        id: "notebook.sample.sourceOrigin",
+        defaultMessage: "Source/Origin",
+      }),
+      render: (value, sample) => value || sample?.sourceOrigin || "-",
+    },
+    {
+      key: "storageConditionOnArrival",
+      header: intl.formatMessage({
+        id: "notebook.sample.storageCondition",
+        defaultMessage: "Storage",
+      }),
+      render: (value, sample) =>
+        value || sample?.storageConditionOnArrival || "-",
+    },
+    {
+      key: "manifestVerificationStatus",
+      header: intl.formatMessage({
+        id: "notebook.sample.verificationStatus",
+        defaultMessage: "Verification",
+      }),
+      render: (value, sample) => {
+        const status = value || sample?.manifestVerificationStatus;
+        if (!status) return "-";
+        const tagType =
+          status === "Verified"
+            ? "green"
+            : status === "Pending"
+              ? "gray"
+              : "red";
+        return (
+          <Tag type={tagType} size="sm">
+            {status}
+          </Tag>
+        );
+      },
+    },
+  ];
+
   return (
-    <div className="pharma-sample-creation-page">
+    <div className="immunology-sample-reception-page">
       {/* Page Header */}
       <div className="page-section-header">
         <h4>
           <FormattedMessage
-            id="notebook.page.pharma.sampleCreation.title"
-            defaultMessage="Sample Creation &amp; Full Metadata Capture"
+            id="notebook.page.immunology.sampleReception.title"
+            defaultMessage="Sample Reception &amp; Full Metadata Capture"
           />
         </h4>
         <p className="page-description">
           <FormattedMessage
-            id="notebook.page.pharma.sampleCreation.description"
-            defaultMessage="Import pharmaceutical samples from manifest with full traceability metadata. Select samples and mark as Registered to proceed to QC."
+            id="notebook.page.immunology.sampleReception.description"
+            defaultMessage="Import immunology samples from delivery manifest with complete reception metadata. Select samples and mark as Verified to proceed to Processing."
           />
         </p>
       </div>
@@ -224,7 +304,7 @@ function PharmaceuticalSampleCreationPage({
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.pharma.totalSamples"
+                  id="notebook.page.immunology.totalSamples"
                   defaultMessage="Total Samples"
                 />
               </span>
@@ -233,8 +313,8 @@ function PharmaceuticalSampleCreationPage({
             <Tile className="progress-tile pending">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.pharma.pendingRegistration"
-                  defaultMessage="Pending Registration"
+                  id="notebook.page.immunology.pendingInProgress"
+                  defaultMessage="Pending / In Progress"
                 />
               </span>
               <span className="progress-value">{pendingCount}</span>
@@ -242,8 +322,8 @@ function PharmaceuticalSampleCreationPage({
             <Tile className="progress-tile verified">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.pharma.registered"
-                  defaultMessage="Registered"
+                  id="notebook.page.immunology.verified"
+                  defaultMessage="Verified"
                 />
               </span>
               <span className="progress-value">{completedCount}</span>
@@ -261,7 +341,7 @@ function PharmaceuticalSampleCreationPage({
           onClick={() => setImportModalOpen(true)}
         >
           <FormattedMessage
-            id="notebook.page.pharma.importManifest"
+            id="notebook.page.immunology.importManifest"
             defaultMessage="Import from Manifest"
           />
         </Button>
@@ -271,11 +351,11 @@ function PharmaceuticalSampleCreationPage({
             kind="secondary"
             size="sm"
             renderIcon={Checkmark}
-            onClick={markAsRegistered}
+            onClick={markAsVerified}
           >
             <FormattedMessage
-              id="notebook.page.pharma.markAsRegistered"
-              defaultMessage="Mark as Registered ({count})"
+              id="notebook.page.immunology.markAsVerified"
+              defaultMessage="Mark as Verified ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
@@ -300,13 +380,13 @@ function PharmaceuticalSampleCreationPage({
         />
       )}
 
-      {/* Pending Samples Table */}
+      {/* Pending / In Progress Samples Table */}
       <div className="sample-table-section">
         <div className="table-section-header">
           <h5>
             <FormattedMessage
-              id="notebook.page.pharma.pendingSamples.title"
-              defaultMessage="Pending Registration"
+              id="notebook.page.immunology.pendingSamples.title"
+              defaultMessage="Pending / In Progress"
             />
             <Tag type="gray" size="sm" className="count-tag">
               {pendingCount}
@@ -314,8 +394,8 @@ function PharmaceuticalSampleCreationPage({
           </h5>
           <p className="table-section-description">
             <FormattedMessage
-              id="notebook.page.pharma.pendingSamples.description"
-              defaultMessage="Samples awaiting registration. Select samples and mark as Registered to move them to the completed section."
+              id="notebook.page.immunology.pendingSamples.description"
+              defaultMessage="Samples awaiting reception verification or currently in progress. Select samples and mark as Verified to move them to the completed section."
             />
           </p>
         </div>
@@ -324,8 +404,8 @@ function PharmaceuticalSampleCreationPage({
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
-                  id="notebook.page.pharma.pendingSamples.empty"
-                  defaultMessage="No pending samples. Import a manifest to add samples."
+                  id="notebook.page.immunology.pendingSamples.empty"
+                  defaultMessage="No pending samples. Import a delivery manifest to add samples."
                 />
               </p>
             </div>
@@ -337,45 +417,19 @@ function PharmaceuticalSampleCreationPage({
               onSelectionChange={setSelectedSampleIds}
               showSelection={true}
               loading={loading}
-              additionalColumns={[
-                {
-                  key: "sampleType",
-                  header: intl.formatMessage({
-                    id: "notebook.sample.sampleType",
-                    defaultMessage: "Sample Type",
-                  }),
-                  render: (value, sample) => value || sample?.sampleType || "-",
-                },
-                {
-                  key: "lotNumber",
-                  header: intl.formatMessage({
-                    id: "notebook.sample.lotNumber",
-                    defaultMessage: "Lot / Batch",
-                  }),
-                  render: (value, sample) => value || sample?.lotNumber || "-",
-                },
-                {
-                  key: "storageCondition",
-                  header: intl.formatMessage({
-                    id: "notebook.sample.storage",
-                    defaultMessage: "Storage",
-                  }),
-                  render: (value, sample) =>
-                    value || sample?.storageCondition || "-",
-                },
-              ]}
+              additionalColumns={getAdditionalColumns(intl)}
             />
           )}
         </div>
       </div>
 
-      {/* Completed / Registered Samples Table */}
+      {/* Completed Samples Table */}
       <div className="sample-table-section">
         <div className="table-section-header">
           <h5>
             <FormattedMessage
-              id="notebook.page.pharma.completedSamples.title"
-              defaultMessage="Registered Samples"
+              id="notebook.page.immunology.completedSamples.title"
+              defaultMessage="Completed"
             />
             <Tag type="green" size="sm" className="count-tag">
               {completedCount}
@@ -383,8 +437,8 @@ function PharmaceuticalSampleCreationPage({
           </h5>
           <p className="table-section-description">
             <FormattedMessage
-              id="notebook.page.pharma.completedSamples.description"
-              defaultMessage="Samples that have been registered and are ready for the next workflow step (QC)."
+              id="notebook.page.immunology.completedSamples.description"
+              defaultMessage="Samples that have been verified and are ready for the next workflow step (Initial Processing)."
             />
           </p>
         </div>
@@ -393,8 +447,8 @@ function PharmaceuticalSampleCreationPage({
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
-                  id="notebook.page.pharma.completedSamples.empty"
-                  defaultMessage="No registered samples yet. Select pending samples and mark them as registered."
+                  id="notebook.page.immunology.completedSamples.empty"
+                  defaultMessage="No verified samples yet. Select pending samples and mark them as verified."
                 />
               </p>
             </div>
@@ -404,33 +458,7 @@ function PharmaceuticalSampleCreationPage({
               samples={completedSamples}
               showSelection={false}
               loading={loading}
-              additionalColumns={[
-                {
-                  key: "sampleType",
-                  header: intl.formatMessage({
-                    id: "notebook.sample.sampleType",
-                    defaultMessage: "Sample Type",
-                  }),
-                  render: (value, sample) => value || sample?.sampleType || "-",
-                },
-                {
-                  key: "lotNumber",
-                  header: intl.formatMessage({
-                    id: "notebook.sample.lotNumber",
-                    defaultMessage: "Lot / Batch",
-                  }),
-                  render: (value, sample) => value || sample?.lotNumber || "-",
-                },
-                {
-                  key: "storageCondition",
-                  header: intl.formatMessage({
-                    id: "notebook.sample.storage",
-                    defaultMessage: "Storage",
-                  }),
-                  render: (value, sample) =>
-                    value || sample?.storageCondition || "-",
-                },
-              ]}
+              additionalColumns={getAdditionalColumns(intl)}
             />
           )}
         </div>
@@ -441,15 +469,15 @@ function PharmaceuticalSampleCreationPage({
         <div className="empty-state global-empty">
           <p>
             <FormattedMessage
-              id="notebook.page.pharma.empty"
-              defaultMessage="No samples have been added yet. Import a manifest or link existing samples, then apply metadata."
+              id="notebook.page.immunology.empty"
+              defaultMessage="No samples have been added yet. Import a delivery manifest to add samples with reception metadata."
             />
           </p>
         </div>
       )}
 
       {/* Manifest Import Modal */}
-      <PharmaManifestImportModal
+      <ImmunologyManifestImportModal
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}
         entryId={entryId}
@@ -459,4 +487,4 @@ function PharmaceuticalSampleCreationPage({
   );
 }
 
-export default PharmaceuticalSampleCreationPage;
+export default ImmunologySampleReceptionPage;
