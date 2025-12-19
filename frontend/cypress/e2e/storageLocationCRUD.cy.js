@@ -714,8 +714,10 @@ describe("Location CRUD Operations", function () {
         .contains("Rooms")
         .should("have.attr", "aria-selected", "true");
 
-      const newRoomName = `Test Room ${Date.now()}`;
-      const newRoomCode = `TR${Date.now().toString().slice(-8)}`.toUpperCase();
+      // Use timestamp + random suffix for guaranteed uniqueness across CI runs
+      const uniqueId = `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+      const newRoomName = `Test Room ${uniqueId}`;
+      const newRoomCode = `TR${uniqueId.slice(-10)}`.toUpperCase();
       const newRoomDescription = "Test room description";
 
       // Click Add Room button
