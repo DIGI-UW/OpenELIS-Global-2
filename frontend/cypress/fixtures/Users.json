@@ -22,6 +22,6 @@
   {
     "username": "admin",
     "password": "adminADMIN!!",
-    "correctPass": true
+    "correctPass": false
   }
 ]
