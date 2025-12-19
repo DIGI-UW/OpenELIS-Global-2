@@ -40,18 +40,42 @@ guidelines:
   ```
 - Run this daily when working on longer tickets
 
-## 6. Formating the Source code after making changes
+## 6. Formatting the Source Code
 
-1.  After making UI changes to the [frontend](./frontend/) directory , run the
-    formatter to properly format the Frontend code
+### Automatic Frontend Formatting (Pre-commit Hook)
 
-        cd frontend
-        npm run format
+Frontend code is **automatically formatted** when you commit changes. The pre-commit hook formats **only the files you've staged**, not the entire codebase.
 
-2.  After making changes to the [backend](./src/) directory, run the formatter
-    to properly format the Java code
+**One-time setup (required after cloning):**
+```bash
+cd frontend
+npm install
+```
 
-        mvn spotless:apply
+This installs Husky and lint-staged, which enable the automatic formatting.
+
+**How it works:**
+- When you run `git commit`, the pre-commit hook automatically runs
+- Only your **staged frontend files** (`.js`, `.jsx`, `.ts`, `.tsx`, `.json`, `.css`, `.scss`, `.md`) are formatted
+- Formatted files are automatically re-staged
+- The commit proceeds automatically
+
+**Manual formatting (if needed):**
+If you want to format all frontend files manually:
+```bash
+cd frontend
+npm run format
+```
+
+### Backend Formatting (Manual)
+
+After making changes to the [backend](./src/) directory, run the formatter to properly format the Java code:
+
+```bash
+mvn spotless:apply
+```
+
+**Note:** Backend pre-commit hooks are not yet implemented. Always run `mvn spotless:apply` before committing backend changes.
 
 ## 7. Code Conventions
 

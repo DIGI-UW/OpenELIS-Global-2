@@ -77,11 +77,7 @@ mvn clean install -DskipTests
 **MUST run BEFORE EVERY commit:**
 
 ```bash
-# Backend formatting
 mvn spotless:apply
-
-# Frontend formatting
-cd frontend && npm run format && cd ..
 ```
 
 ### Constitution Compliance (MANDATORY)
