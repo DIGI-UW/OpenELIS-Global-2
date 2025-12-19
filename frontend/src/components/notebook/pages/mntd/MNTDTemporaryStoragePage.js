@@ -95,6 +95,15 @@ function MNTDTemporaryStoragePage({
   const [isAssigning, setIsAssigning] = useState(false);
   const [wellAssignments, setWellAssignments] = useState({});
   const [isReassignment, setIsReassignment] = useState(false);
+  const [selectedCondition, setSelectedCondition] = useState(null);
+  const [retentionYears, setRetentionYears] = useState(5);
+  const [bulkAssignValues, setBulkAssignValues] = useState({
+    storageType: "",
+    assignedBy: "",
+    assignedDateTime: new Date().toISOString().slice(0, 16),
+    notes: "",
+    temperatureMonitoringConfirmed: false,
+  });
 
   // Reassignment confirmation modal state
   const [confirmReassignModalOpen, setConfirmReassignModalOpen] =
