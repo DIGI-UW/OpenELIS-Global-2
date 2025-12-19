@@ -64,6 +64,15 @@
     "cy:single": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000 --spec",
     "cy:debug": "ELECTRON_ENABLE_LOGGING=1 cypress run --browser electron --config video=false,defaultCommandTimeout=10000"
   },
+  "lint-staged": {
+    "src/**/*.{js,jsx,ts,tsx}": [
+      "eslint --cache --fix --max-warnings 0",
+      "prettier --write"
+    ],
+    "*.{css,scss,json,md}": [
+      "prettier --write"
+    ]
+  },
   "jest": {
     "transformIgnorePatterns": [
       "node_modules/(?!lodash-es)"
@@ -104,6 +113,7 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
     "prettier": "^3.4.2",
     "prettier-eslint": "15.0.1"
   }
