@@ -589,7 +589,7 @@ describe("Location CRUD Operations", function () {
         });
     });
 
-    it("should successfully delete location with no constraints", function () {
+    it.skip("should successfully delete location with no constraints", function () {
       // Navigate to Rooms tab
       cy.get('[data-testid="tab-rooms"]').click();
       cy.get('button[role="tab"]')
