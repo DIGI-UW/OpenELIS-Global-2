@@ -84,6 +84,15 @@ public class StorageDevice extends BaseObject<Integer> {
     @JoinColumn(name = "PARENT_ROOM_ID", nullable = false)
     private StorageRoom parentRoom;
 
+    @Column(name = "IP_ADDRESS", length = 45)
+    private String ipAddress;
+
+    @Column(name = "PORT")
+    private Integer port;
+
+    @Column(name = "COMMUNICATION_PROTOCOL", length = 20)
+    private String communicationProtocol;
+
     @Column(name = "SYS_USER_ID", nullable = false)
     private Integer sysUserId;
 
@@ -167,6 +176,30 @@ public class StorageDevice extends BaseObject<Integer> {
 
     public void setParentRoom(StorageRoom parentRoom) {
         this.parentRoom = parentRoom;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
+    }
+
+    public Integer getPort() {
+        return port;
+    }
+
+    public void setPort(Integer port) {
+        this.port = port;
+    }
+
+    public String getCommunicationProtocol() {
+        return communicationProtocol;
+    }
+
+    public void setCommunicationProtocol(String communicationProtocol) {
+        this.communicationProtocol = communicationProtocol;
     }
 
     public Integer getSysUserIdValue() {

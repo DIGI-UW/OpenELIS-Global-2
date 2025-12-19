@@ -1,5 +1,6 @@
 import LoginPage from "./LoginPage";
 import PatientEntryPage from "./PatientEntryPage";
+import PatientMergePage from "./PatientMergePage";
 import OrderEntityPage from "./OrderEntityPage";
 import ModifyOrderPage from "./ModifyOrderPage";
 import WorkPlan from "./WorkPlan";
@@ -23,6 +24,7 @@ class HomePage {
       batchEntry: "#menu_sample_batch_entry",
       patientMenu: "span#menu_patient",
       patientAddEdit: "#menu_patient_add_or_edit_nav",
+      patientMerge: "#menu_patient_merge",
       sampleEditNav: "#menu_sample_edit_nav",
       workplanMenu: "span#menu_workplan",
       workplanTestNav: "#menu_workplan_test_nav",
@@ -105,6 +107,14 @@ class HomePage {
     cy.get(this.selectors.patientMenu).click();
     cy.get(this.selectors.patientAddEdit).click();
     return new PatientEntryPage();
+  }
+
+  // Patient Merge (Admin function)
+  goToPatientMerge() {
+    this.openNavigationMenu();
+    cy.get(this.selectors.patientMenu).click();
+    cy.get(this.selectors.patientMerge).should("be.visible").click();
+    return new PatientMergePage();
   }
 
   // Modify Order related functions

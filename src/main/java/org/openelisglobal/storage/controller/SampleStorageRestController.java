@@ -2,6 +2,7 @@ package org.openelisglobal.storage.controller;
 
 import jakarta.validation.Valid;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +28,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST Controller for SampleItem Storage operations Handles SampleItem
@@ -59,7 +68,8 @@ public class SampleStorageRestController extends BaseRestController {
 
     /**
      * Get all SampleItems with storage assignments GET /rest/storage/sample-items
-     * Supports filtering by location and status (FR-065)
+     * Supports filtering by location and status (FR-065) Supports pagination
+     * (OGC-150)
      * 
      * Response fields: - id: Numeric ID (String representation) - primary
      * identifier - sampleItemId: @deprecated Use 'id' field instead. Kept for
@@ -71,11 +81,29 @@ public class SampleStorageRestController extends BaseRestController {
      * @param countOnly If "true", returns metrics only
      * @param location  Optional location filter (hierarchical path substring)
      * @param status    Optional status filter (active, disposed, etc.)
+     * @param page      Page number (0-based, default: 0)
+     * @param size      Page size (allowed: 25, 50, 100; default: 25)
      */
     @GetMapping("")
-    public ResponseEntity<List<Map<String, Object>>> getSampleItems(@RequestParam(required = false) String countOnly,
-            @RequestParam(required = false) String location, @RequestParam(required = false) String status) {
+    public ResponseEntity<?> getSampleItems(@RequestParam(required = false) String countOnly,
+            @RequestParam(required = false) String location, @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "25") int size) {
         try {
+            logger.info("OGC-150 getSampleItems request: countOnly={}, location={}, status={}, page={}, size={}",
+                    countOnly, location, status, page, size);
+            // OGC-150: Validate pagination parameters
+            if (page < 0) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Page number must be >= 0");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            if (!Arrays.asList(5, 25, 50, 100).contains(size)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Invalid page size. Allowed values: 5, 25, 50, 100");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
             if ("true".equals(countOnly)) {
                 // Return count metrics only
                 List<SampleStorageAssignment> allAssignments = sampleStorageAssignmentDAO.getAll();
@@ -117,19 +145,47 @@ public class SampleStorageRestController extends BaseRestController {
                 List<Map<String, Object>> response = new ArrayList<>();
                 response.add(metrics);
                 return ResponseEntity.ok(response);
+            } else if (StringUtils.hasText(location) || StringUtils.hasText(status)) {
+                // Filter branch: wrap filtered results with pagination metadata to keep
+                // response
+                // consistent
+                List<Map<String, Object>> filtered = storageDashboardService.filterSamples(location, status);
+
+                int total = filtered.size();
+                int fromIndex = Math.min(page * size, total);
+                int toIndex = Math.min(fromIndex + size, total);
+                List<Map<String, Object>> pageContent = filtered.subList(fromIndex, toIndex);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("items", pageContent);
+                response.put("currentPage", page);
+                response.put("totalPages", (int) Math.ceil(total / (double) size));
+                response.put("totalItems", total);
+                response.put("pageSize", size);
+
+                logger.info("OGC-150 filter branch: filtered={}, pageContent={}, page={}, size={}, total={}", total,
+                        pageContent.size(), page, size, total);
+                return ResponseEntity.ok(response);
             } else {
-                // Apply filters if provided (FR-065: SampleItems tab - filter by location and
-                // status)
-                List<Map<String, Object>> response;
-                if (location != null || status != null) {
-                    response = storageDashboardService.filterSamples(location, status);
-                    logger.info("Returning {} filtered SampleItems (location={}, status={})", response.size(), location,
-                            status);
-                } else {
-                    // No filters - return all SampleItems
-                    response = sampleStorageService.getAllSamplesWithAssignments();
-                    logger.info("Returning {} SampleItems with storage assignments", response.size());
-                }
+                // OGC-150: No filters - reuse existing filterSamples logic and paginate the
+                // result to
+                // ensure consistent DTO shape (maps with sample fields populated)
+                List<Map<String, Object>> all = storageDashboardService.filterSamples(null, null);
+                int total = all.size();
+                int fromIndex = Math.min(page * size, total);
+                int toIndex = Math.min(fromIndex + size, total);
+                List<Map<String, Object>> pageContent = all.subList(fromIndex, toIndex);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("items", pageContent);
+                response.put("currentPage", page);
+                response.put("totalPages", (int) Math.ceil(total / (double) size));
+                response.put("totalItems", total);
+                response.put("pageSize", size);
+
+                logger.info("OGC-150 page branch (map-based): page={} size={} total={} contentSize={}", page, size,
+                        total, pageContent.size());
+
                 return ResponseEntity.ok(response);
             }
         } catch (Exception e) {

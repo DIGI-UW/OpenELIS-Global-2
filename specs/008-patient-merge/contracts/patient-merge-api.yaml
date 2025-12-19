@@ -1,0 +1,583 @@
+openapi: 3.0.3
+info:
+  title: Patient Merge API
+  description: |
+    RESTful API endpoints for patient merge functionality in OpenELIS Global 3.0.
+
+    **Security**: All endpoints require Global Administrator role (ROLE_GLOBAL_ADMIN).
+
+    **Feature Branch**: 008-patient-merge-backend
+  version: 1.0.0
+  contact:
+    name: OpenELIS Global
+    url: https://github.com/I-TECH-UW/OpenELIS-Global-2
+
+servers:
+  - url: https://localhost:8443
+    description: Local development server
+  - url: https://openelis.example.org
+    description: Production server
+
+tags:
+  - name: Patient Merge
+    description: Operations for merging duplicate patient records
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/patient/merge-details/{patientId}:
+    get:
+      tags:
+        - Patient Merge
+      summary: Get patient merge details
+      description: |
+        Retrieves comprehensive patient information for merge workflow including:
+        - Patient demographics
+        - Data summary (orders, results, samples, documents count)
+        - Patient identifiers
+        - Potential conflicts with other patients
+
+        **Permission Required**: Global Administrator
+      operationId: getPatientMergeDetails
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          description: The unique ID of the patient
+          schema:
+            type: string
+            pattern: '^[0-9]+$'
+            example: "12345"
+      responses:
+        '200':
+          description: Patient merge details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientMergeDetailsDTO'
+              examples:
+                typical:
+                  summary: Typical patient with moderate data
+                  value:
+                    patientId: "12345"
+                    nationalId: "1234567890"
+                    externalId: "EXT-12345"
+                    name: "Doe, John Michael"
+                    gender: "M"
+                    birthDate: "1985-03-15"
+                    totalOrders: 23
+                    activeOrders: 2
+                    totalResults: 47
+                    totalSamples: 12
+                    totalDocuments: 5
+                    identifiers:
+                      - type: "National ID"
+                        value: "1234567890"
+                      - type: "Passport"
+                        value: "AB1234567"
+                      - type: "OE Patient ID"
+                        value: "PAT-12345"
+                    conflictingFields: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/patient/merge/validate:
+    post:
+      tags:
+        - Patient Merge
+      summary: Validate patient merge eligibility
+      description: |
+        Validates whether two patients can be merged and returns:
+        - Validation status (valid/invalid)
+        - Error messages for blocking issues
+        - Warning messages for non-blocking concerns
+        - Consolidated data summary from both patients
+
+        **Validation Checks**:
+        - User has Global Administrator permission
+        - Patient IDs are different (not the same patient)
+        - Neither patient is already merged
+        - No circular merge references
+        - No conflicting identifier types (see BLOCKERS.md)
+
+        **Permission Required**: Global Administrator
+      operationId: validatePatientMerge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - patient1Id
+                - patient2Id
+              properties:
+                patient1Id:
+                  type: string
+                  pattern: '^[0-9]+$'
+                  description: ID of first patient to merge
+                  example: "12345"
+                patient2Id:
+                  type: string
+                  pattern: '^[0-9]+$'
+                  description: ID of second patient to merge
+                  example: "67890"
+            examples:
+              validRequest:
+                summary: Valid merge request
+                value:
+                  patient1Id: "12345"
+                  patient2Id: "67890"
+      responses:
+        '200':
+          description: Validation completed (check 'valid' field for result)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientMergeValidationResultDTO'
+              examples:
+                validMerge:
+                  summary: Valid merge - no errors
+                  value:
+                    valid: true
+                    errors: []
+                    warnings:
+                      - "Both patients have National ID - primary patient's value will be kept"
+                    dataSummary:
+                      totalOrders: 35
+                      activeOrders: 3
+                      totalResults: 72
+                      pendingResults: 5
+                      completedResults: 67
+                      totalSamples: 18
+                      totalIdentities: 5
+                      preservedIdentities: 4
+                      discardedIdentities: 1
+                      totalContacts: 3
+                      totalDocuments: 7
+                      totalRelations: 1
+                      conflictingFields: ["phone"]
+                      conflictingIdentityTypes: ["National ID"]
+                invalidMerge:
+                  summary: Invalid merge - blocking errors
+                  value:
+                    valid: false
+                    errors:
+                      - "Cannot merge patient with itself"
+                    warnings: []
+                    dataSummary: null
+                alreadyMerged:
+                  summary: Invalid - patient already merged
+                  value:
+                    valid: false
+                    errors:
+                      - "Patient 67890 has already been merged into patient 54321"
+                    warnings: []
+                    dataSummary: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/patient/merge/execute:
+    post:
+      tags:
+        - Patient Merge
+      summary: Execute patient merge
+      description: |
+        Executes the patient merge operation within a single database transaction:
+        1. Locks both patient records
+        2. Validates merge eligibility
+        3. Consolidates all related data (identifiers, contacts, samples, orders, results)
+        4. Marks merged patient as inactive
+        5. Updates FHIR resources with link relationships
+        6. Creates comprehensive audit trail
+
+        **IMPORTANT**: This operation is IRREVERSIBLE. User confirmation is required.
+
+        **Performance**: Operations complete within 30 seconds for patients with 500+ results (performance target - operations continue until completion if longer).
+
+        **Rollback**: If any database operation fails, the entire transaction is rolled back.
+
+        **FHIR Sync Failure**: If FHIR synchronization fails after database merge succeeds, a critical error is logged for manual intervention.
+
+        **Permission Required**: Global Administrator
+      operationId: executePatientMerge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientMergeRequestDTO'
+            examples:
+              mergeRequest:
+                summary: Typical merge request
+                value:
+                  patient1Id: "12345"
+                  patient2Id: "67890"
+                  primaryPatientId: "12345"
+                  reason: "Duplicate patient created during system migration. Patient confirmed both records belong to same individual."
+                  confirmed: true
+      responses:
+        '200':
+          description: Merge executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientMergeExecutionResultDTO'
+              examples:
+                success:
+                  summary: Successful merge
+                  value:
+                    success: true
+                    mergeAuditId: "789"
+                    message: "Patient merge completed successfully. Patient 67890 has been merged into patient 12345."
+                    primaryPatientId: "12345"
+                    mergedPatientId: "67890"
+                    mergeDurationMs: 2847
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notConfirmed:
+                  summary: Merge not confirmed
+                  value:
+                    error: "Bad Request"
+                    message: "Confirmation is required to execute merge"
+                    status: 400
+                    timestamp: "2024-11-19T10:30:00Z"
+                validationFailed:
+                  summary: Validation failed
+                  value:
+                    error: "Bad Request"
+                    message: "Cannot merge patient with itself"
+                    status: 400
+                    timestamp: "2024-11-19T10:30:00Z"
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PatientMergeRequestDTO:
+      type: object
+      required:
+        - patient1Id
+        - patient2Id
+        - primaryPatientId
+        - reason
+        - confirmed
+      properties:
+        patient1Id:
+          type: string
+          pattern: '^[0-9]+$'
+          description: ID of first patient to merge
+          example: "12345"
+        patient2Id:
+          type: string
+          pattern: '^[0-9]+$'
+          description: ID of second patient to merge
+          example: "67890"
+        primaryPatientId:
+          type: string
+          pattern: '^[0-9]+$'
+          description: ID of the patient that will remain active (must be patient1Id or patient2Id)
+          example: "12345"
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 1000
+          description: Reason for merging the patients (required for audit trail)
+          example: "Duplicate patient created during system migration"
+        confirmed:
+          type: boolean
+          description: User confirmation that they understand the merge is irreversible
+          example: true
+
+    PatientMergeDetailsDTO:
+      type: object
+      properties:
+        patientId:
+          type: string
+          example: "12345"
+        nationalId:
+          type: string
+          nullable: true
+          example: "1234567890"
+        externalId:
+          type: string
+          nullable: true
+          example: "EXT-12345"
+        name:
+          type: string
+          example: "Doe, John Michael"
+        gender:
+          type: string
+          enum: [M, F, U]
+          example: "M"
+        birthDate:
+          type: string
+          format: date
+          example: "1985-03-15"
+        totalOrders:
+          type: integer
+          description: Total number of orders for this patient
+          example: 23
+        activeOrders:
+          type: integer
+          description: Number of active/pending orders
+          example: 2
+        totalResults:
+          type: integer
+          description: Total number of test results
+          example: 47
+        totalSamples:
+          type: integer
+          description: Total number of samples
+          example: 12
+        totalDocuments:
+          type: integer
+          description: Total number of documents
+          example: 5
+        identifiers:
+          type: array
+          description: All patient identifiers
+          items:
+            $ref: '#/components/schemas/IdentifierDTO'
+        conflictingFields:
+          type: array
+          description: Fields that differ from another patient being compared
+          items:
+            type: string
+          example: ["phone", "email"]
+
+    IdentifierDTO:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Type of identifier (National ID, Passport, etc.)
+          example: "National ID"
+        value:
+          type: string
+          description: Identifier value
+          example: "1234567890"
+
+    PatientMergeValidationResultDTO:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: Whether the merge is valid (true) or has blocking errors (false)
+          example: true
+        errors:
+          type: array
+          description: Blocking errors that prevent merge
+          items:
+            type: string
+          example: []
+        warnings:
+          type: array
+          description: Non-blocking warnings about potential issues
+          items:
+            type: string
+          example:
+            - "Both patients have National ID - primary patient's value will be kept"
+        dataSummary:
+          $ref: '#/components/schemas/PatientMergeDataSummaryDTO'
+
+    PatientMergeDataSummaryDTO:
+      type: object
+      description: Consolidated data summary from both patients
+      properties:
+        totalOrders:
+          type: integer
+          description: Combined total orders from both patients
+          example: 35
+        activeOrders:
+          type: integer
+          description: Combined active orders from both patients
+          example: 3
+        totalResults:
+          type: integer
+          description: Combined total results from both patients
+          example: 72
+        pendingResults:
+          type: integer
+          description: Combined pending results from both patients
+          example: 5
+        completedResults:
+          type: integer
+          description: Combined completed results from both patients
+          example: 67
+        totalSamples:
+          type: integer
+          description: Combined total samples from both patients
+          example: 18
+        totalIdentities:
+          type: integer
+          description: Total identifiers from both patients
+          example: 5
+        preservedIdentities:
+          type: integer
+          description: Number of identifiers that will be preserved
+          example: 4
+        discardedIdentities:
+          type: integer
+          description: Number of identifiers that will be discarded due to duplicates
+          example: 1
+        totalContacts:
+          type: integer
+          description: Combined total contacts from both patients
+          example: 3
+        totalDocuments:
+          type: integer
+          description: Combined total documents from both patients
+          example: 7
+        totalRelations:
+          type: integer
+          description: Combined total patient relations from both patients
+          example: 1
+        conflictingFields:
+          type: array
+          description: Demographic fields that differ between patients
+          items:
+            type: string
+          example: ["phone"]
+        conflictingIdentityTypes:
+          type: array
+          description: Identifier types that exist in both patients (one will be discarded)
+          items:
+            type: string
+          example: ["National ID"]
+
+    PatientMergeExecutionResultDTO:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether merge completed successfully
+          example: true
+        mergeAuditId:
+          type: string
+          description: ID of the audit record created for this merge
+          example: "789"
+        message:
+          type: string
+          description: Human-readable success message
+          example: "Patient merge completed successfully"
+        primaryPatientId:
+          type: string
+          description: ID of the patient that remains active
+          example: "12345"
+        mergedPatientId:
+          type: string
+          description: ID of the patient that was merged (now inactive)
+          example: "67890"
+        mergeDurationMs:
+          type: integer
+          description: Duration of merge operation in milliseconds
+          example: 2847
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type
+          example: "Forbidden"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Global Administrator permission required"
+        status:
+          type: integer
+          description: HTTP status code
+          example: 403
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2024-11-19T10:30:00Z"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidId:
+              summary: Invalid patient ID format
+              value:
+                error: "Bad Request"
+                message: "Patient ID must be numeric"
+                status: 400
+                timestamp: "2024-11-19T10:30:00Z"
+
+    Forbidden:
+      description: Forbidden - user lacks Global Administrator permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            noPermission:
+              summary: Missing Global Administrator role
+              value:
+                error: "Forbidden"
+                message: "Global Administrator permission required"
+                status: 403
+                timestamp: "2024-11-19T10:30:00Z"
+
+    NotFound:
+      description: Not found - patient does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            patientNotFound:
+              summary: Patient ID not found
+              value:
+                error: "Not Found"
+                message: "Patient with ID 12345 not found"
+                status: 404
+                timestamp: "2024-11-19T10:30:00Z"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            serverError:
+              summary: Database connection failure
+              value:
+                error: "Internal Server Error"
+                message: "An unexpected error occurred while processing your request"
+                status: 500
+                timestamp: "2024-11-19T10:30:00Z"

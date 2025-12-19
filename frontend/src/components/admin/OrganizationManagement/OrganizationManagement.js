@@ -1,7 +1,6 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
 import {
   Heading,
-  Button,
   Loading,
   Grid,
   Column,
@@ -14,16 +13,12 @@ import {
   TableHeader,
   TableCell,
   TableSelectRow,
-  TableSelectAll,
   TableContainer,
   Pagination,
   Search,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import { NotificationContext } from "../../layout/Layout.js";
@@ -229,9 +224,6 @@ function OrganizationManagement() {
           name="selectRowCheckbox"
           ariaLabel="selectRows"
           onSelect={() => {
-            const isActiveCell = row.cells.find((cell) =>
-              cell.id.endsWith(":active"),
-            );
             if (selectedRowIds.includes(row.id)) {
               setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
             } else {
@@ -380,13 +372,7 @@ function OrganizationManagement() {
                     },
                   ]}
                 >
-                  {({
-                    rows,
-                    headers,
-                    getHeaderProps,
-                    getTableProps,
-                    getSelectionProps,
-                  }) => (
+                  {({ rows, headers, getHeaderProps, getTableProps }) => (
                     <TableContainer>
                       <Table {...getTableProps()}>
                         <TableHead>

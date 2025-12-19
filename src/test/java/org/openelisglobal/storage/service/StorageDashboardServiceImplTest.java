@@ -33,6 +33,9 @@ public class StorageDashboardServiceImplTest {
     @Mock
     private StorageLocationService storageLocationService;
 
+    @Mock
+    private org.openelisglobal.common.services.IStatusService statusService;
+
     @InjectMocks
     private StorageDashboardServiceImpl dashboardService;
 
@@ -56,6 +59,11 @@ public class StorageDashboardServiceImplTest {
                     .getDeclaredField("storageLocationService");
             locationServiceField.setAccessible(true);
             locationServiceField.set(dashboardService, storageLocationService);
+
+            java.lang.reflect.Field statusServiceField = StorageDashboardServiceImpl.class
+                    .getDeclaredField("statusService");
+            statusServiceField.setAccessible(true);
+            statusServiceField.set(dashboardService, statusService);
         } catch (Exception e) {
             throw new RuntimeException("Failed to inject mocks", e);
         }
@@ -67,19 +75,19 @@ public class StorageDashboardServiceImplTest {
         mockSamples = new ArrayList<>();
         Map<String, Object> sample1 = new HashMap<>();
         sample1.put("id", 1);
-        sample1.put("status", "active");
+        sample1.put("status", "1"); // Status ID (not "active" string)
         sample1.put("location", "Room1 > Device1 > Position1");
         mockSamples.add(sample1);
 
         Map<String, Object> sample2 = new HashMap<>();
         sample2.put("id", 2);
-        sample2.put("status", "active");
+        sample2.put("status", "1"); // Status ID (not "active" string)
         sample2.put("location", "Room2 > Device2 > Position2");
         mockSamples.add(sample2);
 
         Map<String, Object> sample3 = new HashMap<>();
         sample3.put("id", 3);
-        sample3.put("status", "disposed");
+        sample3.put("status", "24"); // Disposed status ID
         sample3.put("location", "Room1 > Device1 > Position3");
         mockSamples.add(sample3);
 
@@ -135,6 +143,13 @@ public class StorageDashboardServiceImplTest {
     public void testFilterSamples_ByLocationAndStatus_CombinesWithAND() {
         // Given: All samples from service
         when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
+        
+        // Mock statusService.matches() for active samples (status ID "1" is NOT disposed)
+        when(statusService.matches("1", org.openelisglobal.common.services.StatusService.SampleStatus.Disposed))
+                .thenReturn(false);
+        // Mock statusService.matches() for disposed samples (status ID "24" IS disposed)
+        when(statusService.matches("24", org.openelisglobal.common.services.StatusService.SampleStatus.Disposed))
+                .thenReturn(true);
 
         // When: Filter by location containing "Room1" AND status "active"
         List<Map<String, Object>> result = dashboardService.filterSamples(
@@ -144,7 +159,7 @@ public class StorageDashboardServiceImplTest {
         assertNotNull("Result should not be null", result);
         assertEquals("Should return 1 sample matching both filters", 1, result.size());
         assertEquals("Sample ID should be 1", 1, result.get(0).get("id"));
-        assertEquals("Status should be active", "active", result.get(0).get("status"));
+        assertEquals("Status should be status ID 1", "1", result.get(0).get("status"));
         assertTrue("Location should contain Room1", 
                 ((String) result.get(0).get("location")).contains("Room1"));
     }

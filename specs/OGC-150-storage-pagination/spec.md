@@ -2,7 +2,7 @@
 
 **Feature Branch**: `OGC-150-storage-pagination`  
 **Created**: 2025-12-05  
-**Status**: Draft  
+**Status**: In Progress  
 **Input**: User description: "Add pagination to Sample Storage page for large
 datasets"  
 **Issue**: [OGC-150](https://uwdigi.atlassian.net/browse/OGC-150)  
@@ -217,12 +217,14 @@ _No new entities are introduced by this feature._
 ### Measurable Outcomes
 
 - **SC-001**: Sample Storage page loads in under 2 seconds even with 100,000+
-  samples in the database (currently 10-20 seconds)
+  samples in the database (currently 10-20 seconds) — full performance
+  validation will occur in follow-up performance testing after this increment
 - **SC-002**: Lab technicians can view sample storage assignments without
   browser performance degradation (memory usage remains stable regardless of
   total sample count)
 - **SC-003**: Lab technicians can navigate to any page within 1 second (next,
-  previous, or direct page number)
+  previous, or direct page number) — timing metrics to be gathered during
+  dedicated performance testing
 - **SC-004**: 100% of lab technicians can successfully find specific samples
   using pagination navigation on first attempt (measured via user testing or
   support ticket reduction)

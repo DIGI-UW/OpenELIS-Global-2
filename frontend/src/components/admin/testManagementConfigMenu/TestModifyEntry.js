@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect, useRef, useCallback } from "react";
+import { useContext, useState, useCallback, useEffect, useRef } from "react";
 import {
   Heading,
   Loading,
@@ -24,6 +24,7 @@ import { CustomTestDataDisplay } from "./customComponents/CustomTestDataDisplay.
 import { TestStepForm } from "./customComponents/TestStepForm.js";
 import { mapTestCatBeanToFormData } from "./customComponents/TestFormData.js";
 import SearchTestNames from "./SearchTestNames";
+import TestModifyFilters from "./TestModifyFilters";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -45,9 +46,12 @@ function TestModifyEntry() {
   const intl = useIntl();
   const [isLoading, setIsLoading] = useState(false);
   const [testMonifyList, setTestModifyList] = useState({});
-  const [filteredTests, setFilteredTests] = useState(testMonifyList?.testList);
+  const [filteredTests, setFilteredTests] = useState([]);
+  const [searchFilteredTests, setSearchFilteredTests] = useState([]);
   const [showGuide, setShowGuide] = useState(false);
   const [selectedTestIdToEdit, setSelectedTestIdToEdit] = useState(null);
+  const [selectedSampleType, setSelectedSampleType] = useState("");
+  const [selectedTestSection, setSelectedTestSection] = useState("");
 
   const componentMounted = useRef(false);
 
@@ -55,25 +59,98 @@ function TestModifyEntry() {
     setShowGuide(!showGuide);
   };
 
-  const handleTestsFilter = useCallback((filtered) => {
-    setFilteredTests(filtered);
+  // Internal helper that actually calls the backend
+  const handleApiCall = useCallback((queryParams) => {
+    setIsLoading(true);
+    const apiUrl = queryParams
+      ? `/rest/TestModifyEntry?${queryParams}`
+      : "/rest/TestModifyEntry";
+
+    getFromOpenElisServer(apiUrl, (res) => {
+      if (res?.testCatBeanList) {
+        // Convert to expected format for UI
+        const testListFormat = res.testCatBeanList.map((test) => ({
+          id: test.id,
+          value:
+            test.localization?.english ||
+            test.localization?.french ||
+            "Unknown Test",
+        }));
+
+        setFilteredTests(testListFormat);
+        setSearchFilteredTests(testListFormat);
+        setTestModifyList(res);
+      } else {
+        // If no filters or no results, handle empty state
+        const emptyList = [];
+        setFilteredTests(emptyList);
+        setSearchFilteredTests(emptyList);
+        if (queryParams) {
+          // Only update test list if we have query params (filtered request)
+          setTestModifyList({ ...res, testCatBeanList: [] });
+        }
+      }
+      setIsLoading(false);
+    });
   }, []);
 
-  const handleTestModifyEntryList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setTestModifyList(res);
-    }
-  };
+  // Handle clearing filters from TestModifyFilters component
+  const handleClearFilters = useCallback(() => {
+    // Clear the test results immediately
+    setFilteredTests([]);
+    setSearchFilteredTests([]);
+    setSelectedSampleType("");
+    setSelectedTestSection("");
+  }, []);
 
+  // Called when user changes either filter dropdown
+  const handleFilterChange = useCallback(
+    (sampleType, testSection) => {
+      setSelectedSampleType(sampleType);
+      setSelectedTestSection(testSection);
+
+      const hasFilters =
+        sampleType?.trim() !== "" || testSection?.trim() !== "";
+
+      if (hasFilters) {
+        const params = new URLSearchParams();
+        if (sampleType && sampleType.trim() !== "") {
+          params.append("sampleType", sampleType);
+        }
+        if (testSection && testSection.trim() !== "") {
+          params.append("testSection", testSection);
+        }
+        handleApiCall(params.toString());
+      } else {
+        handleClearFilters();
+      }
+    },
+    [handleApiCall, handleClearFilters],
+  );
+
+  // Handle search within filtered tests
+  const handleTestsFilter = useCallback((searchFiltered) => {
+    setSearchFilteredTests(searchFiltered);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setSelectedTestIdToEdit(null);
+  }, []);
+
+  // Load filter metadata on component mount (sample types, test sections, etc.)
   useEffect(() => {
     componentMounted.current = true;
     setIsLoading(true);
-    getFromOpenElisServer(`/rest/TestModifyEntry`, handleTestModifyEntryList);
+
+    // Load only filter metadata, not test data
+    getFromOpenElisServer(`/rest/TestModifyEntry`, (res) => {
+      if (res) {
+        setTestModifyList(res);
+        setIsLoading(false);
+      }
+    });
     return () => {
       componentMounted.current = false;
-      setIsLoading(false);
     };
   }, []);
 
@@ -128,7 +205,7 @@ function TestModifyEntry() {
     }
   };
 
-  if (!isLoading) {
+  if (isLoading) {
     return (
       <>
         <Loading />
@@ -273,29 +350,46 @@ function TestModifyEntry() {
             />
           ) : (
             <>
-              <Grid fullWidth={true}>
-                <Column lg={8} md={4} sm={2}>
-                  <Section>
-                    <Section>
+              <TestModifyFilters
+                sampleTypeList={testMonifyList?.sampleTypeList}
+                labUnitList={testMonifyList?.labUnitList}
+                selectedSampleType={selectedSampleType}
+                selectedTestSection={selectedTestSection}
+                onFilterChange={handleFilterChange}
+                onClearFilters={handleClearFilters}
+              />
+              <br />
+              <hr />
+              <br />
+              {filteredTests.length > 0 && (
+                <>
+                  <Grid fullWidth={true}>
+                    <Column lg={8} md={4} sm={2}>
+                      <Section>
+                        <Section>
+                          <Section>
+                            <Heading>
+                              <FormattedMessage id="test.modify.header.modify" />
+                            </Heading>
+                          </Section>
+                        </Section>
+                      </Section>
+                    </Column>
+                    <Column lg={8} md={4} sm={2}>
                       <Section>
                         <Heading>
-                          <FormattedMessage id="test.modify.header.modify" />
+                          <SearchTestNames
+                            testNames={filteredTests}
+                            onFilter={handleTestsFilter}
+                          />
                         </Heading>
                       </Section>
-                    </Section>
-                  </Section>
-                </Column>
-                <Column lg={8} md={4} sm={2}>
-                  <Section>
-                    <Heading>
-                      <SearchTestNames
-                        testNames={testMonifyList?.testList}
-                        onFilter={handleTestsFilter}
-                      />
-                    </Heading>
-                  </Section>
-                </Column>
-              </Grid>
+                    </Column>
+                  </Grid>
+                  <br />
+                  <hr />
+                </>
+              )}
             </>
           )}
           <br />
@@ -309,15 +403,16 @@ function TestModifyEntry() {
                   ),
                 )}
                 postCall={handleTestModifyEntryPostCall}
+                cancelCall={handleCancelEdit}
                 mode="edit"
               />
             </>
           ) : (
             <>
-              {testMonifyList && testMonifyList?.testList?.length > 0 ? (
+              {searchFilteredTests && searchFilteredTests.length > 0 ? (
                 <>
                   <Grid fullWidth={true}>
-                    {filteredTests?.map((test) => (
+                    {searchFilteredTests.map((test) => (
                       <Column
                         style={{ margin: "2px" }}
                         lg={4}
@@ -337,15 +432,27 @@ function TestModifyEntry() {
                     ))}
                   </Grid>
                 </>
+              ) : filteredTests.length === 0 ? (
+                <>
+                  <Grid fullWidth={true}>
+                    <Column lg={16} md={8} sm={4}>
+                      <Section>
+                        <p>
+                          <FormattedMessage id="configuration.test.modify.filter.selectToBegin" />
+                        </p>
+                      </Section>
+                    </Column>
+                  </Grid>
+                </>
               ) : (
                 <>
                   <Grid fullWidth={true}>
                     <Column lg={16} md={8} sm={4}>
-                      <Loading
-                        description="loading"
-                        small={true}
-                        withOverlay={true}
-                      />
+                      <Section>
+                        <p>
+                          <FormattedMessage id="configuration.test.modify.filter.noTestsFound" />
+                        </p>
+                      </Section>
                     </Column>
                   </Grid>
                 </>

@@ -17,6 +17,9 @@ public class PagingProperties {
     @Value("${org.openelisglobal.paging.displaylist.pageSize:99}")
     private Integer displayListPageSize;
 
+    @Value("${org.openelisglobal.paging.orderprograms.pageSize:99}")
+    private Integer orderProgramsPageSize;
+
     public Integer getPatientsPageSize() {
         return patientsPageSize;
     }
@@ -47,5 +50,13 @@ public class PagingProperties {
 
     public void setDisplayListPageSize(Integer displayListPageSize) {
         this.displayListPageSize = displayListPageSize;
+    }
+
+    public Integer getOrderProgramsPageSize() {
+        return orderProgramsPageSize;
+    }
+
+    public void setOrderProgramsPageSize(Integer orderProgramsPageSize) {
+        this.orderProgramsPageSize = orderProgramsPageSize;
     }
 }

@@ -173,6 +173,11 @@ accessing any of these links, simply follow these steps:
 
          mvn verify -Dit.test=<packageName>.<TestClassName>
 
+    **DBUnit test data note:** DB-backed integration tests typically load DBUnit
+    Flat XML datasets from `src/test/resources/testdata/` via
+    `executeDataSetWithStateManagement("testdata/<file>.xml")`. Prefer datasets
+    over inline SQL setup/cleanup to avoid test data pollution.
+
 1.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
 
     > **Note:** Frontend checks will only pass successfully if your development
