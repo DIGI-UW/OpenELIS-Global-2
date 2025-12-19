@@ -74,10 +74,20 @@ mvn clean install -DskipTests
 
 ### Pre-Commit Formatting (MANDATORY)
 
-**MUST run BEFORE EVERY commit:**
+**Frontend formatting is AUTOMATIC:**
+- Pre-commit hook automatically formats staged frontend files
+- One-time setup: `cd frontend && npm install` (installs Husky + lint-staged)
+- Formats only modified files, not entire codebase
+- See [PULL_REQUEST_TIPS.md](PULL_REQUEST_TIPS.md#6-formatting-the-source-code) for details
+
+**Backend formatting (MANUAL - MUST run BEFORE EVERY commit):**
 
 ```bash
+# Backend formatting
 mvn spotless:apply
+
+# Frontend formatting (if needed manually)
+cd frontend && npm run format && cd ..
 ```
 
 ### Constitution Compliance (MANDATORY)
