@@ -714,10 +714,10 @@ describe("Location CRUD Operations", function () {
         .contains("Rooms")
         .should("have.attr", "aria-selected", "true");
 
-      // Use timestamp + random suffix for guaranteed uniqueness across CI runs
-      const uniqueId = `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
-      const newRoomName = `Test Room ${uniqueId}`;
-      const newRoomCode = `TR${uniqueId.slice(-10)}`.toUpperCase();
+      // Use crypto UUID for guaranteed uniqueness across CI runs
+      const uuid = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+      const newRoomName = `Test Room ${uuid}`;
+      const newRoomCode = `TR${uuid}`.toUpperCase();
       const newRoomDescription = "Test room description";
 
       // Click Add Room button
