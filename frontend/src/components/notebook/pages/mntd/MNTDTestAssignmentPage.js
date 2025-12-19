@@ -25,7 +25,6 @@ import {
   Renew,
   Chemistry,
   Calendar,
-  User,
   Settings,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -63,6 +62,7 @@ import "../../workflow/NotebookWorkflow.css";
  * @param {Object} props.progress - Page progress
  * @param {function} props.onProgressUpdate - Callback when progress changes
  * @param {number} props.notebookId - The notebook ID
+ * @param {Array} props.notebookInstruments - Instruments attached to the notebook
  */
 function MNTDTestAssignmentPage({
   entryId,
@@ -70,6 +70,7 @@ function MNTDTestAssignmentPage({
   progress,
   onProgressUpdate,
   notebookId,
+  notebookInstruments,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -82,10 +83,14 @@ function MNTDTestAssignmentPage({
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // Instruments from notebook (attached to the notebook instance)
+  const [instruments, setInstruments] = useState([]);
+
   // Test assignment modal state
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [assignmentData, setAssignmentData] = useState({
     experimentCategory: "",
+    subcategory: "",
     specificAssay: "",
     notes: "",
   });
@@ -94,85 +99,281 @@ function MNTDTestAssignmentPage({
   const [showSchedulingModal, setShowSchedulingModal] = useState(false);
   const [schedulingData, setSchedulingData] = useState({
     instrument: "",
+    instrumentId: "", // Physical instrument ID/serial number
     scheduledDate: new Date().toISOString().split("T")[0],
-    scheduledTime: "",
-    operatorName: "",
-    schedulingNotes: "",
+    timeSlot: "", // Predefined time slot
+    startTime: "",
+    endTime: "",
   });
 
-  // Experiment category options
-  const experimentCategoryOptions = [
-    {
-      id: "MOLECULAR_QPCR",
-      text: intl.formatMessage({
-        id: "notebook.mntd.testassignment.category.molecularQpcr",
-        defaultMessage: "Molecular (qPCR)",
-      }),
-    },
-    {
-      id: "MOLECULAR_PCR",
-      text: intl.formatMessage({
-        id: "notebook.mntd.testassignment.category.molecularPcr",
-        defaultMessage: "Molecular (PCR)",
-      }),
-    },
-    {
-      id: "GENOMICS",
-      text: intl.formatMessage({
-        id: "notebook.mntd.testassignment.category.genomics",
-        defaultMessage: "Genomics",
-      }),
-    },
-    {
-      id: "DIGITAL_PCR",
-      text: intl.formatMessage({
-        id: "notebook.mntd.testassignment.category.digitalPcr",
-        defaultMessage: "Digital PCR",
-      }),
-    },
-    {
-      id: "SEROLOGY_ELISA",
-      text: intl.formatMessage({
-        id: "notebook.mntd.testassignment.category.serologyElisa",
-        defaultMessage: "Serology (ELISA)",
-      }),
-    },
-    {
-      id: "SEROLOGY_MULTIPLEX",
-      text: intl.formatMessage({
-        id: "notebook.mntd.testassignment.category.serologyMultiplex",
-        defaultMessage: "Serology (Multiplex)",
-      }),
-    },
-    {
-      id: "CULTURE",
-      text: intl.formatMessage({
-        id: "notebook.mntd.testassignment.category.culture",
-        defaultMessage: "Culture",
-      }),
-    },
-    {
-      id: "FLOW_CYTOMETRY",
-      text: intl.formatMessage({
-        id: "notebook.mntd.testassignment.category.flowCytometry",
-        defaultMessage: "Flow Cytometry",
-      }),
-    },
+  // Time slot options for machine scheduling
+  const timeSlotOptions = [
+    { id: "SLOT_0800_1000", text: "08:00 - 10:00 (Morning Slot 1)" },
+    { id: "SLOT_1000_1200", text: "10:00 - 12:00 (Morning Slot 2)" },
+    { id: "SLOT_1200_1400", text: "12:00 - 14:00 (Midday Slot)" },
+    { id: "SLOT_1400_1600", text: "14:00 - 16:00 (Afternoon Slot 1)" },
+    { id: "SLOT_1600_1800", text: "16:00 - 18:00 (Afternoon Slot 2)" },
+    { id: "SLOT_1800_2000", text: "18:00 - 20:00 (Evening Slot)" },
+    { id: "SLOT_OVERNIGHT", text: "20:00 - 08:00 (Overnight Run)" },
+    { id: "SLOT_CUSTOM", text: "Custom Time Range" },
   ];
 
-  // Instrument options (can be extended to load from backend)
-  const instrumentOptions = [
-    { id: "QPCR_1", text: "qPCR System 1" },
-    { id: "QPCR_2", text: "qPCR System 2" },
-    { id: "PCR_THERMAL_1", text: "PCR Thermal Cycler 1" },
-    { id: "SEQUENCER_1", text: "Sequencer 1" },
-    { id: "ELISA_READER_1", text: "ELISA Reader 1" },
-    { id: "ELISA_WASHER_1", text: "ELISA Washer 1" },
-    { id: "FLOW_CYTOMETER_1", text: "Flow Cytometer 1" },
-    { id: "DIGITAL_PCR_1", text: "Digital PCR System 1" },
-    { id: "INCUBATOR_1", text: "Incubator 1" },
-    { id: "CENTRIFUGE_1", text: "Centrifuge 1" },
+  // Main experiment categories
+  const experimentCategoryOptions = [
+    { id: "PARASITE_MOLECULAR", text: "A. Parasite Molecular Experiments" },
+    { id: "VECTOR_MOLECULAR", text: "B. Vector Molecular Experiments" },
+    { id: "GENOMICS", text: "C. Genomics" },
+    { id: "DIGITAL_PCR", text: "D. Digital PCR" },
+    { id: "SEROLOGICAL", text: "E. Serological Assays" },
+    { id: "PARASITE_CULTURE", text: "F. Parasite Culture" },
   ];
+
+  // Subcategories based on main category
+  const getSubcategoryOptions = (category) => {
+    switch (category) {
+      case "PARASITE_MOLECULAR":
+        return [
+          { id: "PARASITE_QPCR", text: "qPCR Assays" },
+          { id: "PARASITE_CONVENTIONAL_PCR", text: "Conventional PCR" },
+          { id: "PARASITE_ITS1_RFLP", text: "ITS1 PCR-RFLP" },
+          { id: "PARASITE_OTHER", text: "Other Parasite Tests" },
+        ];
+      case "VECTOR_MOLECULAR":
+        return [
+          { id: "VECTOR_QPCR", text: "qPCR Assays" },
+          { id: "VECTOR_CONVENTIONAL_PCR", text: "Conventional PCR" },
+        ];
+      case "GENOMICS":
+        return [
+          { id: "GENOMICS_DIAGNOSTIC", text: "Diagnostic Resistance (hrp2/3)" },
+          { id: "GENOMICS_DRUG_RESISTANCE", text: "Drug Resistance" },
+          { id: "GENOMICS_INSECTICIDE", text: "Insecticide Resistance" },
+          { id: "GENOMICS_DIVERSITY", text: "Diversity Studies" },
+          { id: "GENOMICS_VACCINE", text: "Vaccine Targets" },
+          { id: "GENOMICS_HUMAN", text: "Human Genomics (MAD4HatTeR)" },
+          { id: "GENOMICS_HLA", text: "HLA Typing" },
+          { id: "GENOMICS_PFAMPSEQ", text: "PfAmpSeq-MARS" },
+          { id: "GENOMICS_PF_WGS", text: "Pf WGS (Whole Genome Sequencing)" },
+          { id: "GENOMICS_PVAMPSEQ", text: "PvAmpSeq" },
+          { id: "GENOMICS_HUMAN_GENO", text: "Human Genotyping" },
+          { id: "GENOMICS_TCR", text: "T cell receptor (TCR) clonotypes" },
+        ];
+      case "DIGITAL_PCR":
+        return [
+          { id: "DPCR_ABSOLUTE_QUANT", text: "Absolute Quantification" },
+          { id: "DPCR_MUTATION", text: "Mutation Detection" },
+          { id: "DPCR_GENE_EXPRESSION", text: "Gene Expression" },
+          { id: "DPCR_SNP", text: "SNP (Single-nucleotide polymorphism)" },
+          { id: "DPCR_CNV", text: "Copy Number Variation (CNV)" },
+        ];
+      case "SEROLOGICAL":
+        return [
+          { id: "SERO_ELISA", text: "ELISA" },
+          { id: "SERO_BEAD_MULTIPLEX", text: "Bead-Based Multiplex" },
+          { id: "SERO_ELISPOT", text: "ELISPOT" },
+          { id: "SERO_FLUOROSPOT", text: "FluoroSpot" },
+          { id: "SERO_FLOW_CYTOMETRY", text: "Flow Cytometry" },
+        ];
+      case "PARASITE_CULTURE":
+        return [
+          { id: "CULTURE_LEISHMANIA", text: "Leishmania Culture" },
+          { id: "CULTURE_MALARIA", text: "Malaria Culture" },
+        ];
+      default:
+        return [];
+    }
+  };
+
+  // Specific assays based on subcategory
+  const getSpecificAssayOptions = (subcategory) => {
+    switch (subcategory) {
+      // Parasite qPCR Assays
+      case "PARASITE_QPCR":
+        return [
+          { id: "QPCR_COX1_PV", text: "Plasmodium species ID - Cox 1 Pv" },
+          { id: "QPCR_COX_PF", text: "Plasmodium species ID - Cox Pf" },
+          {
+            id: "QPCR_MULTIPLEX_COX1",
+            text: "Plasmodium species ID - Multiplex Cox 1",
+          },
+          {
+            id: "QPCR_MULTIPLEX_18S",
+            text: "Plasmodium species ID - Multiplex 18s",
+          },
+          { id: "QPCR_VAR18S", text: "Plasmodium species ID - Var18s" },
+          { id: "QPCR_HRP2_3_GENO", text: "Pf hrp2/3 Multiplex Genotyping" },
+          { id: "QPCR_PFMGET", text: "Gametocyte Detection - Pf: PfMGET" },
+          { id: "QPCR_CCP4", text: "Gametocyte Detection - Pf: CCP4" },
+          { id: "QPCR_PFS25", text: "Gametocyte Detection - Pf: PfS25" },
+          { id: "QPCR_PFGEXP2", text: "Gametocyte Detection - Early: PfGEXP2" },
+          { id: "QPCR_PFSIR2A", text: "Gametocyte Detection - Early: PfSir2A" },
+          { id: "QPCR_PFAP2G", text: "Gametocyte Detection - Early: PfAP2G" },
+          { id: "QPCR_PVS25", text: "Gametocyte Detection - Pv: Pvs25" },
+          { id: "QPCR_PVDBP", text: "PvDBP" },
+          { id: "QPCR_SBP1", text: "SBP1" },
+          { id: "QPCR_CNV", text: "Copy Number Variation (CNV)" },
+          {
+            id: "QPCR_QUANTITECT",
+            text: "QuantiTect SYBR green PCR (mRNA expression)",
+          },
+          { id: "QPCR_PARASITE_OTHER", text: "Others" },
+        ];
+      // Parasite Conventional PCR
+      case "PARASITE_CONVENTIONAL_PCR":
+        return [
+          { id: "PCR_18S_NPCR", text: "18s nPCR" },
+          { id: "PCR_COX1_GENERIC", text: "Cox 1 Generic PCR" },
+          { id: "PCR_PV_COX1", text: "Pv Cox 1 PCR" },
+          { id: "PCR_PARASITE_OTHER", text: "Others" },
+        ];
+      // ITS1 PCR-RFLP
+      case "PARASITE_ITS1_RFLP":
+        return [
+          { id: "ITS1_LEISHMANIA", text: "Leishmania Species Identification" },
+        ];
+      // Other Parasite Tests
+      case "PARASITE_OTHER":
+        return [
+          { id: "OTHER_MSP1", text: "MSP1" },
+          { id: "OTHER_MSP2", text: "MSP2" },
+          { id: "OTHER_GLURP_POLYA", text: "Glurp/Polya" },
+        ];
+      // Vector qPCR Assays
+      case "VECTOR_QPCR":
+        return [
+          { id: "VQPCR_BLOOD_COW", text: "Blood-meal PCR - Cow" },
+          { id: "VQPCR_BLOOD_DOG", text: "Blood-meal PCR - Dog" },
+          { id: "VQPCR_BLOOD_HUMAN", text: "Blood-meal PCR - Human" },
+          { id: "VQPCR_BLOOD_GOAT", text: "Blood-meal PCR - Goat" },
+          { id: "VQPCR_BLOOD_CHICKEN", text: "Blood-meal PCR - Chicken" },
+          { id: "VQPCR_BLOOD_HORSE", text: "Blood-meal PCR - Horse" },
+          { id: "VQPCR_BLOOD_RAT", text: "Blood-meal PCR - Rat" },
+          { id: "VQPCR_BLOOD_CAMEL", text: "Blood-meal PCR - Camel" },
+          {
+            id: "VQPCR_ANOPHELES_ID",
+            text: "Anopheles ID PCR (species-specific)",
+          },
+          { id: "VQPCR_KDR", text: "KDR PCR" },
+          { id: "VQPCR_G6PD", text: "G6PD PCR" },
+          { id: "VQPCR_HBB", text: "HBB PCR" },
+          { id: "VQPCR_DARC", text: "DARC PCR" },
+        ];
+      // Vector Conventional PCR
+      case "VECTOR_CONVENTIONAL_PCR":
+        return [
+          { id: "VPCR_BLOOD_PANEL", text: "Blood-meal PCR Panels" },
+          { id: "VPCR_AN_ARABIENSIS", text: "Anopheles arabiensis ID" },
+          { id: "VPCR_AN_GAMBIAE", text: "Anopheles gambiae s.l. ID" },
+          { id: "VPCR_AN_COLUZZII", text: "Anopheles coluzzii ID" },
+          { id: "VPCR_AN_STEPHENSI", text: "Anopheles stephensi ID" },
+          { id: "VPCR_AN_FUNESTUS", text: "Anopheles funestus ID" },
+          { id: "VPCR_KDR", text: "KDR" },
+          { id: "VPCR_G6PD", text: "G6PD" },
+          { id: "VPCR_HBB", text: "HBB" },
+          { id: "VPCR_DARC", text: "DARC" },
+          { id: "VPCR_PH_LONGIPES", text: "Phlebotomus longipes" },
+          { id: "VPCR_PH_CELIAE", text: "Phlebotomus celiae" },
+          { id: "VPCR_PH_MARTINI", text: "Phlebotomus martini" },
+          { id: "VPCR_PH_ORIENTALIS", text: "Phlebotomus orientalis" },
+          { id: "VPCR_PH_PEDIFER", text: "Phlebotomus pedifer" },
+          { id: "VPCR_OTHER", text: "Others" },
+        ];
+      // ELISA
+      case "SERO_ELISA":
+        return [
+          { id: "ELISA_CSP", text: "CSP ELISA Assay" },
+          { id: "ELISA_PF_PV_MSP19", text: "Pf/Pv MSP19" },
+          { id: "ELISA_PF_PV_AMA", text: "Pf/Pv AMA" },
+        ];
+      // Bead-Based Multiplex
+      case "SERO_BEAD_MULTIPLEX":
+        return [
+          {
+            id: "BEAD_MULTIPLEX_AB_PF_PV",
+            text: "Multiplex Antibody (Pf and Pv)",
+          },
+          {
+            id: "BEAD_MULTIPLEX_AG_PF_PV",
+            text: "Multiplex Antigen (Pf and Pv)",
+          },
+          { id: "BEAD_CSP", text: "CSP Bead-based Assay" },
+          {
+            id: "BEAD_PROCARTAPLEX",
+            text: "ProcartaPlex Human Cytokine/Chemokine 45-plex",
+          },
+          { id: "BEAD_INFLAMMATORY", text: "Inflammatory Biomarkers" },
+          { id: "BEAD_G6PD_HBB_DARC", text: "G6PD, HBB, DARC Genotyping" },
+          { id: "BEAD_SNP", text: "SNP Assays" },
+        ];
+      // ELISPOT
+      case "SERO_ELISPOT":
+        return [
+          {
+            id: "ELISPOT_LEISH_TCELL",
+            text: "Leishmania Antigen-specific T Cell Responses",
+          },
+        ];
+      // FluoroSpot
+      case "SERO_FLUOROSPOT":
+        return [
+          {
+            id: "FLUORO_LEISH_TCELL",
+            text: "Leishmania Antigen-specific T Cell Responses",
+          },
+        ];
+      // Flow Cytometry
+      case "SERO_FLOW_CYTOMETRY":
+        return [
+          { id: "FLOW_MULTICOLOR", text: "Multi-color Flow Cytometry" },
+          { id: "FLOW_TCELL_PAN", text: "T Cell Pan-markers" },
+          { id: "FLOW_TCELL_ACTIVATION", text: "T Cell Activation Markers" },
+          { id: "FLOW_TCELL_MEMORY", text: "T Cell Memory Markers" },
+        ];
+      // Leishmania Culture
+      case "CULTURE_LEISHMANIA":
+        return [
+          { id: "CULT_LEISH_MASS", text: "Mass Cultivation of Promastigotes" },
+          { id: "CULT_LEISH_DRUG", text: "Drug Susceptibility Assays" },
+          { id: "CULT_LEISH_GROWTH", text: "Growth Rate Analysis" },
+          {
+            id: "CULT_LEISH_VIABILITY",
+            text: "Cell Viability and DNA Synthesis Assays",
+          },
+        ];
+      // Malaria Culture
+      case "CULTURE_MALARIA":
+        return [
+          {
+            id: "CULT_MAL_RSA",
+            text: "Ring-stage Survival Assay (RSA) for Artemisinin",
+          },
+          {
+            id: "CULT_MAL_HYPOXANTHINE",
+            text: "Hypoxanthine Incorporation Assay for Non-artemisinins",
+          },
+        ];
+      default:
+        return [];
+    }
+  };
+
+  // Set instruments from notebook when prop changes
+  useEffect(() => {
+    if (notebookInstruments && Array.isArray(notebookInstruments)) {
+      setInstruments(
+        notebookInstruments.map((i) => ({
+          id: String(i.id),
+          text: i.value || i.name,
+          physicalId: i.serialNumber || "N/A",
+          name: i.value || i.name,
+          serialNumber: i.serialNumber,
+          ...i,
+        })),
+      );
+    } else {
+      setInstruments([]);
+    }
+  }, [notebookInstruments]);
 
   // Load samples for this page - only QC Passed samples from page 6
   useEffect(() => {
@@ -212,17 +413,19 @@ function MNTDTestAssignmentPage({
               collectionDate: sample.collectionDate,
               status: sample.pageStatus || "PENDING",
               patientName: sample.patientName,
-              // Previous page data (QC from page 6)
-              qcResult: sample.data?.qcResult,
-              protocol: sample.data?.protocol,
+              // Previous page data (extraction from page 6)
+              extractionMethod: sample.data?.extractionMethod,
               // Test assignment data
               experimentCategory: sample.data?.experimentCategory,
+              subcategory: sample.data?.subcategory,
               specificAssay: sample.data?.specificAssay,
               // Machine scheduling data
               instrument: sample.data?.instrument,
+              instrumentId: sample.data?.instrumentId,
               scheduledDate: sample.data?.scheduledDate,
-              scheduledTime: sample.data?.scheduledTime,
-              operatorName: sample.data?.operatorName,
+              timeSlot: sample.data?.timeSlot,
+              startTime: sample.data?.startTime,
+              endTime: sample.data?.endTime,
             }));
             setSamples(transformedSamples);
           } else {
@@ -286,6 +489,7 @@ function MNTDTestAssignmentPage({
 
     const dataToSave = {
       experimentCategory: assignmentData.experimentCategory,
+      subcategory: assignmentData.subcategory,
       specificAssay: assignmentData.specificAssay,
       assignmentNotes: assignmentData.notes,
       assignmentDate: new Date().toISOString().split("T")[0],
@@ -323,6 +527,7 @@ function MNTDTestAssignmentPage({
                 // Reset form
                 setAssignmentData({
                   experimentCategory: "",
+                  subcategory: "",
                   specificAssay: "",
                   notes: "",
                 });
@@ -384,6 +589,31 @@ function MNTDTestAssignmentPage({
       return;
     }
 
+    if (!schedulingData.timeSlot) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.mntd.testassignment.timeSlotRequired",
+          defaultMessage: "Time slot is required.",
+        }),
+      );
+      return;
+    }
+
+    // Validate custom time if selected
+    if (
+      schedulingData.timeSlot === "SLOT_CUSTOM" &&
+      (!schedulingData.startTime || !schedulingData.endTime)
+    ) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.mntd.testassignment.customTimeRequired",
+          defaultMessage:
+            "Start and end times are required for custom time range.",
+        }),
+      );
+      return;
+    }
+
     if (!hasRealPageId) {
       setShowSchedulingModal(false);
       return;
@@ -391,12 +621,42 @@ function MNTDTestAssignmentPage({
 
     const numericIds = selectedIds.map((id) => parseInt(id, 10));
 
+    // Get instrument physical ID
+    const selectedInstrument = instruments.find(
+      (i) => i.id === schedulingData.instrument,
+    );
+    const instrumentPhysicalId =
+      selectedInstrument?.physicalId || schedulingData.instrumentId;
+
+    // Extract start/end times from time slot or use custom values
+    let startTime = schedulingData.startTime;
+    let endTime = schedulingData.endTime;
+    if (schedulingData.timeSlot !== "SLOT_CUSTOM") {
+      const slotTimeMap = {
+        SLOT_0800_1000: { start: "08:00", end: "10:00" },
+        SLOT_1000_1200: { start: "10:00", end: "12:00" },
+        SLOT_1200_1400: { start: "12:00", end: "14:00" },
+        SLOT_1400_1600: { start: "14:00", end: "16:00" },
+        SLOT_1600_1800: { start: "16:00", end: "18:00" },
+        SLOT_1800_2000: { start: "18:00", end: "20:00" },
+        SLOT_OVERNIGHT: { start: "20:00", end: "08:00" },
+      };
+      const slotTimes = slotTimeMap[schedulingData.timeSlot];
+      if (slotTimes) {
+        startTime = slotTimes.start;
+        endTime = slotTimes.end;
+      }
+    }
+
     const dataToSave = {
       instrument: schedulingData.instrument,
+      instrumentId: instrumentPhysicalId,
       scheduledDate: schedulingData.scheduledDate,
-      scheduledTime: schedulingData.scheduledTime,
-      operatorName: schedulingData.operatorName,
-      schedulingNotes: schedulingData.schedulingNotes,
+      timeSlot: schedulingData.timeSlot,
+      startTime: startTime,
+      endTime: endTime,
+      // Activity logging timestamp
+      scheduledAt: new Date().toISOString(),
     };
 
     postToOpenElisServer(
@@ -423,10 +683,11 @@ function MNTDTestAssignmentPage({
             // Reset form
             setSchedulingData({
               instrument: "",
+              instrumentId: "",
               scheduledDate: new Date().toISOString().split("T")[0],
-              scheduledTime: "",
-              operatorName: "",
-              schedulingNotes: "",
+              timeSlot: "",
+              startTime: "",
+              endTime: "",
             });
             loadPageSamples();
             if (onProgressUpdate) {
@@ -564,9 +825,23 @@ function MNTDTestAssignmentPage({
     return category ? category.text : categoryId;
   };
 
+  // Get subcategory label
+  const getSubcategoryLabel = (categoryId, subcategoryId) => {
+    const subcategories = getSubcategoryOptions(categoryId);
+    const subcategory = subcategories.find((s) => s.id === subcategoryId);
+    return subcategory ? subcategory.text : subcategoryId;
+  };
+
+  // Get specific assay label
+  const getAssayLabel = (subcategoryId, assayId) => {
+    const assays = getSpecificAssayOptions(subcategoryId);
+    const assay = assays.find((a) => a.id === assayId);
+    return assay ? assay.text : assayId;
+  };
+
   // Get instrument label
   const getInstrumentLabel = (instrumentId) => {
-    const instrument = instrumentOptions.find((i) => i.id === instrumentId);
+    const instrument = instruments.find((i) => i.id === instrumentId);
     return instrument ? instrument.text : instrumentId;
   };
 
@@ -578,9 +853,17 @@ function MNTDTestAssignmentPage({
           <Tag type="blue" size="sm">
             {getCategoryLabel(sample.experimentCategory)}
           </Tag>
+          {sample.subcategory && (
+            <div style={{ marginTop: "2px", fontWeight: "500" }}>
+              {getSubcategoryLabel(
+                sample.experimentCategory,
+                sample.subcategory,
+              )}
+            </div>
+          )}
           {sample.specificAssay && (
             <div style={{ marginTop: "2px", color: "#525252" }}>
-              {sample.specificAssay}
+              {getAssayLabel(sample.subcategory, sample.specificAssay)}
             </div>
           )}
         </div>
@@ -596,6 +879,12 @@ function MNTDTestAssignmentPage({
     );
   };
 
+  // Get time slot label
+  const getTimeSlotLabel = (timeSlotId) => {
+    const slot = timeSlotOptions.find((t) => t.id === timeSlotId);
+    return slot ? slot.text : timeSlotId;
+  };
+
   // Render machine scheduling info column
   const renderSchedulingInfo = (sample) => {
     if (sample.instrument) {
@@ -605,17 +894,24 @@ function MNTDTestAssignmentPage({
             <Settings size={12} style={{ marginRight: "4px" }} />
             {getInstrumentLabel(sample.instrument)}
           </Tag>
+          {sample.instrumentId && (
+            <div
+              style={{ marginTop: "2px", color: "#6f6f6f", fontSize: "11px" }}
+            >
+              ID: {sample.instrumentId}
+            </div>
+          )}
           {sample.scheduledDate && (
             <div style={{ marginTop: "2px", color: "#525252" }}>
               <Calendar size={12} style={{ marginRight: "4px" }} />
               {sample.scheduledDate}
-              {sample.scheduledTime && ` ${sample.scheduledTime}`}
             </div>
           )}
-          {sample.operatorName && (
+          {sample.timeSlot && (
             <div style={{ color: "#525252" }}>
-              <User size={12} style={{ marginRight: "4px" }} />
-              {sample.operatorName}
+              {sample.startTime && sample.endTime
+                ? `${sample.startTime} - ${sample.endTime}`
+                : getTimeSlotLabel(sample.timeSlot)}
             </div>
           )}
         </div>
@@ -867,31 +1163,70 @@ function MNTDTestAssignmentPage({
               setAssignmentData({
                 ...assignmentData,
                 experimentCategory: selectedItem?.id || "",
+                subcategory: "", // Reset subcategory when category changes
+                specificAssay: "", // Reset assay when category changes
               })
             }
             style={{ marginBottom: "1rem" }}
           />
 
-          {/* Specific Assay / Protocol */}
-          <TextInput
-            id="specific-assay"
-            labelText={intl.formatMessage({
-              id: "notebook.mntd.testassignment.specificAssay",
-              defaultMessage: "Specific Assay / Protocol",
-            })}
-            value={assignmentData.specificAssay}
-            onChange={(e) =>
-              setAssignmentData({
-                ...assignmentData,
-                specificAssay: e.target.value,
-              })
-            }
-            placeholder={intl.formatMessage({
-              id: "notebook.mntd.testassignment.specificAssayPlaceholder",
-              defaultMessage: "e.g., Malaria Pf/Pv qPCR, Leishmania ELISA",
-            })}
-            style={{ marginBottom: "1rem" }}
-          />
+          {/* Subcategory Selection - shown when category is selected */}
+          {assignmentData.experimentCategory &&
+            getSubcategoryOptions(assignmentData.experimentCategory).length >
+              0 && (
+              <Dropdown
+                id="subcategory"
+                titleText={intl.formatMessage({
+                  id: "notebook.mntd.testassignment.subcategory",
+                  defaultMessage: "Test Type / Subcategory",
+                })}
+                label={intl.formatMessage({
+                  id: "notebook.mntd.testassignment.selectSubcategory",
+                  defaultMessage: "Select test type",
+                })}
+                items={getSubcategoryOptions(assignmentData.experimentCategory)}
+                itemToString={(item) => (item ? item.text : "")}
+                selectedItem={getSubcategoryOptions(
+                  assignmentData.experimentCategory,
+                ).find((s) => s.id === assignmentData.subcategory)}
+                onChange={({ selectedItem }) =>
+                  setAssignmentData({
+                    ...assignmentData,
+                    subcategory: selectedItem?.id || "",
+                    specificAssay: "", // Reset assay when subcategory changes
+                  })
+                }
+                style={{ marginBottom: "1rem" }}
+              />
+            )}
+
+          {/* Specific Assay Selection - shown when subcategory is selected */}
+          {assignmentData.subcategory &&
+            getSpecificAssayOptions(assignmentData.subcategory).length > 0 && (
+              <Dropdown
+                id="specific-assay"
+                titleText={intl.formatMessage({
+                  id: "notebook.mntd.testassignment.specificAssay",
+                  defaultMessage: "Specific Assay / Protocol",
+                })}
+                label={intl.formatMessage({
+                  id: "notebook.mntd.testassignment.selectAssay",
+                  defaultMessage: "Select assay",
+                })}
+                items={getSpecificAssayOptions(assignmentData.subcategory)}
+                itemToString={(item) => (item ? item.text : "")}
+                selectedItem={getSpecificAssayOptions(
+                  assignmentData.subcategory,
+                ).find((a) => a.id === assignmentData.specificAssay)}
+                onChange={({ selectedItem }) =>
+                  setAssignmentData({
+                    ...assignmentData,
+                    specificAssay: selectedItem?.id || "",
+                  })
+                }
+                style={{ marginBottom: "1rem" }}
+              />
+            )}
 
           {/* Notes */}
           <TextArea
@@ -926,127 +1261,207 @@ function MNTDTestAssignmentPage({
         })}
         onRequestClose={() => setShowSchedulingModal(false)}
         onRequestSubmit={handleSaveSchedulingData}
-        size="md"
+        size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
           <p style={{ color: "#525252", marginBottom: "1rem" }}>
             <FormattedMessage
               id="notebook.mntd.testassignment.modal.schedulingDescription"
-              defaultMessage="Schedule machine time for {count} selected sample(s)."
+              defaultMessage="Schedule machine time for {count} selected sample(s). All fields marked with * are required."
               values={{ count: selectedIds.length }}
             />
           </p>
 
-          {/* Instrument Selection */}
-          <Dropdown
-            id="instrument"
-            titleText={intl.formatMessage({
-              id: "notebook.mntd.testassignment.instrument",
-              defaultMessage: "Instrument",
-            })}
-            label={intl.formatMessage({
-              id: "notebook.mntd.testassignment.selectInstrument",
-              defaultMessage: "Select instrument",
-            })}
-            items={instrumentOptions}
-            itemToString={(item) => (item ? item.text : "")}
-            selectedItem={instrumentOptions.find(
-              (i) => i.id === schedulingData.instrument,
-            )}
-            onChange={({ selectedItem }) =>
-              setSchedulingData({
-                ...schedulingData,
-                instrument: selectedItem?.id || "",
-              })
-            }
-            style={{ marginBottom: "1rem" }}
-          />
-
-          {/* Scheduled Date & Time */}
+          {/* Instrument Selection Section */}
           <div
             style={{
               padding: "1rem",
-              backgroundColor: "#f4f4f4",
+              backgroundColor: "#e0f0ff",
               borderRadius: "4px",
               marginBottom: "1rem",
+              borderLeft: "4px solid #0f62fe",
             }}
           >
-            <h5 style={{ marginBottom: "0.5rem" }}>
+            <h5 style={{ marginBottom: "0.75rem", color: "#0f62fe" }}>
+              <Settings
+                size={16}
+                style={{ marginRight: "0.5rem", verticalAlign: "middle" }}
+              />
               <FormattedMessage
-                id="notebook.mntd.testassignment.scheduledDateTime"
-                defaultMessage="Scheduled Date & Time"
+                id="notebook.mntd.testassignment.instrumentSelection"
+                defaultMessage="Instrument Selection"
               />
             </h5>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <DatePicker
-                datePickerType="single"
-                onChange={([date]) =>
-                  setSchedulingData({
-                    ...schedulingData,
-                    scheduledDate: date?.toISOString().split("T")[0] || "",
-                  })
-                }
+
+            {instruments.length === 0 ? (
+              <div
+                style={{
+                  padding: "0.5rem",
+                  backgroundColor: "#fff3cd",
+                  border: "1px solid #ffc107",
+                  borderRadius: "4px",
+                  marginBottom: "0.5rem",
+                }}
               >
-                <DatePickerInput
-                  id="scheduled-date"
-                  labelText={intl.formatMessage({
-                    id: "notebook.mntd.testassignment.date",
-                    defaultMessage: "Date",
-                  })}
-                  placeholder="mm/dd/yyyy"
+                <FormattedMessage
+                  id="notebook.mntd.testassignment.noInstrumentsAttached"
+                  defaultMessage="No instruments attached to this notebook. Please add instruments in the notebook configuration."
                 />
-              </DatePicker>
-              <TextInput
-                id="scheduled-time"
-                labelText={intl.formatMessage({
-                  id: "notebook.mntd.testassignment.time",
-                  defaultMessage: "Time Slot",
+              </div>
+            ) : (
+              <Dropdown
+                id="instrument"
+                titleText={intl.formatMessage({
+                  id: "notebook.mntd.testassignment.instrument",
+                  defaultMessage: "Instrument *",
                 })}
-                value={schedulingData.scheduledTime}
-                onChange={(e) =>
+                label={intl.formatMessage({
+                  id: "notebook.mntd.testassignment.selectInstrument",
+                  defaultMessage: "Select instrument",
+                })}
+                items={instruments}
+                itemToString={(item) =>
+                  item ? `${item.text} (${item.physicalId})` : ""
+                }
+                selectedItem={instruments.find(
+                  (i) => i.id === schedulingData.instrument,
+                )}
+                onChange={({ selectedItem }) =>
                   setSchedulingData({
                     ...schedulingData,
-                    scheduledTime: e.target.value,
+                    instrument: selectedItem?.id || "",
+                    instrumentId: selectedItem?.physicalId || "",
                   })
                 }
-                placeholder="HH:MM or time range"
+                style={{ marginBottom: "0.5rem" }}
+                disabled={instruments.length === 0}
               />
-            </div>
+            )}
+
+            {schedulingData.instrument && (
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: "#525252",
+                  marginTop: "0.25rem",
+                }}
+              >
+                <strong>Instrument ID:</strong>{" "}
+                {instruments.find((i) => i.id === schedulingData.instrument)
+                  ?.physicalId || "N/A"}
+              </div>
+            )}
           </div>
 
-          {/* Operator Name */}
-          <TextInput
-            id="operator-name"
-            labelText={intl.formatMessage({
-              id: "notebook.mntd.testassignment.operatorName",
-              defaultMessage: "Operator Name",
-            })}
-            value={schedulingData.operatorName}
-            onChange={(e) =>
-              setSchedulingData({
-                ...schedulingData,
-                operatorName: e.target.value,
-              })
-            }
-            style={{ marginBottom: "1rem" }}
-          />
+          {/* Scheduled Date & Time Slot Section */}
+          <div
+            style={{
+              padding: "1rem",
+              backgroundColor: "#defbe6",
+              borderRadius: "4px",
+              marginBottom: "1rem",
+              borderLeft: "4px solid #24a148",
+            }}
+          >
+            <h5 style={{ marginBottom: "0.75rem", color: "#24a148" }}>
+              <Calendar
+                size={16}
+                style={{ marginRight: "0.5rem", verticalAlign: "middle" }}
+              />
+              <FormattedMessage
+                id="notebook.mntd.testassignment.scheduledDateTime"
+                defaultMessage="Date & Time Slot"
+              />
+            </h5>
 
-          {/* Scheduling Notes */}
-          <TextArea
-            id="scheduling-notes"
-            labelText={intl.formatMessage({
-              id: "notebook.mntd.testassignment.schedulingNotes",
-              defaultMessage: "Scheduling Notes",
-            })}
-            value={schedulingData.schedulingNotes}
-            onChange={(e) =>
-              setSchedulingData({
-                ...schedulingData,
-                schedulingNotes: e.target.value,
-              })
-            }
-            rows={3}
-          />
+            <Grid fullWidth style={{ marginBottom: "0.5rem" }}>
+              <Column lg={8} md={4} sm={4}>
+                <DatePicker
+                  datePickerType="single"
+                  value={schedulingData.scheduledDate}
+                  onChange={([date]) =>
+                    setSchedulingData({
+                      ...schedulingData,
+                      scheduledDate: date?.toISOString().split("T")[0] || "",
+                    })
+                  }
+                >
+                  <DatePickerInput
+                    id="scheduled-date"
+                    labelText={intl.formatMessage({
+                      id: "notebook.mntd.testassignment.date",
+                      defaultMessage: "Scheduled Date *",
+                    })}
+                    placeholder="mm/dd/yyyy"
+                  />
+                </DatePicker>
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <Dropdown
+                  id="time-slot"
+                  titleText={intl.formatMessage({
+                    id: "notebook.mntd.testassignment.timeSlot",
+                    defaultMessage: "Time Slot *",
+                  })}
+                  label={intl.formatMessage({
+                    id: "notebook.mntd.testassignment.selectTimeSlot",
+                    defaultMessage: "Select time slot",
+                  })}
+                  items={timeSlotOptions}
+                  itemToString={(item) => (item ? item.text : "")}
+                  selectedItem={timeSlotOptions.find(
+                    (t) => t.id === schedulingData.timeSlot,
+                  )}
+                  onChange={({ selectedItem }) =>
+                    setSchedulingData({
+                      ...schedulingData,
+                      timeSlot: selectedItem?.id || "",
+                    })
+                  }
+                />
+              </Column>
+            </Grid>
+
+            {/* Custom Time Range - shown only when Custom is selected */}
+            {schedulingData.timeSlot === "SLOT_CUSTOM" && (
+              <Grid fullWidth style={{ marginTop: "0.5rem" }}>
+                <Column lg={8} md={4} sm={4}>
+                  <TextInput
+                    id="start-time"
+                    labelText={intl.formatMessage({
+                      id: "notebook.mntd.testassignment.startTime",
+                      defaultMessage: "Start Time *",
+                    })}
+                    value={schedulingData.startTime}
+                    onChange={(e) =>
+                      setSchedulingData({
+                        ...schedulingData,
+                        startTime: e.target.value,
+                      })
+                    }
+                    placeholder="HH:MM (e.g., 09:30)"
+                  />
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <TextInput
+                    id="end-time"
+                    labelText={intl.formatMessage({
+                      id: "notebook.mntd.testassignment.endTime",
+                      defaultMessage: "End Time *",
+                    })}
+                    value={schedulingData.endTime}
+                    onChange={(e) =>
+                      setSchedulingData({
+                        ...schedulingData,
+                        endTime: e.target.value,
+                      })
+                    }
+                    placeholder="HH:MM (e.g., 12:30)"
+                  />
+                </Column>
+              </Grid>
+            )}
+          </div>
         </div>
       </Modal>
     </div>

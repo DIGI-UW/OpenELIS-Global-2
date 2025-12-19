@@ -1033,10 +1033,8 @@ public class NotebookSampleEntryController extends BaseRestController {
                                     if (box.getParentRack() != null) {
                                         if (box.getParentRack().getParentShelf() != null) {
                                             if (box.getParentRack().getParentShelf().getParentDevice() != null) {
-                                                pathBuilder
-                                                        .append(box.getParentRack().getParentShelf().getParentDevice()
-                                                                .getName())
-                                                        .append(" > ");
+                                                pathBuilder.append(box.getParentRack().getParentShelf()
+                                                        .getParentDevice().getName()).append(" > ");
                                             }
                                             pathBuilder.append(box.getParentRack().getParentShelf().getLabel())
                                                     .append(" > ");

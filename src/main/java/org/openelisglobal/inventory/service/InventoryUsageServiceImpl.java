@@ -105,7 +105,8 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
 
         Long id = insert(usage);
 
-        // Only deduct quantity if requested (avoid double deduction when called from consumeInventoryFEFO)
+        // Only deduct quantity if requested (avoid double deduction when called from
+        // consumeInventoryFEFO)
         if (deductQuantity) {
             // Detach from session so audit can compare properly
             inventoryLotDAO.evict(lot);

@@ -1,43 +1,35 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Grid,
   Column,
   Button,
   Tile,
   InlineNotification,
-  Loading,
   Modal,
-  Select,
-  SelectItem,
   TextArea,
-  Checkbox,
   RadioButtonGroup,
   RadioButton,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
-  TableSelectRow,
-  TableSelectAll,
   Tag,
+  TextInput,
 } from "@carbon/react";
-import { Checkmark, WarningAlt, Close, Edit } from "@carbon/react/icons";
+import { Checkmark, Edit, WarningAlt } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
-import Questionnaire from "../../../common/Questionnaire";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
  * MNTDReceptionVerificationPage - Page 2 of the MNTD workflow.
  * Handles laboratory reception and verification of samples.
- * Uses bulk value entry similar to Immunology workflow.
+ *
+ * Quality Assessment:
+ * - Pass: Proceed to storage/processing
+ * - Fail: Two options:
+ *   1. Discard and notify researcher (sample will not proceed)
+ *   2. Keep with remarks and proceed with flagged status
  *
  * @param {Object} props
  * @param {number} props.entryId - The notebook entry ID
@@ -49,9 +41,9 @@ import "../../workflow/NotebookWorkflow.css";
 function MNTDReceptionVerificationPage({
   entryId,
   pageData,
-  progress,
+  progress: _progress,
   onProgressUpdate,
-  notebookId,
+  notebookId: _notebookId,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -64,46 +56,26 @@ function MNTDReceptionVerificationPage({
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // State for FHIR questionnaire
-  const [questionnaire, setQuestionnaire] = useState(null);
-  const [questionnaireLoading, setQuestionnaireLoading] = useState(false);
-
   // Bulk apply modal state
   const [bulkApplyModalOpen, setBulkApplyModalOpen] = useState(false);
+  const [isBulkApplying, setIsBulkApplying] = useState(false);
+
+  // Bulk apply form values - Simplified: direct Pass/Fail selection
   const [bulkApplyValues, setBulkApplyValues] = useState({
+    // Receipt Information
     receivedDateTime: new Date().toISOString().slice(0, 16),
     receivedBy: "",
+    // Condition notes
     conditionOnArrival: "",
-    sampleMatchesRegistration: null,
-    labelVerified: null,
+    // QC Result & Actions - Direct selection (no checklist)
     qcResult: "",
     qcRemarks: "",
     failAction: "",
   });
-  const [isBulkApplying, setIsBulkApplying] = useState(false);
 
-  // Load FHIR questionnaire for verification
-  useEffect(() => {
-    if (notebookId) {
-      loadQuestionnaire();
-    }
-  }, [notebookId]);
-
-  const loadQuestionnaire = useCallback(() => {
-    setQuestionnaireLoading(true);
-    // Load reception verification questionnaire
-    getFromOpenElisServer(
-      `/rest/fhir/Questionnaire?name=MNTDReceptionVerification`,
-      (res) => {
-        if (res && res.entry && res.entry.length > 0) {
-          setQuestionnaire(res.entry[0].resource);
-        } else {
-          setQuestionnaire(null);
-        }
-        setQuestionnaireLoading(false);
-      },
-    );
-  }, [notebookId]);
+  // Check if page has real ID
+  const hasRealPageId =
+    pageData?.id && !String(pageData.id).startsWith("default-");
 
   // Load samples for this page
   useEffect(() => {
@@ -113,6 +85,7 @@ function MNTDReceptionVerificationPage({
     return () => {
       componentMounted.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryId, pageData?.id]);
 
   const loadPageSamples = useCallback(() => {
@@ -145,8 +118,6 @@ function MNTDReceptionVerificationPage({
               receivedDateTime: sample.data?.receivedDateTime,
               receivedBy: sample.data?.receivedBy,
               conditionOnArrival: sample.data?.conditionOnArrival,
-              sampleMatchesRegistration: sample.data?.sampleMatchesRegistration,
-              labelVerified: sample.data?.labelVerified,
               qcResult: sample.data?.qcResult,
               qcRemarks: sample.data?.qcRemarks,
               failAction: sample.data?.failAction,
@@ -161,17 +132,38 @@ function MNTDReceptionVerificationPage({
     );
   }, [pageData?.id]);
 
+  // Reset bulk apply values
+  const resetBulkApplyValues = () => {
+    setBulkApplyValues({
+      receivedDateTime: new Date().toISOString().slice(0, 16),
+      receivedBy: "",
+      conditionOnArrival: "",
+      qcResult: "",
+      qcRemarks: "",
+      failAction: "",
+    });
+  };
+
   // Handle bulk apply
   const handleBulkApply = useCallback(() => {
     if (selectedSampleIds.length === 0) {
-      setError("Please select samples to apply values to.");
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.mntd.error.noSelection",
+          defaultMessage: "Please select samples to apply values to.",
+        }),
+      );
       return;
     }
 
-    const hasRealPageId =
-      pageData?.id && !String(pageData.id).startsWith("default-");
     if (!hasRealPageId) {
-      setError("Cannot update samples: Page not properly initialized.");
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.mntd.error.noPage",
+          defaultMessage:
+            "Cannot update samples: Page not properly initialized.",
+        }),
+      );
       return;
     }
 
@@ -179,18 +171,37 @@ function MNTDReceptionVerificationPage({
     setError(null);
 
     // Prepare the data to apply
+    const data = {};
+
+    // Receipt information
+    if (bulkApplyValues.receivedDateTime)
+      data.receivedDateTime = bulkApplyValues.receivedDateTime;
+    if (bulkApplyValues.receivedBy)
+      data.receivedBy = bulkApplyValues.receivedBy;
+    if (bulkApplyValues.conditionOnArrival)
+      data.conditionOnArrival = bulkApplyValues.conditionOnArrival;
+
+    // QC result and actions
+    if (bulkApplyValues.qcResult) data.qcResult = bulkApplyValues.qcResult;
+    if (bulkApplyValues.qcRemarks) data.qcRemarks = bulkApplyValues.qcRemarks;
+    if (bulkApplyValues.failAction)
+      data.failAction = bulkApplyValues.failAction;
+
+    // Check if any data was entered
+    if (Object.keys(data).length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.mntd.error.noData",
+          defaultMessage: "Please enter at least one value to apply.",
+        }),
+      );
+      setIsBulkApplying(false);
+      return;
+    }
+
     const applyData = {
       sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-      data: {
-        receivedDateTime: bulkApplyValues.receivedDateTime,
-        receivedBy: bulkApplyValues.receivedBy,
-        conditionOnArrival: bulkApplyValues.conditionOnArrival,
-        sampleMatchesRegistration: bulkApplyValues.sampleMatchesRegistration,
-        labelVerified: bulkApplyValues.labelVerified,
-        qcResult: bulkApplyValues.qcResult,
-        qcRemarks: bulkApplyValues.qcRemarks,
-        failAction: bulkApplyValues.failAction,
-      },
+      data: data,
     };
 
     postToOpenElisServer(
@@ -200,7 +211,13 @@ function MNTDReceptionVerificationPage({
         setIsBulkApplying(false);
         if (status === 200) {
           setSuccessMessage(
-            `Applied values to ${selectedSampleIds.length} samples.`,
+            intl.formatMessage(
+              {
+                id: "notebook.page.mntd.success.applied",
+                defaultMessage: "Applied values to {count} samples.",
+              },
+              { count: selectedSampleIds.length },
+            ),
           );
           setBulkApplyModalOpen(false);
           loadPageSamples();
@@ -209,14 +226,21 @@ function MNTDReceptionVerificationPage({
             onProgressUpdate();
           }
         } else {
-          setError("Failed to apply values. Please try again.");
+          setError(
+            intl.formatMessage({
+              id: "notebook.page.mntd.error.apply",
+              defaultMessage: "Failed to apply values. Please try again.",
+            }),
+          );
         }
       },
     );
   }, [
     selectedSampleIds,
+    hasRealPageId,
     pageData?.id,
     bulkApplyValues,
+    intl,
     loadPageSamples,
     onProgressUpdate,
   ]);
@@ -225,10 +249,14 @@ function MNTDReceptionVerificationPage({
   const handleMarkVerified = useCallback(() => {
     if (selectedSampleIds.length === 0) return;
 
-    const hasRealPageId =
-      pageData?.id && !String(pageData.id).startsWith("default-");
     if (!hasRealPageId) {
-      setError("Cannot update samples: Page not properly initialized.");
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.mntd.error.noPage",
+          defaultMessage:
+            "Cannot update samples: Page not properly initialized.",
+        }),
+      );
       return;
     }
 
@@ -239,59 +267,143 @@ function MNTDReceptionVerificationPage({
     const missingQC = selectedSamples.filter((s) => !s.qcResult);
     if (missingQC.length > 0) {
       setError(
-        `${missingQC.length} sample(s) are missing QC result. Please complete verification first.`,
+        intl.formatMessage(
+          {
+            id: "notebook.page.mntd.error.missingQC",
+            defaultMessage:
+              "{count} sample(s) are missing QC result. Please complete verification first.",
+          },
+          { count: missingQC.length },
+        ),
       );
       return;
     }
 
-    postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-      JSON.stringify({
-        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-        status: "COMPLETED",
-      }),
-      (status) => {
-        if (status === 200) {
-          setSuccessMessage(
-            `Marked ${selectedSampleIds.length} samples as verified.`,
-          );
-          loadPageSamples();
+    // Separate samples by their fail action
+    // Discarded samples should NOT proceed to next page
+    const discardedSamples = selectedSamples.filter(
+      (s) => s.failAction === "discard",
+    );
+    const proceedingSamples = selectedSamples.filter(
+      (s) => s.failAction !== "discard",
+    );
+
+    // Track how many requests we need to make
+    let completedRequests = 0;
+    let failedRequests = 0;
+    const totalRequests =
+      (proceedingSamples.length > 0 ? 1 : 0) +
+      (discardedSamples.length > 0 ? 1 : 0);
+
+    const handleRequestComplete = () => {
+      completedRequests++;
+      if (completedRequests === totalRequests) {
+        if (failedRequests === 0) {
+          // Build appropriate success message
+          let message = "";
+          if (proceedingSamples.length > 0 && discardedSamples.length > 0) {
+            message = intl.formatMessage(
+              {
+                id: "notebook.page.mntd.success.verifiedMixed",
+                defaultMessage:
+                  "{passCount} sample(s) verified and can proceed. {discardCount} sample(s) were discarded and will not proceed.",
+              },
+              {
+                passCount: proceedingSamples.length,
+                discardCount: discardedSamples.length,
+              },
+            );
+          } else if (discardedSamples.length > 0) {
+            message = intl.formatMessage(
+              {
+                id: "notebook.page.mntd.success.verifiedDiscarded",
+                defaultMessage:
+                  "{count} sample(s) were discarded. They will not proceed to storage/processing.",
+              },
+              { count: discardedSamples.length },
+            );
+          } else {
+            message = intl.formatMessage(
+              {
+                id: "notebook.page.mntd.success.verified",
+                defaultMessage:
+                  "Marked {count} sample(s) as verified. They can now proceed to storage/processing.",
+              },
+              { count: proceedingSamples.length },
+            );
+          }
+          setSuccessMessage(message);
           setSelectedSampleIds([]);
+          loadPageSamples();
           if (onProgressUpdate) {
             onProgressUpdate();
           }
         } else {
-          setError("Failed to update sample status.");
+          setError(
+            intl.formatMessage({
+              id: "notebook.page.mntd.error.status",
+              defaultMessage: "Failed to update status. Please try again.",
+            }),
+          );
         }
-      },
-    );
+      }
+    };
+
+    // Update proceeding samples to COMPLETED (they will proceed to next page)
+    if (proceedingSamples.length > 0) {
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: proceedingSamples.map((s) => parseInt(s.id, 10)),
+          status: "COMPLETED",
+        }),
+        (status) => {
+          if (status !== 200) {
+            failedRequests++;
+          }
+          handleRequestComplete();
+        },
+      );
+    }
+
+    // Update discarded samples to SKIPPED (they will NOT proceed to next page)
+    if (discardedSamples.length > 0) {
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: discardedSamples.map((s) => parseInt(s.id, 10)),
+          status: "SKIPPED",
+        }),
+        (status) => {
+          if (status !== 200) {
+            failedRequests++;
+          }
+          handleRequestComplete();
+        },
+      );
+    }
+
+    // If no samples to process, just return
+    if (totalRequests === 0) {
+      return;
+    }
   }, [
     selectedSampleIds,
     samples,
-    pageData?.id,
+    hasRealPageId,
+    intl,
     loadPageSamples,
     onProgressUpdate,
+    pageData?.id,
   ]);
 
   // Calculate stats
   const qcPassedCount = samples.filter((s) => s.qcResult === "Pass").length;
   const qcFailedCount = samples.filter((s) => s.qcResult === "Fail").length;
   const qcPendingCount = samples.filter((s) => !s.qcResult).length;
-  const verifiedCount = samples.filter((s) => s.status === "COMPLETED").length;
-
-  // Reset bulk apply values
-  const resetBulkApplyValues = () => {
-    setBulkApplyValues({
-      receivedDateTime: new Date().toISOString().slice(0, 16),
-      receivedBy: "",
-      conditionOnArrival: "",
-      sampleMatchesRegistration: null,
-      labelVerified: null,
-      qcResult: "",
-      qcRemarks: "",
-      failAction: "",
-    });
-  };
+  const verifiedCount = samples.filter(
+    (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+  ).length;
 
   // Get QC result tag
   const getQCTag = (qcResult) => {
@@ -400,8 +512,8 @@ function MNTDReceptionVerificationPage({
             onClick={handleMarkVerified}
           >
             <FormattedMessage
-              id="notebook.page.mntd.markVerified"
-              defaultMessage="Mark as Verified ({count})"
+              id="notebook.page.mntd.markDone"
+              defaultMessage="Mark as Done ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
@@ -426,32 +538,244 @@ function MNTDReceptionVerificationPage({
         />
       )}
 
-      {/* Sample Grid */}
-      <div className="sample-grid-container">
-        <SampleGrid
-          samples={samples}
-          selectedIds={selectedSampleIds}
-          onSelectionChange={setSelectedSampleIds}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          showSelection={true}
-          loading={loading}
-          columns={[
-            { key: "externalId", header: "Sample ID" },
-            { key: "sampleType", header: "Sample Type" },
-            { key: "receivedDateTime", header: "Received" },
-            { key: "receivedBy", header: "Received By" },
-            {
-              key: "qcResult",
-              header: "QC Result",
-              render: (value) => getQCTag(value),
-            },
-            { key: "status", header: "Status" },
-          ]}
-        />
+      {/* Pending Verification Samples Table */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.mntd.pendingTable.title"
+              defaultMessage="Samples Pending Verification"
+            />
+            <Tag type="gray" className="count-tag">
+              {
+                samples.filter(
+                  (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
+                ).length
+              }
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.mntd.pendingTable.description"
+              defaultMessage="Select samples and use 'Bulk Apply Values' to perform verification. Samples with QC result can be marked as verified."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          <SampleGrid
+            gridId="pending-verification"
+            samples={samples.filter(
+              (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
+            )}
+            selectedIds={selectedSampleIds}
+            onSelectionChange={setSelectedSampleIds}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            showSelection={true}
+            loading={loading}
+            columns={[
+              {
+                key: "externalId",
+                header: intl.formatMessage({
+                  id: "notebook.grid.sampleId",
+                  defaultMessage: "Sample ID",
+                }),
+              },
+              {
+                key: "sampleType",
+                header: intl.formatMessage({
+                  id: "notebook.grid.sampleType",
+                  defaultMessage: "Sample Type",
+                }),
+              },
+              {
+                key: "receivedDateTime",
+                header: intl.formatMessage({
+                  id: "notebook.grid.received",
+                  defaultMessage: "Received",
+                }),
+              },
+              {
+                key: "receivedBy",
+                header: intl.formatMessage({
+                  id: "notebook.grid.receivedBy",
+                  defaultMessage: "Received By",
+                }),
+              },
+              {
+                key: "qcResult",
+                header: intl.formatMessage({
+                  id: "notebook.grid.qcResult",
+                  defaultMessage: "QC Result",
+                }),
+                render: (value) => getQCTag(value),
+              },
+              {
+                key: "failAction",
+                header: intl.formatMessage({
+                  id: "notebook.grid.failAction",
+                  defaultMessage: "Action Taken",
+                }),
+                render: (value) => {
+                  if (!value) return "-";
+                  if (value === "discard")
+                    return <Tag type="red">Discarded</Tag>;
+                  if (value === "proceed_flagged")
+                    return <Tag type="purple">Flagged</Tag>;
+                  return value;
+                },
+              },
+              {
+                key: "status",
+                header: intl.formatMessage({
+                  id: "notebook.grid.status",
+                  defaultMessage: "Status",
+                }),
+              },
+            ]}
+          />
+        </div>
+        {!loading &&
+          samples.filter(
+            (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
+          ).length === 0 && (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.mntd.pendingTable.empty"
+                  defaultMessage="No samples pending verification. All samples have been processed."
+                />
+              </p>
+            </div>
+          )}
       </div>
 
-      {/* Empty state */}
+      {/* Verified Samples Table */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.mntd.completedTable.title"
+              defaultMessage="Verified Samples"
+            />
+            <Tag type="green" className="count-tag">
+              {
+                samples.filter(
+                  (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+                ).length
+              }
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.mntd.completedTable.description"
+              defaultMessage="Samples that have completed verification. Passed samples can proceed to storage/processing."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          <SampleGrid
+            gridId="verified-samples"
+            samples={samples.filter(
+              (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+            )}
+            selectedIds={[]}
+            showSelection={false}
+            loading={loading}
+            columns={[
+              {
+                key: "externalId",
+                header: intl.formatMessage({
+                  id: "notebook.grid.sampleId",
+                  defaultMessage: "Sample ID",
+                }),
+              },
+              {
+                key: "sampleType",
+                header: intl.formatMessage({
+                  id: "notebook.grid.sampleType",
+                  defaultMessage: "Sample Type",
+                }),
+              },
+              {
+                key: "receivedBy",
+                header: intl.formatMessage({
+                  id: "notebook.grid.receivedBy",
+                  defaultMessage: "Received By",
+                }),
+              },
+              {
+                key: "qcResult",
+                header: intl.formatMessage({
+                  id: "notebook.grid.qcResult",
+                  defaultMessage: "QC Result",
+                }),
+                render: (value) => getQCTag(value),
+              },
+              {
+                key: "failAction",
+                header: intl.formatMessage({
+                  id: "notebook.grid.failAction",
+                  defaultMessage: "Action Taken",
+                }),
+                render: (value) => {
+                  if (!value) return "-";
+                  if (value === "discard")
+                    return <Tag type="red">Discarded</Tag>;
+                  if (value === "proceed_flagged")
+                    return <Tag type="purple">Flagged</Tag>;
+                  return value;
+                },
+              },
+              {
+                key: "status",
+                header: intl.formatMessage({
+                  id: "notebook.grid.disposition",
+                  defaultMessage: "Disposition",
+                }),
+                render: (value) => {
+                  if (value === "SKIPPED") {
+                    return (
+                      <Tag type="red">
+                        <FormattedMessage
+                          id="notebook.disposition.notProceeding"
+                          defaultMessage="Not Proceeding"
+                        />
+                      </Tag>
+                    );
+                  }
+                  if (value === "COMPLETED") {
+                    return (
+                      <Tag type="green">
+                        <FormattedMessage
+                          id="notebook.disposition.proceeding"
+                          defaultMessage="Proceeding"
+                        />
+                      </Tag>
+                    );
+                  }
+                  return "-";
+                },
+              },
+            ]}
+          />
+        </div>
+        {!loading &&
+          samples.filter(
+            (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+          ).length === 0 && (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.mntd.completedTable.empty"
+                  defaultMessage="No samples have been verified yet."
+                />
+              </p>
+            </div>
+          )}
+      </div>
+
+      {/* Global empty state - only show when no samples at all */}
       {!loading && samples.length === 0 && (
         <div className="empty-state">
           <p>
@@ -469,7 +793,7 @@ function MNTDReceptionVerificationPage({
         onRequestClose={() => setBulkApplyModalOpen(false)}
         modalHeading={intl.formatMessage({
           id: "notebook.mntd.bulkApply.title",
-          defaultMessage: "Bulk Apply Reception & Verification Values",
+          defaultMessage: "Laboratory Reception & Verification",
         })}
         primaryButtonText={
           isBulkApplying
@@ -477,7 +801,20 @@ function MNTDReceptionVerificationPage({
                 id: "label.applying",
                 defaultMessage: "Applying...",
               })
-            : intl.formatMessage({ id: "label.apply", defaultMessage: "Apply" })
+            : bulkApplyValues.qcResult === "Pass"
+              ? intl.formatMessage({
+                  id: "notebook.mntd.qc.action.pass",
+                  defaultMessage: "Pass - Proceed to Storage",
+                })
+              : bulkApplyValues.qcResult === "Fail"
+                ? intl.formatMessage({
+                    id: "notebook.mntd.qc.action.fail",
+                    defaultMessage: "Fail - Apply Action",
+                  })
+                : intl.formatMessage({
+                    id: "label.apply",
+                    defaultMessage: "Apply",
+                  })
         }
         secondaryButtonText={intl.formatMessage({
           id: "label.cancel",
@@ -486,190 +823,228 @@ function MNTDReceptionVerificationPage({
         onRequestSubmit={handleBulkApply}
         onSecondarySubmit={() => setBulkApplyModalOpen(false)}
         size="lg"
-        primaryButtonDisabled={isBulkApplying}
+        primaryButtonDisabled={isBulkApplying || !bulkApplyValues.qcResult}
+        danger={bulkApplyValues.qcResult === "Fail"}
       >
-        <p className="modal-description">
-          <FormattedMessage
-            id="notebook.mntd.bulkApply.description"
-            defaultMessage="Apply the following values to {count} selected sample(s). Only non-empty values will be applied."
-            values={{ count: selectedSampleIds.length }}
-          />
-        </p>
-
-        <Grid fullWidth>
-          {/* Receipt Information */}
-          <Column lg={16} md={8} sm={4}>
-            <h5 style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
-              Receipt Information
-            </h5>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <div className="cds--form-item">
-              <label className="cds--label">Received date & time</label>
-              <input
-                type="datetime-local"
-                className="cds--text-input"
-                value={bulkApplyValues.receivedDateTime}
-                onChange={(e) =>
-                  setBulkApplyValues((prev) => ({
-                    ...prev,
-                    receivedDateTime: e.target.value,
-                  }))
-                }
-              />
-            </div>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <div className="cds--form-item">
-              <label className="cds--label">Received by (staff name)</label>
-              <input
-                type="text"
-                className="cds--text-input"
-                value={bulkApplyValues.receivedBy}
-                onChange={(e) =>
-                  setBulkApplyValues((prev) => ({
-                    ...prev,
-                    receivedBy: e.target.value,
-                  }))
-                }
-                placeholder="Enter staff name"
-              />
-            </div>
-          </Column>
-          <Column lg={16} md={8} sm={4}>
-            <TextArea
-              id="conditionOnArrival"
-              labelText="Condition on arrival"
-              value={bulkApplyValues.conditionOnArrival}
-              onChange={(e) =>
-                setBulkApplyValues((prev) => ({
-                  ...prev,
-                  conditionOnArrival: e.target.value,
-                }))
-              }
-              placeholder="Describe sample condition..."
+        <div className="qc-bulk-apply-modal">
+          <p className="modal-description">
+            <FormattedMessage
+              id="notebook.mntd.bulkApply.description"
+              defaultMessage="Apply reception and verification values to {count} selected sample(s)."
+              values={{ count: selectedSampleIds.length }}
             />
-          </Column>
+          </p>
 
-          {/* Verification */}
-          <Column lg={16} md={8} sm={4}>
-            <h5 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>
-              Verification
-            </h5>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <RadioButtonGroup
-              legendText="Sample matches registration"
-              name="sampleMatchesRegistration"
-              valueSelected={
-                bulkApplyValues.sampleMatchesRegistration === true
-                  ? "yes"
-                  : bulkApplyValues.sampleMatchesRegistration === false
-                    ? "no"
-                    : ""
-              }
-              onChange={(value) =>
-                setBulkApplyValues((prev) => ({
-                  ...prev,
-                  sampleMatchesRegistration: value === "yes",
-                }))
-              }
-            >
-              <RadioButton labelText="Yes" value="yes" id="match-yes" />
-              <RadioButton labelText="No" value="no" id="match-no" />
-            </RadioButtonGroup>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <RadioButtonGroup
-              legendText="Label verified"
-              name="labelVerified"
-              valueSelected={
-                bulkApplyValues.labelVerified === true
-                  ? "yes"
-                  : bulkApplyValues.labelVerified === false
-                    ? "no"
-                    : ""
-              }
-              onChange={(value) =>
-                setBulkApplyValues((prev) => ({
-                  ...prev,
-                  labelVerified: value === "yes",
-                }))
-              }
-            >
-              <RadioButton labelText="Yes" value="yes" id="label-yes" />
-              <RadioButton labelText="No" value="no" id="label-no" />
-            </RadioButtonGroup>
-          </Column>
-
-          {/* Quality Assessment */}
-          <Column lg={16} md={8} sm={4}>
-            <h5 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>
-              Quality Assessment
-            </h5>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="qcResult"
-              labelText="QC Result"
-              value={bulkApplyValues.qcResult}
-              onChange={(e) =>
-                setBulkApplyValues((prev) => ({
-                  ...prev,
-                  qcResult: e.target.value,
-                }))
-              }
-            >
-              <SelectItem value="" text="Select QC result..." />
-              <SelectItem value="Pass" text="Pass" />
-              <SelectItem value="Fail" text="Fail" />
-              <SelectItem value="Pass with remarks" text="Pass with remarks" />
-            </Select>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            {bulkApplyValues.qcResult === "Fail" && (
-              <Select
-                id="failAction"
-                labelText="Action if Fail"
-                value={bulkApplyValues.failAction}
-                onChange={(e) =>
-                  setBulkApplyValues((prev) => ({
-                    ...prev,
-                    failAction: e.target.value,
-                  }))
-                }
-              >
-                <SelectItem value="" text="Select action..." />
-                <SelectItem
-                  value="Notify researcher"
-                  text="Notify researcher"
-                />
-                <SelectItem value="Discarded" text="Discarded" />
-                <SelectItem
-                  value="Proceed with remarks"
-                  text="Proceed with remarks"
-                />
-              </Select>
-            )}
-          </Column>
-          <Column lg={16} md={8} sm={4}>
-            {(bulkApplyValues.qcResult === "Fail" ||
-              bulkApplyValues.qcResult === "Pass with remarks") && (
-              <TextArea
-                id="qcRemarks"
-                labelText="QC Remarks"
-                value={bulkApplyValues.qcRemarks}
-                onChange={(e) =>
-                  setBulkApplyValues((prev) => ({
-                    ...prev,
-                    qcRemarks: e.target.value,
-                  }))
-                }
-                placeholder="Enter QC remarks..."
+          {/* Receipt Information Section */}
+          <div className="qc-section">
+            <h5 className="qc-section-header">
+              <FormattedMessage
+                id="notebook.mntd.section.receipt"
+                defaultMessage="Receipt Information"
               />
-            )}
-          </Column>
-        </Grid>
+            </h5>
+            <Grid fullWidth>
+              <Column lg={8} md={4} sm={4}>
+                <div className="cds--form-item">
+                  <label className="cds--label">
+                    <FormattedMessage
+                      id="notebook.mntd.receivedDateTime"
+                      defaultMessage="Received Date & Time"
+                    />
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="cds--text-input"
+                    value={bulkApplyValues.receivedDateTime}
+                    onChange={(e) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        receivedDateTime: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="receivedBy"
+                  labelText={intl.formatMessage({
+                    id: "notebook.mntd.receivedBy",
+                    defaultMessage: "Received By (Staff Name)",
+                  })}
+                  value={bulkApplyValues.receivedBy}
+                  onChange={(e) =>
+                    setBulkApplyValues((prev) => ({
+                      ...prev,
+                      receivedBy: e.target.value,
+                    }))
+                  }
+                  placeholder={intl.formatMessage({
+                    id: "notebook.mntd.receivedBy.placeholder",
+                    defaultMessage: "Enter staff name",
+                  })}
+                />
+              </Column>
+            </Grid>
+          </div>
+
+          {/* Condition on Arrival */}
+          <div className="qc-section">
+            <Grid fullWidth>
+              <Column lg={16} md={8} sm={4}>
+                <TextArea
+                  id="conditionOnArrival"
+                  labelText={intl.formatMessage({
+                    id: "notebook.mntd.conditionOnArrival",
+                    defaultMessage: "Condition on Arrival",
+                  })}
+                  value={bulkApplyValues.conditionOnArrival}
+                  onChange={(e) =>
+                    setBulkApplyValues((prev) => ({
+                      ...prev,
+                      conditionOnArrival: e.target.value,
+                    }))
+                  }
+                  placeholder={intl.formatMessage({
+                    id: "notebook.mntd.conditionOnArrival.placeholder",
+                    defaultMessage: "Describe sample condition on arrival...",
+                  })}
+                  rows={2}
+                />
+              </Column>
+            </Grid>
+          </div>
+
+          {/* Quality Assessment - Direct Pass/Fail Selection */}
+          <div className="qc-section">
+            <h5 className="qc-section-header">
+              <FormattedMessage
+                id="notebook.mntd.section.qualityAssessment"
+                defaultMessage="Quality Assessment"
+              />
+            </h5>
+            <div
+              className={`qc-result-section ${bulkApplyValues.qcResult === "Fail" ? "fail" : bulkApplyValues.qcResult === "Pass" ? "pass" : ""}`}
+            >
+              <Grid fullWidth>
+                <Column lg={16} md={8} sm={4}>
+                  <RadioButtonGroup
+                    legendText={intl.formatMessage({
+                      id: "notebook.mntd.qcResult.label",
+                      defaultMessage: "Sample Quality Assessment",
+                    })}
+                    name="qcResult"
+                    valueSelected={bulkApplyValues.qcResult}
+                    onChange={(value) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        qcResult: value,
+                        // Clear fail action if now passing
+                        failAction: value === "Pass" ? "" : prev.failAction,
+                      }))
+                    }
+                    orientation="horizontal"
+                  >
+                    <RadioButton
+                      labelText={intl.formatMessage({
+                        id: "notebook.mntd.qcResult.pass",
+                        defaultMessage: "Pass - Proceed to storage/processing",
+                      })}
+                      value="Pass"
+                      id="qcResult-pass"
+                    />
+                    <RadioButton
+                      labelText={intl.formatMessage({
+                        id: "notebook.mntd.qcResult.fail",
+                        defaultMessage: "Fail - Requires action",
+                      })}
+                      value="Fail"
+                      id="qcResult-fail"
+                    />
+                  </RadioButtonGroup>
+                </Column>
+              </Grid>
+            </div>
+          </div>
+
+          {/* Fail Actions - Only show if QC result is Fail */}
+          {bulkApplyValues.qcResult === "Fail" && (
+            <div className="qc-section">
+              <h5 className="qc-section-header">
+                <WarningAlt size={16} style={{ marginRight: "0.5rem" }} />
+                <FormattedMessage
+                  id="notebook.mntd.section.failActions"
+                  defaultMessage="Fail Actions"
+                />
+              </h5>
+              <div className="qc-fail-actions">
+                <Grid fullWidth>
+                  <Column lg={16} md={8} sm={4}>
+                    <RadioButtonGroup
+                      legendText={intl.formatMessage({
+                        id: "notebook.mntd.failAction.label",
+                        defaultMessage: "Select action for failed samples",
+                      })}
+                      name="failAction"
+                      valueSelected={bulkApplyValues.failAction}
+                      onChange={(value) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          failAction: value,
+                        }))
+                      }
+                      orientation="vertical"
+                    >
+                      <RadioButton
+                        labelText={intl.formatMessage({
+                          id: "notebook.mntd.failAction.discard",
+                          defaultMessage:
+                            "Discard and notify researcher (sample will NOT proceed)",
+                        })}
+                        value="discard"
+                        id="failAction-discard"
+                      />
+                      <RadioButton
+                        labelText={intl.formatMessage({
+                          id: "notebook.mntd.failAction.proceed",
+                          defaultMessage:
+                            "Keep with remarks and proceed with flagged status",
+                        })}
+                        value="proceed_flagged"
+                        id="failAction-proceed"
+                      />
+                    </RadioButtonGroup>
+                  </Column>
+
+                  {/* QC Remarks - Required for both fail actions */}
+                  <Column lg={16} md={8} sm={4}>
+                    <TextArea
+                      id="qcRemarks"
+                      labelText={intl.formatMessage({
+                        id: "notebook.mntd.qcRemarks",
+                        defaultMessage: "Remarks (Required for failed samples)",
+                      })}
+                      value={bulkApplyValues.qcRemarks}
+                      onChange={(e) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          qcRemarks: e.target.value,
+                        }))
+                      }
+                      placeholder={intl.formatMessage({
+                        id: "notebook.mntd.qcRemarks.placeholder",
+                        defaultMessage:
+                          "Document the reason for failure and any observations...",
+                      })}
+                      rows={3}
+                      required
+                    />
+                  </Column>
+                </Grid>
+              </div>
+            </div>
+          )}
+        </div>
       </Modal>
     </div>
   );

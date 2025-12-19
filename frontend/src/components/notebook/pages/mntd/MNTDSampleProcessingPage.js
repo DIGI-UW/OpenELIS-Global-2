@@ -49,6 +49,7 @@ import "../../workflow/NotebookWorkflow.css";
  * @param {Object} props.progress - Page progress
  * @param {function} props.onProgressUpdate - Callback when progress changes
  * @param {number} props.notebookId - The notebook ID
+ * @param {Array} props.notebookInstruments - Instruments attached to the notebook
  */
 function MNTDSampleProcessingPage({
   entryId,
@@ -56,6 +57,7 @@ function MNTDSampleProcessingPage({
   progress,
   onProgressUpdate,
   notebookId,
+  notebookInstruments,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -68,11 +70,10 @@ function MNTDSampleProcessingPage({
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Reagents and instruments from inventory
+  // Reagents from inventory and instruments from notebook
   const [reagents, setReagents] = useState([]);
   const [instruments, setInstruments] = useState([]);
   const [loadingReagents, setLoadingReagents] = useState(false);
-  const [loadingInstruments, setLoadingInstruments] = useState(false);
 
   // Bulk apply modal state
   const [bulkApplyModalOpen, setBulkApplyModalOpen] = useState(false);
@@ -109,12 +110,28 @@ function MNTDSampleProcessingPage({
     { id: "culture", label: "Culture" },
   ];
 
+  // Set instruments from notebook when prop changes
+  useEffect(() => {
+    if (notebookInstruments && Array.isArray(notebookInstruments)) {
+      setInstruments(
+        notebookInstruments.map((i) => ({
+          id: String(i.id),
+          label: i.value || i.name,
+          name: i.value || i.name,
+          serialNumber: i.serialNumber || "N/A",
+          ...i,
+        })),
+      );
+    } else {
+      setInstruments([]);
+    }
+  }, [notebookInstruments]);
+
   // Load samples and reference data on mount
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
     loadReagents();
-    loadInstruments();
     loadSampleTypes();
 
     return () => {
@@ -214,57 +231,6 @@ function MNTDSampleProcessingPage({
             ]);
           }
           setLoadingReagents(false);
-        }
-      },
-    );
-  }, []);
-
-  const loadInstruments = useCallback(() => {
-    setLoadingInstruments(true);
-    getFromOpenElisServer(
-      "/rest/inventory/instruments?status=active",
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            setInstruments(
-              response.map((i) => ({
-                id: i.id,
-                label: `${i.name} (${i.serialNumber || "N/A"})`,
-                name: i.name,
-                serialNumber: i.serialNumber,
-                ...i,
-              })),
-            );
-          } else {
-            // Mock data if no instruments available
-            setInstruments([
-              {
-                id: "1",
-                label: "Centrifuge (SN: CF-001)",
-                name: "Centrifuge",
-                serialNumber: "CF-001",
-              },
-              {
-                id: "2",
-                label: "PCR Thermocycler (SN: TC-002)",
-                name: "PCR Thermocycler",
-                serialNumber: "TC-002",
-              },
-              {
-                id: "3",
-                label: "Vortex Mixer (SN: VM-003)",
-                name: "Vortex Mixer",
-                serialNumber: "VM-003",
-              },
-              {
-                id: "4",
-                label: "Micropipette Set (SN: MP-004)",
-                name: "Micropipette Set",
-                serialNumber: "MP-004",
-              },
-            ]);
-          }
-          setLoadingInstruments(false);
         }
       },
     );
@@ -816,7 +782,7 @@ function MNTDSampleProcessingPage({
                   selectedInstruments: selectedItems.map((i) => i.id),
                 }))
               }
-              disabled={loadingInstruments}
+              disabled={instruments.length === 0}
             />
           </Column>
 

@@ -29,8 +29,8 @@ import {
   MNTDProcessingQCPage,
   MNTDTestAssignmentPage,
   MNTDTestExecutionPage,
+  MNTDSampleArchivingPage,
   MNTDDataAnalysisPage,
-  MNTDReportingREDCapPage,
 } from "../pages/mntd";
 import "./NotebookWorkflow.css";
 
@@ -44,8 +44,8 @@ import "./NotebookWorkflow.css";
  * Page 6: Processing & Quality Control
  * Page 7: Test Assignment & Machine Scheduling
  * Page 8: Test Execution & Raw Data Capture
- * Page 9: Data Analysis & Export
- * Page 10: Reporting & REDCap Integration
+ * Page 9: Sample Archiving (Retention or Disposal) - End of sample lifecycle
+ * Page 10: Data Analysis & Export
  */
 const DEFAULT_MNTD_WORKFLOW_PAGES = [
   { id: "default-1", order: 1, title: "Sample Intake / Sample Creation" },
@@ -56,8 +56,8 @@ const DEFAULT_MNTD_WORKFLOW_PAGES = [
   { id: "default-6", order: 6, title: "Processing & Quality Control" },
   { id: "default-7", order: 7, title: "Test Assignment & Machine Scheduling" },
   { id: "default-8", order: 8, title: "Test Execution & Raw Data Capture" },
-  { id: "default-9", order: 9, title: "Data Analysis & Export" },
-  { id: "default-10", order: 10, title: "Reporting & REDCap Integration" },
+  { id: "default-9", order: 9, title: "Sample Archiving" },
+  { id: "default-10", order: 10, title: "Data Analysis & Export" },
 ];
 
 /**
@@ -392,6 +392,7 @@ function MNTDWorkflowTab({ notebookId, entryId: propEntryId }) {
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
+            notebookInstruments={notebook?.analyzers}
           />
         );
       case 5:
@@ -428,6 +429,7 @@ function MNTDWorkflowTab({ notebookId, entryId: propEntryId }) {
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
+            notebookInstruments={notebook?.analyzers}
           />
         );
       case 8:
@@ -443,10 +445,10 @@ function MNTDWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 9:
-        // Page 9: Data Analysis & Export
+        // Page 9: Sample Archiving (Retention or Disposal)
         return (
-          <MNTDDataAnalysisPage
-            key={`dataanalysis-${page.id}`}
+          <MNTDSampleArchivingPage
+            key={`archiving-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
@@ -455,10 +457,10 @@ function MNTDWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 10:
-        // Page 10: Reporting & REDCap Integration
+        // Page 10: Data Analysis & Export
         return (
-          <MNTDReportingREDCapPage
-            key={`reporting-${page.id}`}
+          <MNTDDataAnalysisPage
+            key={`dataanalysis-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}

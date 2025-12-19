@@ -4,12 +4,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.notebook.service.NotebookEntryTemperatureLogService;
+import org.openelisglobal.notebook.valueholder.NotebookEntryTemperatureLog;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,19 +27,14 @@ import org.springframework.web.bind.annotation.RestController;
  * REST controller for notebook entry temperature logging. Handles environmental
  * monitoring data for MNTD and other laboratory workflows.
  *
- * Temperature logs are stored as JSON in the notebook_entry.data field under
- * the key "temperatureLogs".
+ * Temperature logs are persisted to the notebook_entry_temperature_log table.
  */
 @RestController
 @RequestMapping(value = "/rest/notebook-entry")
 public class NotebookTemperatureLogController extends BaseRestController {
 
-    // In-memory storage for temperature logs (in production, this would be
-    // persisted to database)
-    // This is a simplified implementation - in a full implementation, you would use
-    // a proper
-    // service and repository layer
-    private static final Map<Integer, List<TemperatureLog>> temperatureLogStore = new HashMap<>();
+    @Autowired
+    private NotebookEntryTemperatureLogService temperatureLogService;
 
     /**
      * Get temperature logs for a notebook entry. GET
@@ -47,22 +45,27 @@ public class NotebookTemperatureLogController extends BaseRestController {
      */
     @GetMapping(value = "/{entryId}/temperature-logs", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<TemperatureLog>> getTemperatureLogs(@PathVariable("entryId") Integer entryId) {
-        List<TemperatureLog> logs = temperatureLogStore.getOrDefault(entryId, new ArrayList<>());
-        // Return logs sorted by date descending (most recent first)
-        logs.sort((a, b) -> {
-            if (a.getCheckedDateTime() == null && b.getCheckedDateTime() == null) {
-                return 0;
-            }
-            if (a.getCheckedDateTime() == null) {
-                return 1;
-            }
-            if (b.getCheckedDateTime() == null) {
-                return -1;
-            }
-            return b.getCheckedDateTime().compareTo(a.getCheckedDateTime());
-        });
-        return ResponseEntity.ok(logs);
+    public ResponseEntity<List<TemperatureLogDTO>> getTemperatureLogs(@PathVariable("entryId") Integer entryId) {
+        List<NotebookEntryTemperatureLog> logs = temperatureLogService.findByEntryId(entryId);
+        // Convert to DTOs to avoid lazy loading issues
+        List<TemperatureLogDTO> dtos = logs.stream().map(this::toDTO).collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    private TemperatureLogDTO toDTO(NotebookEntryTemperatureLog log) {
+        TemperatureLogDTO dto = new TemperatureLogDTO();
+        dto.setId(log.getId());
+        dto.setEntryId(log.getNotebookEntry() != null ? log.getNotebookEntry().getId() : null);
+        dto.setFreezerId(log.getFreezerId());
+        dto.setCheckTime(log.getCheckTime());
+        dto.setTemperatureValue(log.getTemperatureValue());
+        dto.setTemperatureUnit(log.getTemperatureUnit());
+        dto.setCheckedBy(log.getCheckedBy());
+        dto.setCheckedDateTime(log.getCheckedDateTime());
+        dto.setNotes(log.getNotes());
+        dto.setLoggedBy(log.getLoggedBy());
+        dto.setLoggedAt(log.getLoggedAt());
+        return dto;
     }
 
     /**
@@ -99,46 +102,40 @@ public class NotebookTemperatureLogController extends BaseRestController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        // Create the temperature log
-        TemperatureLog log = new TemperatureLog();
-        log.setId(generateLogId(entryId));
-        log.setEntryId(entryId);
-        log.setFreezerId(request.getFreezerId());
-        log.setCheckTime(request.getCheckTime() != null ? request.getCheckTime() : "AM");
-        log.setTemperatureValue(request.getTemperatureValue());
-        log.setTemperatureUnit(request.getTemperatureUnit() != null ? request.getTemperatureUnit() : "C");
-        log.setCheckedBy(request.getCheckedBy());
-
         // Parse checked date/time
+        Timestamp checkedDateTime;
         if (request.getCheckedDateTime() != null && !request.getCheckedDateTime().isBlank()) {
             try {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
                 LocalDateTime dateTime = LocalDateTime.parse(request.getCheckedDateTime(), formatter);
-                log.setCheckedDateTime(Timestamp.valueOf(dateTime));
+                checkedDateTime = Timestamp.valueOf(dateTime);
             } catch (Exception e) {
-                log.setCheckedDateTime(new Timestamp(System.currentTimeMillis()));
+                checkedDateTime = new Timestamp(System.currentTimeMillis());
             }
         } else {
-            log.setCheckedDateTime(new Timestamp(System.currentTimeMillis()));
+            checkedDateTime = new Timestamp(System.currentTimeMillis());
         }
 
-        log.setNotes(request.getNotes());
-        log.setLoggedBy(sysUserId);
-        log.setLoggedAt(new Timestamp(System.currentTimeMillis()));
+        try {
+            // Create the temperature log using the service
+            NotebookEntryTemperatureLog log = temperatureLogService.logTemperature(entryId, request.getFreezerId(),
+                    request.getCheckTime(), request.getTemperatureValue(), request.getTemperatureUnit(),
+                    request.getCheckedBy(), checkedDateTime, request.getNotes(), sysUserId);
 
-        // Store the log
-        temperatureLogStore.computeIfAbsent(entryId, k -> new ArrayList<>()).add(log);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("log", toDTO(log));
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
-        result.put("log", log);
-
-        return ResponseEntity.ok(result);
-    }
-
-    private Integer generateLogId(Integer entryId) {
-        List<TemperatureLog> logs = temperatureLogStore.getOrDefault(entryId, new ArrayList<>());
-        return logs.size() + 1;
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to save temperature log: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
     }
 
     @Override
@@ -220,9 +217,9 @@ public class NotebookTemperatureLogController extends BaseRestController {
     }
 
     /**
-     * Temperature log entity.
+     * Temperature log DTO for API responses.
      */
-    public static class TemperatureLog {
+    public static class TemperatureLogDTO {
         private Integer id;
         private Integer entryId;
         private String freezerId;

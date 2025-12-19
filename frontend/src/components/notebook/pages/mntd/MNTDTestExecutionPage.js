@@ -14,6 +14,7 @@ import {
   TextInput,
   TextArea,
   Dropdown,
+  MultiSelect,
   DatePicker,
   DatePickerInput,
   NumberInput,
@@ -38,6 +39,7 @@ import {
   TableCell,
   TableSelectRow,
   TableSelectAll,
+  InlineLoading,
 } from "@carbon/react";
 import {
   Add,
@@ -107,13 +109,17 @@ function MNTDTestExecutionPage({
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // Reagents from inventory (for kit lot number selection)
+  const [reagents, setReagents] = useState([]);
+  const [loadingReagents, setLoadingReagents] = useState(false);
+
   // Execution confirmation modal state
   const [showExecutionModal, setShowExecutionModal] = useState(false);
   const [executionData, setExecutionData] = useState({
     runCompleted: "YES",
     runIssues: "",
     runId: "",
-    kitLot: "",
+    selectedKits: [], // Array of selected kit IDs for multiselect
     operator: "",
     executionDate: new Date().toISOString().split("T")[0],
     executionTime: "",
@@ -247,6 +253,32 @@ function MNTDTestExecutionPage({
     );
   }, [pageData?.id]);
 
+  // Load reagents from inventory (used for kit lot number selection)
+  const loadReagents = useCallback(() => {
+    setLoadingReagents(true);
+    getFromOpenElisServer(
+      "/rest/inventory/reagents?status=active",
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            setReagents(
+              response.map((r) => ({
+                id: r.id,
+                label: `${r.name} (Lot: ${r.lotNumber || "N/A"})`,
+                name: r.name,
+                lotNumber: r.lotNumber,
+                ...r,
+              })),
+            );
+          } else {
+            setReagents([]);
+          }
+          setLoadingReagents(false);
+        }
+      },
+    );
+  }, []);
+
   // Check if page has a real database ID
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
@@ -285,8 +317,21 @@ function MNTDTestExecutionPage({
       );
       return;
     }
+    // Reset execution data
+    setExecutionData({
+      runCompleted: "YES",
+      runIssues: "",
+      runId: "",
+      selectedKits: [],
+      operator: "",
+      executionDate: new Date().toISOString().split("T")[0],
+      executionTime: "",
+      notes: "",
+    });
+    // Load reagents from inventory
+    loadReagents();
     setShowExecutionModal(true);
-  }, [selectedIds, intl]);
+  }, [selectedIds, intl, loadReagents]);
 
   // Handle saving execution confirmation data
   const handleSaveExecutionData = useCallback(() => {
@@ -297,11 +342,29 @@ function MNTDTestExecutionPage({
 
     const numericIds = selectedIds.map((id) => parseInt(id, 10));
 
+    // Get selected kit objects from reagents list based on selected IDs
+    const selectedKitObjects = reagents.filter((r) =>
+      executionData.selectedKits.includes(r.id),
+    );
+
+    // Build kit lot numbers string from selected kits
+    const kitLotNumbers = selectedKitObjects
+      .map((kit) => kit.lotNumber)
+      .filter(Boolean)
+      .join(", ");
+
+    // Build selectedReagents array for inventory consumption (using itemId)
+    const selectedReagents = selectedKitObjects
+      .map((kit) => kit.itemId)
+      .filter(Boolean);
+
     const dataToSave = {
       runCompleted: executionData.runCompleted,
       runIssues: executionData.runIssues,
       runId: executionData.runId,
-      kitLot: executionData.kitLot,
+      kitLot: kitLotNumbers,
+      selectedKitIds: executionData.selectedKits,
+      selectedReagents: selectedReagents,
       operator: executionData.operator,
       executionDate: executionData.executionDate,
       executionTime: executionData.executionTime,
@@ -342,7 +405,7 @@ function MNTDTestExecutionPage({
                   runCompleted: "YES",
                   runIssues: "",
                   runId: "",
-                  kitLot: "",
+                  selectedKits: [],
                   operator: "",
                   executionDate: new Date().toISOString().split("T")[0],
                   executionTime: "",
@@ -368,6 +431,7 @@ function MNTDTestExecutionPage({
     loadPageSamples,
     onProgressUpdate,
     intl,
+    reagents,
   ]);
 
   // Handle file upload
@@ -1169,20 +1233,38 @@ function MNTDTestExecutionPage({
                 />
               </Column>
               <Column lg={8} md={4} sm={4}>
-                <TextInput
-                  id="kit-lot"
-                  labelText={intl.formatMessage({
-                    id: "notebook.mntd.testexecution.kitLot",
-                    defaultMessage: "Kit Lot Number",
-                  })}
-                  value={executionData.kitLot}
-                  onChange={(e) =>
-                    setExecutionData({
-                      ...executionData,
-                      kitLot: e.target.value,
-                    })
-                  }
-                />
+                {loadingReagents ? (
+                  <InlineLoading
+                    description={intl.formatMessage({
+                      id: "notebook.mntd.testexecution.loadingReagents",
+                      defaultMessage: "Loading reagents...",
+                    })}
+                  />
+                ) : (
+                  <MultiSelect
+                    id="kit-lot"
+                    titleText={intl.formatMessage({
+                      id: "notebook.mntd.testexecution.kitLot",
+                      defaultMessage: "Kit Lot Number",
+                    })}
+                    label={intl.formatMessage({
+                      id: "notebook.mntd.testexecution.selectKits",
+                      defaultMessage: "Select kits...",
+                    })}
+                    items={reagents}
+                    itemToString={(item) => (item ? item.label : "")}
+                    selectedItems={reagents.filter((r) =>
+                      executionData.selectedKits.includes(r.id),
+                    )}
+                    onChange={({ selectedItems }) =>
+                      setExecutionData({
+                        ...executionData,
+                        selectedKits: selectedItems.map((item) => item.id),
+                      })
+                    }
+                    disabled={loadingReagents}
+                  />
+                )}
               </Column>
               <Column lg={8} md={4} sm={4}>
                 <TextInput
@@ -1286,17 +1368,40 @@ function MNTDTestExecutionPage({
             })}
             labelDescription={intl.formatMessage({
               id: "notebook.mntd.testexecution.fileFormats",
-              defaultMessage: "Supported formats: CSV, XLSX, XML, JSON, TXT",
+              defaultMessage: "Supported formats: CSV, TXT",
             })}
             buttonLabel={intl.formatMessage({
               id: "notebook.mntd.testexecution.chooseFile",
               defaultMessage: "Choose file",
             })}
             filenameStatus="edit"
-            accept={[".csv", ".xlsx", ".xml", ".json", ".txt", ".pdf"]}
+            accept={[".csv", ".txt"]}
             onChange={handleFileUpload}
-            style={{ marginBottom: "1rem" }}
+            style={{ marginBottom: "0.5rem" }}
           />
+
+          {/* Download Template Link */}
+          <div style={{ marginBottom: "1rem" }}>
+            <a
+              href={`${config.serverBaseUrl}/rest/notebook/bulk/template/raw-data-upload`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: "#0f62fe",
+                textDecoration: "none",
+                fontSize: "0.875rem",
+              }}
+            >
+              <DocumentImport
+                size={16}
+                style={{ verticalAlign: "middle", marginRight: "0.25rem" }}
+              />
+              <FormattedMessage
+                id="notebook.mntd.testexecution.downloadTemplate"
+                defaultMessage="Download CSV template"
+              />
+            </a>
+          </div>
 
           {/* Upload Metadata */}
           <Grid fullWidth>

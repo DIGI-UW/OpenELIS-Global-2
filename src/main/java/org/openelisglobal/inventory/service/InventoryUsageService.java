@@ -42,7 +42,8 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
 
     /**
      * Record inventory usage for a test result with optional quantity deduction.
-     * Use this when the quantity has already been deducted elsewhere (e.g., by consumeInventoryFEFO).
+     * Use this when the quantity has already been deducted elsewhere (e.g., by
+     * consumeInventoryFEFO).
      *
      * @param lotId          The lot ID used
      * @param itemId         The inventory item ID
@@ -50,7 +51,8 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
      * @param testResultId   The test result ID
      * @param analysisId     The analysis ID
      * @param sysUserId      The user performing the action
-     * @param deductQuantity If true, deduct quantity from lot; if false, only record usage
+     * @param deductQuantity If true, deduct quantity from lot; if false, only
+     *                       record usage
      * @return The created usage record
      */
     InventoryUsage recordUsage(Long lotId, Long itemId, Double quantityUsed, Long testResultId, Long analysisId,

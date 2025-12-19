@@ -42,10 +42,12 @@ import org.springframework.transaction.annotation.Transactional;
  * sample items, links to notebook entry, and stores metadata on page 1
  * NotebookPageSample data.
  *
- * Updated to support the new dataPoints schema:
- * - Required: sampleName, lotBatchNumber, dateOfManufacture, expiryRetestDate, storageCondition, ownerRequester
- * - Optional: sampleType (validated against Pharmaceutical lab types), alphanumericCode, chemicalIupacName, gradeSpecification, chainOfCustodyDetails, patientId, clinicalTrialNumber, consentStatus
- * - Auto-generated: uniqueSampleId, barcodeQrCode
+ * Updated to support the new dataPoints schema: - Required: sampleName,
+ * lotBatchNumber, dateOfManufacture, expiryRetestDate, storageCondition,
+ * ownerRequester - Optional: sampleType (validated against Pharmaceutical lab
+ * types), alphanumericCode, chemicalIupacName, gradeSpecification,
+ * chainOfCustodyDetails, patientId, clinicalTrialNumber, consentStatus -
+ * Auto-generated: uniqueSampleId, barcodeQrCode
  */
 @Service
 public class PharmaManifestImportServiceImpl implements PharmaManifestImportService {
@@ -53,24 +55,23 @@ public class PharmaManifestImportServiceImpl implements PharmaManifestImportServ
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     /**
-     * Valid sample types for the Pharmaceutical laboratory.
-     * Must match descriptions in type_of_sample table from Liquibase scripts.
+     * Valid sample types for the Pharmaceutical laboratory. Must match descriptions
+     * in type_of_sample table from Liquibase scripts.
      */
     private static final java.util.Set<String> VALID_PHARMA_SAMPLE_TYPES = java.util.Set.of(
             // From 013-pharma-sample-types.xml
             "finished dosage form", "api", "natural / herbal", "water (pw, wfi)",
             // From 019-pharma-department-sample-types.xml - Substances & Products
-            "excipients", "bulk powders", "intermediates", "placebos",
-            "reference standards", "impurity standards",
+            "excipients", "bulk powders", "intermediates", "placebos", "reference standards", "impurity standards",
             "tablets", "capsules", "injections", "creams", "patches",
             // Natural & Herbal
             "plant root", "plant leaf", "plant stem", "plant flower",
             // Biological & Stability
-            "blood", "plasma", "urine", "saliva", "cerebrospinal fluid",
-            "animal tissues", "animal organs", "animal feces", "cell culture samples",
+            "blood", "plasma", "urine", "saliva", "cerebrospinal fluid", "animal tissues", "animal organs",
+            "animal feces", "cell culture samples",
             // Microbiological & Environmental
-            "microbiological cultures", "purified water", "water for injection",
-            "surface swabs", "equipment swabs", "environmental swabs");
+            "microbiological cultures", "purified water", "water for injection", "surface swabs", "equipment swabs",
+            "environmental swabs");
 
     @Autowired
     private TypeOfSampleService typeOfSampleService;
@@ -129,8 +130,7 @@ public class PharmaManifestImportServiceImpl implements PharmaManifestImportServ
             Integer chainOfCustodyDetailsIdx = getColumnIndex(columnIndex,
                     columnMapping.getChainOfCustodyDetailsColumn());
             Integer patientIdIdx = getColumnIndex(columnIndex, columnMapping.getPatientIdColumn());
-            Integer clinicalTrialNumberIdx = getColumnIndex(columnIndex,
-                    columnMapping.getClinicalTrialNumberColumn());
+            Integer clinicalTrialNumberIdx = getColumnIndex(columnIndex, columnMapping.getClinicalTrialNumberColumn());
             Integer consentStatusIdx = getColumnIndex(columnIndex, columnMapping.getConsentStatusColumn());
 
             String line;
@@ -234,9 +234,8 @@ public class PharmaManifestImportServiceImpl implements PharmaManifestImportServ
                     searchType.setDescription(row.sampleType().trim());
                     TypeOfSample found = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, true);
                     if (found == null) {
-                        errors.add(new ParseError(row.rowNumber(), "sampleType",
-                                "Sample type '" + row.sampleType()
-                                        + "' is not configured in the system. Please contact an administrator to add this sample type."));
+                        errors.add(new ParseError(row.rowNumber(), "sampleType", "Sample type '" + row.sampleType()
+                                + "' is not configured in the system. Please contact an administrator to add this sample type."));
                     }
                 }
             }
@@ -257,8 +256,8 @@ public class PharmaManifestImportServiceImpl implements PharmaManifestImportServ
             }
 
             // Validate expiry date is after manufacture date
-            if (row.dateOfManufacture() != null && row.expiryRetestDate() != null && isValidDate(row.dateOfManufacture())
-                    && isValidDate(row.expiryRetestDate())) {
+            if (row.dateOfManufacture() != null && row.expiryRetestDate() != null
+                    && isValidDate(row.dateOfManufacture()) && isValidDate(row.expiryRetestDate())) {
                 LocalDate mfgDate = LocalDate.parse(row.dateOfManufacture(), DATE_FORMATTER);
                 LocalDate expDate = LocalDate.parse(row.expiryRetestDate(), DATE_FORMATTER);
                 if (!expDate.isAfter(mfgDate)) {
@@ -438,8 +437,7 @@ public class PharmaManifestImportServiceImpl implements PharmaManifestImportServ
             return alphaCode.trim();
         }
         // Fallback: combine lot number with abbreviated sample name
-        String sampleAbbrev = row.sampleName().length() > 10 ? row.sampleName().substring(0, 10)
-                : row.sampleName();
+        String sampleAbbrev = row.sampleName().length() > 10 ? row.sampleName().substring(0, 10) : row.sampleName();
         return sampleAbbrev.replaceAll("\\s+", "-") + "-" + row.lotBatchNumber();
     }
 

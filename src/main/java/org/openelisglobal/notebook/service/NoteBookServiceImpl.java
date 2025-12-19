@@ -358,9 +358,10 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             List<IdValuePair> instrumentList = new ArrayList<>();
             List<Long> instrumentIds = noteBook.getInventoryInstrumentIds();
 
-            // If this is an entry (not a template) and has no instruments, get from parent template
-            if ((instrumentIds == null || instrumentIds.isEmpty())
-                    && noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+            // If this is an entry (not a template) and has no instruments, get from parent
+            // template
+            if ((instrumentIds == null || instrumentIds.isEmpty()) && noteBook.getIsTemplate() != null
+                    && !noteBook.getIsTemplate()) {
                 NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
                 if (parentTemplate != null) {
                     Hibernate.initialize(parentTemplate.getInventoryInstrumentIds());
@@ -373,7 +374,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                     try {
                         var inventoryItem = inventoryItemService.get(instrumentId);
                         if (inventoryItem != null) {
-                            instrumentList.add(new IdValuePair(inventoryItem.getId().toString(), inventoryItem.getName()));
+                            instrumentList
+                                    .add(new IdValuePair(inventoryItem.getId().toString(), inventoryItem.getName()));
                         }
                     } catch (Exception e) {
                         LogEvent.logWarn(this.getClass().getSimpleName(), "convertToFullDisplayBean",
