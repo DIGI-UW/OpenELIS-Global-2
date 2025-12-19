@@ -33,6 +33,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MNTDManifestImportServiceImpl implements MNTDManifestImportService {
 
+    /**
+     * Valid MNTD sample types. These are the sample types recognized for the MNTD
+     * (Malaria and Neglected Tropical Diseases) laboratory workflow. Includes
+     * parasite samples and vector samples.
+     */
+    private static final java.util.Set<String> VALID_MNTD_SAMPLE_TYPES = java.util.Set.of(
+            // Parasite Samples (Human/Animal)
+            "whole blood", "serum", "plasma", "dried blood spots (dbs)", "cell pellets", "cultured parasites",
+            "skin slit smear", "biopsy", "microbiopsy", "tissue aspirate", "dnashield", "rna protect", "cell culture",
+            "tissue in saline",
+            // Vector Samples
+            "colony mosquito", "wild mosquito", "mosquito head and thorax", "mosquito abdomen", "sandfly", "tsetse fly",
+            // Legacy/existing types that may be used
+            "cell pellet", "culture", "dna/rna preservative", "mosquito / sandfly / tsetsefly", "biopsy / microbiopsy");
+
     @Autowired
     private TypeOfSampleService typeOfSampleService;
 
@@ -69,15 +84,17 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
                 columnIndex.put(headers[i].trim().toLowerCase(), i);
             }
 
-            // Get column indices from MNTD mapping
-            Integer sampleIdIdx = getColumnIndex(columnIndex, columnMapping.getSampleIdColumn());
-            Integer sampleSourceIdx = getColumnIndex(columnIndex, columnMapping.getSampleSourceColumn());
+            // Get column indices from MNTD mapping (using new field names)
+            Integer sampleIdIdx = getColumnIndex(columnIndex, columnMapping.getSampleIdTagColumn());
+            Integer sampleSourceIdx = getColumnIndex(columnIndex, columnMapping.getSampleSourceLocationColumn());
             Integer projectNameIdx = getColumnIndex(columnIndex, columnMapping.getProjectNameColumn());
             Integer sampleTypeIdx = getColumnIndex(columnIndex, columnMapping.getSampleTypeColumn());
-            Integer collectionSiteIdx = getColumnIndex(columnIndex, columnMapping.getCollectionSiteColumn());
-            Integer collectionDateTimeIdx = getColumnIndex(columnIndex, columnMapping.getCollectionDateTimeColumn());
-            Integer collectedByIdx = getColumnIndex(columnIndex, columnMapping.getCollectedByColumn());
-            Integer numOfSamplesIdx = getColumnIndex(columnIndex, columnMapping.getNumOfSamplesColumn());
+            Integer collectionSiteIdx = getColumnIndex(columnIndex, columnMapping.getSampleSourceLocationColumn()); // Reuse
+                                                                                                                    // source
+                                                                                                                    // location
+            Integer collectionDateTimeIdx = getColumnIndex(columnIndex, columnMapping.getReceivedDateTimeColumn());
+            Integer collectedByIdx = getColumnIndex(columnIndex, columnMapping.getBroughtByColumn());
+            Integer numOfSamplesIdx = getColumnIndex(columnIndex, columnMapping.getNumberOfSamplesColumn());
 
             String line;
             int rowNumber = 1; // Header is row 1
@@ -110,14 +127,12 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
                     continue;
                 }
 
-                // Parse num_of_samples
-                int numOfSamples;
-                try {
-                    numOfSamples = numOfSamplesStr != null && !numOfSamplesStr.isBlank()
-                            ? Integer.parseInt(numOfSamplesStr.trim())
-                            : 1;
-                } catch (NumberFormatException e) {
-                    errors.add(new ParseError(rowNumber, "numOfSamples", "Invalid number format: " + numOfSamplesStr));
+                // Parse num_of_samples - extract leading number from strings like "10 tubes",
+                // "2 boxes"
+                int numOfSamples = parseNumberOfSamples(numOfSamplesStr);
+                if (numOfSamples <= 0) {
+                    errors.add(new ParseError(rowNumber, "numOfSamples",
+                            "Invalid number format (expected number or 'N units'): " + numOfSamplesStr));
                     continue;
                 }
 
@@ -285,6 +300,94 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
         }
         String value = values[index];
         return value != null && !value.isBlank() ? value.trim() : null;
+    }
+
+    /**
+     * Parse number of samples from various formats. Accepts: "10", "10 tubes", "2
+     * boxes", "1 bag (50 specimens)", etc. Extracts the leading integer value.
+     *
+     * @param value the string to parse
+     * @return the extracted number, or 1 if null/blank, or -1 if invalid
+     */
+    private int parseNumberOfSamples(String value) {
+        if (value == null || value.isBlank()) {
+            return 1; // Default to 1 if not specified
+        }
+
+        String trimmed = value.trim();
+
+        // Try direct integer parse first
+        try {
+            return Integer.parseInt(trimmed);
+        } catch (NumberFormatException e) {
+            // Not a plain integer, try to extract leading number
+        }
+
+        // Extract leading digits using regex
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("^(\\d+)");
+        java.util.regex.Matcher matcher = pattern.matcher(trimmed);
+        if (matcher.find()) {
+            try {
+                return Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException e) {
+                return -1;
+            }
+        }
+
+        return -1; // No valid number found
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, String>> getValidMntdSampleTypes() {
+        List<Map<String, String>> result = new ArrayList<>();
+
+        for (String validType : VALID_MNTD_SAMPLE_TYPES) {
+            // Check if this type exists in the database
+            TypeOfSample searchType = new TypeOfSample();
+            // Use title case for database lookup since descriptions are stored that way
+            String titleCaseType = toTitleCase(validType);
+            searchType.setDescription(titleCaseType);
+            TypeOfSample found = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, true);
+
+            if (found != null) {
+                Map<String, String> typeMap = new HashMap<>();
+                typeMap.put("id", found.getId());
+                typeMap.put("description", found.getDescription());
+                result.add(typeMap);
+            }
+        }
+
+        // Sort by description for consistent ordering
+        result.sort((a, b) -> a.get("description").compareToIgnoreCase(b.get("description")));
+
+        return result;
+    }
+
+    /**
+     * Convert a string to title case (first letter of each word capitalized).
+     */
+    private String toTitleCase(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+
+        StringBuilder result = new StringBuilder();
+        boolean capitalizeNext = true;
+
+        for (char c : input.toCharArray()) {
+            if (Character.isWhitespace(c) || c == '/' || c == '-' || c == '(') {
+                capitalizeNext = true;
+                result.append(c);
+            } else if (capitalizeNext) {
+                result.append(Character.toUpperCase(c));
+                capitalizeNext = false;
+            } else {
+                result.append(c);
+            }
+        }
+
+        return result.toString();
     }
 
     /**

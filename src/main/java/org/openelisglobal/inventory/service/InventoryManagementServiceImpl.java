@@ -92,7 +92,8 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
                     newQuantity, testResultId, referenceTypeStr, notes, sysUserId);
 
             // Pass false for deductQuantity since we already deducted above
-            usageService.recordUsage(lot.getId(), itemId, quantityFromThisLot, testResultId, analysisId, sysUserId, false);
+            usageService.recordUsage(lot.getId(), itemId, quantityFromThisLot, testResultId, analysisId, sysUserId,
+                    false);
 
             consumptionRecords
                     .add(new ConsumptionRecord(lot.getId(), lot.getLotNumber(), quantityFromThisLot, newQuantity));

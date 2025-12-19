@@ -6,5 +6,5 @@ export { default as MNTDAliquotingPage } from "./MNTDAliquotingPage";
 export { default as MNTDProcessingQCPage } from "./MNTDProcessingQCPage";
 export { default as MNTDTestAssignmentPage } from "./MNTDTestAssignmentPage";
 export { default as MNTDTestExecutionPage } from "./MNTDTestExecutionPage";
+export { default as MNTDSampleArchivingPage } from "./MNTDSampleArchivingPage";
 export { default as MNTDDataAnalysisPage } from "./MNTDDataAnalysisPage";
-export { default as MNTDReportingREDCapPage } from "./MNTDReportingREDCapPage";

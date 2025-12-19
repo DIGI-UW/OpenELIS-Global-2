@@ -29,11 +29,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * REST controller for Pharmaceuticals manifest CSV import operations.
- * Supports the updated dataPoints schema with:
- * - Required: sampleName, lotBatchNumber, dateOfManufacture, expiryRetestDate, storageCondition, ownerRequester
- * - Optional: alphanumericCode, chemicalIupacName, gradeSpecification, chainOfCustodyDetails, patientId, clinicalTrialNumber, consentStatus
- * - Auto-generated: uniqueSampleId, barcodeQrCode
+ * REST controller for Pharmaceuticals manifest CSV import operations. Supports
+ * the updated dataPoints schema with: - Required: sampleName, lotBatchNumber,
+ * dateOfManufacture, expiryRetestDate, storageCondition, ownerRequester -
+ * Optional: alphanumericCode, chemicalIupacName, gradeSpecification,
+ * chainOfCustodyDetails, patientId, clinicalTrialNumber, consentStatus -
+ * Auto-generated: uniqueSampleId, barcodeQrCode
  */
 @RestController
 @RequestMapping("/rest/notebook/pharma")
@@ -46,8 +47,8 @@ public class PharmaManifestImportController extends BaseRestController {
     private NotebookEntryService notebookEntryService;
 
     /**
-     * Get valid sample types for the Pharmaceutical laboratory.
-     * Returns sample types that are both in the valid pharma list AND exist in the database.
+     * Get valid sample types for the Pharmaceutical laboratory. Returns sample
+     * types that are both in the valid pharma list AND exist in the database.
      */
     @GetMapping(value = "/sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody

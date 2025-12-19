@@ -11,6 +11,7 @@ import {
   SelectItem,
   TextInput,
   TextArea,
+  NumberInput,
   DataTable,
   Table,
   TableHead,
@@ -23,8 +24,6 @@ import {
   Tag,
   RadioButtonGroup,
   RadioButton,
-  NumberInput,
-  Checkbox,
 } from "@carbon/react";
 import {
   Archive,
@@ -33,6 +32,8 @@ import {
   Edit,
   Location,
   Automatic,
+  Warning,
+  Renew,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -88,31 +89,17 @@ function MNTDTemporaryStoragePage({
   });
   const [boxLayout, setBoxLayout] = useState({});
 
-  // Storage assignment modal state
-  const [assignStorageModalOpen, setAssignStorageModalOpen] = useState(false);
+  // Storage assignment modal state (unified single modal like Pharmaceutical)
+  const [storageModalOpen, setStorageModalOpen] = useState(false);
   const [selectedWell, setSelectedWell] = useState(null);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [wellAssignments, setWellAssignments] = useState({});
+  const [isReassignment, setIsReassignment] = useState(false);
 
-  // Bulk assignment state
-  const [bulkAssignValues, setBulkAssignValues] = useState({
-    storageType: "", // Raw or Processed
-    assignedBy: "",
-    assignedDateTime: new Date().toISOString().slice(0, 16),
-    notes: "",
-    temperatureMonitoringConfirmed: false, // Confirmation that freezer temperature monitoring is done twice daily
-  });
-
-  // Auto-assignment modal state
-  const [autoAssignModalOpen, setAutoAssignModalOpen] = useState(false);
-  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
-  const [autoAssignModalError, setAutoAssignModalError] = useState(null);
-  const [autoAssignValues, setAutoAssignValues] = useState({
-    storageType: "",
-    assignedBy: "",
-    assignedDateTime: new Date().toISOString().slice(0, 16),
-    notes: "",
-    temperatureMonitoringConfirmed: false, // Confirmation that freezer temperature monitoring is done twice daily
-  });
+  // Reassignment confirmation modal state
+  const [confirmReassignModalOpen, setConfirmReassignModalOpen] =
+    useState(false);
+  const [samplesToReassign, setSamplesToReassign] = useState([]);
 
   // Environmental monitoring modal state
   const [tempMonitoringModalOpen, setTempMonitoringModalOpen] = useState(false);
@@ -222,6 +209,7 @@ function MNTDTemporaryStoragePage({
   const handleStorageSelectionChange = useCallback(
     (selection) => {
       setStorageSelection(selection);
+      setWellAssignments({}); // Reset well assignments when storage location changes
       // When box selection changes, load its occupancy from storage system
       if (selection.box?.id) {
         loadBoxOccupancy(selection.box.id);
@@ -246,27 +234,197 @@ function MNTDTemporaryStoragePage({
   // Handle well click from BoxLayoutViewer
   const handleWellClick = useCallback(
     (wellCoord, wellInfo) => {
-      if (selectedSampleIds.length === 0) {
-        setError("Please select samples to assign to storage first.");
+      if (wellInfo && !wellInfo.pending) {
+        // Well is occupied by existing sample
+        setError(
+          intl.formatMessage(
+            {
+              id: "notebook.mntd.storage.wellOccupied",
+              defaultMessage:
+                "Well {well} is already occupied by {sample}. Choose another position.",
+            },
+            { well: wellCoord, sample: wellInfo.externalId || "a sample" },
+          ),
+        );
         return;
       }
 
-      if (wellInfo) {
-        // Well is occupied
-        setError(`Well ${wellCoord} is already occupied.`);
-        return;
-      }
+      if (storageModalOpen) {
+        // Single well assignment during modal - assign to next unassigned sample
+        const unassignedSamples = selectedSampleIds.filter(
+          (id) => !wellAssignments[id],
+        );
+        if (unassignedSamples.length > 0) {
+          setWellAssignments((prev) => ({
+            ...prev,
+            [unassignedSamples[0]]: wellCoord,
+          }));
+        }
+      } else {
+        // Quick assignment (outside modal)
+        if (selectedSampleIds.length === 0) {
+          setError(
+            intl.formatMessage({
+              id: "notebook.mntd.storage.selectSamplesFirst",
+              defaultMessage:
+                "Please select samples to assign to storage first.",
+            }),
+          );
+          return;
+        }
 
-      setSelectedWell(wellCoord);
-      setAssignStorageModalOpen(true);
+        setSelectedWell(wellCoord);
+        setStorageModalOpen(true);
+      }
     },
-    [selectedSampleIds],
+    [selectedSampleIds, wellAssignments, storageModalOpen, intl],
   );
 
-  // Handle bulk storage assignment
+  // Handle open storage modal
+  const handleOpenStorageModal = () => {
+    if (selectedSampleIds.length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.mntd.storage.noSamplesSelected",
+          defaultMessage: "Please select samples to assign to storage.",
+        }),
+      );
+      return;
+    }
+
+    // Check if any selected samples already have storage
+    const alreadyAssigned = samples.filter(
+      (s) => selectedSampleIds.includes(s.id) && s.storageWell,
+    );
+
+    if (alreadyAssigned.length > 0) {
+      setSamplesToReassign(alreadyAssigned);
+      setConfirmReassignModalOpen(true);
+      return;
+    }
+
+    openStorageAssignmentModal(false);
+  };
+
+  const openStorageAssignmentModal = (reassigning) => {
+    setIsReassignment(reassigning);
+    setStorageModalOpen(true);
+    setError(null);
+    setWellAssignments({});
+    setSelectedCondition(null);
+    setRetentionYears(5);
+    setBulkAssignValues({
+      storageType: "",
+      assignedBy: "",
+      assignedDateTime: new Date().toISOString().slice(0, 16),
+      notes: "",
+      temperatureMonitoringConfirmed: false,
+    });
+  };
+
+  const handleConfirmReassignment = () => {
+    setConfirmReassignModalOpen(false);
+    openStorageAssignmentModal(true);
+  };
+
+  // Auto-populate wells with selected samples
+  const handleAutoPopulate = () => {
+    if (!storageSelection.box) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.mntd.storage.selectBoxFirst",
+          defaultMessage: "Please select a storage box first.",
+        }),
+      );
+      return;
+    }
+
+    const rows = storageSelection.box.rows || 8;
+    const columns = storageSelection.box.columns || 12;
+    const rowLetters = Array.from({ length: rows }, (_, i) =>
+      String.fromCharCode("A".charCodeAt(0) + i),
+    );
+
+    const newAssignments = {};
+    let sampleIndex = 0;
+
+    for (let row of rowLetters) {
+      for (let col = 1; col <= columns; col++) {
+        if (sampleIndex >= selectedSampleIds.length) break;
+
+        const wellCoord = `${row}${col}`;
+        if (!boxLayout[wellCoord]) {
+          newAssignments[selectedSampleIds[sampleIndex]] = wellCoord;
+          sampleIndex++;
+        }
+      }
+      if (sampleIndex >= selectedSampleIds.length) break;
+    }
+
+    setWellAssignments(newAssignments);
+
+    if (sampleIndex < selectedSampleIds.length) {
+      setError(
+        intl.formatMessage(
+          {
+            id: "notebook.mntd.storage.notEnoughWells",
+            defaultMessage:
+              "Not enough empty wells. {assigned} of {total} samples assigned.",
+          },
+          { assigned: sampleIndex, total: selectedSampleIds.length },
+        ),
+      );
+    } else {
+      setError(null);
+      setSuccessMessage(
+        intl.formatMessage(
+          {
+            id: "notebook.mntd.storage.autoPopulateSuccess",
+            defaultMessage: "Auto-assigned {count} samples to wells.",
+          },
+          { count: sampleIndex },
+        ),
+      );
+    }
+  };
+
+  // Build combined layout for visualization (existing + pending assignments)
+  const getCombinedLayout = () => {
+    const combined = { ...boxLayout };
+
+    Object.entries(wellAssignments).forEach(([sampleId, wellCoord]) => {
+      if (!combined[wellCoord]) {
+        const sample = samples.find((s) => s.id === sampleId);
+        combined[wellCoord] = {
+          sampleItemId: sampleId,
+          externalId: sample?.externalId || sampleId,
+          pending: true,
+        };
+      }
+    });
+
+    return combined;
+  };
+
+  // Handle bulk storage assignment (unified modal submit)
   const handleAssignStorage = useCallback(() => {
-    if (selectedSampleIds.length === 0 || !selectedWell) {
-      setError("Please select samples and a storage well.");
+    if (!storageSelection.box) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.mntd.storage.selectBox",
+          defaultMessage: "Please select a storage box.",
+        }),
+      );
+      return;
+    }
+    if (Object.keys(wellAssignments).length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.mntd.storage.noWellAssignments",
+          defaultMessage:
+            "Please assign samples to wells using Auto-Populate or click on wells.",
+        }),
+      );
       return;
     }
 
@@ -274,11 +432,6 @@ function MNTDTemporaryStoragePage({
       pageData?.id && !String(pageData.id).startsWith("default-");
     if (!hasRealPageId) {
       setError("Cannot update samples: Page not properly initialized.");
-      return;
-    }
-
-    if (!storageSelection.box) {
-      setError("Please select a storage box first.");
       return;
     }
 
@@ -296,25 +449,20 @@ function MNTDTemporaryStoragePage({
       .filter(Boolean)
       .join(" > ");
 
-    // Prepare the data to apply
+    // Prepare the data to apply - using wellAssignments for individual sample placements
     const assignData = {
-      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+      sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
+      boxId: storageSelection.box?.id,
+      wellAssignments: wellAssignments,
+      reassign: isReassignment,
       data: {
         storageRoom: storageSelection.room?.label,
         storageFreezer: storageSelection.device?.label,
-        storageType: bulkAssignValues.storageType,
         storageRack: storageSelection.rack?.label,
         storageBox: storageSelection.box?.label,
-        storageWell: selectedWell,
         storagePath: storagePath,
-        assignedBy: bulkAssignValues.assignedBy,
-        assignedDateTime: bulkAssignValues.assignedDateTime,
-        notes: bulkAssignValues.notes,
-        temperatureMonitoringConfirmed:
-          bulkAssignValues.temperatureMonitoringConfirmed,
+        assignedDateTime: new Date().toISOString(),
       },
-      boxId: storageSelection.box?.id,
-      wellCoordinate: selectedWell,
     };
 
     postToOpenElisServerJsonResponse(
@@ -322,33 +470,40 @@ function MNTDTemporaryStoragePage({
       JSON.stringify(assignData),
       (response) => {
         setIsAssigning(false);
-        const assignedCount = response?.assignedCount || 0;
+        const assignedCount =
+          response?.assignedCount || Object.keys(wellAssignments).length;
         const hasErrors =
           response?.errors &&
           Array.isArray(response.errors) &&
           response.errors.length > 0;
 
-        // Check if any samples were assigned successfully
-        if (assignedCount > 0) {
-          // Some or all samples assigned successfully
+        // Check for success
+        if (response && (response.success || assignedCount > 0)) {
+          const messageId = isReassignment
+            ? "notebook.mntd.storage.reassignSuccess"
+            : "notebook.mntd.storage.assignSuccess";
+          const defaultMessage = isReassignment
+            ? "Successfully reassigned {count} samples to new storage location."
+            : "Successfully assigned {count} samples to storage.";
+
+          setSuccessMessage(
+            intl.formatMessage(
+              { id: messageId, defaultMessage: defaultMessage },
+              { count: assignedCount },
+            ),
+          );
+
           if (hasErrors) {
-            // Partial success - show both success and error messages
-            setSuccessMessage(
-              `Assigned ${assignedCount} sample(s) to storage at ${storagePath} > ${selectedWell}.`,
-            );
             setError(
               `Some samples could not be assigned: ${response.errors.join("; ")}`,
             );
-          } else {
-            // Full success
-            setSuccessMessage(
-              `Assigned ${assignedCount} sample(s) to storage at ${storagePath} > ${selectedWell}.`,
-            );
           }
-          setAssignStorageModalOpen(false);
-          setSelectedWell(null);
-          loadPageSamples();
+
+          setIsReassignment(false);
+          setStorageModalOpen(false);
           setSelectedSampleIds([]);
+          setWellAssignments({});
+          loadPageSamples();
           // Reload box layout from storage API
           if (storageSelection.box) {
             loadBoxOccupancy(storageSelection.box.id);
@@ -361,7 +516,6 @@ function MNTDTemporaryStoragePage({
           let errorMessage =
             response?.error || "Failed to assign storage. Please try again.";
           if (hasErrors) {
-            // Show all detailed errors
             errorMessage = response.errors.join("; ");
           }
           setError(errorMessage);
@@ -369,154 +523,37 @@ function MNTDTemporaryStoragePage({
       },
     );
   }, [
-    selectedSampleIds,
-    selectedWell,
     pageData?.id,
     storageSelection,
-    bulkAssignValues,
-    entryId,
+    wellAssignments,
+    isReassignment,
+    intl,
     loadPageSamples,
-    onProgressUpdate,
-  ]);
-
-  // Handle auto-assignment of samples to storage
-  const handleAutoAssign = useCallback(() => {
-    if (selectedSampleIds.length === 0) {
-      setError("Please select samples to auto-assign.");
-      return;
-    }
-
-    const hasRealPageId =
-      pageData?.id && !String(pageData.id).startsWith("default-");
-    if (!hasRealPageId) {
-      setError("Cannot update samples: Page not properly initialized.");
-      return;
-    }
-
-    if (!storageSelection.box) {
-      setError("Please select a storage box first.");
-      return;
-    }
-
-    setIsAutoAssigning(true);
-    setError(null);
-
-    // Build storage path (without well since each sample gets a different one)
-    const storagePath = [
-      storageSelection.room?.label,
-      storageSelection.device?.label,
-      storageSelection.shelf?.label,
-      storageSelection.rack?.label,
-      storageSelection.box?.label,
-    ]
-      .filter(Boolean)
-      .join(" > ");
-
-    // Get list of occupied wells from current box layout
-    const occupiedWells = Object.keys(boxLayout);
-
-    // Prepare the auto-assign request
-    const autoAssignData = {
-      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-      data: {
-        storageRoom: storageSelection.room?.label,
-        storageFreezer: storageSelection.device?.label,
-        storageType: autoAssignValues.storageType,
-        storageRack: storageSelection.rack?.label,
-        storageBox: storageSelection.box?.label,
-        storagePath: storagePath,
-        assignedBy: autoAssignValues.assignedBy,
-        assignedDateTime: autoAssignValues.assignedDateTime,
-        notes: autoAssignValues.notes,
-        temperatureMonitoringConfirmed:
-          autoAssignValues.temperatureMonitoringConfirmed,
-      },
-      boxId: storageSelection.box?.id,
-      rows: storageSelection.box?.rows || 8,
-      columns: storageSelection.box?.columns || 12,
-      occupiedWells: occupiedWells,
-    };
-
-    postToOpenElisServerJsonResponse(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/storage/auto-assign`,
-      JSON.stringify(autoAssignData),
-      (response) => {
-        setIsAutoAssigning(false);
-
-        // Check for HTTP error status (set by postToOpenElisServerJsonResponse for non-OK responses)
-        const isHttpError =
-          response?.status >= 400 || response?.statusCode >= 400;
-
-        const assignmentCount = response?.updatedCount || 0;
-        const hasErrors =
-          response?.errors &&
-          Array.isArray(response.errors) &&
-          response.errors.length > 0;
-
-        // Check if any samples were assigned successfully and no HTTP error
-        if (assignmentCount > 0 && !isHttpError) {
-          // Some or all samples assigned successfully
-          setAutoAssignModalError(null);
-          if (hasErrors) {
-            // Partial success - show both success and error messages
-            setSuccessMessage(
-              `Auto-assigned ${assignmentCount} sample(s) to storage in ${storageSelection.box?.label}.`,
-            );
-            setError(
-              `Some samples could not be assigned: ${response.errors.join("; ")}`,
-            );
-          } else {
-            // Full success
-            setSuccessMessage(
-              `Auto-assigned ${assignmentCount} sample(s) to storage in ${storageSelection.box?.label}.`,
-            );
-          }
-          setAutoAssignModalOpen(false);
-          loadPageSamples();
-          setSelectedSampleIds([]);
-          // Reload box layout from storage API
-          if (storageSelection.box) {
-            loadBoxOccupancy(storageSelection.box.id);
-          }
-          if (onProgressUpdate) {
-            onProgressUpdate();
-          }
-        } else {
-          // No samples assigned or HTTP error - show error in modal (don't close it)
-          let errorMessage =
-            response?.error ||
-            response?.message ||
-            "Failed to auto-assign storage. Please try again.";
-          if (hasErrors) {
-            // Show all detailed errors
-            errorMessage = response.errors.join("; ");
-          }
-          setAutoAssignModalError(errorMessage);
-        }
-      },
-    );
-  }, [
-    selectedSampleIds,
-    pageData?.id,
-    storageSelection,
-    autoAssignValues,
-    boxLayout,
-    entryId,
-    loadPageSamples,
+    loadBoxOccupancy,
     onProgressUpdate,
   ]);
 
   // Handle temperature logging
   const handleLogTemperature = useCallback(() => {
     if (!temperatureLog.freezerId || !temperatureLog.temperatureValue) {
-      setError("Freezer ID and temperature value are required.");
+      setError(
+        intl.formatMessage({
+          id: "notebook.mntd.storage.tempLogRequired",
+          defaultMessage: "Device ID and temperature value are required.",
+        }),
+      );
       return;
     }
 
     // Validate temperature value is a valid number
     const tempValue = parseFloat(temperatureLog.temperatureValue);
     if (isNaN(tempValue)) {
-      setError("Temperature value must be a valid number.");
+      setError(
+        intl.formatMessage({
+          id: "notebook.mntd.storage.tempInvalid",
+          defaultMessage: "Temperature value must be a valid number.",
+        }),
+      );
       return;
     }
 
@@ -540,25 +577,35 @@ function MNTDTemporaryStoragePage({
       (status) => {
         setIsLoggingTemp(false);
         if (status === 200 || status === 201) {
-          setSuccessMessage("Temperature logged successfully.");
+          setSuccessMessage(
+            intl.formatMessage({
+              id: "notebook.mntd.storage.tempLogSuccess",
+              defaultMessage: "Temperature logged successfully.",
+            }),
+          );
           setTempMonitoringModalOpen(false);
           loadTemperatureLogs();
-          // Reset form
-          setTemperatureLog({
-            freezerId: temperatureLog.freezerId, // Keep freezer ID
+          // Reset form but keep device ID
+          setTemperatureLog((prev) => ({
+            freezerId: prev.freezerId,
             checkTime: "AM",
             temperatureValue: "",
             temperatureUnit: "C",
             checkedBy: "",
             checkedDateTime: new Date().toISOString().slice(0, 16),
             notes: "",
-          });
+          }));
         } else {
-          setError("Failed to log temperature. Please try again.");
+          setError(
+            intl.formatMessage({
+              id: "notebook.mntd.storage.tempLogError",
+              defaultMessage: "Failed to log temperature. Please try again.",
+            }),
+          );
         }
       },
     );
-  }, [temperatureLog, entryId, loadTemperatureLogs]);
+  }, [temperatureLog, entryId, intl, loadTemperatureLogs]);
 
   // Handle marking samples as stored
   const handleMarkStored = useCallback(() => {
@@ -592,7 +639,14 @@ function MNTDTemporaryStoragePage({
       (status) => {
         if (status === 200) {
           setSuccessMessage(
-            `Marked ${selectedSampleIds.length} samples as stored.`,
+            intl.formatMessage(
+              {
+                id: "notebook.page.mntd.completedSuccess",
+                defaultMessage:
+                  "{count} sample(s) completed and sent to next workflow step.",
+              },
+              { count: selectedSampleIds.length },
+            ),
           );
           loadPageSamples();
           setSelectedSampleIds([]);
@@ -600,7 +654,12 @@ function MNTDTemporaryStoragePage({
             onProgressUpdate();
           }
         } else {
-          setError("Failed to update sample status.");
+          setError(
+            intl.formatMessage({
+              id: "notebook.page.mntd.completedError",
+              defaultMessage: "Failed to complete samples. Please try again.",
+            }),
+          );
         }
       },
     );
@@ -610,6 +669,7 @@ function MNTDTemporaryStoragePage({
     pageData?.id,
     loadPageSamples,
     onProgressUpdate,
+    intl,
   ]);
 
   // Calculate stats
@@ -654,27 +714,90 @@ function MNTDTemporaryStoragePage({
 
   // Get storage status tag
   const getStorageTag = (sample) => {
-    if (sample.storageWell) {
+    if (sample.status === "COMPLETED" && sample.storageWell) {
       return (
-        <Tag type="green" title={sample.storagePath}>
-          {sample.storageWell}
+        <Tag type="green" renderIcon={Checkmark} title={sample.storagePath}>
+          {sample.storageWell} (
+          <FormattedMessage
+            id="notebook.status.sentToNext"
+            defaultMessage="Sent"
+          />
+          )
         </Tag>
       );
     }
-    return <Tag type="gray">Unassigned</Tag>;
+    if (sample.storageWell) {
+      return (
+        <Tag type="cyan" renderIcon={Archive} title={sample.storagePath}>
+          {sample.storageWell} (
+          <FormattedMessage
+            id="notebook.status.inProgress"
+            defaultMessage="In Progress"
+          />
+          )
+        </Tag>
+      );
+    }
+    return (
+      <Tag type="gray">
+        <FormattedMessage
+          id="notebook.status.awaitingStorage"
+          defaultMessage="Awaiting Storage"
+        />
+      </Tag>
+    );
   };
 
-  // Reset bulk assign values
-  const resetBulkAssignValues = () => {
-    setBulkAssignValues({
-      storageType: "",
-      assignedBy: "",
-      assignedDateTime: new Date().toISOString().slice(0, 16),
-      notes: "",
-      temperatureMonitoringConfirmed: false,
-    });
-    setSelectedWell(null);
+  // Get storage condition tag
+  const getConditionTag = (sample) => {
+    if (!sample.storageCondition) return null;
+
+    const conditionLabels = {
+      ROOM_TEMP: "15-25°C",
+      REFRIGERATED: "2-8°C",
+      FROZEN_MINUS20: "-20°C",
+      FROZEN_MINUS80: "-80°C",
+      LIQUID_NITROGEN: "LN2",
+      INCUBATOR_37: "37°C",
+    };
+
+    return (
+      <Tag type="cool-gray" renderIcon={Temperature} size="sm">
+        {conditionLabels[sample.storageCondition] || sample.storageCondition}
+      </Tag>
+    );
   };
+
+  // Get temperature status tag for logs
+  const getTemperatureStatusTag = (log) => {
+    // Define acceptable ranges per device type
+    const ranges = {
+      Refrigerator: { min: 2, max: 8 },
+      "Freezer-20": { min: -25, max: -15 },
+      "Freezer-80": { min: -85, max: -75 },
+      LN2Tank: { min: -200, max: -180 },
+      Incubator: { min: 35, max: 38 },
+      ColdRoom: { min: 2, max: 8 },
+    };
+
+    const range = ranges[log.deviceType] || { min: -999, max: 999 };
+    const temp = log.temperatureValue;
+    const inRange = temp >= range.min && temp <= range.max;
+
+    return inRange ? (
+      <Tag type="green" size="sm">
+        {temp}°{log.temperatureUnit}
+      </Tag>
+    ) : (
+      <Tag type="red" size="sm" renderIcon={Warning}>
+        {temp}°{log.temperatureUnit} - OUT OF RANGE
+      </Tag>
+    );
+  };
+
+  // Check if page has real ID
+  const hasRealPageId =
+    pageData?.id && !String(pageData.id).startsWith("default-");
 
   return (
     <div className="mntd-temporary-storage-page">
@@ -689,7 +812,7 @@ function MNTDTemporaryStoragePage({
         <p className="page-description">
           <FormattedMessage
             id="notebook.page.mntd.temporaryStorage.description"
-            defaultMessage="Track exact physical location using storage hierarchy. Select a storage location, then click a well position to assign samples. Record temperature monitoring data for environmental compliance."
+            defaultMessage="Assign samples to temporary storage locations. Samples remain in progress after storage assignment. Use 'Complete & Send to Next Step' to finalize and advance samples to the next workflow stage."
           />
         </p>
       </div>
@@ -707,29 +830,31 @@ function MNTDTemporaryStoragePage({
               </span>
               <span className="progress-value">{samples.length}</span>
             </Tile>
-            <Tile className="progress-tile verified">
-              <span className="progress-label">
-                <FormattedMessage
-                  id="notebook.page.mntd.stored"
-                  defaultMessage="Stored"
-                />
-              </span>
-              <span className="progress-value">{storedCount}</span>
-            </Tile>
             <Tile className="progress-tile pending">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.mntd.pendingStorage"
-                  defaultMessage="Pending Storage"
+                  id="notebook.page.mntd.awaitingStorage"
+                  defaultMessage="Awaiting Storage"
                 />
               </span>
               <span className="progress-value">{pendingCount}</span>
             </Tile>
+            <Tile className="progress-tile verified">
+              <span className="progress-label">
+                <FormattedMessage
+                  id="notebook.page.mntd.inStorage"
+                  defaultMessage="In Storage (In Progress)"
+                />
+              </span>
+              <span className="progress-value">
+                {storedCount - completedCount}
+              </span>
+            </Tile>
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.mntd.completed"
-                  defaultMessage="Completed"
+                  id="notebook.page.mntd.sentToNextStep"
+                  defaultMessage="Sent to Next Step"
                 />
               </span>
               <span className="progress-value">{completedCount}</span>
@@ -741,10 +866,47 @@ function MNTDTemporaryStoragePage({
       {/* Action Buttons */}
       <div className="page-actions-bar">
         <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Archive}
+          onClick={handleOpenStorageModal}
+          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+        >
+          <FormattedMessage
+            id="notebook.page.mntd.assignToStorage"
+            defaultMessage="Assign to Storage ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Checkmark}
+          onClick={handleMarkStored}
+          disabled={
+            selectedSampleIds.length === 0 || isAssigning || !hasRealPageId
+          }
+        >
+          <FormattedMessage
+            id="notebook.page.mntd.markCompleteAndAdvance"
+            defaultMessage="Complete & Send to Next Step ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
           kind="tertiary"
           size="sm"
           renderIcon={Temperature}
-          onClick={() => setTempMonitoringModalOpen(true)}
+          onClick={() => {
+            // Update checkedDateTime to current time when opening modal
+            setTemperatureLog((prev) => ({
+              ...prev,
+              checkedDateTime: new Date().toISOString().slice(0, 16),
+            }));
+            setTempMonitoringModalOpen(true);
+          }}
         >
           <FormattedMessage
             id="notebook.page.mntd.logTemperature"
@@ -752,35 +914,17 @@ function MNTDTemporaryStoragePage({
           />
         </Button>
 
-        {selectedSampleIds.length > 0 && storageSelection.box && (
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={Automatic}
-            onClick={() => setAutoAssignModalOpen(true)}
-          >
-            <FormattedMessage
-              id="notebook.page.mntd.autoAssign"
-              defaultMessage="Auto-Assign ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
-        )}
-
-        {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkStored}
-          >
-            <FormattedMessage
-              id="notebook.page.mntd.markStored"
-              defaultMessage="Mark as Stored ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
-        )}
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={Renew}
+          onClick={loadPageSamples}
+        >
+          <FormattedMessage
+            id="notebook.page.mntd.refresh"
+            defaultMessage="Refresh"
+          />
+        </Button>
       </div>
 
       {/* Messages */}
@@ -801,66 +945,6 @@ function MNTDTemporaryStoragePage({
         />
       )}
 
-      {/* Storage Hierarchy and Box Layout */}
-      <Grid fullWidth style={{ marginTop: "1rem" }}>
-        <Column lg={8} md={4} sm={4}>
-          <Tile>
-            <h5 style={{ marginBottom: "1rem" }}>
-              <Location size={16} style={{ marginRight: "0.5rem" }} />
-              <FormattedMessage
-                id="notebook.page.mntd.storageLocation"
-                defaultMessage="Storage Location"
-              />
-            </h5>
-            <StorageHierarchySelector
-              onSelectionChange={handleStorageSelectionChange}
-              entryId={entryId}
-              onBoxLayoutLoaded={handleBoxLayoutLoaded}
-              boxRequired={true}
-              showPath={true}
-            />
-          </Tile>
-        </Column>
-
-        <Column lg={8} md={4} sm={4}>
-          {storageSelection.box ? (
-            <Tile>
-              <h5 style={{ marginBottom: "1rem" }}>
-                <Archive size={16} style={{ marginRight: "0.5rem" }} />
-                <FormattedMessage
-                  id="notebook.page.mntd.boxLayout"
-                  defaultMessage="Box Layout"
-                />
-                {selectedSampleIds.length > 0 && (
-                  <Tag type="blue" style={{ marginLeft: "0.5rem" }}>
-                    {selectedSampleIds.length} selected - Click well to assign
-                  </Tag>
-                )}
-              </h5>
-              <BoxLayoutViewer
-                boxId={storageSelection.box.id}
-                layout={boxLayout}
-                rows={storageSelection.box.rows || 8}
-                columns={storageSelection.box.columns || 12}
-                onWellClick={handleWellClick}
-              />
-            </Tile>
-          ) : (
-            <Tile className="empty-box-tile">
-              <div className="empty-state" style={{ textAlign: "center" }}>
-                <Archive size={48} />
-                <p style={{ marginTop: "1rem" }}>
-                  <FormattedMessage
-                    id="notebook.page.mntd.selectBoxPrompt"
-                    defaultMessage="Select a storage location to view box layout"
-                  />
-                </p>
-              </div>
-            </Tile>
-          )}
-        </Column>
-      </Grid>
-
       {/* Temperature Logs Summary */}
       {temperatureLogs.length > 0 && (
         <div style={{ marginTop: "1.5rem" }}>
@@ -879,18 +963,22 @@ function MNTDTemporaryStoragePage({
               marginTop: "0.5rem",
             }}
           >
-            {temperatureLogs.slice(0, 5).map((log, index) => (
-              <Tag
+            {temperatureLogs.slice(0, 6).map((log, index) => (
+              <Tile
                 key={index}
-                type={
-                  log.temperatureValue > -20 || log.temperatureValue < -80
-                    ? "red"
-                    : "green"
-                }
+                style={{
+                  padding: "0.5rem 1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
               >
-                {log.freezerId}: {log.temperatureValue}°{log.temperatureUnit} (
-                {log.checkTime})
-              </Tag>
+                <strong>{log.freezerId}:</strong>
+                {getTemperatureStatusTag(log)}
+                <span style={{ fontSize: "0.75rem", color: "#525252" }}>
+                  ({log.checkTime})
+                </span>
+              </Tile>
             ))}
           </div>
         </div>
@@ -913,16 +1001,62 @@ function MNTDTemporaryStoragePage({
           showSelection={true}
           loading={loading}
           columns={[
-            { key: "externalId", header: "Sample ID" },
-            { key: "sampleType", header: "Sample Type" },
-            { key: "storageFreezer", header: "Freezer" },
             {
-              key: "storageWell",
-              header: "Position",
-              render: (value, row) => getStorageTag(row),
+              key: "externalId",
+              header: intl.formatMessage({
+                id: "notebook.column.externalId",
+                defaultMessage: "Sample ID",
+              }),
             },
-            { key: "assignedBy", header: "Assigned By" },
-            { key: "status", header: "Status" },
+            {
+              key: "sampleType",
+              header: intl.formatMessage({
+                id: "notebook.column.sampleType",
+                defaultMessage: "Sample Type",
+              }),
+            },
+            {
+              key: "storage",
+              header: intl.formatMessage({
+                id: "notebook.column.storage",
+                defaultMessage: "Storage Location",
+              }),
+              render: (value, row) => (
+                <div
+                  style={{ display: "flex", gap: "4px", alignItems: "center" }}
+                >
+                  {getStorageTag(row)}
+                  {getConditionTag(row)}
+                </div>
+              ),
+            },
+            {
+              key: "retentionExpiry",
+              header: intl.formatMessage({
+                id: "notebook.column.expiry",
+                defaultMessage: "Retention Expiry",
+              }),
+              render: (value, row) =>
+                row.retentionExpiry ? (
+                  <span>{row.retentionExpiry}</span>
+                ) : (
+                  <span style={{ color: "#8d8d8d" }}>-</span>
+                ),
+            },
+            {
+              key: "assignedBy",
+              header: intl.formatMessage({
+                id: "notebook.column.assignedBy",
+                defaultMessage: "Assigned By",
+              }),
+            },
+            {
+              key: "status",
+              header: intl.formatMessage({
+                id: "notebook.column.status",
+                defaultMessage: "Status",
+              }),
+            },
           ]}
         />
       </div>
@@ -939,16 +1073,13 @@ function MNTDTemporaryStoragePage({
         </div>
       )}
 
-      {/* Storage Assignment Modal */}
+      {/* Unified Storage Assignment Modal (like Pharmaceutical page) */}
       <Modal
-        open={assignStorageModalOpen}
-        onRequestClose={() => {
-          setAssignStorageModalOpen(false);
-          setSelectedWell(null);
-        }}
+        open={storageModalOpen}
+        onRequestClose={() => setStorageModalOpen(false)}
         modalHeading={intl.formatMessage({
-          id: "notebook.mntd.assignStorage.title",
-          defaultMessage: "Assign Storage Location",
+          id: "notebook.mntd.storage.modal.title",
+          defaultMessage: "Assign to Storage",
         })}
         primaryButtonText={
           isAssigning
@@ -957,169 +1088,138 @@ function MNTDTemporaryStoragePage({
                 defaultMessage: "Assigning...",
               })
             : intl.formatMessage({
-                id: "label.assign",
+                id: "notebook.mntd.storage.modal.assign",
                 defaultMessage: "Assign",
               })
         }
         secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
+          id: "common.cancel",
           defaultMessage: "Cancel",
         })}
         onRequestSubmit={handleAssignStorage}
-        onSecondarySubmit={() => {
-          setAssignStorageModalOpen(false);
-          setSelectedWell(null);
-        }}
-        size="md"
-        primaryButtonDisabled={isAssigning}
+        primaryButtonDisabled={
+          !storageSelection.box ||
+          Object.keys(wellAssignments).length === 0 ||
+          isAssigning
+        }
+        size="lg"
       >
         <p className="modal-description">
           <FormattedMessage
-            id="notebook.mntd.assignStorage.description"
-            defaultMessage="Assign {count} sample(s) to position {well} in {box}."
-            values={{
-              count: selectedSampleIds.length,
-              well: selectedWell,
-              box: storageSelection.box?.label || "selected box",
-            }}
+            id="notebook.mntd.storage.modal.description"
+            defaultMessage="Assign {count} selected samples to storage. Select a storage location, then use Auto-Populate or click wells to assign samples."
+            values={{ count: selectedSampleIds.length }}
           />
         </p>
 
         <Grid fullWidth>
-          <Column lg={16} md={8} sm={4}>
-            <div
-              style={{
-                backgroundColor: "#f4f4f4",
-                padding: "1rem",
-                borderRadius: "4px",
-                marginBottom: "1rem",
-              }}
-            >
-              <strong>
+          {/* Storage Location Selection */}
+          <Column lg={8} md={4} sm={4}>
+            <div style={{ marginBottom: "1rem" }}>
+              <h5 style={{ marginBottom: "0.5rem" }}>
+                <Location size={16} style={{ marginRight: "0.5rem" }} />
                 <FormattedMessage
-                  id="notebook.mntd.storagePath"
-                  defaultMessage="Storage Path:"
+                  id="notebook.mntd.storage.storageLocation"
+                  defaultMessage="Storage Location"
                 />
-              </strong>{" "}
-              {[
-                storageSelection.room?.label,
-                storageSelection.device?.label,
-                storageSelection.shelf?.label,
-                storageSelection.rack?.label,
-                storageSelection.box?.label,
-                selectedWell,
-              ]
-                .filter(Boolean)
-                .join(" > ")}
-            </div>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="storageType"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.storageType",
-                defaultMessage: "Storage Type",
-              })}
-              value={bulkAssignValues.storageType}
-              onChange={(e) =>
-                setBulkAssignValues((prev) => ({
-                  ...prev,
-                  storageType: e.target.value,
-                }))
-              }
-            >
-              <SelectItem value="" text="Select type..." />
-              <SelectItem value="Raw" text="Raw" />
-              <SelectItem value="Processed" text="Processed" />
-            </Select>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="assignedBy"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.assignedBy",
-                defaultMessage: "Assigned By",
-              })}
-              value={bulkAssignValues.assignedBy}
-              onChange={(e) =>
-                setBulkAssignValues((prev) => ({
-                  ...prev,
-                  assignedBy: e.target.value,
-                }))
-              }
-              placeholder="Enter staff name"
-            />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <div className="cds--form-item">
-              <label className="cds--label">
-                <FormattedMessage
-                  id="notebook.mntd.assignedDateTime"
-                  defaultMessage="Assigned Date/Time"
-                />
-              </label>
-              <input
-                type="datetime-local"
-                className="cds--text-input"
-                value={bulkAssignValues.assignedDateTime}
-                onChange={(e) =>
-                  setBulkAssignValues((prev) => ({
-                    ...prev,
-                    assignedDateTime: e.target.value,
-                  }))
-                }
+              </h5>
+              <StorageHierarchySelector
+                onSelectionChange={handleStorageSelectionChange}
+                entryId={entryId}
+                onBoxLayoutLoaded={handleBoxLayoutLoaded}
+                boxRequired={true}
+                showPath={true}
               />
             </div>
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
-            <TextArea
-              id="storageNotes"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.notes",
-                defaultMessage: "Notes",
-              })}
-              value={bulkAssignValues.notes}
-              onChange={(e) =>
-                setBulkAssignValues((prev) => ({
-                  ...prev,
-                  notes: e.target.value,
-                }))
-              }
-              placeholder="Optional notes..."
-            />
-          </Column>
+          {/* Box Layout Preview with Auto-Populate */}
+          <Column lg={8} md={4} sm={4}>
+            {storageSelection.box ? (
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  <h5>
+                    <Archive size={16} style={{ marginRight: "0.5rem" }} />
+                    <FormattedMessage
+                      id="notebook.mntd.storage.boxLayout"
+                      defaultMessage="Box Layout"
+                    />
+                  </h5>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={Automatic}
+                    onClick={handleAutoPopulate}
+                    disabled={selectedSampleIds.length === 0}
+                  >
+                    <FormattedMessage
+                      id="notebook.mntd.storage.autoPopulate"
+                      defaultMessage="Auto-Populate"
+                    />
+                  </Button>
+                </div>
 
-          <Column lg={16} md={8} sm={4}>
-            <Checkbox
-              id="temperatureMonitoringConfirmed"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.temperatureMonitoringConfirmed",
-                defaultMessage:
-                  "I confirm that monitoring of freezer temperature is done twice a day",
-              })}
-              checked={bulkAssignValues.temperatureMonitoringConfirmed}
-              onChange={(e, { checked }) =>
-                setBulkAssignValues((prev) => ({
-                  ...prev,
-                  temperatureMonitoringConfirmed: checked,
-                }))
-              }
-            />
+                <BoxLayoutViewer
+                  boxId={storageSelection.box.id}
+                  layout={getCombinedLayout()}
+                  rows={storageSelection.box.rows || 8}
+                  columns={storageSelection.box.columns || 12}
+                  onWellClick={handleWellClick}
+                />
+
+                <div
+                  style={{
+                    marginTop: "0.5rem",
+                    fontSize: "0.875rem",
+                    color: "#525252",
+                  }}
+                >
+                  <FormattedMessage
+                    id="notebook.mntd.storage.assignmentSummary"
+                    defaultMessage="{assigned} of {total} samples assigned to wells"
+                    values={{
+                      assigned: Object.keys(wellAssignments).length,
+                      total: selectedSampleIds.length,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "2rem",
+                  textAlign: "center",
+                  backgroundColor: "#f4f4f4",
+                  borderRadius: "4px",
+                }}
+              >
+                <Archive size={32} />
+                <p style={{ marginTop: "0.5rem", color: "#525252" }}>
+                  <FormattedMessage
+                    id="notebook.mntd.storage.selectBoxFirst"
+                    defaultMessage="Select a storage location to preview box layout"
+                  />
+                </p>
+              </div>
+            )}
           </Column>
         </Grid>
       </Modal>
 
-      {/* Temperature Monitoring Modal */}
+      {/* Temperature Monitoring Modal (with device type) */}
       <Modal
         open={tempMonitoringModalOpen}
         onRequestClose={() => setTempMonitoringModalOpen(false)}
         modalHeading={intl.formatMessage({
-          id: "notebook.mntd.temperatureLog.title",
-          defaultMessage: "Log Temperature Check",
+          id: "notebook.mntd.tempLog.title",
+          defaultMessage: "Log Environmental Monitoring",
         })}
         primaryButtonText={
           isLoggingTemp
@@ -1143,8 +1243,8 @@ function MNTDTemporaryStoragePage({
       >
         <p className="modal-description">
           <FormattedMessage
-            id="notebook.mntd.temperatureLog.description"
-            defaultMessage="Record temperature monitoring data for environmental compliance tracking."
+            id="notebook.mntd.tempLog.description"
+            defaultMessage="Record temperature monitoring data for MNTD laboratory environmental compliance."
           />
         </p>
 
@@ -1153,8 +1253,8 @@ function MNTDTemporaryStoragePage({
             <TextInput
               id="freezerId"
               labelText={intl.formatMessage({
-                id: "notebook.mntd.freezerId",
-                defaultMessage: "Freezer ID",
+                id: "notebook.mntd.deviceId",
+                defaultMessage: "Device/Equipment ID *",
               })}
               value={temperatureLog.freezerId}
               onChange={(e) =>
@@ -1163,7 +1263,7 @@ function MNTDTemporaryStoragePage({
                   freezerId: e.target.value,
                 }))
               }
-              placeholder="e.g., FRZ-001"
+              placeholder="e.g., FRZ-001, LN2-002"
               required
             />
           </Column>
@@ -1193,7 +1293,7 @@ function MNTDTemporaryStoragePage({
               id="temperatureValue"
               label={intl.formatMessage({
                 id: "notebook.mntd.temperatureValue",
-                defaultMessage: "Temperature Value",
+                defaultMessage: "Temperature Value *",
               })}
               value={temperatureLog.temperatureValue}
               onChange={(e, { value }) =>
@@ -1283,358 +1383,65 @@ function MNTDTemporaryStoragePage({
                   notes: e.target.value,
                 }))
               }
-              placeholder="Optional notes about the temperature check..."
+              placeholder="Optional notes about the temperature check, deviations, etc."
             />
           </Column>
         </Grid>
       </Modal>
 
-      {/* Auto-Assign Storage Modal */}
+      {/* Reassignment Confirmation Modal */}
       <Modal
-        open={autoAssignModalOpen}
-        onRequestClose={() => {
-          setAutoAssignModalOpen(false);
-          setAutoAssignModalError(null);
-        }}
+        open={confirmReassignModalOpen}
+        onRequestClose={() => setConfirmReassignModalOpen(false)}
         modalHeading={intl.formatMessage({
-          id: "notebook.mntd.autoAssign.title",
-          defaultMessage: "Auto-Assign Storage Locations",
+          id: "notebook.mntd.storage.reassignConfirm.title",
+          defaultMessage: "Confirm Reassignment",
         })}
-        primaryButtonText={
-          isAutoAssigning
-            ? intl.formatMessage({
-                id: "label.assigning",
-                defaultMessage: "Assigning...",
-              })
-            : intl.formatMessage({
-                id: "label.autoAssign",
-                defaultMessage: "Auto-Assign",
-              })
-        }
+        primaryButtonText={intl.formatMessage({
+          id: "notebook.mntd.storage.reassignConfirm.confirm",
+          defaultMessage: "Reassign",
+        })}
         secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
+          id: "common.cancel",
           defaultMessage: "Cancel",
         })}
-        onRequestSubmit={handleAutoAssign}
-        onSecondarySubmit={() => {
-          setAutoAssignModalOpen(false);
-          setAutoAssignModalError(null);
-        }}
-        size="lg"
-        primaryButtonDisabled={isAutoAssigning}
+        onRequestSubmit={handleConfirmReassignment}
+        danger
+        size="sm"
       >
-        {/* Error notification inside modal */}
-        {autoAssignModalError && (
-          <InlineNotification
-            kind="error"
-            title={autoAssignModalError}
-            onClose={() => setAutoAssignModalError(null)}
-            lowContrast
-            style={{ marginBottom: "1rem" }}
-          />
-        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <p>
+            <FormattedMessage
+              id="notebook.mntd.storage.reassignConfirm.warning"
+              defaultMessage="{count} of the selected samples already have storage assignments. Reassigning will remove them from their current locations."
+              values={{ count: samplesToReassign.length }}
+            />
+          </p>
 
-        <p className="modal-description">
-          <FormattedMessage
-            id="notebook.mntd.autoAssign.description"
-            defaultMessage="Automatically assign {count} sample(s) to the next available wells in {box}, starting from position A1."
-            values={{
-              count: selectedSampleIds.length,
-              box: storageSelection.box?.label || "selected box",
+          <div
+            style={{
+              backgroundColor: "#fff1f1",
+              border: "1px solid #da1e28",
+              borderRadius: "4px",
+              padding: "1rem",
             }}
-          />
-        </p>
-
-        <Grid fullWidth>
-          <Column lg={16} md={8} sm={4}>
-            <div
-              style={{
-                backgroundColor: "#f4f4f4",
-                padding: "1rem",
-                borderRadius: "4px",
-                marginBottom: "1rem",
-              }}
-            >
-              <strong>
-                <FormattedMessage
-                  id="notebook.mntd.storagePath"
-                  defaultMessage="Storage Path:"
-                />
-              </strong>{" "}
-              {[
-                storageSelection.room?.label,
-                storageSelection.device?.label,
-                storageSelection.shelf?.label,
-                storageSelection.rack?.label,
-                storageSelection.box?.label,
-              ]
-                .filter(Boolean)
-                .join(" > ")}
-              <div
-                style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem" }}
-              >
-                <Tag type="blue">
-                  {autoAssignPreview.availableCount} wells available
-                </Tag>
-                <Tag type="green">
-                  {autoAssignPreview.previewWells.length} will be assigned
-                </Tag>
-              </div>
-            </div>
-          </Column>
-
-          {/* Box Layout Preview */}
-          <Column lg={16} md={8} sm={4}>
-            <div style={{ marginBottom: "1rem" }}>
-              <h6 style={{ marginBottom: "0.5rem" }}>
-                <FormattedMessage
-                  id="notebook.mntd.autoAssign.preview"
-                  defaultMessage="Assignment Preview"
-                />
-              </h6>
-              <div
-                className="box-grid-container"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `auto repeat(${storageSelection.box?.columns || 12}, 1fr)`,
-                  gap: "2px",
-                  fontSize: "10px",
-                  maxWidth: "100%",
-                  overflowX: "auto",
-                }}
-              >
-                {/* Column headers */}
-                <div style={{ padding: "2px 4px" }}></div>
-                {Array.from(
-                  { length: storageSelection.box?.columns || 12 },
-                  (_, i) => (
-                    <div
-                      key={`col-${i}`}
-                      style={{
-                        textAlign: "center",
-                        fontWeight: "bold",
-                        padding: "2px",
-                      }}
-                    >
-                      {i + 1}
-                    </div>
-                  ),
-                )}
-
-                {/* Grid rows */}
-                {Array.from(
-                  { length: storageSelection.box?.rows || 8 },
-                  (_, rowIdx) => {
-                    const rowLetter = String.fromCharCode(
-                      "A".charCodeAt(0) + rowIdx,
-                    );
-                    return (
-                      <React.Fragment key={`row-${rowIdx}`}>
-                        <div
-                          style={{
-                            fontWeight: "bold",
-                            padding: "2px 4px",
-                            display: "flex",
-                            alignItems: "center",
-                          }}
-                        >
-                          {rowLetter}
-                        </div>
-                        {Array.from(
-                          { length: storageSelection.box?.columns || 12 },
-                          (_, colIdx) => {
-                            const wellCoord = `${rowLetter}${colIdx + 1}`;
-                            const isOccupied = boxLayout[wellCoord];
-                            const willBeAssigned =
-                              autoAssignPreview.previewWells.includes(
-                                wellCoord,
-                              );
-
-                            let bgColor = "#e0e0e0"; // Empty
-                            let borderColor = "#c0c0c0";
-                            if (isOccupied) {
-                              bgColor = "#a8a8a8"; // Already occupied
-                              borderColor = "#808080";
-                            } else if (willBeAssigned) {
-                              bgColor = "#42be65"; // Will be assigned (green)
-                              borderColor = "#24a148";
-                            }
-
-                            return (
-                              <div
-                                key={wellCoord}
-                                title={
-                                  isOccupied
-                                    ? `${wellCoord} - Occupied`
-                                    : willBeAssigned
-                                      ? `${wellCoord} - Will be assigned`
-                                      : `${wellCoord} - Empty`
-                                }
-                                style={{
-                                  width: "20px",
-                                  height: "20px",
-                                  borderRadius: "50%",
-                                  backgroundColor: bgColor,
-                                  border: `1px solid ${borderColor}`,
-                                  margin: "auto",
-                                }}
-                              />
-                            );
-                          },
-                        )}
-                      </React.Fragment>
-                    );
-                  },
-                )}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: "1rem",
-                  marginTop: "0.5rem",
-                  fontSize: "12px",
-                }}
-              >
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "4px" }}
-                >
-                  <div
-                    style={{
-                      width: "12px",
-                      height: "12px",
-                      borderRadius: "50%",
-                      backgroundColor: "#42be65",
-                    }}
-                  />
-                  <span>Will be assigned</span>
-                </div>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "4px" }}
-                >
-                  <div
-                    style={{
-                      width: "12px",
-                      height: "12px",
-                      borderRadius: "50%",
-                      backgroundColor: "#a8a8a8",
-                    }}
-                  />
-                  <span>Already occupied</span>
-                </div>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "4px" }}
-                >
-                  <div
-                    style={{
-                      width: "12px",
-                      height: "12px",
-                      borderRadius: "50%",
-                      backgroundColor: "#e0e0e0",
-                    }}
-                  />
-                  <span>Empty</span>
-                </div>
-              </div>
-            </div>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="autoAssignStorageType"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.storageType",
-                defaultMessage: "Storage Type",
-              })}
-              value={autoAssignValues.storageType}
-              onChange={(e) =>
-                setAutoAssignValues((prev) => ({
-                  ...prev,
-                  storageType: e.target.value,
-                }))
-              }
-            >
-              <SelectItem value="" text="Select type..." />
-              <SelectItem value="Raw" text="Raw" />
-              <SelectItem value="Processed" text="Processed" />
-            </Select>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="autoAssignAssignedBy"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.assignedBy",
-                defaultMessage: "Assigned By",
-              })}
-              value={autoAssignValues.assignedBy}
-              onChange={(e) =>
-                setAutoAssignValues((prev) => ({
-                  ...prev,
-                  assignedBy: e.target.value,
-                }))
-              }
-              placeholder="Enter staff name"
-            />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <div className="cds--form-item">
-              <label className="cds--label">
-                <FormattedMessage
-                  id="notebook.mntd.assignedDateTime"
-                  defaultMessage="Assigned Date/Time"
-                />
-              </label>
-              <input
-                type="datetime-local"
-                className="cds--text-input"
-                value={autoAssignValues.assignedDateTime}
-                onChange={(e) =>
-                  setAutoAssignValues((prev) => ({
-                    ...prev,
-                    assignedDateTime: e.target.value,
-                  }))
-                }
+          >
+            <strong style={{ color: "#da1e28" }}>
+              <FormattedMessage
+                id="notebook.mntd.storage.reassignConfirm.currentLocations"
+                defaultMessage="Current storage locations:"
               />
-            </div>
-          </Column>
-
-          <Column lg={16} md={8} sm={4}>
-            <TextArea
-              id="autoAssignNotes"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.notes",
-                defaultMessage: "Notes",
-              })}
-              value={autoAssignValues.notes}
-              onChange={(e) =>
-                setAutoAssignValues((prev) => ({
-                  ...prev,
-                  notes: e.target.value,
-                }))
-              }
-              placeholder="Optional notes..."
-            />
-          </Column>
-
-          <Column lg={16} md={8} sm={4}>
-            <Checkbox
-              id="autoAssignTemperatureMonitoringConfirmed"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.temperatureMonitoringConfirmed",
-                defaultMessage:
-                  "I confirm that monitoring of freezer temperature is done twice a day",
-              })}
-              checked={autoAssignValues.temperatureMonitoringConfirmed}
-              onChange={(e, { checked }) =>
-                setAutoAssignValues((prev) => ({
-                  ...prev,
-                  temperatureMonitoringConfirmed: checked,
-                }))
-              }
-            />
-          </Column>
-        </Grid>
+            </strong>
+            <ul style={{ marginTop: "0.5rem", paddingLeft: "1.5rem" }}>
+              {samplesToReassign.map((sample) => (
+                <li key={sample.id} style={{ fontSize: "0.875rem" }}>
+                  <strong>{sample.externalId}</strong>: {sample.storageWell}
+                  {sample.storageCondition && ` (${sample.storageCondition})`}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </Modal>
     </div>
   );

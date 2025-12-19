@@ -16,8 +16,12 @@ import org.openelisglobal.notebook.service.MNTDManifestImportService.ParseError;
 import org.openelisglobal.notebook.service.MNTDManifestImportService.ParsedManifest;
 import org.openelisglobal.notebook.service.NotebookEntryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -212,6 +216,46 @@ public class MNTDManifestImportController extends BaseRestController {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Failed to read file: " + e.getMessage());
             return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
+     * Get valid MNTD sample types. GET /rest/notebook/mntd/sample-types
+     *
+     * @return list of valid sample types that are configured in the system
+     */
+    @GetMapping(value = "/sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getValidSampleTypes() {
+        List<Map<String, String>> sampleTypes = mntdManifestImportService.getValidMntdSampleTypes();
+        Map<String, Object> response = new HashMap<>();
+        response.put("sampleTypes", sampleTypes);
+        response.put("total", sampleTypes.size());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Download MNTD manifest CSV template. GET
+     * /rest/notebook/mntd/manifest-template
+     *
+     * @return CSV template file for MNTD sample import
+     */
+    @GetMapping(value = "/manifest-template", produces = "text/csv")
+    @ResponseBody
+    public ResponseEntity<Resource> downloadManifestTemplate() {
+        try {
+            Resource resource = new ClassPathResource("templates/mntd-sample-import-template.csv");
+            if (!resource.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mntd-sample-import-template.csv");
+            headers.add(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8");
+
+            return ResponseEntity.ok().headers(headers).body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
         }
     }
 

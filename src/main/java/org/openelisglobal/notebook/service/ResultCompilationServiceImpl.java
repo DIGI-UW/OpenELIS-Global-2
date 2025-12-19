@@ -194,7 +194,7 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
     @Transactional(readOnly = true)
     public byte[] compileToExcel(Integer notebookId, ExportOptions options) {
         LogEvent.logInfo(this.getClass().getName(), "compileToExcel",
-                "Starting Excel export for notebook ID: " + notebookId);
+                "Starting comprehensive Excel export for notebook ID: " + notebookId);
 
         NoteBook notebook = noteBookService.get(notebookId);
         if (notebook == null) {
@@ -208,24 +208,12 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         LogEvent.logInfo(this.getClass().getName(), "compileToExcel",
                 "Found " + samples.size() + " samples for notebook " + notebookId);
 
-        // Collect all unique result column keys from all samples' data
-        java.util.Set<String> resultColumnKeys = new java.util.LinkedHashSet<>();
-        for (NotebookPageSample pageSample : samples) {
-            Map<String, Object> data = pageSample.getData();
-            if (data != null) {
-                for (String key : data.keySet()) {
-                    // Skip internal keys (validation fields)
-                    if (!key.equals(VALIDATION_STATUS_KEY) && !key.equals(VALIDATION_REASON_KEY)
-                            && !key.equals(VALIDATED_BY_KEY) && !key.equals(VALIDATED_AT_KEY)) {
-                        resultColumnKeys.add(key);
-                    }
-                }
-            }
-        }
-        List<String> dynamicColumns = new ArrayList<>(resultColumnKeys);
-
         try (Workbook workbook = new XSSFWorkbook()) {
-            Sheet sheet = workbook.createSheet(options.title() != null ? options.title() : "Results");
+            // Create Summary sheet first
+            createSummarySheet(workbook, notebook, samples);
+
+            // Create main Results sheet
+            Sheet sheet = workbook.createSheet(options.title() != null ? options.title() : "Sample Results");
 
             // Create header style
             CellStyle headerStyle = workbook.createCellStyle();
@@ -248,20 +236,11 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
             inconclusiveStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
             inconclusiveStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-            // Build header row with fixed columns + dynamic result columns
-            Row headerRow = sheet.createRow(0);
-            List<String> allHeaders = new ArrayList<>();
-            allHeaders.add("Sample ID");
-            allHeaders.add("External ID");
-            allHeaders.add("Sample Type");
-            allHeaders.add("Status");
-            allHeaders.add("Validation Status");
-            allHeaders.add("Reason");
-            // Add dynamic result columns
-            allHeaders.addAll(dynamicColumns);
-            allHeaders.add("Completed At");
-            allHeaders.add("Completed By");
+            // Define comprehensive headers in logical order
+            List<String> allHeaders = getComprehensiveHeaders();
 
+            // Build header row
+            Row headerRow = sheet.createRow(0);
             for (int i = 0; i < allHeaders.size(); i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(allHeaders.get(i));
@@ -283,11 +262,15 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                     }
 
                     Row row = sheet.createRow(rowNum++);
-                    int colIdx = 0;
+                    Map<String, Object> data = pageSample.getData() != null ? pageSample.getData() : new HashMap<>();
 
-                    // Get sample details - handle potential null or missing samples
+                    // Get sample details
                     String externalId = "";
                     String sampleTypeDesc = "";
+                    String accessionNumber = "";
+                    String collectionDate = "";
+                    String patientName = "";
+                    String patientId = "";
                     try {
                         SampleItem sampleItem = sampleItemService.get(pageSample.getSampleItemId());
                         if (sampleItem != null) {
@@ -295,24 +278,34 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                             if (sampleItem.getTypeOfSample() != null) {
                                 sampleTypeDesc = sampleItem.getTypeOfSample().getDescription();
                             }
+                            if (sampleItem.getSample() != null) {
+                                accessionNumber = sampleItem.getSample().getAccessionNumber() != null
+                                        ? sampleItem.getSample().getAccessionNumber()
+                                        : "";
+                                if (sampleItem.getSample().getCollectionDate() != null) {
+                                    collectionDate = sampleItem.getSample().getCollectionDate().toString();
+                                }
+                            }
                         }
                     } catch (Exception e) {
-                        // Sample not found - use empty strings
                         LogEvent.logDebug(this.getClass().getName(), "compileToExcel",
                                 "Sample not found: " + pageSample.getSampleItemId());
                     }
 
+                    // Populate row with comprehensive data
+                    int colIdx = 0;
                     row.createCell(colIdx++)
                             .setCellValue(pageSample.getSampleItemId() != null ? pageSample.getSampleItemId() : "");
                     row.createCell(colIdx++).setCellValue(externalId);
+                    row.createCell(colIdx++).setCellValue(accessionNumber);
                     row.createCell(colIdx++).setCellValue(sampleTypeDesc);
+                    row.createCell(colIdx++).setCellValue(collectionDate);
+
+                    // Status and Validation
                     row.createCell(colIdx++)
                             .setCellValue(pageSample.getStatus() != null ? pageSample.getStatus().name() : "");
-
                     Cell statusCell = row.createCell(colIdx++);
                     statusCell.setCellValue(validationStatus.getDisplayName());
-
-                    // Apply color based on status
                     switch (validationStatus) {
                     case VALID:
                         statusCell.setCellStyle(validStyle);
@@ -326,38 +319,77 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                     default:
                         break;
                     }
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, VALIDATION_REASON_KEY));
 
-                    // Reason - safely access nested map
-                    String reason = "";
-                    Map<String, Object> data = pageSample.getData();
-                    try {
-                        if (data != null && data.get(VALIDATION_REASON_KEY) != null) {
-                            reason = data.get(VALIDATION_REASON_KEY).toString();
-                        }
-                    } catch (Exception e) {
-                        // Ignore JSONB access errors
-                    }
-                    row.createCell(colIdx++).setCellValue(reason);
+                    // Test Results
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "testResult"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "ctValue"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "concentration"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "absorbance"));
 
-                    // Add dynamic result columns values
-                    for (String columnKey : dynamicColumns) {
-                        String value = "";
-                        try {
-                            if (data != null && data.get(columnKey) != null) {
-                                Object val = data.get(columnKey);
-                                value = val.toString();
-                            }
-                        } catch (Exception e) {
-                            // Ignore errors accessing data fields
-                        }
-                        row.createCell(colIdx++).setCellValue(value);
-                    }
+                    // Test Assignment Info
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "experimentCategory"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "subcategory"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "specificAssay"));
 
-                    // Completed info - avoid lazy loading issues
+                    // Test Execution Info
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "runId"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "runCompleted"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "runIssues"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "executionDate"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "executionTime"));
+
+                    // Instrument Info
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "instrument"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "instrumentId"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "machineType"));
+
+                    // Reagent Info
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "kitLot"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "selectedReagents"));
+
+                    // Machine Scheduling
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "scheduledDate"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "timeSlot"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "startTime"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "endTime"));
+
+                    // Operator Info
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "operator"));
+
+                    // Sample Processing Info
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "extractionMethod"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "extractionKit"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "elutionVolume"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "inputVolume"));
+
+                    // QC Info
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "qcStatus"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "qcConcentration"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "qcPurity260280"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "qcPurity260230"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "qcNotes"));
+
+                    // Storage Info
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "storageLocation"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "storageBox"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "storageWell"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "storageCondition"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "storageTemperature"));
+
+                    // Aliquoting Info
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "aliquotCount"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "aliquotVolume"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "parentSampleId"));
+
+                    // Notes
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "notes"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "executionNotes"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "assignmentNotes"));
+
+                    // Completed info
                     Timestamp completedAt = pageSample.getCompletedAt();
                     row.createCell(colIdx++).setCellValue(completedAt != null ? completedAt.toString() : "");
-
-                    // For completedBy, we need to handle potential lazy loading exception
                     String completedByName = "";
                     try {
                         SystemUser completedBy = pageSample.getCompletedBy();
@@ -367,21 +399,23 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                             completedByName = (firstName + " " + lastName).trim();
                         }
                     } catch (Exception e) {
-                        // Lazy loading failed - leave empty
                         LogEvent.logDebug(this.getClass().getName(), "compileToExcel",
                                 "Could not load completedBy for sample: " + pageSample.getSampleItemId());
                     }
                     row.createCell(colIdx++).setCellValue(completedByName);
+
                 } catch (Exception e) {
                     LogEvent.logError(this.getClass().getName(), "compileToExcel",
                             "Error processing sample " + pageSample.getSampleItemId() + ": " + e.getMessage());
-                    // Continue to next sample
                 }
             }
 
-            // Auto-size columns
+            // Auto-size columns (limit to prevent very wide columns)
             for (int i = 0; i < allHeaders.size(); i++) {
                 sheet.autoSizeColumn(i);
+                if (sheet.getColumnWidth(i) > 10000) {
+                    sheet.setColumnWidth(i, 10000);
+                }
             }
 
             // Write to byte array
@@ -396,11 +430,263 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         }
     }
 
+    /**
+     * Get comprehensive headers for the export in logical order.
+     */
+    private List<String> getComprehensiveHeaders() {
+        List<String> headers = new ArrayList<>();
+
+        // Sample Identification
+        headers.add("Sample ID");
+        headers.add("External ID");
+        headers.add("Accession Number");
+        headers.add("Sample Type");
+        headers.add("Collection Date");
+
+        // Status and Validation
+        headers.add("Page Status");
+        headers.add("Validation Status");
+        headers.add("Validation Reason");
+
+        // Test Results
+        headers.add("Test Result");
+        headers.add("CT Value");
+        headers.add("Concentration");
+        headers.add("Absorbance");
+
+        // Test Assignment
+        headers.add("Experiment Category");
+        headers.add("Subcategory");
+        headers.add("Specific Assay");
+
+        // Test Execution
+        headers.add("Run ID");
+        headers.add("Run Completed");
+        headers.add("Run Issues");
+        headers.add("Execution Date");
+        headers.add("Execution Time");
+
+        // Instrument
+        headers.add("Instrument");
+        headers.add("Instrument ID");
+        headers.add("Machine Type");
+
+        // Reagents
+        headers.add("Kit Lot Number");
+        headers.add("Selected Reagents");
+
+        // Machine Scheduling
+        headers.add("Scheduled Date");
+        headers.add("Time Slot");
+        headers.add("Start Time");
+        headers.add("End Time");
+
+        // Operator
+        headers.add("Operator");
+
+        // Sample Processing
+        headers.add("Extraction Method");
+        headers.add("Extraction Kit");
+        headers.add("Elution Volume");
+        headers.add("Input Volume");
+
+        // QC
+        headers.add("QC Status");
+        headers.add("QC Concentration");
+        headers.add("QC Purity 260/280");
+        headers.add("QC Purity 260/230");
+        headers.add("QC Notes");
+
+        // Storage
+        headers.add("Storage Location");
+        headers.add("Storage Box");
+        headers.add("Storage Well");
+        headers.add("Storage Condition");
+        headers.add("Storage Temperature");
+
+        // Aliquoting
+        headers.add("Aliquot Count");
+        headers.add("Aliquot Volume");
+        headers.add("Parent Sample ID");
+
+        // Notes
+        headers.add("Notes");
+        headers.add("Execution Notes");
+        headers.add("Assignment Notes");
+
+        // Completion
+        headers.add("Completed At");
+        headers.add("Completed By");
+
+        return headers;
+    }
+
+    /**
+     * Create a summary sheet with notebook metadata and statistics.
+     */
+    private void createSummarySheet(Workbook workbook, NoteBook notebook, List<NotebookPageSample> samples) {
+        Sheet summarySheet = workbook.createSheet("Summary");
+
+        // Create styles
+        CellStyle titleStyle = workbook.createCellStyle();
+        Font titleFont = workbook.createFont();
+        titleFont.setBold(true);
+        titleFont.setFontHeightInPoints((short) 14);
+        titleStyle.setFont(titleFont);
+
+        CellStyle headerStyle = workbook.createCellStyle();
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerStyle.setFont(headerFont);
+        headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        int rowNum = 0;
+
+        // Title
+        Row titleRow = summarySheet.createRow(rowNum++);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("MNTD Notebook Export Report");
+        titleCell.setCellStyle(titleStyle);
+
+        rowNum++; // Empty row
+
+        // Notebook Info
+        Row notebookHeaderRow = summarySheet.createRow(rowNum++);
+        Cell nbHeaderCell = notebookHeaderRow.createCell(0);
+        nbHeaderCell.setCellValue("Notebook Information");
+        nbHeaderCell.setCellStyle(headerStyle);
+
+        addSummaryRow(summarySheet, rowNum++, "Notebook ID:", String.valueOf(notebook.getId()));
+        addSummaryRow(summarySheet, rowNum++, "Notebook Title:",
+                notebook.getTitle() != null ? notebook.getTitle() : "");
+        addSummaryRow(summarySheet, rowNum++, "Objective:",
+                notebook.getObjective() != null ? notebook.getObjective() : "");
+        addSummaryRow(summarySheet, rowNum++, "Export Date:",
+                LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+        rowNum++; // Empty row
+
+        // Sample Statistics
+        Row statsHeaderRow = summarySheet.createRow(rowNum++);
+        Cell statsHeaderCell = statsHeaderRow.createCell(0);
+        statsHeaderCell.setCellValue("Sample Statistics");
+        statsHeaderCell.setCellStyle(headerStyle);
+
+        // Count validation statuses
+        long valid = 0, invalid = 0, inconclusive = 0, pending = 0;
+        for (NotebookPageSample sample : samples) {
+            ValidationStatus status = getValidationStatus(sample);
+            switch (status) {
+            case VALID:
+                valid++;
+                break;
+            case INVALID:
+                invalid++;
+                break;
+            case INCONCLUSIVE:
+                inconclusive++;
+                break;
+            default:
+                pending++;
+            }
+        }
+
+        addSummaryRow(summarySheet, rowNum++, "Total Samples:", String.valueOf(samples.size()));
+        addSummaryRow(summarySheet, rowNum++, "Valid Samples:", String.valueOf(valid));
+        addSummaryRow(summarySheet, rowNum++, "Invalid Samples:", String.valueOf(invalid));
+        addSummaryRow(summarySheet, rowNum++, "Inconclusive Samples:", String.valueOf(inconclusive));
+        addSummaryRow(summarySheet, rowNum++, "Pending Validation:", String.valueOf(pending));
+
+        // Collect unique instruments and reagents
+        java.util.Set<String> instruments = new java.util.HashSet<>();
+        java.util.Set<String> reagents = new java.util.HashSet<>();
+        java.util.Set<String> assays = new java.util.HashSet<>();
+
+        for (NotebookPageSample sample : samples) {
+            Map<String, Object> data = sample.getData();
+            if (data != null) {
+                String instrument = getStringFromData(data, "instrument");
+                if (!instrument.isEmpty()) {
+                    instruments.add(instrument);
+                }
+                String kitLot = getStringFromData(data, "kitLot");
+                if (!kitLot.isEmpty()) {
+                    reagents.add(kitLot);
+                }
+                String assay = getStringFromData(data, "specificAssay");
+                if (!assay.isEmpty()) {
+                    assays.add(assay);
+                }
+            }
+        }
+
+        rowNum++; // Empty row
+
+        // Instruments Used
+        Row instrumentsHeaderRow = summarySheet.createRow(rowNum++);
+        Cell instrumentsHeaderCell = instrumentsHeaderRow.createCell(0);
+        instrumentsHeaderCell.setCellValue("Instruments Used");
+        instrumentsHeaderCell.setCellStyle(headerStyle);
+        addSummaryRow(summarySheet, rowNum++, "Count:", String.valueOf(instruments.size()));
+        if (!instruments.isEmpty()) {
+            addSummaryRow(summarySheet, rowNum++, "List:", String.join(", ", instruments));
+        }
+
+        rowNum++; // Empty row
+
+        // Reagents Used
+        Row reagentsHeaderRow = summarySheet.createRow(rowNum++);
+        Cell reagentsHeaderCell = reagentsHeaderRow.createCell(0);
+        reagentsHeaderCell.setCellValue("Reagent Lots Used");
+        reagentsHeaderCell.setCellStyle(headerStyle);
+        addSummaryRow(summarySheet, rowNum++, "Count:", String.valueOf(reagents.size()));
+        if (!reagents.isEmpty()) {
+            addSummaryRow(summarySheet, rowNum++, "List:", String.join(", ", reagents));
+        }
+
+        rowNum++; // Empty row
+
+        // Assays Performed
+        Row assaysHeaderRow = summarySheet.createRow(rowNum++);
+        Cell assaysHeaderCell = assaysHeaderRow.createCell(0);
+        assaysHeaderCell.setCellValue("Assays Performed");
+        assaysHeaderCell.setCellStyle(headerStyle);
+        addSummaryRow(summarySheet, rowNum++, "Count:", String.valueOf(assays.size()));
+        if (!assays.isEmpty()) {
+            addSummaryRow(summarySheet, rowNum++, "List:", String.join(", ", assays));
+        }
+
+        // Auto-size columns
+        summarySheet.autoSizeColumn(0);
+        summarySheet.autoSizeColumn(1);
+    }
+
+    private void addSummaryRow(Sheet sheet, int rowNum, String label, String value) {
+        Row row = sheet.createRow(rowNum);
+        row.createCell(0).setCellValue(label);
+        row.createCell(1).setCellValue(value);
+    }
+
+    /**
+     * Safely get a string value from the data map.
+     */
+    private String getStringFromData(Map<String, Object> data, String key) {
+        if (data == null || data.get(key) == null) {
+            return "";
+        }
+        Object val = data.get(key);
+        if (val instanceof List) {
+            return String.join(", ", ((List<?>) val).stream().map(Object::toString).toList());
+        }
+        return val.toString();
+    }
+
     @Override
     @Transactional(readOnly = true)
     public byte[] compileToCsv(Integer notebookId, ExportOptions options) {
         LogEvent.logInfo(this.getClass().getName(), "compileToCsv",
-                "Starting CSV export for notebook ID: " + notebookId);
+                "Starting comprehensive CSV export for notebook ID: " + notebookId);
 
         NoteBook notebook = noteBookService.get(notebookId);
         if (notebook == null) {
@@ -411,36 +697,10 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         LogEvent.logInfo(this.getClass().getName(), "compileToCsv",
                 "Found " + samples.size() + " samples for notebook " + notebookId);
 
-        // Collect all unique result column keys from all samples' data
-        java.util.Set<String> resultColumnKeys = new java.util.LinkedHashSet<>();
-        for (NotebookPageSample pageSample : samples) {
-            Map<String, Object> data = pageSample.getData();
-            if (data != null) {
-                for (String key : data.keySet()) {
-                    // Skip internal keys (validation fields)
-                    if (!key.equals(VALIDATION_STATUS_KEY) && !key.equals(VALIDATION_REASON_KEY)
-                            && !key.equals(VALIDATED_BY_KEY) && !key.equals(VALIDATED_AT_KEY)) {
-                        resultColumnKeys.add(key);
-                    }
-                }
-            }
-        }
-        List<String> dynamicColumns = new ArrayList<>(resultColumnKeys);
-
         StringBuilder csv = new StringBuilder();
 
-        // Build header with fixed columns + dynamic result columns
-        List<String> allHeaders = new ArrayList<>();
-        allHeaders.add("Sample ID");
-        allHeaders.add("External ID");
-        allHeaders.add("Sample Type");
-        allHeaders.add("Status");
-        allHeaders.add("Validation Status");
-        allHeaders.add("Reason");
-        allHeaders.addAll(dynamicColumns);
-        allHeaders.add("Completed At");
-        allHeaders.add("Completed By");
-
+        // Use the same comprehensive headers as Excel
+        List<String> allHeaders = getComprehensiveHeaders();
         csv.append(String.join(",", allHeaders)).append("\n");
 
         // Data rows
@@ -456,9 +716,13 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                     continue;
                 }
 
+                Map<String, Object> data = pageSample.getData() != null ? pageSample.getData() : new HashMap<>();
+
                 // Get sample details
                 String externalId = "";
                 String sampleTypeDesc = "";
+                String accessionNumber = "";
+                String collectionDate = "";
                 try {
                     SampleItem sampleItem = sampleItemService.get(pageSample.getSampleItemId());
                     if (sampleItem != null) {
@@ -466,48 +730,102 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                         if (sampleItem.getTypeOfSample() != null) {
                             sampleTypeDesc = sampleItem.getTypeOfSample().getDescription();
                         }
+                        if (sampleItem.getSample() != null) {
+                            accessionNumber = sampleItem.getSample().getAccessionNumber() != null
+                                    ? sampleItem.getSample().getAccessionNumber()
+                                    : "";
+                            if (sampleItem.getSample().getCollectionDate() != null) {
+                                collectionDate = sampleItem.getSample().getCollectionDate().toString();
+                            }
+                        }
                     }
                 } catch (Exception e) {
                     // Sample not found - use empty strings
                 }
 
-                csv.append(escapeCsv(pageSample.getSampleItemId() != null ? pageSample.getSampleItemId() : ""))
-                        .append(",");
-                csv.append(escapeCsv(externalId)).append(",");
-                csv.append(escapeCsv(sampleTypeDesc)).append(",");
-                csv.append(escapeCsv(pageSample.getStatus() != null ? pageSample.getStatus().name() : "")).append(",");
-                csv.append(escapeCsv(validationStatus.getDisplayName())).append(",");
+                List<String> rowValues = new ArrayList<>();
 
-                // Reason - safely access nested map
-                String reason = "";
-                Map<String, Object> data = pageSample.getData();
-                try {
-                    if (data != null && data.get(VALIDATION_REASON_KEY) != null) {
-                        reason = data.get(VALIDATION_REASON_KEY).toString();
-                    }
-                } catch (Exception e) {
-                    // Ignore JSONB access errors
-                }
-                csv.append(escapeCsv(reason)).append(",");
+                // Sample Identification
+                rowValues.add(escapeCsv(pageSample.getSampleItemId() != null ? pageSample.getSampleItemId() : ""));
+                rowValues.add(escapeCsv(externalId));
+                rowValues.add(escapeCsv(accessionNumber));
+                rowValues.add(escapeCsv(sampleTypeDesc));
+                rowValues.add(escapeCsv(collectionDate));
 
-                // Add dynamic result columns values
-                for (String columnKey : dynamicColumns) {
-                    String value = "";
-                    try {
-                        if (data != null && data.get(columnKey) != null) {
-                            Object val = data.get(columnKey);
-                            value = val.toString();
-                        }
-                    } catch (Exception e) {
-                        // Ignore errors accessing data fields
-                    }
-                    csv.append(escapeCsv(value)).append(",");
-                }
+                // Status and Validation
+                rowValues.add(escapeCsv(pageSample.getStatus() != null ? pageSample.getStatus().name() : ""));
+                rowValues.add(escapeCsv(validationStatus.getDisplayName()));
+                rowValues.add(escapeCsv(getStringFromData(data, VALIDATION_REASON_KEY)));
 
-                csv.append(escapeCsv(pageSample.getCompletedAt() != null ? pageSample.getCompletedAt().toString() : ""))
-                        .append(",");
+                // Test Results
+                rowValues.add(escapeCsv(getStringFromData(data, "testResult")));
+                rowValues.add(escapeCsv(getStringFromData(data, "ctValue")));
+                rowValues.add(escapeCsv(getStringFromData(data, "concentration")));
+                rowValues.add(escapeCsv(getStringFromData(data, "absorbance")));
 
-                // Completed by - handle lazy loading
+                // Test Assignment
+                rowValues.add(escapeCsv(getStringFromData(data, "experimentCategory")));
+                rowValues.add(escapeCsv(getStringFromData(data, "subcategory")));
+                rowValues.add(escapeCsv(getStringFromData(data, "specificAssay")));
+
+                // Test Execution
+                rowValues.add(escapeCsv(getStringFromData(data, "runId")));
+                rowValues.add(escapeCsv(getStringFromData(data, "runCompleted")));
+                rowValues.add(escapeCsv(getStringFromData(data, "runIssues")));
+                rowValues.add(escapeCsv(getStringFromData(data, "executionDate")));
+                rowValues.add(escapeCsv(getStringFromData(data, "executionTime")));
+
+                // Instrument
+                rowValues.add(escapeCsv(getStringFromData(data, "instrument")));
+                rowValues.add(escapeCsv(getStringFromData(data, "instrumentId")));
+                rowValues.add(escapeCsv(getStringFromData(data, "machineType")));
+
+                // Reagents
+                rowValues.add(escapeCsv(getStringFromData(data, "kitLot")));
+                rowValues.add(escapeCsv(getStringFromData(data, "selectedReagents")));
+
+                // Machine Scheduling
+                rowValues.add(escapeCsv(getStringFromData(data, "scheduledDate")));
+                rowValues.add(escapeCsv(getStringFromData(data, "timeSlot")));
+                rowValues.add(escapeCsv(getStringFromData(data, "startTime")));
+                rowValues.add(escapeCsv(getStringFromData(data, "endTime")));
+
+                // Operator
+                rowValues.add(escapeCsv(getStringFromData(data, "operator")));
+
+                // Sample Processing
+                rowValues.add(escapeCsv(getStringFromData(data, "extractionMethod")));
+                rowValues.add(escapeCsv(getStringFromData(data, "extractionKit")));
+                rowValues.add(escapeCsv(getStringFromData(data, "elutionVolume")));
+                rowValues.add(escapeCsv(getStringFromData(data, "inputVolume")));
+
+                // QC
+                rowValues.add(escapeCsv(getStringFromData(data, "qcStatus")));
+                rowValues.add(escapeCsv(getStringFromData(data, "qcConcentration")));
+                rowValues.add(escapeCsv(getStringFromData(data, "qcPurity260280")));
+                rowValues.add(escapeCsv(getStringFromData(data, "qcPurity260230")));
+                rowValues.add(escapeCsv(getStringFromData(data, "qcNotes")));
+
+                // Storage
+                rowValues.add(escapeCsv(getStringFromData(data, "storageLocation")));
+                rowValues.add(escapeCsv(getStringFromData(data, "storageBox")));
+                rowValues.add(escapeCsv(getStringFromData(data, "storageWell")));
+                rowValues.add(escapeCsv(getStringFromData(data, "storageCondition")));
+                rowValues.add(escapeCsv(getStringFromData(data, "storageTemperature")));
+
+                // Aliquoting
+                rowValues.add(escapeCsv(getStringFromData(data, "aliquotCount")));
+                rowValues.add(escapeCsv(getStringFromData(data, "aliquotVolume")));
+                rowValues.add(escapeCsv(getStringFromData(data, "parentSampleId")));
+
+                // Notes
+                rowValues.add(escapeCsv(getStringFromData(data, "notes")));
+                rowValues.add(escapeCsv(getStringFromData(data, "executionNotes")));
+                rowValues.add(escapeCsv(getStringFromData(data, "assignmentNotes")));
+
+                // Completion
+                rowValues.add(
+                        escapeCsv(pageSample.getCompletedAt() != null ? pageSample.getCompletedAt().toString() : ""));
                 String completedByName = "";
                 try {
                     SystemUser completedBy = pageSample.getCompletedBy();
@@ -519,9 +837,10 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                 } catch (Exception e) {
                     // Lazy loading failed
                 }
-                csv.append(escapeCsv(completedByName));
+                rowValues.add(escapeCsv(completedByName));
 
-                csv.append("\n");
+                csv.append(String.join(",", rowValues)).append("\n");
+
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getName(), "compileToCsv",
                         "Error processing sample " + pageSample.getSampleItemId() + ": " + e.getMessage());

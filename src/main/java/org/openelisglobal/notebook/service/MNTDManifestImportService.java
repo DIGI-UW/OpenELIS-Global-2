@@ -77,4 +77,12 @@ public interface MNTDManifestImportService {
      * @return the formatted external ID
      */
     String generateExternalId(String sampleId, int sequenceNumber);
+
+    /**
+     * Get valid sample types for the MNTD laboratory. Returns sample types that are
+     * both in the valid MNTD list AND exist in the database.
+     *
+     * @return List of maps containing sample type info (id, description)
+     */
+    java.util.List<java.util.Map<String, String>> getValidMntdSampleTypes();
 }

@@ -175,8 +175,8 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Get content change history for a notebook page. GET
      * /notebook/bulk/page/{pageId}/content/history
      *
-     * Returns the audit trail of all content changes (including QC parameters)
-     * for the specified page.
+     * Returns the audit trail of all content changes (including QC parameters) for
+     * the specified page.
      *
      * @param pageId the notebook page ID
      * @return list of history records with timestamps, users, and content changes
@@ -945,9 +945,11 @@ public class NotebookBulkOperationController extends BaseRestController {
      *
      * Assigns samples to a specific storage location (box and well position). This
      * endpoint now persists to the actual storage system (SampleStorageAssignment).
+     * Supports individual well assignments via wellAssignments map.
      *
      * @param pageId      the notebook page ID
-     * @param request     contains sampleIds, data, boxId, and wellCoordinate
+     * @param request     contains sampleIds, data, boxId, wellCoordinate or
+     *                    wellAssignments
      * @param httpRequest for getting user session
      * @return result with updated count
      */
@@ -963,28 +965,42 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.status(401).body(error);
         }
 
-        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "No sample IDs provided");
-            return ResponseEntity.badRequest().body(error);
-        }
-
         if (request.getBoxId() == null) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Box ID is required for storage assignment");
             return ResponseEntity.badRequest().body(error);
         }
 
-        // Use the new storage assignment service method that persists to
-        // SampleStorageAssignment
-        Map<String, Object> result = bulkOperationService.assignSamplesToStorage(pageId, request.getSampleIds(),
-                request.getBoxId(), request.getWellCoordinate(), request.getData(), sysUserId);
+        // Check if we have wellAssignments (individual sample-to-well mapping)
+        Map<String, String> wellAssignments = request.getWellAssignments();
+        Map<String, Object> result;
+
+        if (wellAssignments != null && !wellAssignments.isEmpty()) {
+            // Use individual well assignments - each sample gets its own well coordinate
+            List<Integer> sampleIds = wellAssignments.keySet().stream().map(Integer::parseInt)
+                    .collect(java.util.stream.Collectors.toList());
+
+            result = bulkOperationService.assignSamplesToStorageWithWellMap(pageId, sampleIds, request.getBoxId(),
+                    wellAssignments, request.getData(), sysUserId);
+        } else if (request.getSampleIds() != null && !request.getSampleIds().isEmpty()) {
+            // Use legacy single wellCoordinate for all samples (or auto-assign)
+            result = bulkOperationService.assignSamplesToStorage(pageId, request.getSampleIds(), request.getBoxId(),
+                    request.getWellCoordinate(), request.getData(), sysUserId);
+        } else {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs or well assignments provided");
+            return ResponseEntity.badRequest().body(error);
+        }
 
         result.put("pageId", pageId);
         result.put("boxId", request.getBoxId());
-        result.put("wellCoordinate", request.getWellCoordinate());
 
         if (result.containsKey("errors") && !((java.util.List<?>) result.get("errors")).isEmpty()) {
+            // If some samples failed but others succeeded, still return OK
+            Integer assignedCount = (Integer) result.get("assignedCount");
+            if (assignedCount != null && assignedCount > 0) {
+                return ResponseEntity.ok(result);
+            }
             return ResponseEntity.badRequest().body(result);
         }
 
@@ -1364,6 +1380,10 @@ public class NotebookBulkOperationController extends BaseRestController {
         private Map<String, Object> data;
         private Integer boxId;
         private String wellCoordinate;
+        private Map<String, String> wellAssignments;
+        private String condition;
+        private Integer retentionYears;
+        private Boolean reassign;
 
         public List<Integer> getSampleIds() {
             return sampleIds;
@@ -1395,6 +1415,38 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setWellCoordinate(String wellCoordinate) {
             this.wellCoordinate = wellCoordinate;
+        }
+
+        public Map<String, String> getWellAssignments() {
+            return wellAssignments;
+        }
+
+        public void setWellAssignments(Map<String, String> wellAssignments) {
+            this.wellAssignments = wellAssignments;
+        }
+
+        public String getCondition() {
+            return condition;
+        }
+
+        public void setCondition(String condition) {
+            this.condition = condition;
+        }
+
+        public Integer getRetentionYears() {
+            return retentionYears;
+        }
+
+        public void setRetentionYears(Integer retentionYears) {
+            this.retentionYears = retentionYears;
+        }
+
+        public Boolean getReassign() {
+            return reassign;
+        }
+
+        public void setReassign(Boolean reassign) {
+            this.reassign = reassign;
         }
     }
 
@@ -1785,5 +1837,102 @@ public class NotebookBulkOperationController extends BaseRestController {
         public void setContent(String content) {
             this.content = content;
         }
+    }
+
+    // ========================================================================
+    // RAW DATA CSV UPLOAD ENDPOINT
+    // ========================================================================
+
+    /**
+     * Upload raw data CSV file and apply results to samples. POST
+     * /notebook/bulk/page/{pageId}/upload-raw-data
+     *
+     * The CSV file must contain a header row with column names. Samples are matched
+     * by accessionNumber or externalId column. Supported data columns: testResult,
+     * ctValue, concentration, absorbance, runId, kitLot, operator, machineType,
+     * runCompleted, runIssues, notes.
+     *
+     * @param pageId      the notebook page ID
+     * @param file        the CSV file to upload
+     * @param machineType optional machine type metadata
+     * @param runId       optional run ID metadata
+     * @param fileType    optional file type description
+     * @param notes       optional notes
+     * @param httpRequest for getting user session
+     * @return result with matched/updated counts and any unmatched rows
+     */
+    @PostMapping(value = "/page/{pageId}/upload-raw-data", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> uploadRawData(@PathVariable("pageId") Integer pageId,
+            @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String machineType,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String runId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String fileType,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String notes,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String sampleIds,
+            HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found", "success", false));
+        }
+
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No file provided", "success", false));
+        }
+
+        String filename = file.getOriginalFilename();
+        if (filename == null
+                || (!filename.toLowerCase().endsWith(".csv") && !filename.toLowerCase().endsWith(".txt"))) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "File must be a CSV or TXT file", "success", false));
+        }
+
+        try {
+            byte[] csvContent = file.getBytes();
+
+            Map<String, Object> result = bulkOperationService.parseAndApplyCsvResults(pageId, csvContent, machineType,
+                    runId, sysUserId);
+
+            result.put("pageId", pageId);
+            result.put("filename", filename);
+
+            if (Boolean.TRUE.equals(result.get("success"))) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.badRequest().body(result);
+            }
+
+        } catch (java.io.IOException e) {
+            LogEvent.logError(this.getClass().getName(), "uploadRawData",
+                    "Error reading uploaded file: " + e.getMessage());
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error reading uploaded file: " + e.getMessage(), "success", false));
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "uploadRawData",
+                    "Error processing uploaded file: " + e.getMessage());
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error processing uploaded file: " + e.getMessage(), "success", false));
+        }
+    }
+
+    /**
+     * Download the CSV template for raw data upload. GET
+     * /notebook/bulk/template/raw-data-upload
+     *
+     * @param response the HTTP response to write to
+     */
+    @GetMapping(value = "/template/raw-data-upload", produces = "text/csv")
+    public void downloadRawDataTemplate(HttpServletResponse response) throws java.io.IOException {
+        // externalId is the primary matching key, accessionNumber is secondary fallback
+        String template = "externalId,accessionNumber,testResult,ctValue,concentration,absorbance,runId,kitLot,operator,machineType,runCompleted,runIssues,notes\n"
+                + "EXT-001,MNTD-2024-001,Positive,25.5,150.2,0.450,RUN-001,LOT-2024-A,John Doe,PCR,YES,,Sample processed normally\n"
+                + "EXT-002,MNTD-2024-002,Negative,35.0,10.5,0.120,RUN-001,LOT-2024-A,John Doe,PCR,YES,,Sample processed normally\n"
+                + "EXT-003,MNTD-2024-003,Indeterminate,32.1,45.8,0.280,RUN-001,LOT-2024-A,John Doe,PCR,YES,Low signal detected,Requires repeat testing\n";
+
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=mntd-test-results-template.csv");
+        response.getOutputStream().write(template.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        response.getOutputStream().flush();
     }
 }
