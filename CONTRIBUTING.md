@@ -11,11 +11,13 @@ https://openelis-global.org/community/get-involved/
 
 ## Setup
 
-After cloning the repository, install frontend dependencies to enable automatic code formatting:
+After cloning the repository, install frontend dependencies to enable automatic
+code formatting:
 
 ```bash
 cd frontend
 npm install
 ```
 
-This will install Husky and configure a pre-commit hook that automatically formats frontend code before each commit.
+This will install Husky and configure a pre-commit hook that automatically
+formats frontend code before each commit.
