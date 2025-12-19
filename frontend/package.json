@@ -48,7 +48,7 @@
     "yup": "^0.29.2"
   },
   "scripts": {
-    "prepare": "cd .. && husky frontend/.husky",
+    "prepare": "cd .. && (husky frontend/.husky || true)",
     "start": "GENERATE_SOURCEMAP=false HTTPS=true react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
