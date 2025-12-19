@@ -44,9 +44,12 @@ guidelines:
 
 ### Automatic Frontend Formatting (Pre-commit Hook)
 
-Frontend code is **automatically formatted** when you commit changes. The pre-commit hook formats **only the files you've staged**, not the entire codebase.
+Frontend code is **automatically formatted** when you commit changes. The
+pre-commit hook formats **only the files you've staged**, not the entire
+codebase.
 
 **One-time setup (required after cloning):**
+
 ```bash
 cd frontend
 npm install
@@ -55,13 +58,16 @@ npm install
 This installs Husky and lint-staged, which enable the automatic formatting.
 
 **How it works:**
+
 - When you run `git commit`, the pre-commit hook automatically runs
-- Only your **staged frontend files** (`.js`, `.jsx`, `.ts`, `.tsx`, `.json`, `.css`, `.scss`, `.md`) are formatted
+- Only your **staged frontend files** (`.js`, `.jsx`, `.ts`, `.tsx`, `.json`,
+  `.css`, `.scss`, `.md`) are formatted
 - Formatted files are automatically re-staged
 - The commit proceeds automatically
 
-**Manual formatting (if needed):**
-If you want to format all frontend files manually:
+**Manual formatting (if needed):** If you want to format all frontend files
+manually:
+
 ```bash
 cd frontend
 npm run format
@@ -69,13 +75,15 @@ npm run format
 
 ### Backend Formatting (Manual)
 
-After making changes to the [backend](./src/) directory, run the formatter to properly format the Java code:
+After making changes to the [backend](./src/) directory, run the formatter to
+properly format the Java code:
 
 ```bash
 mvn spotless:apply
 ```
 
-**Note:** Backend pre-commit hooks are not yet implemented. Always run `mvn spotless:apply` before committing backend changes.
+**Note:** Backend pre-commit hooks are not yet implemented. Always run
+`mvn spotless:apply` before committing backend changes.
 
 ## 7. Code Conventions
 
