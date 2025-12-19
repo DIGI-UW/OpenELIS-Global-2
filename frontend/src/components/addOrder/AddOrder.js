@@ -89,11 +89,6 @@ const AddOrder = (props) => {
   }
 
   function handleRequesterFax(e) {
-    let a = 23;
-    console.log(a);
-  }
-
-  function handleRequesterFax(e) {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
