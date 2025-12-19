@@ -8,3 +8,14 @@ health laboratories for best laboratory practice and accreditation. And such a
 great task calls for great minds just like you. Find out more ways of
 contributing to this noble cause
 https://openelis-global.org/community/get-involved/
+
+## Setup
+
+After cloning the repository, install frontend dependencies to enable automatic code formatting:
+
+```bash
+cd frontend
+npm install
+```
+
+This will install Husky and configure a pre-commit hook that automatically formats frontend code before each commit.

@@ -48,6 +48,7 @@
     "yup": "^0.29.2"
   },
   "scripts": {
+    "prepare": "cd .. && husky frontend/.husky",
     "start": "GENERATE_SOURCEMAP=false HTTPS=true react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -102,6 +103,7 @@
     "eslint-plugin-prettier": "^5.0.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^9.1.7",
     "prettier": "^3.4.2",
     "prettier-eslint": "15.0.1"
   }
