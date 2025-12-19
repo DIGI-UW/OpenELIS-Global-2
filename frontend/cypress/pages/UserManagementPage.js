@@ -106,7 +106,13 @@ class UserManagementPage {
   }
 
   passwordExpiryDate(value) {
-    cy.get(this.selectors.passwordExpirationDate).clear().type(value);
+    // Find the actual input inside the CustomDatePicker component
+    cy.get(this.selectors.passwordExpirationDate)
+      .find("input")
+      .clear({ force: true })
+      .type(value, { force: true });
+    // Close datepicker if open
+    cy.get("body").click(0, 0);
   }
 
   enterUserTimeout(value) {
