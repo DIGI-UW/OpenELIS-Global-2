@@ -836,9 +836,15 @@ function PharmaceuticalStoragePage({
 
       if (samplesToComplete.length === 0) {
         // Check why no samples are eligible
-        const selectedSamples = samples.filter((s) => selectedSampleIds.includes(s.id));
-        const withoutStorage = selectedSamples.filter((s) => !s.hasStorageAssignment);
-        const alreadyComplete = selectedSamples.filter((s) => s.status === "COMPLETED");
+        const selectedSamples = samples.filter((s) =>
+          selectedSampleIds.includes(s.id),
+        );
+        const withoutStorage = selectedSamples.filter(
+          (s) => !s.hasStorageAssignment,
+        );
+        const alreadyComplete = selectedSamples.filter(
+          (s) => s.status === "COMPLETED",
+        );
 
         if (withoutStorage.length === selectedSamples.length) {
           setError(
@@ -852,8 +858,7 @@ function PharmaceuticalStoragePage({
           setError(
             intl.formatMessage({
               id: "notebook.pharma.storage.selectedAlreadyComplete",
-              defaultMessage:
-                "Selected samples are already marked complete.",
+              defaultMessage: "Selected samples are already marked complete.",
             }),
           );
         } else {
@@ -874,7 +879,9 @@ function PharmaceuticalStoragePage({
       );
 
       if (samplesToComplete.length === 0) {
-        const samplesWithStorage = samples.filter((s) => s.hasStorageAssignment);
+        const samplesWithStorage = samples.filter(
+          (s) => s.hasStorageAssignment,
+        );
 
         if (samplesWithStorage.length === 0) {
           setError(
@@ -911,52 +918,78 @@ function PharmaceuticalStoragePage({
           // Get the notebook ID and find the next page
           const nbId = notebookId || entryId;
           if (nbId) {
-            getFromOpenElisServer(`/rest/notebook/view/${nbId}`, (nbResponse) => {
-              if (nbResponse && nbResponse.pages) {
-                // Find Disposal page (order 7)
-                const disposalPage = nbResponse.pages.find(
-                  (p) => (p.pageOrder || p.order) === 7,
-                );
-                if (disposalPage && disposalPage.id) {
-                  // Add samples to the Disposal page
-                  postToOpenElisServerJsonResponse(
-                    `/rest/notebook/bulk/page/${disposalPage.id}/samples/add`,
-                    JSON.stringify({ sampleIds: sampleIds }),
-                    (addResponse) => {
-                      setAssigning(false);
-                      if (addResponse && addResponse.success) {
-                        setSuccess(
-                          intl.formatMessage(
-                            {
-                              id: "notebook.pharma.storage.completeAndAdvanceSuccess",
-                              defaultMessage:
-                                "Successfully completed {count} samples and advanced to Disposal & Archiving.",
-                            },
-                            { count: response.updatedCount || sampleIds.length },
-                          ),
-                        );
-                      } else {
-                        // Samples marked complete but not added to next page
-                        setSuccess(
-                          intl.formatMessage(
-                            {
-                              id: "notebook.pharma.storage.completeSuccess",
-                              defaultMessage:
-                                "Successfully marked {count} samples as complete.",
-                            },
-                            { count: response.updatedCount || sampleIds.length },
-                          ),
-                        );
-                      }
-                      setSelectedSampleIds([]);
-                      loadPageSamples();
-                      if (onProgressUpdate) {
-                        onProgressUpdate();
-                      }
-                    },
+            getFromOpenElisServer(
+              `/rest/notebook/view/${nbId}`,
+              (nbResponse) => {
+                if (nbResponse && nbResponse.pages) {
+                  // Find Disposal page (order 7)
+                  const disposalPage = nbResponse.pages.find(
+                    (p) => (p.pageOrder || p.order) === 7,
                   );
+                  if (disposalPage && disposalPage.id) {
+                    // Add samples to the Disposal page
+                    postToOpenElisServerJsonResponse(
+                      `/rest/notebook/bulk/page/${disposalPage.id}/samples/add`,
+                      JSON.stringify({ sampleIds: sampleIds }),
+                      (addResponse) => {
+                        setAssigning(false);
+                        if (addResponse && addResponse.success) {
+                          setSuccess(
+                            intl.formatMessage(
+                              {
+                                id: "notebook.pharma.storage.completeAndAdvanceSuccess",
+                                defaultMessage:
+                                  "Successfully completed {count} samples and advanced to Disposal & Archiving.",
+                              },
+                              {
+                                count:
+                                  response.updatedCount || sampleIds.length,
+                              },
+                            ),
+                          );
+                        } else {
+                          // Samples marked complete but not added to next page
+                          setSuccess(
+                            intl.formatMessage(
+                              {
+                                id: "notebook.pharma.storage.completeSuccess",
+                                defaultMessage:
+                                  "Successfully marked {count} samples as complete.",
+                              },
+                              {
+                                count:
+                                  response.updatedCount || sampleIds.length,
+                              },
+                            ),
+                          );
+                        }
+                        setSelectedSampleIds([]);
+                        loadPageSamples();
+                        if (onProgressUpdate) {
+                          onProgressUpdate();
+                        }
+                      },
+                    );
+                  } else {
+                    // No disposal page found, just complete
+                    setAssigning(false);
+                    setSuccess(
+                      intl.formatMessage(
+                        {
+                          id: "notebook.pharma.storage.completeSuccess",
+                          defaultMessage:
+                            "Successfully marked {count} samples as complete.",
+                        },
+                        { count: response.updatedCount || sampleIds.length },
+                      ),
+                    );
+                    setSelectedSampleIds([]);
+                    loadPageSamples();
+                    if (onProgressUpdate) {
+                      onProgressUpdate();
+                    }
+                  }
                 } else {
-                  // No disposal page found, just complete
                   setAssigning(false);
                   setSuccess(
                     intl.formatMessage(
@@ -974,25 +1007,8 @@ function PharmaceuticalStoragePage({
                     onProgressUpdate();
                   }
                 }
-              } else {
-                setAssigning(false);
-                setSuccess(
-                  intl.formatMessage(
-                    {
-                      id: "notebook.pharma.storage.completeSuccess",
-                      defaultMessage:
-                        "Successfully marked {count} samples as complete.",
-                    },
-                    { count: response.updatedCount || sampleIds.length },
-                  ),
-                );
-                setSelectedSampleIds([]);
-                loadPageSamples();
-                if (onProgressUpdate) {
-                  onProgressUpdate();
-                }
-              }
-            });
+              },
+            );
           } else {
             setAssigning(false);
             setSuccess(

@@ -14,6 +14,7 @@ import {
   TextInput,
   TextArea,
   Dropdown,
+  MultiSelect,
   DatePicker,
   DatePickerInput,
   NumberInput,
@@ -21,15 +22,9 @@ import {
   Tag,
   RadioButtonGroup,
   RadioButton,
+  InlineLoading,
 } from "@carbon/react";
-import {
-  Add,
-  CheckmarkFilled,
-  WarningAltFilled,
-  Renew,
-  Chemistry,
-  Activity,
-} from "@carbon/react/icons";
+import { CheckmarkFilled, Renew, Chemistry } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -40,39 +35,74 @@ import "../../workflow/NotebookWorkflow.css";
 
 /**
  * MNTDProcessingQCPage - Page 6 of the MNTD workflow.
- * Handles processing execution and quality control verification.
+ * Handles Nucleic Acid Extraction.
  *
- * Purpose: Execute lab processes and verify integrity.
+ * STAGE 4: Nucleic Acid Extraction
+ *
+ * Purpose: Execute nucleic acid extraction.
  *
  * Who uses it:
  * - Lab technician
  * - Supervisor
  *
  * Data Points:
- * - Processing Execution: Protocol used, Start & end time, Technician
- * - Quality Control: QC result (Pass/Fail), QC metrics (Ct value, yield, integrity, etc.)
- * - Decision if failed: Re-extract, Re-run, Discard
+ * - Sample Type: Parasite or Vector
+ * - Extraction Type: Manual or Automatic
+ * - Extraction Method: Based on sample type
+ * - Kit Lot Number
+ * - Yield (ng/µL)
+ * - Extraction Date
+ * - Operator
  *
  * System Actions:
- * - Status updated: Processed - QC Passed, Processed - QC Failed
- * - Automatic branching for rework
+ * - Status updated: Extracted
  *
  * Leads to: Test Assignment & Machine Scheduling Page
- *
- * @param {Object} props
- * @param {number} props.entryId - The notebook entry ID
- * @param {Object} props.pageData - The notebook page data
- * @param {Object} props.progress - Page progress
- * @param {function} props.onProgressUpdate - Callback when progress changes
- * @param {number} props.notebookId - The notebook ID
  */
-function MNTDProcessingQCPage({
-  entryId,
-  pageData,
-  progress,
-  onProgressUpdate,
-  notebookId,
-}) {
+
+// Parasite Manual Extraction Methods
+const PARASITE_MANUAL_METHODS = [
+  { id: "QIAGEN_DNA", text: "QIAGEN DNA Extraction Kits" },
+  { id: "CHELEX_TWEEN", text: "Chelex-Tween 100 Chelating Resin" },
+  { id: "PAXGENE_DNA", text: "Paxgene Blood DNA Kits" },
+  { id: "QIAGEN_RNA", text: "QIAGEN RNA Extraction Kits" },
+  { id: "PAXGENE_RNA", text: "Paxgene Blood RNA Kits" },
+  { id: "TRIZOL_TOTAL_NA", text: "TRIzol (Total Nucleic Acid)" },
+  { id: "OTHER_MANUAL", text: "Others" },
+];
+
+// Parasite Automatic Extraction Methods
+const PARASITE_AUTO_METHODS = [
+  { id: "KINGFISHER", text: "KingFisher" },
+  { id: "MAGNAPURE_96", text: "MagNAPure 96" },
+  { id: "MAGMAX_DNA", text: "MAGMAX (DNA)" },
+  { id: "MAGMAX_RNA", text: "MAGMAX (RNA)" },
+  { id: "MAGMAX_TOTAL_NA", text: "MAGMAX (Total NA)" },
+  { id: "NUCLEOMAG_DNA", text: "NucleoMag (DNA)" },
+  { id: "NUCLEOMAG_RNA", text: "NucleoMag (RNA)" },
+  { id: "NUCLEOMAG_TOTAL_NA", text: "NucleoMag (Total NA)" },
+];
+
+// Vector Manual Extraction Methods
+const VECTOR_MANUAL_METHODS = [
+  { id: "QIAGEN_DNA_V", text: "QIAGEN DNA Kits" },
+  { id: "CTAB", text: "CTAB" },
+  { id: "QUICK_RNA_TISSUE", text: "Quick-RNA Tissue/Insect Kit" },
+  { id: "TRIZOL_V", text: "TRIzol" },
+  { id: "OTHER_MANUAL_V", text: "Others" },
+];
+
+// Vector Automatic Extraction Methods
+const VECTOR_AUTO_METHODS = [
+  { id: "MAGMAX_DNA_V", text: "MagMax (DNA)" },
+  { id: "MAGMAX_RNA_V", text: "MagMax (RNA)" },
+  { id: "MAGMAX_TOTAL_NA_V", text: "MagMax (Total NA)" },
+  { id: "NUCLEOMAG_DNA_V", text: "NucleoMag (DNA)" },
+  { id: "NUCLEOMAG_RNA_V", text: "NucleoMag (RNA)" },
+  { id: "NUCLEOMAG_TOTAL_NA_V", text: "NucleoMag (Total NA)" },
+];
+
+function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
 
@@ -84,51 +114,64 @@ function MNTDProcessingQCPage({
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Processing modal state
-  const [showProcessingModal, setShowProcessingModal] = useState(false);
-  const [processingData, setProcessingData] = useState({
-    protocol: "",
-    startDate: new Date().toISOString().split("T")[0],
-    startTime: "",
-    endDate: new Date().toISOString().split("T")[0],
-    endTime: "",
-    technician: "",
+  // Extraction modal state
+  const [showExtractionModal, setShowExtractionModal] = useState(false);
+  const [extractionData, setExtractionData] = useState({
+    sampleType: "PARASITE", // PARASITE or VECTOR
+    extractionType: "MANUAL", // MANUAL or AUTOMATIC
+    extractionMethod: "",
+    otherMethodDescription: "",
+    selectedKits: [], // Array of selected kit IDs for multiselect
+    yield: "",
+    yieldUnit: "ng/uL",
+    extractionDate: new Date().toISOString().split("T")[0],
+    operator: "",
     notes: "",
   });
 
-  // QC modal state
-  const [showQCModal, setShowQCModal] = useState(false);
-  const [qcData, setQCData] = useState({
-    qcResult: "PASS",
-    ctValue: "",
-    yield: "",
-    integrity: "",
-    otherMetrics: "",
-    failedDecision: "",
-    qcNotes: "",
-    qcTechnician: "",
-    qcDate: new Date().toISOString().split("T")[0],
-  });
+  // Reagents from inventory (for extraction kit selection)
+  const [reagents, setReagents] = useState([]);
+  const [loadingReagents, setLoadingReagents] = useState(false);
 
-  // Protocol options
-  const protocolOptions = [
-    { id: "DNA_EXTRACTION", text: "DNA Extraction" },
-    { id: "RNA_EXTRACTION", text: "RNA Extraction" },
-    { id: "PCR_AMPLIFICATION", text: "PCR Amplification" },
-    { id: "ELISA", text: "ELISA" },
-    { id: "MICROSCOPY", text: "Microscopy" },
-    { id: "RDT", text: "Rapid Diagnostic Test (RDT)" },
-    { id: "CULTURE", text: "Culture" },
-    { id: "SEQUENCING", text: "Sequencing" },
-    { id: "OTHER", text: "Other" },
-  ];
+  // Get extraction methods based on sample type and extraction type
+  const getExtractionMethods = useCallback(() => {
+    const { sampleType, extractionType } = extractionData;
+    if (sampleType === "PARASITE") {
+      return extractionType === "MANUAL"
+        ? PARASITE_MANUAL_METHODS
+        : PARASITE_AUTO_METHODS;
+    } else {
+      return extractionType === "MANUAL"
+        ? VECTOR_MANUAL_METHODS
+        : VECTOR_AUTO_METHODS;
+    }
+  }, [extractionData.sampleType, extractionData.extractionType]);
 
-  // Failed decision options
-  const failedDecisionOptions = [
-    { id: "RE_EXTRACT", text: "Re-extract" },
-    { id: "RE_RUN", text: "Re-run" },
-    { id: "DISCARD", text: "Discard" },
-  ];
+  // Load reagents from inventory (used for kit lot number selection)
+  const loadReagents = useCallback(() => {
+    setLoadingReagents(true);
+    getFromOpenElisServer(
+      "/rest/inventory/reagents?status=active",
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            setReagents(
+              response.map((r) => ({
+                id: r.id,
+                label: `${r.name} (Lot: ${r.lotNumber || "N/A"})`,
+                name: r.name,
+                lotNumber: r.lotNumber,
+                ...r,
+              })),
+            );
+          } else {
+            setReagents([]);
+          }
+          setLoadingReagents(false);
+        }
+      },
+    );
+  }, []);
 
   // Load samples for this page
   useEffect(() => {
@@ -168,18 +211,14 @@ function MNTDProcessingQCPage({
               collectionDate: sample.collectionDate,
               status: sample.pageStatus || "PENDING",
               patientName: sample.patientName,
-              // Processing data
-              protocol: sample.data?.protocol,
-              processingStartTime: sample.data?.startTime,
-              processingEndTime: sample.data?.endTime,
-              processingTechnician: sample.data?.technician,
-              // QC data
-              qcResult: sample.data?.qcResult,
-              ctValue: sample.data?.ctValue,
+              // Extraction data
+              extractionSampleType: sample.data?.extractionSampleType,
+              extractionType: sample.data?.extractionType,
+              extractionMethod: sample.data?.extractionMethod,
+              kitLotNumber: sample.data?.kitLotNumber,
               yield: sample.data?.yield,
-              integrity: sample.data?.integrity,
-              failedDecision: sample.data?.failedDecision,
-              qcTechnician: sample.data?.qcTechnician,
+              extractionDate: sample.data?.extractionDate,
+              operator: sample.data?.operator,
             }));
             setSamples(transformedSamples);
           } else {
@@ -197,54 +236,91 @@ function MNTDProcessingQCPage({
 
   // Calculate stats
   const stats = useMemo(() => {
-    const processed = samples.filter((s) => s.protocol).length;
-    const qcPassed = samples.filter((s) => s.qcResult === "PASS").length;
-    const qcFailed = samples.filter((s) => s.qcResult === "FAIL").length;
-    const pending = samples.filter((s) => !s.protocol && !s.qcResult).length;
-    return { total: samples.length, processed, qcPassed, qcFailed, pending };
+    const extracted = samples.filter((s) => s.extractionMethod).length;
+    const pending = samples.filter((s) => !s.extractionMethod).length;
+    const completed = samples.filter((s) => s.status === "COMPLETED").length;
+    return { total: samples.length, extracted, pending, completed };
   }, [samples]);
 
-  // Handle opening processing modal
-  const handleOpenProcessingModal = useCallback(() => {
+  // Handle opening extraction modal
+  const handleOpenExtractionModal = useCallback(() => {
     if (selectedIds.length === 0) {
       setError(
         intl.formatMessage({
-          id: "notebook.mntd.processingqc.selectSamples",
+          id: "notebook.mntd.extraction.selectSamples",
           defaultMessage: "Please select at least one sample.",
         }),
       );
       return;
     }
-    setShowProcessingModal(true);
-  }, [selectedIds, intl]);
+    // Reset extraction data
+    setExtractionData({
+      sampleType: "PARASITE",
+      extractionType: "MANUAL",
+      extractionMethod: "",
+      otherMethodDescription: "",
+      selectedKits: [],
+      yield: "",
+      yieldUnit: "ng/uL",
+      extractionDate: new Date().toISOString().split("T")[0],
+      operator: "",
+      notes: "",
+    });
+    // Load reagents from inventory
+    loadReagents();
+    setShowExtractionModal(true);
+  }, [selectedIds, intl, loadReagents]);
 
-  // Handle saving processing data
-  const handleSaveProcessingData = useCallback(() => {
-    if (!processingData.protocol) {
+  // Handle saving extraction data
+  const handleSaveExtractionData = useCallback(() => {
+    if (!extractionData.extractionMethod) {
       setError(
         intl.formatMessage({
-          id: "notebook.mntd.processingqc.protocolRequired",
-          defaultMessage: "Protocol is required.",
+          id: "notebook.mntd.extraction.methodRequired",
+          defaultMessage: "Extraction method is required.",
         }),
       );
       return;
     }
 
     if (!hasRealPageId) {
-      setShowProcessingModal(false);
+      setShowExtractionModal(false);
       return;
     }
 
     const numericIds = selectedIds.map((id) => parseInt(id, 10));
 
+    // Get selected kit objects from reagents list based on selected IDs
+    const selectedKitObjects = reagents.filter((r) =>
+      extractionData.selectedKits.includes(r.id),
+    );
+
+    // Build kit lot numbers string from selected kits
+    const kitLotNumbers = selectedKitObjects
+      .map((kit) => kit.lotNumber)
+      .filter(Boolean)
+      .join(", ");
+
+    // Build selectedReagents array for inventory consumption (using itemId)
+    // The backend looks for 'selectedReagents' to trigger automatic inventory reduction
+    const selectedReagents = selectedKitObjects
+      .map((kit) => kit.itemId)
+      .filter(Boolean);
+
     const dataToSave = {
-      protocol: processingData.protocol,
-      startDate: processingData.startDate,
-      startTime: processingData.startTime,
-      endDate: processingData.endDate,
-      endTime: processingData.endTime,
-      technician: processingData.technician,
-      processingNotes: processingData.notes,
+      extractionSampleType: extractionData.sampleType,
+      extractionType: extractionData.extractionType,
+      extractionMethod: extractionData.extractionMethod,
+      otherMethodDescription: extractionData.otherMethodDescription,
+      kitLotNumber: kitLotNumbers,
+      selectedKitIds: extractionData.selectedKits,
+      yield: extractionData.yield,
+      yieldUnit: extractionData.yieldUnit,
+      extractionDate: extractionData.extractionDate,
+      operator: extractionData.operator,
+      extractionNotes: extractionData.notes,
+      // Include selectedReagents for automatic inventory consumption
+      selectedReagents: selectedReagents,
     };
 
     postToOpenElisServer(
@@ -253,9 +329,9 @@ function MNTDProcessingQCPage({
         sampleIds: numericIds,
         data: dataToSave,
       }),
-      (response) => {
+      (status) => {
         if (componentMounted.current) {
-          if (response && !response.error) {
+          if (status === 200) {
             // Update status to IN_PROGRESS
             postToOpenElisServer(
               `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
@@ -267,25 +343,15 @@ function MNTDProcessingQCPage({
                 setSuccess(
                   intl.formatMessage(
                     {
-                      id: "notebook.mntd.processingqc.processingSaved",
+                      id: "notebook.mntd.extraction.saved",
                       defaultMessage:
-                        "Processing data saved for {count} samples.",
+                        "Extraction data saved for {count} samples.",
                     },
                     { count: selectedIds.length },
                   ),
                 );
-                setShowProcessingModal(false);
+                setShowExtractionModal(false);
                 setSelectedIds([]);
-                // Reset form
-                setProcessingData({
-                  protocol: "",
-                  startDate: new Date().toISOString().split("T")[0],
-                  startTime: "",
-                  endDate: new Date().toISOString().split("T")[0],
-                  endTime: "",
-                  technician: "",
-                  notes: "",
-                });
                 loadPageSamples();
                 if (onProgressUpdate) {
                   onProgressUpdate();
@@ -293,184 +359,30 @@ function MNTDProcessingQCPage({
               },
             );
           } else {
-            setError(response?.error || "Failed to save processing data.");
+            setError("Failed to save extraction data.");
           }
         }
       },
     );
   }, [
-    processingData,
+    extractionData,
     selectedIds,
     hasRealPageId,
     pageData?.id,
     loadPageSamples,
     onProgressUpdate,
     intl,
+    reagents,
   ]);
 
-  // Handle opening QC modal
-  const handleOpenQCModal = useCallback(() => {
-    if (selectedIds.length === 0) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.mntd.processingqc.selectSamples",
-          defaultMessage: "Please select at least one sample.",
-        }),
-      );
-      return;
-    }
-    setShowQCModal(true);
-  }, [selectedIds, intl]);
-
-  // Handle saving QC data
-  const handleSaveQCData = useCallback(() => {
-    if (!qcData.qcResult) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.mntd.processingqc.qcResultRequired",
-          defaultMessage: "QC result is required.",
-        }),
-      );
-      return;
-    }
-
-    // If failed, decision is required
-    if (qcData.qcResult === "FAIL" && !qcData.failedDecision) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.mntd.processingqc.failedDecisionRequired",
-          defaultMessage: "Please select an action for failed samples.",
-        }),
-      );
-      return;
-    }
-
-    if (!hasRealPageId) {
-      setShowQCModal(false);
-      return;
-    }
-
-    const numericIds = selectedIds.map((id) => parseInt(id, 10));
-
-    const dataToSave = {
-      qcResult: qcData.qcResult,
-      ctValue: qcData.ctValue,
-      yield: qcData.yield,
-      integrity: qcData.integrity,
-      otherMetrics: qcData.otherMetrics,
-      failedDecision: qcData.qcResult === "FAIL" ? qcData.failedDecision : null,
-      qcNotes: qcData.qcNotes,
-      qcTechnician: qcData.qcTechnician,
-      qcDate: qcData.qcDate,
-    };
-
-    postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
-      JSON.stringify({
-        sampleIds: numericIds,
-        data: dataToSave,
-      }),
-      (response) => {
-        if (componentMounted.current) {
-          if (response && !response.error) {
-            // Update status based on QC result
-            const newStatus =
-              qcData.qcResult === "PASS" ? "COMPLETED" : "IN_PROGRESS";
-            postToOpenElisServer(
-              `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-              JSON.stringify({
-                sampleIds: numericIds,
-                status: newStatus,
-              }),
-              () => {
-                setSuccess(
-                  intl.formatMessage(
-                    {
-                      id: "notebook.mntd.processingqc.qcSaved",
-                      defaultMessage: "QC data saved for {count} samples.",
-                    },
-                    { count: selectedIds.length },
-                  ),
-                );
-                setShowQCModal(false);
-                setSelectedIds([]);
-                // Reset form
-                setQCData({
-                  qcResult: "PASS",
-                  ctValue: "",
-                  yield: "",
-                  integrity: "",
-                  otherMetrics: "",
-                  failedDecision: "",
-                  qcNotes: "",
-                  qcTechnician: "",
-                  qcDate: new Date().toISOString().split("T")[0],
-                });
-                loadPageSamples();
-                if (onProgressUpdate) {
-                  onProgressUpdate();
-                }
-              },
-            );
-          } else {
-            setError(response?.error || "Failed to save QC data.");
-          }
-        }
-      },
-    );
-  }, [
-    qcData,
-    selectedIds,
-    hasRealPageId,
-    pageData?.id,
-    loadPageSamples,
-    onProgressUpdate,
-    intl,
-  ]);
-
-  // Handle status change
-  const handleStatusChange = useCallback(
-    (sampleId, newStatus) => {
-      if (!hasRealPageId) {
-        setError(
-          intl.formatMessage({
-            id: "notebook.mntd.processingqc.pageNotInitialized",
-            defaultMessage:
-              "Cannot update status: Page not properly initialized.",
-          }),
-        );
-        return;
-      }
-
-      postToOpenElisServer(
-        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-        JSON.stringify({
-          sampleIds: [parseInt(sampleId, 10)],
-          status: newStatus,
-        }),
-        (status) => {
-          if (status === 200) {
-            loadPageSamples();
-            if (onProgressUpdate) {
-              onProgressUpdate();
-            }
-          } else {
-            setError("Failed to update sample status. Please try again.");
-          }
-        },
-      );
-    },
-    [pageData?.id, hasRealPageId, loadPageSamples, onProgressUpdate, intl],
-  );
-
-  // Bulk mark as QC passed
-  const handleBulkMarkQCPassed = useCallback(() => {
+  // Bulk mark as completed
+  const handleBulkMarkCompleted = useCallback(() => {
     if (selectedIds.length === 0) return;
 
     if (!hasRealPageId) {
       setError(
         intl.formatMessage({
-          id: "notebook.mntd.processingqc.pageNotInitialized",
+          id: "notebook.mntd.extraction.pageNotInitialized",
           defaultMessage:
             "Cannot update status: Page not properly initialized.",
         }),
@@ -480,48 +392,30 @@ function MNTDProcessingQCPage({
 
     const numericIds = selectedIds.map((id) => parseInt(id, 10));
 
-    // First apply QC pass data
     postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
       JSON.stringify({
         sampleIds: numericIds,
-        data: {
-          qcResult: "PASS",
-          qcDate: new Date().toISOString().split("T")[0],
-        },
+        status: "COMPLETED",
       }),
-      (response) => {
-        if (response && !response.error) {
-          // Then update status to COMPLETED
-          postToOpenElisServer(
-            `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-            JSON.stringify({
-              sampleIds: numericIds,
-              status: "COMPLETED",
-            }),
-            (status) => {
-              if (status === 200) {
-                setSuccess(
-                  intl.formatMessage(
-                    {
-                      id: "notebook.mntd.processingqc.markedQCPassed",
-                      defaultMessage: "Marked {count} samples as QC Passed.",
-                    },
-                    { count: selectedIds.length },
-                  ),
-                );
-                loadPageSamples();
-                setSelectedIds([]);
-                if (onProgressUpdate) {
-                  onProgressUpdate();
-                }
-              } else {
-                setError("Failed to update sample status. Please try again.");
-              }
-            },
+      (status) => {
+        if (status === 200) {
+          setSuccess(
+            intl.formatMessage(
+              {
+                id: "notebook.mntd.extraction.markedCompleted",
+                defaultMessage: "Marked {count} samples as completed.",
+              },
+              { count: selectedIds.length },
+            ),
           );
+          loadPageSamples();
+          setSelectedIds([]);
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
         } else {
-          setError(response?.error || "Failed to mark samples as QC passed.");
+          setError("Failed to update sample status. Please try again.");
         }
       },
     );
@@ -534,78 +428,51 @@ function MNTDProcessingQCPage({
     intl,
   ]);
 
-  // Render processing info column
-  const renderProcessingInfo = (sample) => {
-    if (sample.protocol) {
-      const protocolLabel =
-        protocolOptions.find((p) => p.id === sample.protocol)?.text ||
-        sample.protocol;
-      return (
-        <div style={{ fontSize: "12px" }}>
-          <Tag type="blue" size="sm">
-            {protocolLabel}
-          </Tag>
-          {sample.processingTechnician && (
-            <div style={{ marginTop: "2px", color: "#525252" }}>
-              by {sample.processingTechnician}
-            </div>
-          )}
-          {sample.processingStartTime && (
-            <div style={{ color: "#525252" }}>
-              <Activity size={12} style={{ marginRight: "4px" }} />
-              {sample.processingStartTime}
-            </div>
-          )}
-        </div>
-      );
-    }
-    return (
-      <span style={{ color: "#8d8d8d", fontSize: "12px" }}>
-        <FormattedMessage
-          id="notebook.mntd.processingqc.notProcessed"
-          defaultMessage="Not processed"
-        />
-      </span>
-    );
+  // Get method label from ID
+  const getMethodLabel = (methodId) => {
+    const allMethods = [
+      ...PARASITE_MANUAL_METHODS,
+      ...PARASITE_AUTO_METHODS,
+      ...VECTOR_MANUAL_METHODS,
+      ...VECTOR_AUTO_METHODS,
+    ];
+    return allMethods.find((m) => m.id === methodId)?.text || methodId;
   };
 
-  // Render QC result column
-  const renderQCResult = (sample) => {
-    if (sample.qcResult) {
-      const isPassed = sample.qcResult === "PASS";
+  // Render extraction info column
+  const renderExtractionInfo = (sample) => {
+    if (sample.extractionMethod) {
+      const methodLabel = getMethodLabel(sample.extractionMethod);
+      const sampleTypeLabel =
+        sample.extractionSampleType === "VECTOR" ? "Vector" : "Parasite";
+      const extractionTypeLabel =
+        sample.extractionType === "AUTOMATIC" ? "Auto" : "Manual";
       return (
         <div style={{ fontSize: "12px" }}>
-          <Tag type={isPassed ? "green" : "red"} size="sm">
-            {isPassed ? (
-              <>
-                <CheckmarkFilled size={12} style={{ marginRight: "4px" }} />
-                <FormattedMessage
-                  id="notebook.mntd.processingqc.qcPassed"
-                  defaultMessage="QC Passed"
-                />
-              </>
-            ) : (
-              <>
-                <WarningAltFilled size={12} style={{ marginRight: "4px" }} />
-                <FormattedMessage
-                  id="notebook.mntd.processingqc.qcFailed"
-                  defaultMessage="QC Failed"
-                />
-              </>
-            )}
-          </Tag>
-          {!isPassed && sample.failedDecision && (
-            <div style={{ marginTop: "2px" }}>
-              <Tag type="gray" size="sm">
-                {failedDecisionOptions.find(
-                  (d) => d.id === sample.failedDecision,
-                )?.text || sample.failedDecision}
-              </Tag>
+          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+            <Tag type="blue" size="sm">
+              {sampleTypeLabel}
+            </Tag>
+            <Tag type="purple" size="sm">
+              {extractionTypeLabel}
+            </Tag>
+          </div>
+          <div style={{ marginTop: "4px", fontWeight: "500" }}>
+            {methodLabel}
+          </div>
+          {sample.kitLotNumber && (
+            <div style={{ color: "#525252", fontSize: "11px" }}>
+              Lot: {sample.kitLotNumber}
             </div>
           )}
-          {sample.ctValue && (
-            <div style={{ marginTop: "2px", color: "#525252" }}>
-              Ct: {sample.ctValue}
+          {sample.yield && (
+            <div style={{ color: "#525252", fontSize: "11px" }}>
+              Yield: {sample.yield} ng/µL
+            </div>
+          )}
+          {sample.operator && (
+            <div style={{ color: "#525252", fontSize: "11px" }}>
+              By: {sample.operator}
             </div>
           )}
         </div>
@@ -614,8 +481,8 @@ function MNTDProcessingQCPage({
     return (
       <span style={{ color: "#8d8d8d", fontSize: "12px" }}>
         <FormattedMessage
-          id="notebook.mntd.processingqc.pendingQC"
-          defaultMessage="Pending QC"
+          id="notebook.mntd.extraction.notExtracted"
+          defaultMessage="Not extracted"
         />
       </span>
     );
@@ -626,15 +493,19 @@ function MNTDProcessingQCPage({
       {/* Page Header */}
       <div className="page-section-header">
         <h4>
+          <Chemistry
+            size={20}
+            style={{ marginRight: "8px", verticalAlign: "middle" }}
+          />
           <FormattedMessage
-            id="notebook.page.mntd.processingqc.title"
-            defaultMessage="Processing & Quality Control"
+            id="notebook.page.mntd.extraction.title"
+            defaultMessage="Nucleic Acid Extraction"
           />
         </h4>
         <p className="page-description">
           <FormattedMessage
-            id="notebook.page.mntd.processingqc.description"
-            defaultMessage="Execute lab processes and verify sample integrity through quality control checks. Record processing protocols, timing, and QC metrics."
+            id="notebook.page.mntd.extraction.description"
+            defaultMessage="Perform nucleic acid extraction for Parasite or Vector samples using manual or automatic methods. Record extraction details."
           />
         </p>
       </div>
@@ -646,7 +517,7 @@ function MNTDProcessingQCPage({
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.mntd.processingqc.totalSamples"
+                  id="notebook.mntd.extraction.totalSamples"
                   defaultMessage="Total Samples"
                 />
               </span>
@@ -655,29 +526,29 @@ function MNTDProcessingQCPage({
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.mntd.processingqc.processed"
-                  defaultMessage="Processed"
+                  id="notebook.mntd.extraction.extracted"
+                  defaultMessage="Extracted"
                 />
               </span>
-              <span className="progress-value">{stats.processed}</span>
-            </Tile>
-            <Tile className="progress-tile verified">
-              <span className="progress-label">
-                <FormattedMessage
-                  id="notebook.mntd.processingqc.qcPassed"
-                  defaultMessage="QC Passed"
-                />
-              </span>
-              <span className="progress-value">{stats.qcPassed}</span>
+              <span className="progress-value">{stats.extracted}</span>
             </Tile>
             <Tile className="progress-tile pending">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.mntd.processingqc.qcFailed"
-                  defaultMessage="QC Failed"
+                  id="notebook.mntd.extraction.pending"
+                  defaultMessage="Pending"
                 />
               </span>
-              <span className="progress-value">{stats.qcFailed}</span>
+              <span className="progress-value">{stats.pending}</span>
+            </Tile>
+            <Tile className="progress-tile verified">
+              <span className="progress-label">
+                <FormattedMessage
+                  id="notebook.mntd.extraction.completed"
+                  defaultMessage="Completed"
+                />
+              </span>
+              <span className="progress-value">{stats.completed}</span>
             </Tile>
           </div>
         </Column>
@@ -712,26 +583,12 @@ function MNTDProcessingQCPage({
           kind="primary"
           size="sm"
           renderIcon={Chemistry}
-          onClick={handleOpenProcessingModal}
+          onClick={handleOpenExtractionModal}
           disabled={selectedIds.length === 0}
         >
           <FormattedMessage
-            id="notebook.mntd.processingqc.recordProcessing"
-            defaultMessage="Record Processing ({count} selected)"
-            values={{ count: selectedIds.length }}
-          />
-        </Button>
-
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Activity}
-          onClick={handleOpenQCModal}
-          disabled={selectedIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.mntd.processingqc.recordQC"
-            defaultMessage="Record QC Result ({count} selected)"
+            id="notebook.mntd.extraction.recordExtraction"
+            defaultMessage="Record Extraction ({count} selected)"
             values={{ count: selectedIds.length }}
           />
         </Button>
@@ -741,11 +598,11 @@ function MNTDProcessingQCPage({
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={handleBulkMarkQCPassed}
+            onClick={handleBulkMarkCompleted}
           >
             <FormattedMessage
-              id="notebook.mntd.processingqc.markQCPassed"
-              defaultMessage="Mark QC Passed ({count})"
+              id="notebook.mntd.extraction.markCompleted"
+              defaultMessage="Mark Completed ({count})"
               values={{ count: selectedIds.length }}
             />
           </Button>
@@ -758,7 +615,7 @@ function MNTDProcessingQCPage({
           onClick={loadPageSamples}
         >
           <FormattedMessage
-            id="notebook.mntd.processingqc.refresh"
+            id="notebook.mntd.extraction.refresh"
             defaultMessage="Refresh"
           />
         </Button>
@@ -767,31 +624,22 @@ function MNTDProcessingQCPage({
       {/* Sample Grid */}
       <div className="sample-grid-container">
         <SampleGrid
-          gridId="mntd-processing-qc"
+          gridId="mntd-extraction"
           samples={samples}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
-          onStatusChange={handleStatusChange}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           showSelection={true}
           loading={loading}
           additionalColumns={[
             {
-              key: "processingInfo",
+              key: "extractionInfo",
               header: intl.formatMessage({
-                id: "notebook.mntd.processingqc.processingInfo",
-                defaultMessage: "Processing Info",
+                id: "notebook.mntd.extraction.extractionInfo",
+                defaultMessage: "Extraction Info",
               }),
-              render: renderProcessingInfo,
-            },
-            {
-              key: "qcResult",
-              header: intl.formatMessage({
-                id: "notebook.mntd.processingqc.qcResult",
-                defaultMessage: "QC Result",
-              }),
-              render: renderQCResult,
+              render: renderExtractionInfo,
             },
           ]}
         />
@@ -802,421 +650,298 @@ function MNTDProcessingQCPage({
         <div className="empty-state">
           <p>
             <FormattedMessage
-              id="notebook.mntd.processingqc.empty"
-              defaultMessage="No samples available for processing. Please complete the aliquoting step first."
+              id="notebook.mntd.extraction.empty"
+              defaultMessage="No samples available for extraction. Please complete the aliquoting step first."
             />
           </p>
         </div>
       )}
 
-      {/* Record Processing Modal */}
+      {/* Record Extraction Modal */}
       <Modal
-        open={showProcessingModal}
+        open={showExtractionModal}
         modalHeading={intl.formatMessage({
-          id: "notebook.mntd.processingqc.modal.processingTitle",
-          defaultMessage: "Record Processing Data",
+          id: "notebook.mntd.extraction.modal.title",
+          defaultMessage: "Record Nucleic Acid Extraction",
         })}
         primaryButtonText={intl.formatMessage({
-          id: "notebook.mntd.processingqc.modal.save",
+          id: "notebook.mntd.extraction.modal.save",
           defaultMessage: "Save",
         })}
         secondaryButtonText={intl.formatMessage({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        onRequestClose={() => setShowProcessingModal(false)}
-        onRequestSubmit={handleSaveProcessingData}
+        onRequestClose={() => setShowExtractionModal(false)}
+        onRequestSubmit={handleSaveExtractionData}
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
           <p style={{ color: "#525252", marginBottom: "1rem" }}>
             <FormattedMessage
-              id="notebook.mntd.processingqc.modal.processingDescription"
-              defaultMessage="Record processing execution data for {count} selected sample(s)."
+              id="notebook.mntd.extraction.modal.description"
+              defaultMessage="Record extraction data for {count} selected sample(s)."
               values={{ count: selectedIds.length }}
             />
           </p>
 
-          {/* Protocol Selection */}
-          <Dropdown
-            id="protocol"
-            titleText={intl.formatMessage({
-              id: "notebook.mntd.processingqc.protocol",
-              defaultMessage: "Protocol Used",
-            })}
-            label={intl.formatMessage({
-              id: "notebook.mntd.processingqc.selectProtocol",
-              defaultMessage: "Select protocol",
-            })}
-            items={protocolOptions}
-            itemToString={(item) => (item ? item.text : "")}
-            selectedItem={protocolOptions.find(
-              (p) => p.id === processingData.protocol,
-            )}
-            onChange={({ selectedItem }) =>
-              setProcessingData({
-                ...processingData,
-                protocol: selectedItem?.id || "",
-              })
-            }
-            style={{ marginBottom: "1rem" }}
-          />
-
-          {/* Start Date/Time */}
-          <div
-            style={{
-              padding: "1rem",
-              backgroundColor: "#f4f4f4",
-              borderRadius: "4px",
-              marginBottom: "1rem",
-            }}
-          >
-            <h5 style={{ marginBottom: "0.5rem" }}>
-              <FormattedMessage
-                id="notebook.mntd.processingqc.startTime"
-                defaultMessage="Start Time"
-              />
-            </h5>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <DatePicker
-                datePickerType="single"
-                onChange={([date]) =>
-                  setProcessingData({
-                    ...processingData,
-                    startDate: date?.toISOString().split("T")[0] || "",
-                  })
-                }
-              >
-                <DatePickerInput
-                  id="start-date"
-                  labelText={intl.formatMessage({
-                    id: "notebook.mntd.processingqc.date",
-                    defaultMessage: "Date",
-                  })}
-                  placeholder="mm/dd/yyyy"
-                />
-              </DatePicker>
-              <TextInput
-                id="start-time"
-                labelText={intl.formatMessage({
-                  id: "notebook.mntd.processingqc.time",
-                  defaultMessage: "Time",
-                })}
-                value={processingData.startTime}
-                onChange={(e) =>
-                  setProcessingData({
-                    ...processingData,
-                    startTime: e.target.value,
-                  })
-                }
-                placeholder="HH:MM"
-              />
-            </div>
-          </div>
-
-          {/* End Date/Time */}
-          <div
-            style={{
-              padding: "1rem",
-              backgroundColor: "#f4f4f4",
-              borderRadius: "4px",
-              marginBottom: "1rem",
-            }}
-          >
-            <h5 style={{ marginBottom: "0.5rem" }}>
-              <FormattedMessage
-                id="notebook.mntd.processingqc.endTime"
-                defaultMessage="End Time"
-              />
-            </h5>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <DatePicker
-                datePickerType="single"
-                onChange={([date]) =>
-                  setProcessingData({
-                    ...processingData,
-                    endDate: date?.toISOString().split("T")[0] || "",
-                  })
-                }
-              >
-                <DatePickerInput
-                  id="end-date"
-                  labelText={intl.formatMessage({
-                    id: "notebook.mntd.processingqc.date",
-                    defaultMessage: "Date",
-                  })}
-                  placeholder="mm/dd/yyyy"
-                />
-              </DatePicker>
-              <TextInput
-                id="end-time"
-                labelText={intl.formatMessage({
-                  id: "notebook.mntd.processingqc.time",
-                  defaultMessage: "Time",
-                })}
-                value={processingData.endTime}
-                onChange={(e) =>
-                  setProcessingData({
-                    ...processingData,
-                    endTime: e.target.value,
-                  })
-                }
-                placeholder="HH:MM"
-              />
-            </div>
-          </div>
-
-          {/* Technician */}
-          <TextInput
-            id="technician"
-            labelText={intl.formatMessage({
-              id: "notebook.mntd.processingqc.technician",
-              defaultMessage: "Technician",
-            })}
-            value={processingData.technician}
-            onChange={(e) =>
-              setProcessingData({
-                ...processingData,
-                technician: e.target.value,
-              })
-            }
-            style={{ marginBottom: "1rem" }}
-          />
-
-          {/* Notes */}
-          <TextArea
-            id="processing-notes"
-            labelText={intl.formatMessage({
-              id: "notebook.mntd.processingqc.notes",
-              defaultMessage: "Notes",
-            })}
-            value={processingData.notes}
-            onChange={(e) =>
-              setProcessingData({ ...processingData, notes: e.target.value })
-            }
-            rows={3}
-          />
-        </div>
-      </Modal>
-
-      {/* Record QC Modal */}
-      <Modal
-        open={showQCModal}
-        modalHeading={intl.formatMessage({
-          id: "notebook.mntd.processingqc.modal.qcTitle",
-          defaultMessage: "Record Quality Control Data",
-        })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.mntd.processingqc.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestClose={() => setShowQCModal(false)}
-        onRequestSubmit={handleSaveQCData}
-        size="md"
-      >
-        <div style={{ marginBottom: "1rem" }}>
-          <p style={{ color: "#525252", marginBottom: "1rem" }}>
-            <FormattedMessage
-              id="notebook.mntd.processingqc.modal.qcDescription"
-              defaultMessage="Record quality control results for {count} selected sample(s)."
-              values={{ count: selectedIds.length }}
-            />
-          </p>
-
-          {/* QC Result */}
-          <div style={{ marginBottom: "1rem" }}>
+          {/* Sample Type Selection */}
+          <div style={{ marginBottom: "1.5rem" }}>
             <RadioButtonGroup
               legendText={intl.formatMessage({
-                id: "notebook.mntd.processingqc.qcResultLabel",
-                defaultMessage: "QC Result",
+                id: "notebook.mntd.extraction.sampleType",
+                defaultMessage: "Sample Type",
               })}
-              name="qc-result"
-              valueSelected={qcData.qcResult}
-              onChange={(value) => setQCData({ ...qcData, qcResult: value })}
+              name="sample-type"
+              valueSelected={extractionData.sampleType}
+              onChange={(value) => {
+                setExtractionData({
+                  ...extractionData,
+                  sampleType: value,
+                  extractionMethod: "", // Reset method when type changes
+                });
+              }}
+              orientation="horizontal"
             >
               <RadioButton
-                id="qc-pass"
+                id="sample-parasite"
                 labelText={intl.formatMessage({
-                  id: "notebook.mntd.processingqc.pass",
-                  defaultMessage: "Pass",
+                  id: "notebook.mntd.extraction.parasite",
+                  defaultMessage: "Parasite",
                 })}
-                value="PASS"
+                value="PARASITE"
               />
               <RadioButton
-                id="qc-fail"
+                id="sample-vector"
                 labelText={intl.formatMessage({
-                  id: "notebook.mntd.processingqc.fail",
-                  defaultMessage: "Fail",
+                  id: "notebook.mntd.extraction.vector",
+                  defaultMessage: "Vector",
                 })}
-                value="FAIL"
+                value="VECTOR"
               />
             </RadioButtonGroup>
           </div>
 
-          {/* QC Metrics */}
-          <div
-            style={{
-              padding: "1rem",
-              backgroundColor: "#e0f0e0",
-              borderRadius: "4px",
-              marginBottom: "1rem",
-            }}
-          >
-            <h5 style={{ marginBottom: "0.5rem" }}>
-              <FormattedMessage
-                id="notebook.mntd.processingqc.qcMetrics"
-                defaultMessage="QC Metrics"
+          {/* Extraction Type Selection */}
+          <div style={{ marginBottom: "1.5rem" }}>
+            <RadioButtonGroup
+              legendText={intl.formatMessage({
+                id: "notebook.mntd.extraction.extractionType",
+                defaultMessage: "Extraction Type",
+              })}
+              name="extraction-type"
+              valueSelected={extractionData.extractionType}
+              onChange={(value) => {
+                setExtractionData({
+                  ...extractionData,
+                  extractionType: value,
+                  extractionMethod: "", // Reset method when type changes
+                });
+              }}
+              orientation="horizontal"
+            >
+              <RadioButton
+                id="extraction-manual"
+                labelText={intl.formatMessage({
+                  id: "notebook.mntd.extraction.manual",
+                  defaultMessage: "Manual",
+                })}
+                value="MANUAL"
               />
-            </h5>
-            <Grid fullWidth>
-              <Column lg={8} md={4} sm={4}>
-                <NumberInput
-                  id="ct-value"
-                  label={intl.formatMessage({
-                    id: "notebook.mntd.processingqc.ctValue",
-                    defaultMessage: "Ct Value",
-                  })}
-                  value={qcData.ctValue}
-                  onChange={(e, { value }) =>
-                    setQCData({ ...qcData, ctValue: value })
-                  }
-                  min={0}
-                  step={0.1}
-                  allowEmpty
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <TextInput
-                  id="yield"
-                  labelText={intl.formatMessage({
-                    id: "notebook.mntd.processingqc.yield",
-                    defaultMessage: "Yield (ng/uL)",
-                  })}
-                  value={qcData.yield}
-                  onChange={(e) =>
-                    setQCData({ ...qcData, yield: e.target.value })
-                  }
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <TextInput
-                  id="integrity"
-                  labelText={intl.formatMessage({
-                    id: "notebook.mntd.processingqc.integrity",
-                    defaultMessage: "Integrity (RIN/DV200)",
-                  })}
-                  value={qcData.integrity}
-                  onChange={(e) =>
-                    setQCData({ ...qcData, integrity: e.target.value })
-                  }
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <TextInput
-                  id="other-metrics"
-                  labelText={intl.formatMessage({
-                    id: "notebook.mntd.processingqc.otherMetrics",
-                    defaultMessage: "Other Metrics",
-                  })}
-                  value={qcData.otherMetrics}
-                  onChange={(e) =>
-                    setQCData({ ...qcData, otherMetrics: e.target.value })
-                  }
-                />
-              </Column>
-            </Grid>
+              <RadioButton
+                id="extraction-automatic"
+                labelText={intl.formatMessage({
+                  id: "notebook.mntd.extraction.automatic",
+                  defaultMessage: "Automatic",
+                })}
+                value="AUTOMATIC"
+              />
+            </RadioButtonGroup>
           </div>
 
-          {/* Failed Decision - shown only when FAIL is selected */}
-          {qcData.qcResult === "FAIL" && (
-            <div
-              style={{
-                padding: "1rem",
-                backgroundColor: "#fff0f0",
-                borderRadius: "4px",
-                marginBottom: "1rem",
-              }}
-            >
-              <h5 style={{ marginBottom: "0.5rem", color: "#da1e28" }}>
-                <FormattedMessage
-                  id="notebook.mntd.processingqc.failedAction"
-                  defaultMessage="Action for Failed Samples"
-                />
-              </h5>
-              <Dropdown
-                id="failed-decision"
-                titleText={intl.formatMessage({
-                  id: "notebook.mntd.processingqc.decision",
-                  defaultMessage: "Decision",
-                })}
-                label={intl.formatMessage({
-                  id: "notebook.mntd.processingqc.selectDecision",
-                  defaultMessage: "Select action",
-                })}
-                items={failedDecisionOptions}
-                itemToString={(item) => (item ? item.text : "")}
-                selectedItem={failedDecisionOptions.find(
-                  (d) => d.id === qcData.failedDecision,
-                )}
-                onChange={({ selectedItem }) =>
-                  setQCData({
-                    ...qcData,
-                    failedDecision: selectedItem?.id || "",
-                  })
-                }
-              />
-            </div>
-          )}
-
-          {/* QC Technician */}
-          <TextInput
-            id="qc-technician"
-            labelText={intl.formatMessage({
-              id: "notebook.mntd.processingqc.qcTechnician",
-              defaultMessage: "QC Technician",
+          {/* Extraction Method Selection */}
+          <Dropdown
+            id="extraction-method"
+            titleText={intl.formatMessage({
+              id: "notebook.mntd.extraction.method",
+              defaultMessage: "Extraction Method",
             })}
-            value={qcData.qcTechnician}
-            onChange={(e) =>
-              setQCData({ ...qcData, qcTechnician: e.target.value })
+            label={intl.formatMessage({
+              id: "notebook.mntd.extraction.selectMethod",
+              defaultMessage: "Select extraction method",
+            })}
+            items={getExtractionMethods()}
+            itemToString={(item) => (item ? item.text : "")}
+            selectedItem={getExtractionMethods().find(
+              (m) => m.id === extractionData.extractionMethod,
+            )}
+            onChange={({ selectedItem }) =>
+              setExtractionData({
+                ...extractionData,
+                extractionMethod: selectedItem?.id || "",
+              })
             }
             style={{ marginBottom: "1rem" }}
           />
 
-          {/* QC Date */}
+          {/* Other Method Description - shown only for "Others" */}
+          {(extractionData.extractionMethod === "OTHER_MANUAL" ||
+            extractionData.extractionMethod === "OTHER_MANUAL_V") && (
+            <TextInput
+              id="other-method-desc"
+              labelText={intl.formatMessage({
+                id: "notebook.mntd.extraction.otherMethodDescription",
+                defaultMessage: "Specify Other Method",
+              })}
+              value={extractionData.otherMethodDescription}
+              onChange={(e) =>
+                setExtractionData({
+                  ...extractionData,
+                  otherMethodDescription: e.target.value,
+                })
+              }
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+
+          {/* Kit Lot Number - Multiselect from inventory reagents */}
+          {loadingReagents ? (
+            <InlineLoading
+              description={intl.formatMessage({
+                id: "notebook.mntd.extraction.loadingReagents",
+                defaultMessage: "Loading reagents...",
+              })}
+              style={{ marginBottom: "1rem" }}
+            />
+          ) : (
+            <MultiSelect
+              id="kit-lot-number"
+              titleText={intl.formatMessage({
+                id: "notebook.mntd.extraction.kitLotNumber",
+                defaultMessage: "Kit Lot Number",
+              })}
+              label={intl.formatMessage({
+                id: "notebook.mntd.extraction.selectKits",
+                defaultMessage: "Select extraction kits...",
+              })}
+              items={reagents}
+              itemToString={(item) => (item ? item.label : "")}
+              selectedItems={reagents.filter((r) =>
+                extractionData.selectedKits.includes(r.id),
+              )}
+              onChange={({ selectedItems }) =>
+                setExtractionData({
+                  ...extractionData,
+                  selectedKits: selectedItems.map((item) => item.id),
+                })
+              }
+              disabled={loadingReagents}
+            />
+          )}
+
+          {/* Yield */}
+          <Grid fullWidth style={{ marginBottom: "1rem" }}>
+            <Column lg={8} md={4} sm={4}>
+              <NumberInput
+                id="yield"
+                label={intl.formatMessage({
+                  id: "notebook.mntd.extraction.yield",
+                  defaultMessage: "Yield",
+                })}
+                value={extractionData.yield}
+                onChange={(e, { value }) =>
+                  setExtractionData({ ...extractionData, yield: value })
+                }
+                min={0}
+                step={0.01}
+                allowEmpty
+                hideSteppers
+              />
+            </Column>
+            <Column lg={8} md={4} sm={4}>
+              <Dropdown
+                id="yield-unit"
+                titleText={intl.formatMessage({
+                  id: "notebook.mntd.extraction.unit",
+                  defaultMessage: "Unit",
+                })}
+                label={intl.formatMessage({
+                  id: "notebook.mntd.extraction.selectUnit",
+                  defaultMessage: "Select unit",
+                })}
+                items={[
+                  { id: "ng/uL", text: "ng/µL" },
+                  { id: "ug/mL", text: "µg/mL" },
+                  { id: "pg/uL", text: "pg/µL" },
+                ]}
+                itemToString={(item) => (item ? item.text : "")}
+                selectedItem={{
+                  id: extractionData.yieldUnit,
+                  text:
+                    extractionData.yieldUnit === "ng/uL"
+                      ? "ng/µL"
+                      : extractionData.yieldUnit,
+                }}
+                onChange={({ selectedItem }) =>
+                  setExtractionData({
+                    ...extractionData,
+                    yieldUnit: selectedItem?.id || "ng/uL",
+                  })
+                }
+              />
+            </Column>
+          </Grid>
+
+          {/* Extraction Date */}
           <DatePicker
             datePickerType="single"
+            value={extractionData.extractionDate}
             onChange={([date]) =>
-              setQCData({
-                ...qcData,
-                qcDate: date?.toISOString().split("T")[0] || "",
+              setExtractionData({
+                ...extractionData,
+                extractionDate: date?.toISOString().split("T")[0] || "",
               })
             }
           >
             <DatePickerInput
-              id="qc-date"
+              id="extraction-date"
               labelText={intl.formatMessage({
-                id: "notebook.mntd.processingqc.qcDate",
-                defaultMessage: "QC Date",
+                id: "notebook.mntd.extraction.date",
+                defaultMessage: "Extraction Date",
               })}
               placeholder="mm/dd/yyyy"
             />
           </DatePicker>
 
-          {/* QC Notes */}
-          <TextArea
-            id="qc-notes"
+          {/* Operator */}
+          <TextInput
+            id="operator"
             labelText={intl.formatMessage({
-              id: "notebook.mntd.processingqc.qcNotes",
-              defaultMessage: "QC Notes",
+              id: "notebook.mntd.extraction.operator",
+              defaultMessage: "Operator",
             })}
-            value={qcData.qcNotes}
-            onChange={(e) => setQCData({ ...qcData, qcNotes: e.target.value })}
+            value={extractionData.operator}
+            onChange={(e) =>
+              setExtractionData({
+                ...extractionData,
+                operator: e.target.value,
+              })
+            }
+            style={{ marginTop: "1rem", marginBottom: "1rem" }}
+          />
+
+          {/* Notes */}
+          <TextArea
+            id="extraction-notes"
+            labelText={intl.formatMessage({
+              id: "notebook.mntd.extraction.notes",
+              defaultMessage: "Notes",
+            })}
+            value={extractionData.notes}
+            onChange={(e) =>
+              setExtractionData({ ...extractionData, notes: e.target.value })
+            }
             rows={3}
-            style={{ marginTop: "1rem" }}
           />
         </div>
       </Modal>

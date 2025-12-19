@@ -131,6 +131,23 @@ public interface NotebookBulkOperationService {
             Integer rows, Integer columns, List<String> occupiedWells, Map<String, Object> storageData, String userId);
 
     /**
+     * Assign samples to storage using a well assignments map where each sample has
+     * its own well coordinate. This method: 1. Validates that target wells are not
+     * already occupied 2. Creates SampleStorageAssignment records in the storage
+     * system 3. Updates notebook page sample data with storage info
+     *
+     * @param pageId          the notebook page ID
+     * @param sampleIds       list of sample IDs to assign
+     * @param boxId           the storage box ID
+     * @param wellAssignments map of sampleId (as string) to wellCoordinate
+     * @param storageData     additional storage metadata
+     * @param userId          the user performing the assignment
+     * @return map containing assignedCount and any errors
+     */
+    java.util.Map<String, Object> assignSamplesToStorageWithWellMap(Integer pageId, List<Integer> sampleIds,
+            Integer boxId, Map<String, String> wellAssignments, Map<String, Object> storageData, String userId);
+
+    /**
      * Generate a report for samples on a page.
      *
      * @param pageId       the notebook page ID
@@ -157,4 +174,27 @@ public interface NotebookBulkOperationService {
      */
     byte[] generateREDCapExport(Integer pageId, List<Integer> sampleIds, String recordIdField, String eventName,
             String instrumentName, String userId);
+
+    /**
+     * Parse CSV raw data file and apply results to samples by matching
+     * externalId (primary) or accessionNumber (fallback). The CSV must contain a
+     * header row with column names that map to sample data fields.
+     *
+     * Matching Priority:
+     * 1. externalId - primary matching key from SampleItem.externalId
+     * 2. accessionNumber - fallback if externalId doesn't match
+     *
+     * Supported columns: externalId, accessionNumber, testResult, ctValue,
+     * concentration, absorbance, runId, kitLot, operator, machineType,
+     * runCompleted, runIssues, notes
+     *
+     * @param pageId      the notebook page ID
+     * @param csvContent  the CSV file content as bytes
+     * @param machineType the machine type (from upload metadata)
+     * @param runId       the run ID (from upload metadata)
+     * @param userId      the user performing the upload
+     * @return map containing matchedCount, updatedCount, unmatchedRows, and errors
+     */
+    Map<String, Object> parseAndApplyCsvResults(Integer pageId, byte[] csvContent, String machineType, String runId,
+            String userId);
 }

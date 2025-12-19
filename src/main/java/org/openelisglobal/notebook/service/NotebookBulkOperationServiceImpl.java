@@ -52,7 +52,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
         int updatedCount = 0;
 
-        // Count samples that DON'T already have reagents applied (to avoid double consumption)
+        // Count samples that DON'T already have reagents applied (to avoid double
+        // consumption)
         int samplesNeedingReagents = countSamplesWithoutReagents(pageId, sampleIds);
         LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
                 "Total samples: " + sampleIds.size() + ", samples needing reagents: " + samplesNeedingReagents);
@@ -72,26 +73,46 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
             for (Integer sampleId : batch) {
                 NotebookPageSample nps = notebookPageSampleService.getByPageIdAndSampleItemId(pageId, sampleId);
-                if (nps != null) {
-                    // Merge new data with existing data
-                    Map<String, Object> existingData = nps.getData();
-                    if (existingData == null) {
-                        existingData = new HashMap<>();
+                if (nps == null) {
+                    // Sample doesn't have a NotebookPageSample record for this page yet
+                    // This can happen with child samples (aliquots) that weren't properly linked
+                    // Create a new record for them
+                    NoteBookPage page = noteBookPageService.get(pageId);
+                    if (page != null) {
+                        nps = new NotebookPageSample();
+                        nps.setNotebookPage(page);
+                        nps.setSampleItemId(String.valueOf(sampleId));
+                        nps.setStatus(Status.PENDING);
+                        nps.setSysUserId(userId);
+                        nps.setData(new HashMap<>());
+                        notebookPageSampleService.save(nps);
+                        LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
+                                "Created missing NotebookPageSample for sampleId=" + sampleId + " on pageId=" + pageId);
+                    } else {
+                        LogEvent.logWarn(this.getClass().getName(), "bulkApplyValues",
+                                "Page not found: " + pageId + ", skipping sample " + sampleId);
+                        continue;
                     }
-                    existingData.putAll(data);
-                    nps.setData(existingData);
-
-                    // Update timestamp (BaseObject uses setLastupdated)
-                    nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
-
-                    // If status is PENDING and data is being applied, transition to IN_PROGRESS
-                    if (nps.getStatus() == Status.PENDING) {
-                        nps.setStatus(Status.IN_PROGRESS);
-                    }
-
-                    notebookPageSampleService.update(nps);
-                    updatedCount++;
                 }
+
+                // Merge new data with existing data
+                Map<String, Object> existingData = nps.getData();
+                if (existingData == null) {
+                    existingData = new HashMap<>();
+                }
+                existingData.putAll(data);
+                nps.setData(existingData);
+
+                // Update timestamp (BaseObject uses setLastupdated)
+                nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+                // If status is PENDING and data is being applied, transition to IN_PROGRESS
+                if (nps.getStatus() == Status.PENDING) {
+                    nps.setStatus(Status.IN_PROGRESS);
+                }
+
+                notebookPageSampleService.update(nps);
+                updatedCount++;
             }
         }
 
@@ -135,9 +156,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         }
 
         LogEvent.logInfo(this.getClass().getName(), "countSamplesWithoutReagents",
-                "Page " + pageId + ": Total requested=" + sampleIds.size() +
-                ", needReagents=" + count + ", alreadyHaveReagents=" + samplesWithReagents +
-                ", notFound=" + samplesNotFound);
+                "Page " + pageId + ": Total requested=" + sampleIds.size() + ", needReagents=" + count
+                        + ", alreadyHaveReagents=" + samplesWithReagents + ", notFound=" + samplesNotFound);
 
         return count;
     }
@@ -153,8 +173,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     @SuppressWarnings("unchecked")
     private void consumeReagentsFromInventory(Map<String, Object> data, int sampleCount, String userId) {
         LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
-                "Starting inventory consumption for " + sampleCount + " samples. Data keys: " + data.keySet() +
-                ". NOTE: Each reagent will consume " + sampleCount + " units (1 per sample).");
+                "Starting inventory consumption for " + sampleCount + " samples. Data keys: " + data.keySet()
+                        + ". NOTE: Each reagent will consume " + sampleCount + " units (1 per sample).");
 
         // Check for selected reagents in the data
         Object selectedReagentsObj = data.get("selectedReagents");
@@ -183,8 +203,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         }
 
         LogEvent.logInfo(this.getClass().getName(), "consumeReagentsFromInventory",
-                "Processing " + rawList.size() + " reagent type(s). Total consumption will be " +
-                rawList.size() + " * " + sampleCount + " = " + (rawList.size() * sampleCount) + " units across all reagents");
+                "Processing " + rawList.size() + " reagent type(s). Total consumption will be " + rawList.size() + " * "
+                        + sampleCount + " = " + (rawList.size() * sampleCount) + " units across all reagents");
 
         // Consume 1 unit of each reagent per sample
         // (This is a simplification - in reality, different reagents may have different
@@ -519,6 +539,102 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     }
 
     @Override
+    @Transactional
+    public Map<String, Object> assignSamplesToStorageWithWellMap(Integer pageId, List<Integer> sampleIds, Integer boxId,
+            Map<String, String> wellAssignments, Map<String, Object> storageData, String userId) {
+        Map<String, Object> result = new HashMap<>();
+        List<String> errors = new ArrayList<>();
+        int assignedCount = 0;
+
+        if (wellAssignments == null || wellAssignments.isEmpty()) {
+            result.put("success", false);
+            result.put("error", "No well assignments provided");
+            return result;
+        }
+
+        if (boxId == null) {
+            result.put("success", false);
+            result.put("error", "Box ID is required");
+            return result;
+        }
+
+        // Process each sample with its specific well assignment
+        for (Map.Entry<String, String> entry : wellAssignments.entrySet()) {
+            String sampleIdStr = entry.getKey();
+            String wellCoordinate = entry.getValue();
+
+            try {
+                Integer sampleId = Integer.parseInt(sampleIdStr);
+
+                // Get the NotebookPageSample to find the actual SampleItem ID
+                NotebookPageSample nps = notebookPageSampleService.getByPageIdAndSampleItemId(pageId, sampleId);
+                if (nps == null) {
+                    errors.add("Sample " + sampleId + " not found in notebook page");
+                    continue;
+                }
+
+                String sampleItemId = String.valueOf(nps.getSampleItemId());
+
+                try {
+                    // Create storage assignment using the storage service
+                    Map<String, Object> assignmentResult = sampleStorageService.assignSampleItemWithLocation(
+                            sampleItemId, String.valueOf(boxId), "box", wellCoordinate,
+                            storageData != null ? (String) storageData.get("notes") : null);
+
+                    if (assignmentResult != null && assignmentResult.containsKey("assignmentId")) {
+                        // Update the notebook page sample data with storage info
+                        Map<String, Object> existingData = nps.getData();
+                        if (existingData == null) {
+                            existingData = new HashMap<>();
+                        }
+                        if (storageData != null) {
+                            existingData.putAll(storageData);
+                        }
+                        existingData.put("storageWell", wellCoordinate);
+                        existingData.put("storageAssignmentId", assignmentResult.get("assignmentId"));
+                        existingData.put("storagePath", assignmentResult.get("hierarchicalPath"));
+                        nps.setData(existingData);
+                        nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
+                        notebookPageSampleService.update(nps);
+
+                        assignedCount++;
+                        LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorageWithWellMap",
+                                "Assigned sample " + sampleItemId + " to box " + boxId + " well " + wellCoordinate);
+                    }
+                } catch (Exception e) {
+                    String errorMsg = e.getMessage();
+                    if (errorMsg != null && errorMsg.contains("already assigned")) {
+                        errors.add(
+                                "Sample " + sampleId + " is already assigned to storage. Use move operation instead.");
+                    } else if (errorMsg != null && errorMsg.contains("already occupied")) {
+                        errors.add("Well " + wellCoordinate + " is already occupied");
+                    } else {
+                        errors.add(
+                                "Failed to assign sample " + sampleId + " to well " + wellCoordinate + ": " + errorMsg);
+                    }
+                    LogEvent.logError(this.getClass().getName(), "assignSamplesToStorageWithWellMap",
+                            "Error assigning sample " + sampleId + ": " + e.getMessage());
+                }
+            } catch (NumberFormatException e) {
+                errors.add("Invalid sample ID format: " + sampleIdStr);
+            } catch (Exception e) {
+                errors.add("Error processing sample " + sampleIdStr + ": " + e.getMessage());
+                LogEvent.logError(this.getClass().getName(), "assignSamplesToStorageWithWellMap",
+                        "Error processing sample " + sampleIdStr + ": " + e.getMessage());
+            }
+        }
+
+        result.put("success", assignedCount > 0);
+        result.put("assignedCount", assignedCount);
+        result.put("requestedCount", wellAssignments.size());
+        if (!errors.isEmpty()) {
+            result.put("errors", errors);
+        }
+
+        return result;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public byte[] generateReport(Integer pageId, List<Integer> sampleIds, String reportType, String reportFormat,
             String userId) {
@@ -647,6 +763,21 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         return "";
     }
 
+    private String getExternalId(NotebookPageSample nps) {
+        try {
+            String sampleItemIdStr = nps.getSampleItemId();
+            if (sampleItemIdStr != null) {
+                SampleItem sampleItem = sampleItemService.get(sampleItemIdStr);
+                if (sampleItem != null && sampleItem.getExternalId() != null) {
+                    return sampleItem.getExternalId();
+                }
+            }
+        } catch (Exception e) {
+            // Ignore - return empty
+        }
+        return "";
+    }
+
     @Override
     @Transactional(readOnly = true)
     public byte[] generateREDCapExport(Integer pageId, List<Integer> sampleIds, String recordIdField, String eventName,
@@ -747,5 +878,215 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             return "";
         }
         return value.toString().replace("\"", "'").replace(",", ";");
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> parseAndApplyCsvResults(Integer pageId, byte[] csvContent, String machineType,
+            String runId, String userId) {
+        Map<String, Object> result = new HashMap<>();
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> unmatchedRows = new ArrayList<>();
+        int matchedCount = 0;
+        int updatedCount = 0;
+
+        if (pageId == null || csvContent == null || csvContent.length == 0) {
+            result.put("success", false);
+            result.put("error", "Invalid parameters: pageId or CSV content is missing");
+            return result;
+        }
+
+        try {
+            String csvString = new String(csvContent, java.nio.charset.StandardCharsets.UTF_8);
+            String[] lines = csvString.split("\n");
+
+            if (lines.length < 2) {
+                result.put("success", false);
+                result.put("error", "CSV must contain a header row and at least one data row");
+                return result;
+            }
+
+            // Parse header row
+            String[] headers = parseCsvLine(lines[0]);
+            Map<String, Integer> headerIndex = new HashMap<>();
+            for (int i = 0; i < headers.length; i++) {
+                headerIndex.put(headers[i].trim().toLowerCase(), i);
+            }
+
+            // Find key columns for matching - externalId is the primary matching key
+            int externalIdCol = headerIndex.getOrDefault("externalid", -1);
+            int accessionCol = headerIndex.getOrDefault("accessionnumber", -1);
+
+            if (externalIdCol == -1 && accessionCol == -1) {
+                result.put("success", false);
+                result.put("error", "CSV must contain 'externalId' or 'accessionNumber' column for matching samples");
+                return result;
+            }
+
+            // Get all samples for this page with their identifiers
+            // Use getExternalId() helper to get the actual externalId from SampleItem
+            List<NotebookPageSample> pageSamples = notebookPageSampleService.getByPageId(pageId);
+            Map<String, NotebookPageSample> sampleByExternalId = new HashMap<>();
+            Map<String, NotebookPageSample> sampleByAccession = new HashMap<>();
+
+            for (NotebookPageSample nps : pageSamples) {
+                // Primary: Build external ID lookup from SampleItem
+                String externalId = getExternalId(nps);
+                if (externalId != null && !externalId.isEmpty()) {
+                    sampleByExternalId.put(externalId.toUpperCase(), nps);
+                }
+                // Fallback: Build accession number lookup
+                String accession = getAccessionNumber(nps);
+                if (accession != null && !accession.isEmpty()) {
+                    sampleByAccession.put(accession.toUpperCase(), nps);
+                }
+            }
+
+            // Process data rows
+            for (int rowNum = 1; rowNum < lines.length; rowNum++) {
+                String line = lines[rowNum].trim();
+                if (line.isEmpty()) {
+                    continue;
+                }
+
+                String[] values = parseCsvLine(line);
+                if (values.length == 0) {
+                    continue;
+                }
+
+                // Try to find matching sample - prioritize externalId matching
+                NotebookPageSample matchedSample = null;
+                String matchKey = "";
+
+                // First: Try to match by externalId (primary matching key)
+                if (externalIdCol >= 0 && externalIdCol < values.length && !values[externalIdCol].isEmpty()) {
+                    matchKey = values[externalIdCol].trim().toUpperCase();
+                    matchedSample = sampleByExternalId.get(matchKey);
+                }
+
+                // Fallback: Try to match by accessionNumber if externalId didn't match
+                if (matchedSample == null && accessionCol >= 0 && accessionCol < values.length
+                        && !values[accessionCol].isEmpty()) {
+                    matchKey = values[accessionCol].trim().toUpperCase();
+                    matchedSample = sampleByAccession.get(matchKey);
+                }
+
+                if (matchedSample == null) {
+                    // Record unmatched row
+                    Map<String, Object> unmatchedRow = new HashMap<>();
+                    unmatchedRow.put("rowNumber", rowNum + 1);
+                    unmatchedRow.put("accessionNumber",
+                            accessionCol >= 0 && accessionCol < values.length ? values[accessionCol] : "");
+                    unmatchedRow.put("externalId",
+                            externalIdCol >= 0 && externalIdCol < values.length ? values[externalIdCol] : "");
+                    unmatchedRows.add(unmatchedRow);
+                    continue;
+                }
+
+                matchedCount++;
+
+                // Build data map from CSV columns
+                Map<String, Object> newData = matchedSample.getData() != null ? new HashMap<>(matchedSample.getData())
+                        : new HashMap<>();
+
+                // Map CSV columns to data fields
+                mapCsvValueToData(newData, "testResult", headerIndex, values);
+                mapCsvValueToData(newData, "ctValue", headerIndex, values);
+                mapCsvValueToData(newData, "concentration", headerIndex, values);
+                mapCsvValueToData(newData, "absorbance", headerIndex, values);
+                mapCsvValueToData(newData, "runId", headerIndex, values);
+                mapCsvValueToData(newData, "kitLot", headerIndex, values);
+                mapCsvValueToData(newData, "operator", headerIndex, values);
+                mapCsvValueToData(newData, "machineType", headerIndex, values);
+                mapCsvValueToData(newData, "runCompleted", headerIndex, values);
+                mapCsvValueToData(newData, "runIssues", headerIndex, values);
+                mapCsvValueToData(newData, "notes", headerIndex, values);
+
+                // Override with metadata from upload if not in CSV
+                if ((newData.get("machineType") == null || newData.get("machineType").toString().isEmpty())
+                        && machineType != null && !machineType.isEmpty()) {
+                    newData.put("machineType", machineType);
+                }
+                if ((newData.get("runId") == null || newData.get("runId").toString().isEmpty()) && runId != null
+                        && !runId.isEmpty()) {
+                    newData.put("runId", runId);
+                }
+
+                // Mark as having raw data uploaded
+                newData.put("rawDataUploaded", true);
+                newData.put("rawDataUploadDate", java.time.LocalDateTime.now().toString());
+
+                // Update sample
+                matchedSample.setData(newData);
+                matchedSample.setSysUserId(userId);
+                notebookPageSampleService.update(matchedSample);
+                updatedCount++;
+            }
+
+            result.put("success", true);
+            result.put("matchedCount", matchedCount);
+            result.put("updatedCount", updatedCount);
+            result.put("unmatchedRows", unmatchedRows);
+            result.put("totalRows", lines.length - 1);
+
+            if (!unmatchedRows.isEmpty()) {
+                result.put("warnings", "Some rows could not be matched to samples on this page");
+            }
+
+            LogEvent.logInfo(this.getClass().getName(), "parseAndApplyCsvResults",
+                    "Processed CSV for page " + pageId + ": matched=" + matchedCount + ", updated=" + updatedCount
+                            + ", unmatched=" + unmatchedRows.size());
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "parseAndApplyCsvResults",
+                    "Error parsing CSV: " + e.getMessage());
+            result.put("success", false);
+            result.put("error", "Error parsing CSV file: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * Parse a single CSV line, handling quoted values with commas.
+     */
+    private String[] parseCsvLine(String line) {
+        List<String> values = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+
+            if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (c == ',' && !inQuotes) {
+                values.add(current.toString().trim());
+                current = new StringBuilder();
+            } else {
+                current.append(c);
+            }
+        }
+        values.add(current.toString().trim());
+
+        return values.toArray(new String[0]);
+    }
+
+    /**
+     * Map a CSV value to the data map if the column exists and has a value.
+     */
+    private void mapCsvValueToData(Map<String, Object> data, String fieldName, Map<String, Integer> headerIndex,
+            String[] values) {
+        Integer colIndex = headerIndex.get(fieldName.toLowerCase());
+        if (colIndex != null && colIndex >= 0 && colIndex < values.length) {
+            String value = values[colIndex].trim();
+            // Remove surrounding quotes if present
+            if (value.startsWith("\"") && value.endsWith("\"")) {
+                value = value.substring(1, value.length() - 1);
+            }
+            if (!value.isEmpty()) {
+                data.put(fieldName, value);
+            }
+        }
     }
 }
