@@ -5,8 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * DTO for parsing menu seed configuration from JSON file. Used by MenuSeedService to read
- * menu_seed.json and create menu entries in the database at application startup.
+ * DTO for parsing menu seed configuration from JSON file. Used by
+ * MenuSeedService to read menu_seed.json and create menu entries in the
+ * database at application startup.
  */
 public class MenuSeedConfig {
 
@@ -22,8 +23,8 @@ public class MenuSeedConfig {
     }
 
     /**
-     * DTO representing a single menu item definition from the seed configuration. Supports
-     * hierarchical menu structures via the childMenus field.
+     * DTO representing a single menu item definition from the seed configuration.
+     * Supports hierarchical menu structures via the childMenus field.
      */
     public static class MenuItemDTO {
 

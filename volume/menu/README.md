@@ -1,6 +1,7 @@
 # OpenELIS Global 2 - Menu Configuration Guide
 
-This directory contains configuration files for managing the OpenELIS menu system.
+This directory contains configuration files for managing the OpenELIS menu
+system.
 
 ## Overview
 
@@ -15,16 +16,20 @@ OpenELIS Global 2 supports two types of menu configuration:
 
 **Purpose**: Filter (show/hide) existing menu items at runtime
 
-**When to use**: 
+**When to use**:
+
 - Hide specific menus for certain implementations
 - Show only a subset of available menus
 - Runtime menu visibility control
 
 **Requirements**:
-- Set `org.openelisglobal.menu.configuration.autocreate=true` in `application.properties`
+
+- Set `org.openelisglobal.menu.configuration.autocreate=true` in
+  `application.properties`
 - Menus must already exist in the database
 
 **Format**:
+
 ```json
 {
   "includes": [
@@ -37,6 +42,7 @@ OpenELIS Global 2 supports two types of menu configuration:
 ```
 
 **Modes**:
+
 - `includes` - Whitelist mode (show only specified menus)
 - `excludes` - Blacklist mode (hide specified menus)
 
@@ -47,15 +53,18 @@ OpenELIS Global 2 supports two types of menu configuration:
 **Purpose**: Create menu entries in the database at application startup
 
 **When to use**:
+
 - Ship OpenELIS with a predefined menu structure
 - Deploy implementation-specific menu layouts
 - Initialize menus without manual UI configuration or Liquibase changesets
 
 **Requirements**:
+
 - Set `org.openelisglobal.menu.seed.enabled=true` in `application.properties`
 - Create `menu_seed.json` with menu definitions
 
 **Behavior**:
+
 - ✅ Creates menus that don't exist (by `elementId`)
 - ✅ Preserves existing menus (idempotent)
 - ✅ Runs once at application startup
@@ -63,6 +72,7 @@ OpenELIS Global 2 supports two types of menu configuration:
 - ✅ Forces menu cache rebuild after seeding
 
 **Format**:
+
 ```json
 {
   "menus": [
@@ -83,18 +93,18 @@ OpenELIS Global 2 supports two types of menu configuration:
 
 **Field Reference**:
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `elementId` | ✅ Yes | - | Unique identifier (used for existence check) |
-| `displayKey` | ✅ Yes | - | i18n key for menu label |
-| `toolTipKey` | No | - | i18n key for tooltip |
-| `actionURL` | No | - | URL or path to navigate to |
-| `clickAction` | No | - | JavaScript action |
-| `presentationOrder` | ✅ Yes | - | Sort order (lower numbers first) |
-| `isActive` | No | `true` | Initial visibility state |
-| `openInNewWindow` | No | `false` | Open link in new window |
-| `hideInOldUI` | No | `false` | Hide in legacy UI |
-| `childMenus` | No | `[]` | Array of child menu definitions |
+| Field               | Required | Default | Description                                  |
+| ------------------- | -------- | ------- | -------------------------------------------- |
+| `elementId`         | ✅ Yes   | -       | Unique identifier (used for existence check) |
+| `displayKey`        | ✅ Yes   | -       | i18n key for menu label                      |
+| `toolTipKey`        | No       | -       | i18n key for tooltip                         |
+| `actionURL`         | No       | -       | URL or path to navigate to                   |
+| `clickAction`       | No       | -       | JavaScript action                            |
+| `presentationOrder` | ✅ Yes   | -       | Sort order (lower numbers first)             |
+| `isActive`          | No       | `true`  | Initial visibility state                     |
+| `openInNewWindow`   | No       | `false` | Open link in new window                      |
+| `hideInOldUI`       | No       | `false` | Hide in legacy UI                            |
+| `childMenus`        | No       | `[]`    | Array of child menu definitions              |
 
 ---
 
@@ -120,17 +130,19 @@ org.openelisglobal.menu.seed.config.path=/var/lib/openelis-global/menu/menu_seed
 **Goal**: Show only Home, Sample, and Patient menus
 
 **File**: `menu_config.json`
+
 ```json
 {
   "includes": [
-    {"elementId": "menu_home", "childMenus": []},
-    {"elementId": "menu_sample", "childMenus": []},
-    {"elementId": "menu_patient", "childMenus": []}
+    { "elementId": "menu_home", "childMenus": [] },
+    { "elementId": "menu_sample", "childMenus": [] },
+    { "elementId": "menu_patient", "childMenus": [] }
   ]
 }
 ```
 
 **Configuration**:
+
 ```properties
 org.openelisglobal.menu.configuration.autocreate=true
 ```
@@ -142,6 +154,7 @@ org.openelisglobal.menu.configuration.autocreate=true
 **Goal**: Create a simplified menu structure for a clinic implementation
 
 **File**: `menu_seed.json`
+
 ```json
 {
   "menus": [
@@ -186,39 +199,58 @@ org.openelisglobal.menu.configuration.autocreate=true
 ```
 
 **Configuration**:
+
 ```properties
 org.openelisglobal.menu.seed.enabled=true
 ```
 
-**Result**: On first startup, these menus are created. On subsequent restarts, existing menus are preserved.
+**Result**: On first startup, these menus are created. On subsequent restarts,
+existing menus are preserved.
 
 ---
 
 ### Example 3: Combined Approach
 
-**Use Case**: Seed a comprehensive menu structure, then filter to show only relevant menus for specific users
+**Use Case**: Seed a comprehensive menu structure, then filter to show only
+relevant menus for specific users
 
 **Step 1**: Seed all possible menus via `menu_seed.json`
+
 ```json
 {
   "menus": [
-    {"elementId": "menu_lab", "displayKey": "lab.menu", "presentationOrder": 1, "isActive": true},
-    {"elementId": "menu_clinic", "displayKey": "clinic.menu", "presentationOrder": 2, "isActive": true},
-    {"elementId": "menu_admin", "displayKey": "admin.menu", "presentationOrder": 3, "isActive": true}
+    {
+      "elementId": "menu_lab",
+      "displayKey": "lab.menu",
+      "presentationOrder": 1,
+      "isActive": true
+    },
+    {
+      "elementId": "menu_clinic",
+      "displayKey": "clinic.menu",
+      "presentationOrder": 2,
+      "isActive": true
+    },
+    {
+      "elementId": "menu_admin",
+      "displayKey": "admin.menu",
+      "presentationOrder": 3,
+      "isActive": true
+    }
   ]
 }
 ```
 
 **Step 2**: Filter to show only clinic menus via `menu_config.json`
+
 ```json
 {
-  "includes": [
-    {"elementId": "menu_clinic", "childMenus": []}
-  ]
+  "includes": [{ "elementId": "menu_clinic", "childMenus": [] }]
 }
 ```
 
 **Configuration**:
+
 ```properties
 org.openelisglobal.menu.seed.enabled=true
 org.openelisglobal.menu.configuration.autocreate=true
@@ -253,6 +285,7 @@ org.openelisglobal.menu.configuration.autocreate=true
 ### Menus not appearing after seeding
 
 **Check**:
+
 1. Is `org.openelisglobal.menu.seed.enabled=true`?
 2. Does `/var/lib/openelis-global/menu/menu_seed.json` exist?
 3. Check logs for `MenuSeedService` errors
@@ -261,13 +294,15 @@ org.openelisglobal.menu.configuration.autocreate=true
 
 ### Menus duplicated
 
-**Cause**: Menu seeding creates entries by `elementId`. If `elementId` changes between runs, duplicates occur.
+**Cause**: Menu seeding creates entries by `elementId`. If `elementId` changes
+between runs, duplicates occur.
 
 **Solution**: Use consistent `elementId` values across deployments.
 
 ### Child menus not showing
 
 **Check**:
+
 1. Parent menu must exist before children
 2. Verify `presentationOrder` is set correctly
 3. Check parent menu's `isActive` is `true`
@@ -276,6 +311,7 @@ org.openelisglobal.menu.configuration.autocreate=true
 ### Filtering not working
 
 **Check**:
+
 1. Is `org.openelisglobal.menu.configuration.autocreate=true`?
 2. Does `menu_config.json` use correct mode (`includes` or `excludes`)?
 3. Menu filtering only affects **existing** menus (not creation)
@@ -285,6 +321,7 @@ org.openelisglobal.menu.configuration.autocreate=true
 ## Best Practices
 
 ### 1. Use Semantic Element IDs
+
 ```json
 // Good
 {"elementId": "menu_sample_create_initial"}
@@ -294,6 +331,7 @@ org.openelisglobal.menu.configuration.autocreate=true
 ```
 
 ### 2. Define Presentation Order Gaps
+
 ```json
 // Good - allows insertion
 {"presentationOrder": 10}
@@ -307,12 +345,15 @@ org.openelisglobal.menu.configuration.autocreate=true
 ```
 
 ### 3. Document Custom i18n Keys
+
 If using custom `displayKey` values, document them in your implementation guide.
 
 ### 4. Version Control Your Config
+
 Track `menu_seed.json` in version control for your implementation.
 
 ### 5. Test Before Production
+
 Seed menus in a test environment before production deployment.
 
 ---
@@ -322,11 +363,13 @@ Seed menus in a test environment before production deployment.
 **Menu Seeding** and **UI Menu Configuration** work together:
 
 1. **Seeding** creates the initial menu structure (startup)
-2. **UI Configuration** allows runtime customization (`/administration#globalMenuManagement`)
+2. **UI Configuration** allows runtime customization
+   (`/administration#globalMenuManagement`)
 3. Changes made via UI are persisted to the database
 4. Re-seeding does **not** overwrite UI changes (idempotent by `elementId`)
 
 **Workflow**:
+
 ```
 Startup → Seed menus → UI customization → Database persistence
          (if not exist)   (anytime)         (ongoing)
@@ -350,6 +393,7 @@ After seeding, menus are accessible via these endpoints.
 ### Migrating from Liquibase Menu Creation
 
 **Before** (Liquibase changeset):
+
 ```xml
 <insert tableName="menu" schemaName="clinlims">
     <column name="id" valueSequenceNext="menu_seq"/>
@@ -362,6 +406,7 @@ After seeding, menus are accessible via these endpoints.
 ```
 
 **After** (`menu_seed.json`):
+
 ```json
 {
   "menus": [
@@ -377,6 +422,7 @@ After seeding, menus are accessible via these endpoints.
 ```
 
 **Benefits**:
+
 - ✅ Easier to maintain (JSON vs XML)
 - ✅ No Liquibase changesets needed
 - ✅ Idempotent (safe to re-run)
@@ -387,6 +433,7 @@ After seeding, menus are accessible via these endpoints.
 ## Support
 
 For questions or issues:
+
 1. Check logs: `MenuSeedService` entries
 2. Verify configuration properties
 3. Review this documentation
@@ -396,11 +443,11 @@ For questions or issues:
 
 ## File Locations
 
-| File | Default Location | Purpose |
-|------|------------------|---------|
-| `menu_config.json` | `/var/lib/openelis-global/menu/menu_config.json` | Runtime filtering |
-| `menu_seed.json` | `/var/lib/openelis-global/menu/menu_seed.json` | Startup seeding |
-| `menu_seed.json.example` | `/var/lib/openelis-global/menu/menu_seed.json.example` | Example template |
+| File                     | Default Location                                       | Purpose           |
+| ------------------------ | ------------------------------------------------------ | ----------------- |
+| `menu_config.json`       | `/var/lib/openelis-global/menu/menu_config.json`       | Runtime filtering |
+| `menu_seed.json`         | `/var/lib/openelis-global/menu/menu_seed.json`         | Startup seeding   |
+| `menu_seed.json.example` | `/var/lib/openelis-global/menu/menu_seed.json.example` | Example template  |
 
 ---
 
