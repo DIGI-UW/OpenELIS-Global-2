@@ -47,6 +47,9 @@ volume/ocl/*
 volume/odoo/*
 .specify/temp/
 
+# Implementation-specific menu configuration (use menu_seed.json.example as template)
+volume/menu/menu_seed.json
+
 # AI Agent command directories (populated by .specify/scripts/bash/install-commands.sh)
 # These are generated from .specify/commands/ and should not be tracked
 .cursor/commands/
