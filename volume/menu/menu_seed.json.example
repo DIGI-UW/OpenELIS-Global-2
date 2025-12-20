@@ -1,0 +1,168 @@
+{
+  "_comment": "OpenELIS Global 2 - Menu Seed Configuration Example",
+  "_description": "This file defines menu entries to be created in the database at application startup when org.openelisglobal.menu.seed.enabled=true",
+  "_usage": [
+    "1. Copy this file to /var/lib/openelis-global/menu/menu_seed.json",
+    "2. Customize menu entries for your implementation",
+    "3. Enable seeding by setting org.openelisglobal.menu.seed.enabled=true in application.properties",
+    "4. Restart the application - menus will be created if they don't exist",
+    "5. Existing menus are preserved (idempotent)"
+  ],
+  "_notes": [
+    "elementId: Unique identifier (required) - used to check if menu already exists",
+    "displayKey: i18n key for menu label (required)",
+    "toolTipKey: i18n key for tooltip (optional)",
+    "actionURL: URL or path to navigate to (optional)",
+    "clickAction: JavaScript action (optional)",
+    "presentationOrder: Sort order - lower numbers appear first (required)",
+    "isActive: Initial visibility (default: true)",
+    "openInNewWindow: Open link in new window (default: false)",
+    "hideInOldUI: Hide in legacy UI (default: false)",
+    "childMenus: Array of child menu definitions (optional)"
+  ],
+  "menus": [
+    {
+      "elementId": "menu_home",
+      "displayKey": "banner.menu.home",
+      "toolTipKey": "banner.menu.home.tooltip",
+      "actionURL": "/Dashboard",
+      "presentationOrder": 1,
+      "isActive": true,
+      "openInNewWindow": false,
+      "hideInOldUI": false
+    },
+    {
+      "elementId": "menu_sample",
+      "displayKey": "banner.menu.sample",
+      "toolTipKey": "banner.menu.sample.tooltip",
+      "actionURL": "",
+      "presentationOrder": 2,
+      "isActive": true,
+      "childMenus": [
+        {
+          "elementId": "menu_sample_add",
+          "displayKey": "banner.menu.sample.add",
+          "toolTipKey": "banner.menu.sample.add.tooltip",
+          "actionURL": "/SampleAdd",
+          "presentationOrder": 1,
+          "isActive": true
+        },
+        {
+          "elementId": "menu_sample_create",
+          "displayKey": "banner.menu.sample.create",
+          "actionURL": "",
+          "presentationOrder": 2,
+          "isActive": true,
+          "childMenus": [
+            {
+              "elementId": "menu_sample_create_initial",
+              "displayKey": "banner.menu.sample.create.initial",
+              "actionURL": "/SamplePatientEntry",
+              "presentationOrder": 1,
+              "isActive": true
+            },
+            {
+              "elementId": "menu_sample_create_double",
+              "displayKey": "banner.menu.sample.create.double",
+              "actionURL": "/SamplePatientEntry?type=verify",
+              "presentationOrder": 2,
+              "isActive": true
+            }
+          ]
+        },
+        {
+          "elementId": "menu_sample_edit",
+          "displayKey": "banner.menu.sample.edit",
+          "actionURL": "/SampleEdit",
+          "presentationOrder": 3,
+          "isActive": true
+        },
+        {
+          "elementId": "menu_sample_print_barcode",
+          "displayKey": "banner.menu.sample.barcode",
+          "actionURL": "/PrintBarcode",
+          "presentationOrder": 4,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "elementId": "menu_patient",
+      "displayKey": "banner.menu.patient",
+      "actionURL": "",
+      "presentationOrder": 3,
+      "isActive": true,
+      "childMenus": [
+        {
+          "elementId": "menu_patient_add_or_edit",
+          "displayKey": "banner.menu.patient.addOrEdit",
+          "actionURL": "/PatientManagement",
+          "presentationOrder": 1,
+          "isActive": true
+        },
+        {
+          "elementId": "menu_patienthistory",
+          "displayKey": "banner.menu.patient.history",
+          "actionURL": "/PatientHistory",
+          "presentationOrder": 2,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "elementId": "menu_results",
+      "displayKey": "banner.menu.results",
+      "actionURL": "",
+      "presentationOrder": 4,
+      "isActive": true,
+      "childMenus": [
+        {
+          "elementId": "menu_results_logbook",
+          "displayKey": "banner.menu.results.logbook",
+          "actionURL": "/LogbookResults",
+          "presentationOrder": 1,
+          "isActive": true
+        },
+        {
+          "elementId": "menu_results_patient",
+          "displayKey": "banner.menu.results.patient",
+          "actionURL": "/ResultsByPatient",
+          "presentationOrder": 2,
+          "isActive": true
+        },
+        {
+          "elementId": "menu_results_accession",
+          "displayKey": "banner.menu.results.accession",
+          "actionURL": "/AccessionResults",
+          "presentationOrder": 3,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "elementId": "menu_reports",
+      "displayKey": "banner.menu.reports",
+      "actionURL": "",
+      "presentationOrder": 5,
+      "isActive": true,
+      "childMenus": [
+        {
+          "elementId": "menu_reports_routine",
+          "displayKey": "banner.menu.reports.routine",
+          "actionURL": "/ReportsMenu",
+          "presentationOrder": 1,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "elementId": "menu_administration",
+      "displayKey": "banner.menu.administration",
+      "toolTipKey": "banner.menu.administration.tooltip",
+      "actionURL": "/MasterListsPage",
+      "presentationOrder": 10,
+      "isActive": true,
+      "openInNewWindow": false
+    }
+  ]
+}
