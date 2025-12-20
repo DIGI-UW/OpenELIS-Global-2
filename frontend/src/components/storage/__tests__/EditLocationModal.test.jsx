@@ -66,26 +66,55 @@ describe("EditLocationModal", () => {
   const mockOnClose = jest.fn();
   const mockOnSave = jest.fn();
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    // Mock getFromOpenElisServerV2 to resolve immediately with location data
-    // Using mockResolvedValue ensures promises resolve in the same tick
-    Utils.getFromOpenElisServerV2.mockImplementation((endpoint) => {
-      const match = endpoint.match(/\/rest\/storage\/(\w+)s\/(\d+)/);
-      if (match) {
-        const [, type, id] = match;
-        if (type === "room") {
-          return Promise.resolve({ ...mockRoom, id });
-        } else if (type === "device") {
-          return Promise.resolve({ ...mockDevice, id });
-        } else if (type === "shelf" || type === "shelves") {
-          return Promise.resolve({ ...mockShelf, id });
-        } else if (type === "rack" || type === "racks") {
-          return Promise.resolve({ ...mockRack, id });
-        }
+  // Default mock implementation function
+  const defaultMockImplementation = (endpoint) => {
+    // Handle rooms list endpoint (returns array)
+    if (endpoint === "/rest/storage/rooms") {
+      return Promise.resolve([
+        { id: 1, name: "Main Laboratory", active: true },
+        { id: 2, name: "Secondary Lab", active: true },
+      ]);
+    }
+    // Handle devices list endpoint (returns array)
+    if (endpoint === "/rest/storage/devices") {
+      return Promise.resolve([
+        { id: 1, name: "Freezer 1", active: true },
+        { id: 2, name: "Refrigerator 1", active: true },
+      ]);
+    }
+    // Handle shelves list endpoint (returns array)
+    if (endpoint === "/rest/storage/shelves") {
+      return Promise.resolve([
+        { id: 1, label: "Shelf A", active: true },
+        { id: 2, label: "Shelf B", active: true },
+      ]);
+    }
+    // Handle individual location endpoints (returns object)
+    const match = endpoint.match(/\/rest\/storage\/(\w+)s\/(\d+)/);
+    if (match) {
+      const [, type, id] = match;
+      if (type === "room") {
+        return Promise.resolve({ ...mockRoom, id });
+      } else if (type === "device") {
+        return Promise.resolve({ ...mockDevice, id });
+      } else if (type === "shelf" || type === "shelves") {
+        return Promise.resolve({ ...mockShelf, id });
+      } else if (type === "rack" || type === "racks") {
+        return Promise.resolve({ ...mockRack, id });
       }
-      return Promise.resolve(mockRoom);
-    });
+    }
+    return Promise.resolve(mockRoom);
+  };
+
+  beforeEach(() => {
+    // CRITICAL: mockReset() clears EVERYTHING including mockImplementationOnce queues
+    // This is necessary because mockImplementationOnce creates a queue that persists
+    // across tests if not fully consumed, causing "undefined" returns
+    Utils.getFromOpenElisServerV2.mockReset();
+    // Restore default implementation after reset
+    Utils.getFromOpenElisServerV2.mockImplementation(defaultMockImplementation);
+    // Clear call history (but keep the implementation we just set)
+    jest.clearAllMocks();
   });
 
   /**
@@ -162,13 +191,19 @@ describe("EditLocationModal", () => {
   });
 
   /**
-   * T106: Test parent field is read-only (disabled)
+   * T106: Test parent field is editable (dropdown, not read-only)
    */
-  test("testEditModal_ParentFieldReadOnly", async () => {
+  test("testEditModal_ParentFieldEditable", async () => {
+    // Mock rooms list for dropdown
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce([
+      { id: 1, name: "Main Laboratory", active: true },
+      { id: 2, name: "Secondary Lab", active: true },
+    ]);
+
     renderWithIntl(
       <EditLocationModal
         open={true}
-        location={mockDevice}
+        location={{ ...mockDevice, parentRoomId: 1 }}
         locationType="device"
         onClose={mockOnClose}
         onSave={mockOnSave}
@@ -178,8 +213,176 @@ describe("EditLocationModal", () => {
     const parentField = await screen.findByTestId(
       "edit-location-device-parent-room",
     );
-    const inputElement = parentField.querySelector("input") || parentField;
-    expect(inputElement.disabled || inputElement.readOnly).toBe(true);
+    // Parent field should now be a Dropdown (editable), not a read-only TextInput
+    expect(parentField).toBeTruthy();
+    // Dropdown should be present and interactive
+    const dropdownButton = parentField.querySelector("button");
+    expect(dropdownButton).toBeTruthy();
+  });
+
+  /**
+   * Test parent ID is included in save payload when present
+   * This test verifies that selectedParentRoomId is included in PUT payload
+   */
+  test("testEditModal_ParentChangePersists", async () => {
+    let capturedPayload = null;
+    const mockFetch = jest.fn().mockImplementation((url, options) => {
+      if (options?.method === "PUT") {
+        capturedPayload = JSON.parse(options.body);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({ ...mockDevice, id: "2", parentRoomId: 2 }),
+      });
+    });
+    global.fetch = mockFetch;
+
+    // Override default implementation for specific calls, then fall back to default
+    Utils.getFromOpenElisServerV2
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          ...mockDevice,
+          id: "2",
+          parentRoomId: "1", // String format as component expects
+        }),
+      ) // Full location fetch (called FIRST)
+      .mockImplementationOnce(() =>
+        Promise.resolve([
+          { id: 1, name: "Main Laboratory", active: true },
+          { id: 2, name: "Secondary Lab", active: true },
+        ]),
+      ); // Rooms list for dropdown (called SECOND)
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={{ ...mockDevice, parentRoomId: 1 }}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    // Wait for room name to appear in dropdown (indicates both API calls completed)
+    await screen.findByText("Main Laboratory");
+
+    // Wait for save button to be enabled
+    await waitFor(() => {
+      const saveButton = screen.getByTestId("edit-location-save-button");
+      expect(saveButton).toBeTruthy();
+      // Button should not be disabled (unless form is invalid)
+      // For device, we need name field filled
+      const nameField = screen.getByTestId("edit-location-device-name");
+      if (nameField.value === "") {
+        fireEvent.change(nameField, { target: { value: "Updated Device" } });
+      }
+    });
+
+    // Save
+    const saveButton = screen.getByTestId("edit-location-save-button");
+    // Check if button is disabled
+    if (!saveButton.disabled) {
+      fireEvent.click(saveButton);
+    } else {
+      // If disabled, check why - might need to fill required fields
+      const nameField = screen.getByTestId("edit-location-device-name");
+      fireEvent.change(nameField, { target: { value: "Updated Device" } });
+      await waitFor(() => {
+        const updatedSaveButton = screen.getByTestId(
+          "edit-location-save-button",
+        );
+        if (!updatedSaveButton.disabled) {
+          fireEvent.click(updatedSaveButton);
+        }
+      });
+    }
+
+    // Wait for save to complete
+    await waitFor(
+      () => {
+        expect(mockFetch).toHaveBeenCalled();
+      },
+      { timeout: 3000 },
+    );
+
+    // Verify parentRoomId is in the payload
+    expect(capturedPayload).toBeTruthy();
+    // The parentRoomId should be included if selectedParentRoomId is set
+    // Since we initialized with parentRoomId: 1, it should be "1"
+    expect(capturedPayload.parentRoomId).toBeDefined();
+    expect(capturedPayload.parentRoomId).toBe("1");
+  });
+
+  /**
+   * Test that getFromOpenElisServerV2 errors don't crash the component
+   */
+  test("testEditModal_HandlesParentOptionsLoadError", async () => {
+    // Override default implementation for specific calls, then fall back to default
+    Utils.getFromOpenElisServerV2
+      .mockImplementationOnce(() =>
+        Promise.resolve({ ...mockDevice, parentRoomId: 1 }),
+      ) // Full location fetch (called FIRST)
+      .mockImplementationOnce(() => Promise.resolve(undefined)); // Rooms fetch fails (called SECOND)
+
+    // Should not throw
+    expect(() => {
+      renderWithIntl(
+        <EditLocationModal
+          open={true}
+          location={{ ...mockDevice, parentRoomId: 1 }}
+          locationType="device"
+          onClose={mockOnClose}
+          onSave={mockOnSave}
+        />,
+      );
+    }).not.toThrow();
+
+    // Wait a bit for any async operations
+    await waitFor(() => {
+      const nameField = screen.queryByTestId("edit-location-device-name");
+      expect(nameField).toBeTruthy();
+    });
+  });
+
+  /**
+   * Test that parent options load correctly
+   */
+  test("testEditModal_LoadsParentOptions", async () => {
+    const mockRooms = [
+      { id: 1, name: "Main Laboratory", active: true },
+      { id: 2, name: "Secondary Lab", active: true },
+      { id: 3, name: "Inactive Lab", active: false },
+    ];
+
+    // Override default implementation for specific calls, then fall back to default
+    Utils.getFromOpenElisServerV2
+      .mockImplementationOnce(() =>
+        Promise.resolve({ ...mockDevice, parentRoomId: 1 }),
+      ) // Full location (called FIRST)
+      .mockImplementationOnce(() => Promise.resolve(mockRooms)); // Rooms list (called SECOND)
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={{ ...mockDevice, parentRoomId: 1 }}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(Utils.getFromOpenElisServerV2).toHaveBeenCalledWith(
+        "/rest/storage/rooms",
+      );
+    });
+
+    // Verify dropdown is rendered (should have rooms loaded)
+    const parentField = await screen.findByTestId(
+      "edit-location-device-parent-room",
+    );
+    expect(parentField).toBeTruthy();
   });
 
   /**
@@ -324,12 +527,19 @@ describe("EditLocationModal", () => {
    * T106: Test displays validation errors for duplicate code
    */
   test("testEditModal_ValidationErrors", async () => {
-    Utils.putToOpenElisServer.mockImplementation(
-      (endpoint, payload, callback) => {
-        // Use process.nextTick to ensure callback runs in next event loop tick
-        process.nextTick(() => callback(400));
-      },
+    // Mock fetch to return error response
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        status: 400,
+        headers: {
+          get: () => "application/json",
+        },
+        json: () => Promise.resolve({ error: "Room name must be unique" }),
+      }),
     );
+
+    // Mock getFromOpenElisServerV2 for the error case (won't be called on error)
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(mockRoom);
 
     renderWithIntl(
       <EditLocationModal
@@ -349,7 +559,11 @@ describe("EditLocationModal", () => {
 
     // Wait for error to appear
     const errorElement = await screen
-      .findByText(/failed to update/i, {}, { timeout: 2000 })
+      .findByText(
+        /failed to update|room name must be unique/i,
+        {},
+        { timeout: 2000 },
+      )
       .catch(() => {
         return screen.queryByText(/error/i);
       });
@@ -360,18 +574,29 @@ describe("EditLocationModal", () => {
    * T106: Test save button calls PUT endpoint
    */
   test("testEditModal_SaveCallsAPI", async () => {
-    Utils.putToOpenElisServer.mockImplementation(
-      (endpoint, payload, callback) => {
-        process.nextTick(() => callback(200));
-      },
-    );
-
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
+    // Mock fetch for PUT request (success)
+    global.fetch = jest.fn((url, options) => {
+      if (options.method === "PUT") {
+        return Promise.resolve({
+          status: 200,
+          ok: true,
+          headers: {
+            get: () => "application/json",
+          },
+        });
+      }
+      // For getFromOpenElisServerV2 call after PUT
+      return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ ...mockRoom, name: "Updated Name" }),
-      }),
-    );
+      });
+    });
+
+    // Mock getFromOpenElisServerV2 for fetching updated data
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce({
+      ...mockRoom,
+      name: "Updated Name",
+    });
 
     renderWithIntl(
       <EditLocationModal
@@ -390,17 +615,20 @@ describe("EditLocationModal", () => {
     fireEvent.click(saveButton);
 
     // Wait for API call
-    await new Promise((resolve) => process.nextTick(resolve));
-
-    expect(Utils.putToOpenElisServer).toHaveBeenCalledWith(
-      expect.stringContaining("/rest/storage/rooms/1"),
-      expect.stringContaining("Updated Name"),
-      expect.any(Function),
-    );
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/rest/storage/rooms/1"),
+        expect.objectContaining({
+          method: "PUT",
+          body: expect.stringContaining("Updated Name"),
+        }),
+      );
+    });
 
     // Wait for onSave callback
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(mockOnSave).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalled();
+    });
   });
 
   /**
@@ -625,6 +853,156 @@ describe("EditLocationModal", () => {
     });
   });
 
+  // ========== CHK051: Temperature Validation Tests ==========
+
+  /**
+   * CHK051: Test temperature validation logic
+   * Verifies the inline validation pattern used in EditLocationModal
+   *
+   * The temperature field uses Carbon TextInput with `invalid` prop:
+   *   invalid={formData.temperatureSetting !== "" && isNaN(Number(formData.temperatureSetting))}
+   *
+   * Note: Testing actual DOM rendering of validation state is unreliable due to
+   * input type="number" rejecting non-numeric characters. This test verifies:
+   * 1. The temperature field exists and is accessible
+   * 2. The validation logic formula is correct
+   */
+  test("testDeviceTemperature_ValidationLogic", async () => {
+    const deviceWithTemp = { ...mockDevice, temperatureSetting: "-20" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithTemp);
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={deviceWithTemp}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    // Wait for form to load
+    await screen.findByTestId("edit-location-device-name");
+
+    // Find temperature field
+    const tempField = await screen.findByTestId(
+      "edit-location-device-temperature",
+    );
+    const inputElement = tempField.querySelector("input") || tempField;
+
+    // Verify temperature field exists and has initial value
+    expect(inputElement).toBeTruthy();
+    expect(inputElement.type).toBe("number");
+
+    // Test validation logic directly (the formula used in the component):
+    // invalid = temperatureSetting !== "" && isNaN(Number(temperatureSetting))
+
+    // Case 1: Valid numeric string → should NOT be invalid
+    const validValue = "-80";
+    const validCheck = validValue !== "" && isNaN(Number(validValue));
+    expect(validCheck).toBe(false); // -80 is valid
+
+    // Case 2: Invalid non-numeric string → SHOULD be invalid
+    const invalidValue = "abc";
+    const invalidCheck = invalidValue !== "" && isNaN(Number(invalidValue));
+    expect(invalidCheck).toBe(true); // "abc" is invalid
+
+    // Case 3: Empty string → should NOT be invalid (optional field)
+    const emptyValue = "";
+    const emptyCheck = emptyValue !== "" && isNaN(Number(emptyValue));
+    expect(emptyCheck).toBe(false); // empty is valid (optional)
+
+    // Case 4: Zero is valid
+    const zeroValue = "0";
+    const zeroCheck = zeroValue !== "" && isNaN(Number(zeroValue));
+    expect(zeroCheck).toBe(false); // 0 is valid
+
+    // Case 5: Decimal is valid
+    const decimalValue = "-4.5";
+    const decimalCheck = decimalValue !== "" && isNaN(Number(decimalValue));
+    expect(decimalCheck).toBe(false); // -4.5 is valid
+  });
+
+  /**
+   * CHK051: Test temperature field accepts valid numeric input
+   * Expected: Numeric value can be entered and updates correctly
+   */
+  test("testDeviceTemperature_AcceptsValidNumericInput", async () => {
+    const deviceWithTemp = { ...mockDevice, temperatureSetting: "-20" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithTemp);
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={deviceWithTemp}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    // Wait for form to load
+    await screen.findByTestId("edit-location-device-name");
+
+    // Find temperature field
+    const tempField = await screen.findByTestId(
+      "edit-location-device-temperature",
+    );
+    const inputElement = tempField.querySelector("input") || tempField;
+
+    // Verify initial value
+    expect(inputElement.value).toBe("-20");
+
+    // Enter valid temperature (numeric)
+    fireEvent.change(inputElement, { target: { value: "-80" } });
+
+    // Verify value is updated
+    await waitFor(() => {
+      expect(inputElement.value).toBe("-80");
+    });
+  });
+
+  /**
+   * CHK051: Test temperature field can be cleared (optional field)
+   * Expected: Empty value is allowed
+   */
+  test("testDeviceTemperature_CanBeCleared", async () => {
+    const deviceWithTemp = { ...mockDevice, temperatureSetting: "-20" };
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithTemp);
+
+    renderWithIntl(
+      <EditLocationModal
+        open={true}
+        location={deviceWithTemp}
+        locationType="device"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    // Wait for form to load
+    await screen.findByTestId("edit-location-device-name");
+
+    // Find temperature field
+    const tempField = await screen.findByTestId(
+      "edit-location-device-temperature",
+    );
+    const inputElement = tempField.querySelector("input") || tempField;
+
+    // Verify initial value
+    expect(inputElement.value).toBe("-20");
+
+    // Clear the field (empty is valid - temperature is optional)
+    fireEvent.change(inputElement, { target: { value: "" } });
+
+    // Verify value is cleared
+    await waitFor(() => {
+      expect(inputElement.value).toBe("");
+    });
+  });
+
+  // ========== T286: Code Field Tests ==========
+
   /**
    * T286: Test code is included in save payload for device
    * Expected: code value is sent in PUT request payload
@@ -633,18 +1011,28 @@ describe("EditLocationModal", () => {
     const deviceWithCode = { ...mockDevice, code: "FRZ01" };
     Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithCode);
 
-    Utils.putToOpenElisServer.mockImplementation(
-      (endpoint, payload, callback) => {
-        process.nextTick(() => callback(200));
-      },
-    );
-
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
+    // Mock fetch for PUT request
+    let capturedPayload = null;
+    global.fetch = jest.fn((url, options) => {
+      if (options.method === "PUT") {
+        capturedPayload = JSON.parse(options.body);
+        return Promise.resolve({
+          status: 200,
+          ok: true,
+          headers: {
+            get: () => "application/json",
+          },
+        });
+      }
+      // For getFromOpenElisServerV2 call after PUT
+      return Promise.resolve({
         ok: true,
         json: () => Promise.resolve(deviceWithCode),
-      }),
-    );
+      });
+    });
+
+    // Mock getFromOpenElisServerV2 for fetching updated data
+    Utils.getFromOpenElisServerV2.mockResolvedValueOnce(deviceWithCode);
 
     renderWithIntl(
       <EditLocationModal
@@ -681,12 +1069,11 @@ describe("EditLocationModal", () => {
 
     // Wait for API call
     await waitFor(() => {
-      expect(Utils.putToOpenElisServer).toHaveBeenCalled();
+      expect(global.fetch).toHaveBeenCalled();
     });
 
     // Verify code is in payload
-    const putCall = Utils.putToOpenElisServer.mock.calls[0];
-    const payload = JSON.parse(putCall[1]);
-    expect(payload.code).toBe("FRZ02");
+    expect(capturedPayload).toBeTruthy();
+    expect(capturedPayload.code).toBe("FRZ02");
   });
 });

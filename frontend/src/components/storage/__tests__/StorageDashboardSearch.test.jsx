@@ -199,9 +199,7 @@ describe("StorageDashboard Search Functionality (FR-064, FR-064a)", () => {
     const searchCallback = jest.fn();
 
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/storage/samples/search")) {
-        // Note: Backend search endpoint is still at /rest/storage/samples/search
-        // but list endpoint should be /rest/storage/sample-items
+      if (url.includes("/rest/storage/sample-items/search")) {
         searchCallback();
         callback([]);
       } else if (url.includes("/rest/storage/sample-items")) {

@@ -11,7 +11,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
-  getFromOpenElisServer,
+  getFromOpenElisServerV2,
   hasRole,
   Roles,
   deleteFromOpenElisServerFullResponse,
@@ -40,7 +40,10 @@ const DeleteLocationModal = ({
 }) => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const isAdmin = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  // Check for both "Global Administrator" and "Admin" roles (database may use either name)
+  const isAdmin =
+    hasRole(userSessionDetails, Roles.GLOBAL_ADMIN) ||
+    hasRole(userSessionDetails, "Admin");
   const [constraints, setConstraints] = useState(null);
   const [isCheckingConstraints, setIsCheckingConstraints] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -84,12 +87,10 @@ const DeleteLocationModal = ({
     // Build endpoint to check constraints and admin status
     const endpoint = `/rest/storage/${getLocationTypePlural(locationType)}/${location.id}/can-delete`;
 
-    getFromOpenElisServer(
-      endpoint,
-      (response) => {
+    getFromOpenElisServerV2(endpoint)
+      .then((response) => {
         setIsCheckingConstraints(false);
-        // Test mocks getFromOpenElisServer to return { status, data }
-        // In real implementation, response would be the JSON data
+        // Some tests may mock { status, data }, while real API returns JSON body directly.
         if (
           response &&
           (response.status === 409 || response.error || response.message)
@@ -120,29 +121,26 @@ const DeleteLocationModal = ({
           // Assume can delete if no error
           setConstraints(null);
         }
-      },
-      (error) => {
+      })
+      .catch(() => {
         setIsCheckingConstraints(false);
         // On error, assume we can check on DELETE attempt
         setConstraints(null);
-      },
-    );
+      });
   };
 
   const fetchCascadeSummary = () => {
     const endpoint = `/rest/storage/${getLocationTypePlural(locationType)}/${location.id}/cascade-delete-summary`;
-    getFromOpenElisServer(
-      endpoint,
-      (response) => {
+    getFromOpenElisServerV2(endpoint)
+      .then((response) => {
         if (response && !response.error) {
           setCascadeSummary(response);
         }
-      },
-      (error) => {
+      })
+      .catch((error) => {
         // Ignore errors - summary is optional
         console.error("Error fetching cascade summary:", error);
-      },
-    );
+      });
   };
 
   const handleDelete = () => {
@@ -217,7 +215,11 @@ const DeleteLocationModal = ({
     location?.name || location?.label || location?.code || "Location";
   // Admin can delete even with constraints (after confirmation), non-admin cannot delete with constraints
   const canDelete =
-    !isCheckingConstraints && confirmed && (isAdmin || !constraints);
+    !isCheckingConstraints &&
+    confirmed &&
+    // If constraints exist but we don't have cascade summary, treat as not deletable
+    // (prevents "blank modal" for admins when backend doesn't return cascade metadata)
+    (!constraints || (isAdmin && !!cascadeSummary));
 
   return (
     <ComposedModal
@@ -256,63 +258,70 @@ const DeleteLocationModal = ({
           />
         )}
 
-        {!isCheckingConstraints && constraints && !isAdmin && (
-          <InlineNotification
-            kind="error"
-            title={intl.formatMessage({
-              id: "storage.delete.constraints.title",
-              defaultMessage: "Cannot Delete",
-            })}
-            subtitle={constraints.message || constraints.error}
-            lowContrast
-            data-testid="delete-location-constraints-error"
-          >
-            <span data-testid="delete-location-constraints-message">
-              {constraints.message || constraints.error}
-            </span>
-          </InlineNotification>
-        )}
-
-        {!isCheckingConstraints && constraints && isAdmin && cascadeSummary && (
-          <div className="delete-location-cascade-warning">
+        {/* Constraints (cannot delete) - show for non-admins and admins without cascade metadata */}
+        {!isCheckingConstraints &&
+          constraints &&
+          (!isAdmin || !cascadeSummary) && (
             <InlineNotification
-              kind="warning"
+              kind="error"
               title={intl.formatMessage({
-                id: "storage.delete.cascade.warning",
-                defaultMessage: "Cascade Delete Warning",
+                id: "storage.delete.constraints.title",
+                defaultMessage: "Cannot Delete",
               })}
+              subtitle={constraints.message || constraints.error}
               lowContrast
-              data-testid="delete-location-cascade-warning"
+              data-testid="delete-location-constraints-error"
             >
-              <p data-testid="delete-location-cascade-summary">
-                {intl.formatMessage(
-                  {
-                    id: "storage.delete.cascade.summary",
-                    defaultMessage:
-                      "This will delete {childCount} {childType}(s) and unassign {sampleCount} sample(s). Are you sure you want to proceed?",
-                  },
-                  {
-                    childCount: cascadeSummary.childLocationCount || 0,
-                    childType:
-                      cascadeSummary.childLocationType || "child location",
-                    sampleCount: cascadeSummary.sampleCount || 0,
-                  },
-                )}
-              </p>
+              <span data-testid="delete-location-constraints-message">
+                {constraints.message || constraints.error}
+              </span>
             </InlineNotification>
-            <Checkbox
-              id="delete-confirmation"
-              data-testid="delete-location-confirmation-checkbox"
-              labelText={intl.formatMessage({
-                id: "storage.delete.cascade.confirmation.checkbox",
-                defaultMessage:
-                  "I confirm that I want to delete this location and all its child locations. All samples will be unassigned. This action cannot be undone.",
-              })}
-              checked={confirmed}
-              onChange={(_, { checked }) => setConfirmed(checked)}
-            />
-          </div>
-        )}
+          )}
+
+        {/* Admin cascade delete warning - only when backend provides cascade metadata */}
+        {!isCheckingConstraints &&
+          constraints &&
+          isAdmin &&
+          !!cascadeSummary && (
+            <div className="delete-location-cascade-warning">
+              <InlineNotification
+                kind="warning"
+                title={intl.formatMessage({
+                  id: "storage.delete.cascade.warning",
+                  defaultMessage: "Cascade Delete Warning",
+                })}
+                lowContrast
+                data-testid="delete-location-cascade-warning"
+              >
+                <p data-testid="delete-location-cascade-summary">
+                  {intl.formatMessage(
+                    {
+                      id: "storage.delete.cascade.summary",
+                      defaultMessage:
+                        "This will delete {childCount} {childType}(s) and unassign {sampleCount} sample(s). Are you sure you want to proceed?",
+                    },
+                    {
+                      childCount: cascadeSummary.childLocationCount || 0,
+                      childType:
+                        cascadeSummary.childLocationType || "child location",
+                      sampleCount: cascadeSummary.sampleCount || 0,
+                    },
+                  )}
+                </p>
+              </InlineNotification>
+              <Checkbox
+                id="delete-confirmation"
+                data-testid="delete-location-confirmation-checkbox"
+                labelText={intl.formatMessage({
+                  id: "storage.delete.cascade.confirmation.checkbox",
+                  defaultMessage:
+                    "I confirm that I want to delete this location and all its child locations. All samples will be unassigned. This action cannot be undone.",
+                })}
+                checked={confirmed}
+                onChange={(_, { checked }) => setConfirmed(checked)}
+              />
+            </div>
+          )}
 
         {!isCheckingConstraints && !constraints && (
           <div className="delete-location-confirmation">

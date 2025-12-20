@@ -6,9 +6,9 @@ const path = require("path");
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 
 module.exports = defineConfig({
-  defaultCommandTimeout: 30000, // Increased timeout for slow operations
-  viewportWidth: 1200,
-  viewportHeight: 700,
+  defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
+  viewportWidth: 1920, // Large desktop for full modal visibility (including warnings/checkboxes)
+  viewportHeight: 1080,
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
@@ -36,11 +36,11 @@ module.exports = defineConfig({
       // Storage tasks below remain registered but won't be called (harmless)
       // To re-enable: Uncomment imports in e2e.js and remove excludeSpecPattern
 
-      // Task to log messages to terminal (for console.log capture)
-      // This is used to forward browser console logs to terminal
+      // Register all Cypress tasks in ONE handler (Cypress does not merge task handlers).
+      // This keeps logging/diagnostics and fixture utilities available across specs.
       on("task", {
+        // Log messages to the Node process stdout (captured by CI/tee logs)
         log(message, options = {}) {
-          // Only log if not explicitly disabled
           if (options.log !== false) {
             console.log(message);
           }
@@ -50,18 +50,14 @@ module.exports = defineConfig({
           console.log(JSON.stringify(obj, null, 2));
           return null;
         },
-      });
 
-      // Task to load storage test fixtures
-      on("task", {
+        // Storage test fixture helpers
         loadStorageTestData() {
           const { execSync } = require("child_process");
-          // Use unified fixture loader script
           const loaderScript = path.join(
             PROJECT_ROOT,
             "src/test/resources/load-test-fixtures.sh",
           );
-          // Verify script exists
           if (!fs.existsSync(loaderScript)) {
             throw new Error(
               `Fixture loader script not found: ${loaderScript} (PROJECT_ROOT: ${PROJECT_ROOT})`,
@@ -78,26 +74,51 @@ module.exports = defineConfig({
             console.error("Error loading test fixtures:", error);
             console.error("Loader script path:", loaderScript);
             console.error("Project root:", PROJECT_ROOT);
-            return null;
+            // Throw error to fail the test immediately with a clear message
+            // This prevents tests from running with missing fixtures
+            throw new Error(
+              `Failed to load test fixtures: ${error.message || error}. Check logs above for details.`,
+            );
           }
         },
         checkStorageFixturesExist() {
           const { execSync } = require("child_process");
-          // Check if E2E test data exists (quick check for a known test room)
           const checkSql = `
-            SELECT COUNT(*) as count FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');
+            SELECT
+              (SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE')) AS rooms,
+              (SELECT COUNT(*) FROM storage_device WHERE id BETWEEN 10 AND 20) AS devices,
+              (SELECT COUNT(*) FROM storage_shelf WHERE id BETWEEN 20 AND 30) AS shelves,
+              (SELECT COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40) AS racks,
+              (SELECT COUNT(*) FROM storage_box WHERE id BETWEEN 100 AND 10000) AS boxes;
           `;
           try {
             const result = execSync(
-              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -c "${checkSql}"`,
+              `docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A -F "," -c "${checkSql}"`,
               {
                 cwd: PROJECT_ROOT,
                 shell: "/bin/bash",
                 encoding: "utf8",
               },
             );
-            const count = parseInt(result.trim(), 10);
-            return count >= 2; // At least 2 test rooms exist
+            const raw = (result || "").trim();
+            const [rooms, devices, shelves, racks, boxes] = raw
+              .split(",")
+              .map((v) => parseInt((v || "").trim(), 10));
+
+            // Fixtures are only considered present if the FULL hierarchy exists.
+            // (Rooms alone are not sufficient; shelves/racks/boxes are critical for location CRUD + box grid tests.)
+            return (
+              Number.isFinite(rooms) &&
+              Number.isFinite(devices) &&
+              Number.isFinite(shelves) &&
+              Number.isFinite(racks) &&
+              Number.isFinite(boxes) &&
+              rooms >= 2 &&
+              devices >= 1 &&
+              shelves >= 1 &&
+              racks >= 1 &&
+              boxes >= 1
+            );
           } catch (error) {
             console.error("Error checking storage fixtures:", error);
             return false;
@@ -375,9 +396,8 @@ module.exports = defineConfig({
     },
     baseUrl: "https://localhost",
     testIsolation: false,
-    // DISABLED: Exclude storage tests (001-sample-storage feature)
-    // Remove "**/storage*.cy.js" from this array to re-enable storage tests
-    excludeSpecPattern: ["**/storage*.cy.js"],
+    // Storage tests are now enabled for M2 frontend verification
+    // No excludeSpecPattern - all storage tests should run
     env: {
       STARTUP_WAIT_MILLISECONDS: 300000,
     },

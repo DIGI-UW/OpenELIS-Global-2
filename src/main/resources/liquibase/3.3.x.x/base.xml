@@ -29,6 +29,8 @@
   <include relativeToChangelogFile="true" file="016-inventory-management-system.xml"/>
   <include relativeToChangelogFile="true" file="017-inventory-add-last-updated.xml"/>
   <include relativeToChangelogFile="true" file="018-allow-null-location-for-disposed.xml"/>
+  <include relativeToChangelogFile="true" file="019-fix-assignment-location-type-check.xml"/>
+  <include relativeToChangelogFile="true" file="020-storage-box-use-code-not-short-code.xml"/>
 
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="../storage/storage-device-connectivity.xml"/>

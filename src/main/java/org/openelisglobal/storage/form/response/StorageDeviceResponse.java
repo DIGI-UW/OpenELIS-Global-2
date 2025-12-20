@@ -16,6 +16,7 @@ public class StorageDeviceResponse {
     private String communicationProtocol;
     private Integer roomId;
     private String roomName;
+    private Integer parentRoomId;
     private String parentRoomName;
 
     public Integer getId() {
@@ -120,6 +121,14 @@ public class StorageDeviceResponse {
 
     public void setRoomName(String roomName) {
         this.roomName = roomName;
+    }
+
+    public Integer getParentRoomId() {
+        return parentRoomId;
+    }
+
+    public void setParentRoomId(Integer parentRoomId) {
+        this.parentRoomId = parentRoomId;
     }
 
     public String getParentRoomName() {

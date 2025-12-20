@@ -5,6 +5,16 @@
         status_type="SAMPLE" lastupdated="2024-01-01 10:00:00"
         name="SampleDisposed" display_key="status.sample.disposed"
         is_active="Y" />
+
+    <!-- Storage hierarchy for sample_storage_assignment location_id=10 -->
+    <storage_room id="10" name="Test Room" code="TESTROOM"
+        active="true" sys_user_id="1" last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440010" />
+    <storage_device id="10" name="Test Freezer"
+        code="TESTFRZ" type="freezer" parent_room_id="10" active="true"
+        sys_user_id="1" last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440011" />
+
     <sample id="1000" accession_number="TD1000"
         received_date="2024-01-01 10:00:00" entered_date="2024-01-01 10:00:00"
         lastupdated="2024-01-01 10:00:00" sys_user_id="1" />

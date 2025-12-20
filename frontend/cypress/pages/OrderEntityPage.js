@@ -14,7 +14,11 @@ class OrderEntityPage {
   }
 
   clickNextButton() {
-    cy.contains("button", "Next").click();
+    cy.contains("button", "Next")
+      .should("be.visible")
+      .scrollIntoView()
+      .should("not.be.disabled")
+      .click();
   }
 
   selectCytology() {
