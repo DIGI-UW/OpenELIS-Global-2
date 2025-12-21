@@ -111,10 +111,14 @@ speeds up the development process
 
 #### The Instances can be accessed at
 
-| Instance     |                   URL                   | credentials (user : password) |
-| ------------ | :-------------------------------------: | ----------------------------: |
-| Legacy UI    | https://localhost/api/OpenELIS-Global/  |            admin: adminADMIN! |
-| New React UI |           https://localhost/            |            admin: adminADMIN! |
+| Instance     |                   URL                   |
+| ------------ | :-------------------------------------: | 
+| Legacy UI    | https://localhost/api/OpenELIS-Global/  | 
+| New React UI |           https://localhost/            |
+
+
+Important: The default admin password must meet the current password complexity requirements.
+If the password does not meet requirements, the admin user will not be created.
 
 **Note:** If your browser indicates that the website is not secure after
 accessing any of these links, simply follow these steps:
@@ -123,6 +127,23 @@ accessing any of these links, simply follow these steps:
 2. Click on the "Advanced" button.
 3. Finally, click on "Proceed to https://localhost" to access the development
    environment.
+
+
+#### Login troubleshooting
+
+Cannot log in as admin?
+
+1. Admin user creation runs only once on first database initialization
+
+2. If the default password does not meet complexity rules, admin creation fails silently
+
+3. Restarting containers or changing DEFAULT_PW will not fix this
+
+Solutions:
+
+1. Reset the database volumes and restart Docker
+
+2. Or manually create the admin user in the database 
 
 #### Formating the Source code after making changes
 
