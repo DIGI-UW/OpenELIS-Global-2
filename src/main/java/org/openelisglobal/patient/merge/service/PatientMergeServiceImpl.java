@@ -3,11 +3,21 @@ package org.openelisglobal.patient.merge.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.merge.dao.PatientMergeAuditDAO;
+import org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeDetailsDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeExecutionResultDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeRequestDTO;
@@ -16,6 +26,10 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService;
 import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +48,9 @@ public class PatientMergeServiceImpl implements PatientMergeService {
     private PatientDAO patientDAO;
 
     @Autowired
+    private SampleHumanService sampleHumanService;
+
+    @Autowired
     private PatientMergeAuditDAO patientMergeAuditDAO;
 
     @Autowired
@@ -45,8 +62,17 @@ public class PatientMergeServiceImpl implements PatientMergeService {
     @Autowired
     private PatientIdentityTypeService patientIdentityTypeService;
 
-    @jakarta.persistence.PersistenceContext
-    private jakarta.persistence.EntityManager entityManager;
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Autowired
+    private SampleItemService sampleItemService;
+
+    @Autowired
+    private AnalysisService analysisService;
+
+    @Autowired
+    private IStatusService iStatusService;
 
     /**
      * Validates if two patients can be merged. Checks: same patient, patient not
@@ -132,7 +158,7 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         // - Add WHERE status IN ('PENDING', 'IN_PROGRESS', ...) to
         // countOrdersForPatient
         // - Requires ElectronicOrder status enum/constants knowledge
-        summary.setActiveOrders(0);
+        summary.setActiveOrders((int) (ordersP1 + ordersP2));
 
         // Count patient contacts for both patients
         long contactsP1 = countContactsForPatient(patient1.getId());
@@ -152,7 +178,7 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         // Total results: Set to 0 for now. To implement:
         // - Query result/analysis tables joined through sample_human
         // - Requires understanding Result/Analysis entity relationships
-        summary.setTotalResults(0);
+        summary.setTotalResults(countResultsForPatient(patient1.getId()) + countResultsForPatient(patient2.getId()));
 
         // Total documents: Set to 0 for now. To implement:
         // - Query patient_document or document_track table (if exists)
@@ -162,19 +188,46 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         return summary;
     }
 
-    private long countSamplesForPatient(String patientId) {
-        // Native SQL needed due to String ID vs numeric column type mismatch
-        // Schema name omitted - uses Hibernate's default_schema configuration
-        return ((Number) entityManager
-                .createNativeQuery("SELECT COUNT(*) FROM sample_human WHERE patient_id = :patientId")
-                .setParameter("patientId", Long.parseLong(patientId)).getSingleResult()).longValue();
+    private int countResultsForPatient(String patientId) {
+        Set<Integer> statusIdList = new HashSet<>();
+        statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Canceled)));
+        statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+        statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.NotStarted)));
+        List<Analysis> allAnalyses = new ArrayList<>();
+        List<Sample> samples = sampleHumanService.getSamplesForPatient(patientId);
+        for (Sample sample : samples) {
+            List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+            for (SampleItem item : sampleItems) {
+                List<Analysis> analysisList = analysisService.getAnalysesBySampleItemsExcludingByStatusIds(item,
+                        statusIdList);
+                allAnalyses.addAll(analysisList);
+            }
+
+        }
+        return allAnalyses.size();
     }
 
-    private long countOrdersForPatient(String patientId) {
+    private long countElectronicOrdersForPatient(String patientId) {
         // Native SQL needed for ElectronicOrder due to ValueHolder pattern
         // Schema name omitted - uses Hibernate's default_schema configuration
         return ((Number) entityManager
                 .createNativeQuery("SELECT COUNT(*) FROM electronic_order WHERE patient_id = :patientId")
+                .setParameter("patientId", Long.parseLong(patientId)).getSingleResult()).longValue();
+    }
+
+    private long countSamplesForPatient(String patientId) {
+        List<SampleItem> allsampleItems = new ArrayList<>();
+        List<Sample> samples = sampleHumanService.getSamplesForPatient(patientId);
+        for (Sample sample : samples) {
+            List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+            allsampleItems.addAll(sampleItems);
+        }
+        return (long) allsampleItems.size();
+    }
+
+    private long countOrdersForPatient(String patientId) {
+        return ((Number) entityManager
+                .createNativeQuery("SELECT COUNT(*) FROM sample_human WHERE patient_id = :patientId")
                 .setParameter("patientId", Long.parseLong(patientId)).getSingleResult()).longValue();
     }
 
@@ -255,9 +308,11 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         }
 
         // Populate data summary
-        org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO dataSummary = new org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO();
+        PatientMergeDataSummaryDTO dataSummary = new PatientMergeDataSummaryDTO();
         dataSummary.setTotalSamples((int) countSamplesForPatient(patient.getId()));
         dataSummary.setTotalOrders((int) countOrdersForPatient(patient.getId()));
+        dataSummary.setActiveOrders((int) countOrdersForPatient(patient.getId()));
+        dataSummary.setTotalResults(countResultsForPatient(patient.getId()));
         dataSummary.setTotalIdentifiers(identities.size());
         details.setDataSummary(dataSummary);
 

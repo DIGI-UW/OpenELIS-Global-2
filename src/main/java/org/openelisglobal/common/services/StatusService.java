@@ -354,6 +354,11 @@ public class StatusService implements IStatusService {
         return null;
     }
 
+    @Override
+    public void refreshCache() {
+        buildMaps();
+    }
+
     private void buildStatusToIdMaps() {
 
         List<StatusOfSample> statusList = statusOfSampleService.getAllStatusOfSamples();

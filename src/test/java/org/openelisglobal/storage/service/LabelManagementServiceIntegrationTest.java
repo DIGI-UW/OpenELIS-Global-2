@@ -212,7 +212,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         StorageRack rack = new StorageRack();
         rack.setLabel("TEST-RACK-LBL01");
         rack.setParentShelf(parentShelf);
-        rack.setShortCode("TEST-RKR01");
+        rack.setCode("TEST-RKR01");
         rack.setActive(true);
         rack.setSysUserIdValue(1); // Required field
 
@@ -222,7 +222,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
 
         // Given: Retrieve rack
         StorageRack retrieved = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
-        assertNotNull("Rack should have shortCode", retrieved.getShortCode());
+        assertNotNull("Rack should have shortCode", retrieved.getCode());
 
         // When: Generate label through service layer
         ByteArrayOutputStream pdf = labelManagementService.generateLabel(retrieved);

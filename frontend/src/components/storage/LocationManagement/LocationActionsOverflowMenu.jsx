@@ -23,7 +23,10 @@ const LocationActionsOverflowMenu = ({
 }) => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const isAdmin = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  // Check for both "Global Administrator" and "Admin" roles (database may use either name)
+  const isAdmin =
+    hasRole(userSessionDetails, Roles.GLOBAL_ADMIN) ||
+    hasRole(userSessionDetails, "Admin");
 
   // Use useCallback to ensure stable function references
   const handleEdit = useCallback(

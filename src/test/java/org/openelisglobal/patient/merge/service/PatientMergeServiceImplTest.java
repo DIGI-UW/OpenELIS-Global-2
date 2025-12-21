@@ -14,11 +14,16 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.merge.dao.PatientMergeAuditDAO;
 import org.openelisglobal.patient.merge.dto.PatientMergeRequestDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeValidationResultDTO;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
 
 /**
  * Unit tests for PatientMergeServiceImpl.validateMerge() method. Tests
@@ -42,6 +47,18 @@ public class PatientMergeServiceImplTest {
 
     @Mock
     private jakarta.persistence.TypedQuery<Long> mockQuery;
+
+    @Mock
+    private SampleItemService sampleItemService;
+
+    @Mock
+    private AnalysisService analysisService;
+
+    @Mock
+    private IStatusService iStatusService;
+
+    @Mock
+    private SampleHumanService sampleHumanService;
 
     @InjectMocks
     private PatientMergeServiceImpl patientMergeService;
@@ -178,6 +195,9 @@ public class PatientMergeServiceImplTest {
         // Arrange
         when(patientDAO.getData("1")).thenReturn(patient1);
         when(patientDAO.getData("2")).thenReturn(patient2);
+        when(iStatusService.getStatusID(AnalysisStatus.Canceled)).thenReturn("2");
+        when(iStatusService.getStatusID(AnalysisStatus.SampleRejected)).thenReturn("4");
+        when(iStatusService.getStatusID(AnalysisStatus.NotStarted)).thenReturn("5");
 
         // Act
         PatientMergeValidationResultDTO result = patientMergeService.validateMerge(validRequest);

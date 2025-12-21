@@ -103,57 +103,25 @@
         code="RR1" active="true" parent_shelf_id="23" sys_user_id="1"
         last_updated="2025-01-01 12:00:00" />
 
-    <localization id="1"
-        description="Serum Sample Localization" english="Serum" french="Sérum"
-        lastupdated="2025-01-01 12:00:00" />
-    <localization id="2"
-        description="Urine Sample Localization" english="Urine" french="Urine"
-        lastupdated="2025-01-01 12:00:00" />
-    <localization id="3"
-        description="Blood Sample Localization" english="Blood" french="Sang"
-        lastupdated="2025-01-01 12:00:00" />
-
-    <!-- Reference Data: Status of Sample entries (required by sample foreign
-        keys) -->
-    <!-- ID 1 = "Entered" status for SAMPLE type -->
-    <status_of_sample id="1" name="Entered"
-        description="Entered" code="1" status_type="SAMPLE"
-        display_key="status.sample.entered" is_active="Y"
-        lastupdated="2025-01-01 12:00:00" />
-
-    <!-- Reference Data: Type of Sample entries (required by sample_item foreign
-        keys) -->
-    <type_of_sample id="1" description="Serum" domain="H"
-        name_localization_id="1" lastupdated="2025-01-01 12:00:00"
-        is_active="true" />
-    <type_of_sample id="2" description="Urine" domain="H"
-        name_localization_id="2" lastupdated="2025-01-01 12:00:00"
-        is_active="true" />
-    <type_of_sample id="3" description="Blood" domain="H"
-        name_localization_id="3" lastupdated="2025-01-01 12:00:00"
-        is_active="true" />
-
-    <!-- E2E Test Fixtures: Organizations and Providers -->
-    <!-- Referring clinic organization type -->
-    <organization_type id="100"
-        short_name="referring clinic"
-        description="Referring Clinic Organization"
-        name_display_key="referring clinic" lastupdated="2025-01-01 12:00:00" />
-
-    <!-- CAMES MAN organization (used in dashboard E2E tests) -->
-    <organization id="1000" name="CAMES MAN" short_name=""
-        is_active="Y" lastupdated="2025-01-01 12:00:00" />
-
-    <!-- Link CAMES MAN to referring clinic type -->
-    <organization_organization_type
-        org_id="1000" org_type_id="100" />
-
-    <!-- Optimus provider (used for requester in dashboard E2E tests) -->
-    <person id="2000" last_name="Optimus" first_name="Prime"
-        lastupdated="2025-01-01 12:00:00" />
-
-    <provider id="2000" person_id="2000" provider_type="P"
-        active="true" lastupdated="2025-01-01 12:00:00" />
+    <!-- Boxes (gridded containers) for Boxes tab + position assignment testing -->
+    <!-- Parent rack 30 (Main Laboratory -> Freezer Unit 1 -> Shelf-A -> Rack
+        R1) -->
+    <storage_box id="100"
+        fhir_uuid="00000000-0000-0000-0000-000000000064" label="Plate A"
+        type="96-well" rows="8" columns="12"
+        position_schema_hint="letter-number" code="PA" active="true"
+        parent_rack_id="30" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+    <storage_box id="101"
+        fhir_uuid="00000000-0000-0000-0000-000000000065" label="Plate B"
+        type="96-well" rows="8" columns="12"
+        position_schema_hint="letter-number" code="PB" active="true"
+        parent_rack_id="30" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+    <!-- Parent rack 33 (Refrigerator Unit 1 -> Shelf-1 -> Rack R1) -->
+    <storage_box id="102"
+        fhir_uuid="00000000-0000-0000-0000-000000000066" label="Plate C"
+        type="24-well" rows="4" columns="6"
+        position_schema_hint="letter-number" code="PC" active="true"
+        parent_rack_id="33" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
 
     <!-- E2E Test Fixtures: Patients -->
     <!-- E2E patients (John TEST-Smith, Jane TEST-Jones, Bob TEST-Williams) -->
@@ -495,6 +463,16 @@
         assigned_by_user_id="1" notes="E2E test - Refrigerator - tube 2"
         last_updated="2025-01-01 12:00:00" />
 
+    <!-- Box assignment for Boxes tab (creates an occupied coordinate in Plate
+        A) -->
+    <!-- SampleItem 10031 is "not yet assigned" elsewhere in this dataset -->
+    <sample_storage_assignment id="5014"
+        sample_item_id="10031" location_id="100" location_type="box"
+        position_coordinate="A1" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1"
+        notes="E2E test assignment - box position occupied"
+        last_updated="2025-01-01 12:00:00" />
+
     <!-- E2E Test Fixtures: Storage Movements -->
     <!-- Note: Using IDs 5000-5013 to match assignments and avoid conflicts -->
     <sample_storage_movement id="5000"
@@ -567,6 +545,12 @@
         sample_item_id="10092" new_location_id="33" new_location_type="rack"
         new_position_coordinate="X1" movement_date="2025-01-01 12:00:00"
         moved_by_user_id="1" reason="Initial assignment - tube 2"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5014"
+        sample_item_id="10031" new_location_id="100" new_location_type="box"
+        new_position_coordinate="A1" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment - Plate A A1"
         last_updated="2025-01-01 12:00:00" />
 
     <!-- E2E Test Fixtures: Analyses -->

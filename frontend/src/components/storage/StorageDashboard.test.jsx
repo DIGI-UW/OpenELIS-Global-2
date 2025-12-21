@@ -578,6 +578,67 @@ describe("StorageDashboard Filter UI", () => {
   });
 });
 
+describe("StorageDashboard Boxes tab CRUD integration (C3)", () => {
+  const mockMetrics = {
+    totalSamples: 0,
+    active: 0,
+    disposed: 0,
+    storageLocations: 0,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest
+      .spyOn(require("react-router-dom"), "useLocation")
+      .mockReturnValue(createMockLocation("/Storage/boxes"));
+  });
+
+  test("testBoxesTab_AddButtonDisabled_WhenNoRackSelected", async () => {
+    const mockRacks = [
+      {
+        id: "30",
+        label: "Rack R1",
+        roomName: "Main Laboratory",
+        rows: 5,
+        columns: 10,
+        active: true,
+      },
+    ];
+
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/rest/storage/dashboard/metrics")) {
+        callback(mockMetrics);
+      } else if (url.includes("/rest/storage/rooms")) {
+        callback([]);
+      } else if (url.includes("/rest/storage/devices")) {
+        callback([]);
+      } else if (url.includes("/rest/storage/shelves")) {
+        callback([]);
+      } else if (url.includes("/rest/storage/racks")) {
+        callback(mockRacks);
+      } else if (url.includes("/rest/storage/sample-items")) {
+        callback([]);
+      } else if (url.includes("/rest/storage/dashboard/location-counts")) {
+        callback({ rooms: 0, devices: 0, shelves: 0, racks: 1 });
+      } else if (url.includes("/rest/displayList/sample-item-status-types")) {
+        callback([{ id: "", value: "All" }]);
+      } else {
+        callback([]);
+      }
+    });
+
+    renderWithIntl(<StorageDashboard />);
+
+    await screen.findByText(/Storage Management Dashboard/i);
+
+    // Boxes tab should be active from route, but click to be explicit
+    fireEvent.click(await screen.findByTestId("tab-boxes"));
+
+    const addButton = await screen.findByTestId("add-box-button");
+    expect(!!addButton.disabled).toBe(true);
+  });
+});
+
 describe("StorageDashboard Notifications", () => {
   const mockMetrics = {
     totalSamples: 100,

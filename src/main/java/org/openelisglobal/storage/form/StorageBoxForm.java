@@ -31,8 +31,9 @@ public class StorageBoxForm {
     @Size(max = 50, message = "Position schema hint must not exceed 50 characters")
     private String positionSchemaHint; // e.g., "letter-number"
 
-    @Size(max = 10, message = "Short code must not exceed 10 characters")
-    private String shortCode;
+    @NotBlank(message = "Box code is required")
+    @Size(max = 10, message = "Box code must not exceed 10 characters")
+    private String code;
 
     private Boolean active;
 
@@ -89,12 +90,12 @@ public class StorageBoxForm {
         this.positionSchemaHint = positionSchemaHint;
     }
 
-    public String getShortCode() {
-        return shortCode;
+    public String getCode() {
+        return code;
     }
 
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public Boolean getActive() {

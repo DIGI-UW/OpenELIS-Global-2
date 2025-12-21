@@ -84,7 +84,7 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         testRack = new StorageRack();
         testRack.setId(30);
         testRack.setLabel("Rack R1");
-        testRack.setShortCode("RACKR1");
+        testRack.setCode("RACKR1");
         testRack.setParentShelf(testShelf);
         testRack.setActive(true);
 
