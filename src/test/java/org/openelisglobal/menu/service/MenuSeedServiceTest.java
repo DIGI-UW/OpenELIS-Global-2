@@ -27,8 +27,8 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: MenuSeedService.createMenuFromDTO()
-     * Verifies that a Menu entity is correctly created from a MenuItemDTO with all attributes populated
+     * Test: MenuSeedService.createMenuFromDTO() Verifies that a Menu entity is
+     * correctly created from a MenuItemDTO with all attributes populated
      */
     @Test
     public void createMenuFromDTO_shouldCreateMenuWithAllAttributes() {
@@ -55,8 +55,8 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: MenuSeedService.createMenuFromDTO()
-     * Verifies that default values are applied when optional fields are not set in the DTO
+     * Test: MenuSeedService.createMenuFromDTO() Verifies that default values are
+     * applied when optional fields are not set in the DTO
      */
     @Test
     public void createMenuFromDTO_shouldHandleDefaultValues() {
@@ -75,8 +75,8 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: MenuSeedService.createMenuFromDTO()
-     * Verifies that parent menu relationship is correctly set when a parent menu is provided
+     * Test: MenuSeedService.createMenuFromDTO() Verifies that parent menu
+     * relationship is correctly set when a parent menu is provided
      */
     @Test
     public void createMenuFromDTO_shouldSetParentWhenProvided() {
@@ -99,8 +99,8 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: MenuSeedService.seedMenus()
-     * Verifies that new menus are created in the database when they don't already exist
+     * Test: MenuSeedService.seedMenus() Verifies that new menus are created in the
+     * database when they don't already exist
      */
     @Test
     public void seedMenus_shouldCreateNewMenus() {
@@ -128,8 +128,8 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: MenuSeedService.seedMenus()
-     * Verifies idempotency - existing menus (by elementId) are not duplicated during seeding
+     * Test: MenuSeedService.seedMenus() Verifies idempotency - existing menus (by
+     * elementId) are not duplicated during seeding
      */
     @Test
     public void seedMenus_shouldSkipExistingMenus() {
@@ -161,8 +161,8 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: MenuSeedService.seedMenus()
-     * Verifies that parent-child menu hierarchies are correctly created with proper relationships
+     * Test: MenuSeedService.seedMenus() Verifies that parent-child menu hierarchies
+     * are correctly created with proper relationships
      */
     @Test
     public void seedMenus_shouldHandleParentChildHierarchy() {
@@ -206,8 +206,8 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: MenuSeedService.seedMenus()
-     * Verifies that menus with blank or null elementId are skipped and don't cause errors
+     * Test: MenuSeedService.seedMenus() Verifies that menus with blank or null
+     * elementId are skipped and don't cause errors
      */
     @Test
     public void seedMenus_shouldSkipMenuWithBlankElementId() {
@@ -236,8 +236,8 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: MenuSeedService.seedMenus()
-     * Verifies that child menus can be added to existing parent menus (parent exists in dataset)
+     * Test: MenuSeedService.seedMenus() Verifies that child menus can be added to
+     * existing parent menus (parent exists in dataset)
      */
     @Test
     public void seedMenus_shouldHandleChildrenOfExistingParent() {
@@ -273,12 +273,13 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
 
         Menu newChild = menuService.getMenuByElementId("menu_sample_new_child");
         assertNotNull(newChild);
-        // Note: Parent relationship exists but is lazy-loaded, verified by creation count
+        // Note: Parent relationship exists but is lazy-loaded, verified by creation
+        // count
     }
 
     /**
-     * Test: MenuSeedService.seedMenus()
-     * Verifies that multiple menus can be created in a single seeding operation
+     * Test: MenuSeedService.seedMenus() Verifies that multiple menus can be created
+     * in a single seeding operation
      */
     @Test
     public void seedMenus_shouldHandleMultipleNewMenus() {
@@ -308,8 +309,8 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: Dataset Integrity Check
-     * Verifies that the test dataset (menu_seed.xml) is loaded correctly before running other tests
+     * Test: Dataset Integrity Check Verifies that the test dataset (menu_seed.xml)
+     * is loaded correctly before running other tests
      */
     @Test
     public void datasetIntegrity_shouldHaveExpectedMenusFromDataset() {
@@ -323,10 +324,7 @@ public class MenuSeedServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull("menu_sample should exist from dataset", menuSample);
 
         Menu menuSampleAdd = menuService.getMenuByElementId("menu_sample_add");
-        assertNotNull(
-            "menu_sample_add should exist from dataset",
-            menuSampleAdd
-        );
+        assertNotNull("menu_sample_add should exist from dataset", menuSampleAdd);
         // Note: Parent relationship exists in dataset but is lazy-loaded
     }
 }

@@ -10,25 +10,30 @@
 <dataset>
 
     <!-- Pre-existing menu that should not be duplicated during seeding -->
-    <menu id="100" element_id="menu_home" display_key="banner.menu.home"
-        action_url="/Dashboard" is_active="1" presentation_order="1" />
+    <menu id="100" element_id="menu_home"
+        display_key="banner.menu.home" action_url="/Dashboard" is_active="1"
+        presentation_order="1" />
 
     <!-- Parent menu for testing hierarchical relationships -->
-    <menu id="101" element_id="menu_sample" display_key="banner.menu.sample"
-        action_url="" is_active="1" presentation_order="2" />
+    <menu id="101" element_id="menu_sample"
+        display_key="banner.menu.sample" action_url="" is_active="1"
+        presentation_order="2" />
 
     <!-- Child menu linked to parent -->
-    <menu id="102" element_id="menu_sample_add" display_key="banner.menu.sample.add"
-        action_url="/SampleAdd" is_active="1" presentation_order="1"
-        parent="101" />
+    <menu id="102" element_id="menu_sample_add"
+        display_key="banner.menu.sample.add" action_url="/SampleAdd"
+        is_active="1" presentation_order="1" parent="101" />
 
     <!-- Inactive menu for testing active status -->
-    <menu id="103" element_id="menu_reports_old" display_key="banner.menu.reports.old"
-        action_url="/ReportsOld" is_active="0" presentation_order="3" />
+    <menu id="103" element_id="menu_reports_old"
+        display_key="banner.menu.reports.old" action_url="/ReportsOld"
+        is_active="0" presentation_order="3" />
 
     <!-- Menu with special attributes -->
-    <menu id="104" element_id="menu_admin_external" display_key="banner.menu.administration.external"
-        action_url="https://external.example.com" is_active="1" presentation_order="4"
+    <menu id="104" element_id="menu_admin_external"
+        display_key="banner.menu.administration.external"
+        action_url="https://external.example.com" is_active="1"
+        presentation_order="4"
         tool_tip_key="banner.menu.administration.external.tooltip" />
 
 </dataset>

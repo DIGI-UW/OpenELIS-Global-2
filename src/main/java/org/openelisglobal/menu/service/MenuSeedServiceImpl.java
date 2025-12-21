@@ -160,8 +160,8 @@ public class MenuSeedServiceImpl implements MenuSeedService {
                 menuService.insert(newMenu);
                 createdCount++;
 
-                LogEvent.logInfo("MenuSeedServiceImpl", "seedMenus", "Created menu: " + dto.getElementId() + " (parent: "
-                        + (parentMenu != null ? parentMenu.getElementId() : "null") + ")");
+                LogEvent.logInfo("MenuSeedServiceImpl", "seedMenus", "Created menu: " + dto.getElementId()
+                        + " (parent: " + (parentMenu != null ? parentMenu.getElementId() : "null") + ")");
 
                 // Recursively seed child menus
                 if (dto.getChildMenus() != null && !dto.getChildMenus().isEmpty()) {
