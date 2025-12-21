@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * The contents of this file are subject to the Mozilla Public License
+    * Version 1.1 (the "License"); you may not use this file except in * compliance
+    with the License. You may obtain a copy of the License at * http://www.mozilla.org/MPL/
+    * * Software distributed under the License is distributed on an "AS IS" *
+    basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the *
+    License for the specific language governing rights and limitations under
+    * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
+    ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
+<dataset>
+
+    <!-- Pre-existing menu that should not be duplicated during seeding -->
+    <menu id="100" element_id="menu_home" display_key="banner.menu.home"
+        action_url="/Dashboard" is_active="1" presentation_order="1" />
+
+    <!-- Parent menu for testing hierarchical relationships -->
+    <menu id="101" element_id="menu_sample" display_key="banner.menu.sample"
+        action_url="" is_active="1" presentation_order="2" />
+
+    <!-- Child menu linked to parent -->
+    <menu id="102" element_id="menu_sample_add" display_key="banner.menu.sample.add"
+        action_url="/SampleAdd" is_active="1" presentation_order="1"
+        parent="101" />
+
+    <!-- Inactive menu for testing active status -->
+    <menu id="103" element_id="menu_reports_old" display_key="banner.menu.reports.old"
+        action_url="/ReportsOld" is_active="0" presentation_order="3" />
+
+    <!-- Menu with special attributes -->
+    <menu id="104" element_id="menu_admin_external" display_key="banner.menu.administration.external"
+        action_url="https://external.example.com" is_active="1" presentation_order="4"
+        tool_tip_key="banner.menu.administration.external.tooltip" />
+
+</dataset>

@@ -1,5 +1,6 @@
 package org.openelisglobal.menu.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.List;
  * MenuSeedService to read menu_seed.json and create menu entries in the
  * database at application startup.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class MenuSeedConfig {
 
     @JsonProperty("menus")
@@ -26,6 +28,7 @@ public class MenuSeedConfig {
      * DTO representing a single menu item definition from the seed configuration.
      * Supports hierarchical menu structures via the childMenus field.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class MenuItemDTO {
 
         @JsonProperty("elementId")
