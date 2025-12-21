@@ -383,6 +383,15 @@ function TraditionalMedicineFormulationPage({
     setError(null);
     setSuccessMessage(null);
 
+    // Optimistic UI update
+    setSamples((prevSamples) =>
+      prevSamples.map((sample) =>
+        selectedSampleIds.includes(sample.id)
+          ? { ...sample, status: "COMPLETED" }
+          : sample,
+      ),
+    );
+
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
       JSON.stringify({
@@ -405,6 +414,8 @@ function TraditionalMedicineFormulationPage({
           loadPageSamples();
           if (onProgressUpdate) onProgressUpdate();
         } else {
+          // Revert optimistic update on error
+          loadPageSamples();
           setError(
             intl.formatMessage({
               id: "notebook.page.tradmed.error.status",
@@ -643,7 +654,7 @@ function TraditionalMedicineFormulationPage({
           />
         </p>
 
-        <Grid fullWidth className="modal-form-grid">
+        <Grid fullWidth narrow className="modal-form-grid">
           {/* Product Information Section */}
           <Column lg={8} md={4} sm={4}>
             <Select

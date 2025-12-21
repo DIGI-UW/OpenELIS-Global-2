@@ -784,7 +784,7 @@ function TraditionalMedicineExtractionPage({
           />
         </p>
 
-        <Grid fullWidth>
+        <Grid fullWidth narrow>
           {/* Section: Extraction Process */}
           <Column lg={16} md={8} sm={4}>
             <h5 style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
@@ -1044,6 +1044,7 @@ function TraditionalMedicineExtractionPage({
               value={extractionValues.numberOfCycles}
               min={1}
               max={20}
+              step={1}
               onChange={(_, { value }) =>
                 setExtractionValues((prev) => ({
                   ...prev,
@@ -1329,6 +1330,7 @@ function TraditionalMedicineExtractionPage({
           value={aliquotCount}
           min={1}
           max={10}
+          step={1}
           onChange={(_, { value }) => setAliquotCount(value)}
           helperText={intl.formatMessage({
             id: "notebook.tradmed.aliquot.countHelper",

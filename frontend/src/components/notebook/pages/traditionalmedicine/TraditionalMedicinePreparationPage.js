@@ -788,7 +788,7 @@ function TraditionalMedicinePreparationPage({
           />
         </p>
 
-        <Grid fullWidth>
+        <Grid fullWidth narrow>
           {/* Processing Types */}
           <Column lg={16} md={8} sm={4}>
             <h5 style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>

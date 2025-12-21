@@ -357,6 +357,15 @@ function TraditionalMedicineArchivalPage({
     setError(null);
     setSuccessMessage(null);
 
+    // Optimistic UI update
+    setSamples((prevSamples) =>
+      prevSamples.map((sample) =>
+        selectedSampleIds.includes(sample.id)
+          ? { ...sample, status: "COMPLETED" }
+          : sample,
+      ),
+    );
+
     postToOpenElisServerJsonResponse(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
       JSON.stringify({
@@ -379,6 +388,8 @@ function TraditionalMedicineArchivalPage({
           loadPageSamples();
           if (onProgressUpdate) onProgressUpdate();
         } else {
+          // Revert optimistic update on error
+          loadPageSamples();
           setError(
             response?.error ||
               intl.formatMessage({

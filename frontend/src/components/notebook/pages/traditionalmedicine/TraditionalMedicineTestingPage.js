@@ -393,6 +393,15 @@ function TraditionalMedicineTestingPage({
     setError(null);
     setSuccessMessage(null);
 
+    // Optimistic UI update
+    setSamples((prevSamples) =>
+      prevSamples.map((sample) =>
+        selectedSampleIds.includes(sample.id)
+          ? { ...sample, status: "COMPLETED" }
+          : sample,
+      ),
+    );
+
     postToOpenElisServerJsonResponse(
       `/rest/notebook/tradmed/page/${pageData.id}/testing/approve`,
       JSON.stringify({
@@ -414,6 +423,8 @@ function TraditionalMedicineTestingPage({
           loadPageSamples();
           if (onProgressUpdate) onProgressUpdate();
         } else {
+          // Revert optimistic update on error
+          loadPageSamples();
           setError(
             response?.error ||
               intl.formatMessage({
@@ -860,7 +871,7 @@ function TraditionalMedicineTestingPage({
           />
         </p>
 
-        <Grid fullWidth className="modal-form-grid">
+        <Grid fullWidth narrow className="modal-form-grid">
           {/* Phytochemical Screening Section */}
           <Column lg={16} md={8} sm={4}>
             <div className="checkbox-group">

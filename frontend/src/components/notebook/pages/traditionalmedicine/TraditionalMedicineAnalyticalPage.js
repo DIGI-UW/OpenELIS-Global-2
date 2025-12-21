@@ -684,7 +684,7 @@ function TraditionalMedicineAnalyticalPage({
           />
         </p>
 
-        <Grid fullWidth className="modal-form-grid">
+        <Grid fullWidth narrow className="modal-form-grid">
           {/* Fractionation Section */}
           <Column lg={8} md={4} sm={4}>
             <Select
@@ -723,6 +723,7 @@ function TraditionalMedicineAnalyticalPage({
               }
               min={1}
               max={100}
+              step={1}
               allowEmpty
             />
           </Column>
