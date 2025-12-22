@@ -34,9 +34,11 @@ const LocationAutocomplete = ({
     getFromOpenElisServer(
       `/rest/storage/locations/search?q=${encodeURIComponent(term)}`,
       (results) => {
+        // Ensure results is an array - API might return non-array
+        const resultsArray = Array.isArray(results) ? results : [];
         // Filter out position-level locations (only Room/Device/Shelf/Rack allowed)
-        const filteredResults = (results || []).filter(
-          (location) => location.type !== "position",
+        const filteredResults = resultsArray.filter(
+          (location) => location && location.type !== "position",
         );
 
         setSearchResults(filteredResults);

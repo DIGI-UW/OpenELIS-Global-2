@@ -16,10 +16,9 @@
 // Import commands.js using ES2015 syntax:
 import "./commands";
 
-// DISABLED: Storage test support (001-sample-storage feature)
-// Storage tests are temporarily disabled - uncomment to re-enable
-// import "./load-storage-fixtures";
-// import "./storage-setup";
+// Storage test support (globally available for all storage tests)
+import "./load-storage-fixtures";
+import "./storage-setup";
 
 // Patient Merge test support (008-patient-merge feature)
 import "./patient-merge-setup";
@@ -101,4 +100,12 @@ Cypress.on("uncaught:exception", (err, runnable) => {
   // Return false to prevent Cypress from failing the test
   // This allows us to see the error but continue
   return false;
+});
+
+// Fail-fast: Stop test run on first failure using official Cypress.stop() API
+// https://docs.cypress.io/api/cypress-api/stop
+afterEach(function () {
+  if (this.currentTest?.state === "failed") {
+    Cypress.stop();
+  }
 });

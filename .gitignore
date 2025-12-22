@@ -56,3 +56,10 @@ volume/odoo/*
 .cursor/
 **/*checksum*.properties
 **/*checksums*.properties
+
+# Test run logs (dev artifacts, not source code)
+.logs/
+
+# Generated test fixtures (derived from DBUnit XML, never commit)
+# These are generated on-the-fly during test runs from authoritative XML sources
+src/test/resources/testdata/*.generated.sql

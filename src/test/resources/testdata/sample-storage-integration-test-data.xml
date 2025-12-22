@@ -62,7 +62,7 @@
         fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
 
     <!-- storage_box - from original test -->
-    <storage_box id="1000" label="Box A" short_code="BOXA"
+    <storage_box id="1000" label="Box A" code="BOXA"
         type="plate" rows="8" columns="12" parent_rack_id="1000" active="true"
         sys_user_id="1" last_updated="2024-01-01 10:00:00"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />

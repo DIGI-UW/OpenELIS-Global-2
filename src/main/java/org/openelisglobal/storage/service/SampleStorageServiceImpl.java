@@ -281,8 +281,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // Resolve SampleItem (handles internal ID, accession number, or external ID)
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
 
-            // Check if already disposed (status_id = 24 for disposed)
-            if (sampleItem.getStatusId() != null && "24".equals(sampleItem.getStatusId())) {
+            // Check if already disposed
+            if (statusService.matches(sampleItem.getStatusId(),
+                    org.openelisglobal.common.services.StatusService.SampleStatus.Disposed)) {
                 throw new LIMSRuntimeException("SampleItem is already disposed");
             }
 
@@ -329,8 +330,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 sampleStorageAssignmentDAO.update(existingAssignment);
             }
 
-            // Update SampleItem status to "disposed" (status_id = 24)
-            sampleItem.setStatusId("24");
+            // Update SampleItem status to "SampleDisposed"
+            String disposedStatusId = statusService
+                    .getStatusID(org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
+            sampleItem.setStatusId(disposedStatusId);
             sampleItemDAO.update(sampleItem);
 
             // Create audit movement record for disposal
@@ -1187,6 +1190,30 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
 
         String trimmedId = identifier.trim();
+
+        // Step 0: Try numeric ID lookup (direct SampleItem by internal ID)
+        // This handles cases where frontend sends the database ID
+        // IMPORTANT: Only attempt this if the identifier is purely numeric, because
+        // sampleItemService.get() is @Transactional and throws ObjectNotFoundException
+        // when not found. If an exception is thrown inside a nested @Transactional
+        // method,
+        // it marks the outer transaction for rollback even if the exception is caught.
+        if (trimmedId.matches("\\d+")) {
+            try {
+                SampleItem sampleItemById = sampleItemService.get(trimmedId);
+                if (sampleItemById != null) {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("Found SampleItem by numeric ID: {}", trimmedId);
+                    }
+                    return sampleItemById;
+                }
+            } catch (Exception e) {
+                // Not found by numeric ID, continue to other lookup methods
+                if (logger.isDebugEnabled()) {
+                    logger.debug("SampleItem not found by numeric ID '{}', trying other methods", trimmedId);
+                }
+            }
+        }
 
         // Step 1: Try accession number lookup (Sample → SampleItems)
         Sample sample = sampleService.getSampleByAccessionNumber(trimmedId);
