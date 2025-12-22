@@ -277,12 +277,12 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         StorageRack rack = new StorageRack();
         rack.setLabel("TEST-RACK01");
         rack.setParentShelf(parentShelf);
-        rack.setShortCode("test-rkr01");
+        rack.setCode("test-rkr01");
         rack.setActive(true);
         rack.setSysUserIdValue(1);
         Integer rackId = storageLocationService.insert(rack);
         StorageRack retrieved = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
-        assertEquals("TEST-RKR01", retrieved.getShortCode());
+        assertEquals("TEST-RKR01", retrieved.getCode());
     }
 
     @Test
