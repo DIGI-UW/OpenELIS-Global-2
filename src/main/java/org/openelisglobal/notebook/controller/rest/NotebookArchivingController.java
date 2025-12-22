@@ -107,6 +107,48 @@ public class NotebookArchivingController extends BaseRestController {
     }
 
     /**
+     * Simple archive endpoint - marks notebook as archived/complete. POST
+     * /notebook/{id}/archive
+     */
+    @PostMapping(value = "/{notebookId}/archive", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> archiveNotebook(@PathVariable("notebookId") Integer notebookId,
+            @RequestBody(required = false) ArchiveRequest request, HttpServletRequest httpRequest) {
+
+        NoteBook notebook = noteBookService.get(notebookId);
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            String userId = getSysUserId(httpRequest);
+            NoteBook archived = archivingService.finalizeNotebook(notebookId, userId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("notebookId", archived.getId());
+            response.put("status", archived.getStatus().name());
+            response.put("message", "Notebook has been archived successfully");
+            if (request != null && request.getNotes() != null) {
+                response.put("archiveNotes", request.getNotes());
+            }
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalStateException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "archiveNotebook", e.getMessage());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", "Failed to archive notebook: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    /**
      * T136c: Finalize notebook after archiving is complete. POST
      * /notebook/{id}/archive/finalize
      */
@@ -272,6 +314,39 @@ public class NotebookArchivingController extends BaseRestController {
 
         public void setNotes(String notes) {
             this.notes = notes;
+        }
+    }
+
+    /**
+     * Request body for simple archive operation.
+     */
+    public static class ArchiveRequest {
+        private Integer pageId;
+        private String notes;
+        private String archivedAt;
+
+        public Integer getPageId() {
+            return pageId;
+        }
+
+        public void setPageId(Integer pageId) {
+            this.pageId = pageId;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
+        }
+
+        public String getArchivedAt() {
+            return archivedAt;
+        }
+
+        public void setArchivedAt(String archivedAt) {
+            this.archivedAt = archivedAt;
         }
     }
 }

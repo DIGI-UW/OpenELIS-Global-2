@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.4.xsd">
+
+    <changeSet id="update-notebook-page-sample-status-check-add-rejected" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Update CHECK constraint for status values to include REJECTED status for QC failures.</comment>
+        <sql>
+            ALTER TABLE clinlims.notebook_page_sample DROP CONSTRAINT IF EXISTS chk_nps_status;
+            ALTER TABLE clinlims.notebook_page_sample
+            ADD CONSTRAINT chk_nps_status
+            CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED', 'REJECTED'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.notebook_page_sample DROP CONSTRAINT IF EXISTS chk_nps_status;
+                ALTER TABLE clinlims.notebook_page_sample
+                ADD CONSTRAINT chk_nps_status
+                CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

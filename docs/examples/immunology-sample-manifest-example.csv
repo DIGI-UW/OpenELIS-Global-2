@@ -1,6 +1,30 @@
-GroupID,SampleType,NumOfSamples,CollectionDate,Volume,Notes
-GRP-001,Serum,3,2024-01-15,5ml,Morning collection
-GRP-002,Plasma,2,2024-01-15,3ml,Fasting samples
-GRP-003,Serum,4,2024-01-16,5ml,Afternoon collection
-GRP-004,Whole Blood,1,2024-01-16,10ml,EDTA tube
-GRP-005,Serum,2,2024-01-17,5ml,
+uniqueParentSampleId,projectNameId,deliveryManifestReference,sampleType,sampleVolume,collectionDateTime,receptionDateTime,sourceOrigin,storageConditionOnArrival,transportTemperature,receivingPersonnelName,manifestVerificationStatus,patientId,notes
+IMM-2024-001-A,PROJ-VAC-2024-001,DM-2024-12-001,Whole Blood,5 mL,2024-12-15 09:30,2024-12-16 14:00,Addis Ababa Health Center,Refrigerated (2-8C),4C,Dr. Sarah Bekele,Verified,SUBJ-001,Sample received in good condition
+IMM-2024-001-B,PROJ-VAC-2024-001,DM-2024-12-001,PBMC,2x10^6 cells,2024-12-15 09:35,2024-12-16 14:00,Addis Ababa Health Center,Frozen (-80C),-80C,Dr. Sarah Bekele,Verified,SUBJ-001,Cells isolated at collection site
+IMM-2024-002-A,PROJ-VAC-2024-001,DM-2024-12-001,Serum,3 mL,2024-12-15 10:00,2024-12-16 14:00,Addis Ababa Health Center,Frozen (-20C),-20C,Dr. Sarah Bekele,Verified,SUBJ-002,
+IMM-2024-002-B,PROJ-VAC-2024-001,DM-2024-12-001,Plasma,4 mL,2024-12-15 10:05,2024-12-16 14:00,Addis Ababa Health Center,Frozen (-20C),-20C,Dr. Sarah Bekele,Verified,SUBJ-002,EDTA plasma
+IMM-2024-003-A,PROJ-HIV-2024-002,DM-2024-12-002,Whole Blood,8 mL,2024-12-14 14:20,2024-12-16 14:30,Hawassa University Hospital,Refrigerated (2-8C),6C,Dr. Miriam Tesfaye,Verified,SUBJ-003,
+IMM-2024-003-B,PROJ-HIV-2024-002,DM-2024-12-002,Buffy Coat,1 mL,2024-12-14 14:30,2024-12-16 14:30,Hawassa University Hospital,Frozen (-80C),-80C,Dr. Miriam Tesfaye,Verified,SUBJ-003,Separated at collection site
+IMM-2024-004-A,PROJ-HIV-2024-002,DM-2024-12-002,PBMC,5x10^6 cells,2024-12-14 15:00,2024-12-16 14:30,Hawassa University Hospital,Liquid Nitrogen,-196C,Dr. Miriam Tesfaye,Verified,SUBJ-004,Viability 95%
+IMM-2024-005-A,PROJ-TB-2024-003,DM-2024-12-003,Bronchoalveolar Lavage,10 mL,2024-12-13 11:00,2024-12-16 15:00,Tikur Anbessa Hospital,Refrigerated (2-8C),4C,Dr. Yonas Haile,Pending,SUBJ-005,Awaiting lab confirmation
+IMM-2024-006-A,PROJ-MALARIA-2024-004,DM-2024-12-004,Dried Blood Spot,3 spots,2024-12-12 09:00,2024-12-16 15:30,Bahir Dar Regional Lab,Ambient,22C,Nurse Abel Tekle,Verified,SUBJ-006,Filter paper card
+IMM-2024-007-A,PROJ-MALARIA-2024-004,DM-2024-12-004,Whole Blood,2 mL,2024-12-12 09:05,2024-12-16 15:30,Bahir Dar Regional Lab,Refrigerated (2-8C),5C,Nurse Abel Tekle,Verified,SUBJ-007,Finger prick sample
+IMM-2024-008-A,PROJ-COVID-2024-005,DM-2024-12-005,Serum,2 mL,2024-12-11 16:30,2024-12-16 16:00,Jimma University Hospital,Frozen (-20C),-20C,Dr. Meseret Abera,Verified,SUBJ-008,Convalescent serum
+IMM-2024-008-B,PROJ-COVID-2024-005,DM-2024-12-005,PBMC,1x10^7 cells,2024-12-11 17:00,2024-12-16 16:00,Jimma University Hospital,Liquid Nitrogen,-196C,Dr. Meseret Abera,Verified,SUBJ-008,
+IMM-2024-009-A,PROJ-DENGUE-2024-006,DM-2024-12-006,Plasma,3 mL,2024-12-10 08:45,now,Dire Dawa Health Center,Frozen (-80C),-80C,Lab Tech Hana Girma,Pending,SUBJ-009,Acute phase sample
+IMM-2024-010-A,PROJ-DENGUE-2024-006,DM-2024-12-006,Cell Culture Supernatant,5 mL,2024-12-10 09:00,now,Dire Dawa Health Center,Frozen (-80C),-80C,Lab Tech Hana Girma,Pending,SUBJ-010,48h post-infection
+IMM-2024-011-A,PROJ-AUTOIMMUNE-2024-007,DM-2024-12-007,Synovial Fluid,2 mL,2024-12-09 14:00,2024-12-16 17:00,Black Lion Hospital,Refrigerated (2-8C),4C,Dr. Tewodros Bekele,Verified,SUBJ-011,RA patient
+IMM-2024-012-A,PROJ-AUTOIMMUNE-2024-007,DM-2024-12-007,Lymph Node,Biopsy,2024-12-09 15:00,2024-12-16 17:00,Black Lion Hospital,Frozen (-80C),-80C,Dr. Tewodros Bekele,Verified,SUBJ-012,Fresh frozen tissue
+IMM-2024-013-A,PROJ-LEUKEMIA-2024-008,DM-2024-12-008,Bone Marrow,5 mL,2024-12-08 10:30,2024-12-16 17:30,Yekatit 12 Hospital,Refrigerated (2-8C),4C,Dr. Alemitu Desta,Verified,SUBJ-013,Initial diagnosis sample
+IMM-2024-013-B,PROJ-LEUKEMIA-2024-008,DM-2024-12-008,Isolated DNA,50 ug,2024-12-08 12:00,2024-12-16 17:30,Yekatit 12 Hospital,Frozen (-80C),-80C,Dr. Alemitu Desta,Verified,SUBJ-013,High quality 260/280 = 1.9
+IMM-2024-014-A,PROJ-LEUKEMIA-2024-008,DM-2024-12-008,Isolated RNA,25 ug,2024-12-08 12:30,2024-12-16 17:30,Yekatit 12 Hospital,Liquid Nitrogen,-196C,Dr. Alemitu Desta,Verified,SUBJ-014,RIN = 9.2
+IMM-2024-015-A,PROJ-CORD-2024-009,DM-2024-12-009,Cord Blood,50 mL,2024-12-07 06:00,2024-12-16 18:00,St. Paul Hospital Maternity,Refrigerated (2-8C),4C,Nurse Tigist Hailu,Verified,SUBJ-015,Vaginal delivery
+IMM-2024-016-A,PROJ-FLOW-2024-010,DM-2024-12-010,T Cells,5x10^6 cells,2024-12-06 14:00,2024-12-16 18:30,Ethiopian Public Health Institute,Frozen (-80C),-80C,Dr. Kebede Worku,Verified,SUBJ-016,CD4+ sorted
+IMM-2024-016-B,PROJ-FLOW-2024-010,DM-2024-12-010,B Cells,2x10^6 cells,2024-12-06 14:30,2024-12-16 18:30,Ethiopian Public Health Institute,Frozen (-80C),-80C,Dr. Kebede Worku,Verified,SUBJ-016,CD19+ sorted
+IMM-2024-017-A,PROJ-FLOW-2024-010,DM-2024-12-010,NK Cells,1x10^6 cells,2024-12-06 15:00,2024-12-16 18:30,Ethiopian Public Health Institute,Frozen (-80C),-80C,Dr. Kebede Worku,Verified,SUBJ-017,CD56+ sorted
+IMM-2024-018-A,PROJ-CYTOKINE-2024-011,DM-2024-12-011,Cell Lysate,500 uL,2024-12-05 11:00,2024-12-16 19:00,AHRI Laboratory,Frozen (-80C),-80C,Dr. Liya Mengiste,Verified,SUBJ-018,RIPA buffer extraction
+IMM-2024-018-B,PROJ-CYTOKINE-2024-011,DM-2024-12-011,Protein Extract,200 ug,2024-12-05 12:00,2024-12-16 19:00,AHRI Laboratory,Frozen (-80C),-80C,Dr. Liya Mengiste,Verified,SUBJ-018,Total protein BCA quantified
+IMM-2024-019-A,PROJ-DENDRITIC-2024-012,DM-2024-12-012,Dendritic Cells,1x10^5 cells,2024-12-04 16:00,2024-12-16 19:30,Mekelle University Hospital,Liquid Nitrogen,-196C,Dr. Gebre Michael,Verified,SUBJ-019,monocyte-derived
+IMM-2024-020-A,PROJ-DENDRITIC-2024-012,DM-2024-12-012,Monocytes,5x10^6 cells,2024-12-04 10:00,2024-12-16 19:30,Mekelle University Hospital,Frozen (-80C),-80C,Dr. Gebre Michael,Verified,SUBJ-020,CD14+ sorted
+IMM-2024-021-A,PROJ-LYMPH-2024-013,DM-2024-12-013,Lymphocytes,1x10^7 cells,2024-12-03 09:00,2024-12-16 20:00,Gondar University Hospital,Frozen (-80C),-80C,Dr. Aster Yilma,Verified,SUBJ-021,Total lymphocyte fraction
+IMM-2024-022-A,PROJ-PELLET-2024-014,DM-2024-12-014,Cell Pellet,10^8 cells,2024-12-02 14:00,2024-12-16 20:30,Debre Markos Hospital,Frozen (-80C),-80C,Lab Tech Samuel Alem,Discrepancy,SUBJ-022,Count discrepancy noted - recount required

@@ -130,7 +130,8 @@ public class NotebookAnalyzerImportController extends BaseRestController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            Integer notebookId = page.getNotebook().getId();
+            // Use pageId directly - no need to get notebook ID since we already have the
+            // page
             String fileName = file.getOriginalFilename();
 
             // Parse the file
@@ -153,8 +154,8 @@ public class NotebookAnalyzerImportController extends BaseRestController {
                 columnMapping.put("result", result);
             }
 
-            // Generate preview
-            ImportPreview preview = analyzerResultImportService.previewImport(notebookId, pageId, parseResult,
+            // Generate preview - pass pageId as notebookId since preview only needs pageId
+            ImportPreview preview = analyzerResultImportService.previewImport(pageId, pageId, parseResult,
                     columnMapping);
 
             response.put("success", true);
@@ -171,6 +172,10 @@ public class NotebookAnalyzerImportController extends BaseRestController {
         } catch (IOException e) {
             LogEvent.logError(this.getClass().getName(), "previewImport", "Error reading file: " + e.getMessage());
             response.put("error", "Failed to read file: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "previewImport", "Unexpected error: " + e.getMessage());
+            response.put("error", "Unexpected error: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
@@ -443,11 +448,58 @@ public class NotebookAnalyzerImportController extends BaseRestController {
                         if (request.getAssayRunId() != null && !request.getAssayRunId().isBlank()) {
                             analyzerResult.put("assayRunId", request.getAssayRunId());
                         }
+                        if (request.getAssayType() != null && !request.getAssayType().isBlank()) {
+                            analyzerResult.put("assayType", request.getAssayType());
+                        }
                         if (request.getNotes() != null && !request.getNotes().isBlank()) {
                             analyzerResult.put("notes", request.getNotes());
                         }
                         if (userId != null) {
                             analyzerResult.put("enteredBy", userId);
+                        }
+                        // ELISA-specific fields
+                        if (request.getOdValue() != null && !request.getOdValue().isBlank()) {
+                            analyzerResult.put("odValue", request.getOdValue());
+                        }
+                        if (request.getConcentration() != null && !request.getConcentration().isBlank()) {
+                            analyzerResult.put("concentration", request.getConcentration());
+                        }
+                        if (request.getCutoffValue() != null && !request.getCutoffValue().isBlank()) {
+                            analyzerResult.put("cutoffValue", request.getCutoffValue());
+                        }
+                        if (request.getWellCoordinate() != null && !request.getWellCoordinate().isBlank()) {
+                            analyzerResult.put("wellCoordinate", request.getWellCoordinate());
+                        }
+                        // Flow cytometry fields
+                        if (request.getCd4Percent() != null && !request.getCd4Percent().isBlank()) {
+                            analyzerResult.put("cd4Percent", request.getCd4Percent());
+                        }
+                        if (request.getCd8Percent() != null && !request.getCd8Percent().isBlank()) {
+                            analyzerResult.put("cd8Percent", request.getCd8Percent());
+                        }
+                        if (request.getCd3Percent() != null && !request.getCd3Percent().isBlank()) {
+                            analyzerResult.put("cd3Percent", request.getCd3Percent());
+                        }
+                        if (request.getCd4Count() != null && !request.getCd4Count().isBlank()) {
+                            analyzerResult.put("cd4Count", request.getCd4Count());
+                        }
+                        if (request.getCd8Count() != null && !request.getCd8Count().isBlank()) {
+                            analyzerResult.put("cd8Count", request.getCd8Count());
+                        }
+                        if (request.getCd4Mfi() != null && !request.getCd4Mfi().isBlank()) {
+                            analyzerResult.put("cd4Mfi", request.getCd4Mfi());
+                        }
+                        if (request.getCd8Mfi() != null && !request.getCd8Mfi().isBlank()) {
+                            analyzerResult.put("cd8Mfi", request.getCd8Mfi());
+                        }
+                        if (request.getCd4Cd8Ratio() != null && !request.getCd4Cd8Ratio().isBlank()) {
+                            analyzerResult.put("cd4Cd8Ratio", request.getCd4Cd8Ratio());
+                        }
+                        if (request.getEventCount() != null && !request.getEventCount().isBlank()) {
+                            analyzerResult.put("eventCount", request.getEventCount());
+                        }
+                        if (request.getCellViability() != null && !request.getCellViability().isBlank()) {
+                            analyzerResult.put("cellViability", request.getCellViability());
                         }
 
                         data.put("analyzerResult", analyzerResult);
@@ -484,6 +536,23 @@ public class NotebookAnalyzerImportController extends BaseRestController {
         private String assayRunId;
         private String notes;
         private String entryType;
+        private String assayType;
+        // ELISA-specific fields
+        private String odValue;
+        private String concentration;
+        private String cutoffValue;
+        private String wellCoordinate;
+        // Flow cytometry fields
+        private String cd4Percent;
+        private String cd8Percent;
+        private String cd4Count;
+        private String cd8Count;
+        private String eventCount;
+        private String cellViability;
+        private String cd4Mfi;
+        private String cd8Mfi;
+        private String cd3Percent;
+        private String cd4Cd8Ratio;
 
         public List<Integer> getSampleIds() {
             return sampleIds;
@@ -509,6 +578,14 @@ public class NotebookAnalyzerImportController extends BaseRestController {
             this.assayRunId = assayRunId;
         }
 
+        public String getAssayType() {
+            return assayType;
+        }
+
+        public void setAssayType(String assayType) {
+            this.assayType = assayType;
+        }
+
         public String getNotes() {
             return notes;
         }
@@ -523,6 +600,120 @@ public class NotebookAnalyzerImportController extends BaseRestController {
 
         public void setEntryType(String entryType) {
             this.entryType = entryType;
+        }
+
+        // ELISA-specific getters and setters
+        public String getOdValue() {
+            return odValue;
+        }
+
+        public void setOdValue(String odValue) {
+            this.odValue = odValue;
+        }
+
+        public String getConcentration() {
+            return concentration;
+        }
+
+        public void setConcentration(String concentration) {
+            this.concentration = concentration;
+        }
+
+        public String getCutoffValue() {
+            return cutoffValue;
+        }
+
+        public void setCutoffValue(String cutoffValue) {
+            this.cutoffValue = cutoffValue;
+        }
+
+        public String getWellCoordinate() {
+            return wellCoordinate;
+        }
+
+        public void setWellCoordinate(String wellCoordinate) {
+            this.wellCoordinate = wellCoordinate;
+        }
+
+        // Flow cytometry getters and setters
+        public String getCd4Percent() {
+            return cd4Percent;
+        }
+
+        public void setCd4Percent(String cd4Percent) {
+            this.cd4Percent = cd4Percent;
+        }
+
+        public String getCd8Percent() {
+            return cd8Percent;
+        }
+
+        public void setCd8Percent(String cd8Percent) {
+            this.cd8Percent = cd8Percent;
+        }
+
+        public String getCd4Count() {
+            return cd4Count;
+        }
+
+        public void setCd4Count(String cd4Count) {
+            this.cd4Count = cd4Count;
+        }
+
+        public String getCd8Count() {
+            return cd8Count;
+        }
+
+        public void setCd8Count(String cd8Count) {
+            this.cd8Count = cd8Count;
+        }
+
+        public String getEventCount() {
+            return eventCount;
+        }
+
+        public void setEventCount(String eventCount) {
+            this.eventCount = eventCount;
+        }
+
+        public String getCellViability() {
+            return cellViability;
+        }
+
+        public void setCellViability(String cellViability) {
+            this.cellViability = cellViability;
+        }
+
+        public String getCd4Mfi() {
+            return cd4Mfi;
+        }
+
+        public void setCd4Mfi(String cd4Mfi) {
+            this.cd4Mfi = cd4Mfi;
+        }
+
+        public String getCd8Mfi() {
+            return cd8Mfi;
+        }
+
+        public void setCd8Mfi(String cd8Mfi) {
+            this.cd8Mfi = cd8Mfi;
+        }
+
+        public String getCd3Percent() {
+            return cd3Percent;
+        }
+
+        public void setCd3Percent(String cd3Percent) {
+            this.cd3Percent = cd3Percent;
+        }
+
+        public String getCd4Cd8Ratio() {
+            return cd4Cd8Ratio;
+        }
+
+        public void setCd4Cd8Ratio(String cd4Cd8Ratio) {
+            this.cd4Cd8Ratio = cd4Cd8Ratio;
         }
     }
 }

@@ -798,19 +798,21 @@ function MNTDAliquotingPage({
   };
 
   // Render aliquot count tag
-  const renderAliquotCountTag = (sample) => {
-    if (sample.hasChildren && sample.childAliquotCount > 0) {
-      return <Tag type="green">{sample.childAliquotCount} aliquots</Tag>;
+  const renderAliquotCountTag = (value, sample) => {
+    const s = sample || value;
+    if (s?.hasChildren && s?.childAliquotCount > 0) {
+      return <Tag type="green">{s.childAliquotCount} aliquots</Tag>;
     }
     return <Tag type="gray">No aliquots</Tag>;
   };
 
   // Render routing status tag for children
-  const renderRoutingStatusTag = (sample) => {
-    if (sample.destinationType) {
+  const renderRoutingStatusTag = (value, sample) => {
+    const s = sample || value;
+    if (s?.destinationType) {
       return (
-        <Tag type="green" title={sample.wellCoordinate}>
-          {sample.wellCoordinate || "Routed"}
+        <Tag type="green" title={s.wellCoordinate}>
+          {s.wellCoordinate || "Routed"}
         </Tag>
       );
     }
@@ -1129,7 +1131,8 @@ function MNTDAliquotingPage({
                       id: "notebook.mntd.aliquoting.type",
                       defaultMessage: "Type",
                     }),
-                    render: (sample) => sample.aliquotType || "-",
+                    render: (value, sample) =>
+                      value || sample?.aliquotType || "-",
                   },
                   {
                     key: "volumeOrSpots",
