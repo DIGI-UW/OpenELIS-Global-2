@@ -8,6 +8,18 @@
     <system_user id="1" login_name="itest" last_name="User"
         first_name="Integration" is_active="Y" is_employee="Y" />
 
+    <status_of_sample id="1"
+        description="No tests have been run for this order" code="1"
+        status_type="ORDER" lastupdated="2011-02-16 12:45:57.196561"
+        name="Test Entered" display_key="status.sample.notStarted"
+        is_active="Y" />
+
+    <status_of_sample id="24"
+        description="Sample has been physically disposed" code="1"
+        status_type="SAMPLE" lastupdated="2024-01-01 10:00:00"
+        name="SampleDisposed" display_key="status.sample.disposed"
+        is_active="Y" />
+
     <!-- ===================== -->
     <!-- STORAGE ROOMS (3 active, 1 inactive) -->
     <!-- ===================== -->
